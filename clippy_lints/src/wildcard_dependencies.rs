@@ -12,6 +12,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::{ast::*, source_map::DUMMY_SP};
 use crate::utils::span_lint;
 
+use if_chain::if_chain;
 use cargo_metadata;
 use semver;
 
@@ -54,8 +55,12 @@ impl EarlyLintPass for Pass {
 
         for dep in &metadata.packages[0].dependencies {
             // VersionReq::any() does not work
-            if let Ok(wildcard_ver) = semver::VersionReq::parse("*") {
-                if dep.req == wildcard_ver {
+            if_chain! {
+                if let Ok(wildcard_ver) = semver::VersionReq::parse("*");
+                if let Some(ref source) = dep.source;
+                if !source.starts_with("git");
+                if dep.req == wildcard_ver;
+                then {
                     span_lint(
                         cx,
                         WILDCARD_DEPENDENCIES,
