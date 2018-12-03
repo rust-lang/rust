@@ -1,8 +1,6 @@
-#![allow(unused_variables)]
-
 use std::mem;
 
-pub fn safe(x: &mut i32, y: &i32) {} //~ ERROR does not exist on the stack
+pub fn safe(_x: &mut i32, _y: &i32) {} //~ ERROR does not exist on the stack
 
 fn main() {
     let mut x = 0;
