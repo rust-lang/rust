@@ -3037,7 +3037,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit`] method can be used.
@@ -3154,7 +3154,7 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// For iterating from the front, the [`split`] method can be used.
     ///
@@ -3212,7 +3212,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit_terminator`] method can be used.
@@ -3395,7 +3395,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatches`] method can be used.
@@ -3431,7 +3431,7 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// For iterating from the front, the [`matches`] method can be used.
     ///
@@ -3471,7 +3471,7 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatch_indices`] method can be used.
@@ -3513,7 +3513,7 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
-    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    /// [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
     ///
     /// For iterating from the front, the [`match_indices`] method can be used.
     ///
