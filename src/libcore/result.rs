@@ -240,6 +240,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use convert::Into;
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use ops::{self, Deref};
@@ -895,6 +896,26 @@ impl<T: fmt::Debug, E> Result<T, E> {
             Err(e) => e,
         }
     }
+
+    /// Maps the contained value of an [`Ok`] using the `Into` trait
+    ///
+    /// [`Into`]: ../convert/trait.Into.html
+    pub fn map_into<U>(self) -> Result<U, E>
+    where
+        T: Into<U>
+    {
+        self.map(T::into)
+    }
+
+    /// Maps the contained value of an [`Err`] using the `Into` trait
+    ///
+    /// [`Into`]: ../convert/trait.Into.html
+    fn map_err_into<F>(self) -> Result<T, F>
+    where
+        E: Into<F>
+    {
+        self.map_err(E::into)
+    }
 }
 
 impl<T: Default, E> Result<T, E> {
@@ -932,26 +953,6 @@ impl<T: Default, E> Result<T, E> {
             Ok(x) => x,
             Err(_) => Default::default(),
         }
-    }
-
-    /// Maps the contained value of an [`Ok`] using the `Into` trait
-    ///
-    /// [`Into`]: ../convert/trait.Into.html
-    pub fn map_into<U>(self) -> Result<U, E>
-    where
-        T: Into<U>
-    {
-        self.map(T::into)
-    }
-    
-    /// Maps the contained value of an [`Err`] using the `Into` trait
-    ///
-    /// [`Into`]: ../convert/trait.Into.html
-    fn map_err_into<F>(self) -> Result<T, F>
-    where
-        E: Into<F>
-    {
-        self.map_err(E::into)
     }
 }
 
