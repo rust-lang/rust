@@ -157,7 +157,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
-    ) -> RegionName {
+    ) -> Option<RegionName> {
         debug!("give_region_a_name(fr={:?}, counter={})", fr, counter);
 
         assert!(self.universal_regions.is_universal_region(fr));
@@ -177,8 +177,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.give_name_if_anonymous_region_appears_in_output(
                     infcx, mir, mir_def_id, fr, counter,
                 )
-            })
-            .unwrap_or_else(|| span_bug!(mir.span, "can't make a name for free region {:?}", fr));
+            });
 
         debug!("give_region_a_name: gave name {:?}", value);
         value
