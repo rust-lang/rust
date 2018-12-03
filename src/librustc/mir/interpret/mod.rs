@@ -41,7 +41,6 @@ use ty::{self, TyCtxt, Instance};
 use ty::layout::{self, Size};
 use middle::region;
 use std::io;
-use std::hash::Hash;
 use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
@@ -302,19 +301,19 @@ pub enum AllocType<'tcx, M> {
     Memory(M)
 }
 
-pub struct AllocMap<'tcx, M> {
+pub struct AllocMap<'tcx> {
     /// Lets you know what an AllocId refers to
-    id_to_type: FxHashMap<AllocId, AllocType<'tcx, M>>,
+    id_to_type: FxHashMap<AllocId, AllocType<'tcx, &'tcx Allocation>>,
 
     /// Used to ensure that functions and statics only get one associated AllocId
-    type_interner: FxHashMap<AllocType<'tcx, M>, AllocId>,
+    type_interner: FxHashMap<AllocType<'tcx, &'tcx Allocation>, AllocId>,
 
     /// The AllocId to assign to the next requested id.
     /// Always incremented, never gets smaller.
     next_id: AllocId,
 }
 
-impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
+impl<'tcx> AllocMap<'tcx> {
     pub fn new() -> Self {
         AllocMap {
             id_to_type: Default::default(),
@@ -337,7 +336,7 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         next
     }
 
-    fn intern(&mut self, alloc_type: AllocType<'tcx, M>) -> AllocId {
+    fn intern(&mut self, alloc_type: AllocType<'tcx, &'tcx Allocation>) -> AllocId {
         if let Some(&alloc_id) = self.type_interner.get(&alloc_type) {
             return alloc_id;
         }
@@ -355,11 +354,11 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         self.intern(AllocType::Function(instance))
     }
 
-    pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx, M>> {
+    pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx, &'tcx Allocation>> {
         self.id_to_type.get(&id).cloned()
     }
 
-    pub fn unwrap_memory(&self, id: AllocId) -> M {
+    pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
         match self.get(id) {
             Some(AllocType::Memory(mem)) => mem,
             _ => bug!("expected allocation id {} to point to memory", id),
@@ -370,19 +369,19 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         self.intern(AllocType::Static(static_id))
     }
 
-    pub fn allocate(&mut self, mem: M) -> AllocId {
+    pub fn allocate(&mut self, mem: &'tcx Allocation) -> AllocId {
         let id = self.reserve();
         self.set_id_memory(id, mem);
         id
     }
 
-    pub fn set_id_memory(&mut self, id: AllocId, mem: M) {
+    pub fn set_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
         if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
     }
 
-    pub fn set_id_same_memory(&mut self, id: AllocId, mem: M) {
+    pub fn set_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
        self.id_to_type.insert_same(id, AllocType::Memory(mem));
     }
 }
