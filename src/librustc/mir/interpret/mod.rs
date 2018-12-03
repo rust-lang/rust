@@ -322,8 +322,11 @@ impl<'tcx> AllocMap<'tcx> {
         }
     }
 
-    /// obtains a new allocation ID that can be referenced but does not
+    /// Obtains a new allocation ID that can be referenced but does not
     /// yet have an allocation backing it.
+    ///
+    /// Make sure to call `set_id_memory` or `set_id_same_memory` before returning such an
+    /// `AllocId` from a query.
     pub fn reserve(
         &mut self,
     ) -> AllocId {
@@ -357,10 +360,14 @@ impl<'tcx> AllocMap<'tcx> {
         id
     }
 
+    /// Returns `None` in case the `AllocId` is dangling.
+    /// This function exists to allow const eval to detect the difference between evaluation-
+    /// local dangling pointers and allocations in constants/statics.
     pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx>> {
         self.id_to_type.get(&id).cloned()
     }
 
+    /// Panics if the `AllocId` does not refer to an `Allocation`
     pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
         match self.get(id) {
             Some(AllocType::Memory(mem)) => mem,
@@ -368,24 +375,35 @@ impl<'tcx> AllocMap<'tcx> {
         }
     }
 
+    /// Generate an `AllocId` for a static or return a cached one in case this function has been
+    /// called on the same static before.
     pub fn intern_static(&mut self, static_id: DefId) -> AllocId {
         self.intern(AllocType::Static(static_id))
     }
 
+    /// Intern the `Allocation` and return a new `AllocId`, even if there's already an identical
+    /// `Allocation` with a different `AllocId`.
+    // FIXME: is this really necessary? Can we ensure `FOO` and `BAR` being different after codegen
+    // in `static FOO: u32 = 42; static BAR: u32 = 42;` even if they reuse the same allocation
+    // inside rustc?
     pub fn allocate(&mut self, mem: &'tcx Allocation) -> AllocId {
         let id = self.reserve();
         self.set_id_memory(id, mem);
         id
     }
 
+    /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
+    /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
         if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
     }
 
+    /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
+    /// twice for the same `(AllocId, Allocation)` pair.
     pub fn set_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-       self.id_to_type.insert_same(id, AllocType::Memory(mem));
+        self.id_to_type.insert_same(id, AllocType::Memory(mem));
     }
 }
 
