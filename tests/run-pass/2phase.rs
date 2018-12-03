@@ -62,8 +62,9 @@ fn with_interior_mutability() {
 fn main() {
     two_phase1();
     two_phase2();
-    //two_phase_overlapping1();
-    //two_phase_overlapping2();
     match_two_phase();
     with_interior_mutability();
+    //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
+    //two_phase_overlapping1();
+    //two_phase_overlapping2();
 }
