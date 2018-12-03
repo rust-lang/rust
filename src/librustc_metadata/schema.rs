@@ -265,7 +265,7 @@ pub struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
     pub visibility: Lazy<ty::Visibility>,
     pub span: Lazy<Span>,
-    pub attributes: LazySeq<ast::Attribute>,
+    pub attributes: LazySeq<hir::Attribute>,
     pub children: LazySeq<DefIndex>,
     pub stability: Option<Lazy<attr::Stability>>,
     pub deprecation: Option<Lazy<attr::Deprecation>>,

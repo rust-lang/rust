@@ -625,7 +625,7 @@ struct ClauseDumper<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
-    fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
+    fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[hir::Attribute]) {
         let def_id = self.tcx.hir.local_def_id(node_id);
         for attr in attrs {
             let mut clauses = None;

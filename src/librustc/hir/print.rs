@@ -339,7 +339,7 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
     }
 
-    pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[ast::Attribute]) -> io::Result<()> {
+    pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[hir::Attribute]) -> io::Result<()> {
         self.print_inner_attributes(attrs)?;
         for &item_id in &_mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id))?;
@@ -349,7 +349,7 @@ impl<'a> State<'a> {
 
     pub fn print_foreign_mod(&mut self,
                              nmod: &hir::ForeignMod,
-                             attrs: &[ast::Attribute])
+                             attrs: &[hir::Attribute])
                              -> io::Result<()> {
         self.print_inner_attributes(attrs)?;
         for item in &nmod.items {
@@ -1035,7 +1035,7 @@ impl<'a> State<'a> {
 
     pub fn print_block_with_attrs(&mut self,
                                   blk: &hir::Block,
-                                  attrs: &[ast::Attribute])
+                                  attrs: &[hir::Attribute])
                                   -> io::Result<()> {
         self.print_block_maybe_unclosed(blk, indent_unit, attrs, true)
     }
@@ -1043,7 +1043,7 @@ impl<'a> State<'a> {
     pub fn print_block_maybe_unclosed(&mut self,
                                       blk: &hir::Block,
                                       indented: usize,
-                                      attrs: &[ast::Attribute],
+                                      attrs: &[hir::Attribute],
                                       close_box: bool)
                                       -> io::Result<()> {
         match blk.rules {

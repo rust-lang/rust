@@ -54,7 +54,6 @@ use std::rc::Rc;
 
 use errors;
 use serialize::json::{ToJson, Json, as_json};
-use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
@@ -3495,7 +3494,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
-fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
+fn render_attribute(attr: &hir::MetaItem) -> Option<String> {
     let name = attr.name();
 
     if attr.is_word() {

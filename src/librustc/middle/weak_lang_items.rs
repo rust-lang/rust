@@ -15,7 +15,6 @@ use middle::lang_items;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::PanicStrategy;
-use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use hir::def_id::DefId;
@@ -54,7 +53,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     verify(tcx, items);
 }
 
-pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
+pub fn link_name(attrs: &[hir::Attribute]) -> Option<Symbol> {
     lang_items::extract(attrs).and_then(|(name, _)| {
         $(if name == stringify!($name) {
             Some(Symbol::intern(stringify!($sym)))

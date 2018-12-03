@@ -41,7 +41,7 @@ use doctree::*;
 
 pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub module: Module,
-    pub attrs: hir::HirVec<ast::Attribute>,
+    pub attrs: hir::HirVec<hir::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>,
     view_item_stack: FxHashSet<ast::NodeId>,
     inlining: bool,
@@ -241,7 +241,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         }
     }
 
-    pub fn visit_mod_contents(&mut self, span: Span, attrs: hir::HirVec<ast::Attribute>,
+    pub fn visit_mod_contents(&mut self, span: Span, attrs: hir::HirVec<hir::Attribute>,
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
                               name: Option<ast::Name>) -> Module {

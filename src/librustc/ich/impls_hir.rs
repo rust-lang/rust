@@ -17,6 +17,7 @@ use hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
 use ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
+use smallvec::SmallVec;
 use std::mem;
 use syntax::ast;
 use syntax::attr;
@@ -1197,3 +1198,91 @@ impl_stable_hash_for!(struct hir::Freevar {
     def,
     span
 });
+
+impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        if self.len() == 0 {
+            self.len().hash_stable(hcx, hasher);
+            return
+        }
+
+        // Some attributes are always ignored during hashing.
+        let filtered: SmallVec<[&hir::Attribute; 8]> = self
+            .iter()
+            .filter(|attr| {
+                !attr.is_sugared_doc && !hcx.is_ignored_attr(attr.name())
+            })
+            .collect();
+
+        filtered.len().hash_stable(hcx, hasher);
+        for attr in filtered {
+            attr.hash_stable(hcx, hasher);
+        }
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Attribute {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        // Make sure that these have been filtered out.
+        debug_assert!(!hcx.is_ignored_attr(self.name()));
+        debug_assert!(!self.is_sugared_doc);
+
+        let hir::Attribute {
+            id: _,
+            style,
+            ref path,
+            ref tokens,
+            is_sugared_doc: _,
+            span,
+        } = *self;
+
+        style.hash_stable(hcx, hasher);
+        path.hash_stable(hcx, hasher);
+        for tt in tokens.trees() {
+            tt.hash_stable(hcx, hasher);
+        }
+        span.hash_stable(hcx, hasher);
+    }
+}
+impl_stable_hash_for_spanned!(hir::NestedMetaItemKind);
+
+// HACK(eddyb) need manual impl because `hir::NestedMetaItemKind` is an alias.
+impl<'a> HashStable<StableHashingContext<'a>> for hir::NestedMetaItemKind {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use syntax::ast::NestedMetaItemKind::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            MetaItem(meta_item) => meta_item.hash_stable(hcx, hasher),
+            Literal(lit) => lit.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl_stable_hash_for!(struct hir::MetaItem {
+    ident,
+    node,
+    span
+});
+
+// HACK(eddyb) need manual impl because `hir::MetaItemKind` is an alias.
+impl<'a> HashStable<StableHashingContext<'a>> for hir::MetaItemKind {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use syntax::ast::MetaItemKind::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            Word => {}
+            List(nested_items) => nested_items.hash_stable(hcx, hasher),
+            NameValue(lit) => lit.hash_stable(hcx, hasher),
+        }
+    }
+}

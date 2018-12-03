@@ -549,13 +549,14 @@ impl LintPassObject for LateLintPassObject {}
 
 pub trait LintContext<'tcx>: Sized {
     type PassObject: LintPassObject;
+    type Path;
 
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
     fn lint_sess(&self) -> &LintSession<'tcx, Self::PassObject>;
     fn lint_sess_mut(&mut self) -> &mut LintSession<'tcx, Self::PassObject>;
-    fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute]);
-    fn exit_attrs(&mut self, attrs: &'tcx [ast::Attribute]);
+    fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute<Self::Path>]);
+    fn exit_attrs(&mut self, attrs: &'tcx [ast::Attribute<Self::Path>]);
 
     fn lookup_and_emit<S: Into<MultiSpan>>(&self,
                                            lint: &'static Lint,
@@ -624,7 +625,7 @@ pub trait LintContext<'tcx>: Sized {
     /// lints in effect to their previous state.
     fn with_lint_attrs<F>(&mut self,
                           id: ast::NodeId,
-                          attrs: &'tcx [ast::Attribute],
+                          attrs: &'tcx [ast::Attribute<Self::Path>],
                           f: F)
         where F: FnOnce(&mut Self);
 }
@@ -661,6 +662,7 @@ impl<'a> EarlyContext<'a> {
 
 impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     type PassObject = LateLintPassObject;
+    type Path = hir::Path;
 
     /// Get the overall compiler `Session` object.
     fn sess(&self) -> &Session {
@@ -679,12 +681,12 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
         &mut self.lint_sess
     }
 
-    fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
+    fn enter_attrs(&mut self, attrs: &'tcx [hir::Attribute]) {
         debug!("late context: enter_attrs({:?})", attrs);
         run_lints!(self, enter_lint_attrs, attrs);
     }
 
-    fn exit_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
+    fn exit_attrs(&mut self, attrs: &'tcx [hir::Attribute]) {
         debug!("late context: exit_attrs({:?})", attrs);
         run_lints!(self, exit_lint_attrs, attrs);
     }
@@ -703,7 +705,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
 
     fn with_lint_attrs<F>(&mut self,
                           id: ast::NodeId,
-                          attrs: &'tcx [ast::Attribute],
+                          attrs: &'tcx [hir::Attribute],
                           f: F)
         where F: FnOnce(&mut Self)
     {
@@ -718,6 +720,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
 
 impl<'a> LintContext<'a> for EarlyContext<'a> {
     type PassObject = EarlyLintPassObject;
+    type Path = ast::Path;
 
     /// Get the overall compiler `Session` object.
     fn sess(&self) -> &Session {
@@ -997,7 +1000,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx hir::Attribute) {
         run_lints!(self, check_attribute, attr);
     }
 }

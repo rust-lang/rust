@@ -243,14 +243,14 @@ macro_rules! late_lint_methods {
             fn check_variant_post(a: &$hir hir::Variant, b: &$hir hir::Generics);
             fn check_lifetime(a: &$hir hir::Lifetime);
             fn check_path(a: &$hir hir::Path, b: hir::HirId);
-            fn check_attribute(a: &$hir ast::Attribute);
+            fn check_attribute(a: &$hir hir::Attribute);
 
             /// Called when entering a syntax node that can have lint attributes such
             /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-            fn enter_lint_attrs(a: &$hir [ast::Attribute]);
+            fn enter_lint_attrs(a: &$hir [hir::Attribute]);
 
             /// Counterpart to `enter_lint_attrs`.
-            fn exit_lint_attrs(a: &$hir [ast::Attribute]);
+            fn exit_lint_attrs(a: &$hir [hir::Attribute]);
         ]);
     )
 }
@@ -660,7 +660,7 @@ struct LintLevelMapBuilder<'a, 'tcx: 'a> {
 impl<'a, 'tcx> LintLevelMapBuilder<'a, 'tcx> {
     fn with_lint_attrs<F>(&mut self,
                           id: ast::NodeId,
-                          attrs: &[ast::Attribute],
+                          attrs: &[hir::Attribute],
                           f: F)
         where F: FnOnce(&mut Self)
     {

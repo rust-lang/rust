@@ -2602,14 +2602,14 @@ impl BorrowKind {
 
 #[derive(Debug, Clone)]
 pub enum Attributes<'gcx> {
-    Owned(Lrc<[ast::Attribute]>),
-    Borrowed(&'gcx [ast::Attribute])
+    Owned(Lrc<[hir::Attribute]>),
+    Borrowed(&'gcx [hir::Attribute])
 }
 
 impl<'gcx> ::std::ops::Deref for Attributes<'gcx> {
-    type Target = [ast::Attribute];
+    type Target = [hir::Attribute];
 
-    fn deref(&self) -> &[ast::Attribute] {
+    fn deref(&self) -> &[hir::Attribute] {
         match self {
             &Attributes::Owned(ref data) => &data,
             &Attributes::Borrowed(data) => data

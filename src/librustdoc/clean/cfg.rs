@@ -18,6 +18,7 @@ use std::ops;
 
 use syntax::symbol::Symbol;
 use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, LitKind};
+use syntax::attr;
 use syntax::parse::ParseSess;
 use syntax::feature_gate::Features;
 
@@ -49,7 +50,7 @@ pub struct InvalidCfgError {
 
 impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
-    fn parse_nested(nested_cfg: &NestedMetaItem) -> Result<Cfg, InvalidCfgError> {
+    fn parse_nested(nested_cfg: &NestedMetaItem<impl attr::Path>) -> Result<Cfg, InvalidCfgError> {
         match nested_cfg.node {
             NestedMetaItemKind::MetaItem(ref cfg) => Cfg::parse(cfg),
             NestedMetaItemKind::Literal(ref lit) => Err(InvalidCfgError {
@@ -66,7 +67,7 @@ impl Cfg {
     ///
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
-    pub fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
+    pub fn parse(cfg: &MetaItem<impl attr::Path>) -> Result<Cfg, InvalidCfgError> {
         let name = cfg.name();
         match cfg.node {
             MetaItemKind::Word => Ok(Cfg::Cfg(name, None)),

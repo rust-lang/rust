@@ -926,7 +926,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
+    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[hir::Attribute]> {
         if self.is_proc_macro(node_id) {
             return Lrc::new([]);
         }
@@ -953,7 +953,7 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    fn get_attributes(&self, item: &Entry<'tcx>, sess: &Session) -> Vec<ast::Attribute> {
+    fn get_attributes(&self, item: &Entry<'tcx>, sess: &Session) -> Vec<hir::Attribute> {
         item.attributes
             .decode((self, sess))
             .map(|mut attr| {

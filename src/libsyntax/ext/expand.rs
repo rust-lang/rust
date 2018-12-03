@@ -1129,7 +1129,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
     fn classify_item<T>(&mut self, mut item: T)
                         -> (Option<ast::Attribute>, Vec<Path>, T, /* after_derive */ bool)
-        where T: HasAttrs,
+        where T: HasAttrs<Path = ast::Path>,
     {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
@@ -1151,8 +1151,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// Alternative of `classify_item()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
-    fn classify_nonitem<T: HasAttrs>(&mut self, mut item: T)
-                                     -> (Option<ast::Attribute>, T, /* after_derive */ bool) {
+    fn classify_nonitem<T: HasAttrs<Path = ast::Path>>(
+        &mut self,
+        mut item: T,
+    ) -> (Option<ast::Attribute>, T, /* after_derive */ bool) {
         let (mut attr, mut after_derive) = (None, false);
 
         item = item.map_attrs(|mut attrs| {
@@ -1169,7 +1171,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         (attr, item, after_derive)
     }
 
-    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+    fn configure<T: HasAttrs<Path = ast::Path>>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
 

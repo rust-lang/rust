@@ -48,7 +48,7 @@ fn is_writeable(p: &Path) -> bool {
 }
 
 pub fn find_crate_name(sess: Option<&Session>,
-                       attrs: &[ast::Attribute],
+                       attrs: &[ast::Attribute<impl attr::Path>],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
         ::rustc_metadata::validate_crate_name(sess, &s, span);

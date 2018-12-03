@@ -46,6 +46,8 @@ pub enum Annotatable {
 }
 
 impl HasAttrs for Annotatable {
+    type Path = ast::Path;
+
     fn attrs(&self) -> &[Attribute] {
         match *self {
             Annotatable::Item(ref item) => &item.attrs,
@@ -57,7 +59,7 @@ impl HasAttrs for Annotatable {
         }
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn map_attrs(self, f: impl FnOnce(Vec<Attribute>) -> Vec<Attribute>) -> Self {
         match self {
             Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
             Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),

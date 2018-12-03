@@ -106,7 +106,7 @@ struct IfThisChanged<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<ast::Name> {
+    fn argument(&self, attr: &hir::Attribute) -> Option<ast::Name> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.word() {
@@ -120,7 +120,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
         value
     }
 
-    fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
+    fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[hir::Attribute]) {
         let def_id = self.tcx.hir.local_def_id(node_id);
         let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {

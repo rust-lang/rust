@@ -410,15 +410,15 @@ pub struct Crate {
 }
 
 /// A spanned compile-time attribute list item.
-pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
+pub type NestedMetaItem<Path = self::Path> = Spanned<NestedMetaItemKind<Path>>;
 
 /// Possible values inside of compile-time attribute lists.
 ///
 /// E.g. the '..' in `#[name(..)]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum NestedMetaItemKind {
+pub enum NestedMetaItemKind<Path = self::Path> {
     /// A full MetaItem, for recursive meta items.
-    MetaItem(MetaItem),
+    MetaItem(MetaItem<Path>),
     /// A literal.
     ///
     /// E.g. "foo", 64, true
@@ -429,9 +429,9 @@ pub enum NestedMetaItemKind {
 ///
 /// E.g. `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct MetaItem {
+pub struct MetaItem<Path = self::Path> {
     pub ident: Path,
-    pub node: MetaItemKind,
+    pub node: MetaItemKind<Path>,
     pub span: Span,
 }
 
@@ -439,7 +439,7 @@ pub struct MetaItem {
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum MetaItemKind {
+pub enum MetaItemKind<Path = self::Path> {
     /// Word meta item.
     ///
     /// E.g. `test` as in `#[test]`
@@ -447,7 +447,7 @@ pub enum MetaItemKind {
     /// List meta item.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
-    List(Vec<NestedMetaItem>),
+    List(Vec<NestedMetaItem<Path>>),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
@@ -1985,7 +1985,7 @@ impl Idx for AttrId {
 /// Meta-data associated with an item
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Attribute {
+pub struct Attribute<Path = self::Path> {
     pub id: AttrId,
     pub style: AttrStyle,
     pub path: Path,

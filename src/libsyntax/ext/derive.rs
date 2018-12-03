@@ -46,7 +46,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
 }
 
 pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: T) -> T
-    where T: HasAttrs,
+    where T: HasAttrs<Path = ast::Path>,
 {
     let (mut names, mut pretty_name) = (FxHashSet::default(), "derive(".to_owned());
     for (i, path) in traits.iter().enumerate() {

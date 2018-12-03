@@ -44,7 +44,7 @@ use rustc_target::spec::abi;
 
 use syntax::ast;
 use syntax::ast::MetaItemKind;
-use syntax::attr::{InlineAttr, list_contains_name, mark_used};
+use syntax::attr::{InlineAttr, list_contains_name};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
 use syntax::symbol::{keywords, Symbol};
@@ -2137,7 +2137,7 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool
 fn from_target_feature(
     tcx: TyCtxt,
     id: DefId,
-    attr: &ast::Attribute,
+    attr: &hir::Attribute,
     whitelist: &FxHashMap<String, Option<String>>,
     target_features: &mut Vec<Symbol>,
 ) {
@@ -2290,48 +2290,41 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
         } else if attr.check_name("thread_local") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.check_name("inline") {
-            codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-                if attr.path != "inline" {
-                    return ia;
+            let meta = match attr.meta() {
+                Some(meta) => meta.node,
+                None => continue,
+            };
+            match meta {
+                MetaItemKind::Word => {
+                    codegen_fn_attrs.inline = InlineAttr::Hint;
                 }
-                let meta = match attr.meta() {
-                    Some(meta) => meta.node,
-                    None => return ia,
-                };
-                match meta {
-                    MetaItemKind::Word => {
-                        mark_used(attr);
-                        InlineAttr::Hint
-                    }
-                    MetaItemKind::List(ref items) => {
-                        mark_used(attr);
-                        inline_span = Some(attr.span);
-                        if items.len() != 1 {
-                            span_err!(
-                                tcx.sess.diagnostic(),
-                                attr.span,
-                                E0534,
-                                "expected one argument"
-                            );
-                            InlineAttr::None
-                        } else if list_contains_name(&items[..], "always") {
-                            InlineAttr::Always
-                        } else if list_contains_name(&items[..], "never") {
-                            InlineAttr::Never
-                        } else {
-                            span_err!(
-                                tcx.sess.diagnostic(),
-                                items[0].span,
-                                E0535,
-                                "invalid argument"
-                            );
+                MetaItemKind::List(ref items) => {
+                    inline_span = Some(attr.span);
+                    codegen_fn_attrs.inline = if items.len() != 1 {
+                        span_err!(
+                            tcx.sess.diagnostic(),
+                            attr.span,
+                            E0534,
+                            "expected one argument"
+                        );
+                        InlineAttr::None
+                    } else if list_contains_name(&items[..], "always") {
+                        InlineAttr::Always
+                    } else if list_contains_name(&items[..], "never") {
+                        InlineAttr::Never
+                    } else {
+                        span_err!(
+                            tcx.sess.diagnostic(),
+                            items[0].span,
+                            E0535,
+                            "invalid argument"
+                        );
 
-                            InlineAttr::None
-                        }
-                    }
-                    _ => ia,
+                        InlineAttr::None
+                    };
                 }
-            });
+                _ => {}
+            }
         } else if attr.check_name("export_name") {
             if let Some(s) = attr.value_str() {
                 if s.as_str().contains("\0") {

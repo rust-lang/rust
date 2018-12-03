@@ -104,12 +104,14 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         // #![feature(prelude_import)]
         let pi_nested = attr::mk_nested_word_item(ast::Ident::from_str("prelude_import"));
         let list = attr::mk_list_item(DUMMY_SP, ast::Ident::from_str("feature"), vec![pi_nested]);
-        let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), list);
+        let fake_attr: ast::Attribute =
+            attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), list);
         s.print_attribute(&fake_attr)?;
 
         // #![no_std]
         let no_std_meta = attr::mk_word_item(ast::Ident::from_str("no_std"));
-        let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), no_std_meta);
+        let fake_attr: ast::Attribute =
+            attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), no_std_meta);
         s.print_attribute(&fake_attr)?;
     }
 
@@ -401,15 +403,15 @@ pub fn block_to_string(blk: &ast::Block) -> String {
     })
 }
 
-pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
+pub fn meta_list_item_to_string(li: &ast::NestedMetaItem<impl attr::Path>) -> String {
     to_string(|s| s.print_meta_list_item(li))
 }
 
-pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
+pub fn meta_item_to_string(mi: &ast::MetaItem<impl attr::Path>) -> String {
     to_string(|s| s.print_meta_item(mi))
 }
 
-pub fn attribute_to_string(attr: &ast::Attribute) -> String {
+pub fn attribute_to_string(attr: &ast::Attribute<impl attr::Path>) -> String {
     to_string(|s| s.print_attribute(attr))
 }
 
@@ -674,33 +676,33 @@ pub trait PrintState<'a> {
     }
 
     fn print_inner_attributes(&mut self,
-                              attrs: &[ast::Attribute]) -> io::Result<()> {
+                              attrs: &[ast::Attribute<impl attr::Path>]) -> io::Result<()> {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
     }
 
     fn print_inner_attributes_no_trailing_hardbreak(&mut self,
-                                                   attrs: &[ast::Attribute])
+                                                   attrs: &[ast::Attribute<impl attr::Path>])
                                                    -> io::Result<()> {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
     }
 
     fn print_outer_attributes(&mut self,
-                              attrs: &[ast::Attribute]) -> io::Result<()> {
+                              attrs: &[ast::Attribute<impl attr::Path>]) -> io::Result<()> {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
     }
 
     fn print_inner_attributes_inline(&mut self,
-                                     attrs: &[ast::Attribute]) -> io::Result<()> {
+                                     attrs: &[ast::Attribute<impl attr::Path>]) -> io::Result<()> {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, true, true)
     }
 
     fn print_outer_attributes_inline(&mut self,
-                                     attrs: &[ast::Attribute]) -> io::Result<()> {
+                                     attrs: &[ast::Attribute<impl attr::Path>]) -> io::Result<()> {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, true, true)
     }
 
     fn print_either_attributes(&mut self,
-                              attrs: &[ast::Attribute],
+                              attrs: &[ast::Attribute<impl attr::Path>],
                               kind: ast::AttrStyle,
                               is_inline: bool,
                               trailing_hardbreak: bool) -> io::Result<()> {
@@ -720,27 +722,29 @@ pub trait PrintState<'a> {
         Ok(())
     }
 
-    fn print_attribute_path(&mut self, path: &ast::Path) -> io::Result<()> {
-        for (i, segment) in path.segments.iter().enumerate() {
+    fn print_attribute_path(&mut self, path: &impl attr::Path) -> io::Result<()> {
+        use attr::PathSegment;
+
+        for (i, segment) in path.segments().iter().enumerate() {
             if i > 0 {
                 self.writer().word("::")?
             }
-            if segment.ident.name != keywords::CrateRoot.name() &&
-               segment.ident.name != keywords::DollarCrate.name()
+            if segment.ident().name != keywords::CrateRoot.name() &&
+               segment.ident().name != keywords::DollarCrate.name()
             {
-                self.writer().word(segment.ident.as_str().get())?;
-            } else if segment.ident.name == keywords::DollarCrate.name() {
-                self.print_dollar_crate(segment.ident.span.ctxt())?;
+                self.writer().word(segment.ident().as_str().get())?;
+            } else if segment.ident().name == keywords::DollarCrate.name() {
+                self.print_dollar_crate(segment.ident().span.ctxt())?;
             }
         }
         Ok(())
     }
 
-    fn print_attribute(&mut self, attr: &ast::Attribute) -> io::Result<()> {
+    fn print_attribute(&mut self, attr: &ast::Attribute<impl attr::Path>) -> io::Result<()> {
         self.print_attribute_inline(attr, false)
     }
 
-    fn print_attribute_inline(&mut self, attr: &ast::Attribute,
+    fn print_attribute_inline(&mut self, attr: &ast::Attribute<impl attr::Path>,
                               is_inline: bool) -> io::Result<()> {
         if !is_inline {
             self.hardbreak_if_not_bol()?;
@@ -765,7 +769,10 @@ pub trait PrintState<'a> {
         }
     }
 
-    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) -> io::Result<()> {
+    fn print_meta_list_item(
+        &mut self,
+        item: &ast::NestedMetaItem<impl attr::Path>,
+    ) -> io::Result<()> {
         match item.node {
             ast::NestedMetaItemKind::MetaItem(ref mi) => {
                 self.print_meta_item(mi)
@@ -776,7 +783,7 @@ pub trait PrintState<'a> {
         }
     }
 
-    fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
+    fn print_meta_item(&mut self, item: &ast::MetaItem<impl attr::Path>) -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         match item.node {
             ast::MetaItemKind::Word => self.print_attribute_path(&item.ident)?,

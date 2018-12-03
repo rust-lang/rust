@@ -23,9 +23,9 @@
 
 use hir as ast;
 use hir::map;
-use hir::{Expr, FnDecl, Node};
+use hir::{Attribute, Expr, FnDecl, Node};
 use hir::intravisit::FnKind;
-use syntax::ast::{Attribute, Ident, Name, NodeId};
+use syntax::ast::{Ident, Name, NodeId};
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl

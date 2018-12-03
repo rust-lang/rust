@@ -27,8 +27,8 @@ use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
-use syntax::attr::InlineAttr;
+use syntax::ast::{Lit, StrStyle, FloatTy, IntTy, UintTy};
+use syntax::attr::{self, InlineAttr};
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -149,6 +149,12 @@ pub const DUMMY_HIR_ID: HirId = HirId {
 };
 
 pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
+
+pub type Attribute = ast::Attribute<Path>;
+pub type MetaItem = ast::MetaItem<Path>;
+pub type MetaItemKind = ast::MetaItemKind<Path>;
+pub type NestedMetaItem = ast::NestedMetaItem<Path>;
+pub type NestedMetaItemKind = ast::NestedMetaItemKind<Path>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Label {
@@ -327,6 +333,34 @@ impl fmt::Display for Path {
     }
 }
 
+impl attr::Path for Path {
+    type Segment = PathSegment;
+
+    fn from_span_and_segments(span: Span, segments: Vec<Self::Segment>) -> Self {
+        Self {
+            span,
+            def: Def::Err,
+            segments: HirVec::from(segments),
+        }
+    }
+
+    fn from_nt(
+        _: &::syntax::parse::token::Nonterminal,
+    ) -> Result<Self, Option<ast::MetaItem<Self>>> {
+        bug!("interpolated tokens should not be present in the HIR")
+    }
+
+    #[inline]
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    #[inline]
+    fn segments(&self) -> &[Self::Segment] {
+        &self.segments
+    }
+}
+
 /// A segment of a path: an identifier, an optional lifetime, and a set of
 /// types.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -398,6 +432,17 @@ impl PathSegment {
         } else {
             &dummy
         })
+    }
+}
+
+impl attr::PathSegment for PathSegment {
+    fn from_ident(ident: Ident) -> Self {
+        Self::from_ident(ident)
+    }
+
+    #[inline]
+    fn ident(&self) -> Ident {
+        self.ident
     }
 }
 

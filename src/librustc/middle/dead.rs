@@ -286,7 +286,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
 fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
                                     id: ast::NodeId,
-                                    attrs: &[ast::Attribute]) -> bool {
+                                    attrs: &[hir::Attribute]) -> bool {
     if attr::contains_name(attrs, "lang") {
         return true;
     }

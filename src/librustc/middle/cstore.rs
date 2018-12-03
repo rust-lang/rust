@@ -22,6 +22,7 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
+use hir;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{DefKey, DefPathTable};
@@ -121,7 +122,7 @@ pub enum NativeLibraryKind {
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Option<Symbol>,
-    pub cfg: Option<ast::MetaItem>,
+    pub cfg: Option<hir::MetaItem>,
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
 }

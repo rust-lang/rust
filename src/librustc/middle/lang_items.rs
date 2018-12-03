@@ -27,7 +27,6 @@ use ty::{self, TyCtxt};
 use middle::weak_lang_items;
 use util::nodemap::FxHashMap;
 
-use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -198,7 +197,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
+pub fn extract(attrs: &[hir::Attribute]) -> Option<(Symbol, Span)> {
     for attribute in attrs {
         if attribute.check_name("lang") {
             if let Some(value) = attribute.value_str() {

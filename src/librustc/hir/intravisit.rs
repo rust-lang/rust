@@ -41,7 +41,7 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name, Attribute};
+use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name};
 use syntax_pos::Span;
 use hir::*;
 use hir::def::Def;

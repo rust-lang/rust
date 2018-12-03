@@ -22,7 +22,7 @@ pub use self::ReprAttr::*;
 pub use self::StabilityLevel::*;
 
 use ast;
-use ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
+use ast::{AttrId, Attribute, AttrStyle, Name, Ident};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use source_map::{BytePos, Spanned, respan, dummy_spanned};
@@ -37,29 +37,85 @@ use ThinVec;
 use tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
 use GLOBALS;
 
+use std::fmt;
 use std::iter;
 
-pub fn mark_used(attr: &Attribute) {
+pub trait Path: Clone + fmt::Debug + fmt::Display + 'static {
+    type Segment: PathSegment;
+
+    fn from_ident(ident: Ident) -> Self {
+        Self::from_span_and_segments(ident.span, vec![Self::Segment::from_ident(ident)])
+    }
+    fn from_span_and_segments(span: Span, segments: Vec<Self::Segment>) -> Self;
+    fn from_nt(nt: &token::Nonterminal) -> Result<Self, Option<MetaItem<Self>>>;
+    fn span(&self) -> Span;
+    fn segments(&self) -> &[Self::Segment];
+}
+
+pub trait PathSegment: 'static {
+    fn from_ident(ident: Ident) -> Self;
+    fn ident(&self) -> Ident;
+}
+
+impl Path for ast::Path {
+    type Segment = ast::PathSegment;
+
+    fn from_span_and_segments(span: Span, segments: Vec<Self::Segment>) -> Self {
+        Self { span, segments }
+    }
+
+    fn from_nt(nt: &token::Nonterminal) -> Result<Self, Option<MetaItem<Self>>> {
+        match nt {
+            &token::Nonterminal::NtIdent(ident, _) => Ok(Self::from_ident(ident)),
+            token::Nonterminal::NtPath(path) => Ok(path.clone()),
+            token::Nonterminal::NtMeta(meta) => Err(Some(meta.clone())),
+            _ => Err(None),
+        }
+    }
+
+    #[inline]
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    #[inline]
+    fn segments(&self) -> &[Self::Segment] {
+        &self.segments
+    }
+}
+
+impl PathSegment for ast::PathSegment {
+    fn from_ident(ident: Ident) -> Self {
+        Self::from_ident(ident)
+    }
+
+    #[inline]
+    fn ident(&self) -> Ident {
+        self.ident
+    }
+}
+
+pub fn mark_used(attr: &Attribute<impl Path>) {
     debug!("Marking {:?} as used.", attr);
     GLOBALS.with(|globals| {
         globals.used_attrs.lock().insert(attr.id);
     });
 }
 
-pub fn is_used(attr: &Attribute) -> bool {
+pub fn is_used(attr: &Attribute<impl Path>) -> bool {
     GLOBALS.with(|globals| {
         globals.used_attrs.lock().contains(attr.id)
     })
 }
 
-pub fn mark_known(attr: &Attribute) {
+pub fn mark_known(attr: &Attribute<impl Path>) {
     debug!("Marking {:?} as known.", attr);
     GLOBALS.with(|globals| {
         globals.known_attrs.lock().insert(attr.id);
     });
 }
 
-pub fn is_known(attr: &Attribute) -> bool {
+pub fn is_known(attr: &Attribute<impl Path>) -> bool {
     GLOBALS.with(|globals| {
         globals.known_attrs.lock().contains(attr.id)
     })
@@ -69,9 +125,9 @@ pub fn is_known_lint_tool(m_item: Ident) -> bool {
     ["clippy"].contains(&m_item.as_str().as_ref())
 }
 
-impl NestedMetaItem {
+impl<Path: self::Path> NestedMetaItem<Path> {
     /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
-    pub fn meta_item(&self) -> Option<&MetaItem> {
+    pub fn meta_item(&self) -> Option<&MetaItem<Path>> {
         match self.node {
             NestedMetaItemKind::MetaItem(ref item) => Some(item),
             _ => None
@@ -127,7 +183,7 @@ impl NestedMetaItem {
     }
 
     /// Returns a MetaItem if self is a MetaItem with Kind Word.
-    pub fn word(&self) -> Option<&MetaItem> {
+    pub fn word(&self) -> Option<&MetaItem<Path>> {
         self.meta_item().and_then(|meta_item| if meta_item.is_word() {
             Some(meta_item)
         } else {
@@ -136,7 +192,7 @@ impl NestedMetaItem {
     }
 
     /// Gets a list of inner meta items from a list MetaItem type.
-    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem<Path>]> {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
@@ -166,13 +222,18 @@ impl NestedMetaItem {
     }
 }
 
-fn name_from_path(path: &Path) -> Name {
-    path.segments.last().expect("empty path in attribute").ident.name
+fn name_from_path(path: &impl Path) -> Name {
+    path.segments().last().expect("empty path in attribute").ident().name
 }
 
-impl Attribute {
+impl<Path: self::Path> Attribute<Path> {
+    fn check_name_no_mark_used(&self, name: &str) -> bool {
+        self.path.segments().len() == 1 &&
+        self.path.segments()[0].ident().name == name
+    }
+
     pub fn check_name(&self, name: &str) -> bool {
-        let matches = self.path == name;
+        let matches = self.check_name_no_mark_used(name);
         if matches {
             mark_used(self);
         }
@@ -189,7 +250,7 @@ impl Attribute {
         self.meta().and_then(|meta| meta.value_str())
     }
 
-    pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
+    pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem<Path>>> {
         match self.meta() {
             Some(MetaItem { node: MetaItemKind::List(list), .. }) => Some(list),
             _ => None
@@ -197,7 +258,7 @@ impl Attribute {
     }
 
     pub fn is_word(&self) -> bool {
-        self.path.segments.len() == 1 && self.tokens.is_empty()
+        self.path.segments().len() == 1 && self.tokens.is_empty()
     }
 
     pub fn span(&self) -> Span {
@@ -214,7 +275,14 @@ impl Attribute {
     }
 }
 
-impl MetaItem {
+impl<Path: self::Path> MetaItem<Path> {
+    // FIXME(eddyb, petrochenkov) figure out whether
+    // the older `check_name` has been misused.
+    pub fn check_name_correct(&self, name: &str) -> bool {
+        self.ident.segments().len() == 1 &&
+        self.ident.segments()[0].ident().name == name
+    }
+
     pub fn name(&self) -> Name {
         name_from_path(&self.ident)
     }
@@ -240,7 +308,7 @@ impl MetaItem {
         }
     }
 
-    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem<Path>]> {
         match self.node {
             MetaItemKind::List(ref l) => Some(&l[..]),
             _ => None
@@ -269,17 +337,17 @@ impl MetaItem {
     }
 
     pub fn is_scoped(&self) -> Option<Ident> {
-        if self.ident.segments.len() > 1 {
-            Some(self.ident.segments[0].ident)
+        if self.ident.segments().len() > 1 {
+            Some(self.ident.segments()[0].ident())
         } else {
             None
         }
     }
 }
 
-impl Attribute {
+impl<Path: self::Path> Attribute<Path> {
     /// Extract the MetaItem from inside this Attribute.
-    pub fn meta(&self) -> Option<MetaItem> {
+    pub fn meta(&self) -> Option<MetaItem<Path>> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             ident: self.path.clone(),
@@ -326,20 +394,10 @@ impl Attribute {
         })
     }
 
-    pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
-        Ok(MetaItem {
-            ident: self.path.clone(),
-            node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
-            span: self.span,
-        })
-    }
-
     /// Convert self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
-    pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
-        F: FnOnce(&Attribute) -> T,
-    {
+    pub fn with_desugared_doc<T>(&self, f: impl FnOnce(&Self) -> T) -> T {
         if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
@@ -358,26 +416,47 @@ impl Attribute {
     }
 }
 
+impl Attribute {
+    pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
+        Ok(MetaItem {
+            ident: self.path.clone(),
+            node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
+            span: self.span,
+        })
+    }
+}
+
 /* Constructors */
 
-pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
+pub fn mk_name_value_item_str<Path: self::Path>(
+    ident: Ident,
+    value: Spanned<Symbol>,
+) -> MetaItem<Path> {
     let value = respan(value.span, LitKind::Str(value.node, ast::StrStyle::Cooked));
     mk_name_value_item(ident.span.to(value.span), ident, value)
 }
 
-pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
+pub fn mk_name_value_item<Path: self::Path>(
+    span: Span,
+    ident: Ident,
+    value: ast::Lit,
+) -> MetaItem<Path> {
     MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
 }
 
-pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
+pub fn mk_list_item<Path: self::Path>(
+    span: Span,
+    ident: Ident,
+    items: Vec<NestedMetaItem<Path>>,
+) -> MetaItem<Path> {
     MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
 }
 
-pub fn mk_word_item(ident: Ident) -> MetaItem {
+pub fn mk_word_item<Path: self::Path>(ident: Ident) -> MetaItem<Path> {
     MetaItem { ident: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
 }
 
-pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
+pub fn mk_nested_word_item<Path: self::Path>(ident: Ident) -> NestedMetaItem<Path> {
     respan(ident.span, NestedMetaItemKind::MetaItem(mk_word_item(ident)))
 }
 
@@ -393,12 +472,20 @@ pub fn mk_attr_id() -> AttrId {
 }
 
 /// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_attr_inner<Path: self::Path>(
+    span: Span,
+    id: AttrId,
+    item: MetaItem<Path>,
+) -> Attribute<Path> {
     mk_spanned_attr_inner(span, id, item)
 }
 
 /// Returns an inner attribute with the given value and span.
-pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_spanned_attr_inner<Path: self::Path>(
+    sp: Span,
+    id: AttrId,
+    item: MetaItem<Path>,
+) -> Attribute<Path> {
     Attribute {
         id,
         style: ast::AttrStyle::Inner,
@@ -410,12 +497,20 @@ pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
 }
 
 /// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_attr_outer<Path: self::Path>(
+    span: Span,
+    id: AttrId,
+    item: MetaItem<Path>,
+) -> Attribute<Path> {
     mk_spanned_attr_outer(span, id, item)
 }
 
 /// Returns an outer attribute with the given value and span.
-pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
+pub fn mk_spanned_attr_outer<Path: self::Path>(
+    sp: Span,
+    id: AttrId,
+    item: MetaItem<Path>,
+) -> Attribute<Path> {
     Attribute {
         id,
         style: ast::AttrStyle::Outer,
@@ -432,73 +527,80 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     Attribute {
         id,
         style,
-        path: Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
-        tokens: MetaItemKind::NameValue(lit).tokens(span),
+        path: ast::Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
+        tokens: MetaItemKind::NameValue::<ast::Path>(lit).tokens(span),
         is_sugared_doc: true,
         span,
     }
 }
 
-pub fn list_contains_name(items: &[NestedMetaItem], name: &str) -> bool {
+pub fn list_contains_name(items: &[NestedMetaItem<impl Path>], name: &str) -> bool {
     items.iter().any(|item| {
         item.check_name(name)
     })
 }
 
-pub fn contains_name(attrs: &[Attribute], name: &str) -> bool {
+pub fn contains_name(attrs: &[Attribute<impl Path>], name: &str) -> bool {
     attrs.iter().any(|item| {
         item.check_name(name)
     })
 }
 
-pub fn find_by_name<'a>(attrs: &'a [Attribute], name: &str) -> Option<&'a Attribute> {
+pub fn find_by_name<'a, Path: self::Path>(
+    attrs: &'a [Attribute<Path>],
+    name: &str,
+) -> Option<&'a Attribute<Path>> {
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
-pub fn filter_by_name<'a>(attrs: &'a [Attribute], name: &'a str)
-    -> impl Iterator<Item = &'a Attribute> {
+pub fn filter_by_name<'a, Path: self::Path>(
+    attrs: &'a [Attribute<Path>],
+    name: &'a str,
+) -> impl Iterator<Item = &'a Attribute<Path>> {
     attrs.iter().filter(move |attr| attr.check_name(name))
 }
 
-pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str) -> Option<Symbol> {
+pub fn first_attr_value_str_by_name(attrs: &[Attribute<impl Path>], name: &str) -> Option<Symbol> {
     attrs.iter()
         .find(|at| at.check_name(name))
         .and_then(|at| at.value_str())
 }
 
-impl MetaItem {
+impl<Path: self::Path> MetaItem<Path> {
     fn tokens(&self) -> TokenStream {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
-        for (i, segment) in self.ident.segments.iter().enumerate() {
+        for (i, segment) in self.ident.segments().iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
                 let mod_sep_span = Span::new(last_pos,
-                                             segment.ident.span.lo(),
-                                             segment.ident.span.ctxt());
+                                             segment.ident().span.lo(),
+                                             segment.ident().span.ctxt());
                 idents.push(TokenTree::Token(mod_sep_span, Token::ModSep).into());
             }
-            idents.push(TokenTree::Token(segment.ident.span,
-                                         Token::from_ast_ident(segment.ident)).into());
-            last_pos = segment.ident.span.hi();
+            idents.push(TokenTree::Token(segment.ident().span,
+                                         Token::from_ast_ident(segment.ident())).into());
+            last_pos = segment.ident().span.hi();
         }
         idents.push(self.node.tokens(self.span));
         TokenStream::concat(idents)
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
+    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<Self>
         where I: Iterator<Item = TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
         let ident = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
                 if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
-                    let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
+                    let mut segments = vec![
+                        Path::Segment::from_ident(ident.with_span_pos(span)),
+                    ];
                     tokens.next();
                     loop {
                         if let Some(TokenTree::Token(span,
                                                      Token::Ident(ident, _))) = tokens.next() {
-                            segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
+                            segments.push(Path::Segment::from_ident(ident.with_span_pos(span)));
                         } else {
                             return None;
                         }
@@ -508,33 +610,33 @@ impl MetaItem {
                             break;
                         }
                     }
-                    let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                    Path { span, segments }
+                    let span = span.with_hi(segments.last().unwrap().ident().span.hi());
+                    Path::from_span_and_segments(span, segments)
                 } else {
                     Path::from_ident(ident.with_span_pos(span))
                 }
             }
-            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
-                token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
-                token::Nonterminal::NtPath(ref path) => path.clone(),
-                _ => return None,
-            },
+            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => {
+                match Path::from_nt(&nt.0) {
+                    Ok(path) => path,
+                    Err(opt_meta) => return opt_meta,
+                }
+            }
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
         let node = MetaItemKind::from_tokens(tokens)?;
         let hi = match node {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
-            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(ident.span.hi()),
-            _ => ident.span.hi(),
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(ident.span().hi()),
+            _ => ident.span().hi(),
         };
-        let span = ident.span.with_hi(hi);
+        let span = ident.span().with_hi(hi);
         Some(MetaItem { ident, node, span })
     }
 }
 
-impl MetaItemKind {
+impl<Path: self::Path> MetaItemKind<Path> {
     pub fn tokens(&self, span: Span) -> TokenStream {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
@@ -557,7 +659,7 @@ impl MetaItemKind {
         }
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItemKind>
+    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<Self>
         where I: Iterator<Item = TokenTree>,
     {
         let delimited = match tokens.peek().cloned() {
@@ -591,7 +693,7 @@ impl MetaItemKind {
     }
 }
 
-impl NestedMetaItemKind {
+impl<Path: self::Path> NestedMetaItemKind<Path> {
     fn span(&self) -> Span {
         match *self {
             NestedMetaItemKind::MetaItem(ref item) => item.span,
@@ -606,7 +708,7 @@ impl NestedMetaItemKind {
         }
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItemKind>
+    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<Self>
         where I: Iterator<Item = TokenTree>,
     {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
@@ -695,46 +797,73 @@ impl LitKind {
 }
 
 pub trait HasAttrs: Sized {
-    fn attrs(&self) -> &[ast::Attribute];
-    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self;
+    type Path: Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>];
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self;
 }
 
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
-    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
-    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
+    type Path = T::Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] { self.node.attrs() }
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         respan(self.span, self.node.map_attrs(f))
     }
 }
 
-impl HasAttrs for Vec<Attribute> {
-    fn attrs(&self) -> &[Attribute] {
+impl<Path: self::Path> HasAttrs for Vec<Attribute<Path>> {
+    type Path = Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] {
         self
     }
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         f(self)
     }
 }
 
-impl HasAttrs for ThinVec<Attribute> {
-    fn attrs(&self) -> &[Attribute] {
+impl<Path: self::Path> HasAttrs for ThinVec<Attribute<Path>> {
+    type Path = Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] {
         self
     }
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         f(self.into()).into()
     }
 }
 
 impl<T: HasAttrs + 'static> HasAttrs for P<T> {
-    fn attrs(&self) -> &[Attribute] {
+    type Path = T::Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] {
         (**self).attrs()
     }
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         self.map(|t| t.map_attrs(f))
     }
 }
 
 impl HasAttrs for StmtKind {
-    fn attrs(&self) -> &[Attribute] {
+    type Path = ast::Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] {
         match *self {
             StmtKind::Local(ref local) => local.attrs(),
             StmtKind::Item(..) => &[],
@@ -746,7 +875,10 @@ impl HasAttrs for StmtKind {
         }
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         match self {
             StmtKind::Local(local) => StmtKind::Local(local.map_attrs(f)),
             StmtKind::Item(..) => self,
@@ -760,18 +892,28 @@ impl HasAttrs for StmtKind {
 }
 
 impl HasAttrs for Stmt {
-    fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
-    fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
+    type Path = ast::Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] { self.node.attrs() }
+    fn map_attrs(
+        self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         Stmt { id: self.id, node: self.node.map_attrs(f), span: self.span }
     }
 }
 
 impl HasAttrs for GenericParam {
-    fn attrs(&self) -> &[ast::Attribute] {
+    type Path = ast::Path;
+
+    fn attrs(&self) -> &[Attribute<Self::Path>] {
         &self.attrs
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(mut self, f: F) -> Self {
+    fn map_attrs(
+        mut self,
+        f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+    ) -> Self {
         self.attrs = self.attrs.map_attrs(f);
         self
     }
@@ -780,13 +922,16 @@ impl HasAttrs for GenericParam {
 macro_rules! derive_has_attrs {
     ($($ty:path),*) => { $(
         impl HasAttrs for $ty {
-            fn attrs(&self) -> &[Attribute] {
+            type Path = ast::Path;
+
+            fn attrs(&self) -> &[Attribute<Self::Path>] {
                 &self.attrs
             }
 
-            fn map_attrs<F>(mut self, f: F) -> Self
-                where F: FnOnce(Vec<Attribute>) -> Vec<Attribute>,
-            {
+            fn map_attrs(
+                mut self,
+                f: impl FnOnce(Vec<Attribute<Self::Path>>) -> Vec<Attribute<Self::Path>>,
+            ) -> Self {
                 self.attrs = self.attrs.map_attrs(f);
                 self
             }

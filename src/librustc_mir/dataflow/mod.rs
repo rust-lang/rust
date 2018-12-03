@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::{self, MetaItem};
+use syntax::ast;
 
 use rustc_data_structures::bit_set::{BitSet, BitSetOperator, HybridBitSet};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
 
+use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
 use rustc::mir::traversal;
@@ -100,7 +101,7 @@ impl<'a, 'tcx: 'a, BD> Dataflow<BD> for DataflowBuilder<'a, 'tcx, BD> where BD: 
     fn propagate(&mut self) { self.flow_state.propagate(); }
 }
 
-pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> {
+pub(crate) fn has_rustc_mir_with(attrs: &[hir::Attribute], name: &str) -> Option<hir::MetaItem> {
     for attr in attrs {
         if attr.check_name("rustc_mir") {
             let items = attr.meta_item_list();
@@ -123,7 +124,7 @@ pub struct MoveDataParamEnv<'gcx, 'tcx> {
 pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                  mir: &'a Mir<'tcx>,
                                                  node_id: ast::NodeId,
-                                                 attributes: &[ast::Attribute],
+                                                 attributes: &[hir::Attribute],
                                                  dead_unwinds: &BitSet<BasicBlock>,
                                                  bd: BD,
                                                  p: P)
@@ -140,11 +141,11 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitD
     pub(crate) fn run<P>(self,
                          tcx: TyCtxt<'a, 'gcx, 'tcx>,
                          node_id: ast::NodeId,
-                         attributes: &[ast::Attribute],
+                         attributes: &[hir::Attribute],
                          p: P) -> DataflowResults<BD>
         where P: Fn(&BD, BD::Idx) -> DebugFormatted
     {
-        let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
+        let name_found = |sess: &Session, attrs: &[hir::Attribute], name| -> Option<String> {
             if let Some(item) = has_rustc_mir_with(attrs, name) {
                 if let Some(s) = item.value_str() {
                     return Some(s.to_string())

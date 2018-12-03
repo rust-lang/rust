@@ -1198,7 +1198,7 @@ pub struct GatedCfg {
 }
 
 impl GatedCfg {
-    pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
+    pub fn gate(cfg: &ast::MetaItem<impl attr::Path>) -> Option<GatedCfg> {
         let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)

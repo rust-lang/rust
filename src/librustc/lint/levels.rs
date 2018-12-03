@@ -195,7 +195,7 @@ impl<'a> LintLevelsBuilder<'a> {
     ///   #[allow]
     ///
     /// Don't forget to call `pop`!
-    pub fn push(&mut self, attrs: &[ast::Attribute]) -> BuilderPush {
+    pub fn push(&mut self, attrs: &[ast::Attribute<impl attr::Path>]) -> BuilderPush {
         let mut specs = FxHashMap::default();
         let store = self.sess.lint_store.borrow();
         let sess = self.sess;
@@ -233,7 +233,7 @@ impl<'a> LintLevelsBuilder<'a> {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         let gate_reasons = !self.sess.features_untracked().lint_reasons;
-                        if item.ident == "reason" {
+                        if item.check_name_correct("reason") {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
@@ -274,7 +274,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(li.span);
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
-                                if item.ident == "reason" {
+                                if item.check_name_correct("reason") {
                                     err.help("reason in lint attribute must come last");
                                 }
                             }

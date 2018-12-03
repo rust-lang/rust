@@ -57,6 +57,7 @@ use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use syntax::attr;
 use syntax::ast::{self, Attribute, DUMMY_NODE_ID, NodeId, PatKind};
 use syntax::source_map::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
@@ -892,7 +893,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    fn docs_for_attrs(&self, attrs: &[Attribute]) -> String {
+    fn docs_for_attrs(&self, attrs: &[Attribute<impl attr::Path>]) -> String {
         let mut result = String::new();
 
         for attr in attrs {
@@ -1202,10 +1203,13 @@ fn null_id() -> rls_data::Id {
     }
 }
 
-fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext) -> Vec<rls_data::Attribute> {
+fn lower_attributes(
+    attrs: Vec<Attribute<impl attr::Path>>,
+    scx: &SaveContext,
+) -> Vec<rls_data::Attribute> {
     attrs.into_iter()
     // Only retain real attributes. Doc comments are lowered separately.
-    .filter(|attr| attr.path != "doc")
+    .filter(|attr| !attr.check_name("doc"))
     .map(|mut attr| {
         // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
         // attribute. First normalize all inner attribute (#![..]) to outer

@@ -22,13 +22,13 @@ use session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
-use syntax::ast::{NodeId, Attribute};
+use syntax::ast::NodeId;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
 use util::nodemap::{FxHashSet, FxHashMap};
 
 use hir;
-use hir::{Item, Generics, StructField, Variant, HirId};
+use hir::{Attribute, Item, Generics, StructField, Variant, HirId};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::mem::replace;

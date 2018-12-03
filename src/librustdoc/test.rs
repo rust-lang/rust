@@ -736,7 +736,7 @@ struct HirCollector<'a, 'hir: 'a> {
 impl<'a, 'hir> HirCollector<'a, 'hir> {
     fn visit_testable<F: FnOnce(&mut Self)>(&mut self,
                                             name: String,
-                                            attrs: &[ast::Attribute],
+                                            attrs: &[hir::Attribute],
                                             nested: F) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
         if let Some(ref cfg) = attrs.cfg {

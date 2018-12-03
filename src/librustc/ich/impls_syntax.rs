@@ -25,7 +25,6 @@ use syntax_pos::SourceFile;
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
-use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 
@@ -197,67 +196,6 @@ impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, ident });
 impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
 impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
 
-impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        if self.len() == 0 {
-            self.len().hash_stable(hcx, hasher);
-            return
-        }
-
-        // Some attributes are always ignored during hashing.
-        let filtered: SmallVec<[&ast::Attribute; 8]> = self
-            .iter()
-            .filter(|attr| {
-                !attr.is_sugared_doc && !hcx.is_ignored_attr(attr.name())
-            })
-            .collect();
-
-        filtered.len().hash_stable(hcx, hasher);
-        for attr in filtered {
-            attr.hash_stable(hcx, hasher);
-        }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        self.segments.len().hash_stable(hcx, hasher);
-        for segment in &self.segments {
-            segment.ident.name.hash_stable(hcx, hasher);
-        }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        // Make sure that these have been filtered out.
-        debug_assert!(!hcx.is_ignored_attr(self.name()));
-        debug_assert!(!self.is_sugared_doc);
-
-        let ast::Attribute {
-            id: _,
-            style,
-            ref path,
-            ref tokens,
-            is_sugared_doc: _,
-            span,
-        } = *self;
-
-        style.hash_stable(hcx, hasher);
-        path.hash_stable(hcx, hasher);
-        for tt in tokens.trees() {
-            tt.hash_stable(hcx, hasher);
-        }
-        span.hash_stable(hcx, hasher);
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>>
 for tokenstream::TokenTree {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -371,25 +309,6 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
         token::Token::Shebang(val) => val.hash_stable(hcx, hasher),
     }
 }
-
-impl_stable_hash_for_spanned!(::syntax::ast::NestedMetaItemKind);
-
-impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItemKind {
-    MetaItem(meta_item),
-    Literal(lit)
-});
-
-impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
-    ident,
-    node,
-    span
-});
-
-impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
-    Word,
-    List(nested_items),
-    NameValue(lit)
-});
 
 impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     call_site,

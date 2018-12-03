@@ -239,7 +239,7 @@ impl LintPass for UnusedAttributes {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
-    fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext, attr: &hir::Attribute) {
         debug!("checking attribute: {:?}", attr);
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in BUILTIN_ATTRIBUTES {

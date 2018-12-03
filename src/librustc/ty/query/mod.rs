@@ -341,7 +341,7 @@ define_queries! { <'tcx>
         [] fn def_span: DefSpan(DefId) -> Span,
         [] fn lookup_stability: LookupStability(DefId) -> Option<&'tcx attr::Stability>,
         [] fn lookup_deprecation_entry: LookupDeprecationEntry(DefId) -> Option<DeprecationEntry>,
-        [] fn item_attrs: ItemAttrs(DefId) -> Lrc<[ast::Attribute]>,
+        [] fn item_attrs: ItemAttrs(DefId) -> Lrc<[hir::Attribute]>,
     },
 
     Codegen {

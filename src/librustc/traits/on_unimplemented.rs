@@ -15,7 +15,7 @@ use ty::{self, TyCtxt, GenericParamDefKind};
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 
-use syntax::ast::{MetaItem, NestedMetaItem};
+use hir::{MetaItem, NestedMetaItem};
 use syntax::attr;
 use syntax_pos::Span;
 use syntax_pos::symbol::LocalInternedString;

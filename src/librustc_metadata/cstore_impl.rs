@@ -463,7 +463,33 @@ impl cstore::CStore {
             ident: ast::Ident::from_str(&name.as_str()),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
-            attrs: attrs.iter().cloned().collect(),
+            attrs: attrs.iter().map(|attr| {
+                // HACK(eddyb) convert from a `hir::Attribute` to an `ast::Attribute`
+                // (ideally we wouldn't need to create a fake `ast::Item`)
+                let ast::Attribute {
+                    id,
+                    style,
+                    ref path,
+                    ref tokens,
+                    is_sugared_doc,
+                    span,
+                } = *attr;
+                ast::Attribute {
+                    id,
+                    style,
+                    path: ast::Path {
+                        span: path.span,
+                        segments: path.segments.iter().map(|segment| ast::PathSegment {
+                            ident: segment.ident,
+                            id: ast::DUMMY_NODE_ID,
+                            args: None,
+                        }).collect(),
+                    },
+                    tokens: tokens.clone(),
+                    is_sugared_doc,
+                    span,
+                }
+            }).collect(),
             node: ast::ItemKind::MacroDef(ast::MacroDef {
                 tokens: body.into(),
                 legacy: def.legacy,

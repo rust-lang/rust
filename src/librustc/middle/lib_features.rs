@@ -16,8 +16,9 @@
 
 use ty::TyCtxt;
 use syntax::symbol::Symbol;
-use syntax::ast::{Attribute, MetaItem, MetaItemKind};
+use syntax::ast::{MetaItem, MetaItemKind};
 use syntax_pos::Span;
+use hir::Attribute;
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use errors::DiagnosticId;

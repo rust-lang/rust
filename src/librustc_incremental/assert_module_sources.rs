@@ -31,6 +31,7 @@
 //! allows for doing a more fine-grained check to see if pre- or post-lto data
 //! was re-used.
 
+use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::dep_graph::cgu_reuse_tracker::*;
 use rustc::mir::mono::CodegenUnitNameBuilder;
@@ -74,7 +75,7 @@ struct AssertModuleSource<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
-    fn check_attr(&self, attr: &ast::Attribute) {
+    fn check_attr(&self, attr: &hir::Attribute) {
         let (expected_reuse, comp_kind) = if attr.check_name(ATTR_PARTITION_REUSED) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
         } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
@@ -156,7 +157,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
                                                         comp_kind);
     }
 
-    fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
+    fn field(&self, attr: &hir::Attribute, name: &str) -> ast::Name {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {
@@ -176,7 +177,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
 
     /// Scan for a `cfg="foo"` attribute and check whether we have a
     /// cfg flag called `foo`.
-    fn check_config(&self, attr: &ast::Attribute) -> bool {
+    fn check_config(&self, attr: &hir::Attribute) -> bool {
         let config = &self.tcx.sess.parse_sess.config;
         let value = self.field(attr, CFG);
         debug!("check_config(config={:?}, value={:?})", config, value);

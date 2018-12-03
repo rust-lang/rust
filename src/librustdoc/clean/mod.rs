@@ -639,13 +639,13 @@ impl Clean<Item> for doctree::Module {
 }
 
 pub struct ListAttributesIter<'a> {
-    attrs: slice::Iter<'a, ast::Attribute>,
-    current_list: vec::IntoIter<ast::NestedMetaItem>,
+    attrs: slice::Iter<'a, hir::Attribute>,
+    current_list: vec::IntoIter<hir::NestedMetaItem>,
     name: &'a str
 }
 
 impl<'a> Iterator for ListAttributesIter<'a> {
-    type Item = ast::NestedMetaItem;
+    type Item = hir::NestedMetaItem;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(nested) = self.current_list.next() {
@@ -677,7 +677,7 @@ pub trait AttributesExt {
     fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a>;
 }
 
-impl AttributesExt for [ast::Attribute] {
+impl AttributesExt for [hir::Attribute] {
     fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
         ListAttributesIter {
             attrs: self.iter(),
@@ -692,7 +692,7 @@ pub trait NestedAttributesExt {
     fn has_word(self, word: &str) -> bool;
 }
 
-impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
+impl<I: IntoIterator<Item=hir::NestedMetaItem>> NestedAttributesExt for I {
     fn has_word(self, word: &str) -> bool {
         self.into_iter().any(|attr| attr.is_word() && attr.check_name(word))
     }
@@ -761,7 +761,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
-    pub other_attrs: Vec<ast::Attribute>,
+    pub other_attrs: Vec<hir::Attribute>,
     pub cfg: Option<Arc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
@@ -771,7 +771,7 @@ pub struct Attributes {
 
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
-    fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
+    fn extract_cfg(mi: &hir::MetaItem) -> Option<&hir::MetaItem> {
         use syntax::ast::NestedMetaItemKind::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.node {
@@ -796,7 +796,7 @@ impl Attributes {
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
-    fn extract_include(mi: &ast::MetaItem)
+    fn extract_include(mi: &hir::MetaItem)
         -> Option<(String, String)>
     {
         mi.meta_item_list().and_then(|list| {
@@ -849,7 +849,7 @@ impl Attributes {
     }
 
     pub fn from_ast(diagnostic: &::errors::Handler,
-                    attrs: &[ast::Attribute]) -> Attributes {
+                    attrs: &[hir::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
@@ -902,8 +902,9 @@ impl Attributes {
         for attr in attrs.lists("target_feature") {
             if attr.check_name("enable") {
                 if let Some(feat) = attr.value_str() {
-                    let meta = attr::mk_name_value_item_str(Ident::from_str("target_feature"),
-                                                            dummy_spanned(feat));
+                    let meta: hir::MetaItem =
+                        attr::mk_name_value_item_str(Ident::from_str("target_feature"),
+                                                     dummy_spanned(feat));
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
                     }
@@ -1015,7 +1016,7 @@ impl AttributesExt for Attributes {
     }
 }
 
-impl Clean<Attributes> for [ast::Attribute] {
+impl Clean<Attributes> for [hir::Attribute] {
     fn clean(&self, cx: &DocContext) -> Attributes {
         Attributes::from_ast(cx.sess().diagnostic(), self)
     }

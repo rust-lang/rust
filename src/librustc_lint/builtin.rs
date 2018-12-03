@@ -322,7 +322,7 @@ impl MissingDoc {
     fn check_missing_docs_attrs(&self,
                                 cx: &LateContext,
                                 id: Option<ast::NodeId>,
-                                attrs: &[ast::Attribute],
+                                attrs: &[hir::Attribute],
                                 sp: Span,
                                 desc: &'static str) {
         // If we're building a test harness, then warning about
@@ -345,7 +345,7 @@ impl MissingDoc {
             }
         }
 
-        fn has_doc(attr: &ast::Attribute) -> bool {
+        fn has_doc(attr: &hir::Attribute) -> bool {
             if !attr.check_name("doc") {
                 return false;
             }
@@ -381,7 +381,7 @@ impl LintPass for MissingDoc {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
-    fn enter_lint_attrs(&mut self, _: &LateContext, attrs: &[ast::Attribute]) {
+    fn enter_lint_attrs(&mut self, _: &LateContext, attrs: &[hir::Attribute]) {
         let doc_hidden = self.doc_hidden() ||
                          attrs.iter().any(|attr| {
             attr.check_name("doc") &&
@@ -393,7 +393,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn exit_lint_attrs(&mut self, _: &LateContext, _attrs: &[ast::Attribute]) {
+    fn exit_lint_attrs(&mut self, _: &LateContext, _attrs: &[hir::Attribute]) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
@@ -1043,7 +1043,7 @@ impl LintPass for UnstableFeatures {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
-    fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
+    fn check_attribute(&mut self, ctx: &LateContext, attr: &hir::Attribute) {
         if attr.check_name("feature") {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {

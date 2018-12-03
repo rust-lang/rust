@@ -632,7 +632,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_info_for_mod(&mut self,
                            FromId(id, (md, attrs, vis)): FromId<(&hir::Mod,
-                                                                 &[ast::Attribute],
+                                                                 &[hir::Attribute],
                                                                  &hir::Visibility)>)
                            -> Entry<'tcx> {
         let tcx = self.tcx;
@@ -1407,7 +1407,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    fn encode_attributes(&mut self, attrs: &[ast::Attribute]) -> LazySeq<ast::Attribute> {
+    fn encode_attributes(&mut self, attrs: &[hir::Attribute]) -> LazySeq<hir::Attribute> {
         // NOTE: This must use lazy_seq_from_slice(), not lazy_seq() because
         //       we rely on the HashStable specialization for [Attribute]
         //       to properly filter things out.

@@ -16,7 +16,7 @@ use feature_gate::{Features, GatedCfg};
 use parse::ParseSess;
 use syntax_pos::{symbol::Symbol, Span};
 
-use super::{list_contains_name, mark_used, MetaItemKind};
+use super::{list_contains_name, mark_used, MetaItemKind, Path};
 
 enum AttrError {
     MultipleItem(Name),
@@ -80,8 +80,11 @@ pub enum UnwindAttr {
 }
 
 /// Determine what `#[unwind]` attribute is present in `attrs`, if any.
-pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
-    let syntax_error = |attr: &Attribute| {
+pub fn find_unwind_attr(
+    diagnostic: Option<&Handler>,
+    attrs: &[Attribute<impl Path>],
+) -> Option<UnwindAttr> {
+    let syntax_error = |attr: &Attribute<_>| {
         mark_used(attr);
         diagnostic.map(|d| {
             span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
@@ -90,7 +93,7 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
     };
 
     attrs.iter().fold(None, |ia, attr| {
-        if attr.path != "unwind" {
+        if !attr.check_name_no_mark_used("unwind") {
             return ia;
         }
         let meta = match attr.meta() {
@@ -165,7 +168,7 @@ pub struct RustcDeprecation {
 
 /// Check if `attrs` contains an attribute like `#![feature(feature_name)]`.
 /// This will not perform any "sanity checks" on the form of the attributes.
-pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
+pub fn contains_feature_attr(attrs: &[Attribute<impl Path>], feature_name: &str) -> bool {
     attrs.iter().any(|item| {
         item.check_name("feature") &&
         item.meta_item_list().map(|list| {
@@ -178,17 +181,16 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
 }
 
 /// Find the first stability attribute. `None` if none exists.
-pub fn find_stability(sess: &ParseSess, attrs: &[Attribute],
+pub fn find_stability(sess: &ParseSess, attrs: &[Attribute<impl Path>],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(sess, attrs.iter(), item_sp)
 }
 
-fn find_stability_generic<'a, I>(sess: &ParseSess,
-                                 attrs_iter: I,
-                                 item_sp: Span)
-                                 -> Option<Stability>
-    where I: Iterator<Item = &'a Attribute>
-{
+fn find_stability_generic<'a>(
+    sess: &ParseSess,
+    attrs_iter: impl Iterator<Item = &'a Attribute<impl Path>>,
+    item_sp: Span,
+) -> Option<Stability> {
     use self::StabilityLevel::*;
 
     let mut stab: Option<Stability> = None;
@@ -204,7 +206,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             "unstable",
             "stable",
             "rustc_promotable",
-        ].iter().any(|&s| attr.path == s) {
+        ].iter().any(|&s| attr.check_name_no_mark_used(s)) {
             continue // not a stability level
         }
 
@@ -212,13 +214,13 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
         let meta = attr.meta();
 
-        if attr.path == "rustc_promotable" {
+        if attr.check_name_no_mark_used("rustc_promotable") {
             promotable = true;
         }
         // attributes with data
         else if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
             let meta = meta.as_ref().unwrap();
-            let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
+            let get = |meta: &MetaItem<_>, item: &mut Option<Symbol>| {
                 if item.is_some() {
                     handle_errors(sess, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
@@ -488,19 +490,23 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
     stab
 }
 
-pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
+pub fn find_crate_name(attrs: &[Attribute<impl Path>]) -> Option<Symbol> {
     super::first_attr_value_str_by_name(attrs, "crate_name")
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
+pub fn cfg_matches(
+    cfg: &ast::MetaItem<impl Path>,
+    sess: &ParseSess,
+    features: Option<&Features>,
+) -> bool {
     eval_condition(cfg, sess, &mut |cfg| {
         if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
             gated_cfg.check_and_emit(sess, feats);
         }
         let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
-        if cfg.ident.segments.len() != 1 {
-            return error(cfg.ident.span, "`cfg` predicate key must be an identifier");
+        if cfg.ident.segments().len() != 1 {
+            return error(cfg.ident.span(), "`cfg` predicate key must be an identifier");
         }
         match &cfg.node {
             MetaItemKind::List(..) => {
@@ -526,10 +532,11 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
-                         -> bool
-    where F: FnMut(&ast::MetaItem) -> bool
-{
+pub fn eval_condition<Path: self::Path>(
+    cfg: &ast::MetaItem<Path>,
+    sess: &ParseSess,
+    eval: &mut impl FnMut(&ast::MetaItem<Path>) -> bool,
+) -> bool {
     match cfg.node {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
@@ -583,22 +590,21 @@ pub struct Deprecation {
 }
 
 /// Find the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(sess: &ParseSess, attrs: &[Attribute],
+pub fn find_deprecation(sess: &ParseSess, attrs: &[Attribute<impl Path>],
                         item_sp: Span) -> Option<Deprecation> {
     find_deprecation_generic(sess, attrs.iter(), item_sp)
 }
 
-fn find_deprecation_generic<'a, I>(sess: &ParseSess,
-                                   attrs_iter: I,
-                                   item_sp: Span)
-                                   -> Option<Deprecation>
-    where I: Iterator<Item = &'a Attribute>
-{
+fn find_deprecation_generic<'a>(
+    sess: &ParseSess,
+    attrs_iter: impl Iterator<Item = &'a Attribute<impl Path>>,
+    item_sp: Span,
+) -> Option<Deprecation> {
     let mut depr: Option<Deprecation> = None;
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if attr.path != "deprecated" {
+        if !attr.check_name_no_mark_used("deprecated") {
             continue
         }
 
@@ -610,7 +616,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
         }
 
         depr = if let Some(metas) = attr.meta_item_list() {
-            let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
+            let get = |meta: &MetaItem<_>, item: &mut Option<Symbol>| {
                 if item.is_some() {
                     handle_errors(sess, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
@@ -713,12 +719,12 @@ impl IntType {
 /// the same discriminant size that the corresponding C enum would or C
 /// structure layout, `packed` to remove padding, and `transparent` to elegate representation
 /// concerns to the only non-ZST field.
-pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
+pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute<impl Path>) -> Vec<ReprAttr> {
     use self::ReprAttr::*;
 
     let mut acc = Vec::new();
     let diagnostic = &sess.span_diagnostic;
-    if attr.path == "repr" {
+    if attr.check_name_no_mark_used("repr") {
         if let Some(items) = attr.meta_item_list() {
             mark_used(attr);
             for item in items {

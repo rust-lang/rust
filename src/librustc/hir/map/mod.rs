@@ -504,7 +504,7 @@ impl<'hir> Map<'hir> {
     /// Get the attributes on the krate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
-    pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
+    pub fn krate_attrs(&self) -> &'hir [Attribute] {
         let def_path_hash = self.definitions.def_path_hash(CRATE_DEF_INDEX);
 
         self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
@@ -834,7 +834,7 @@ impl<'hir> Map<'hir> {
 
     /// Given a node ID, get a list of attributes associated with the AST
     /// corresponding to the Node ID
-    pub fn attrs(&self, id: NodeId) -> &'hir [ast::Attribute] {
+    pub fn attrs(&self, id: NodeId) -> &'hir [Attribute] {
         self.read(id); // reveals attributes on the node
         let attrs = match self.find(id) {
             Some(Node::Item(i)) => Some(&i.attrs[..]),
