@@ -489,7 +489,7 @@ impl Box<dyn Any> {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(value: Box<Any>) {
+    /// fn print_if_string(value: Box<dyn Any>) {
     ///     if let Ok(string) = value.downcast::<String>() {
     ///         println!("String ({}): {}", string.len(), string);
     ///     }
@@ -523,7 +523,7 @@ impl Box<dyn Any + Send> {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(value: Box<Any + Send>) {
+    /// fn print_if_string(value: Box<dyn Any + Send>) {
     ///     if let Ok(string) = value.downcast::<String>() {
     ///         println!("String ({}): {}", string.len(), string);
     ///     }
@@ -618,10 +618,10 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
 /// `FnBox` is a version of the `FnOnce` intended for use with boxed
 /// closure objects. The idea is that where one would normally store a
-/// `Box<FnOnce()>` in a data structure, you should use
-/// `Box<FnBox()>`. The two traits behave essentially the same, except
+/// `Box<dyn FnOnce()>` in a data structure, you should use
+/// `Box<dyn FnBox()>`. The two traits behave essentially the same, except
 /// that a `FnBox` closure can only be called if it is boxed. (Note
-/// that `FnBox` may be deprecated in the future if `Box<FnOnce()>`
+/// that `FnBox` may be deprecated in the future if `Box<dyn FnOnce()>`
 /// closures become directly usable.)
 ///
 /// # Examples
@@ -629,7 +629,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 /// Here is a snippet of code which creates a hashmap full of boxed
 /// once closures and then removes them one by one, calling each
 /// closure as it is removed. Note that the type of the closures
-/// stored in the map is `Box<FnBox() -> i32>` and not `Box<FnOnce()
+/// stored in the map is `Box<dyn FnBox() -> i32>` and not `Box<dyn FnOnce()
 /// -> i32>`.
 ///
 /// ```
@@ -638,8 +638,8 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 /// use std::boxed::FnBox;
 /// use std::collections::HashMap;
 ///
-/// fn make_map() -> HashMap<i32, Box<FnBox() -> i32>> {
-///     let mut map: HashMap<i32, Box<FnBox() -> i32>> = HashMap::new();
+/// fn make_map() -> HashMap<i32, Box<dyn FnBox() -> i32>> {
+///     let mut map: HashMap<i32, Box<dyn FnBox() -> i32>> = HashMap::new();
 ///     map.insert(1, Box::new(|| 22));
 ///     map.insert(2, Box::new(|| 44));
 ///     map

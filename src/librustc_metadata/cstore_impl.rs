@@ -103,9 +103,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generics_of => {
         tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
     }
-    predicates_of => { cdata.get_predicates(def_id.index, tcx) }
-    predicates_defined_on => { cdata.get_predicates_defined_on(def_id.index, tcx) }
-    super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
+    predicates_of => { Lrc::new(cdata.get_predicates(def_id.index, tcx)) }
+    predicates_defined_on => { Lrc::new(cdata.get_predicates_defined_on(def_id.index, tcx)) }
+    super_predicates_of => { Lrc::new(cdata.get_super_predicates(def_id.index, tcx)) }
     trait_def => {
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
     }
@@ -203,8 +203,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             DefId { krate: def_id.krate, index }
         })
     }
-    derive_registrar_fn => {
-        cdata.root.macro_derive_registrar.map(|index| {
+    proc_macro_decls_static => {
+        cdata.root.proc_macro_decls_static.map(|index| {
             DefId { krate: def_id.krate, index }
         })
     }
@@ -316,7 +316,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             use std::collections::hash_map::Entry;
 
             assert_eq!(cnum, LOCAL_CRATE);
-            let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
+            let mut visible_parent_map: DefIdMap<DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -431,8 +431,9 @@ impl cstore::CStore {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 
+            let client = ::proc_macro::bridge::client::Client::expand1(::proc_macro::quote);
             let ext = SyntaxExtension::ProcMacro {
-                expander: Box::new(BangProcMacro { inner: ::proc_macro::quote }),
+                expander: Box::new(BangProcMacro { client }),
                 allow_internal_unstable: true,
                 edition: data.root.edition,
             };

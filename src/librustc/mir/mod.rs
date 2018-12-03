@@ -10,12 +10,11 @@
 
 //! MIR datatypes and passes. See the [rustc guide] for more info.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir/index.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
-use middle::region;
 use mir::interpret::{ConstValue, EvalErrorKind, Scalar};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
@@ -1782,9 +1781,12 @@ pub enum StatementKind<'tcx> {
         place: Place<'tcx>,
     },
 
-    /// Mark one terminating point of a region scope (i.e. static region).
-    /// (The starting point(s) arise implicitly from borrows.)
-    EndRegion(region::Scope),
+    /// Escape the given reference to a raw pointer, so that it can be accessed
+    /// without precise provenance tracking. These statements are currently only interpreted
+    /// by miri and only generated when "-Z mir-emit-retag" is passed.
+    /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
+    /// for more details.
+    EscapeToRaw(Operand<'tcx>),
 
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
@@ -1839,10 +1841,9 @@ impl<'tcx> Debug for Statement<'tcx> {
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
-            // (reuse lifetime rendering policy from ppaux.)
-            EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
             Retag { fn_entry, ref place } =>
                 write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry] " } else { "" }, place),
+            EscapeToRaw(ref place) => write!(fmt, "EscapeToRaw({:?})", place),
             StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
             StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
             SetDiscriminant {
@@ -2199,7 +2200,7 @@ pub enum CastKind {
     /// "Unsize" -- convert a thin-or-fat pointer to a fat pointer.
     /// codegen must figure out the details once full monomorphization
     /// is known. For example, this could be used to cast from a
-    /// `&[i32;N]` to a `&[i32]`, or a `Box<T>` to a `Box<Trait>`
+    /// `&[i32;N]` to a `&[i32]`, or a `Box<T>` to a `Box<dyn Trait>`
     /// (presuming `T: Trait`).
     Unsize,
 }
@@ -3019,7 +3020,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::StorageDead)(a),
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Retag) { fn_entry, place },
-        (StatementKind::EndRegion)(a),
+        (StatementKind::EscapeToRaw)(place),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
     }

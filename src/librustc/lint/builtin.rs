@@ -319,6 +319,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub PRIVATE_DOC_TESTS,
+    Allow,
+    "warn about doc test in private item"
+}
+
+declare_lint! {
     pub WHERE_CLAUSES_OBJECT_SAFETY,
     Warn,
     "checks the object safety of where clauses"
@@ -415,6 +421,7 @@ impl LintPass for HardwiredLints {
             DUPLICATE_MACRO_EXPORTS,
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
             MISSING_DOC_CODE_EXAMPLES,
+            PRIVATE_DOC_TESTS,
             WHERE_CLAUSES_OBJECT_SAFETY,
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             MACRO_USE_EXTERN_CRATE,

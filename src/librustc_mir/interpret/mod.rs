@@ -39,6 +39,6 @@ pub use self::machine::{Machine, AllocMap, MayLeak};
 
 pub use self::operand::{ScalarMaybeUndef, Immediate, ImmTy, Operand, OpTy};
 
-pub use self::visitor::ValueVisitor;
+pub use self::visitor::{ValueVisitor, MutValueVisitor};
 
 pub use self::validity::RefTracking;

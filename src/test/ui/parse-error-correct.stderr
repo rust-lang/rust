@@ -17,7 +17,9 @@ LL |     let y = 42;
    |         - `{integer}` defined here
 LL |     let x = y.;  //~ ERROR unexpected token
 LL |     let x = y.();  //~ ERROR unexpected token
-   |             ^^^^ not a function
+   |             ^---
+   |             |
+   |             call expression requires function
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/parse-error-correct.rs:21:15

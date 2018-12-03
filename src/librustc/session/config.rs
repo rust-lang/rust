@@ -224,7 +224,7 @@ impl Default for ErrorOutputType {
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
 // DO NOT switch BTreeMap out for an unsorted container type! That would break
-// dependency tracking for commandline arguments.
+// dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
@@ -273,7 +273,7 @@ impl OutputTypes {
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
-// would break dependency tracking for commandline arguments.
+// would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
 pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
 
@@ -339,7 +339,7 @@ macro_rules! top_level_options {
     );
 }
 
-// The top-level commandline options struct
+// The top-level command-line options struct
 //
 // For each option, one has to specify how it behaves with regard to the
 // dependency tracking system of incremental compilation. This is done via the
@@ -802,7 +802,7 @@ macro_rules! options {
         pub const parse_opt_uint: Option<&'static str> =
             Some("a number");
         pub const parse_panic_strategy: Option<&'static str> =
-            Some("either `panic` or `abort`");
+            Some("either `unwind` or `abort`");
         pub const parse_relro_level: Option<&'static str> =
             Some("one of: `full`, `partial`, or `off`");
         pub const parse_sanitizer: Option<&'static str> =
@@ -1149,8 +1149,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
-    emit_end_regions: bool = (false, parse_bool, [UNTRACKED],
-        "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
     borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "select which borrowck is used (`ast`, `mir`, `migrate`, or `compare`)"),
     two_phase_borrows: bool = (false, parse_bool, [UNTRACKED],
@@ -1288,8 +1286,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR"),
-    mir_stats: bool = (false, parse_bool, [UNTRACKED],
-        "print some statistics about MIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
@@ -2377,11 +2373,11 @@ impl fmt::Display for CrateType {
     }
 }
 
-/// Commandline arguments passed to the compiler have to be incorporated with
+/// Command-line arguments passed to the compiler have to be incorporated with
 /// the dependency tracking system for incremental compilation. This module
 /// provides some utilities to make this more convenient.
 ///
-/// The values of all commandline arguments that are relevant for dependency
+/// The values of all command-line arguments that are relevant for dependency
 /// tracking are hashed into a single value that determines whether the
 /// incremental compilation cache can be re-used or not. This hashing is done
 /// via the DepTrackingHash trait defined below, since the standard Hash
@@ -2394,7 +2390,7 @@ impl fmt::Display for CrateType {
 /// impl_dep_tracking_hash_via_hash!() macro that allows to simply reuse the
 /// Hash implementation for DepTrackingHash. It's important though that
 /// we have an opt-in scheme here, so one is hopefully forced to think about
-/// how the hash should be calculated when adding a new commandline argument.
+/// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
     use lint;
     use middle::cstore;

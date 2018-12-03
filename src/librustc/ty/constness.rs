@@ -66,7 +66,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             }
         } else {
             // users enabling the `const_fn` feature gate can do what they want
-            !self.sess.features_untracked().const_fn
+            !self.features().const_fn
         }
     }
 }

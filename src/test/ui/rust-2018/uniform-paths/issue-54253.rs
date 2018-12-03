@@ -10,9 +10,7 @@
 
 // edition:2018
 
-#![feature(uniform_paths)]
-
-// Dummy import to introduce `uniform_paths` canaries.
+// Dummy import that previously introduced uniform path canaries.
 use std;
 
 // fn version() -> &'static str {""}

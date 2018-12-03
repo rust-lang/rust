@@ -12,15 +12,21 @@
 //! process.
 
 use rustc::hir::def_id::DefId;
+use rustc::lint as lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
 use std::fmt;
+use syntax::ast::NodeId;
 
 use clean::{self, GetDefId, Item};
-use core::DocContext;
+use core::{DocContext, DocAccessLevels};
 use fold;
 use fold::StripItem;
+
+use html::markdown::{find_testable_code, ErrorCodes, LangString};
+
+use self::collect_intra_doc_links::span_of_attrs;
 
 mod collapse_docs;
 pub use self::collapse_docs::COLLAPSE_DOCS;
@@ -42,6 +48,9 @@ pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
 mod collect_intra_doc_links;
 pub use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
+
+mod private_items_doc_tests;
+pub use self::private_items_doc_tests::CHECK_PRIVATE_ITEMS_DOC_TESTS;
 
 mod collect_trait_impls;
 pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
@@ -128,6 +137,7 @@ impl Pass {
 
 /// The full list of passes.
 pub const PASSES: &'static [Pass] = &[
+    CHECK_PRIVATE_ITEMS_DOC_TESTS,
     STRIP_HIDDEN,
     UNINDENT_COMMENTS,
     COLLAPSE_DOCS,
@@ -141,6 +151,7 @@ pub const PASSES: &'static [Pass] = &[
 /// The list of passes run by default.
 pub const DEFAULT_PASSES: &'static [&'static str] = &[
     "collect-trait-impls",
+    "check-private-items-doc-tests",
     "strip-hidden",
     "strip-private",
     "collect-intra-doc-links",
@@ -152,6 +163,7 @@ pub const DEFAULT_PASSES: &'static [&'static str] = &[
 /// The list of default passes run with `--document-private-items` is passed to rustdoc.
 pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
     "collect-trait-impls",
+    "check-private-items-doc-tests",
     "strip-priv-imports",
     "collect-intra-doc-links",
     "collapse-docs",
@@ -345,6 +357,52 @@ impl fold::DocFolder for ImportStripper {
                 None
             }
             _ => self.fold_item_recur(i),
+        }
+    }
+}
+
+pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx>(
+    cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
+    dox: &str,
+    item: &Item,
+    check_missing_code: bool,
+) {
+    if cx.as_local_node_id(item.def_id).is_none() {
+        // If non-local, no need to check anything.
+        return;
+    }
+
+    struct Tests {
+        found_tests: usize,
+    }
+
+    impl ::test::Tester for Tests {
+        fn add_test(&mut self, _: String, _: LangString, _: usize) {
+            self.found_tests += 1;
+        }
+    }
+
+    let mut tests = Tests {
+        found_tests: 0,
+    };
+
+    if find_testable_code(&dox, &mut tests, ErrorCodes::No).is_ok() {
+        if check_missing_code == true && tests.found_tests == 0 {
+            let mut diag = cx.tcx.struct_span_lint_node(
+                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
+                NodeId::from_u32(0),
+                span_of_attrs(&item.attrs),
+                "Missing code example in this documentation");
+            diag.emit();
+        } else if check_missing_code == false &&
+                  tests.found_tests > 0 &&
+                  !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
+            let mut diag = cx.tcx.struct_span_lint_node(
+                lint::builtin::PRIVATE_DOC_TESTS,
+                NodeId::from_u32(0),
+                span_of_attrs(&item.attrs),
+                "Documentation test in private item");
+            diag.emit();
         }
     }
 }

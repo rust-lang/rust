@@ -615,7 +615,7 @@ mod loop_keyword { }
 //
 /// The keyword used to define structs.
 ///
-/// Structs in Rust come in three flavours: Structs with named fields, tuple structs, and unit
+/// Structs in Rust come in three flavors: Structs with named fields, tuple structs, and unit
 /// structs.
 ///
 /// ```rust

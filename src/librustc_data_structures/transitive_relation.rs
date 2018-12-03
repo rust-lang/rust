@@ -42,6 +42,18 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     closure: Lock<Option<BitMatrix<usize, usize>>>,
 }
 
+// HACK(eddyb) manual impl avoids `Default` bound on `T`.
+impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
+    fn default() -> Self {
+        TransitiveRelation {
+            elements: Default::default(),
+            map: Default::default(),
+            edges: Default::default(),
+            closure: Default::default(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
 struct Index(usize);
 
@@ -49,17 +61,6 @@ struct Index(usize);
 struct Edge {
     source: Index,
     target: Index,
-}
-
-impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
-    fn default() -> TransitiveRelation<T> {
-        TransitiveRelation {
-            elements: vec![],
-            map: FxHashMap::default(),
-            edges: vec![],
-            closure: Lock::new(None),
-        }
-    }
 }
 
 impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {

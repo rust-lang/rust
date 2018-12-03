@@ -15,7 +15,7 @@
 //! For an overview of what canonicaliation is and how it fits into
 //! rustc, check out the [chapter in the rustc guide][c].
 //!
-//! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
@@ -184,7 +184,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -435,21 +435,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             match result_value.unpack() {
                 UnpackedKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
-                    if let ty::Bound(b) = result_value.sty {
+                    if let ty::Bound(debruijn, b) = result_value.sty {
                         // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(b.index, ty::INNERMOST);
+                        assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 UnpackedKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let &ty::RegionKind::ReLateBound(index, br) = result_value {
+                    if let &ty::RegionKind::ReLateBound(debruijn, br) = result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(index, ty::INNERMOST);
+                        assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[br.assert_bound_var()] = Some(*original_value);
                     }
                 }
@@ -556,7 +556,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.
-    /// The second set is produced lazilly by supplying indices from the first set.
+    /// The second set is produced lazily by supplying indices from the first set.
     fn unify_canonical_vars(
         &self,
         cause: &ObligationCause<'tcx>,

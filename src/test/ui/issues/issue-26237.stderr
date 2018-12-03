@@ -1,14 +1,14 @@
 error[E0618]: expected function, found `{integer}`
-  --> $DIR/issue-26237.rs:13:9
+  --> $DIR/issue-26237.rs:20:18
    |
 LL |         $not_a_function($some_argument)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a function
+   |         ------------------------------- call expression requires function
 ...
 LL |     let mut value_a = 0;
    |         ----------- `{integer}` defined here
 LL |     let mut value_b = 0;
 LL |     macro_panic!(value_a, value_b);
-   |     ------------------------------- in this macro invocation
+   |                  ^^^^^^^
 
 error: aborting due to previous error
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z emit-end-regions -Z borrowck=compare
+// compile-flags: -Z borrowck=compare
 
 fn foo() -> &'static u32 {
     let x = 0;

@@ -234,7 +234,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 if !scrutinee_is_uninhabited {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = create_e0004(self.tcx.sess, scrut.span,
-                                               format!("non-exhaustive patterns: type {} \
+                                               format!("non-exhaustive patterns: type `{}` \
                                                         is non-empty",
                                                        pat_ty));
                     span_help!(&mut err, scrut.span,
@@ -298,7 +298,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let label_msg = match pat.node {
                 PatKind::Path(hir::QPath::Resolved(None, ref path))
                         if path.segments.len() == 1 && path.segments[0].args.is_none() => {
-                    format!("interpreted as a {} pattern, not new variable", path.def.kind_name())
+                    format!("interpreted as {} {} pattern, not new variable",
+                            path.def.article(), path.def.kind_name())
                 }
                 _ => format!("pattern `{}` not covered", pattern_string),
             };

@@ -21,6 +21,9 @@ nav {
 #search-but:hover, #search-input:focus {
     border-color: #55a9ff;
 }
+h2 {
+    font-size: 18px;
+}
 </style>
 
 Welcome to an overview of the documentation provided by the Rust project.

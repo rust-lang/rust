@@ -201,7 +201,10 @@ pub enum TyKind<'tcx> {
     Param(ParamTy),
 
     /// Bound type variable, used only when preparing a trait query.
-    Bound(BoundTy),
+    Bound(ty::DebruijnIndex, BoundTy),
+
+    /// A placeholder type - universally quantified higher-ranked type.
+    Placeholder(ty::PlaceholderType),
 
     /// A type variable used during type checking.
     Infer(InferTy),
@@ -664,6 +667,7 @@ impl<'tcx> TraitRef<'tcx> {
         }
     }
 
+    #[inline]
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.substs.type_at(0)
     }
@@ -975,15 +979,18 @@ impl<'tcx> FnSig<'tcx> {
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
+    #[inline]
     pub fn inputs(&self) -> Binder<&'tcx [Ty<'tcx>]> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs())
     }
+    #[inline]
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
     pub fn inputs_and_output(&self) -> ty::Binder<&'tcx List<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
+    #[inline]
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
@@ -1135,7 +1142,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// [1]: http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
-/// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
+/// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub enum RegionKind {
     // Region bound in a type or fn declaration which will be
@@ -1165,7 +1172,7 @@ pub enum RegionKind {
 
     /// A placeholder region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    RePlaceholder(ty::Placeholder),
+    RePlaceholder(ty::PlaceholderRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1242,7 +1249,6 @@ newtype_index! {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BoundTy {
-    pub index: DebruijnIndex,
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
@@ -1253,13 +1259,12 @@ pub enum BoundTyKind {
     Param(InternedString),
 }
 
-impl_stable_hash_for!(struct BoundTy { index, var, kind });
+impl_stable_hash_for!(struct BoundTy { var, kind });
 impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
-impl BoundTy {
-    pub fn new(index: DebruijnIndex, var: BoundVar) -> Self {
+impl From<BoundVar> for BoundTy {
+    fn from(var: BoundVar) -> Self {
         BoundTy {
-            index,
             var,
             kind: BoundTyKind::Anon,
         }
@@ -1462,7 +1467,7 @@ impl RegionKind {
             }
             ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_SKOL;
+                flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
             }
             ty::ReLateBound(..) => {
                 flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
@@ -1547,6 +1552,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_ty_var(&self) -> bool {
         match self.sty {
             Infer(TyVar(_)) => true,
@@ -1731,6 +1737,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_integral(&self) -> bool {
         match self.sty {
             Infer(IntVar(_)) | Int(_) | Uint(_) => true,
@@ -1761,6 +1768,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_fp(&self) -> bool {
         match self.sty {
             Infer(FloatVar(_)) | Float(_) => true,
@@ -1844,6 +1852,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             Adt(adt, _) => Some(adt),
@@ -1890,6 +1899,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             Foreign(..) |
             Param(_) |
             Bound(..) |
+            Placeholder(..) |
             Infer(_) |
             Error => {}
         }
@@ -1953,7 +1963,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Bound(_) |
+            ty::Bound(..) |
+            ty::Placeholder(..) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>

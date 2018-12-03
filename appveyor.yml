@@ -1,5 +1,4 @@
 environment:
-  SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
 
   # By default schannel checks revocation of certificates unlike some other SSL
   # backends, but we've historically had problems on CI where a revocation

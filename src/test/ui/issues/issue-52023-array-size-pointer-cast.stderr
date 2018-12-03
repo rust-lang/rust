@@ -10,7 +10,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/issue-52023-array-size-pointer-cast.rs:12:17
    |
 LL |     let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to integers in constants
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain bits
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

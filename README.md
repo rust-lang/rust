@@ -233,7 +233,7 @@ Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
 [#rust]: irc://irc.mozilla.org/rust
 [#rust-beginners]: irc://irc.mozilla.org/rust-beginners
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
 ## License

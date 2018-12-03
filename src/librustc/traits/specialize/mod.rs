@@ -17,7 +17,7 @@
 //! See the [rustc guide] for a bit more detail on how specialization
 //! fits together with the rest of the trait machinery.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/specialization.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
@@ -407,7 +407,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
 
     // The predicates will contain default bounds like `T: Sized`. We need to
     // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
-    let predicates = tcx.predicates_of(impl_def_id).predicates;
+    let predicates = &tcx.predicates_of(impl_def_id).predicates;
     let mut pretty_predicates = Vec::with_capacity(
         predicates.len() + types_without_default_bounds.len());
 

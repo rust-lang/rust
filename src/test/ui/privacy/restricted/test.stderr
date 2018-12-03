@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve. Maybe a missing `extern crate bad;`?
+error[E0433]: failed to resolve: maybe a missing `extern crate bad;`?
   --> $DIR/test.rs:60:12
    |
-LL |     pub(in bad::path) mod m1 {} //~ ERROR failed to resolve. Maybe a missing `extern crate bad;`?
-   |            ^^^ Maybe a missing `extern crate bad;`?
+LL |     pub(in bad::path) mod m1 {} //~ ERROR failed to resolve: maybe a missing `extern crate bad;`?
+   |            ^^^ maybe a missing `extern crate bad;`?
 
 error: visibilities can only be restricted to ancestor modules
   --> $DIR/test.rs:61:12

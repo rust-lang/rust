@@ -216,7 +216,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::adjustment::AutoBorrow
     }
 }
 
-impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
+impl_stable_hash_for!(struct ty::UpvarPath { hir_id });
+
+impl_stable_hash_for!(struct ty::UpvarId { var_path, closure_expr_id });
 
 impl_stable_hash_for!(enum ty::BorrowKind {
     ImmBorrow,
@@ -315,6 +317,10 @@ impl_stable_hash_for!(
         ByRef(id, alloc, offset),
     }
 );
+impl_stable_hash_for!(struct ::mir::interpret::RawConst<'tcx> {
+    alloc_id,
+    ty,
+});
 
 impl_stable_hash_for! {
     impl<Tag> for struct mir::interpret::Pointer<Tag> {
@@ -387,10 +393,10 @@ impl_stable_hash_for!(enum mir::interpret::ErrorHandled {
     TooGeneric
 });
 
-impl_stable_hash_for!(struct mir::interpret::FrameInfo {
-    span,
+impl_stable_hash_for!(struct mir::interpret::FrameInfo<'tcx> {
+    call_site,
     lint_root,
-    location
+    instance
 });
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
@@ -423,6 +429,7 @@ impl_stable_hash_for!(
         CalledClosureAsFunction,
         VtableForArgumentlessMethod,
         ModifiedConstantMemory,
+        ModifiedStatic,
         AssumptionNotHeld,
         InlineAsm,
         ReallocateNonBasePtr,
@@ -451,7 +458,7 @@ impl_stable_hash_for!(
         FunctionRetMismatch(a, b),
         NoMirFor(s),
         UnterminatedCString(ptr),
-        PointerOutOfBounds { ptr, access, allocation_size },
+        PointerOutOfBounds { ptr, check, allocation_size },
         InvalidBoolOp(bop),
         Unimplemented(s),
         BoundsCheck { len, index },
@@ -470,6 +477,11 @@ impl_stable_hash_for!(
         Overflow(op),
     }
 );
+
+impl_stable_hash_for!(enum mir::interpret::InboundsCheck {
+    Live,
+    MaybeDead
+});
 
 impl_stable_hash_for!(enum mir::interpret::Lock {
     NoLock,
@@ -673,8 +685,12 @@ for ty::TyKind<'gcx>
             Param(param_ty) => {
                 param_ty.hash_stable(hcx, hasher);
             }
-            Bound(bound_ty) => {
+            Bound(debruijn, bound_ty) => {
+                debruijn.hash_stable(hcx, hasher);
                 bound_ty.hash_stable(hcx, hasher);
+            }
+            ty::Placeholder(placeholder_ty) => {
+                placeholder_ty.hash_stable(hcx, hasher);
             }
             Foreign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
@@ -1085,12 +1101,13 @@ impl_stable_hash_for!(struct infer::canonical::CanonicalVarInfo {
 
 impl_stable_hash_for!(enum infer::canonical::CanonicalVarKind {
     Ty(k),
+    PlaceholderTy(placeholder),
     Region(ui),
     PlaceholderRegion(placeholder),
 });
 
 impl_stable_hash_for!(enum infer::canonical::CanonicalTyVarKind {
-    General,
+    General(ui),
     Int,
     Float
 });

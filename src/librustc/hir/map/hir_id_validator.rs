@@ -101,7 +101,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
             let missing: Vec<_> = (0 .. max as u32 + 1)
-              .filter(|&i| !self.hir_ids_seen.contains_key(&ItemLocalId(i)))
+              .filter(|&i| !self.hir_ids_seen.contains_key(&ItemLocalId::from_u32(i)))
               .collect();
 
             // Try to map those to something more useful
@@ -110,7 +110,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
             for local_id in missing {
                 let hir_id = HirId {
                     owner: owner_def_index,
-                    local_id: ItemLocalId(local_id as u32),
+                    local_id: ItemLocalId::from_u32(local_id),
                 };
 
                 trace!("missing hir id {:#?}", hir_id);
@@ -124,7 +124,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                        .enumerate()
                                        .find(|&(_, &entry)| hir_id == entry)
                                        .expect("no node_to_hir_id entry");
-                let node_id = NodeId::new(node_id);
+                let node_id = NodeId::from_usize(node_id);
                 missing_items.push(format!("[local_id: {}, node:{}]",
                                            local_id,
                                            self.hir_map.node_to_string(node_id)));

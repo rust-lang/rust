@@ -10,7 +10,7 @@
 
 //! Trait Resolution. See [rustc guide] for more info on how this works.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
@@ -700,7 +700,12 @@ fn do_normalize_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      predicates: Vec<ty::Predicate<'tcx>>)
                                      -> Result<Vec<ty::Predicate<'tcx>>, ErrorReported>
 {
-    debug!("do_normalize_predicates({:?})", predicates);
+    debug!(
+        "do_normalize_predicates(predicates={:?}, region_context={:?}, cause={:?})",
+        predicates,
+        region_context,
+        cause,
+    );
     let span = cause.span;
     tcx.infer_ctxt().enter(|infcx| {
         // FIXME. We should really... do something with these region
@@ -1047,6 +1052,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
 }
 
 impl<'tcx> ObligationCause<'tcx> {
+    #[inline]
     pub fn new(span: Span,
                body_id: ast::NodeId,
                code: ObligationCauseCode<'tcx>)

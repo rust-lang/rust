@@ -20,12 +20,12 @@
        test(attr(deny(warnings))))]
 
 #![feature(crate_visibility_modifier)]
-#![feature(macro_at_most_once_rep)]
 #![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(str_escape)]
+#![feature(step_trait)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
@@ -37,7 +37,7 @@ extern crate serialize;
 #[macro_use] extern crate log;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 extern crate rustc_target;
 #[macro_use] extern crate scoped_tls;
 #[macro_use]

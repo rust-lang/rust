@@ -538,7 +538,7 @@ fn main() {
     let foo = Foo;
     let ref_foo = &&Foo;
 
-    // error, reached the recursion limit while auto-dereferencing &&Foo
+    // error, reached the recursion limit while auto-dereferencing `&&Foo`
     ref_foo.foo();
 }
 ```

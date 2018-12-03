@@ -12,7 +12,7 @@ use session::config::Options;
 
 use std::fs;
 use std::io::{self, StdoutLock, Write};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 macro_rules! define_categories {
     ($($name:ident,)*) => {
@@ -93,15 +93,26 @@ macro_rules! define_categories {
                 $(
                     let (hits, total) = self.query_counts.$name;
 
+                    //normalize hits to 0%
+                    let hit_percent =
+                        if total > 0 {
+                            ((hits as f32) / (total as f32)) * 100.0
+                        } else {
+                            0.0
+                        };
+
                     json.push_str(&format!(
-                        "{{ \"category\": {}, \"time_ms\": {},
-                            \"query_count\": {}, \"query_hits\": {} }}",
+                        "{{ \"category\": \"{}\", \"time_ms\": {},\
+                            \"query_count\": {}, \"query_hits\": {} }},",
                         stringify!($name),
                         self.times.$name / 1_000_000,
                         total,
-                        format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0))
+                        format!("{:.2}", hit_percent)
                     ));
                 )*
+
+                //remove the trailing ',' character
+                json.pop();
 
                 json.push(']');
 
@@ -197,7 +208,20 @@ impl SelfProfiler {
     }
 
     fn stop_timer(&mut self) -> u64 {
-        let elapsed = self.current_timer.elapsed();
+        let elapsed = if cfg!(windows) {
+            // On Windows, timers don't always appear to be monotonic (see #51648)
+            // which can lead to panics when calculating elapsed time.
+            // Work around this by testing to see if the current time is less than
+            // our recorded time, and if it is, just returning 0.
+            let now = Instant::now();
+            if self.current_timer >= now {
+                Duration::new(0, 0)
+            } else {
+                self.current_timer.elapsed()
+            }
+        } else {
+            self.current_timer.elapsed()
+        };
 
         self.current_timer = Instant::now();
 

@@ -67,6 +67,9 @@ fn inferred_outlives_of<'a, 'tcx>(
                     }
                     err.emit();
                 }
+
+                debug!("inferred_outlives_of({:?}) = {:?}", item_def_id, predicates);
+
                 predicates
             }
 

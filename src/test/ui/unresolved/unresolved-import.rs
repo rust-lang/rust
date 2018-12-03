@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 
 use foo::bar; //~ ERROR unresolved import `foo` [E0432]
-              //~^ Maybe a missing `extern crate foo;`?
+              //~^ maybe a missing `extern crate foo;`?
 
 use bar::Baz as x; //~ ERROR unresolved import `bar::Baz` [E0432]
                    //~^ no `Baz` in `bar`. Did you mean to use `Bar`?
@@ -42,7 +42,7 @@ mod m {
     }
 
     use MyEnum::*; //~ ERROR unresolved import `MyEnum` [E0432]
-                   //~^ Did you mean `self::MyEnum`?
+                   //~^ did you mean `self::MyEnum`?
 }
 
 mod items {
@@ -51,7 +51,7 @@ mod items {
     }
 
     use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
-                 //~^ Did you mean `self::Enum`?
+                 //~^ did you mean `self::Enum`?
 
     fn item() {}
 }

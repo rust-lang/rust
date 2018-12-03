@@ -303,7 +303,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Same as applying struct_tail on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
     /// structure definitions.
-    /// For `(Foo<Foo<T>>, Foo<Trait>)`, the result will be `(Foo<T>, Trait)`,
+    /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     pub fn struct_lockstep_tails(self,
                                  source: Ty<'tcx>,
@@ -952,7 +952,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Can refer to a type which may drop.
         // FIXME(eddyb) check this against a ParamEnv.
         ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) | ty::Bound(..) |
-        ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
+        ty::Placeholder(..) | ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 

@@ -11,6 +11,7 @@
 // Test that the CompilerCalls interface to the compiler works.
 
 // ignore-cross-compile
+// ignore-stage1
 
 #![feature(rustc_private)]
 

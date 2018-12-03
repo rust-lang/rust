@@ -31,7 +31,7 @@ use std::cmp::Ordering;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
-    /// It is a bug to call this with a simplifyable pattern.
+    /// It is a bug to call this with a simplifiable pattern.
     pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatternKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {

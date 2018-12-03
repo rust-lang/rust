@@ -189,7 +189,7 @@ impl<'a> LintLevelsBuilder<'a> {
     /// This function will perform a number of tasks:
     ///
     /// * It'll validate all lint-related attributes in `attrs`
-    /// * It'll mark all lint-related attriutes as used
+    /// * It'll mark all lint-related attributes as used
     /// * Lint levels will be updated based on the attributes provided
     /// * Lint attributes are validated, e.g. a #[forbid] can't be switched to
     ///   #[allow]

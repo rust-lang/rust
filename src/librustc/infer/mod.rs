@@ -227,7 +227,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     universe: Cell<ty::UniverseIndex>,
 }
 
-/// A map returned by `replace_late_bound_regions_with_placeholders()`
+/// A map returned by `replace_bound_vars_with_placeholders()`
 /// indicating the placeholder region that each late-bound region was
 /// replaced with.
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
@@ -411,7 +411,7 @@ pub enum NLLRegionVariableOrigin {
 
     /// "Universal" instantiation of a higher-ranked region (e.g.,
     /// from a `for<'a> T` binder). Meant to represent "any region".
-    Placeholder(ty::Placeholder),
+    Placeholder(ty::PlaceholderRegion),
 
     Existential,
 }
@@ -790,7 +790,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.projection_cache
             .borrow_mut()
-            .commit(&projection_cache_snapshot);
+            .commit(projection_cache_snapshot);
         self.type_variables.borrow_mut().commit(type_snapshot);
         self.int_unification_table.borrow_mut().commit(int_snapshot);
         self.float_unification_table
@@ -935,7 +935,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     b,
                 },
                 placeholder_map,
-            ) = self.replace_late_bound_regions_with_placeholders(predicate);
+            ) = self.replace_bound_vars_with_placeholders(predicate);
 
             let cause_span = cause.span;
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
@@ -952,7 +952,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
-                self.replace_late_bound_regions_with_placeholders(predicate);
+                self.replace_bound_vars_with_placeholders(predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
@@ -970,6 +970,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false, origin))
+    }
+
+    pub fn next_ty_var_in_universe(
+        &self,
+        origin: TypeVariableOrigin,
+        universe: ty::UniverseIndex
+    ) -> Ty<'tcx> {
+        let vid = self.type_variables
+            .borrow_mut()
+            .new_var(universe, false, origin);
+        self.tcx.mk_var(vid)
     }
 
     pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -1160,10 +1171,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Takes ownership of the list of variable regions. This implies
-    /// that all the region constriants have already been taken, and
+    /// that all the region constraints have already been taken, and
     /// hence that `resolve_regions_and_report_errors` can never be
     /// called. This is used only during NLL processing to "hand off" ownership
-    /// of the set of region vairables into the NLL region context.
+    /// of the set of region variables into the NLL region context.
     pub fn take_region_var_origins(&self) -> VarInfos {
         let (var_infos, data) = self.region_constraints
             .borrow_mut()
@@ -1224,6 +1235,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .unwrap_or(typ),
 
             _ => typ,
+        }
+    }
+
+    /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
+    /// universe index of `TyVar(vid)`.
+    pub fn probe_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
+        use self::type_variable::TypeVariableValue;
+
+        match self.type_variables.borrow_mut().probe(vid) {
+            TypeVariableValue::Known { value } => Ok(value),
+            TypeVariableValue::Unknown { universe } => Err(universe),
         }
     }
 
@@ -1478,7 +1500,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Clears the selection, evaluation, and projection caches. This is useful when
-    /// repeatedly attemping to select an Obligation while changing only
+    /// repeatedly attempting to select an Obligation while changing only
     /// its ParamEnv, since FulfillmentContext doesn't use 'probe'
     pub fn clear_caches(&self) {
         self.selection_cache.clear();

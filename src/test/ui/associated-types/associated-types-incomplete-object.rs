@@ -37,6 +37,5 @@ pub fn main() {
     //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
 
     let d = &42isize as &Foo;
-    //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
-    //~| ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
+    //~^ ERROR the value of the associated types `A` (from the trait `Foo`), `B` (from the trait
 }

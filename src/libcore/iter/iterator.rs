@@ -519,7 +519,7 @@ pub trait Iterator {
     /// element.
     ///
     /// `map()` transforms one iterator into another, by means of its argument:
-    /// something that implements `FnMut`. It produces a new iterator which
+    /// something that implements [`FnMut`]. It produces a new iterator which
     /// calls this closure on each element of the original iterator.
     ///
     /// If you are good at thinking in types, you can think of `map()` like this:
@@ -532,7 +532,8 @@ pub trait Iterator {
     /// If you're doing some sort of looping for a side effect, it's considered
     /// more idiomatic to use [`for`] than `map()`.
     ///
-    /// [`for`]: ../../book/first-edition/loops.html#for
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+    /// [`FnMut`]: ../../std/ops/trait.FnMut.html
     ///
     /// # Examples
     ///
@@ -580,7 +581,7 @@ pub trait Iterator {
     /// cases `for_each` may also be faster than a loop, because it will use
     /// internal iteration on adaptors like `Chain`.
     ///
-    /// [`for`]: ../../book/first-edition/loops.html#for
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
     /// # Examples
     ///
@@ -1669,7 +1670,7 @@ pub trait Iterator {
     /// use a `for` loop with a list of things to build up a result. Those
     /// can be turned into `fold()`s:
     ///
-    /// [`for`]: ../../book/first-edition/loops.html#for
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
     /// ```
     /// let numbers = [1, 2, 3, 4, 5];

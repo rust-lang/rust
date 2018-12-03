@@ -533,6 +533,14 @@ extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
+extern "C" bool LLVMRustIsRustLLVM() {
+#ifdef LLVM_RUSTLLVM
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M, const char *Name,
                                       uint32_t Value) {
   unwrap(M)->addModuleFlag(Module::Warning, Name, Value);
@@ -708,7 +716,11 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits);
+      InitExpr, unwrapDIPtr<MDNode>(Decl),
+#if LLVM_VERSION_GE(8, 0)
+      /* templateParams */ nullptr,
+#endif
+      AlignInBits);
 
   InitVal->setMetadata("dbg", VarExpr);
 

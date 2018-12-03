@@ -60,6 +60,7 @@ fn main() {
     let x: Result<u32, &!> = Ok(123);
     match x {
         Ok(y) => y,
+        Err(_) => unimplemented!(),
     };
 
     bar(&[]);

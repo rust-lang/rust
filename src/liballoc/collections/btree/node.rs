@@ -69,7 +69,7 @@ struct LeafNode<K, V> {
 
     /// This node's index into the parent node's `edges` array.
     /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
-    /// This is only guaranteed to be initialized when `parent` is nonnull.
+    /// This is only guaranteed to be initialized when `parent` is non-null.
     parent_idx: MaybeUninit<u16>,
 
     /// The number of keys and values this node stores.
@@ -602,7 +602,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         } else {
             unsafe {
                 slice::from_raw_parts_mut(
-                    self.as_leaf_mut().keys.get_mut() as *mut [K] as *mut K,
+                    self.as_leaf_mut().keys.as_mut_ptr() as *mut K,
                     self.len()
                 )
             }
@@ -613,7 +613,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts_mut(
-                self.as_leaf_mut().vals.get_mut() as *mut [V] as *mut V,
+                self.as_leaf_mut().vals.as_mut_ptr() as *mut V,
                 self.len()
             )
         }

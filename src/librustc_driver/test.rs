@@ -232,20 +232,20 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         // children of 1, etc
 
         let dscope = region::Scope {
-            id: hir::ItemLocalId(1),
+            id: hir::ItemLocalId::from_u32(1),
             data: region::ScopeData::Destruction,
         };
         self.region_scope_tree.record_scope_parent(dscope, None);
         self.create_region_hierarchy(
             &RH {
-                id: hir::ItemLocalId(1),
+                id: hir::ItemLocalId::from_u32(1),
                 sub: &[
                     RH {
-                        id: hir::ItemLocalId(10),
+                        id: hir::ItemLocalId::from_u32(10),
                         sub: &[],
                     },
                     RH {
-                        id: hir::ItemLocalId(11),
+                        id: hir::ItemLocalId::from_u32(11),
                         sub: &[],
                     },
                 ],
@@ -400,7 +400,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
         let r = ty::ReScope(region::Scope {
-            id: hir::ItemLocalId(id),
+            id: hir::ItemLocalId::from_u32(id),
             data: region::ScopeData::Node,
         });
         self.infcx

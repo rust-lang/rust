@@ -325,6 +325,16 @@ impl Span {
                                                     |einfo| einfo.edition)
     }
 
+    #[inline]
+    pub fn rust_2015(&self) -> bool {
+        self.edition() == edition::Edition::Edition2015
+    }
+
+    #[inline]
+    pub fn rust_2018(&self) -> bool {
+        self.edition() >= edition::Edition::Edition2018
+    }
+
     /// Return the source callee.
     ///
     /// Returns `None` if the supplied span has no expansion trace,
@@ -577,6 +587,7 @@ impl fmt::Debug for SpanData {
 }
 
 impl MultiSpan {
+    #[inline]
     pub fn new() -> MultiSpan {
         MultiSpan {
             primary_spans: vec![],

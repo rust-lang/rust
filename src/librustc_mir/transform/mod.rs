@@ -72,7 +72,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                       -> Lrc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
 
-    let mut set = DefIdSet();
+    let mut set = DefIdSet::default();
 
     // All body-owners have MIR associated with them.
     set.extend(tcx.body_owners());
@@ -209,9 +209,6 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
 
     let mut mir = tcx.mir_built(def_id).steal();
     run_passes(tcx, &mut mir, def_id, MirPhase::Const, &[
-        // Remove all `EndRegion` statements that are not involved in borrows.
-        &cleanup_post_borrowck::CleanEndRegions,
-
         // What we need to do constant evaluation.
         &simplify::SimplifyCfg::new("initial"),
         &type_check::TypeckMir,

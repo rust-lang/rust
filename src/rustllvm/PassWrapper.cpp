@@ -284,7 +284,7 @@ static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
   report_fatal_error("Bad RelocModel.");
 }
 
-#if LLVM_RUSTLLVM
+#ifdef LLVM_RUSTLLVM
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 ///
 static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {
@@ -922,7 +922,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                               GlobalValue::LinkageTypes NewLinkage) {
     ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
+#if LLVM_VERSION_GE(8, 0)
+  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
+#else
   thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);
+#endif
 
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all
@@ -977,7 +981,11 @@ extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
+#if LLVM_VERSION_GE(8, 0)
+  thinLTOResolvePrevailingInModule(Mod, DefinedGlobals);
+#else
   thinLTOResolveWeakForLinkerModule(Mod, DefinedGlobals);
+#endif
   return true;
 }
 

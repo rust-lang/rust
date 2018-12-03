@@ -121,7 +121,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             parent_def_id,
             body_id,
             param_env,
-            opaque_types: DefIdMap(),
+            opaque_types: Default::default(),
             obligations: vec![],
         };
         let value = instantiator.instantiate_opaque_types_in_map(value);

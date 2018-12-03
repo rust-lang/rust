@@ -400,6 +400,11 @@
 # override the default allocator for rustc and LLVM.
 #jemalloc = false
 
+# Run tests in various test suites with the "nll compare mode" in addition to
+# running the tests in normal mode. Largely only used on CI and during local
+# development of NLL
+#test-compare-mode = false
+
 # =============================================================================
 # Options for specific targets
 #

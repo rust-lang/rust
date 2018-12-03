@@ -30,7 +30,7 @@
 //!
 //! For more information about how rustc works, see the [rustc guide].
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/
 //!
 //! # Note
 //!
@@ -67,7 +67,6 @@
 #![feature(integer_atomics)]
 #![feature(test)]
 #![feature(in_band_lifetimes)]
-#![feature(macro_at_most_once_rep)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
 

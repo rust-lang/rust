@@ -13,12 +13,13 @@
 // need to be fixed when PowerPC vector support is added.
 
 use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
-use abi::{Align, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use abi::{Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {
     ELFv1, // original ABI used for powerpc64 (big-endian)
-    ELFv2, // newer ABI used for powerpc64le
+    ELFv2, // newer ABI used for powerpc64le and musl (both endians)
 }
 use self::ABI::*;
 
@@ -75,7 +76,9 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, abi: ABI)
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
-        let unit = if bits <= 8 {
+        let unit = if cx.data_layout().endian == Endian::Big {
+            Reg { kind: RegKind::Integer, size }
+        } else if bits <= 8 {
             Reg::i8()
         } else if bits <= 16 {
             Reg::i16()
@@ -110,22 +113,15 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
     }
 
     let size = arg.layout.size;
-    let (unit, total) = match abi {
-        ELFv1 => {
-            // In ELFv1, aggregates smaller than a doubleword should appear in
-            // the least-significant bits of the parameter doubleword.  The rest
-            // should be padded at their tail to fill out multiple doublewords.
-            if size.bits() <= 64 {
-                (Reg { kind: RegKind::Integer, size }, size)
-            } else {
-                let align = Align::from_bits(64, 64).unwrap();
-                (Reg::i64(), size.abi_align(align))
-            }
-        },
-        ELFv2 => {
-            // In ELFv2, we can just cast directly.
-            (Reg::i64(), size)
-        },
+    let (unit, total) = if size.bits() <= 64 {
+        // Aggregates smaller than a doubleword should appear in
+        // the least-significant bits of the parameter doubleword.
+        (Reg { kind: RegKind::Integer, size }, size)
+    } else {
+        // Aggregates larger than a doubleword should be padded
+        // at the tail to fill out a whole number of doublewords.
+        let reg_i64 = Reg::i64();
+        (reg_i64, size.align_to(reg_i64.align(cx)))
     };
 
     arg.cast_to(Uniform {
@@ -136,11 +132,15 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
-          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
 {
-    let abi = match cx.data_layout().endian {
-        Endian::Big => ELFv1,
-        Endian::Little => ELFv2,
+    let abi = if cx.target_spec().target_env == "musl" {
+        ELFv2
+    } else {
+        match cx.data_layout().endian {
+            Endian::Big => ELFv1,
+            Endian::Little => ELFv2
+        }
     };
 
     if !fty.ret.is_ignore() {

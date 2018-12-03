@@ -42,27 +42,29 @@ impl Timespec {
     }
 
     fn add_duration(&self, other: &Duration) -> Timespec {
+        self.checked_add_duration(other).expect("overflow when adding duration to time")
+    }
+
+    fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
             .try_into() // <- target type would be `i64`
             .ok()
-            .and_then(|secs| self.t.tv_sec.checked_add(secs))
-            .expect("overflow when adding duration to time");
+            .and_then(|secs| self.t.tv_sec.checked_add(secs))?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
         let mut nsec = other.subsec_nanos() + self.t.tv_nsec as u32;
         if nsec >= NSEC_PER_SEC as u32 {
             nsec -= NSEC_PER_SEC as u32;
-            secs = secs.checked_add(1).expect("overflow when adding \
-                                               duration to time");
+            secs = secs.checked_add(1)?;
         }
-        Timespec {
+        Some(Timespec {
             t: syscall::TimeSpec {
                 tv_sec: secs,
                 tv_nsec: nsec as i32,
             },
-        }
+        })
     }
 
     fn sub_duration(&self, other: &Duration) -> Timespec {
@@ -178,6 +180,10 @@ impl SystemTime {
 
     pub fn add_duration(&self, other: &Duration) -> SystemTime {
         SystemTime { t: self.t.add_duration(other) }
+    }
+
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+        self.t.checked_add_duration(other).map(|t| SystemTime { t })
     }
 
     pub fn sub_duration(&self, other: &Duration) -> SystemTime {

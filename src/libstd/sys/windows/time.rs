@@ -128,9 +128,13 @@ impl SystemTime {
     }
 
     pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        let intervals = self.intervals().checked_add(dur2intervals(other))
-                            .expect("overflow when adding duration to time");
-        SystemTime::from_intervals(intervals)
+        self.checked_add_duration(other).expect("overflow when adding duration to time")
+    }
+
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+        checked_dur2intervals(other)
+            .and_then(|d| self.intervals().checked_add(d))
+            .map(|i| SystemTime::from_intervals(i))
     }
 
     pub fn sub_duration(&self, other: &Duration) -> SystemTime {
@@ -180,11 +184,15 @@ impl Hash for SystemTime {
     }
 }
 
-fn dur2intervals(d: &Duration) -> i64 {
+fn checked_dur2intervals(d: &Duration) -> Option<i64> {
     d.as_secs()
         .checked_mul(INTERVALS_PER_SEC)
         .and_then(|i| i.checked_add(d.subsec_nanos() as u64 / 100))
         .and_then(|i| i.try_into().ok())
+}
+
+fn dur2intervals(d: &Duration) -> i64 {
+    checked_dur2intervals(d)
         .expect("overflow when converting duration to intervals")
 }
 

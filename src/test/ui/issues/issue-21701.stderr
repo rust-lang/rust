@@ -4,7 +4,9 @@ error[E0618]: expected function, found `U`
 LL | fn foo<U>(t: U) {
    |           - `U` defined here
 LL |     let y = t();
-   |             ^^^ not a function
+   |             ^--
+   |             |
+   |             call expression requires function
 
 error[E0618]: expected function, found `Bar`
   --> $DIR/issue-21701.rs:19:13
@@ -13,7 +15,9 @@ LL | struct Bar;
    | ----------- `Bar` defined here
 ...
 LL |     let f = Bar();
-   |             ^^^^^ not a function
+   |             ^^^--
+   |             |
+   |             call expression requires function
 
 error: aborting due to 2 previous errors
 

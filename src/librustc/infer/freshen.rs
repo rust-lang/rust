@@ -170,9 +170,6 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 t
             }
 
-            ty::Bound(..) =>
-                bug!("encountered bound ty during freshening"),
-
             ty::Generator(..) |
             ty::Bool |
             ty::Char |
@@ -200,6 +197,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Opaque(..) => {
                 t.super_fold_with(self)
             }
+
+            ty::Placeholder(..) |
+            ty::Bound(..) => bug!("unexpected type {:?}", t),
         }
     }
 }

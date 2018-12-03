@@ -297,6 +297,7 @@ language_item_table! {
     IndexMutTraitLangItem,       "index_mut",          index_mut_trait,         Target::Trait;
 
     UnsafeCellTypeLangItem,      "unsafe_cell",        unsafe_cell_type,        Target::Struct;
+    VaListTypeLangItem,          "va_list",            va_list,                 Target::Struct;
 
     DerefTraitLangItem,          "deref",              deref_trait,             Target::Trait;
     DerefMutTraitLangItem,       "deref_mut",          deref_mut_trait,         Target::Trait;

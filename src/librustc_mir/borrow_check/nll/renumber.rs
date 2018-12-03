@@ -10,7 +10,7 @@
 
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{BasicBlock, Location, Mir, Statement, StatementKind, UserTypeAnnotation};
+use rustc::mir::{Location, Mir, UserTypeAnnotation};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -118,17 +118,5 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         *substs = self.renumber_regions(substs);
 
         debug!("visit_closure_substs: substs={:?}", substs);
-    }
-
-    fn visit_statement(
-        &mut self,
-        block: BasicBlock,
-        statement: &mut Statement<'tcx>,
-        location: Location,
-    ) {
-        if let StatementKind::EndRegion(_) = statement.kind {
-            statement.kind = StatementKind::Nop;
-        }
-        self.super_statement(block, statement, location);
     }
 }

@@ -938,7 +938,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let var_hir_id = self.tcx().hir.node_to_hir_id(freevar.var_id());
                 let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
                 let upvar_id = ty::UpvarId {
-                    var_id: var_hir_id,
+                    var_path: ty::UpvarPath { hir_id: var_hir_id },
                     closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);

@@ -53,7 +53,7 @@ pub fn expand_test_or_bench(
         if let Annotatable::Item(i) = item { i }
         else {
             cx.parse_sess.span_diagnostic.span_fatal(item.span(),
-                "#[test] attribute is only allowed on fn items").raise();
+                "#[test] attribute is only allowed on non associated functions").raise();
         };
 
     if let ast::ItemKind::Mac(_) = item.node {

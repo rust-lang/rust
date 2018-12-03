@@ -10,7 +10,7 @@ error[E0191]: the value of the associated type `Item` (from the trait `std::iter
   --> $DIR/trait-alias-object.rs:18:13
    |
 LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();
-   |             ^^^^^^^^^^^^^^^^^ missing associated type `Item` value
+   |             ^^^^^^^^^^^^^^^^^ associated type `Item` must be specified
 
 error: aborting due to 2 previous errors
 

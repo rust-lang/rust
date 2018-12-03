@@ -127,7 +127,7 @@ mod test;
 pub mod profile;
 pub mod driver;
 pub mod pretty;
-mod derive_registrar;
+mod proc_macro_decls;
 
 pub mod target_features {
     use syntax::ast;
@@ -643,8 +643,8 @@ impl Compilation {
     }
 }
 
-/// A trait for customising the compilation process. Offers a number of hooks for
-/// executing custom code or customising input.
+/// A trait for customizing the compilation process. Offers a number of hooks for
+/// executing custom code or customizing input.
 pub trait CompilerCalls<'a> {
     /// Hook for a callback early in the process of handling arguments. This will
     /// be called straight after options have been parsed but before anything
@@ -1697,7 +1697,6 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     // FIXME: need to figure out a way to get these back in here
     // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
-    all_errors.extend_from_slice(&rustc_codegen_utils::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_plugin::DIAGNOSTICS);

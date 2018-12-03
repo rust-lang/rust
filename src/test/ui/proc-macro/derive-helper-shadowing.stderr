@@ -1,0 +1,21 @@
+error[E0659]: `my_attr` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/derive-helper-shadowing.rs:6:3
+   |
+LL | #[my_attr] //~ ERROR `my_attr` is ambiguous
+   |   ^^^^^^^ ambiguous name
+   |
+note: `my_attr` could refer to the derive helper attribute defined here
+  --> $DIR/derive-helper-shadowing.rs:7:10
+   |
+LL | #[derive(MyTrait)]
+   |          ^^^^^^^
+note: `my_attr` could also refer to the attribute macro imported here
+  --> $DIR/derive-helper-shadowing.rs:4:5
+   |
+LL | use derive_helper_shadowing::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::my_attr` to refer to this attribute macro unambiguously
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

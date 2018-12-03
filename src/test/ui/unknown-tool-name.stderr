@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve. Use of undeclared type or module `foo`
+error[E0433]: failed to resolve: use of undeclared type or module `foo`
   --> $DIR/unknown-tool-name.rs:11:3
    |
-LL | #[foo::bar] //~ ERROR failed to resolve. Use of undeclared type or module `foo`
-   |   ^^^ Use of undeclared type or module `foo`
+LL | #[foo::bar] //~ ERROR failed to resolve: use of undeclared type or module `foo`
+   |   ^^^ use of undeclared type or module `foo`
 
 error: aborting due to previous error
 

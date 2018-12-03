@@ -591,7 +591,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::plugin_registrar_fn<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::derive_registrar_fn<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::proc_macro_decls_static<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "looking up the derive registrar for a crate".into()
     }

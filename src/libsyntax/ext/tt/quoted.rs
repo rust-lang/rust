@@ -11,13 +11,13 @@
 use ast::NodeId;
 use early_buffered_lints::BufferedEarlyLintId;
 use ext::tt::macro_parser;
-use feature_gate::{self, emit_feature_err, Features, GateIssue};
+use feature_gate::Features;
 use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
 use syntax_pos::{edition::Edition, BytePos, Span};
 use tokenstream::{self, DelimSpan};
-use {ast, attr};
+use ast;
 
 use rustc_data_structures::sync::Lrc;
 use std::iter::Peekable;
@@ -566,8 +566,8 @@ fn parse_sep_and_kleene_op_2018<I>(
     input: &mut Peekable<I>,
     span: Span,
     sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
+    _features: &Features,
+    _attrs: &[ast::Attribute],
 ) -> (Option<token::Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -575,23 +575,8 @@ where
     // We basically look at two token trees here, denoted as #1 and #2 below
     let span = match parse_kleene_op(input, span) {
         // #1 is a `?` (needs feature gate)
-        Ok(Ok((op, op1_span))) if op == KleeneOp::ZeroOrOne => {
-            if !features.macro_at_most_once_rep
-                && !attr::contains_name(attrs, "allow_internal_unstable")
-            {
-                let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
-                emit_feature_err(
-                    sess,
-                    "macro_at_most_once_rep",
-                    op1_span,
-                    GateIssue::Language,
-                    explain,
-                );
-
-                op1_span
-            } else {
-                return (None, op);
-            }
+        Ok(Ok((op, _op1_span))) if op == KleeneOp::ZeroOrOne => {
+            return (None, op);
         }
 
         // #1 is a `+` or `*` KleeneOp
@@ -600,24 +585,12 @@ where
         // #1 is a separator followed by #2, a KleeneOp
         Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
             // #2 is the `?` Kleene op, which does not take a separator (error)
-            Ok(Ok((op, op2_span))) if op == KleeneOp::ZeroOrOne => {
+            Ok(Ok((op, _op2_span))) if op == KleeneOp::ZeroOrOne => {
                 // Error!
-
-                if !features.macro_at_most_once_rep
-                    && !attr::contains_name(attrs, "allow_internal_unstable")
-                {
-                    // FIXME: when `?` as a Kleene op is stabilized, we only need the "does not
-                    // take a macro separator" error (i.e. the `else` case).
-                    sess.span_diagnostic
-                        .struct_span_err(op2_span, "expected `*` or `+`")
-                        .note("`?` is not a macro repetition operator")
-                        .emit();
-                } else {
-                    sess.span_diagnostic.span_err(
-                        span,
-                        "the `?` macro repetition operator does not take a separator",
-                    );
-                }
+                sess.span_diagnostic.span_err(
+                    span,
+                    "the `?` macro repetition operator does not take a separator",
+                );
 
                 // Return a dummy
                 return (None, KleeneOp::ZeroOrMore);
@@ -638,13 +611,8 @@ where
     };
 
     // If we ever get to this point, we have experienced an "unexpected token" error
-
-    if !features.macro_at_most_once_rep && !attr::contains_name(attrs, "allow_internal_unstable") {
-        sess.span_diagnostic.span_err(span, "expected `*` or `+`");
-    } else {
-        sess.span_diagnostic
-            .span_err(span, "expected one of: `*`, `+`, or `?`");
-    }
+    sess.span_diagnostic
+        .span_err(span, "expected one of: `*`, `+`, or `?`");
 
     // Return a dummy
     (None, KleeneOp::ZeroOrMore)

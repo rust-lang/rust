@@ -39,7 +39,7 @@
 //!
 //! // Logger function for any type that implements Debug.
 //! fn log<T: Any + Debug>(value: &T) {
-//!     let value_any = value as &Any;
+//!     let value_any = value as &dyn Any;
 //!
 //!     // try to convert our value to a String.  If successful, we want to
 //!     // output the String's length as well as its value.  If not, it's a
@@ -95,7 +95,7 @@ pub trait Any: 'static {
     ///
     /// use std::any::{Any, TypeId};
     ///
-    /// fn is_string(s: &Any) -> bool {
+    /// fn is_string(s: &dyn Any) -> bool {
     ///     TypeId::of::<String>() == s.get_type_id()
     /// }
     ///
@@ -151,7 +151,7 @@ impl dyn Any {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn is_string(s: &Any) {
+    /// fn is_string(s: &dyn Any) {
     ///     if s.is::<String>() {
     ///         println!("It's a string!");
     ///     } else {
@@ -185,7 +185,7 @@ impl dyn Any {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(s: &Any) {
+    /// fn print_if_string(s: &dyn Any) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
     ///         println!("It's a string({}): '{}'", string.len(), string);
     ///     } else {
@@ -218,7 +218,7 @@ impl dyn Any {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn modify_if_u32(s: &mut Any) {
+    /// fn modify_if_u32(s: &mut dyn Any) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
     ///         *num = 42;
     ///     }
@@ -256,7 +256,7 @@ impl dyn Any+Send {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn is_string(s: &(Any + Send)) {
+    /// fn is_string(s: &(dyn Any + Send)) {
     ///     if s.is::<String>() {
     ///         println!("It's a string!");
     ///     } else {
@@ -282,7 +282,7 @@ impl dyn Any+Send {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(s: &(Any + Send)) {
+    /// fn print_if_string(s: &(dyn Any + Send)) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
     ///         println!("It's a string({}): '{}'", string.len(), string);
     ///     } else {
@@ -308,7 +308,7 @@ impl dyn Any+Send {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn modify_if_u32(s: &mut (Any + Send)) {
+    /// fn modify_if_u32(s: &mut (dyn Any + Send)) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
     ///         *num = 42;
     ///     }
@@ -340,7 +340,7 @@ impl dyn Any+Send+Sync {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn is_string(s: &(Any + Send + Sync)) {
+    /// fn is_string(s: &(dyn Any + Send + Sync)) {
     ///     if s.is::<String>() {
     ///         println!("It's a string!");
     ///     } else {
@@ -366,7 +366,7 @@ impl dyn Any+Send+Sync {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(s: &(Any + Send + Sync)) {
+    /// fn print_if_string(s: &(dyn Any + Send + Sync)) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
     ///         println!("It's a string({}): '{}'", string.len(), string);
     ///     } else {
@@ -392,7 +392,7 @@ impl dyn Any+Send+Sync {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn modify_if_u32(s: &mut (Any + Send + Sync)) {
+    /// fn modify_if_u32(s: &mut (dyn Any + Send + Sync)) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
     ///         *num = 42;
     ///     }

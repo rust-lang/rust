@@ -190,11 +190,12 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs::for_item(tcx, def_id, |param, _| {
             match param.kind {
                 ty::GenericParamDefKind::Type { .. } => {
-                    tcx.mk_ty(ty::Bound(ty::BoundTy {
-                        index: ty::INNERMOST,
-                        var: ty::BoundVar::from(param.index),
-                        kind: ty::BoundTyKind::Param(param.name),
-                    })).into()
+                    tcx.mk_ty(
+                        ty::Bound(ty::INNERMOST, ty::BoundTy {
+                            var: ty::BoundVar::from(param.index),
+                            kind: ty::BoundTyKind::Param(param.name),
+                        })
+                    ).into()
                 }
 
                 ty::GenericParamDefKind::Lifetime => {
@@ -584,18 +585,18 @@ impl CanonicalUserSubsts<'tcx> {
         self.value.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => match ty.sty {
-                    ty::Bound(b) => {
+                    ty::Bound(debruijn, b) => {
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(b.index, ty::INNERMOST);
+                        assert_eq!(debruijn, ty::INNERMOST);
                         cvar == b.var
                     }
                     _ => false,
                 },
 
                 UnpackedKind::Lifetime(r) => match r {
-                    ty::ReLateBound(index, br) => {
+                    ty::ReLateBound(debruijn, br) => {
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(*index, ty::INNERMOST);
+                        assert_eq!(*debruijn, ty::INNERMOST);
                         cvar == br.assert_bound_var()
                     }
                     _ => false,

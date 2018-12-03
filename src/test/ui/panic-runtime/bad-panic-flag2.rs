@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // compile-flags:-C panic
-// error-pattern:requires either `panic` or `abort`
+// error-pattern:requires either `unwind` or `abort`
 
 fn main() {}

@@ -37,7 +37,7 @@ fn main() {
     //~^ ERROR it is undefined behavior to use this value
 
     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
-    //~^ ERROR any use of this value will cause an error
+    //~^ ERROR it is undefined behavior to use this value
 
     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
     //~^ ERROR any use of this value will cause an error
@@ -52,7 +52,7 @@ fn main() {
     //~^ ERROR it is undefined behavior to use this value
 
     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
-    //~^ ERROR any use of this value will cause an error
+    //~^ ERROR it is undefined behavior to use this value
 
     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
     //~^ ERROR any use of this value will cause an error

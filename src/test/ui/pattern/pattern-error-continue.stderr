@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve. Use of undeclared type or module `E`
+error[E0433]: failed to resolve: use of undeclared type or module `E`
   --> $DIR/pattern-error-continue.rs:45:9
    |
-LL |         E::V => {} //~ ERROR failed to resolve. Use of undeclared type or module `E`
-   |         ^ Use of undeclared type or module `E`
+LL |         E::V => {} //~ ERROR failed to resolve: use of undeclared type or module `E`
+   |         ^ use of undeclared type or module `E`
 
 error[E0532]: expected tuple struct/variant, found unit variant `A::D`
   --> $DIR/pattern-error-continue.rs:28:9

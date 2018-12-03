@@ -227,9 +227,9 @@ install:
             chmod +x /usr/local/bin/sccache &&
           travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/stamp &&
-          travis_retry curl -f http://releases.llvm.org/6.0.0/clang+llvm-6.0.0-x86_64-apple-darwin.tar.xz | tar xJf - &&
-            export CC=`pwd`/clang+llvm-6.0.0-x86_64-apple-darwin/bin/clang &&
-            export CXX=`pwd`/clang+llvm-6.0.0-x86_64-apple-darwin/bin/clang++ &&
+          travis_retry curl -f http://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-apple-darwin.tar.xz | tar xJf - &&
+            export CC=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang &&
+            export CXX=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang++ &&
             export AR=ar
           ;;
     esac

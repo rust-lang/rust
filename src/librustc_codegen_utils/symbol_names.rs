@@ -79,7 +79,7 @@
 //! - In order to be able to also use symbols from two versions of the same
 //!   crate (which naturally also have the same name), a stronger measure is
 //!   required: The compiler accepts an arbitrary "disambiguator" value via the
-//!   `-C metadata` commandline argument. This disambiguator is then fed into
+//!   `-C metadata` command-line argument. This disambiguator is then fed into
 //!   the symbol hash of every exported item. Consequently, the symbols in two
 //!   identical crates but with different disambiguators are not in conflict
 //!   with each other. This facility is mainly intended to be used by build
@@ -257,9 +257,9 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if *tcx.sess.derive_registrar_fn.get() == Some(id) {
+        if *tcx.sess.proc_macro_decls_static.get() == Some(id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_derive_registrar_symbol(disambiguator);
+            return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
     }
 

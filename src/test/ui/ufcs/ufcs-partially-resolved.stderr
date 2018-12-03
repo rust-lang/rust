@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve. Not a module `Y`
+error[E0433]: failed to resolve: not a module `Y`
   --> $DIR/ufcs-partially-resolved.rs:58:22
    |
-LL |     let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve. Not a module `Y`
-   |                      ^ Not a module `Y`
+LL |     let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve: not a module `Y`
+   |                      ^ not a module `Y`
 
-error[E0433]: failed to resolve. Not a module `Y`
+error[E0433]: failed to resolve: not a module `Y`
   --> $DIR/ufcs-partially-resolved.rs:60:15
    |
-LL |     <u8 as E::Y>::NN; //~ ERROR failed to resolve. Not a module `Y`
-   |               ^ Not a module `Y`
+LL |     <u8 as E::Y>::NN; //~ ERROR failed to resolve: not a module `Y`
+   |               ^ not a module `Y`
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:29:24

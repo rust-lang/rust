@@ -1122,7 +1122,7 @@ impl From<fs::File> for Stdio {
     /// let file = File::open("foo.txt").unwrap();
     ///
     /// let reverse = Command::new("rev")
-    ///     .stdin(file)  // Implicit File convertion into a Stdio
+    ///     .stdin(file)  // Implicit File conversion into a Stdio
     ///     .output()
     ///     .expect("failed reverse command");
     ///
@@ -1340,7 +1340,7 @@ impl Child {
     /// Attempts to collect the exit status of the child if it has already
     /// exited.
     ///
-    /// This function will not block the calling thread and will only advisorily
+    /// This function will not block the calling thread and will only
     /// check to see if the child process has exited or not. If the child has
     /// exited then on Unix the process id is reaped. This function is
     /// guaranteed to repeatedly return a successful exit status so long as the
@@ -1887,42 +1887,6 @@ mod tests {
         let mut cmd = Command::new("cmd");
         cmd.arg("/c").arg("set");
         cmd
-    }
-
-    #[test]
-    fn test_inherit_env() {
-        use env;
-
-        let result = env_cmd().output().unwrap();
-        let output = String::from_utf8(result.stdout).unwrap();
-
-        for (ref k, ref v) in env::vars() {
-            // Don't check android RANDOM variable which seems to change
-            // whenever the shell runs, and our `env_cmd` is indeed running a
-            // shell which means it'll get a different RANDOM than we probably
-            // have.
-            //
-            // Also skip env vars with `-` in the name on android because, well,
-            // I'm not sure. It appears though that the `set` command above does
-            // not print env vars with `-` in the name, so we just skip them
-            // here as we won't find them in the output. Note that most env vars
-            // use `_` instead of `-`, but our build system sets a few env vars
-            // with `-` in the name.
-            if cfg!(target_os = "android") &&
-               (*k == "RANDOM" || k.contains("-")) {
-                continue
-            }
-
-            // Windows has hidden environment variables whose names start with
-            // equals signs (`=`). Those do not show up in the output of the
-            // `set` command.
-            assert!((cfg!(windows) && k.starts_with("=")) ||
-                    k.starts_with("DYLD") ||
-                    output.contains(&format!("{}={}", *k, *v)) ||
-                    output.contains(&format!("{}='{}'", *k, *v)),
-                    "output doesn't contain `{}={}`\n{}",
-                    k, v, output);
-        }
     }
 
     #[test]

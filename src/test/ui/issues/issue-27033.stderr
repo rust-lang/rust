@@ -8,7 +8,7 @@ error[E0530]: match bindings cannot shadow constants
   --> $DIR/issue-27033.rs:17:9
    |
 LL |     const C: u8 = 1;
-   |     ---------------- a constant `C` is defined here
+   |     ---------------- the constant `C` is defined here
 LL |     match 1 {
 LL |         C @ 2 => { //~ ERROR match bindings cannot shadow constant
    |         ^ cannot be named the same as a constant

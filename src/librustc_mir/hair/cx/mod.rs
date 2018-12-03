@@ -26,12 +26,12 @@ use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::layout::VariantIdx;
-use syntax::ast::{self, LitKind};
+use syntax::ast;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use hair::pattern::parse_float;
+use hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -131,7 +131,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty::Const::from_bool(self.tcx, false)
     }
 
-    // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
     pub fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
@@ -141,61 +140,19 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     ) -> &'tcx ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
-        let parse_float = |num, fty| -> ConstValue<'tcx> {
-            parse_float(num, fty, neg).unwrap_or_else(|_| {
+        match lit_to_const(lit, self.tcx, ty, neg) {
+            Ok(c) => c,
+            Err(LitToConstError::UnparseableFloat) => {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
-                self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
-            })
-        };
-
-        let trunc = |n| {
-            let param_ty = self.param_env.and(self.tcx.lift_to_global(&ty).unwrap());
-            let width = self.tcx.layout_of(param_ty).unwrap().size;
-            trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
-            let shift = 128 - width.bits();
-            let result = (n << shift) >> shift;
-            trace!("trunc result: {}", result);
-            ConstValue::Scalar(Scalar::Bits {
-                bits: result,
-                size: width.bytes() as u8,
-            })
-        };
-
-        use rustc::mir::interpret::*;
-        let lit = match *lit {
-            LitKind::Str(ref s, _) => {
-                let s = s.as_str();
-                let id = self.tcx.allocate_bytes(s.as_bytes());
-                ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, &self.tcx)
+                self.tcx.sess.span_err(sp, "could not evaluate float literal (see issue #31407)");
+                // create a dummy value and continue compiling
+                Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             },
-            LitKind::ByteStr(ref data) => {
-                let id = self.tcx.allocate_bytes(data);
-                ConstValue::Scalar(Scalar::Ptr(id.into()))
-            },
-            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
-                bits: n as u128,
-                size: 1,
-            }),
-            LitKind::Int(n, _) if neg => {
-                let n = n as i128;
-                let n = n.overflowing_neg().0;
-                trunc(n as u128)
-            },
-            LitKind::Int(n, _) => trunc(n),
-            LitKind::Float(n, fty) => {
-                parse_float(n, fty)
+            Err(LitToConstError::Reported) => {
+                // create a dummy value and continue compiling
+                Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             }
-            LitKind::FloatUnsuffixed(n) => {
-                let fty = match ty.sty {
-                    ty::Float(fty) => fty,
-                    _ => bug!()
-                };
-                parse_float(n, fty)
-            }
-            LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
-            LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
-        };
-        ty::Const::from_const_value(self.tcx, lit, ty)
+        }
     }
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {

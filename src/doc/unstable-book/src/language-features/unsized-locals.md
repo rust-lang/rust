@@ -80,8 +80,6 @@ fn main() {
 }
 ```
 
-However, the current implementation allows `MyTupleStruct(..)` to be unsized. This will be fixed in the future.
-
 ## By-value trait objects
 
 With this feature, you can have by-value `self` arguments without `Self: Sized` bounds.

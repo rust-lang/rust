@@ -24,7 +24,7 @@ use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::fx::FxHashMap;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut used_trait_imports = DefIdSet();
+    let mut used_trait_imports = DefIdSet::default();
     for &body_id in tcx.hir.krate().bodies.keys() {
         let item_def_id = tcx.hir.body_owner_def_id(body_id);
         let imports = tcx.used_trait_imports(item_def_id);
@@ -113,11 +113,12 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             true
         })
         .filter(|&&(def_id, _)| {
-            let cnum = tcx.extern_mod_stmt_cnum(def_id).unwrap();
-            !tcx.is_compiler_builtins(cnum)
-                && !tcx.is_panic_runtime(cnum)
-                && !tcx.has_global_allocator(cnum)
-                && !tcx.has_panic_handler(cnum)
+            tcx.extern_mod_stmt_cnum(def_id).map_or(true, |cnum| {
+                !tcx.is_compiler_builtins(cnum) &&
+                !tcx.is_panic_runtime(cnum) &&
+                !tcx.has_global_allocator(cnum) &&
+                !tcx.has_panic_handler(cnum)
+            })
         })
         .cloned()
         .collect();
@@ -185,7 +186,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             Some(orig_name) => format!("use {} as {};", orig_name, item.name),
             None => format!("use {};", item.name),
         };
-        let replacement = visibility_qualified(&item.vis, &base_replacement);
+        let replacement = visibility_qualified(&item.vis, base_replacement);
         tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
             .span_suggestion_short_with_applicability(
                 extern_crate.span,

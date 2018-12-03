@@ -22,7 +22,7 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Stdio, exit};
 use std::str;
 
 use build_helper::{output, mtime, up_to_date};
@@ -1098,7 +1098,7 @@ pub fn run_cargo(builder: &Builder,
     });
 
     if !ok {
-        panic!("cargo must succeed");
+        exit(1);
     }
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've

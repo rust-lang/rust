@@ -60,7 +60,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match intrinsic_name {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
-                let elem_align = self.layout_of(elem_ty)?.align.abi();
+                let elem_align = self.layout_of(elem_ty)?.align.abi.bytes();
                 let align_val = Scalar::from_uint(elem_align, dest.layout.size);
                 self.write_scalar(align_val, dest)?;
             }
@@ -201,8 +201,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         } else if Some(def_id) == self.tcx.lang_items().panic_fn() {
             assert!(args.len() == 1);
             // &(&'static str, &'static str, u32, u32)
-            let ptr = self.read_immediate(args[0])?;
-            let place = self.ref_to_mplace(ptr)?;
+            let place = self.deref_operand(args[0])?;
             let (msg, file, line, col) = (
                 self.mplace_field(place, 0)?,
                 self.mplace_field(place, 1)?,
@@ -210,9 +209,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.mplace_field(place, 3)?,
             );
 
-            let msg_place = self.ref_to_mplace(self.read_immediate(msg.into())?)?;
+            let msg_place = self.deref_operand(msg.into())?;
             let msg = Symbol::intern(self.read_str(msg_place)?);
-            let file_place = self.ref_to_mplace(self.read_immediate(file.into())?)?;
+            let file_place = self.deref_operand(file.into())?;
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
@@ -221,17 +220,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
             let msg = args[0];
-            let ptr = self.read_immediate(args[1])?;
-            let place = self.ref_to_mplace(ptr)?;
+            let place = self.deref_operand(args[1])?;
             let (file, line, col) = (
                 self.mplace_field(place, 0)?,
                 self.mplace_field(place, 1)?,
                 self.mplace_field(place, 2)?,
             );
 
-            let msg_place = self.ref_to_mplace(self.read_immediate(msg.into())?)?;
+            let msg_place = self.deref_operand(msg.into())?;
             let msg = Symbol::intern(self.read_str(msg_place)?);
-            let file_place = self.ref_to_mplace(self.read_immediate(file.into())?)?;
+            let file_place = self.deref_operand(file.into())?;
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;

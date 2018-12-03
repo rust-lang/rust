@@ -11,7 +11,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a b);
-   |           -^ no rules expected the token `b`
+   |           -^ no rules expected this token in macro call
    |           |
    |           help: missing comma here
 
@@ -22,7 +22,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a, b, c, d e);
-   |                    -^ no rules expected the token `e`
+   |                    -^ no rules expected this token in macro call
    |                    |
    |                    help: missing comma here
 
@@ -33,7 +33,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a, b, c d, e);
-   |                 -^ no rules expected the token `d`
+   |                 -^ no rules expected this token in macro call
    |                 |
    |                 help: missing comma here
 
@@ -44,7 +44,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a, b, c d e);
-   |                  ^ no rules expected the token `d`
+   |                  ^ no rules expected this token in macro call
 
 error: aborting due to 5 previous errors
 

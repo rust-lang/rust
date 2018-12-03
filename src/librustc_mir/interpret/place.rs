@@ -20,12 +20,10 @@ use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
 
-use rustc::mir::interpret::{
-    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic
-};
 use super::{
+    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
     EvalContext, Machine, AllocMap, AllocationExtra,
-    Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
+    RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -129,7 +127,7 @@ impl<Tag> MemPlace<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     pub fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1).unwrap())
     }
 
     #[inline(always)]
@@ -151,6 +149,29 @@ impl<Tag> MemPlace<Tag> {
         // it now must be aligned.
         self.to_scalar_ptr_align().0.to_ptr()
     }
+
+    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// This is the inverse of `ref_to_mplace`.
+    #[inline(always)]
+    pub fn to_ref(self) -> Immediate<Tag> {
+        match self.meta {
+            None => Immediate::Scalar(self.ptr.into()),
+            Some(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
+        }
+    }
+
+    pub fn offset(
+        self,
+        offset: Size,
+        meta: Option<Scalar<Tag>>,
+        cx: &impl HasDataLayout,
+    ) -> EvalResult<'tcx, Self> {
+        Ok(MemPlace {
+            ptr: self.ptr.ptr_offset(offset, cx)?,
+            align: self.align.restrict_for_offset(offset),
+            meta,
+        })
+    }
 }
 
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
@@ -159,16 +180,29 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         MPlaceTy {
             mplace: MemPlace::from_scalar_ptr(
-                Scalar::from_uint(layout.align.abi(), cx.pointer_size()),
-                layout.align
+                Scalar::from_uint(layout.align.abi.bytes(), cx.pointer_size()),
+                layout.align.abi
             ),
             layout
         }
     }
 
+    pub fn offset(
+        self,
+        offset: Size,
+        meta: Option<Scalar<Tag>>,
+        layout: TyLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> EvalResult<'tcx, Self> {
+        Ok(MPlaceTy {
+            mplace: self.mplace.offset(offset, meta, cx)?,
+            layout,
+        })
+    }
+
     #[inline]
     fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
-        MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align), layout }
+        MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
     }
 
     #[inline]
@@ -261,13 +295,17 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
 impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
 where
+    // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
+    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
-    M::AllocExtra: AllocationExtra<Tag>,
+    M::AllocExtra: AllocationExtra<Tag, M::MemoryExtra>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
-    /// Alignment is just based on the type.  This is the inverse of `create_ref`.
+    /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
+    /// This does NOT call the "deref" machine hook, so it does NOT count as a
+    /// deref as far as Stacked Borrows is concerned.  Use `deref_operand` for that!
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
@@ -275,42 +313,35 @@ where
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
 
-        let align = layout.align;
-        let meta = val.to_meta()?;
-        let ptr = val.to_scalar_ptr()?;
-        let mplace = MemPlace { ptr, align, meta };
-        let mut mplace = MPlaceTy { mplace, layout };
-        // Pointer tag tracking might want to adjust the tag.
-        if M::ENABLE_PTR_TRACKING_HOOKS {
-            let mutbl = match val.layout.ty.sty {
-                // `builtin_deref` considers boxes immutable, that's useless for our purposes
-                ty::Ref(_, _, mutbl) => Some(mutbl),
-                ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
-                ty::RawPtr(_) => None,
-                _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
-            };
-            mplace.mplace.ptr = M::tag_dereference(self, mplace, mutbl)?;
-        }
-        // Done
-        Ok(mplace)
+        let mplace = MemPlace {
+            ptr: val.to_scalar_ptr()?,
+            align: layout.align.abi,
+            meta: val.to_meta()?,
+        };
+        Ok(MPlaceTy { mplace, layout })
     }
 
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
-    /// This is the inverse of `ref_to_mplace`.
-    /// `mutbl` indicates whether we are create a shared or mutable ref, or a raw pointer (`None`).
-    pub fn create_ref(
-        &mut self,
-        mut place: MPlaceTy<'tcx, M::PointerTag>,
-        mutbl: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
-        // Pointer tag tracking might want to adjust the tag
-        if M::ENABLE_PTR_TRACKING_HOOKS {
-            place.mplace.ptr = M::tag_reference(self, place, mutbl)?
-        }
-        Ok(match place.meta {
-            None => Immediate::Scalar(place.ptr.into()),
-            Some(meta) => Immediate::ScalarPair(place.ptr.into(), meta.into()),
-        })
+    // Take an operand, representing a pointer, and dereference it to a place -- that
+    // will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    // This calls the "deref" machine hook, and counts as a deref as far as
+    // Stacked Borrows is concerned.
+    pub fn deref_operand(
+        &self,
+        src: OpTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let val = self.read_immediate(src)?;
+        trace!("deref to {} on {:?}", val.layout.ty, *val);
+        let mut place = self.ref_to_mplace(val)?;
+        // Pointer tag tracking might want to adjust the tag.
+        let mutbl = match val.layout.ty.sty {
+            // `builtin_deref` considers boxes immutable, that's useless for our purposes
+            ty::Ref(_, _, mutbl) => Some(mutbl),
+            ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
+            ty::RawPtr(_) => None,
+            _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
+        };
+        place.mplace.ptr = M::tag_dereference(self, place, mutbl)?;
+        Ok(place)
     }
 
     /// Offset a pointer to project to a field. Unlike place_field, this is always
@@ -346,22 +377,27 @@ where
         // Offset may need adjustment for unsized fields
         let (meta, offset) = if field_layout.is_unsized() {
             // re-use parent metadata to determine dynamic field layout
-            let (_, align) = self.size_and_align_of(base.meta, field_layout)?
-                .expect("Fields cannot be extern types");
-            (base.meta, offset.abi_align(align))
+            let align = match self.size_and_align_of(base.meta, field_layout)? {
+                Some((_, align)) => align,
+                None if offset == Size::ZERO =>
+                    // An extern type at offset 0, we fall back to its static alignment.
+                    // FIXME: Once we have made decisions for how to handle size and alignment
+                    // of `extern type`, this should be adapted.  It is just a temporary hack
+                    // to get some code to work that probably ought to work.
+                    field_layout.align.abi,
+                None =>
+                    bug!("Cannot compute offset for extern type field at non-0 offset"),
+            };
+            (base.meta, offset.align_to(align))
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
             // struct.
             (None, offset)
         };
 
-        let ptr = base.ptr.ptr_offset(offset, self)?;
-        let align = base.align
-            // We do not look at `base.layout.align` nor `field_layout.align`, unlike
-            // codegen -- mostly to see if we can get away with that
-            .restrict_for_offset(offset); // must be last thing that happens
-
-        Ok(MPlaceTy { mplace: MemPlace { ptr, align, meta }, layout: field_layout })
+        // We do not look at `base.layout.align` nor `field_layout.align`, unlike
+        // codegen -- mostly to see if we can get away with that
+        base.offset(offset, meta, field_layout, self)
     }
 
     // Iterates over all fields of an array. Much more efficient than doing the
@@ -379,13 +415,7 @@ where
         };
         let layout = base.layout.field(self, 0)?;
         let dl = &self.tcx.data_layout;
-        Ok((0..len).map(move |i| {
-            let ptr = base.ptr.ptr_offset(i * stride, dl)?;
-            Ok(MPlaceTy {
-                mplace: MemPlace { ptr, align: base.align, meta: None },
-                layout
-            })
-        }))
+        Ok((0..len).map(move |i| base.offset(i * stride, None, layout, dl)))
     }
 
     pub fn mplace_subslice(
@@ -404,7 +434,6 @@ where
                 stride * from,
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
-        let ptr = base.ptr.ptr_offset(from_offset, self)?;
 
         // Compute meta and new layout
         let inner_len = len - to - from;
@@ -421,11 +450,7 @@ where
                 bug!("cannot subslice non-array type: `{:?}`", base.layout.ty),
         };
         let layout = self.layout_of(ty)?;
-
-        Ok(MPlaceTy {
-            mplace: MemPlace { ptr, align: base.align, meta },
-            layout
-        })
+        base.offset(from_offset, meta, layout, self)
     }
 
     pub fn mplace_downcast(
@@ -541,16 +566,10 @@ where
         Ok(match *mir_place {
             Promoted(ref promoted) => {
                 let instance = self.frame().instance;
-                let op = self.global_to_op(GlobalId {
+                self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted.0),
-                })?;
-                let mplace = op.to_mem_place(); // these are always in memory
-                let ty = self.monomorphize(promoted.1, self.substs());
-                MPlaceTy {
-                    mplace,
-                    layout: self.layout_of(ty)?,
-                }
+                })?
             }
 
             Static(ref static_) => {
@@ -707,11 +726,13 @@ where
 
         // Nothing to do for ZSTs, other than checking alignment
         if dest.layout.is_zst() {
-            self.memory.check_align(ptr, ptr_align)?;
-            return Ok(());
+            return self.memory.check_align(ptr, ptr_align);
         }
 
+        // check for integer pointers before alignment to report better errors
         let ptr = ptr.to_ptr()?;
+        self.memory.check_align(ptr.into(), ptr_align)?;
+        let tcx = &*self.tcx;
         // FIXME: We should check that there are dest.layout.size many bytes available in
         // memory.  The code below is not sufficient, with enough padding it might not
         // cover all the bytes!
@@ -722,9 +743,8 @@ where
                     _ => bug!("write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                             dest.layout)
                 }
-
-                self.memory.write_scalar(
-                    ptr, ptr_align.min(dest.layout.align), scalar, dest.layout.size
+                self.memory.get_mut(ptr.alloc_id)?.write_scalar(
+                    tcx, ptr, scalar, dest.layout.size
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
@@ -734,16 +754,22 @@ where
                               dest.layout)
                 };
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let (a_align, b_align) = (a.align(self), b.align(self));
-                let b_offset = a_size.abi_align(b_align);
-                let b_ptr = ptr.offset(b_offset, self)?.into();
+                let b_offset = a_size.align_to(b.align(self).abi);
+                let b_align = ptr_align.restrict_for_offset(b_offset);
+                let b_ptr = ptr.offset(b_offset, self)?;
+
+                self.memory.check_align(b_ptr.into(), b_align)?;
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
                 // fields do not match the `ScalarPair` components.
 
-                self.memory.write_scalar(ptr, ptr_align.min(a_align), a_val, a_size)?;
-                self.memory.write_scalar(b_ptr, ptr_align.min(b_align), b_val, b_size)
+                self.memory
+                    .get_mut(ptr.alloc_id)?
+                    .write_scalar(tcx, ptr, a_val, a_size)?;
+                self.memory
+                    .get_mut(b_ptr.alloc_id)?
+                    .write_scalar(tcx, b_ptr, b_val, b_size)
             }
         }
     }
@@ -893,7 +919,7 @@ where
             // FIXME: What should we do here? We should definitely also tag!
             Ok(MPlaceTy::dangling(layout, self))
         } else {
-            let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
+            let ptr = self.memory.allocate(layout.size, layout.align.abi, kind)?;
             let ptr = M::tag_new_allocation(self, ptr, kind)?;
             Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
         }
@@ -967,6 +993,19 @@ where
         Ok(OpTy { op, layout: place.layout })
     }
 
+    pub fn raw_const_to_mplace(
+        &self,
+        raw: RawConst<'tcx>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        // This must be an allocation in `tcx`
+        assert!(self.tcx.alloc_map.lock().get(raw.alloc_id).is_some());
+        let layout = self.layout_of(raw.ty)?;
+        Ok(MPlaceTy::from_aligned_ptr(
+            Pointer::new(raw.alloc_id, Size::ZERO).with_default_tag(),
+            layout,
+        ))
+    }
+
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.
     /// Also return some more information so drop doesn't have to run the same code twice.
     pub(super) fn unpack_dyn_trait(&self, mplace: MPlaceTy<'tcx, M::PointerTag>)
@@ -979,7 +1018,8 @@ where
         if cfg!(debug_assertions) {
             let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
             assert_eq!(size, layout.size);
-            assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
+            // only ABI alignment is preserved
+            assert_eq!(align, layout.align.abi);
         }
 
         let mplace = MPlaceTy {

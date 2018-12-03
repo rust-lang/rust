@@ -2,7 +2,7 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-import.rs:13:5
    |
 LL | use foo::bar; //~ ERROR unresolved import `foo` [E0432]
-   |     ^^^ Maybe a missing `extern crate foo;`?
+   |     ^^^ maybe a missing `extern crate foo;`?
 
 error[E0432]: unresolved import `bar::Baz`
   --> $DIR/unresolved-import.rs:16:5
@@ -26,13 +26,13 @@ error[E0432]: unresolved import `MyEnum`
   --> $DIR/unresolved-import.rs:44:9
    |
 LL |     use MyEnum::*; //~ ERROR unresolved import `MyEnum` [E0432]
-   |         ^^^^^^ Did you mean `self::MyEnum`?
+   |         ^^^^^^ did you mean `self::MyEnum`?
 
 error[E0432]: unresolved import `Enum`
   --> $DIR/unresolved-import.rs:53:9
    |
 LL |     use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
-   |         ^^^^ Did you mean `self::Enum`?
+   |         ^^^^ did you mean `self::Enum`?
 
 error: aborting due to 6 previous errors
 

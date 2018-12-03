@@ -19,6 +19,7 @@ pub(crate) use self::check_match::check_match;
 use const_eval::{const_field, const_variant_index};
 
 use hair::util::UserAnnotatedTyHelpers;
+use hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
@@ -37,7 +38,6 @@ use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::symbol::Symbol;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
@@ -891,12 +891,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         *self.const_to_pat(instance, val, expr.hir_id, lit.span).kind
                     },
-                    Err(e) => {
-                        if e == LitToConstError::UnparseableFloat {
-                            self.errors.push(PatternError::FloatBug);
-                        }
+                    Err(LitToConstError::UnparseableFloat) => {
+                        self.errors.push(PatternError::FloatBug);
                         PatternKind::Wild
                     },
+                    Err(LitToConstError::Reported) => PatternKind::Wild,
                 }
             },
             hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
@@ -914,12 +913,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         *self.const_to_pat(instance, val, expr.hir_id, lit.span).kind
                     },
-                    Err(e) => {
-                        if e == LitToConstError::UnparseableFloat {
-                            self.errors.push(PatternError::FloatBug);
-                        }
+                    Err(LitToConstError::UnparseableFloat) => {
+                        self.errors.push(PatternError::FloatBug);
                         PatternKind::Wild
                     },
+                    Err(LitToConstError::Reported) => PatternKind::Wild,
                 }
             }
             _ => span_bug!(expr.span, "not a literal: {:?}", expr),
@@ -1293,125 +1291,4 @@ pub fn compare_const_vals<'a, 'tcx>(
     }
 
     fallback()
-}
-
-#[derive(PartialEq)]
-enum LitToConstError {
-    UnparseableFloat,
-    Propagated,
-}
-
-// FIXME: Combine with rustc_mir::hair::cx::const_eval_literal
-fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          ty: Ty<'tcx>,
-                          neg: bool)
-                          -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
-    use syntax::ast::*;
-
-    use rustc::mir::interpret::*;
-    let lit = match *lit {
-        LitKind::Str(ref s, _) => {
-            let s = s.as_str();
-            let id = tcx.allocate_bytes(s.as_bytes());
-            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, &tcx)
-        },
-        LitKind::ByteStr(ref data) => {
-            let id = tcx.allocate_bytes(data);
-            ConstValue::Scalar(Scalar::Ptr(id.into()))
-        },
-        LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
-            bits: n as u128,
-            size: 1,
-        }),
-        LitKind::Int(n, _) => {
-            enum Int {
-                Signed(IntTy),
-                Unsigned(UintTy),
-            }
-            let ity = match ty.sty {
-                ty::Int(IntTy::Isize) => Int::Signed(tcx.sess.target.isize_ty),
-                ty::Int(other) => Int::Signed(other),
-                ty::Uint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
-                ty::Uint(other) => Int::Unsigned(other),
-                ty::Error => { // Avoid ICE (#51963)
-                    return Err(LitToConstError::Propagated);
-                }
-                _ => bug!("literal integer type with bad type ({:?})", ty.sty),
-            };
-            // This converts from LitKind::Int (which is sign extended) to
-            // Scalar::Bytes (which is zero extended)
-            let n = match ity {
-                // FIXME(oli-obk): are these casts correct?
-                Int::Signed(IntTy::I8) if neg =>
-                    (n as i8).overflowing_neg().0 as u8 as u128,
-                Int::Signed(IntTy::I16) if neg =>
-                    (n as i16).overflowing_neg().0 as u16 as u128,
-                Int::Signed(IntTy::I32) if neg =>
-                    (n as i32).overflowing_neg().0 as u32 as u128,
-                Int::Signed(IntTy::I64) if neg =>
-                    (n as i64).overflowing_neg().0 as u64 as u128,
-                Int::Signed(IntTy::I128) if neg =>
-                    (n as i128).overflowing_neg().0 as u128,
-                Int::Signed(IntTy::I8) | Int::Unsigned(UintTy::U8) => n as u8 as u128,
-                Int::Signed(IntTy::I16) | Int::Unsigned(UintTy::U16) => n as u16 as u128,
-                Int::Signed(IntTy::I32) | Int::Unsigned(UintTy::U32) => n as u32 as u128,
-                Int::Signed(IntTy::I64) | Int::Unsigned(UintTy::U64) => n as u64 as u128,
-                Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
-                _ => bug!(),
-            };
-            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bytes() as u8;
-            ConstValue::Scalar(Scalar::Bits {
-                bits: n,
-                size,
-            })
-        },
-        LitKind::Float(n, fty) => {
-            parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
-        }
-        LitKind::FloatUnsuffixed(n) => {
-            let fty = match ty.sty {
-                ty::Float(fty) => fty,
-                _ => bug!()
-            };
-            parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
-        }
-        LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
-        LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
-    };
-    Ok(ty::Const::from_const_value(tcx, lit, ty))
-}
-
-pub fn parse_float<'tcx>(
-    num: Symbol,
-    fty: ast::FloatTy,
-    neg: bool,
-) -> Result<ConstValue<'tcx>, ()> {
-    let num = num.as_str();
-    use rustc_apfloat::ieee::{Single, Double};
-    use rustc_apfloat::Float;
-    let (bits, size) = match fty {
-        ast::FloatTy::F32 => {
-            num.parse::<f32>().map_err(|_| ())?;
-            let mut f = num.parse::<Single>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
-            });
-            if neg {
-                f = -f;
-            }
-            (f.to_bits(), 4)
-        }
-        ast::FloatTy::F64 => {
-            num.parse::<f64>().map_err(|_| ())?;
-            let mut f = num.parse::<Double>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
-            });
-            if neg {
-                f = -f;
-            }
-            (f.to_bits(), 8)
-        }
-    };
-
-    Ok(ConstValue::Scalar(Scalar::Bits { bits, size }))
 }

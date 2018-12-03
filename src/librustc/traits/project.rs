@@ -204,7 +204,7 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
         let (placeholder_predicate, placeholder_map) =
-            infcx.replace_late_bound_regions_with_placeholders(&obligation.predicate);
+            infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
 
         let skol_obligation = obligation.with(placeholder_predicate);
         let r = match project_and_unify_type(selcx, &skol_obligation) {
@@ -424,7 +424,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
-                if substs.needs_infer() || substs.has_skol() {
+                if substs.needs_infer() || substs.has_placeholders() {
                     let identity_substs = Substs::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
                     if let Some(instance) = instance {
@@ -1652,15 +1652,15 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.rollback_to(&snapshot.snapshot);
+        self.map.rollback_to(snapshot.snapshot);
     }
 
     pub fn rollback_placeholder(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_skol());
+        self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_placeholders());
     }
 
-    pub fn commit(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.commit(&snapshot.snapshot);
+    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.commit(snapshot.snapshot);
     }
 
     /// Try to start normalize `key`; returns an error if
@@ -1714,12 +1714,8 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// to be a NormalizedTy.
     pub fn complete_normalized(&mut self, key: ProjectionCacheKey<'tcx>, ty: &NormalizedTy<'tcx>) {
         // We want to insert `ty` with no obligations. If the existing value
-        // already has no obligations (as is common) we can use `insert_noop`
-        // to do a minimal amount of work -- the HashMap insertion is skipped,
-        // and minimal changes are made to the undo log.
-        if ty.obligations.is_empty() {
-            self.map.insert_noop();
-        } else {
+        // already has no obligations (as is common) we don't insert anything.
+        if !ty.obligations.is_empty() {
             self.map.insert(key, ProjectionCacheEntry::NormalizedTy(Normalized {
                 value: ty.value,
                 obligations: vec![]

@@ -62,18 +62,15 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
         }
 
         const TAG_CONT_U8: u8 = 128;
-        fn unsafe_get(xs: &[u8], i: usize) -> u8 {
-            unsafe { *xs.get_unchecked(i) }
-        }
         fn safe_get(xs: &[u8], i: usize) -> u8 {
-            if i >= xs.len() { 0 } else { unsafe_get(xs, i) }
+            *xs.get(i).unwrap_or(&0)
         }
 
         let mut i = 0;
         while i < self.source.len() {
             let i_ = i;
 
-            let byte = unsafe_get(self.source, i);
+            let byte = unsafe { *self.source.get_unchecked(i) };
             i += 1;
 
             if byte < 128 {

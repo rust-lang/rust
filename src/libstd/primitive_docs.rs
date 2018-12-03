@@ -22,7 +22,7 @@
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// [`if`] always demands a `bool` value. [`assert!`], being an important macro in testing,
+/// `if` always demands a `bool` value. [`assert!`], being an important macro in testing,
 /// checks whether an expression returns `true`.
 ///
 /// ```
@@ -31,7 +31,6 @@
 /// ```
 ///
 /// [`assert!`]: macro.assert.html
-/// [`if`]: ../book/first-edition/if.html
 /// [`BitAnd`]: ops/trait.BitAnd.html
 /// [`BitOr`]: ops/trait.BitOr.html
 /// [`Not`]: ops/trait.Not.html
@@ -695,7 +694,7 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
-/// For more about tuples, see [the book](../book/first-edition/primitive-types.html#tuples).
+/// For more about tuples, see [the book](../book/ch03-02-data-types.html#the-tuple-type).
 ///
 /// # Trait implementations
 ///

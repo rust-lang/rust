@@ -33,14 +33,14 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
     ) -> &RequiredPredicates<'tcx> {
         self.map.entry(def_id).or_insert_with(|| {
             let predicates = if def_id.is_local() {
-                tcx.explicit_predicates_of(def_id).predicates
+                tcx.explicit_predicates_of(def_id)
             } else {
-                tcx.predicates_of(def_id).predicates
+                tcx.predicates_of(def_id)
             };
             let mut required_predicates = RequiredPredicates::default();
 
             // process predicates and convert to `RequiredPredicates` entry, see below
-            for (pred, _) in predicates.into_iter() {
+            for (pred, _) in predicates.predicates.iter() {
                 match pred {
                     ty::Predicate::TypeOutlives(predicate) => {
                         let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();

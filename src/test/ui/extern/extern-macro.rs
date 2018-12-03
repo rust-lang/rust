@@ -12,5 +12,5 @@
 
 fn main() {
     enum Foo {}
-    let _ = Foo::bar!(); //~ ERROR fail to resolve non-ident macro path
+    let _ = Foo::bar!(); //~ ERROR failed to resolve: partially resolved path in a macro
 }

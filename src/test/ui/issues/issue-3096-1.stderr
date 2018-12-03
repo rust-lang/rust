@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: type () is non-empty
+error[E0004]: non-exhaustive patterns: type `()` is non-empty
   --> $DIR/issue-3096-1.rs:12:11
    |
 LL |     match () { } //~ ERROR non-exhaustive

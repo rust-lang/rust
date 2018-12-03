@@ -393,9 +393,6 @@ declare_features! (
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(55600), None),
 
-    // Use `?` as the Kleene "at most one" operator
-    (active, macro_at_most_once_rep, "1.25.0", Some(48075), None),
-
     // Infer static outlives requirements; RFC 2093
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
@@ -478,9 +475,6 @@ declare_features! (
     // Non-builtin attributes in inner attribute position
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
-    // Self struct constructor  (RFC 2302)
-    (active, self_struct_ctor, "1.30.0", Some(51994), None),
-
     // allow mixing of bind-by-move in patterns and references to
     // those identifiers in guards, *if* we are using MIR-borrowck
     // (aka NLL). Essentially this means you need to be on
@@ -496,11 +490,11 @@ declare_features! (
     // Allows `const _: TYPE = VALUE`
     (active, underscore_const_names, "1.31.0", Some(54912), None),
 
-    // `extern crate foo as bar;` puts `bar` into extern prelude.
-    (active, extern_crate_item_prelude, "1.31.0", Some(55599), None),
-
     // `reason = ` in lint attributes and `expect` lint attribute
     (active, lint_reasons, "1.31.0", Some(54503), None),
+
+    // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
+    (active, extern_crate_self, "1.31.0", Some(54658), None),
 );
 
 declare_features! (
@@ -688,11 +682,19 @@ declare_features! (
     // impl<I:Iterator> Iterator for &mut Iterator
     // impl Debug for Foo<'_>
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
+    // `extern crate foo as bar;` puts `bar` into extern prelude.
+    (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
+    // Allows use of the :literal macro fragment specifier (RFC 1576)
+    (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
     // Allows irrefutable patterns in if-let and while-let statements (RFC 2086)
     (accepted, irrefutable_let_patterns, "1.32.0", Some(44495), None),
+    // Use `?` as the Kleene "at most one" operator
+    (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
+    // Self struct constructor  (RFC 2302)
+    (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
 );
 
-// If you change this, please modify src/doc/unstable-book as well. You must
+// If you change this, please modify `src/doc/unstable-book` as well. You must
 // move that documentation into the relevant place in the other docs, and
 // remove the chapter on the flag.
 
@@ -1124,8 +1126,8 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("proc_macro_attribute", Normal, Ungated),
     ("proc_macro", Normal, Ungated),
 
-    ("rustc_derive_registrar", Normal, Gated(Stability::Unstable,
-                                             "rustc_derive_registrar",
+    ("rustc_proc_macro_decls", Normal, Gated(Stability::Unstable,
+                                             "rustc_proc_macro_decls",
                                              "used internally by rustc",
                                              cfg_fn!(rustc_attrs))),
 
@@ -1425,14 +1427,8 @@ pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
 
-pub const EXPLAIN_LITERAL_MATCHER: &'static str =
-    ":literal fragment specifier is experimental and subject to change";
-
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
     "unsized tuple coercion is not stable enough for use and is subject to change";
-
-pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
-    "using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
@@ -1582,6 +1578,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
+            ast::ItemKind::Static(..) |
             ast::ItemKind::Const(_,_) => {
                 if i.ident.name == "_" {
                     gate_feature_post!(&self, underscore_const_names, i.span,

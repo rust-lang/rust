@@ -102,14 +102,14 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
     }
-    fn has_skol(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    fn has_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER | TypeFlags::HAS_TY_PLACEHOLDER)
     }
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
-    fn has_re_skol(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    fn has_re_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
     }
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
@@ -374,6 +374,7 @@ pub struct RegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
+    #[inline]
     pub fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         skipped_regions: &'a mut bool,
@@ -460,8 +461,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::Bound(bound_ty) => {
-                if bound_ty.index == self.current_index {
+            ty::Bound(debruijn, bound_ty) => {
+                if debruijn == self.current_index {
                     let fld_t = &mut self.fld_t;
                     let ty = fld_t(bound_ty);
                     ty::fold::shift_vars(
@@ -526,7 +527,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
               T: TypeFoldable<'tcx>
     {
         // identity for bound types
-        let fld_t = |bound_ty| self.mk_ty(ty::Bound(bound_ty));
+        let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
     }
 
@@ -679,24 +680,31 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // vars. See comment on `shift_vars_through_binders` method in
 // `subst.rs` for more details.
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+enum Direction {
+    In,
+    Out,
+}
+
 struct Shifter<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-
     current_index: ty::DebruijnIndex,
     amount: u32,
+    direction: Direction,
 }
 
 impl Shifter<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, amount: u32) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, amount: u32, direction: Direction) -> Self {
         Shifter {
             tcx,
             current_index: ty::INNERMOST,
             amount,
+            direction,
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
+impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
@@ -712,7 +720,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
                 if self.amount == 0 || debruijn < self.current_index {
                     r
                 } else {
-                    let shifted = ty::ReLateBound(debruijn.shifted_in(self.amount), br);
+                    let debruijn = match self.direction {
+                        Direction::In => debruijn.shifted_in(self.amount),
+                        Direction::Out => {
+                            assert!(debruijn.as_u32() >= self.amount);
+                            debruijn.shifted_out(self.amount)
+                        }
+                    };
+                    let shifted = ty::ReLateBound(debruijn, br);
                     self.tcx.mk_region(shifted)
                 }
             }
@@ -722,16 +737,20 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
 
     fn fold_ty(&mut self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         match ty.sty {
-            ty::Bound(bound_ty) => {
-                if self.amount == 0 || bound_ty.index < self.current_index {
+            ty::Bound(debruijn, bound_ty) => {
+                if self.amount == 0 || debruijn < self.current_index {
                     ty
                 } else {
-                    let shifted = ty::BoundTy {
-                        index: bound_ty.index.shifted_in(self.amount),
-                        var: bound_ty.var,
-                        kind: bound_ty.kind,
+                    let debruijn = match self.direction {
+                        Direction::In => debruijn.shifted_in(self.amount),
+                        Direction::Out => {
+                            assert!(debruijn.as_u32() >= self.amount);
+                            debruijn.shifted_out(self.amount)
+                        }
                     };
-                    self.tcx.mk_ty(ty::Bound(shifted))
+                    self.tcx.mk_ty(
+                        ty::Bound(debruijn, bound_ty)
+                    )
                 }
             }
 
@@ -763,7 +782,18 @@ pub fn shift_vars<'a, 'gcx, 'tcx, T>(
     debug!("shift_vars(value={:?}, amount={})",
            value, amount);
 
-    value.fold_with(&mut Shifter::new(tcx, amount))
+    value.fold_with(&mut Shifter::new(tcx, amount, Direction::In))
+}
+
+pub fn shift_out_vars<'a, 'gcx, 'tcx, T>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    value: &T,
+    amount: u32
+) -> T where T: TypeFoldable<'tcx> {
+    debug!("shift_out_vars(value={:?}, amount={})",
+           value, amount);
+
+    value.fold_with(&mut Shifter::new(tcx, amount, Direction::Out))
 }
 
 /// An "escaping var" is a bound var whose binder is not part of `t`. A bound var can be a
@@ -781,7 +811,7 @@ pub fn shift_vars<'a, 'gcx, 'tcx, T>(
 ///
 /// Note that what I'm calling an "escaping var" is often just called a "free var". However,
 /// we already use the term "free var". It refers to the regions or types that we use to represent
-/// bound regions or type params on a fn definition while we are typechecking its body.
+/// bound regions or type params on a fn definition while we are type checking its body.
 ///
 /// To clarify, conceptually there is no particular difference between
 /// an "escaping" var and a "free" var. However, there is a big
@@ -857,7 +887,7 @@ struct LateBoundRegionsCollector {
 
     /// If true, we only want regions that are known to be
     /// "constrained" when you equate this type with another type. In
-    /// partcular, if you have e.g. `&'a u32` and `&'b u32`, equating
+    /// particular, if you have e.g. `&'a u32` and `&'b u32`, equating
     /// them constraints `'a == 'b`.  But if you have `<&'a u32 as
     /// Trait>::Foo` and `<&'b u32 as Trait>::Foo`, normalizing those
     /// types may mean that `'a` and `'b` don't appear in the results,

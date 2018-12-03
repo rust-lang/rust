@@ -1315,7 +1315,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_path.hir_id);
                 let var_name = self.tcx.hir.name(var_node_id);
                 format!(" for capture of `{}` by closure", var_name)
             }

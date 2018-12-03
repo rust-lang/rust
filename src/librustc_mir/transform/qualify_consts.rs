@@ -243,13 +243,52 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        match *dest {
-            Place::Local(index) if (self.mir.local_kind(index) == LocalKind::Var ||
-                                   self.mir.local_kind(index) == LocalKind::Arg) &&
-                                   self.tcx.sess.features_untracked().const_let => {
-                debug!("store to var {:?}", index);
-                self.local_qualif[index] = Some(self.qualif);
+        if self.tcx.features().const_let {
+            let mut dest = dest;
+            let index = loop {
+                match dest {
+                    // with `const_let` active, we treat all locals equal
+                    Place::Local(index) => break *index,
+                    // projections are transparent for assignments
+                    // we qualify the entire destination at once, even if just a field would have
+                    // stricter qualification
+                    Place::Projection(proj) => {
+                        // Catch more errors in the destination. `visit_place` also checks various
+                        // projection rules like union field access and raw pointer deref
+                        self.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        );
+                        dest = &proj.base;
+                    },
+                    Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
+                    Place::Static(..) => {
+                        // Catch more errors in the destination. `visit_place` also checks that we
+                        // do not try to access statics from constants or try to mutate statics
+                        self.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        );
+                        return;
+                    }
+                }
+            };
+            debug!("store to var {:?}", index);
+            match &mut self.local_qualif[index] {
+                // this is overly restrictive, because even full assignments do not clear the qualif
+                // While we could special case full assignments, this would be inconsistent with
+                // aggregates where we overwrite all fields via assignments, which would not get
+                // that feature.
+                Some(ref mut qualif) => *qualif = *qualif | self.qualif,
+                // insert new qualification
+                qualif @ None => *qualif = Some(self.qualif),
             }
+            return;
+        }
+
+        match *dest {
             Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
                                    self.mir.local_kind(index) == LocalKind::ReturnPointer => {
                 debug!("store to {:?} (temp or return pointer)", index);
@@ -318,7 +357,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
-                    if !self.tcx.sess.features_untracked().const_let {
+                    if !self.tcx.features().const_let {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
@@ -425,7 +464,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::ReturnPointer => {
                 self.not_const();
             }
-            LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {
+            LocalKind::Var if !self.tcx.features().const_let => {
                 if self.mode != Mode::Fn {
                     emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
                                     self.span, GateIssue::Language,
@@ -478,6 +517,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                    if context.is_mutating_use() {
+                        // this is not strictly necessary as miri will also bail out
+                        // For interior mutability we can't really catch this statically as that
+                        // goes through raw pointers and intermediate temporaries, so miri has
+                        // to catch this anyway
+                        self.tcx.sess.span_err(
+                            self.span,
+                            "cannot mutate statics in the initializer of another static",
+                        );
+                    }
                     return;
                 }
                 self.add(Qualif::NOT_CONST);
@@ -509,7 +558,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 Mode::Fn => {},
                                 _ => {
                                     if let ty::RawPtr(_) = base_ty.sty {
-                                        if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                        if !this.tcx.features().const_raw_ptr_deref {
                                             emit_feature_err(
                                                 &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
                                                 this.span, GateIssue::Language,
@@ -532,7 +581,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     match this.mode {
                                         Mode::Fn => this.not_const(),
                                         Mode::ConstFn => {
-                                            if !this.tcx.sess.features_untracked().const_fn_union {
+                                            if !this.tcx.features().const_fn_union {
                                                 emit_feature_err(
                                                     &this.tcx.sess.parse_sess, "const_fn_union",
                                                     this.span, GateIssue::Language,
@@ -758,7 +807,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         if let Mode::Fn = self.mode {
                             // in normal functions, mark such casts as not promotable
                             self.add(Qualif::NOT_CONST);
-                        } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
+                        } else if !self.tcx.features().const_raw_ptr_to_usize_cast {
                             // in const fn and constants require the feature gate
                             // FIXME: make it unsafe inside const fn and constants
                             emit_feature_err(
@@ -785,7 +834,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if let Mode::Fn = self.mode {
                         // raw pointer operations are not allowed inside promoteds
                         self.add(Qualif::NOT_CONST);
-                    } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
+                    } else if !self.tcx.features().const_compare_raw_pointers {
                         // require the feature gate inside constants and const fn
                         // FIXME: make it unsafe to use these operations
                         emit_feature_err(
@@ -846,144 +895,159 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             let mut is_shuffle = false;
             let mut is_const_fn = false;
             let mut is_promotable_const_fn = false;
-            if let ty::FnDef(def_id, _) = fn_ty.sty {
-                callee_def_id = Some(def_id);
-                match self.tcx.fn_sig(def_id).abi() {
-                    Abi::RustIntrinsic |
-                    Abi::PlatformIntrinsic => {
-                        assert!(!self.tcx.is_const_fn(def_id));
-                        match &self.tcx.item_name(def_id).as_str()[..] {
-                            | "size_of"
-                            | "min_align_of"
-                            | "needs_drop"
-                            | "type_id"
-                            | "bswap"
-                            | "bitreverse"
-                            | "ctpop"
-                            | "cttz"
-                            | "cttz_nonzero"
-                            | "ctlz"
-                            | "ctlz_nonzero"
-                            | "overflowing_add"
-                            | "overflowing_sub"
-                            | "overflowing_mul"
-                            | "unchecked_shl"
-                            | "unchecked_shr"
-                            | "rotate_left"
-                            | "rotate_right"
-                            | "add_with_overflow"
-                            | "sub_with_overflow"
-                            | "mul_with_overflow"
-                            // no need to check feature gates, intrinsics are only callable from the
-                            // libstd or with forever unstable feature gates
-                            => is_const_fn = true,
-                            // special intrinsic that can be called diretly without an intrinsic
-                            // feature gate needs a language feature gate
-                            "transmute" => {
-                                // never promote transmute calls
-                                if self.mode != Mode::Fn {
-                                    is_const_fn = true;
-                                    // const eval transmute calls only with the feature gate
-                                    if !self.tcx.sess.features_untracked().const_transmute {
-                                        emit_feature_err(
-                                            &self.tcx.sess.parse_sess, "const_transmute",
-                                            self.span, GateIssue::Language,
-                                            &format!("The use of std::mem::transmute() \
-                                            is gated in {}s", self.mode));
+            match fn_ty.sty {
+                ty::FnDef(def_id, _) => {
+                    callee_def_id = Some(def_id);
+                    match self.tcx.fn_sig(def_id).abi() {
+                        Abi::RustIntrinsic |
+                        Abi::PlatformIntrinsic => {
+                            assert!(!self.tcx.is_const_fn(def_id));
+                            match &self.tcx.item_name(def_id).as_str()[..] {
+                                | "size_of"
+                                | "min_align_of"
+                                | "needs_drop"
+                                | "type_id"
+                                | "bswap"
+                                | "bitreverse"
+                                | "ctpop"
+                                | "cttz"
+                                | "cttz_nonzero"
+                                | "ctlz"
+                                | "ctlz_nonzero"
+                                | "overflowing_add"
+                                | "overflowing_sub"
+                                | "overflowing_mul"
+                                | "unchecked_shl"
+                                | "unchecked_shr"
+                                | "rotate_left"
+                                | "rotate_right"
+                                | "add_with_overflow"
+                                | "sub_with_overflow"
+                                | "mul_with_overflow"
+                                // no need to check feature gates, intrinsics are only callable
+                                // from the libstd or with forever unstable feature gates
+                                => is_const_fn = true,
+                                // special intrinsic that can be called diretly without an intrinsic
+                                // feature gate needs a language feature gate
+                                "transmute" => {
+                                    // never promote transmute calls
+                                    if self.mode != Mode::Fn {
+                                        is_const_fn = true;
+                                        // const eval transmute calls only with the feature gate
+                                        if !self.tcx.features().const_transmute {
+                                            emit_feature_err(
+                                                &self.tcx.sess.parse_sess, "const_transmute",
+                                                self.span, GateIssue::Language,
+                                                &format!("The use of std::mem::transmute() \
+                                                is gated in {}s", self.mode));
+                                        }
                                     }
                                 }
-                            }
 
-                            name if name.starts_with("simd_shuffle") => {
-                                is_shuffle = true;
-                            }
-
-                            _ => {}
-                        }
-                    }
-                    _ => {
-                        // in normal functions we only care about promotion
-                        if self.mode == Mode::Fn {
-                            // never promote const fn calls of
-                            // functions without #[rustc_promotable]
-                            if self.tcx.is_promotable_const_fn(def_id) {
-                                is_const_fn = true;
-                                is_promotable_const_fn = true;
-                            } else if self.tcx.is_const_fn(def_id) {
-                                is_const_fn = true;
-                            }
-                        } else {
-                            // stable const fn or unstable const fns with their feature gate
-                            // active
-                            if self.tcx.is_const_fn(def_id) {
-                                is_const_fn = true;
-                            } else if self.is_const_panic_fn(def_id) {
-                                // check the const_panic feature gate
-                                // FIXME: cannot allow this inside `allow_internal_unstable` because
-                                // that would make `panic!` insta stable in constants, since the
-                                // macro is marked with the attr
-                                if self.tcx.sess.features_untracked().const_panic {
-                                    is_const_fn = true;
-                                } else {
-                                    // don't allow panics in constants without the feature gate
-                                    emit_feature_err(
-                                        &self.tcx.sess.parse_sess,
-                                        "const_panic",
-                                        self.span,
-                                        GateIssue::Language,
-                                        &format!("panicking in {}s is unstable", self.mode),
-                                    );
+                                name if name.starts_with("simd_shuffle") => {
+                                    is_shuffle = true;
                                 }
-                            } else if let Some(feature) = self.tcx.is_unstable_const_fn(def_id) {
-                                // check `#[unstable]` const fns or `#[rustc_const_unstable]`
-                                // functions without the feature gate active in this crate to report
-                                // a better error message than the one below
-                                if self.span.allows_unstable() {
-                                    // `allow_internal_unstable` can make such calls stable
+
+                                _ => {}
+                            }
+                        }
+                        _ => {
+                            // in normal functions we only care about promotion
+                            if self.mode == Mode::Fn {
+                                // never promote const fn calls of
+                                // functions without #[rustc_promotable]
+                                if self.tcx.is_promotable_const_fn(def_id) {
                                     is_const_fn = true;
-                                } else {
-                                    let mut err = self.tcx.sess.struct_span_err(self.span,
-                                        &format!("`{}` is not yet stable as a const fn",
-                                                self.tcx.item_path_str(def_id)));
-                                    help!(&mut err,
-                                        "in Nightly builds, add `#![feature({})]` \
-                                        to the crate attributes to enable",
-                                        feature);
-                                    err.emit();
+                                    is_promotable_const_fn = true;
+                                } else if self.tcx.is_const_fn(def_id) {
+                                    is_const_fn = true;
                                 }
                             } else {
-                                // FIXME(#24111) Remove this check when const fn stabilizes
-                                let (msg, note) = if let UnstableFeatures::Disallow =
-                                        self.tcx.sess.opts.unstable_features {
-                                    (format!("calls in {}s are limited to \
-                                            tuple structs and tuple variants",
-                                            self.mode),
-                                    Some("a limited form of compile-time function \
-                                        evaluation is available on a nightly \
-                                        compiler via `const fn`"))
+                                // stable const fn or unstable const fns with their feature gate
+                                // active
+                                if self.tcx.is_const_fn(def_id) {
+                                    is_const_fn = true;
+                                } else if self.is_const_panic_fn(def_id) {
+                                    // check the const_panic feature gate
+                                    // FIXME: cannot allow this inside `allow_internal_unstable`
+                                    // because that would make `panic!` insta stable in constants,
+                                    // since the macro is marked with the attr
+                                    if self.tcx.features().const_panic {
+                                        is_const_fn = true;
+                                    } else {
+                                        // don't allow panics in constants without the feature gate
+                                        emit_feature_err(
+                                            &self.tcx.sess.parse_sess,
+                                            "const_panic",
+                                            self.span,
+                                            GateIssue::Language,
+                                            &format!("panicking in {}s is unstable", self.mode),
+                                        );
+                                    }
+                                } else if let Some(feat) = self.tcx.is_unstable_const_fn(def_id) {
+                                    // check `#[unstable]` const fns or `#[rustc_const_unstable]`
+                                    // functions without the feature gate active in this crate to
+                                    // report a better error message than the one below
+                                    if self.span.allows_unstable() {
+                                        // `allow_internal_unstable` can make such calls stable
+                                        is_const_fn = true;
+                                    } else {
+                                        let mut err = self.tcx.sess.struct_span_err(self.span,
+                                            &format!("`{}` is not yet stable as a const fn",
+                                                    self.tcx.item_path_str(def_id)));
+                                        help!(&mut err,
+                                            "in Nightly builds, add `#![feature({})]` \
+                                            to the crate attributes to enable",
+                                            feat);
+                                        err.emit();
+                                    }
                                 } else {
-                                    (format!("calls in {}s are limited \
-                                            to constant functions, \
-                                            tuple structs and tuple variants",
-                                            self.mode),
-                                    None)
-                                };
-                                let mut err = struct_span_err!(
-                                    self.tcx.sess,
-                                    self.span,
-                                    E0015,
-                                    "{}",
-                                    msg,
-                                );
-                                if let Some(note) = note {
-                                    err.span_note(self.span, note);
+                                    // FIXME(#24111) Remove this check when const fn stabilizes
+                                    let (msg, note) = if let UnstableFeatures::Disallow =
+                                            self.tcx.sess.opts.unstable_features {
+                                        (format!("calls in {}s are limited to \
+                                                tuple structs and tuple variants",
+                                                self.mode),
+                                        Some("a limited form of compile-time function \
+                                            evaluation is available on a nightly \
+                                            compiler via `const fn`"))
+                                    } else {
+                                        (format!("calls in {}s are limited \
+                                                to constant functions, \
+                                                tuple structs and tuple variants",
+                                                self.mode),
+                                        None)
+                                    };
+                                    let mut err = struct_span_err!(
+                                        self.tcx.sess,
+                                        self.span,
+                                        E0015,
+                                        "{}",
+                                        msg,
+                                    );
+                                    if let Some(note) = note {
+                                        err.span_note(self.span, note);
+                                    }
+                                    err.emit();
                                 }
-                                err.emit();
                             }
                         }
                     }
+                },
+                ty::FnPtr(_) => {
+                    if self.mode != Mode::Fn {
+                        let mut err = self.tcx.sess.struct_span_err(
+                            self.span,
+                            &format!("function pointers are not allowed in const fn"));
+                        err.emit();
+                    }
+                },
+                _ => {
+                    self.not_const();
+                    return
                 }
             }
+
 
             let constant_arguments = callee_def_id.and_then(|id| {
                 args_required_const(self.tcx, id)
@@ -1109,7 +1173,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index) &&
-               !self.tcx.sess.features_untracked().const_let {
+               !self.tcx.features().const_let {
 
                 // Direct use of an argument is permitted.
                 match *rvalue {
@@ -1168,8 +1232,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::InlineAsm {..} |
-                StatementKind::EndRegion(_) |
                 StatementKind::Retag { .. } |
+                StatementKind::EscapeToRaw { .. } |
                 StatementKind::AscribeUserType(..) |
                 StatementKind::Nop => {}
             }

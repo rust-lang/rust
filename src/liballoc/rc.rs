@@ -43,8 +43,8 @@
 //!
 //! `Rc<T>` automatically dereferences to `T` (via the [`Deref`] trait),
 //! so you can call `T`'s methods on a value of type [`Rc<T>`][`Rc`]. To avoid name
-//! clashes with `T`'s methods, the methods of [`Rc<T>`][`Rc`] itself are [associated
-//! functions][assoc], called using function-like syntax:
+//! clashes with `T`'s methods, the methods of [`Rc<T>`][`Rc`] itself are associated
+//! functions, called using function-like syntax:
 //!
 //! ```
 //! use std::rc::Rc;
@@ -234,7 +234,6 @@
 //! [downgrade]: struct.Rc.html#method.downgrade
 //! [upgrade]: struct.Weak.html#method.upgrade
 //! [`None`]: ../../std/option/enum.Option.html#variant.None
-//! [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
 //! [mutability]: ../../std/cell/index.html#introducing-mutability-inside-of-something-immutable
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -634,7 +633,7 @@ impl<T: Clone> Rc<T> {
 impl Rc<dyn Any> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
-    /// Attempt to downcast the `Rc<Any>` to a concrete type.
+    /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
     ///
@@ -642,7 +641,7 @@ impl Rc<dyn Any> {
     /// use std::any::Any;
     /// use std::rc::Rc;
     ///
-    /// fn print_if_string(value: Rc<Any>) {
+    /// fn print_if_string(value: Rc<dyn Any>) {
     ///     if let Ok(string) = value.downcast::<String>() {
     ///         println!("String ({}): {}", string.len(), string);
     ///     }

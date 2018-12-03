@@ -10,10 +10,10 @@
 
 //! This module contains the "canonicalizer" itself.
 //!
-//! For an overview of what canonicaliation is and how it fits into
+//! For an overview of what canonicalization is and how it fits into
 //! rustc, check out the [chapter in the rustc guide][c].
 //!
-//! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, BoundTy, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
+use ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -44,7 +44,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query
+    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
@@ -92,7 +92,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
+    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -339,11 +339,41 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::Infer(ty::TyVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::General, t),
+            ty::Infer(ty::TyVar(vid)) => {
+                match self.infcx.unwrap().probe_ty_var(vid) {
+                    // `t` could be a float / int variable: canonicalize that instead
+                    Ok(t) => self.fold_ty(t),
 
-            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Int, t),
+                    // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
+                    // result
+                    Err(mut ui) => {
+                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
+                            // FIXME: perf problem described in #55921.
+                            ui = ty::UniverseIndex::ROOT;
+                        }
+                        self.canonicalize_ty_var(
+                            CanonicalVarInfo {
+                                kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
+                            },
+                            t
+                        )
+                    }
+                }
+            }
 
-            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Float, t),
+            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
+                },
+                t
+            ),
+
+            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
+                },
+                t
+            ),
 
             ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
@@ -351,8 +381,15 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Bound(bound_ty) => {
-                if bound_ty.index >= self.binder_index {
+            ty::Placeholder(placeholder) => self.canonicalize_ty_var(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::PlaceholderTy(placeholder)
+                },
+                t
+            ),
+
+            ty::Bound(debruijn, _) => {
+                if debruijn >= self.binder_index {
                     bug!("escaping bound type during canonicalization")
                 } else {
                     t
@@ -408,9 +445,13 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
         let needs_canonical_flags = if canonicalize_region_mode.any() {
-            TypeFlags::HAS_FREE_REGIONS | TypeFlags::KEEP_IN_LOCAL_TCX
+            TypeFlags::KEEP_IN_LOCAL_TCX |
+            TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
+            TypeFlags::HAS_TY_PLACEHOLDER
         } else {
-            TypeFlags::KEEP_IN_LOCAL_TCX
+            TypeFlags::KEEP_IN_LOCAL_TCX |
+            TypeFlags::HAS_RE_PLACEHOLDER |
+            TypeFlags::HAS_TY_PLACEHOLDER
         };
 
         let gcx = tcx.global_tcx();
@@ -574,17 +615,14 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// if `ty_var` is bound to anything; if so, canonicalize
     /// *that*. Otherwise, create a new canonical variable for
     /// `ty_var`.
-    fn canonicalize_ty_var(&mut self, ty_kind: CanonicalTyVarKind, ty_var: Ty<'tcx>) -> Ty<'tcx> {
+    fn canonicalize_ty_var(&mut self, info: CanonicalVarInfo, ty_var: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.infcx.expect("encountered ty-var without infcx");
         let bound_to = infcx.shallow_resolve(ty_var);
         if bound_to != ty_var {
             self.fold_ty(bound_to)
         } else {
-            let info = CanonicalVarInfo {
-                kind: CanonicalVarKind::Ty(ty_kind),
-            };
             let var = self.canonical_var(info, ty_var.into());
-            self.tcx().mk_ty(ty::Bound(BoundTy::new(self.binder_index, var)))
+            self.tcx().mk_ty(ty::Bound(self.binder_index, var.into()))
         }
     }
 }

@@ -28,7 +28,7 @@ LL |   type Test = Add +
 LL | |             //~^ ERROR E0393
 LL | |             //~| ERROR E0191
 LL | |             Sub;
-   | |_______________^ missing associated type `Output` value
+   | |_______________^ associated type `Output` must be specified
 
 error: aborting due to 4 previous errors
 

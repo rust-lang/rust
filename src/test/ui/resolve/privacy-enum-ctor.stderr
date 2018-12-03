@@ -171,7 +171,9 @@ LL |             Unit,
    |             ---- `Z::Unit` defined here
 ...
 LL |         let _ = Z::Unit();
-   |                 ^^^^^^^^^ not a function
+   |                 ^^^^^^^--
+   |                 |
+   |                 call expression requires function
 help: `Z::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |         let _ = Z::Unit;
@@ -193,7 +195,9 @@ LL |         Unit,
    |         ---- `m::E::Unit` defined here
 ...
 LL |     let _: E = m::E::Unit();
-   |                ^^^^^^^^^^^^ not a function
+   |                ^^^^^^^^^^--
+   |                |
+   |                call expression requires function
 help: `m::E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = m::E::Unit;
@@ -215,7 +219,9 @@ LL |         Unit,
    |         ---- `E::Unit` defined here
 ...
 LL |     let _: E = E::Unit();
-   |                ^^^^^^^^^ not a function
+   |                ^^^^^^^--
+   |                |
+   |                call expression requires function
 help: `E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = E::Unit;

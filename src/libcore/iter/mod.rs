@@ -112,10 +112,10 @@
 //!
 //!     // next() is the only required method
 //!     fn next(&mut self) -> Option<usize> {
-//!         // increment our count. This is why we started at zero.
+//!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
-//!         // check to see if we've finished counting or not.
+//!         // Check to see if we've finished counting or not.
 //!         if self.count < 6 {
 //!             Some(self.count)
 //!         } else {
@@ -319,10 +319,9 @@
 use cmp;
 use fmt;
 use iter_private::TrustedRandomAccess;
-use ops::{self, Try};
+use ops::Try;
 use usize;
 use intrinsics;
-use mem;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
@@ -340,6 +339,8 @@ pub use self::sources::{RepeatWith, repeat_with};
 pub use self::sources::{Empty, empty};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{Once, once};
+#[unstable(feature = "iter_unfold", issue = "55977")]
+pub use self::sources::{Unfold, unfold, Successors, successors};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
@@ -673,7 +674,12 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        <Self as StepBySpecIterator>::spec_next(self)
+        if self.first_take {
+            self.first_take = false;
+            self.iter.next()
+        } else {
+            self.iter.nth(self.step)
+        }
     }
 
     #[inline]
@@ -729,78 +735,6 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
                 nth_step
             };
             self.iter.nth(nth - 1);
-        }
-    }
-}
-
-// hidden trait for specializing iterator methods
-// could be generalized but is currently only used for StepBy
-trait StepBySpecIterator {
-    type Item;
-    fn spec_next(&mut self) -> Option<Self::Item>;
-}
-
-impl<I> StepBySpecIterator for StepBy<I>
-where
-    I: Iterator,
-{
-    type Item = I::Item;
-
-    #[inline]
-    default fn spec_next(&mut self) -> Option<I::Item> {
-        if self.first_take {
-            self.first_take = false;
-            self.iter.next()
-        } else {
-            self.iter.nth(self.step)
-        }
-    }
-}
-
-impl<T> StepBySpecIterator for StepBy<ops::Range<T>>
-where
-    T: Step,
-{
-    #[inline]
-    fn spec_next(&mut self) -> Option<Self::Item> {
-        self.first_take = false;
-        if !(self.iter.start < self.iter.end) {
-            return None;
-        }
-        // add 1 to self.step to get original step size back
-        // it was decremented for the general case on construction
-        if let Some(n) = self.iter.start.add_usize(self.step+1) {
-            let next = mem::replace(&mut self.iter.start, n);
-            Some(next)
-        } else {
-            let last = self.iter.start.clone();
-            self.iter.start = self.iter.end.clone();
-            Some(last)
-        }
-    }
-}
-
-impl<T> StepBySpecIterator for StepBy<ops::RangeInclusive<T>>
-where
-    T: Step,
-{
-    #[inline]
-    fn spec_next(&mut self) -> Option<Self::Item> {
-        self.first_take = false;
-        self.iter.compute_is_empty();
-        if self.iter.is_empty.unwrap_or_default() {
-            return None;
-        }
-        // add 1 to self.step to get original step size back
-        // it was decremented for the general case on construction
-        if let Some(n) = self.iter.start.add_usize(self.step+1) {
-            self.iter.is_empty = Some(!(n <= self.iter.end));
-            let next = mem::replace(&mut self.iter.start, n);
-            Some(next)
-        } else {
-            let last = self.iter.start.clone();
-            self.iter.is_empty = Some(true);
-            Some(last)
         }
     }
 }

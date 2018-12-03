@@ -182,7 +182,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         };
         predicates
             .predicates
-            .into_iter()
+            .iter()
             .map(|(predicate, _)| predicate.subst_supertrait(self, &trait_ref))
             .any(|predicate| {
                 match predicate {
@@ -302,9 +302,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return Some(MethodViolationCode::Generic);
         }
 
-        if self.predicates_of(method.def_id).predicates.into_iter()
+        if self.predicates_of(method.def_id).predicates.iter()
                 // A trait object can't claim to live more than the concrete type,
                 // so outlives predicates will always hold.
+                .cloned()
                 .filter(|(p, _)| p.to_opt_type_outlives().is_none())
                 .collect::<Vec<_>>()
                 // Do a shallow visit so that `contains_illegal_self_type_reference`
@@ -408,7 +409,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             .collect::<Vec<_>>();
 
         // existential predicates need to be in a specific order
-        associated_types.sort_by_key(|item| self.def_path_hash(item.def_id));
+        associated_types.sort_by_cached_key(|item| self.def_path_hash(item.def_id));
 
         let projection_predicates = associated_types.into_iter().map(|item| {
             ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
@@ -469,7 +470,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     ///
     /// for `self: &'a mut Self`, this means `&'a mut Self: DispatchFromDyn<&'a mut U>`
     /// for `self: Rc<Self>`, this means `Rc<Self>: DispatchFromDyn<Rc<U>>`
-    /// for `self: Pin<Box<Self>>, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`
+    /// for `self: Pin<Box<Self>>`, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`
     //
     // FIXME(mikeyhew) when unsized receivers are implemented as part of unsized rvalues, add this
     // fallback query: `Receiver: Unsize<Receiver[Self => U]>` to support receivers like

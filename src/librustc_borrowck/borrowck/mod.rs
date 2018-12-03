@@ -846,7 +846,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     MutabilityViolation => {
                         let mut db = self.cannot_assign(error_span, &descr, Origin::Ast);
                         if let mc::NoteClosureEnv(upvar_id) = err.cmt.note {
-                            let node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                            let node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_path.hir_id);
                             let sp = self.tcx.hir.span(node_id);
                             let fn_closure_msg = "`Fn` closures cannot capture their enclosing \
                                                   environment for modifications";
@@ -1415,7 +1415,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                       loan_path: &LoanPath<'tcx>,
                                       out: &mut String) {
         match loan_path.kind {
-            LpUpvar(ty::UpvarId { var_id: id, closure_expr_id: _ }) => {
+            LpUpvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id: id}, closure_expr_id: _ }) => {
                 out.push_str(&self.tcx.hir.name(self.tcx.hir.hir_to_node_id(id)).as_str());
             }
             LpVar(id) => {
@@ -1533,7 +1533,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
                 write!(f, "$({})", ty::tls::with(|tcx| tcx.hir.node_to_string(id)))
             }
 
-            LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
+            LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath {hir_id: var_id}, closure_expr_id }) => {
                 let s = ty::tls::with(|tcx| {
                     let var_node_id = tcx.hir.hir_to_node_id(var_id);
                     tcx.hir.node_to_string(var_node_id)
@@ -1568,9 +1568,9 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
                 write!(f, "$({})", ty::tls::with(|tcx| tcx.hir.node_to_user_string(id)))
             }
 
-            LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
+            LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath { hir_id }, closure_expr_id: _ }) => {
                 let s = ty::tls::with(|tcx| {
-                    let var_node_id = tcx.hir.hir_to_node_id(var_id);
+                    let var_node_id = tcx.hir.hir_to_node_id(hir_id);
                     tcx.hir.node_to_string(var_node_id)
                 });
                 write!(f, "$({} captured by closure)", s)

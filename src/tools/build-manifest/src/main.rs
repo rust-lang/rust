@@ -355,6 +355,8 @@ impl Builder {
         self.package("lldb-preview", &mut manifest.pkg, TARGETS);
 
         manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
+        manifest.renames.insert("rustfmt".to_owned(), Rename { to: "rustfmt-preview".to_owned() });
+        manifest.renames.insert("clippy".to_owned(), Rename { to: "clippy-preview".to_owned() });
 
         let mut pkg = Package {
             version: self.cached_version("rust")

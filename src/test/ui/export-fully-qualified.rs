@@ -13,7 +13,7 @@
 // want to change eventually.
 
 mod foo {
-    pub fn bar() { foo::baz(); } //~ ERROR failed to resolve. Use of undeclared type or module `foo`
+    pub fn bar() { foo::baz(); } //~ ERROR failed to resolve: use of undeclared type or module `foo`
 
     fn baz() { }
 }

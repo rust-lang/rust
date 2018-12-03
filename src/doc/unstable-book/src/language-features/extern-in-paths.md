@@ -11,8 +11,8 @@ introducing `extern crate` items, using keyword `extern`.
 
 For example, `extern::my_crat::a::b` will resolve to path `a::b` in crate `my_crate`.
 
-`feature(extern_absolute_paths)` mode provides the same effect by resolving absolute paths like
-`::my_crate::a::b` to paths from extern crates by default.
+Absolute paths on 2018 edition (e.g. `::my_crate::a::b`) provide the same effect
+and resolve to extern crates (built-in or passed with `--extern`).
 
 ```rust,ignore
 #![feature(extern_in_paths)]

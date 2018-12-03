@@ -79,7 +79,14 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for CrateNum {
     }
 }
 
-impl_stable_hash_for!(tuple_struct hir::ItemLocalId { index });
+impl<'a> HashStable<StableHashingContext<'a>> for hir::ItemLocalId {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        self.as_u32().hash_stable(hcx, hasher);
+    }
+}
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>>
 for hir::ItemLocalId {
@@ -800,7 +807,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
             .iter()
             .map(|id| {
                 let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
-                debug_assert_eq!(local_id, hir::ItemLocalId(0));
+                debug_assert_eq!(local_id, hir::ItemLocalId::from_u32(0));
                 def_path_hash.0
             }).fold(Fingerprint::ZERO, |a, b| {
                 a.combine_commutative(b)

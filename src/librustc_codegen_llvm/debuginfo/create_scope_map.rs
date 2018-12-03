@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{FunctionDebugContext, FunctionDebugContextData};
+use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, FunctionDebugContextData, MirDebugScope};
 use super::metadata::file_metadata;
 use super::utils::{DIB, span_start};
 
 use llvm;
-use llvm::debuginfo::DIScope;
+use llvm::debuginfo::{DIScope, DISubprogram};
 use common::CodegenCx;
 use rustc::mir::{Mir, SourceScope};
 
@@ -26,28 +26,13 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use syntax_pos::BytePos;
 
-#[derive(Clone, Copy, Debug)]
-pub struct MirDebugScope<'ll> {
-    pub scope_metadata: Option<&'ll DIScope>,
-    // Start and end offsets of the file to which this DIScope belongs.
-    // These are used to quickly determine whether some span refers to the same file.
-    pub file_start_pos: BytePos,
-    pub file_end_pos: BytePos,
-}
-
-impl MirDebugScope<'ll> {
-    pub fn is_valid(&self) -> bool {
-        self.scope_metadata.is_some()
-    }
-}
-
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(
     cx: &CodegenCx<'ll, '_>,
     mir: &Mir,
-    debug_context: &FunctionDebugContext<'ll>,
-) -> IndexVec<SourceScope, MirDebugScope<'ll>> {
+    debug_context: &FunctionDebugContext<&'ll DISubprogram>,
+) -> IndexVec<SourceScope, MirDebugScope<&'ll DIScope>> {
     let null_scope = MirDebugScope {
         scope_metadata: None,
         file_start_pos: BytePos(0),
@@ -82,9 +67,9 @@ pub fn create_mir_scopes(
 fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
                   mir: &Mir,
                   has_variables: &BitSet<SourceScope>,
-                  debug_context: &FunctionDebugContextData<'ll>,
+                  debug_context: &FunctionDebugContextData<&'ll DISubprogram>,
                   scope: SourceScope,
-                  scopes: &mut IndexVec<SourceScope, MirDebugScope<'ll>>) {
+                  scopes: &mut IndexVec<SourceScope, MirDebugScope<&'ll DIScope>>) {
     if scopes[scope].is_valid() {
         return;
     }

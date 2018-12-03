@@ -5,5 +5,5 @@ lexer, macro expander, and utilities for traversing ASTs.
 For more information about how these things work in rustc, see the
 rustc guide:
 
-- [Parsing](https://rust-lang-nursery.github.io/rustc-guide/the-parser.html)
-- [Macro Expansion](https://rust-lang-nursery.github.io/rustc-guide/macro-expansion.html)
+- [Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
+- [Macro Expansion](https://rust-lang.github.io/rustc-guide/macro-expansion.html)

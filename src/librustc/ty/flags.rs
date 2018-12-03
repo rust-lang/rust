@@ -115,8 +115,12 @@ impl FlagComputation {
                 self.add_substs(&substs.substs);
             }
 
-            &ty::Bound(bound_ty) => {
-                self.add_binder(bound_ty.index);
+            &ty::Bound(debruijn, _) => {
+                self.add_binder(debruijn);
+            }
+
+            &ty::Placeholder(..) => {
+                self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
             }
 
             &ty::Infer(infer) => {

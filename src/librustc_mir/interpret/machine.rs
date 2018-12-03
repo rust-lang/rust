@@ -77,8 +77,16 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
+    /// Extra data stored in every call frame.
+    type FrameExtra;
+
+    /// Extra data stored in memory.  A reference to this is available when `AllocExtra`
+    /// gets initialized, so you can e.g. have an `Rc` here if there is global state you
+    /// need access to in the `AllocExtra` hooks.
+    type MemoryExtra: Default;
+
     /// Extra data stored in every allocation.
-    type AllocExtra: AllocationExtra<Self::PointerTag>;
+    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra>;
 
     /// Memory's allocation map
     type MemoryMap:
@@ -89,16 +97,12 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         Default +
         Clone;
 
-    /// The memory kind to use for copied statics -- or None if those are not supported.
+    /// The memory kind to use for copied statics -- or None if statics should not be mutated
+    /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
     /// Statics are copied under two circumstances: When they are mutated, and when
     /// `static_with_default_tag` or `find_foreign_static` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.
     const STATIC_KIND: Option<Self::MemoryKinds>;
-
-    /// As an optimization, you can prevent the pointer tracking hooks from ever being
-    /// called.  You should only do this if you do not care about provenance tracking.
-    /// This controls the `tag_reference` and `tag_dereference` hooks.
-    const ENABLE_PTR_TRACKING_HOOKS: bool;
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool;
@@ -140,8 +144,9 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     fn find_foreign_static(
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        memory_extra: &Self::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
@@ -151,9 +156,10 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn adjust_static_allocation(
-        alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Self::PointerTag, Self::AllocExtra>>;
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.
@@ -181,18 +187,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         kind: MemoryKind<Self::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
 
-    /// Executed when evaluating the `&` operator: Creating a new reference.
-    /// This has the chance to adjust the tag.  It should not change anything else!
-    /// `mutability` can be `None` in case a raw ptr is being created.
-    #[inline]
-    fn tag_reference(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MPlaceTy<'tcx, Self::PointerTag>,
-        _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
-        Ok(place.ptr)
-    }
-
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the chance to adjust the tag.  It should not change anything else!
     /// `mutability` can be `None` in case a raw ptr is being dereferenced.
@@ -205,7 +199,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         Ok(place.ptr)
     }
 
-    /// Execute a validation operation
+    /// Execute a retagging operation
     #[inline]
     fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -214,4 +208,24 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> EvalResult<'tcx> {
         Ok(())
     }
+
+    /// Execute an escape-to-raw operation
+    #[inline]
+    fn escape_to_raw(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ptr: OpTy<'tcx, Self::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately before a new stack frame got pushed
+    fn stack_push(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+    ) -> EvalResult<'tcx, Self::FrameExtra>;
+
+    /// Called immediately after a stack frame gets popped
+    fn stack_pop(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        extra: Self::FrameExtra,
+    ) -> EvalResult<'tcx>;
 }

@@ -27,7 +27,7 @@ use middle::stability::{self, DeprecationEntry};
 use middle::lib_features::LibFeatures;
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use mir::interpret::ConstEvalResult;
+use mir::interpret::{ConstEvalRawResult, ConstEvalResult};
 use mir::mono::CodegenUnit;
 use mir;
 use mir::interpret::GlobalId;
@@ -127,17 +127,18 @@ define_queries! { <'tcx>
         /// predicate gets in the way of some checks, which are intended
         /// to operate over only the actual where-clauses written by the
         /// user.)
-        [] fn predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+        [] fn predicates_of: PredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Maps from the def-id of an item (trait/struct/enum/fn) to the
         /// predicates (where clauses) directly defined on it. This is
         /// equal to the `explicit_predicates_of` predicates plus the
         /// `inferred_outlives_of` predicates.
-        [] fn predicates_defined_on: PredicatesDefinedOnItem(DefId) -> ty::GenericPredicates<'tcx>,
+        [] fn predicates_defined_on: PredicatesDefinedOnItem(DefId)
+            -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Returns the predicates written explicit by the user.
         [] fn explicit_predicates_of: ExplicitPredicatesOfItem(DefId)
-            -> ty::GenericPredicates<'tcx>,
+            -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
@@ -149,12 +150,12 @@ define_queries! { <'tcx>
         /// evaluate them even during type conversion, often before the
         /// full predicates are available (note that supertraits have
         /// additional acyclicity requirements).
-        [] fn super_predicates_of: SuperPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+        [] fn super_predicates_of: SuperPredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         [] fn type_param_predicates: type_param_predicates((DefId, DefId))
-            -> ty::GenericPredicates<'tcx>,
+            -> Lrc<ty::GenericPredicates<'tcx>>,
 
         [] fn trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
         [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
@@ -308,7 +309,7 @@ define_queries! { <'tcx>
         /// validation. Please add a comment to every use site explaining why using `const_eval`
         /// isn't sufficient
         [] fn const_eval_raw: const_eval_raw_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-            -> ConstEvalResult<'tcx>,
+            -> ConstEvalRawResult<'tcx>,
 
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).
@@ -469,7 +470,7 @@ define_queries! { <'tcx>
         [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
 
         [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
-        [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
+        [] fn proc_macro_decls_static: ProcMacroDeclsStatic(CrateNum) -> Option<DefId>,
         [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
         [] fn crate_hash: CrateHash(CrateNum) -> Svh,
         [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,

@@ -1,0 +1,8 @@
+error: unexpected `self` argument in function
+  --> $DIR/trait-fn.rs:4:20
+   |
+LL |     fn c(foo: u32, self) {}
+   |                    ^^^^ `self` is only valid as the first argument of an associated function
+
+error: aborting due to previous error
+

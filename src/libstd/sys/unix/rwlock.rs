@@ -14,7 +14,7 @@ use sync::atomic::{AtomicUsize, Ordering};
 
 pub struct RWLock {
     inner: UnsafeCell<libc::pthread_rwlock_t>,
-    write_locked: UnsafeCell<bool>,
+    write_locked: UnsafeCell<bool>, // guarded by the `inner` RwLock
     num_readers: AtomicUsize,
 }
 
@@ -52,13 +52,13 @@ impl RWLock {
         // allow that because it could lead to aliasing issues.
         if r == libc::EAGAIN {
             panic!("rwlock maximum reader count exceeded");
-        } else if r == libc::EDEADLK || *self.write_locked.get() {
+        } else if r == libc::EDEADLK || (r == 0 && *self.write_locked.get()) {
             if r == 0 {
                 self.raw_unlock();
             }
             panic!("rwlock read lock would result in deadlock");
         } else {
-            debug_assert_eq!(r, 0);
+            assert_eq!(r, 0);
             self.num_readers.fetch_add(1, Ordering::Relaxed);
         }
     }

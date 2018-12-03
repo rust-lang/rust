@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-//compile-flags: -Z borrowck=compare -Z emit-end-regions
+//compile-flags: -Z borrowck=compare
 
 #![deny(warnings)]
 

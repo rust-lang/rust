@@ -13,13 +13,13 @@
 
 use std::convert::TryInto;
 
-use rustc::{mir, ty};
+use rustc::mir;
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
 
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    EvalResult, EvalErrorKind
+    EvalResult, EvalErrorKind,
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -275,21 +275,31 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok(Some(Immediate::Scalar(Scalar::zst().into())));
         }
 
+        // check for integer pointers before alignment to report better errors
         let ptr = ptr.to_ptr()?;
+        self.memory.check_align(ptr.into(), ptr_align)?;
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
-                let scalar = self.memory.read_scalar(ptr, ptr_align, mplace.layout.size)?;
+                let scalar = self.memory
+                    .get(ptr.alloc_id)?
+                    .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(Immediate::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let (a, b) = (&a.value, &b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let a_ptr = ptr;
-                let b_offset = a_size.abi_align(b.align(self));
+                let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to test which field to use
-                let b_ptr = ptr.offset(b_offset, self)?.into();
-                let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;
-                let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
+                let b_ptr = ptr.offset(b_offset, self)?;
+                let a_val = self.memory
+                    .get(ptr.alloc_id)?
+                    .read_scalar(self, a_ptr, a_size)?;
+                let b_align = ptr_align.restrict_for_offset(b_offset);
+                self.memory.check_align(b_ptr.into(), b_align)?;
+                let b_val = self.memory
+                    .get(ptr.alloc_id)?
+                    .read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(Immediate::ScalarPair(a_val, b_val)))
             }
             _ => Ok(None),
@@ -431,17 +441,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
-    // Take an operand, representing a pointer, and dereference it to a place -- that
-    // will always be a MemPlace.
-    pub(super) fn deref_operand(
-        &self,
-        src: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let val = self.read_immediate(src)?;
-        trace!("deref to {} on {:?}", val.layout.ty, *val);
-        Ok(self.ref_to_mplace(val)?)
-    }
-
     pub fn operand_projection(
         &self,
         base: OpTy<'tcx, M::PointerTag>,
@@ -472,7 +471,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// When you know the layout of the local in advance, you can pass it as last argument
     pub fn access_local(
         &self,
-        frame: &super::Frame<'mir, 'tcx, M::PointerTag>,
+        frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
@@ -546,8 +545,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Also used e.g. when miri runs into a constant.
-    pub(super) fn const_value_to_op(
+    // Used when miri runs into a constant, and by CTFE.
+    // FIXME: CTFE should use allocations, then we can make this private (embed it into
+    // `eval_operand`, ideally).
+    pub(crate) fn const_value_to_op(
         &self,
         val: ConstValue<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
@@ -555,10 +556,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match val {
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                self.global_to_op(GlobalId {
+                Ok(*OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
-                })
+                })?))
             }
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
@@ -575,21 +576,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag()),
         }
-    }
-    pub fn const_to_op(
-        &self,
-        cnst: &ty::Const<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = self.const_value_to_op(cnst.val)?;
-        Ok(OpTy { op, layout: self.layout_of(cnst.ty)? })
-    }
-
-    pub(super) fn global_to_op(
-        &self,
-        gid: GlobalId<'tcx>
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        let cv = self.const_eval(gid)?;
-        self.const_value_to_op(cv.val)
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
@@ -612,7 +598,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // read raw discriminant value
         let discr_op = self.operand_field(rval, 0)?;
         let discr_val = self.read_immediate(discr_op)?;
-        let raw_discr = discr_val.to_scalar()?;
+        let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
         // post-process
         Ok(match rval.layout.variants {
@@ -658,28 +644,33 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
                 match raw_discr {
-                    Scalar::Ptr(_) => {
-                        // The niche must be just 0 (which a pointer value never is)
-                        assert!(niche_start == 0);
-                        assert!(variants_start == variants_end);
+                    ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
+                        // The niche must be just 0 (which an inbounds pointer value never is)
+                        let ptr_valid = niche_start == 0 && variants_start == variants_end &&
+                            self.memory.check_bounds_ptr_maybe_dead(ptr).is_ok();
+                        if !ptr_valid {
+                            return err!(InvalidDiscriminant(raw_discr.erase_tag()));
+                        }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
-                    Scalar::Bits { bits: raw_discr, size } => {
+                    ScalarMaybeUndef::Scalar(Scalar::Bits { bits: raw_discr, size }) => {
                         assert_eq!(size as u64, discr_val.layout.size.bytes());
-                        let discr = raw_discr.wrapping_sub(niche_start)
+                        let adjusted_discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);
-                        if variants_start <= discr && discr <= variants_end {
-                            let index = discr as usize;
-                            assert_eq!(index as u128, discr);
+                        if variants_start <= adjusted_discr && adjusted_discr <= variants_end {
+                            let index = adjusted_discr as usize;
+                            assert_eq!(index as u128, adjusted_discr);
                             assert!(index < rval.layout.ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
                                 .variants.len());
-                            (discr, VariantIdx::from_usize(index))
+                            (adjusted_discr, VariantIdx::from_usize(index))
                         } else {
                             (dataful_variant.as_u32() as u128, dataful_variant)
                         }
                     },
+                    ScalarMaybeUndef::Undef =>
+                        return err!(InvalidDiscriminant(ScalarMaybeUndef::Undef)),
                 }
             }
         })

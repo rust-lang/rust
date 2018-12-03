@@ -191,7 +191,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_size(&self) -> u64;
-    /// Returns the last access time.
+    /// Returns the last access time of the file, in seconds since Unix Epoch.
     ///
     /// # Examples
     ///
@@ -208,7 +208,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_atime(&self) -> i64;
-    /// Returns the last access time, nano seconds part.
+    /// Returns the last access time of the file, in nanoseconds since [`st_atime`].
+    ///
+    /// [`st_atime`]: #tymethod.st_atime
     ///
     /// # Examples
     ///
@@ -225,7 +227,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_atime_nsec(&self) -> i64;
-    /// Returns the last modification time.
+    /// Returns the last modification time of the file, in seconds since Unix Epoch.
     ///
     /// # Examples
     ///
@@ -242,7 +244,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_mtime(&self) -> i64;
-    /// Returns the last modification time, nano seconds part.
+    /// Returns the last modification time of the file, in nanoseconds since [`st_mtime`].
+    ///
+    /// [`st_mtime`]: #tymethod.st_mtime
     ///
     /// # Examples
     ///
@@ -259,7 +263,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_mtime_nsec(&self) -> i64;
-    /// Returns the last status change time.
+    /// Returns the last status change time of the file, in seconds since Unix Epoch.
     ///
     /// # Examples
     ///
@@ -276,7 +280,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ctime(&self) -> i64;
-    /// Returns the last status change time, nano seconds part.
+    /// Returns the last status change time of the file, in nanoseconds since [`st_ctime`].
+    ///
+    /// [`st_ctime`]: #tymethod.st_ctime
     ///
     /// # Examples
     ///

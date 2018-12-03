@@ -43,11 +43,11 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
                                     &[],
                                     Edition::Edition2015,
                                     // not used...
-                                    NodeId::new(0));
+                                    NodeId::from_u32(0));
     let map = match TokenTree::parse(cx, &mbe_matcher, args.iter().cloned().collect()) {
         Success(map) => map,
-        Failure(_, tok) => {
-            panic!("expected Success, but got Failure: {}", parse_failure_msg(tok));
+        Failure(_, tok, msg) => {
+            panic!("expected Success, but got Failure: {} - {}", parse_failure_msg(tok), msg);
         }
         Error(_, s) => {
             panic!("expected Success, but got Error: {}", s);

@@ -1253,7 +1253,7 @@ Erroneous code example:
 
 ```compile_fail,E0433
 let map = HashMap::new();
-// error: failed to resolve. Use of undeclared type or module `HashMap`
+// error: failed to resolve: use of undeclared type or module `HashMap`
 ```
 
 Please verify you didn't misspell the type/module's name or that you didn't

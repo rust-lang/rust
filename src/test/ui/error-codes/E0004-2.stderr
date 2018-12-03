@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: type std::option::Option<i32> is non-empty
+error[E0004]: non-exhaustive patterns: type `std::option::Option<i32>` is non-empty
   --> $DIR/E0004-2.rs:14:11
    |
 LL |     match x { } //~ ERROR E0004

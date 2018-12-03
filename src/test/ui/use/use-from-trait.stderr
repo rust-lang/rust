@@ -20,13 +20,13 @@ error[E0432]: unresolved import `Foo`
   --> $DIR/use-from-trait.rs:19:5
    |
 LL | use Foo::new;
-   |     ^^^ Not a module `Foo`
+   |     ^^^ not a module `Foo`
 
 error[E0432]: unresolved import `Foo`
   --> $DIR/use-from-trait.rs:23:5
    |
 LL | use Foo::C2;
-   |     ^^^ Not a module `Foo`
+   |     ^^^ not a module `Foo`
 
 error: aborting due to 5 previous errors
 

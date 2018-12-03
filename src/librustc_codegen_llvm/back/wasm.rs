@@ -17,6 +17,7 @@ use serialize::leb128;
 
 // https://webassembly.github.io/spec/core/binary/modules.html#binary-importsec
 const WASM_IMPORT_SECTION_ID: u8 = 2;
+const WASM_CUSTOM_SECTION_ID: u8 = 0;
 
 const WASM_EXTERNAL_KIND_FUNCTION: u8 = 0;
 const WASM_EXTERNAL_KIND_TABLE: u8 = 1;
@@ -119,6 +120,112 @@ pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
             b => panic!("unknown kind: {}", b),
         }
     }
+}
+
+/// Add or augment the existing `producers` section to encode information about
+/// the Rust compiler used to produce the wasm file.
+pub fn add_producer_section(
+    path: &Path,
+    rust_version: &str,
+    rustc_version: &str,
+) {
+    struct Field<'a> {
+        name: &'a str,
+        values: Vec<FieldValue<'a>>,
+    }
+
+    #[derive(Copy, Clone)]
+    struct FieldValue<'a> {
+        name: &'a str,
+        version: &'a str,
+    }
+
+    let wasm = fs::read(path).expect("failed to read wasm output");
+    let mut ret = WasmEncoder::new();
+    ret.data.extend(&wasm[..8]);
+
+    // skip the 8 byte wasm/version header
+    let rustc_value = FieldValue {
+        name: "rustc",
+        version: rustc_version,
+    };
+    let rust_value = FieldValue {
+        name: "Rust",
+        version: rust_version,
+    };
+    let mut fields = Vec::new();
+    let mut wrote_rustc = false;
+    let mut wrote_rust = false;
+
+    // Move all sections from the original wasm file to our output, skipping
+    // everything except the producers section
+    for (id, raw) in WasmSections(WasmDecoder::new(&wasm[8..])) {
+        if id != WASM_CUSTOM_SECTION_ID {
+            ret.byte(id);
+            ret.bytes(raw);
+            continue
+        }
+        let mut decoder = WasmDecoder::new(raw);
+        if decoder.str() != "producers" {
+            ret.byte(id);
+            ret.bytes(raw);
+            continue
+        }
+
+        // Read off the producers section into our fields outside the loop,
+        // we'll re-encode the producers section when we're done (to handle an
+        // entirely missing producers section as well).
+        info!("rewriting existing producers section");
+
+        for _ in 0..decoder.u32() {
+            let name = decoder.str();
+            let mut values = Vec::new();
+            for _ in 0..decoder.u32() {
+                let name = decoder.str();
+                let version = decoder.str();
+                values.push(FieldValue { name, version });
+            }
+
+            if name == "language" {
+                values.push(rust_value);
+                wrote_rust = true;
+            } else if name == "processed-by" {
+                values.push(rustc_value);
+                wrote_rustc = true;
+            }
+            fields.push(Field { name, values });
+        }
+    }
+
+    if !wrote_rust {
+        fields.push(Field {
+            name: "language",
+            values: vec![rust_value],
+        });
+    }
+    if !wrote_rustc {
+        fields.push(Field {
+            name: "processed-by",
+            values: vec![rustc_value],
+        });
+    }
+
+    // Append the producers section to the end of the wasm file.
+    let mut section = WasmEncoder::new();
+    section.str("producers");
+    section.u32(fields.len() as u32);
+    for field in fields {
+        section.str(field.name);
+        section.u32(field.values.len() as u32);
+        for value in field.values {
+            section.str(value.name);
+            section.str(value.version);
+        }
+    }
+    ret.byte(WASM_CUSTOM_SECTION_ID);
+    ret.bytes(&section.data);
+
+    fs::write(path, &ret.data).expect("failed to write wasm output");
 }
 
 struct WasmSections<'a>(WasmDecoder<'a>);

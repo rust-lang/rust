@@ -281,7 +281,7 @@ impl<'sess> OnDiskCache<'sess> {
                         // otherwise, abort
                         break;
                     }
-                    interpret_alloc_index.reserve(new_n);
+                    interpret_alloc_index.reserve(new_n - n);
                     for idx in n..new_n {
                         let id = encoder.interpret_allocs_inverse[idx];
                         let pos = encoder.position() as u32;

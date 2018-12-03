@@ -47,16 +47,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let src_layout = src.layout;
                 let src = self.read_immediate(src)?;
 
-                let src = if M::ENABLE_PTR_TRACKING_HOOKS && src_layout.ty.is_region_ptr() {
-                    // The only `Misc` casts on references are those creating raw pointers.
-                    assert!(dest.layout.ty.is_unsafe_ptr());
-                    // For the purpose of the "ptr tag hooks", treat this as creating
-                    // a new, raw reference.
-                    let place = self.ref_to_mplace(src)?;
-                    self.create_ref(place, None)?
-                } else {
-                    *src
-                };
+                // There are no casts to references
+                assert!(!dest.layout.ty.is_region_ptr());
+                // Hence we make all casts erase the tag
+                let src = src.erase_tag().with_default_tag();
 
                 if self.type_is_fat_ptr(src_layout.ty) {
                     match (src, self.type_is_fat_ptr(dest.layout.ty)) {
@@ -90,8 +84,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         layout::Variants::NicheFilling { .. } => {},
                     }
 
-                    let src = src.to_scalar()?;
-                    let dest_val = self.cast_scalar(src, src_layout, dest.layout)?;
+                    let dest_val = self.cast_scalar(src.to_scalar()?, src_layout, dest.layout)?;
                     self.write_scalar(dest_val, dest)?;
                 }
             }

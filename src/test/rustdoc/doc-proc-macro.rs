@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-stage1
-
 // Issue #52129: ICE when trying to document the `quote` proc-macro from proc_macro
 
 // As of this writing, we don't currently attempt to document proc-macros. However, we shouldn't

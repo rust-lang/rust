@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // New test for #53818: modifying static memory at compile-time is not allowed.
-// The test should never succeed.
+// The test should never compile successfully
 
 #![feature(const_raw_ptr_deref)]
 #![feature(const_let)]
@@ -27,9 +27,9 @@ fn foo() {}
 
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-    //~^ ERROR statements in statics are unstable (see issue #48821)
-    // This error is caused by a separate bug that the feature gate error is reported
-    // even though the feature gate "const_let" is active.
+    // we do not error on the above access, because that is not detectable statically. Instead,
+    // const evaluation will error when trying to evaluate it. Due to the error below, we never even
+    // attempt to const evaluate `BAR`, so we don't see the error
 
     foo();
     //~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants

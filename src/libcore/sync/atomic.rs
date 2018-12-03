@@ -173,11 +173,11 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings
 ///
-/// Memory orderings limit the ways that both the compiler and CPU may reorder
-/// instructions around atomic operations. At its most restrictive,
-/// "sequentially consistent" atomics allow neither reads nor writes
-/// to be moved either before or after the atomic operation; on the other end
-/// "relaxed" atomics allow all reorderings.
+/// Memory orderings specify the way atomic operations synchronize memory.
+/// In its weakest [`Relaxed`][Ordering::Relaxed], only the memory directly touched by the
+/// operation is synchronized. On the other hand, a store-load pair of [`SeqCst`][Ordering::SeqCst]
+/// operations synchronize other memory while additionally preserving a total order of such
+/// operations across all threads.
 ///
 /// Rust's memory orderings are [the same as
 /// LLVM's](https://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
@@ -185,6 +185,8 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// For more information see the [nomicon].
 ///
 /// [nomicon]: ../../../nomicon/atomics.html
+/// [Ordering::Relaxed]: #variant.Relaxed
+/// [Ordering::SeqCst]: #variant.SeqCst
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug)]
 #[non_exhaustive]
@@ -234,8 +236,8 @@ pub enum Ordering {
     /// For loads it uses [`Acquire`] ordering. For stores it uses the [`Release`] ordering.
     ///
     /// Notice that in the case of `compare_and_swap`, it is possible that the operation ends up
-    /// not performing any store and hence it has just `Acquire` ordering. However,
-    /// `AcqRel` will never perform [`Relaxed`] accesses.
+    /// not performing any store and hence it has just [`Acquire`] ordering. However,
+    /// [`AcqRel`][`AcquireRelease`] will never perform [`Relaxed`] accesses.
     ///
     /// This ordering is only applicable for operations that combine both loads and stores.
     ///

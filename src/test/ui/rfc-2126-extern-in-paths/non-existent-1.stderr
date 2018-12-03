@@ -2,7 +2,7 @@ error[E0432]: unresolved import `extern::xcrate`
   --> $DIR/non-existent-1.rs:13:13
    |
 LL | use extern::xcrate::S; //~ ERROR unresolved import `extern::xcrate`
-   |             ^^^^^^ Could not find `xcrate` in `extern`
+   |             ^^^^^^ could not find `xcrate` in `extern`
 
 error: aborting due to previous error
 

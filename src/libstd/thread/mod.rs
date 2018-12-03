@@ -233,7 +233,7 @@ pub use self::local::{LocalKey, AccessError};
 ///
 /// You may want to use [`spawn`] instead of [`thread::spawn`], when you want
 /// to recover from a failure to launch a thread, indeed the free function will
-/// panick where the `Builder` method will return a [`io::Result`].
+/// panic where the `Builder` method will return a [`io::Result`].
 ///
 /// # Examples
 ///
@@ -326,7 +326,7 @@ impl Builder {
     /// Sets the size of the stack (in bytes) for the new thread.
     ///
     /// The actual stack size may be greater than this value if
-    /// the platform specifies minimal stack size.
+    /// the platform specifies a minimal stack size.
     ///
     /// For more information about the stack size for threads, see
     /// [this module-level documentation][stack-size].

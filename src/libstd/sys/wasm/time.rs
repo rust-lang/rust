@@ -51,6 +51,10 @@ impl SystemTime {
         SystemTime(self.0 + *other)
     }
 
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+        self.0.checked_add(*other).map(|d| SystemTime(d))
+    }
+
     pub fn sub_duration(&self, other: &Duration) -> SystemTime {
         SystemTime(self.0 - *other)
     }

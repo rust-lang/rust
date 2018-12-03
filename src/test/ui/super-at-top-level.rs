@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::f; //~ ERROR There are too many initial `super`s
+use super::f; //~ ERROR there are too many initial `super`s
 
 fn main() {
 }

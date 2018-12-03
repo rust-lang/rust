@@ -1,8 +1,10 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-err4.rs:18:11
    |
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error: aborting due to previous error
 

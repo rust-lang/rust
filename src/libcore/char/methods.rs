@@ -121,15 +121,24 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
-        if radix > 36 {
-            panic!("to_digit: radix is too high (maximum 36)");
-        }
-        let val = match self {
-          '0' ..= '9' => self as u32 - '0' as u32,
-          'a' ..= 'z' => self as u32 - 'a' as u32 + 10,
-          'A' ..= 'Z' => self as u32 - 'A' as u32 + 10,
-          _ => return None,
+        assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
+
+        // the code is split up here to improve execution speed for cases where
+        // the `radix` is constant and 10 or smaller
+        let val = if radix <= 10  {
+            match self {
+                '0' ..= '9' => self as u32 - '0' as u32,
+                _ => return None,
+            }
+        } else {
+            match self {
+                '0'..='9' => self as u32 - '0' as u32,
+                'a'..='z' => self as u32 - 'a' as u32 + 10,
+                'A'..='Z' => self as u32 - 'A' as u32 + 10,
+                _ => return None,
+            }
         };
+
         if val < radix { Some(val) }
         else { None }
     }

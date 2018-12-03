@@ -351,13 +351,15 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let warnings_lint_name = lint::builtin::WARNINGS.name;
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
+    let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
 
     // In addition to those specific lints, we also need to whitelist those given through
     // command line, otherwise they'll get ignored and we don't want that.
     let mut whitelisted_lints = vec![warnings_lint_name.to_owned(),
                                      intra_link_resolution_failure_name.to_owned(),
                                      missing_docs.to_owned(),
-                                     missing_doc_example.to_owned()];
+                                     missing_doc_example.to_owned(),
+                                     private_doc_tests.to_owned()];
 
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 

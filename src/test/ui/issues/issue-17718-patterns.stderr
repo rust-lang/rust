@@ -2,7 +2,7 @@ error[E0530]: match bindings cannot shadow statics
   --> $DIR/issue-17718-patterns.rs:17:9
    |
 LL | static A1: usize = 1;
-   | --------------------- a static `A1` is defined here
+   | --------------------- the static `A1` is defined here
 ...
 LL |         A1 => {} //~ ERROR: match bindings cannot shadow statics
    |         ^^ cannot be named the same as a static
@@ -11,7 +11,7 @@ error[E0530]: match bindings cannot shadow statics
   --> $DIR/issue-17718-patterns.rs:18:9
    |
 LL | static mut A2: usize = 1;
-   | ------------------------- a static `A2` is defined here
+   | ------------------------- the static `A2` is defined here
 ...
 LL |         A2 => {} //~ ERROR: match bindings cannot shadow statics
    |         ^^ cannot be named the same as a static

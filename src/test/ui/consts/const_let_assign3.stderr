@@ -1,0 +1,9 @@
+error[E0017]: references in constants may only refer to immutable values
+  --> $DIR/const_let_assign3.rs:16:5
+   |
+LL |     s.foo(3); //~ ERROR references in constants may only refer to immutable values
+   |     ^ constants require immutable values
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0017`.

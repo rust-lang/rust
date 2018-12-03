@@ -14,7 +14,18 @@ use hair::*;
 use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn stmt_expr(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<()> {
+    /// Builds a block of MIR statements to evaluate the HAIR `expr`.
+    /// If the original expression was an AST statement,
+    /// (e.g. `some().code(&here());`) then `opt_stmt_span` is the
+    /// span of that statement (including its semicolon, if any).
+    /// Diagnostics use this span (which may be larger than that of
+    /// `expr`) to identify when statement temporaries are dropped.
+    pub fn stmt_expr(&mut self,
+                     mut block: BasicBlock,
+                     expr: Expr<'tcx>,
+                     opt_stmt_span: Option<StatementSpan>)
+                     -> BlockAnd<()>
+    {
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr.span);
@@ -29,7 +40,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             } => {
                 let value = this.hir.mirror(value);
                 this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                    this.stmt_expr(block, value)
+                    this.stmt_expr(block, value, opt_stmt_span)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
@@ -190,9 +201,56 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             _ => {
                 let expr_ty = expr.ty;
-                let temp = this.temp(expr.ty.clone(), expr_span);
+
+                // Issue #54382: When creating temp for the value of
+                // expression like:
+                //
+                // `{ side_effects(); { let l = stuff(); the_value } }`
+                //
+                // it is usually better to focus on `the_value` rather
+                // than the entirety of block(s) surrounding it.
+                let mut temp_span = expr_span;
+                let mut temp_in_tail_of_block = false;
+                if let ExprKind::Block { body } = expr.kind {
+                    if let Some(tail_expr) = &body.expr {
+                        let mut expr = tail_expr;
+                        while let rustc::hir::ExprKind::Block(subblock, _label) = &expr.node {
+                            if let Some(subtail_expr) = &subblock.expr {
+                                expr = subtail_expr
+                            } else {
+                                break;
+                            }
+                        }
+                        temp_span = expr.span;
+                        temp_in_tail_of_block = true;
+                    }
+                }
+
+                let temp = {
+                    let mut local_decl = LocalDecl::new_temp(expr.ty.clone(), temp_span);
+                    if temp_in_tail_of_block {
+                        if this.block_context.currently_ignores_tail_results() {
+                            local_decl = local_decl.block_tail(BlockTailInfo {
+                                tail_result_is_ignored: true
+                            });
+                        }
+                    }
+                    let temp = this.local_decls.push(local_decl);
+                    let place = Place::Local(temp);
+                    debug!("created temp {:?} for expr {:?} in block_context: {:?}",
+                           temp, expr, this.block_context);
+                    place
+                };
                 unpack!(block = this.into(&temp, block, expr));
-                unpack!(block = this.build_drop(block, expr_span, temp, expr_ty));
+
+                // Attribute drops of the statement's temps to the
+                // semicolon at the statement's end.
+                let drop_point = this.hir.tcx().sess.source_map().end_point(match opt_stmt_span {
+                    None => expr_span,
+                    Some(StatementSpan(span)) => span,
+                });
+
+                unpack!(block = this.build_drop(block, drop_point, temp, expr_ty));
                 block.unit()
             }
         }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod foo {
-    pub fn x() { bar::x(); } //~ ERROR failed to resolve. Use of undeclared type or module `bar`
+    pub fn x() { bar::x(); } //~ ERROR failed to resolve: use of undeclared type or module `bar`
 }
 
 mod bar {

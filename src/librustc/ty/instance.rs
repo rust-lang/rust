@@ -173,10 +173,7 @@ impl<'tcx> InstanceDef<'tcx> {
             // available to normal end-users.
             return true
         }
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(self.def_id());
-        // need to use `is_const_fn_raw` since we don't really care if the user can use it as a
-        // const fn, just whether the function should be inlined
-        codegen_fn_attrs.requests_inline() || tcx.is_const_fn_raw(self.def_id())
+        tcx.codegen_fn_attrs(self.def_id()).requests_inline()
     }
 }
 

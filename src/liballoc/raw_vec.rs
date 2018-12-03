@@ -44,7 +44,7 @@ use boxed::Box;
 /// This enables you to use capacity growing logic catch the overflows in your length
 /// that might occur with zero-sized types.
 ///
-/// However this means that you need to be careful when roundtripping this type
+/// However this means that you need to be careful when round-tripping this type
 /// with a `Box<[T]>`: `cap()` won't yield the len. However `with_capacity`,
 /// `shrink_to_fit`, and `from_box` will actually set RawVec's private capacity
 /// field. This allows zero-sized types to not be special-cased by consumers of

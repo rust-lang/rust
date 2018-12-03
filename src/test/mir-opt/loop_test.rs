@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions -Z emit-end-regions
+// compile-flags: -Z identify_regions
 
 // Tests to make sure we correctly generate falseUnwind edges in loops
 

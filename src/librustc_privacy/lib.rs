@@ -361,9 +361,11 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             let def_id = self.tcx.hir.local_def_id(id);
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
-                    if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
-                        if export.vis == ty::Visibility::Public {
-                            self.update(node_id, Some(AccessLevel::Exported));
+                    if export.vis == ty::Visibility::Public {
+                        if let Some(def_id) = export.def.opt_def_id() {
+                            if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                                self.update(node_id, Some(AccessLevel::Exported));
+                            }
                         }
                     }
                 }
@@ -967,7 +969,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                             Some(poly_projection_predicate.skip_binder()
                                                           .projection_ty.trait_ref(self.tcx))
                         }
-                        ty::Predicate::TypeOutlives(..) => None,
+                        ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => None,
                         _ => bug!("unexpected predicate: {:?}", predicate),
                     };
                     if let Some(trait_ref) = trait_ref {
@@ -1759,7 +1761,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx,
             access_levels: &visitor.access_levels,
             in_variant: false,
-            old_error_set: NodeSet(),
+            old_error_set: Default::default(),
         };
         intravisit::walk_crate(&mut visitor, krate);
 

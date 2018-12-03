@@ -48,7 +48,7 @@ use ty::subst::Substs;
 ///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
 ///    the underlying conversions from `[i32; 4]` to `[i32]`.
 ///
-/// 3. Coercing a `Box<T>` to `Box<Trait>` is an interesting special case.  In
+/// 3. Coercing a `Box<T>` to `Box<dyn Trait>` is an interesting special case.  In
 ///    that case, we have the pointer we need coming in, so there are no
 ///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
 ///    At some point, of course, `Box` should move out of the compiler, in which

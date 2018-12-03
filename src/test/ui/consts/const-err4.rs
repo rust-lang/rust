@@ -16,7 +16,7 @@ union Foo {
 
 enum Bar {
     Boo = [unsafe { Foo { b: () }.a }; 4][3],
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR it is undefined behavior to use this value
 }
 
 fn main() {

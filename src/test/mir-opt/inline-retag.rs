@@ -32,6 +32,8 @@ fn bar() -> bool {
 //     bb0: {
 //         ...
 //         Retag(_3);
+//         ...
+//         Retag(_3);
 //         Retag(_6);
 //         StorageLive(_9);
 //         _9 = (*_3);

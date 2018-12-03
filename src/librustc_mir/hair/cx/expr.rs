@@ -1061,7 +1061,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
-                var_id: var_hir_id,
+                var_path: ty::UpvarPath {hir_id: var_hir_id},
                 closure_expr_id: LocalDefId::from_def_id(closure_def_id),
             };
             match cx.tables().upvar_capture(upvar_id) {
@@ -1178,7 +1178,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    -> ExprRef<'tcx> {
     let var_hir_id = cx.tcx.hir.node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
-        var_id: var_hir_id,
+        var_path: ty::UpvarPath { hir_id: var_hir_id },
         closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);

@@ -166,14 +166,14 @@ macro_rules! step_impl_no_between {
 }
 
 step_impl_unsigned!(usize u8 u16);
-#[cfg(not(target_pointer_witdth = "16"))]
+#[cfg(not(target_pointer_width = "16"))]
 step_impl_unsigned!(u32);
-#[cfg(target_pointer_witdth = "16")]
+#[cfg(target_pointer_width = "16")]
 step_impl_no_between!(u32);
 step_impl_signed!([isize: usize] [i8: u8] [i16: u16]);
-#[cfg(not(target_pointer_witdth = "16"))]
+#[cfg(not(target_pointer_width = "16"))]
 step_impl_signed!([i32: u32]);
-#[cfg(target_pointer_witdth = "16")]
+#[cfg(target_pointer_width = "16")]
 step_impl_no_between!(i32);
 #[cfg(target_pointer_width = "64")]
 step_impl_unsigned!(u64);

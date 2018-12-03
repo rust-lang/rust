@@ -58,7 +58,7 @@
 //! [`NonNull::dangling`] in such cases.
 //!
 //! [aliasing]: ../../nomicon/aliasing.html
-//! [book]: ../../book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
+//! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [null]: ./fn.null.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
@@ -79,7 +79,7 @@ use ops::{CoerceUnsized, DispatchFromDyn};
 use fmt;
 use hash;
 use marker::{PhantomData, Unsize};
-use mem;
+use mem::{self, MaybeUninit};
 use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -189,12 +189,22 @@ pub use intrinsics::write_bytes;
 /// i.e., you do not usually have to worry about such issues unless you call `drop_in_place`
 /// manually.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
+#[inline(always)]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    real_drop_in_place(&mut *to_drop)
+}
+
+// The real `drop_in_place` -- the one that gets called implicitly when variables go
+// out of scope -- should have a safe reference and not a raw pointer as argument
+// type.  When we drop a local variable, we access it with a pointer that behaves
+// like a safe reference; transmuting that to a raw pointer does not mean we can
+// actually access it with raw pointers.
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+unsafe fn real_drop_in_place<T: ?Sized>(to_drop: &mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    drop_in_place(to_drop);
+    real_drop_in_place(to_drop)
 }
 
 /// Creates a null raw pointer.
@@ -295,17 +305,14 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
-    // Give ourselves some scratch space to work with
-    let mut tmp: T = mem::uninitialized();
+    // Give ourselves some scratch space to work with.
+    // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
+    let mut tmp = MaybeUninit::<T>::uninitialized();
 
     // Perform the swap
-    copy_nonoverlapping(x, &mut tmp, 1);
+    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
     copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(&tmp, y, 1);
-
-    // y and t now point to the same thing, but we need to completely forget `tmp`
-    // because it's no longer relevant.
-    mem::forget(tmp);
+    copy_nonoverlapping(tmp.get_ref(), y, 1);
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
@@ -392,8 +399,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
         // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t: Block = mem::uninitialized();
-        let t = &mut t as *mut _ as *mut u8;
+        let mut t = mem::MaybeUninit::<Block>::uninitialized();
+        let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
@@ -407,10 +414,10 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     if i < len {
         // Swap any remaining bytes
-        let mut t: UnalignedBlock = mem::uninitialized();
+        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
         let rem = len - i;
 
-        let t = &mut t as *mut _ as *mut u8;
+        let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
 
@@ -575,9 +582,9 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
-    let mut tmp: T = mem::uninitialized();
-    copy_nonoverlapping(src, &mut tmp, 1);
-    tmp
+    let mut tmp = MaybeUninit::<T>::uninitialized();
+    copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+    tmp.into_inner()
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -642,11 +649,11 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp: T = mem::uninitialized();
+    let mut tmp = MaybeUninit::<T>::uninitialized();
     copy_nonoverlapping(src as *const u8,
-                        &mut tmp as *mut T as *mut u8,
+                        tmp.as_mut_ptr() as *mut u8,
                         mem::size_of::<T>());
-    tmp
+    tmp.into_inner()
 }
 
 /// Overwrites a memory location with the given value without reading or

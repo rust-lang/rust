@@ -1921,12 +1921,10 @@ big-endian (network) byte order.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();
 assert_eq!(bytes, ", $be_bytes, ");
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
@@ -1941,12 +1939,10 @@ little-endian byte order.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();
 assert_eq!(bytes, ", $le_bytes, ");
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
@@ -1969,8 +1965,6 @@ instead.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();
 assert_eq!(bytes, if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
@@ -1978,7 +1972,7 @@ assert_eq!(bytes, if cfg!(target_endian = \"big\") {
         ", $le_bytes, "
     });
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
@@ -1993,12 +1987,23 @@ big endian.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let value = ", stringify!($SelfT), "::from_be_bytes(", $be_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
@@ -2014,12 +2019,23 @@ little endian.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let value = ", stringify!($SelfT), "::from_le_bytes(", $le_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
@@ -2041,16 +2057,27 @@ appropriate instead.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
     } else {
         ", $le_bytes, "
     });
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
@@ -3626,6 +3653,7 @@ assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
 assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);",
 $EndFeature, "
 ```"),
+            #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
             pub fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
@@ -3663,12 +3691,10 @@ big-endian (network) byte order.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();
 assert_eq!(bytes, ", $be_bytes, ");
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
@@ -3683,12 +3709,10 @@ little-endian byte order.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();
 assert_eq!(bytes, ", $le_bytes, ");
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
@@ -3711,8 +3735,6 @@ instead.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();
 assert_eq!(bytes, if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
@@ -3720,7 +3742,7 @@ assert_eq!(bytes, if cfg!(target_endian = \"big\") {
         ", $le_bytes, "
     });
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
@@ -3735,12 +3757,23 @@ big endian.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let value = ", stringify!($SelfT), "::from_be_bytes(", $be_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
@@ -3756,12 +3789,23 @@ little endian.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let value = ", stringify!($SelfT), "::from_le_bytes(", $le_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
@@ -3783,16 +3827,27 @@ appropriate instead.
 # Examples
 
 ```
-#![feature(int_to_from_bytes)]
-
 let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
     } else {
         ", $le_bytes, "
     });
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
-            #[unstable(feature = "int_to_from_bytes", issue = "52963")]
+            #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
@@ -4783,15 +4838,38 @@ pub struct ParseIntError {
     kind: IntErrorKind,
 }
 
+/// Enum to store the various types of errors that can cause parsing an integer to fail.
+#[unstable(feature = "int_error_matching",
+           reason = "it can be useful to match errors when making error messages \
+                     for integer parsing",
+           issue = "22639")]
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum IntErrorKind {
+#[non_exhaustive]
+pub enum IntErrorKind {
+    /// Value being parsed is empty.
+    ///
+    /// Among other causes, this variant will be constructed when parsing an empty string.
     Empty,
+    /// Contains an invalid digit.
+    ///
+    /// Among other causes, this variant will be constructed when parsing a string that
+    /// contains a letter.
     InvalidDigit,
+    /// Integer is too large to store in target integer type.
     Overflow,
+    /// Integer is too small to store in target integer type.
     Underflow,
 }
 
 impl ParseIntError {
+    /// Outputs the detailed cause of parsing an integer failing.
+    #[unstable(feature = "int_error_matching",
+               reason = "it can be useful to match errors when making error messages \
+                         for integer parsing",
+               issue = "22639")]
+    pub fn kind(&self) -> &IntErrorKind {
+        &self.kind
+    }
     #[unstable(feature = "int_error_internals",
                reason = "available through Error trait and this method should \
                          not be exposed publicly",

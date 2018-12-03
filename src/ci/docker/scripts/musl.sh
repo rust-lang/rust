@@ -51,7 +51,7 @@ hide_output make clean
 
 cd ..
 
-LLVM=60
+LLVM=70
 
 # may have been downloaded in a previous run
 if [ ! -d libunwind-release_$LLVM ]; then

@@ -137,8 +137,6 @@ of extensions.  See `Registry::register_syntax_extension` and the
 
 ## Tips and tricks
 
-Some of the [macro debugging tips](../book/first-edition/macros.html#debugging-macro-code) are applicable.
-
 You can use `syntax::parse` to turn token trees into
 higher-level syntax elements like expressions:
 
@@ -183,7 +181,6 @@ that warns about any item named `lintme`.
 ```rust,ignore
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
-#![feature(macro_at_most_once_rep)]
 
 extern crate syntax;
 

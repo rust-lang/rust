@@ -5,7 +5,7 @@ LL | macro_rules! identity {
    | --------------------- when calling this macro
 ...
 LL |     let identity!(_) = 10; //~ ERROR no rules expected the token `_`
-   |                   ^ no rules expected the token `_`
+   |                   ^ no rules expected this token in macro call
 
 error: aborting due to previous error
 

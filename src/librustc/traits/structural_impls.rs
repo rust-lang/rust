@@ -324,7 +324,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
         use syntax::symbol::Symbol;
 
         match t.sty {
-            ty::Bound(bound_ty) if bound_ty.index == self.binder_index => {
+            ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 self.types.insert(
                     bound_ty.var.as_u32(),
                     match bound_ty.kind {

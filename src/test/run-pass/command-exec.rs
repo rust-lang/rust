@@ -55,6 +55,16 @@ fn main() {
                 println!("passed");
             }
 
+            "exec-test6" => {
+                let err = Command::new("echo").arg("passed").env_clear().exec();
+                panic!("failed to spawn: {}", err);
+            }
+
+            "exec-test7" => {
+                let err = Command::new("echo").arg("passed").env_remove("PATH").exec();
+                panic!("failed to spawn: {}", err);
+            }
+
             _ => panic!("unknown argument: {}", arg),
         }
         return
@@ -84,4 +94,18 @@ fn main() {
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     assert_eq!(output.stdout, b"passed\n");
+
+    if cfg!(target_os = "linux") {
+        let output = Command::new(&me).arg("exec-test6").output().unwrap();
+        println!("{:?}", output);
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        assert_eq!(output.stdout, b"passed\n");
+
+        let output = Command::new(&me).arg("exec-test7").output().unwrap();
+        println!("{:?}", output);
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        assert_eq!(output.stdout, b"passed\n");
+    }
 }

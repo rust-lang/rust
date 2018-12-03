@@ -1563,7 +1563,7 @@ impl Clean<Generics> for hir::Generics {
 }
 
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
-                                    &'a ty::GenericPredicates<'tcx>) {
+                                    &'a Lrc<ty::GenericPredicates<'tcx>>) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use self::WherePredicate as WP;
 
@@ -2744,6 +2744,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Closure(..) | ty::Generator(..) => Tuple(vec![]), // FIXME(pcwalton)
 
             ty::Bound(..) => panic!("Bound"),
+            ty::Placeholder(..) => panic!("Placeholder"),
             ty::UnnormalizedProjection(..) => panic!("UnnormalizedProjection"),
             ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
             ty::Infer(..) => panic!("Infer"),

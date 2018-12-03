@@ -494,16 +494,11 @@ the version in `Cargo.lock`, so the build can no longer continue.
 To resolve this, we need to update `Cargo.lock`. Luckily, cargo provides a
 command to do this easily.
 
-First, go into the `src/` directory since that is where `Cargo.toml` is in
-the rust repository. Then run, `cargo update -p rustfmt-nightly` to solve
-the problem.
-
 ```
-$ cd src
 $ cargo update -p rustfmt-nightly
 ```
 
-This should change the version listed in `src/Cargo.lock` to the new version you updated
+This should change the version listed in `Cargo.lock` to the new version you updated
 the submodule to. Running `./x.py build` should work now.
 
 ## Writing Documentation
@@ -645,7 +640,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
@@ -653,5 +648,5 @@ are:
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: https://rust-lang-nursery.github.io/rustc-guide/tests/intro.html
+[rctd]: https://rust-lang.github.io/rustc-guide/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/

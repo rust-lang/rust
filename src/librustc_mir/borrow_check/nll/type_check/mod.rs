@@ -112,7 +112,7 @@ mod relate_tys;
 /// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
 ///   constraints for the regions in the types of variables
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
-/// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysiss
+/// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 pub(crate) fn type_check<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
@@ -777,7 +777,7 @@ impl MirTypeckRegionConstraints<'tcx> {
     fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        placeholder: ty::Placeholder,
+        placeholder: ty::PlaceholderRegion,
     ) -> ty::Region<'tcx> {
         let placeholder_index = self.placeholder_indices.insert(placeholder);
         match self.placeholder_index_to_region.get(placeholder_index) {
@@ -1311,11 +1311,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             StatementKind::FakeRead(..)
-            | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..)
             | StatementKind::InlineAsm { .. }
-            | StatementKind::EndRegion(_)
             | StatementKind::Retag { .. }
+            | StatementKind::EscapeToRaw { .. }
             | StatementKind::Nop => {}
         }
     }

@@ -21,8 +21,8 @@ const WHITELISTED_SOURCES: &[&str] = &[
 
 /// check for external package sources
 pub fn check(path: &Path, bad: &mut bool) {
-    // Cargo.lock of rust: src/Cargo.lock
-    let path = path.join("Cargo.lock");
+    // Cargo.lock of rust (tidy runs inside src/)
+    let path = path.join("../Cargo.lock");
 
     // open and read the whole file
     let mut cargo_lock = String::new();

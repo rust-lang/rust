@@ -43,7 +43,7 @@ use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use source_map::{self, SourceMap, Spanned, respan};
-use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
+use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
 use parse::lexer::TokenAndSpan;
@@ -1404,11 +1404,7 @@ impl<'a> Parser<'a> {
                 // definition...
 
                 // We don't allow argument names to be left off in edition 2018.
-                if p.span.edition() >= Edition::Edition2018 {
-                    p.parse_arg_general(true)
-                } else {
-                    p.parse_arg_general(false)
-                }
+                p.parse_arg_general(p.span.rust_2018())
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
@@ -1601,9 +1597,9 @@ impl<'a> Parser<'a> {
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
         } else if self.check_keyword(keywords::Dyn) &&
-                  (self.span.edition() == Edition::Edition2018 ||
+                  (self.span.rust_2018() ||
                    self.look_ahead(1, |t| t.can_begin_bound() &&
-                                         !can_continue_type_after_non_fn_ident(t))) {
+                                          !can_continue_type_after_non_fn_ident(t))) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
             let bounds = self.parse_generic_bounds()?;
@@ -1823,6 +1819,14 @@ impl<'a> Parser<'a> {
     /// identifier names.
     fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
+
+        if let Ok(Some(_)) = self.parse_self_arg() {
+            let mut err = self.struct_span_err(self.prev_span,
+                "unexpected `self` argument in function");
+            err.span_label(self.prev_span,
+                "`self` is only valid as the first argument of an associated function");
+            return Err(err);
+        }
 
         let (pat, ty) = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{})",
@@ -2076,8 +2080,9 @@ impl<'a> Parser<'a> {
 
         let lo = self.meta_var_span.unwrap_or(self.span);
         let mut segments = Vec::new();
+        let mod_sep_ctxt = self.span.ctxt();
         if self.eat(&token::ModSep) {
-            segments.push(PathSegment::crate_root(lo.shrink_to_lo()));
+            segments.push(PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, enable_warning)?;
 
@@ -2415,8 +2420,7 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if self.span.edition() >= Edition::Edition2018 &&
-                    self.check_keyword(keywords::Async)
+                if self.span.rust_2018() && self.check_keyword(keywords::Async)
                 {
                     if self.is_async_block() { // check for `async {` and `async move {`
                         return self.parse_async_block(attrs);
@@ -2787,7 +2791,7 @@ impl<'a> Parser<'a> {
                             s.print_usize(float.trunc() as usize)?;
                             s.pclose()?;
                             s.s.word(".")?;
-                            s.s.word(fstr.splitn(2, ".").last().unwrap())
+                            s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
                         });
                         err.span_suggestion_with_applicability(
                             lo.to(self.prev_span),
@@ -3432,7 +3436,7 @@ impl<'a> Parser<'a> {
         } else {
             Movability::Movable
         };
-        let asyncness = if self.span.edition() >= Edition::Edition2018 {
+        let asyncness = if self.span.rust_2018() {
             self.parse_asyncness()
         } else {
             IsAsync::NotAsync
@@ -3948,7 +3952,7 @@ impl<'a> Parser<'a> {
                     );
                     err.emit();
                 }
-                self.bump();  // `..` || `...`:w
+                self.bump();  // `..` || `...`
 
                 if self.token == token::CloseDelim(token::Brace) {
                     etc_span = Some(etc_sp);
@@ -3968,7 +3972,7 @@ impl<'a> Parser<'a> {
                     ate_comma = true;
                 }
 
-                etc_span = Some(etc_sp);
+                etc_span = Some(etc_sp.until(self.span));
                 if self.token == token::CloseDelim(token::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
@@ -4554,9 +4558,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&mut self) -> bool {
         self.token.is_keyword(keywords::Try) &&
         self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
-
-        self.span.edition() >= Edition::Edition2018 &&
-
+        self.span.rust_2018() &&
         // prevent `while try {} {}`, `if try {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
@@ -5170,8 +5172,12 @@ impl<'a> Parser<'a> {
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
     /// trailing comma and erroneous trailing attributes.
     crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
+        let mut lifetimes = Vec::new();
         let mut params = Vec::new();
-        let mut seen_ty_param = false;
+        let mut seen_ty_param: Option<Span> = None;
+        let mut last_comma_span = None;
+        let mut bad_lifetime_pos = vec![];
+        let mut suggestions = vec![];
         loop {
             let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
@@ -5182,25 +5188,42 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
-                params.push(ast::GenericParam {
+                lifetimes.push(ast::GenericParam {
                     ident: lifetime.ident,
                     id: lifetime.id,
                     attrs: attrs.into(),
                     bounds,
                     kind: ast::GenericParamKind::Lifetime,
                 });
-                if seen_ty_param {
-                    self.span_err(self.prev_span,
-                        "lifetime parameters must be declared prior to type parameters");
+                if let Some(sp) = seen_ty_param {
+                    let param_span = self.prev_span;
+                    let ate_comma = self.eat(&token::Comma);
+                    let remove_sp = if ate_comma {
+                        param_span.until(self.span)
+                    } else {
+                        last_comma_span.unwrap_or(param_span).to(param_span)
+                    };
+                    bad_lifetime_pos.push(param_span);
+
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(param_span) {
+                        suggestions.push((remove_sp, String::new()));
+                        suggestions.push((sp.shrink_to_lo(), format!("{}, ", snippet)));
+                    }
+                    if ate_comma {
+                        last_comma_span = Some(self.prev_span);
+                        continue
+                    }
                 }
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
-                seen_ty_param = true;
+                if seen_ty_param.is_none() {
+                    seen_ty_param = Some(self.prev_span);
+                }
             } else {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
-                    let param_kind = if seen_ty_param { "type" } else { "lifetime" };
+                    let param_kind = if seen_ty_param.is_some() { "type" } else { "lifetime" };
                     self.span_err(attrs[0].span,
                         &format!("trailing attribute after {} parameters", param_kind));
                 }
@@ -5210,8 +5233,24 @@ impl<'a> Parser<'a> {
             if !self.eat(&token::Comma) {
                 break
             }
+            last_comma_span = Some(self.prev_span);
         }
-        Ok(params)
+        if !bad_lifetime_pos.is_empty() {
+            let mut err = self.struct_span_err(
+                bad_lifetime_pos,
+                "lifetime parameters must be declared prior to type parameters",
+            );
+            if !suggestions.is_empty() {
+                err.multipart_suggestion_with_applicability(
+                    "move the lifetime parameter prior to the first type parameter",
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
+        }
+        lifetimes.extend(params);  // ensure the correct order of lifetimes and type params
+        Ok(lifetimes)
     }
 
     /// Parse a set of optional generic type parameter declarations. Where
@@ -5385,11 +5424,12 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
+        self.expect(&token::OpenDelim(token::Paren))?;
+
         let sp = self.span;
         let mut variadic = false;
         let args: Vec<Option<Arg>> =
-            self.parse_unspanned_seq(
-                &token::OpenDelim(token::Paren),
+            self.parse_seq_to_before_end(
                 &token::CloseDelim(token::Paren),
                 SeqSep::trailing_allowed(token::Comma),
                 |p| {
@@ -5435,6 +5475,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             )?;
+
+        self.eat(&token::CloseDelim(token::Paren));
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
@@ -6591,16 +6633,7 @@ impl<'a> Parser<'a> {
         }
 
         let relative = match self.directory.ownership {
-            DirectoryOwnership::Owned { relative } => {
-                // Push the usage onto the list of non-mod.rs mod uses.
-                // This is used later for feature-gate error reporting.
-                if let Some(cur_file_ident) = relative {
-                    self.sess
-                        .non_modrs_mods.borrow_mut()
-                        .push((cur_file_ident, id_sp));
-                }
-                relative
-            },
+            DirectoryOwnership::Owned { relative } => relative,
             DirectoryOwnership::UnownedViaBlock |
             DirectoryOwnership::UnownedViaMod(_) => None,
         };
@@ -6750,7 +6783,11 @@ impl<'a> Parser<'a> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";
-        let mut ident = self.parse_ident()?;
+        let mut ident = if self.token.is_keyword(keywords::SelfValue) {
+            self.parse_path_segment_ident()
+        } else {
+            self.parse_ident()
+        }?;
         let mut idents = vec![];
         let mut replacement = vec![];
         let mut fixed_crate_name = false;
@@ -7646,8 +7683,11 @@ impl<'a> Parser<'a> {
                       self.check(&token::BinOp(token::Star)) ||
                       self.is_import_coupler() {
             // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
+            let mod_sep_ctxt = self.span.ctxt();
             if self.eat(&token::ModSep) {
-                prefix.segments.push(PathSegment::crate_root(lo.shrink_to_lo()));
+                prefix.segments.push(
+                    PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
+                );
             }
 
             if self.eat(&token::BinOp(token::Star)) {

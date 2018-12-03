@@ -351,7 +351,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Aggregate(adt, fields))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-                block = unpack!(this.stmt_expr(block, expr));
+                block = unpack!(this.stmt_expr(block, expr, None));
                 block.and(this.unit_rvalue())
             }
             ExprKind::Yield { value } => {

@@ -14,7 +14,10 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(in_band_lifetimes)]
+#![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
 #![feature(decl_macro)]
 #![feature(nll)]
 #![feature(str_escape)]
@@ -55,10 +58,9 @@ mod trace_macros;
 mod test;
 mod test_case;
 
-pub mod proc_macro_registrar;
-
-
+pub mod proc_macro_decls;
 pub mod proc_macro_impl;
+mod proc_macro_server;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;

@@ -52,9 +52,6 @@ pub struct ParseSess {
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// The registered diagnostics codes
     crate registered_diagnostics: Lock<ErrorMap>,
-    // Spans where a `mod foo;` statement was included in a non-mod.rs file.
-    // These are used to issue errors if the non_modrs_mods feature is not enabled.
-    pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
@@ -81,7 +78,6 @@ impl ParseSess {
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),
             source_map,
-            non_modrs_mods: Lock::new(vec![]),
             buffered_lints: Lock::new(vec![]),
         }
     }

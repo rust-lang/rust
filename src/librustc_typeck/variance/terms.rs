@@ -81,7 +81,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     let mut terms_cx = TermsContext {
         tcx,
         arena,
-        inferred_starts: NodeMap(),
+        inferred_starts: Default::default(),
         inferred_terms: vec![],
 
         lang_items: lang_items(tcx),
@@ -89,8 +89,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
 
     // See the following for a discussion on dep-graph management.
     //
-    // - https://rust-lang-nursery.github.io/rustc-guide/query.html
-    // - https://rust-lang-nursery.github.io/rustc-guide/variance.html
+    // - https://rust-lang.github.io/rustc-guide/query.html
+    // - https://rust-lang.github.io/rustc-guide/variance.html
     tcx.hir.krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx

@@ -30,7 +30,7 @@
 //! detect recursive locks.
 
 use cell::UnsafeCell;
-use mem;
+use mem::{self, MaybeUninit};
 use sync::atomic::{AtomicUsize, Ordering};
 use sys::c;
 use sys::compat;
@@ -157,34 +157,34 @@ fn kind() -> Kind {
     return ret;
 }
 
-pub struct ReentrantMutex { inner: UnsafeCell<c::CRITICAL_SECTION> }
+pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
-        mem::uninitialized()
+    pub fn uninitialized() -> ReentrantMutex {
+        ReentrantMutex { inner: UnsafeCell::new(MaybeUninit::uninitialized()) }
     }
 
     pub unsafe fn init(&mut self) {
-        c::InitializeCriticalSection(self.inner.get());
+        c::InitializeCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(self.inner.get());
+        c::EnterCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(self.inner.get()) != 0
+        c::TryEnterCriticalSection((&mut *self.inner.get()).as_mut_ptr()) != 0
     }
 
     pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(self.inner.get());
+        c::LeaveCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(self.inner.get());
+        c::DeleteCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 }

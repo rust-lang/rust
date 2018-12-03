@@ -20,7 +20,7 @@ use util::common::ErrorReported;
 use infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
-    /// Print the error message for lifetime errors when binding excapes a closure.
+    /// Print the error message for lifetime errors when binding escapes a closure.
     ///
     /// Consider a case where we have
     ///
