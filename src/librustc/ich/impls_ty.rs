@@ -338,7 +338,7 @@ impl_stable_hash_for!(
 );
 
 impl_stable_hash_for!(
-    impl<'tcx, M> for enum mir::interpret::AllocType<'tcx, M> [ mir::interpret::AllocType ] {
+    impl<'tcx> for enum mir::interpret::AllocType<'tcx> [ mir::interpret::AllocType ] {
         Function(instance),
         Static(def_id),
         Memory(mem),

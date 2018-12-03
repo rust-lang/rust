@@ -103,7 +103,7 @@ pub fn specialized_encode_alloc_id<
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    let alloc_type: AllocType<'tcx, &'tcx Allocation> =
+    let alloc_type: AllocType<'tcx> =
         tcx.alloc_map.lock().get(alloc_id).expect("no value for AllocId");
     match alloc_type {
         AllocType::Memory(alloc) => {
@@ -291,22 +291,22 @@ impl fmt::Display for AllocId {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
-pub enum AllocType<'tcx, M> {
+pub enum AllocType<'tcx> {
     /// The alloc id is used as a function pointer
     Function(Instance<'tcx>),
     /// The alloc id points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
     /// The alloc id points to memory
-    Memory(M)
+    Memory(&'tcx Allocation),
 }
 
 pub struct AllocMap<'tcx> {
     /// Lets you know what an AllocId refers to
-    id_to_type: FxHashMap<AllocId, AllocType<'tcx, &'tcx Allocation>>,
+    id_to_type: FxHashMap<AllocId, AllocType<'tcx>>,
 
     /// Used to ensure that functions and statics only get one associated AllocId
-    type_interner: FxHashMap<AllocType<'tcx, &'tcx Allocation>, AllocId>,
+    type_interner: FxHashMap<AllocType<'tcx>, AllocId>,
 
     /// The AllocId to assign to the next requested id.
     /// Always incremented, never gets smaller.
@@ -336,7 +336,7 @@ impl<'tcx> AllocMap<'tcx> {
         next
     }
 
-    fn intern(&mut self, alloc_type: AllocType<'tcx, &'tcx Allocation>) -> AllocId {
+    fn intern(&mut self, alloc_type: AllocType<'tcx>) -> AllocId {
         if let Some(&alloc_id) = self.type_interner.get(&alloc_type) {
             return alloc_id;
         }
@@ -354,7 +354,7 @@ impl<'tcx> AllocMap<'tcx> {
         self.intern(AllocType::Function(instance))
     }
 
-    pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx, &'tcx Allocation>> {
+    pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx>> {
         self.id_to_type.get(&id).cloned()
     }
 
