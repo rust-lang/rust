@@ -146,8 +146,8 @@ macro_rules! from_str_float_impl {
             ///
             /// # Known bugs
             ///
-            /// * [#31407]: Some strings that adhere to the regular expression
-            ///   above will incorrectly return an [`Err`].
+            /// In some situations, some strings that should create a valid float
+            /// instead return an error. See [issue #31407] for details.
             ///
             /// [#31407]: https://github.com/rust-lang/rust/issues/31407
             ///
