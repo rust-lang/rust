@@ -1,4 +1,4 @@
-error[E0658]: `extern crate self` is unstable (see issue #54658)
+error[E0658]: `extern crate self` is unstable (see issue #56409)
   --> $DIR/feature-gate-extern_crate_self.rs:1:1
    |
 LL | extern crate self as foo; //~ ERROR `extern crate self` is unstable
