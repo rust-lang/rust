@@ -6,6 +6,7 @@ use crate::mir;
 use crate::ty::{self, Ty, layout};
 use crate::ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
+use rustc_macros::HashStable;
 
 use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
 
@@ -17,7 +18,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable)]
 pub enum ErrorHandled {
     /// Already reported a lint or an error for this evaluation.
     Reported,
@@ -46,7 +47,7 @@ pub struct ConstEvalErr<'tcx> {
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct FrameInfo<'tcx> {
     pub call_site: Span, // this span is in the caller!
     pub instance: ty::Instance<'tcx>,
@@ -209,7 +210,7 @@ impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
 
 pub type AssertMessage<'tcx> = EvalErrorKind<'tcx, mir::Operand<'tcx>>;
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum EvalErrorKind<'tcx, O> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.

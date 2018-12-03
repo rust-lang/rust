@@ -7,9 +7,10 @@ use crate::util::nodemap::{DefIdSet, FxHashMap};
 use std::hash::Hash;
 use std::fmt;
 use syntax::ast::NodeId;
+use rustc_macros::HashStable;
 
 // Accessibility levels, sorted in ascending order
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
 pub enum AccessLevel {
     /// Superset of `AccessLevel::Reachable` used to mark impl Trait items.
     ReachableFromImplTrait,
