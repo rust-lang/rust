@@ -44,6 +44,7 @@ LL |                          mut hours_are_suns,
    = note: consider using `_hours_are_suns` instead
 
 warning: value assigned to `hours_are_suns` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:50:9
    |
 LL |         hours_are_suns = false;
