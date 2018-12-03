@@ -91,7 +91,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     let config = ThreadPoolBuilder::new()
         .num_threads(Session::query_threads_from_opts(&opts))
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
-        .stack_size(16 * 1024 * 1024);
+        .stack_size(::STACK_SIZE);
 
     let with_pool = move |pool: &ThreadPool| {
         pool.install(move || f(opts))
