@@ -11,7 +11,11 @@
 /// A vector type optimized for cases where this size is usually 0 (c.f. `SmallVector`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
 /// which uses only a single (null) pointer.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
+#[serde(transparent)]
 pub struct ThinVec<T>(Option<Box<Vec<T>>>);
 
 impl<T> ThinVec<T> {

@@ -50,6 +50,9 @@ extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
 extern crate serialize;
 extern crate graphviz;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate smallvec;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.

@@ -24,7 +24,7 @@ use std::iter::Peekable;
 
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
 /// that the delimiter itself might be `NoDelim`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Delimited {
     pub delim: token::DelimToken,
     pub tts: Vec<TokenTree>,
@@ -62,7 +62,7 @@ impl Delimited {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct SequenceRepetition {
     /// The sequence of token trees
     pub tts: Vec<TokenTree>,
@@ -76,7 +76,7 @@ pub struct SequenceRepetition {
 
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Hash, Debug, Copy)]
 pub enum KleeneOp {
     /// Kleene star (`*`) for zero or more repetitions
     ZeroOrMore,
@@ -87,7 +87,7 @@ pub enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
 /// are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TokenTree {
     Token(Span, token::Token),
     Delimited(DelimSpan, Lrc<Delimited>),

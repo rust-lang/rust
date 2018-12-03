@@ -28,6 +28,7 @@ use ext::tt::{macro_parser, quoted};
 use parse::Directory;
 use parse::token::{self, DelimToken, Token};
 use print::pprust;
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serialize::{Decoder, Decodable, Encoder, Encodable};
 use util::RcVec;
 
@@ -35,7 +36,10 @@ use std::borrow::Cow;
 use std::{fmt, iter, mem};
 
 /// A delimited sequence of token trees
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, Debug,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub struct Delimited {
     /// The type of delimiter
     pub delim: DelimToken,
@@ -92,7 +96,10 @@ impl Delimited {
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
@@ -721,6 +728,18 @@ impl Decodable for TokenStream {
     }
 }
 
+impl Serialize for TokenStream {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(self.trees())
+    }
+}
+
+impl<'de> Deserialize<'de> for TokenStream {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<TokenStream, D::Error> {
+        Vec::<TokenTree>::deserialize(deserializer).map(|vec| vec.into_iter().collect())
+    }
+}
+
 impl Encodable for ThinTokenStream {
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
         TokenStream::from(self.clone()).encode(encoder)
@@ -733,7 +752,22 @@ impl Decodable for ThinTokenStream {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+impl Serialize for ThinTokenStream {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        TokenStream::from(self.clone()).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ThinTokenStream {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ThinTokenStream, D::Error> {
+        TokenStream::deserialize(deserializer).map(Into::into)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,

@@ -17,6 +17,7 @@ use {Span, DUMMY_SP, GLOBALS};
 
 use rustc_data_structures::fx::FxHashMap;
 use arena::DroplessArena;
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::str;
@@ -137,6 +138,29 @@ impl Decodable for Ident {
     }
 }
 
+impl Serialize for Ident {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if self.span.ctxt().modern() == SyntaxContext::empty() {
+            self.as_str()[..].serialize(serializer)
+        } else { // FIXME(jseyfried) intercrate hygiene
+            let mut string = "#".to_owned();
+            string.push_str(&self.as_str());
+            string[..].serialize(serializer)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Ident {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Ident, D::Error> {
+        let string = <&str>::deserialize(deserializer)?;
+        Ok(if !string.starts_with('#') {
+            Ident::from_str(string)
+        } else { // FIXME(jseyfried) intercrate hygiene
+            Ident::with_empty_ctxt(Symbol::gensym(&string[1..]))
+        })
+    }
+}
+
 /// A symbol is an interned or gensymed string.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(u32);
@@ -213,6 +237,18 @@ impl Encodable for Symbol {
 impl Decodable for Symbol {
     fn decode<D: Decoder>(d: &mut D) -> Result<Symbol, D::Error> {
         Ok(Symbol::intern(&d.read_str()?))
+    }
+}
+
+impl Serialize for Symbol {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.as_str()[..].serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Symbol {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Symbol, D::Error> {
+        Ok(Symbol::intern(<&str>::deserialize(deserializer)?))
     }
 }
 

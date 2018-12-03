@@ -47,7 +47,10 @@ pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,

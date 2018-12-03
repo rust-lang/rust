@@ -41,6 +41,7 @@ use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::{mem, ptr, slice, vec};
 
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
@@ -167,6 +168,18 @@ impl<T: Encodable> Encodable for P<T> {
     }
 }
 
+impl<T: Serialize> Serialize for P<T> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (**self).serialize(serializer)
+    }
+}
+
+impl<'de, T: 'static + Deserialize<'de>> Deserialize<'de> for P<T> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<P<T>, D::Error> {
+        Deserialize::deserialize(deserializer).map(P)
+    }
+}
+
 impl<T> P<[T]> {
     pub fn new() -> P<[T]> {
         P { ptr: Default::default() }
@@ -240,6 +253,18 @@ impl<T: Encodable> Encodable for P<[T]> {
 impl<T: Decodable> Decodable for P<[T]> {
     fn decode<D: Decoder>(d: &mut D) -> Result<P<[T]>, D::Error> {
         Ok(P::from_vec(Decodable::decode(d)?))
+    }
+}
+
+impl<T: Serialize> Serialize for P<[T]> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (&**self).serialize(serializer)
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for P<[T]> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<P<[T]>, D::Error> {
+        Ok(P::from_vec(Deserialize::deserialize(deserializer)?))
     }
 }
 

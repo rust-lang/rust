@@ -20,6 +20,7 @@ use Span;
 use edition::Edition;
 use symbol::Symbol;
 
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::fmt;
@@ -624,3 +625,17 @@ impl Decodable for SyntaxContext {
         Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
     }
 }
+
+impl Serialize for SyntaxContext {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ().serialize(serializer) // FIXME(jseyfried) intercrate hygiene
+    }
+}
+
+impl<'de> Deserialize<'de> for SyntaxContext {
+    fn deserialize<D: Deserializer<'de>>(deserialize: D) -> Result<SyntaxContext, D::Error> {
+        <()>::deserialize(deserialize)?;
+        Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+    }
+}
+

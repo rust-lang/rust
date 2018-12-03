@@ -19,6 +19,8 @@ stable_deref_trait = "1.0.0"
 rustc-rayon = "0.1.1"
 rustc-rayon-core = "0.1.1"
 rustc-hash = "1.0.1"
+serde = "1.0"
+serde_derive = "1.0"
 smallvec = { version = "0.6.5", features = ["union"] }
 
 [dependencies.parking_lot]

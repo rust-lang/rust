@@ -29,7 +29,10 @@ use std::{cmp, fmt};
 use std::mem;
 use rustc_data_structures::sync::{Lrc, Lock};
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Hash, Debug, Copy,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -44,7 +47,10 @@ pub enum BinOpToken {
 }
 
 /// A delimiter token
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Hash, Debug, Copy,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -66,7 +72,10 @@ impl DelimToken {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Hash, Debug, Copy,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -140,7 +149,10 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     ].contains(&ident.name)
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,
@@ -644,7 +656,7 @@ impl Token {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Serialize, Deserialize)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
@@ -714,6 +726,11 @@ impl fmt::Debug for Nonterminal {
     }
 }
 
+// HACK(eddyb) while these could be specialized, in practice they're not,
+// as we only use `Encodable` & `Decodable` for (`Nonterminal`-free) HIR.
+impl serialize::UseSpecializedEncodable for Nonterminal {}
+impl serialize::UseSpecializedDecodable for Nonterminal {}
+
 crate fn is_op(tok: &Token) -> bool {
     match *tok {
         OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
@@ -723,8 +740,12 @@ crate fn is_op(tok: &Token) -> bool {
     }
 }
 
-#[derive(Clone)]
-pub struct LazyTokenStream(Lock<Option<TokenStream>>);
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LazyTokenStream {
+    #[serde(skip)]
+    // FIXME(serde-rs/serde#1396) use a tuple struct again when that's fixed.
+    inner: Lock<Option<TokenStream>>,
+}
 
 impl cmp::Eq for LazyTokenStream {}
 impl PartialEq for LazyTokenStream {
@@ -735,17 +756,17 @@ impl PartialEq for LazyTokenStream {
 
 impl fmt::Debug for LazyTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.clone().0.into_inner(), f)
+        fmt::Debug::fmt(&self.clone().inner.into_inner(), f)
     }
 }
 
 impl LazyTokenStream {
     fn new() -> Self {
-        LazyTokenStream(Lock::new(None))
+        LazyTokenStream { inner: Lock::new(None) }
     }
 
     fn force<F: FnOnce() -> TokenStream>(&self, f: F) -> TokenStream {
-        let mut opt_stream = self.0.lock();
+        let mut opt_stream = self.inner.lock();
         if opt_stream.is_none() {
             *opt_stream = Some(f());
         }

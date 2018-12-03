@@ -678,7 +678,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
     depr
 }
 
-#[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(PartialEq, Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprC,
@@ -688,7 +688,10 @@ pub enum ReprAttr {
     ReprAlign(u32),
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(Eq, Hash, PartialEq, Debug, Copy, Clone,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

@@ -47,6 +47,7 @@ extern crate scoped_tls;
 extern crate serde_derive;
 extern crate serde;
 
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 extern crate serialize;
@@ -179,12 +180,13 @@ impl FileName {
 /// `SpanData` is public because `Span` uses a thread-local interner and can't be
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
 /// Using `Span` is generally preferred.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct SpanData {
     pub lo: BytePos,
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
+    #[serde(skip)]
     pub ctxt: SyntaxContext,
 }
 
@@ -569,6 +571,19 @@ impl serialize::UseSpecializedDecodable for Span {
             let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
             Ok(Span::new(lo, hi, NO_EXPANSION))
         })
+    }
+}
+
+impl Serialize for Span {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.data().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Span {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Span, D::Error> {
+        let data = SpanData::deserialize(deserializer)?;
+        Ok(Span::new(data.lo, data.hi, data.ctxt))
     }
 }
 
@@ -1165,7 +1180,8 @@ pub trait Pos {
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct BytePos(pub u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset

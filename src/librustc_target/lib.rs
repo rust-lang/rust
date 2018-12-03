@@ -31,6 +31,9 @@
 extern crate bitflags;
 extern crate serialize;
 #[macro_use] extern crate log;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate serde_json;
 
 extern crate serialize as rustc_serialize; // used by deriving

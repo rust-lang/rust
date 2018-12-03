@@ -535,8 +535,10 @@ impl Integer {
 }
 
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
-         PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Ord,
+    RustcEncodable, RustcDecodable,
+    Serialize, Deserialize,
+)]
 pub enum FloatTy {
     F32,
     F64,

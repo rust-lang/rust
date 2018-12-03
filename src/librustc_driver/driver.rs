@@ -40,8 +40,6 @@ use rustc_plugin as plugin;
 use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion};
 use super::Compilation;
 
-use serialize::json;
-
 use std::any::Any;
 use std::env;
 use std::ffi::OsString;
@@ -665,6 +663,13 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     }
 }
 
+fn print_ast_crate_as_json(krate: &ast::Crate) {
+    let stdout = io::stdout();
+    let mut stdout = stdout.lock();
+    ::serde_json::to_writer(&mut stdout, &krate).unwrap();
+    stdout.write(b"\n").unwrap();
+}
+
 pub fn phase_1_parse_input<'a>(
     control: &CompileController,
     sess: &'a Session,
@@ -691,7 +696,7 @@ pub fn phase_1_parse_input<'a>(
     sess.diagnostic().set_continue_after_error(true);
 
     if sess.opts.debugging_opts.ast_json_noexpand {
-        println!("{}", json::as_json(&krate));
+        print_ast_crate_as_json(&krate);
     }
 
     if sess.opts.debugging_opts.input_stats {
@@ -1111,7 +1116,7 @@ where
     }
 
     if sess.opts.debugging_opts.ast_json {
-        println!("{}", json::as_json(&krate));
+        print_ast_crate_as_json(&krate);
     }
 
     time(sess, "AST validation", || {
