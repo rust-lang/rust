@@ -1,0 +1,35 @@
+error: constant pattern `a` should be upper case
+  --> $DIR/lint-misleading-constant-patterns.rs:21:13
+   |
+LL |         (0, a) => 0, //~ ERROR should be upper case
+   |             ^
+   |             |
+   |             looks like a binding
+   |             help: convert the pattern to upper case: `A`
+   |
+note: lint level defined here
+  --> $DIR/lint-misleading-constant-patterns.rs:13:9
+   |
+LL | #![deny(misleading_constant_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: constant pattern `aha` should be upper case
+  --> $DIR/lint-misleading-constant-patterns.rs:37:13
+   |
+LL |         (0, aha) => 0, //~ ERROR should be upper case
+   |             ^^^
+   |             |
+   |             looks like a binding
+   |             help: convert the pattern to upper case: `AHA`
+
+error: constant pattern `not_okay` should be upper case
+  --> $DIR/lint-misleading-constant-patterns.rs:52:13
+   |
+LL |         (0, not_okay) => 0, //~ ERROR should be upper case
+   |             ^^^^^^^^
+   |             |
+   |             looks like a binding
+   |             help: convert the pattern to upper case: `NOT_OKAY`
+
+error: aborting due to 3 previous errors
+

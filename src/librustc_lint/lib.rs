@@ -139,6 +139,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         NonCamelCaseTypes: NonCamelCaseTypes,
         NonSnakeCase: NonSnakeCase,
         NonUpperCaseGlobals: NonUpperCaseGlobals,
+        MisleadingConstantPatterns: MisleadingConstantPatterns,
         NonShorthandFieldPatterns: NonShorthandFieldPatterns,
         UnsafeCode: UnsafeCode,
         UnusedAllocation: UnusedAllocation,
@@ -165,7 +166,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     "nonstandard_style",
                     NON_CAMEL_CASE_TYPES,
                     NON_SNAKE_CASE,
-                    NON_UPPER_CASE_GLOBALS);
+                    NON_UPPER_CASE_GLOBALS,
+                    MISLEADING_CONSTANT_PATTERNS);
 
     add_lint_group!(sess,
                     "unused",

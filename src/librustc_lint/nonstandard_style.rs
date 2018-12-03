@@ -16,6 +16,7 @@ use lint::{LintPass, LateLintPass};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
+use syntax::errors::Applicability;
 use syntax_pos::Span;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
@@ -340,7 +341,7 @@ pub struct NonUpperCaseGlobals;
 
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
-        if name.as_str().chars().any(|c| c.is_lowercase()) {
+        if has_lower_case_chars(&name.as_str()) {
             let uc = NonSnakeCase::to_snake_case(&name.as_str()).to_uppercase();
             if name != &*uc {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS,
@@ -399,18 +400,64 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
             _ => {}
         }
     }
+}
 
+declare_lint! {
+    pub MISLEADING_CONSTANT_PATTERNS,
+    Warn,
+    "constants in patterns should have upper case identifiers"
+}
+
+#[derive(Copy, Clone)]
+pub struct MisleadingConstantPatterns;
+
+impl MisleadingConstantPatterns {
+    fn check_upper_case(cx: &LateContext, name: ast::Name, span: Span) {
+        if has_lower_case_chars(&name.as_str()) {
+            let uc = NonSnakeCase::to_snake_case(&name.as_str()).to_uppercase();
+
+            cx.struct_span_lint(
+                MISLEADING_CONSTANT_PATTERNS,
+                span,
+                &format!("constant pattern `{}` should be upper case", name),
+            )
+            .span_label(span, "looks like a binding")
+            .span_suggestion_with_applicability(
+                span,
+                "convert the pattern to upper case",
+                uc,
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
+        }
+    }
+}
+
+impl LintPass for MisleadingConstantPatterns {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MISLEADING_CONSTANT_PATTERNS)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MisleadingConstantPatterns {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
             if let Def::Const(..) = path.def {
                 if path.segments.len() == 1 {
-                    NonUpperCaseGlobals::check_upper_case(cx,
-                                                          "constant in pattern",
-                                                          path.segments[0].ident.name,
-                                                          path.span);
+                    MisleadingConstantPatterns::check_upper_case(
+                        cx,
+                        path.segments[0].ident.name,
+                        path.span,
+                    );
                 }
             }
         }
     }
+}
+
+/// Returns whether a string contains any lower case characters. Note that this is different from
+/// checking if a string is not fully upper case, since most scripts do not have case distinctions.
+fn has_lower_case_chars(s: &str) -> bool {
+    s.chars().any(char::is_lowercase)
 }

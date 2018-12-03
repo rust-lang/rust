@@ -19,6 +19,7 @@
 //! (<root>/libgcc/unwind-c.c as of this writing)
 
 #![allow(non_upper_case_globals)]
+#![cfg_attr(not(stage0), allow(misleading_constant_patterns))]
 #![allow(unused)]
 
 use dwarf::DwarfReader;
