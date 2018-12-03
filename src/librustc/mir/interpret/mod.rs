@@ -305,7 +305,7 @@ pub struct AllocMap<'tcx> {
     /// Lets you know what an AllocId refers to
     id_to_type: FxHashMap<AllocId, AllocType<'tcx>>,
 
-    /// Used to ensure that functions and statics only get one associated AllocId
+    /// Used to ensure that statics only get one associated AllocId
     type_interner: FxHashMap<AllocType<'tcx>, AllocId>,
 
     /// The AllocId to assign to the next requested id.
@@ -347,11 +347,14 @@ impl<'tcx> AllocMap<'tcx> {
         id
     }
 
-    // FIXME: Check if functions have identity. If not, we should not intern these,
-    // but instead create a new id per use.
-    // Alternatively we could just make comparing function pointers an error.
+    /// Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
+    /// by the linker and functions can be duplicated across crates.
+    /// We thus generate a new `AllocId` for every mention of a function. This means that
+    /// `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
-        self.intern(AllocType::Function(instance))
+        let id = self.reserve();
+        self.id_to_type.insert(id, AllocType::Function(instance));
+        id
     }
 
     pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx>> {
