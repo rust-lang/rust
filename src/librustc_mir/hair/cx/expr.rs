@@ -481,10 +481,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             }
                         }
                         AdtKind::Enum => {
-                            let def = match *qpath {
-                                hir::QPath::Resolved(_, ref path) => path.def,
-                                hir::QPath::TypeRelative(..) => Def::Err,
-                            };
+                            let def = cx.tables().qpath_def(qpath, expr.hir_id);
                             match def {
                                 Def::Variant(variant_id) => {
                                     assert!(base.is_none());

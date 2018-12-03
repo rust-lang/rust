@@ -31,6 +31,8 @@ use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
 
+use super::{allow_type_alias_enum_variants};
+
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
 
@@ -1275,6 +1277,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                      ref_id: ast::NodeId,
                                      span: Span,
                                      ty: Ty<'tcx>,
+                                     ty_hir: &hir::Ty,
                                      ty_path_def: Def,
                                      item_segment: &hir::PathSegment)
                                      -> (Ty<'tcx>, Def)
@@ -1285,6 +1288,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
         self.prohibit_generics(slice::from_ref(item_segment));
+
+        // Check if we have an enum variant here.
+        if let ty::Adt(adt_def, _) = ty.sty {
+            if adt_def.is_enum() {
+                if allow_type_alias_enum_variants(tcx, ty_hir, span) {
+                    let variant_def = adt_def.variants.iter().find(|vd| {
+                        tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
+                    });
+                    if let Some(variant_def) = variant_def {
+                        let def = Def::Variant(variant_def.did);
+                        return (ty, def);
+                    }
+                }
+            }
+        }
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
@@ -1342,7 +1360,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 return (tcx.types.err, Def::Err);
             }
             _ => {
-                // Don't print TyErr to the user.
+                // Don't print `TyErr` to the user.
                 if !ty.references_error() {
                     self.report_ambiguous_associated_type(span,
                                                           &ty.to_string(),
@@ -1505,10 +1523,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // `Self` in impl (we know the concrete type)
-
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
-
                 tcx.at(span).type_of(def_id)
             }
             Def::SelfTy(Some(_), None) => {
@@ -1602,7 +1618,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     Def::Err
                 };
-                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
+                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, qself, def, segment).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.id);
