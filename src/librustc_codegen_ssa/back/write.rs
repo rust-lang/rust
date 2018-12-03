@@ -696,6 +696,13 @@ fn execute_work_item<B: ExtraBackendMethods>(
     }
 }
 
+// Actual LTO type we end up chosing based on multiple factors.
+enum ComputedLtoType {
+    No,
+    Thin,
+    Fat,
+}
+
 fn execute_optimize_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: ModuleCodegen<B::Module>,
@@ -708,54 +715,53 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
         B::optimize(cgcx, &diag_handler, &module, module_config, timeline)?;
     }
 
-    let linker_does_lto = cgcx.opts.debugging_opts.cross_lang_lto.enabled();
-
     // After we've done the initial round of optimizations we need to
     // decide whether to synchronously codegen this module or ship it
     // back to the coordinator thread for further LTO processing (which
     // has to wait for all the initial modules to be optimized).
+
+    // If the linker does LTO, we don't have to do it. Note that we
+    // keep doing full LTO, if it is requested, as not to break the
+    // assumption that the output will be a single module.
+    let linker_does_lto = cgcx.opts.debugging_opts.cross_lang_lto.enabled();
+
+    // When we're automatically doing ThinLTO for multi-codegen-unit
+    // builds we don't actually want to LTO the allocator modules if
+    // it shows up. This is due to various linker shenanigans that
+    // we'll encounter later.
+    let is_allocator = module.kind == ModuleKind::Allocator;
+
+    // We ignore a request for full crate grath LTO if the cate type
+    // is only an rlib, as there is no full crate graph to process,
+    // that'll happen later.
     //
-    // Here we dispatch based on the `cgcx.lto` and kind of module we're
-    // codegenning...
-    let needs_lto = match cgcx.lto {
-        Lto::No => false,
-
-        // If the linker does LTO, we don't have to do it. Note that we
-        // keep doing full LTO, if it is requested, as not to break the
-        // assumption that the output will be a single module.
-        Lto::Thin | Lto::ThinLocal if linker_does_lto => false,
-
-        // Here we've got a full crate graph LTO requested. We ignore
-        // this, however, if the crate type is only an rlib as there's
-        // no full crate graph to process, that'll happen later.
-        //
-        // This use case currently comes up primarily for targets that
-        // require LTO so the request for LTO is always unconditionally
-        // passed down to the backend, but we don't actually want to do
-        // anything about it yet until we've got a final product.
-        Lto::Fat | Lto::Thin => {
-            cgcx.crate_types.len() != 1 ||
-                cgcx.crate_types[0] != config::CrateType::Rlib
-        }
-
-        // When we're automatically doing ThinLTO for multi-codegen-unit
-        // builds we don't actually want to LTO the allocator modules if
-        // it shows up. This is due to various linker shenanigans that
-        // we'll encounter later.
-        Lto::ThinLocal => {
-            module.kind != ModuleKind::Allocator
-        }
-    };
+    // This use case currently comes up primarily for targets that
+    // require LTO so the request for LTO is always unconditionally
+    // passed down to the backend, but we don't actually want to do
+    // anything about it yet until we've got a final product.
+    let is_rlib = cgcx.crate_types.len() == 1
+        && cgcx.crate_types[0] == config::CrateType::Rlib;
 
     // Metadata modules never participate in LTO regardless of the lto
     // settings.
-    let needs_lto = needs_lto && module.kind != ModuleKind::Metadata;
-
-    if needs_lto {
-        Ok(WorkItemResult::NeedsLTO(module))
+    let lto_type = if module.kind == ModuleKind::Metadata {
+        ComputedLtoType::No
     } else {
+        match cgcx.lto {
+            Lto::ThinLocal if !linker_does_lto && !is_allocator
+                => ComputedLtoType::Thin,
+            Lto::Thin if !linker_does_lto && !is_rlib
+                => ComputedLtoType::Thin,
+            Lto::Fat if !is_rlib => ComputedLtoType::Fat,
+            _ => ComputedLtoType::No,
+        }
+    };
+
+    if let ComputedLtoType::No = lto_type {
         let module = unsafe { B::codegen(cgcx, &diag_handler, module, module_config, timeline)? };
         Ok(WorkItemResult::Compiled(module))
+    } else {
+        Ok(WorkItemResult::NeedsLTO(module))
     }
 }
 
