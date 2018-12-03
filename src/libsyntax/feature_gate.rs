@@ -462,9 +462,6 @@ declare_features! (
     // Allows `use x::y;` to resolve through `self::x`, not just `::x`
     (active, uniform_paths, "1.30.0", Some(53130), None),
 
-    // Allows `Self` in type definitions
-    (active, self_in_typedefs, "1.30.0", Some(49303), None),
-
     // Allows unsized rvalues at arguments and parameters
     (active, unsized_locals, "1.30.0", Some(48055), None),
 
@@ -494,7 +491,7 @@ declare_features! (
     (active, lint_reasons, "1.31.0", Some(54503), None),
 
     // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
-    (active, extern_crate_self, "1.31.0", Some(54658), None),
+    (active, extern_crate_self, "1.31.0", Some(56409), None),
 );
 
 declare_features! (
@@ -675,21 +672,23 @@ declare_features! (
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
     // Parentheses in patterns
     (accepted, pattern_parentheses, "1.31.0", Some(51087), None),
-    // Allows the definition of `const fn` functions.
+    // Allows the definition of `const fn` functions
     (accepted, min_const_fn, "1.31.0", Some(53555), None),
     // Scoped lints
     (accepted, tool_lints, "1.31.0", Some(44690), None),
     // impl<I:Iterator> Iterator for &mut Iterator
     // impl Debug for Foo<'_>
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
-    // `extern crate foo as bar;` puts `bar` into extern prelude.
+    // `extern crate foo as bar;` puts `bar` into extern prelude
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
     // Use `?` as the Kleene "at most one" operator
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
-    // Self struct constructor  (RFC 2302)
+    // `Self` struct constructor (RFC 2302)
     (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
+    // `Self` in type definitions (RFC 2300)
+    (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must

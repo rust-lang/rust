@@ -1018,7 +1018,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.shrink_to(0);
     /// assert!(map.capacity() >= 2);
     /// ```
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
 

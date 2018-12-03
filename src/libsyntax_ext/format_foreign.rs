@@ -264,7 +264,7 @@ pub mod printf {
             match *self {
                 Num::Num(n) => write!(s, "{}", n),
                 Num::Arg(n) => {
-                    let n = try!(n.checked_sub(1).ok_or(::std::fmt::Error));
+                    let n = n.checked_sub(1).ok_or(::std::fmt::Error)?;
                     write!(s, "{}$", n)
                 },
                 Num::Next => write!(s, "*"),

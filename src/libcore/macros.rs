@@ -278,14 +278,14 @@ macro_rules! debug_assert_ne {
 ///
 /// // The previous method of quick returning Errors
 /// fn write_to_file_using_try() -> Result<(), MyError> {
-///     let mut file = try!(File::create("my_best_friends.txt"));
-///     try!(file.write_all(b"This is a list of my best friends."));
+///     let mut file = r#try!(File::create("my_best_friends.txt"));
+///     r#try!(file.write_all(b"This is a list of my best friends."));
 ///     Ok(())
 /// }
 ///
 /// // This is equivalent to:
 /// fn write_to_file_using_match() -> Result<(), MyError> {
-///     let mut file = try!(File::create("my_best_friends.txt"));
+///     let mut file = r#try!(File::create("my_best_friends.txt"));
 ///     match file.write_all(b"This is a list of my best friends.") {
 ///         Ok(v) => v,
 ///         Err(e) => return Err(From::from(e)),
@@ -296,14 +296,14 @@ macro_rules! debug_assert_ne {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "?")]
-macro_rules! try {
+macro_rules! r#try {
     ($expr:expr) => (match $expr {
         $crate::result::Result::Ok(val) => val,
         $crate::result::Result::Err(err) => {
             return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     });
-    ($expr:expr,) => (try!($expr));
+    ($expr:expr,) => (r#try!($expr));
 }
 
 /// Write formatted data into a buffer.

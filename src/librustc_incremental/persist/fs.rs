@@ -659,7 +659,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let mut session_directories = FxHashSet::default();
     let mut lock_files = FxHashSet::default();
 
-    for dir_entry in try!(crate_directory.read_dir()) {
+    for dir_entry in crate_directory.read_dir()? {
         let dir_entry = match dir_entry {
             Ok(dir_entry) => dir_entry,
             _ => {
@@ -887,7 +887,7 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
 /// into the '\\?\' format, which supports much longer paths.
 fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
     if p.exists() {
-        let canonicalized = try!(p.canonicalize());
+        let canonicalized = p.canonicalize()?;
         std_fs::remove_dir_all(canonicalized)
     } else {
         Ok(())
@@ -896,7 +896,7 @@ fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
     if p.exists() {
-        let canonicalized = try!(p.canonicalize());
+        let canonicalized = p.canonicalize()?;
         std_fs::remove_file(canonicalized)
     } else {
         Ok(())
