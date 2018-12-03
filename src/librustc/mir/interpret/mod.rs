@@ -103,20 +103,20 @@ pub fn specialized_encode_alloc_id<
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    let alloc_type: AllocType<'tcx> =
+    let alloc_type: AllocKind<'tcx> =
         tcx.alloc_map.lock().get(alloc_id).expect("no value for AllocId");
     match alloc_type {
-        AllocType::Memory(alloc) => {
+        AllocKind::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocDiscriminant::Alloc.encode(encoder)?;
             alloc.encode(encoder)?;
         }
-        AllocType::Function(fn_instance) => {
+        AllocKind::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
             AllocDiscriminant::Fn.encode(encoder)?;
             fn_instance.encode(encoder)?;
         }
-        AllocType::Static(did) => {
+        AllocKind::Static(did) => {
             // referring to statics doesn't need to know about their allocations,
             // just about its DefId
             AllocDiscriminant::Static.encode(encoder)?;
@@ -291,7 +291,7 @@ impl fmt::Display for AllocId {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
-pub enum AllocType<'tcx> {
+pub enum AllocKind<'tcx> {
     /// The alloc id is used as a function pointer
     Function(Instance<'tcx>),
     /// The alloc id points to a "lazy" static variable that did not get computed (yet).
@@ -303,10 +303,10 @@ pub enum AllocType<'tcx> {
 
 pub struct AllocMap<'tcx> {
     /// Lets you know what an AllocId refers to
-    id_to_type: FxHashMap<AllocId, AllocType<'tcx>>,
+    id_to_type: FxHashMap<AllocId, AllocKind<'tcx>>,
 
     /// Used to ensure that statics only get one associated AllocId
-    type_interner: FxHashMap<AllocType<'tcx>, AllocId>,
+    type_interner: FxHashMap<AllocKind<'tcx>, AllocId>,
 
     /// The AllocId to assign to the next requested id.
     /// Always incremented, never gets smaller.
@@ -339,7 +339,7 @@ impl<'tcx> AllocMap<'tcx> {
         next
     }
 
-    fn intern(&mut self, alloc_type: AllocType<'tcx>) -> AllocId {
+    fn intern(&mut self, alloc_type: AllocKind<'tcx>) -> AllocId {
         if let Some(&alloc_id) = self.type_interner.get(&alloc_type) {
             return alloc_id;
         }
@@ -356,21 +356,21 @@ impl<'tcx> AllocMap<'tcx> {
     /// `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
         let id = self.reserve();
-        self.id_to_type.insert(id, AllocType::Function(instance));
+        self.id_to_type.insert(id, AllocKind::Function(instance));
         id
     }
 
     /// Returns `None` in case the `AllocId` is dangling.
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
-    pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx>> {
+    pub fn get(&self, id: AllocId) -> Option<AllocKind<'tcx>> {
         self.id_to_type.get(&id).cloned()
     }
 
     /// Panics if the `AllocId` does not refer to an `Allocation`
     pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
         match self.get(id) {
-            Some(AllocType::Memory(mem)) => mem,
+            Some(AllocKind::Memory(mem)) => mem,
             _ => bug!("expected allocation id {} to point to memory", id),
         }
     }
@@ -378,7 +378,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// Generate an `AllocId` for a static or return a cached one in case this function has been
     /// called on the same static before.
     pub fn intern_static(&mut self, static_id: DefId) -> AllocId {
-        self.intern(AllocType::Static(static_id))
+        self.intern(AllocKind::Static(static_id))
     }
 
     /// Intern the `Allocation` and return a new `AllocId`, even if there's already an identical
@@ -395,7 +395,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-        if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
+        if let Some(old) = self.id_to_type.insert(id, AllocKind::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
     }
@@ -403,7 +403,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
     pub fn set_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-        self.id_to_type.insert_same(id, AllocType::Memory(mem));
+        self.id_to_type.insert_same(id, AllocKind::Memory(mem));
     }
 }
 

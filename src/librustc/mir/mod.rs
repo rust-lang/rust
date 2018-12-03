@@ -2629,7 +2629,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
                 if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
                     return ty::tls::with(|tcx| {
                         let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(interpret::AllocType::Memory(alloc)) = alloc {
+                        if let Some(interpret::AllocKind::Memory(alloc)) = alloc {
                             assert_eq!(len as usize as u128, len);
                             let slice =
                                 &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];

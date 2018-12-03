@@ -21,7 +21,7 @@ use value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
-use rustc::mir::interpret::{Scalar, AllocType, Allocation};
+use rustc::mir::interpret::{Scalar, AllocKind, Allocation};
 use consts::const_alloc_to_llvm;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
@@ -318,7 +318,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             Scalar::Ptr(ptr) => {
                 let alloc_type = self.tcx.alloc_map.lock().get(ptr.alloc_id);
                 let base_addr = match alloc_type {
-                    Some(AllocType::Memory(alloc)) => {
+                    Some(AllocKind::Memory(alloc)) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         if alloc.mutability == Mutability::Mutable {
                             self.static_addr_of_mut(init, alloc.align, None)
@@ -326,10 +326,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             self.static_addr_of(init, alloc.align, None)
                         }
                     }
-                    Some(AllocType::Function(fn_instance)) => {
+                    Some(AllocKind::Function(fn_instance)) => {
                         self.get_fn(fn_instance)
                     }
-                    Some(AllocType::Static(def_id)) => {
+                    Some(AllocKind::Static(def_id)) => {
                         assert!(self.tcx.is_static(def_id).is_some());
                         self.get_static(def_id)
                     }
