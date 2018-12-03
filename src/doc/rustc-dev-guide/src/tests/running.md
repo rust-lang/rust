@@ -21,8 +21,9 @@ a change) you can simply remove the timestamp file.
 
 Note that some tests require a Python-enabled gdb. You can test if
 your gdb install supports Python by using the `python` command from
-within gdb (type some Python code followed by `CTRL+D` to execute it).
-If you are building gdb from source, you need to configure with
+within gdb. Once invoked you can type some Python code (e.g.
+`print("hi")`) followed by return and then `CTRL+D` to execute it.
+If you are building gdb from source, you will need to configure with
 `--with-python=<path-to-python-binary>`.
 
 ## Running a subset of the test suites
