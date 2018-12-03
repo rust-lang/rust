@@ -38,6 +38,7 @@ impl ConstraintDescription for ConstraintCategory {
         match self {
             ConstraintCategory::Assignment => "assignment ",
             ConstraintCategory::Return => "returning this value ",
+            ConstraintCategory::Yield => "yielding this value ",
             ConstraintCategory::UseAsConst => "using this value as a constant ",
             ConstraintCategory::UseAsStatic => "using this value as a static ",
             ConstraintCategory::Cast => "cast ",
@@ -133,11 +134,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
             match categorized_path[i].0 {
-                ConstraintCategory::OpaqueType
-                | ConstraintCategory::Boring
-                | ConstraintCategory::BoringNoLocation
-                | ConstraintCategory::Internal => false,
-                ConstraintCategory::TypeAnnotation | ConstraintCategory::Return => true,
+                ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
+                ConstraintCategory::Yield => true,
                 _ => constraint_sup_scc != target_scc,
             }
         });

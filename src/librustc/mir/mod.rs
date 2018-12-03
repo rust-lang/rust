@@ -2905,6 +2905,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum ConstraintCategory {
     Return,
+    Yield,
     UseAsConst,
     UseAsStatic,
     TypeAnnotation,
