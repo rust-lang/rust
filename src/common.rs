@@ -681,7 +681,6 @@ impl<'a, 'tcx, B: Backend> BackendTypes for FunctionCx<'a, 'tcx, B> {
     type Value = Value;
     type BasicBlock = Ebb;
     type Type = Type;
-    type Context = !;
     type Funclet = !;
     type DIScope = !;
 }
