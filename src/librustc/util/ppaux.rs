@@ -648,11 +648,11 @@ define_print! {
                 if let Some(principal) = self.principal() {
                     let principal = tcx
                         .lift(&principal)
-                        .expect("could not lift TraitRef for printing")
+                        .expect("could not lift for printing")
                         .with_self_ty(tcx, dummy_self);
                     let projections = self.projection_bounds().map(|p| {
                         tcx.lift(&p)
-                            .expect("could not lift projection for printing")
+                            .expect("could not lift for printing")
                             .with_self_ty(tcx, dummy_self)
                     }).collect::<Vec<_>>();
                     cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
@@ -781,7 +781,7 @@ define_print! {
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
 
                 let trait_ref = *tcx.lift(&ty::Binder::bind(*self))
-                                   .expect("could not lift TraitRef for printing")
+                                   .expect("could not lift for printing")
                                    .with_self_ty(tcx, dummy_self).skip_binder();
                 cx.parameterized(f, trait_ref.substs, trait_ref.def_id, &[])
             })
