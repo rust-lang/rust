@@ -1141,6 +1141,17 @@ pub struct RegularOpenTask {
     read_set: FxHashSet<DepNodeIndex>,
 }
 
+// FIXME: Remove
+#[no_mangle]
+pub fn test1(a: &mut SmallVec<[DepNodeIndex; 8]>) {
+    a.push(DepNodeIndex::new(8));
+}
+
+#[no_mangle]
+pub fn test2(a: &mut DepGraph, dep_node_index: DepNodeIndex) {
+    a.read_index(dep_node_index)
+}
+
 pub struct AnonOpenTask {
     reads: SmallVec<[DepNodeIndex; 8]>,
     read_set: FxHashSet<DepNodeIndex>,
