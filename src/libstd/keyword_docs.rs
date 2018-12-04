@@ -65,7 +65,7 @@ mod as_keyword { }
 /// look like this:
 ///
 /// ```rust
-/// const WORDS: &'static str = "hello rust!";
+/// const WORDS: &str = "hello rust!";
 /// ```
 ///
 /// Thanks to static lifetime elision, you usually don't have to explicitly use 'static:

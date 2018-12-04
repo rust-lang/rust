@@ -143,7 +143,7 @@ impl Command {
 
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
-         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
+         const CLOEXEC_MSG_FOOTER: &[u8] = b"NOEX";
 
          if self.saw_nul {
              return Err(io::Error::new(ErrorKind::InvalidInput,
