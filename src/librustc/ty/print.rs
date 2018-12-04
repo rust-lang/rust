@@ -57,7 +57,7 @@ impl PrintContext {
     }
 }
 
-pub trait Print {
+pub trait Print<'tcx> {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result;
     fn print_to_string(&self, cx: &mut PrintContext) -> String {
         let mut result = String::new();

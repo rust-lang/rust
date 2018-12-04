@@ -212,7 +212,7 @@ macro_rules! gen_display_debug {
 }
 macro_rules! gen_print_impl {
     ( ($($x:tt)+) $target:ty, ($self:ident, $f:ident, $cx:ident) $disp:block $dbg:block ) => {
-        impl<$($x)+> Print for $target {
+        impl<$($x)+> Print<'tcx> for $target {
             fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintContext) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
@@ -220,7 +220,7 @@ macro_rules! gen_print_impl {
         }
     };
     ( () $target:ty, ($self:ident, $f:ident, $cx:ident) $disp:block $dbg:block ) => {
-        impl Print for $target {
+        impl Print<'tcx> for $target {
             fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintContext) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
@@ -527,12 +527,15 @@ impl PrintContext {
         Ok(())
     }
 
-    fn in_binder<'a, 'gcx, 'tcx, T, U, F>(&mut self,
-                                          f: &mut F,
-                                          tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                          original: &ty::Binder<T>,
-                                          lifted: Option<ty::Binder<U>>) -> fmt::Result
-        where T: Print, U: Print + TypeFoldable<'tcx>, F: fmt::Write
+    // FIXME(eddyb) replace `'almost_tcx` with `'tcx` when possible/needed.
+    fn in_binder<'a, 'gcx, 'tcx, 'almost_tcx, T, U, F>(
+        &mut self,
+        f: &mut F,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        original: &ty::Binder<T>,
+        lifted: Option<ty::Binder<U>>,
+    ) -> fmt::Result
+        where T: Print<'almost_tcx>, U: Print<'tcx> + TypeFoldable<'tcx>, F: fmt::Write
     {
         fn name_by_region_index(index: usize) -> InternedString {
             match index {
@@ -627,7 +630,7 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
     PrintContext::new().parameterized(f, substs, did, projections)
 }
 
-impl<'a, T: Print> Print for &'a T {
+impl<'a, 'tcx, T: Print<'tcx>> Print<'tcx> for &'a T {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
         (*self).print(f, cx)
     }
@@ -1466,7 +1469,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx, T: Print + fmt::Debug, U: Print + fmt::Debug) ty::OutlivesPredicate<T, U>,
+    ('tcx, T: Print<'tcx> + fmt::Debug, U: Print<'tcx> + fmt::Debug) ty::OutlivesPredicate<T, U>,
     (self, f, cx) {
         display {
             print!(f, cx, print(self.0), write(" : "), print(self.1))
