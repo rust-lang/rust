@@ -81,7 +81,6 @@ pub mod sync;
 pub mod tiny_list;
 pub mod thin_vec;
 pub mod transitive_relation;
-pub mod tuple_slice;
 pub use ena::unify;
 pub mod vec_linked_list;
 pub mod work_queue;
