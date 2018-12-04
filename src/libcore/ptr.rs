@@ -2536,7 +2536,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 #[unstable(feature = "ptr_hash", reason = "newly added", issue = "56286")]
 pub fn hash<T, S: hash::Hasher>(hashee: *const T, into: &mut S) {
     use hash::Hash;
-    NonNull::from(hashee).hash(into)
+    hashee.hash(into);
 }
 
 // Impls for function pointers
