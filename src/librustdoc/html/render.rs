@@ -859,6 +859,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
                  static_files::SETTINGS_JS,
                  options.enable_minification)?;
+    if cx.shared.include_sources {
+        write_minify(cx.dst.join(&format!("source-script{}.js", cx.shared.resource_suffix)),
+                     static_files::sidebar::SOURCE_SCRIPT,
+                     options.enable_minification)?;
+    }
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
@@ -969,10 +974,88 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
     }
 
+    use std::ffi::OsString;
+
+    #[derive(Debug)]
+    struct Hierarchy {
+        elem: OsString,
+        children: FxHashMap<OsString, Hierarchy>,
+        elems: FxHashSet<OsString>,
+    }
+
+    impl Hierarchy {
+        fn new(elem: OsString) -> Hierarchy {
+            Hierarchy {
+                elem,
+                children: FxHashMap::default(),
+                elems: FxHashSet::default(),
+            }
+        }
+
+        fn to_json_string(&self) -> String {
+            let mut subs: Vec<&Hierarchy> = self.children.values().collect();
+            subs.sort_unstable_by(|a, b| a.elem.cmp(&b.elem));
+            let mut files = self.elems.iter()
+                                      .map(|s| format!("\"{}\"",
+                                                       s.to_str()
+                                                        .expect("invalid osstring conversion")))
+                                      .collect::<Vec<_>>();
+            files.sort_unstable_by(|a, b| a.cmp(b));
+            // FIXME(imperio): we could avoid to generate "dirs" and "files" if they're empty.
+            format!("{{\"name\":\"{name}\",\"dirs\":[{subs}],\"files\":[{files}]}}",
+                    name=self.elem.to_str().expect("invalid osstring conversion"),
+                    subs=subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(","),
+                    files=files.join(","))
+        }
+    }
+
+    if cx.shared.include_sources {
+        use std::path::Component;
+
+        let mut hierarchy = Hierarchy::new(OsString::new());
+        for source in cx.shared.local_sources.iter()
+                                             .filter_map(|p| p.0.strip_prefix(&cx.shared.src_root)
+                                                                .ok()) {
+            let mut h = &mut hierarchy;
+            let mut elems = source.components()
+                                  .filter_map(|s| {
+                                      match s {
+                                          Component::Normal(s) => Some(s.to_owned()),
+                                          _ => None,
+                                      }
+                                  })
+                                  .peekable();
+            loop {
+                let cur_elem = elems.next().expect("empty file path");
+                if elems.peek().is_none() {
+                    h.elems.insert(cur_elem);
+                    break;
+                } else {
+                    let e = cur_elem.clone();
+                    h.children.entry(cur_elem.clone()).or_insert_with(|| Hierarchy::new(e));
+                    h = h.children.get_mut(&cur_elem).expect("not found child");
+                }
+            }
+        }
+
+        let dst = cx.dst.join("source-files.js");
+        let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
+        all_sources.push(format!("sourcesIndex['{}'] = {};",
+                                 &krate.name,
+                                 hierarchy.to_json_string()));
+        all_sources.sort();
+        let mut w = try_err!(File::create(&dst), &dst);
+        try_err!(writeln!(&mut w,
+                          "var N = null;var sourcesIndex = {{}};\n{}",
+                          all_sources.join("\n")),
+                 &dst);
+    }
+
     // Update the search index
     let dst = cx.dst.join("search-index.js");
     let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
     all_indexes.push(search_index);
+
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
@@ -1020,7 +1103,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             try_err!(layout::render(&mut w, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes), &dst);
+                                    &cx.shared.themes, &[]), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1292,7 +1375,8 @@ impl<'a> SourceCollector<'a> {
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes)?;
+                       &self.scx.themes, &["source-files",
+                                           &format!("source-script{}", page.resource_suffix)])?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1890,7 +1974,7 @@ impl Context {
         try_err!(layout::render(&mut w, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
-                                &self.shared.themes),
+                                &self.shared.themes, &[]),
                  &final_file);
 
         // Generating settings page.
@@ -1910,7 +1994,7 @@ impl Context {
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
-                                &themes),
+                                &themes, &[]),
                  &settings_file);
 
         Ok(())
@@ -1968,7 +2052,7 @@ impl Context {
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
-                           &self.shared.themes)?;
+                           &self.shared.themes, &[])?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {

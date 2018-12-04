@@ -113,7 +113,8 @@ h3.impl, h3.method, h3.type {
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table :not(code)>a,
-.collapse-toggle, div.item-list .out-of-band {
+.collapse-toggle, div.item-list .out-of-band,
+#source-sidebar, #sidebar-toggle {
 	font-family: "Fira Sans", sans-serif;
 }
 
@@ -668,9 +669,9 @@ a {
 	padding-right: 10px;
 }
 .content .search-results td:first-child a:after {
-    clear: both;
-    content: "";
-    display: block;
+	clear: both;
+	content: "";
+	display: block;
 }
 .content .search-results td:first-child a span {
 	float: left;
@@ -1458,4 +1459,69 @@ kbd {
 
 .non-exhaustive {
 	margin-bottom: 1em;
+}
+
+#sidebar-toggle {
+	position: fixed;
+	top: 30px;
+	left: 300px;
+	z-index: 10;
+	padding: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: left .5s;
+	font-size: 1.2em;
+	border: 1px solid;
+	border-left: 0;
+}
+#source-sidebar {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 300px;
+	z-index: 1;
+	overflow: auto;
+	transition: left .5s;
+	border-right: 1px solid;
+}
+#source-sidebar > .title {
+	font-size: 1.5em;
+	text-align: center;
+	border-bottom: 1px solid;
+	margin-bottom: 6px;
+}
+
+div.children {
+	padding-left: 27px;
+	display: none;
+}
+div.name {
+	cursor: pointer;
+	position: relative;
+	margin-left: 16px;
+}
+div.files > a {
+	display: block;
+	padding: 0 3px;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #a14b4b;
+}
+div.name.expand + .children {
+	display: block;
+}
+div.name::before {
+	content: "\25B6";
+	padding-left: 4px;
+	font-size: 0.7em;
+	position: absolute;
+	left: -16px;
+	top: 4px;
+}
+div.name.expand::before {
+	transform: rotate(90deg);
+	left: -14px;
 }

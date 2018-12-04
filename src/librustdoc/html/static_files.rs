@@ -109,3 +109,9 @@ pub mod source_code_pro {
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
     pub static LICENSE: &'static [u8] = include_bytes!("static/SourceCodePro-LICENSE.txt");
 }
+
+/// Files related to the sidebar in rustdoc sources.
+pub mod sidebar {
+    /// File script to handle sidebar.
+    pub static SOURCE_SCRIPT: &'static str = include_str!("static/source-script.js");
+}
