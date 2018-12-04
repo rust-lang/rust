@@ -106,23 +106,13 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
             clean::ConstantItem(build_const(cx, did))
         }
         // FIXME: proc-macros don't propagate attributes or spans across crates, so they look empty
-        Def::Macro(did, MacroKind::Derive) |
         Def::Macro(did, MacroKind::Bang) => {
             let mac = build_macro(cx, did, name);
-            debug!("try_inline: {:?}", mac);
-
-            match build_macro(cx, did, name) {
-                clean::MacroItem(..) => {
-                    record_extern_fqn(cx, did, clean::TypeKind::Macro);
-                    mac
-                }
-                clean::ProcMacroItem(..) => {
-                    record_extern_fqn(cx, did, clean::TypeKind::Derive);
-                    mac
-                }
-                _ => {
-                    return None;
-                }
+            if let clean::MacroItem(..) = mac {
+                record_extern_fqn(cx, did, clean::TypeKind::Macro);
+                mac
+            } else {
+                return None;
             }
         }
         _ => return None,
