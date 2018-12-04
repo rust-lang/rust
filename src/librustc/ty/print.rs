@@ -33,10 +33,9 @@ pub struct PrintContext {
 
 impl PrintContext {
     pub(crate) fn new() -> Self {
-        ty::tls::with_opt(|tcx| {
-            let (is_verbose, identify_regions) = tcx.map(
-                |tcx| (tcx.sess.verbose(), tcx.sess.opts.debugging_opts.identify_regions)
-            ).unwrap_or((false, false));
+        ty::tls::with(|tcx| {
+            let (is_verbose, identify_regions) =
+                (tcx.sess.verbose(), tcx.sess.opts.debugging_opts.identify_regions);
             PrintContext {
                 is_debug: false,
                 is_verbose: is_verbose,
