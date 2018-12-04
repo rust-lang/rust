@@ -1331,8 +1331,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.cstore.crate_data_as_rc_any(cnum)
     }
 
+    #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'a> {
-        let krate = self.dep_graph.with_ignore(|| self.gcx.hir.krate());
+        let krate = self.gcx.hir.forest.untracked_krate();
 
         StableHashingContext::new(self.sess,
                                   krate,
@@ -1349,7 +1350,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // We cannot use the query versions of crates() and crate_hash(), since
         // those would need the DepNodes that we are allocating here.
         for cnum in self.cstore.crates_untracked() {
-            let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
+            let dep_node = DepNode::new_inlined(self, DepConstructor::CrateMetadata(cnum));
             let crate_hash = self.cstore.crate_hash_untracked(cnum);
             self.dep_graph.with_task(dep_node,
                                      self,
@@ -1920,7 +1921,17 @@ pub mod tls {
 
     /// A thread local variable which stores a pointer to the current ImplicitCtxt
     #[cfg(not(parallel_queries))]
-    thread_local!(static TLV: Cell<usize> = Cell::new(0));
+    // Accessing `thread_local` in another crate is bugged, so we have
+    // two accessors `set_raw_tlv` and `get_tlv` which do not have an
+    // inline attribute to prevent that
+    #[thread_local]
+    static TLV: Cell<usize> = Cell::new(0);
+
+    /// This is used to set the pointer to the current ImplicitCtxt.
+    #[cfg(not(parallel_queries))]
+    fn set_raw_tlv(value: usize) {
+        TLV.set(value)
+    }
 
     /// Sets TLV to `value` during the call to `f`.
     /// It is restored to its previous value after.
@@ -1928,15 +1939,15 @@ pub mod tls {
     #[cfg(not(parallel_queries))]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
-        let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
-        TLV.with(|tlv| tlv.set(value));
+        let _reset = OnDrop(move || set_raw_tlv(old));
+        set_raw_tlv(value);
         f()
     }
 
     /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(not(parallel_queries))]
     fn get_tlv() -> usize {
-        TLV.with(|tlv| tlv.get())
+        TLV.get()
     }
 
     /// This is a callback from libsyntax as it cannot access the implicit state

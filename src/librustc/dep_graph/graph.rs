@@ -239,6 +239,7 @@ impl DepGraph {
         arg: A,
         no_tcx: bool,
         task: fn(C, A) -> R,
+        // FIXME: Take OpenTask as a parameter instead
         create_task: fn(DepNode) -> OpenTask,
         finish_task_and_alloc_depnode: fn(&Lock<CurrentDepGraph>,
                                           DepNode,

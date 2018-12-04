@@ -212,7 +212,7 @@ pub trait CodegenUnitExt<'tcx> {
     }
 
     fn codegen_dep_node(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> DepNode {
-        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
+        DepNode::new_inlined(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
     }
 }
 
