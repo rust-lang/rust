@@ -13,6 +13,7 @@ use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
+use CollectionAllocErr;
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 
@@ -276,6 +277,27 @@ where
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.map.reserve(additional)
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `HashSet<K,V>`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    /// let mut set: HashSet<i32> = HashSet::new();
+    /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// ```
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        self.map.try_reserve(additional)
     }
 
     /// Shrinks the capacity of the set as much as possible. It will drop

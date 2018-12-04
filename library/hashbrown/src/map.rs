@@ -18,6 +18,7 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
 use raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
+use CollectionAllocErr;
 
 pub use fx::FxHashBuilder as DefaultHashBuilder;
 
@@ -359,6 +360,29 @@ where
         let hash_builder = &self.hash_builder;
         self.table
             .reserve(additional, |x| make_hash(hash_builder, &x.0));
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// let mut map: HashMap<&str, isize> = HashMap::new();
+    /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// ```
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        let hash_builder = &self.hash_builder;
+        self.table
+            .try_reserve(additional, |x| make_hash(hash_builder, &x.0))
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -2519,10 +2543,10 @@ mod test_map {
     use super::HashMap;
     use rand::{thread_rng, Rng};
     use std::cell::RefCell;
-    #[cfg(try_reserve_not_implemented)]
     use std::mem::size_of;
     use std::usize;
     use std::vec::Vec;
+    use CollectionAllocErr::*;
 
     #[test]
     fn test_zero_capacities() {
@@ -3397,7 +3421,6 @@ mod test_map {
         panic!("Adaptive early resize failed");
     }
 
-    #[cfg(try_reserve_not_implemented)]
     #[test]
     fn test_try_reserve() {
         let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
@@ -3405,13 +3428,13 @@ mod test_map {
         const MAX_USIZE: usize = usize::MAX;
 
         // HashMap and RawTables use complicated size calculations
-        // hashes_size is sizeof(HashUint) * capacity;
+        // hashes_size is sizeof(u8) * capacity;
         // pairs_size is sizeof((K. V)) * capacity;
         // alignment_hashes_size is 8
         // alignment_pairs size is 4
-        let size_of_multiplier = (size_of::<usize>() + size_of::<(u8, u8)>()).next_power_of_two();
+        let size_of_multiplier = (size_of::<u8>() + size_of::<(u8, u8)>()).next_power_of_two();
         // The following formula is used to calculate the new capacity
-        let max_no_ovf = ((MAX_USIZE / 11) * 10) / size_of_multiplier - 1;
+        let max_no_ovf = ((MAX_USIZE / 8) * 7) / size_of_multiplier - 1;
 
         if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE) {
         } else {

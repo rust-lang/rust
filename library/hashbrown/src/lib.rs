@@ -80,3 +80,13 @@ pub mod hash_set {
 
 pub use map::HashMap;
 pub use set::HashSet;
+
+/// Augments `AllocErr` with a CapacityOverflow variant.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum CollectionAllocErr {
+    /// Error due to the computed capacity exceeding the collection's maximum
+    /// (usually `isize::MAX` bytes).
+    CapacityOverflow,
+    /// Error due to the allocator (see the `AllocErr` type's docs).
+    AllocErr,
+}
