@@ -42,10 +42,6 @@ impl Timespec {
         }
     }
 
-    fn add_duration(&self, other: &Duration) -> Timespec {
-        self.checked_add_duration(other).expect("overflow when adding duration to time")
-    }
-
     fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
@@ -165,11 +161,8 @@ mod inner {
             Duration::new(nanos / NSEC_PER_SEC, (nanos % NSEC_PER_SEC) as u32)
         }
 
-        pub fn add_duration(&self, other: &Duration) -> Instant {
-            Instant {
-                t: self.t.checked_add(dur2intervals(other))
-                       .expect("overflow when adding duration to instant"),
-            }
+        pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+            checked_dur2intervals(other)?.checked_add(self.t).map(|t| Instant {t})
         }
 
         pub fn sub_duration(&self, other: &Duration) -> Instant {
@@ -197,10 +190,6 @@ mod inner {
         pub fn sub_time(&self, other: &SystemTime)
                         -> Result<Duration, Duration> {
             self.t.sub_timespec(&other.t)
-        }
-
-        pub fn add_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.add_duration(other) }
         }
 
         pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
@@ -237,11 +226,16 @@ mod inner {
     }
 
     fn dur2intervals(dur: &Duration) -> u64 {
+        checked_dur2intervals(dur)
+            .expect("overflow converting duration to nanoseconds")
+    }
+
+    fn checked_dur2intervals(dur: &Duration) -> Option<u64> {
+        let nanos = dur.as_secs()
+            .checked_mul(NSEC_PER_SEC)?
+            .checked_add(dur.subsec_nanos() as u64)?;
         let info = info();
-        let nanos = dur.as_secs().checked_mul(NSEC_PER_SEC).and_then(|nanos| {
-            nanos.checked_add(dur.subsec_nanos() as u64)
-        }).expect("overflow converting duration to nanoseconds");
-        mul_div_u64(nanos, info.denom as u64, info.numer as u64)
+        Some(mul_div_u64(nanos, info.denom as u64, info.numer as u64))
     }
 
     fn info() -> &'static libc::mach_timebase_info {
@@ -299,8 +293,8 @@ mod inner {
             })
         }
 
-        pub fn add_duration(&self, other: &Duration) -> Instant {
-            Instant { t: self.t.add_duration(other) }
+        pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+            self.t.checked_add_duration(other).map(|t| Instant { t })
         }
 
         pub fn sub_duration(&self, other: &Duration) -> Instant {
@@ -325,10 +319,6 @@ mod inner {
         pub fn sub_time(&self, other: &SystemTime)
                         -> Result<Duration, Duration> {
             self.t.sub_timespec(&other.t)
-        }
-
-        pub fn add_duration(&self, other: &Duration) -> SystemTime {
-            SystemTime { t: self.t.add_duration(other) }
         }
 
         pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
