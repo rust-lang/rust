@@ -14,7 +14,7 @@ use ra_db::{SourceRootId, FileId, FilePosition, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
-    DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId,
+    DefKind, DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId,
     arena::{Arena, Id},
 };
 
@@ -127,9 +127,11 @@ impl Module {
     }
 
     pub fn def_id(&self, db: &impl HirDatabase) -> DefId {
-        let def_loc = DefLoc::Module {
-            id: self.module_id,
-            source_root: self.source_root_id,
+        let def_loc = DefLoc {
+            kind: DefKind::Module,
+            source_root_id: self.source_root_id,
+            module_id: self.module_id,
+            source_item_id: self.module_id.source(&self.tree).0,
         };
         def_loc.id(db)
     }
@@ -161,7 +163,12 @@ impl Module {
         let segments = path.segments;
         for name in segments.iter() {
             let module = match curr.loc(db) {
-                DefLoc::Module { id, source_root } => Module::new(db, source_root, id)?,
+                DefLoc {
+                    kind: DefKind::Module,
+                    source_root_id,
+                    module_id,
+                    ..
+                } => Module::new(db, source_root_id, module_id)?,
                 _ => return Ok(None),
             };
             let scope = module.scope(db)?;

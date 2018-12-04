@@ -61,15 +61,18 @@ impl FnId {
 pub struct DefId(u32);
 ra_db::impl_numeric_id!(DefId);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum DefKind {
+    Module,
+    Item,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum DefLoc {
-    Module {
-        id: ModuleId,
-        source_root: SourceRootId,
-    },
-    Item {
-        source_item_id: SourceItemId,
-    },
+pub struct DefLoc {
+    pub(crate) kind: DefKind,
+    source_root_id: SourceRootId,
+    module_id: ModuleId,
+    source_item_id: SourceItemId,
 }
 
 impl DefId {
@@ -92,12 +95,12 @@ pub enum Def {
 impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
         let loc = self.loc(db);
-        let res = match loc {
-            DefLoc::Module { id, source_root } => {
-                let descr = Module::new(db, source_root, id)?;
+        let res = match loc.kind {
+            DefKind::Module => {
+                let descr = Module::new(db, loc.source_root_id, loc.module_id)?;
                 Def::Module(descr)
             }
-            DefLoc::Item { .. } => Def::Item,
+            DefKind::Item => Def::Item,
         };
         Ok(res)
     }
