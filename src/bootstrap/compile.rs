@@ -100,6 +100,7 @@ impl Step for Std {
                 &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &libstd_stamp(builder, compiler, target),
                   false);
 
@@ -425,6 +426,7 @@ impl Step for Test {
                 &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &libtest_stamp(builder, compiler, target),
                   false);
 
@@ -556,6 +558,7 @@ impl Step for Rustc {
                  compiler.stage, &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &librustc_stamp(builder, compiler, target),
                   false);
 
@@ -707,6 +710,7 @@ impl Step for CodegenBackend {
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
                               cargo.arg("--features").arg(features),
+                              vec![],
                               &tmp_stamp,
                               false);
         if builder.config.dry_run {
@@ -1077,6 +1081,7 @@ pub fn add_to_sysroot(
 
 pub fn run_cargo(builder: &Builder<'_>,
                  cargo: &mut Command,
+                 tail_args: Vec<String>,
                  stamp: &Path,
                  is_check: bool)
     -> Vec<PathBuf>
@@ -1099,7 +1104,7 @@ pub fn run_cargo(builder: &Builder<'_>,
     // files we need to probe for later.
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
-    let ok = stream_cargo(builder, cargo, &mut |msg| {
+    let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
         let (filenames, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
@@ -1108,6 +1113,10 @@ pub fn run_cargo(builder: &Builder<'_>,
                 },
                 ..
             } => (filenames, crate_types),
+            CargoMessage::CompilerMessage { message } => {
+                eprintln!("{}", message.rendered);
+                return;
+            }
             _ => return,
         };
         for filename in filenames {
@@ -1235,6 +1244,7 @@ pub fn run_cargo(builder: &Builder<'_>,
 pub fn stream_cargo(
     builder: &Builder<'_>,
     cargo: &mut Command,
+    tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     if builder.config.dry_run {
@@ -1244,6 +1254,10 @@ pub fn stream_cargo(
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
+
+    for arg in tail_args {
+        cargo.arg(arg);
+    }
 
     builder.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {
@@ -1291,5 +1305,13 @@ pub enum CargoMessage<'a> {
     },
     BuildScriptExecuted {
         package_id: Cow<'a, str>,
+    },
+    CompilerMessage {
+        message: ClippyMessage<'a>
     }
+}
+
+#[derive(Deserialize)]
+pub struct ClippyMessage<'a> {
+    rendered: Cow<'a, str>,
 }
