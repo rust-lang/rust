@@ -20,7 +20,7 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
         return a.chars().count();
     }
 
-    let mut dcol: Vec<_> = (0..b.len() + 1).collect();
+    let mut dcol: Vec<_> = (0..=b.len()).collect();
     let mut t_last = 0;
 
     for (i, sc) in a.chars().enumerate() {

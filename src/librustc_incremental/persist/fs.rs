@@ -354,7 +354,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     }
 
     // State: "s-{timestamp}-{random-number}-"
-    let mut new_sub_dir_name = String::from(&old_sub_dir_name[.. dash_indices[2] + 1]);
+    let mut new_sub_dir_name = String::from(&old_sub_dir_name[..= dash_indices[2]]);
 
     // Append the svh
     base_n::push_str(svh.as_u64() as u128, INT_ENCODE_BASE, &mut new_sub_dir_name);

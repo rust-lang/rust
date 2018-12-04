@@ -3614,7 +3614,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let res = self.smart_resolve_path_fragment(
                 id,
                 None,
-                &path[..qself.position + 1],
+                &path[..=qself.position],
                 span,
                 PathSource::TraitItem(ns),
                 CrateLint::QPathTrait {

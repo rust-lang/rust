@@ -339,7 +339,7 @@ impl<'tcx> Mir<'tcx> {
     #[inline]
     pub fn args_iter(&self) -> impl Iterator<Item = Local> {
         let arg_count = self.arg_count;
-        (1..arg_count + 1).map(Local::new)
+        (1..=arg_count).map(Local::new)
     }
 
     /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all

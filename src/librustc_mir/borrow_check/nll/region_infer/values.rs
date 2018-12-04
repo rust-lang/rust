@@ -48,7 +48,7 @@ impl RegionValueElements {
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
         for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-            basic_blocks.extend((0..bb_data.statements.len() + 1).map(|_| bb));
+            basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 
         Self {
