@@ -14,24 +14,10 @@
 
 #![warn(clippy::all)]
 #![allow(unused, clippy::redundant_pattern_matching)]
-#![warn(clippy::single_match_else, clippy::match_same_arms)]
+#![warn(clippy::match_same_arms)]
 
-enum ExprNode {
-    ExprAddrOf,
-    Butterflies,
-    Unicorns,
-}
-
-static NODE: ExprNode = ExprNode::Unicorns;
 
 fn dummy() {
-}
-
-fn unwrap_addr() -> Option<&'static ExprNode> {
-    match ExprNode::Butterflies {
-        ExprNode::ExprAddrOf => Some(&NODE),
-        _ => { let x = 5; None },
-    }
 }
 
 fn ref_pats() {

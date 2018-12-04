@@ -45,7 +45,7 @@ declare_clippy_lint! {
     "a match statement with a single nontrivial arm (i.e. where the other arm is `_ => {}`) instead of `if let`"
 }
 
-/// **What it does:** Checks for matches with a two arms where an `if let` will
+/// **What it does:** Checks for matches with a two arms where an `if let else` will
 /// usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
@@ -53,16 +53,29 @@ declare_clippy_lint! {
 /// **Known problems:** Personal style preferences may differ.
 ///
 /// **Example:**
+///
+/// Using `match`:
+///
 /// ```rust
 /// match x {
 ///     Some(ref foo) => bar(foo),
 ///     _ => bar(other_ref),
 /// }
 /// ```
+///
+/// Using `if let` with `else`:
+///
+/// ```rust
+/// if let Some(ref foo) = x {
+///     bar(foo);
+/// } else {
+///     bar(other_ref);
+/// }
+/// ```
 declare_clippy_lint! {
     pub SINGLE_MATCH_ELSE,
     pedantic,
-    "a match statement with a two arms where the second arm's pattern is a wildcard instead of `if let`"
+    "a match statement with a two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
 }
 
 /// **What it does:** Checks for matches where all arms match a reference,
