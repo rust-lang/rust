@@ -53,7 +53,7 @@ use std::sync::Arc;
 use std::rc::Rc;
 
 use errors;
-use serialize::json::{ToJson, Json, as_json};
+use serde::{Serialize, Serializer, ser::SerializeSeq};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
@@ -402,19 +402,18 @@ struct IndexItem {
     search_type: Option<IndexItemFunctionType>,
 }
 
-impl ToJson for IndexItem {
-    fn to_json(&self) -> Json {
+impl Serialize for IndexItem {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
 
-        let mut data = Vec::with_capacity(6);
-        data.push((self.ty as usize).to_json());
-        data.push(self.name.to_json());
-        data.push(self.path.to_json());
-        data.push(self.desc.to_json());
-        data.push(self.parent_idx.to_json());
-        data.push(self.search_type.to_json());
-
-        Json::Array(data)
+        let mut seq = serializer.serialize_seq(Some(6))?;
+        seq.serialize_element(&(self.ty as usize))?;
+        seq.serialize_element(&self.name)?;
+        seq.serialize_element(&self.path)?;
+        seq.serialize_element(&self.desc)?;
+        seq.serialize_element(&self.parent_idx)?;
+        seq.serialize_element(&self.search_type)?;
+        seq.end()
     }
 }
 
@@ -425,18 +424,19 @@ struct Type {
     generics: Option<Vec<String>>,
 }
 
-impl ToJson for Type {
-    fn to_json(&self) -> Json {
+impl Serialize for Type {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self.name {
             Some(ref name) => {
-                let mut data = Vec::with_capacity(2);
-                data.push(name.to_json());
+                let len = 1 + self.generics.is_some() as usize;
+                let mut seq = serializer.serialize_seq(Some(len))?;
+                seq.serialize_element(name)?;
                 if let Some(ref generics) = self.generics {
-                    data.push(generics.to_json());
+                    seq.serialize_element(generics)?;
                 }
-                Json::Array(data)
+                seq.end()
             }
-            None => Json::Null
+            None => serializer.serialize_none(),
         }
     }
 }
@@ -448,18 +448,19 @@ struct IndexItemFunctionType {
     output: Option<Type>,
 }
 
-impl ToJson for IndexItemFunctionType {
-    fn to_json(&self) -> Json {
+impl Serialize for IndexItemFunctionType {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         // If we couldn't figure out a type, just write `null`.
         if self.inputs.iter().chain(self.output.iter()).any(|ref i| i.name.is_none()) {
-            Json::Null
+            serializer.serialize_none()
         } else {
-            let mut data = Vec::with_capacity(2);
-            data.push(self.inputs.to_json());
+            let len = 1 + self.output.is_some() as usize;
+            let mut seq = serializer.serialize_seq(Some(len))?;
+            seq.serialize_element(&self.inputs)?;
             if let Some(ref output) = self.output {
-                data.push(output.to_json());
+                seq.serialize_element(output)?;
             }
-            Json::Array(data)
+            seq.end()
         }
     }
 }
@@ -684,7 +685,7 @@ pub fn run(mut krate: clean::Crate,
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut nodeid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
-    let mut crate_paths = Vec::<Json>::new();
+    let mut crate_paths = Vec::<::serde_json::Value>::new();
 
     let Cache { ref mut search_index,
                 ref orphan_impl_items,
@@ -721,7 +722,11 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 lastpathid += 1;
 
                 let &(ref fqp, short) = paths.get(&nodeid).unwrap();
-                crate_paths.push(((short as usize), fqp.last().unwrap().clone()).to_json());
+                crate_paths.push(
+                    ::serde_json::to_value(
+                        ((short as usize), fqp.last().unwrap().clone()),
+                    ).unwrap(),
+                );
                 pathid
             }
         });
@@ -732,22 +737,22 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         } else {
             lastpath = item.path.clone();
         }
-        crate_items.push(item.to_json());
+        crate_items.push(::serde_json::to_value(item).unwrap());
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
         plain_summary_line(module.doc_value())
     }).unwrap_or(String::new());
 
-    let mut crate_data = BTreeMap::new();
-    crate_data.insert("doc".to_owned(), Json::String(crate_doc));
-    crate_data.insert("items".to_owned(), Json::Array(crate_items));
-    crate_data.insert("paths".to_owned(), Json::Array(crate_paths));
+    let mut crate_data = ::serde_json::Map::new();
+    crate_data.insert("doc".to_owned(), ::serde_json::Value::String(crate_doc));
+    crate_data.insert("items".to_owned(), ::serde_json::Value::Array(crate_items));
+    crate_data.insert("paths".to_owned(), ::serde_json::Value::Array(crate_paths));
 
     // Collect the index into a string
     format!("searchIndex[{}] = {};",
-            as_json(&krate.name),
-            Json::Object(crate_data))
+            ::serde_json::to_value(&krate.name).unwrap(),
+            ::serde_json::Value::Object(crate_data))
 }
 
 fn write_shared(
@@ -1056,9 +1061,12 @@ themePicker.onblur = handleThemeButtonsBlur;
             if !imp.impl_item.def_id.is_local() { continue }
             have_impls = true;
             write!(implementors, "{{text:{},synthetic:{},types:{}}},",
-                   as_json(&imp.inner_impl().to_string()),
+                   ::serde_json::to_value(&imp.inner_impl().to_string()).unwrap(),
                    imp.inner_impl().synthetic,
-                   as_json(&collect_paths_for_type(imp.inner_impl().for_.clone()))).unwrap();
+                   ::serde_json::to_value(
+                        &collect_paths_for_type(imp.inner_impl().for_.clone()),
+                   ).unwrap(),
+            ).unwrap();
         }
         implementors.push_str("];");
 
@@ -2032,7 +2040,7 @@ impl Context {
                     let js_dst = this.dst.join("sidebar-items.js");
                     let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
                     try_err!(write!(&mut js_out, "initSidebarItems({});",
-                                    as_json(&items)), &js_dst);
+                                    ::serde_json::to_value(&items).unwrap()), &js_dst);
                 }
 
                 for item in m.items {
@@ -3097,7 +3105,7 @@ fn item_trait(
         }
     }
     write!(w, r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
-           as_json(&synthetic_types))?;
+           ::serde_json::to_value(&synthetic_types).unwrap())?;
 
     write!(w, r#"<script type="text/javascript" async
                          src="{root_path}/implementors/{path}/{ty}.{name}.js">

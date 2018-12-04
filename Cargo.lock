@@ -2551,6 +2551,8 @@ dependencies = [
  "minifier 0.0.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.75 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
