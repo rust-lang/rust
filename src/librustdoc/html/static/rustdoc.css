@@ -620,13 +620,36 @@ a {
 .search-container {
 	position: relative;
 }
+.search-container > div {
+	display: inline-flex;
+	width: calc(100% - 34px);
+}
+#crate-search {
+	margin-top: 5px;
+	padding: 6px;
+	padding-right: 19px;
+	border: 0;
+	border-right: 0;
+	border-radius: 4px 0 0 4px;
+	outline: none;
+	cursor: pointer;
+	border-right: 1px solid;
+	-moz-appearance: none;
+	-webkit-appearance: none;
+	/* Removes default arrow from firefox */
+	text-indent: 0.01px;
+	text-overflow: "";
+	background-repeat: no-repeat;
+	background-color: transparent;
+	background-size: 16%;
+	background-position: calc(100% - 1px) 56%;
+}
 .search-container > .top-button {
 	position: absolute;
 	right: 0;
 	top: 10px;
 }
 .search-input {
-	width: calc(100% - 34px);
 	/* Override Normalize.css: we have margins and do
 	 not want to overflow - the `moz` attribute is necessary
 	 until Firefox 29, too early to drop at this point */
@@ -634,13 +657,14 @@ a {
 	box-sizing: border-box !important;
 	outline: none;
 	border: none;
-	border-radius: 1px;
+	border-radius: 0 1px 1px 0;
 	margin-top: 5px;
 	padding: 10px 16px;
 	font-size: 17px;
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
+	width: 100%;
 }
 
 .search-input:focus {
