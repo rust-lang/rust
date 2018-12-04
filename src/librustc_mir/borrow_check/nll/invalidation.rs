@@ -56,10 +56,14 @@ struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
 /// Visits the whole MIR and generates invalidates() facts
 /// Most of the code implementing this was stolen from borrow_check/mod.rs
 impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &Statement<'tcx>,
-                       location: Location) {
+    fn visit_statement(
+        &mut self,
+        block: BasicBlock,
+        statement: &Statement<'tcx>,
+        location: Location,
+    ) {
+        self.check_activations(location);
+
         match statement.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
                 self.consume_rvalue(
@@ -148,6 +152,8 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
         terminator: &Terminator<'tcx>,
         location: Location
     ) {
+        self.check_activations(location);
+
         match terminator.kind {
             TerminatorKind::SwitchInt {
                 ref discr,
@@ -470,6 +476,42 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
     fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
         let lidx = self.location_table.start_index(l);
         self.all_facts.invalidates.push((lidx, b));
+    }
+
+    fn check_activations(
+        &mut self,
+        location: Location,
+    ) {
+        if !self.tcx.two_phase_borrows() {
+            return;
+        }
+
+        // Two-phase borrow support: For each activation that is newly
+        // generated at this statement, check if it interferes with
+        // another borrow.
+        for &borrow_index in self.borrow_set.activations_at_location(location) {
+            let borrow = &self.borrow_set[borrow_index];
+
+            // only mutable borrows should be 2-phase
+            assert!(match borrow.kind {
+                BorrowKind::Shared | BorrowKind::Shallow => false,
+                BorrowKind::Unique | BorrowKind::Mut { .. } => true,
+            });
+
+            self.access_place(
+                ContextKind::Activation.new(location),
+                &borrow.borrowed_place,
+                (
+                    Deep,
+                    Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index),
+                ),
+                LocalMutationIsAllowed::No,
+            );
+
+            // We do not need to call `check_if_path_or_subpath_is_moved`
+            // again, as we already called it when we made the
+            // initial reservation.
+        }
     }
 }
 
