@@ -12,8 +12,8 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::{ast::*, source_map::DUMMY_SP};
 use crate::utils::span_lint;
 
-use if_chain::if_chain;
 use cargo_metadata;
+use if_chain::if_chain;
 use semver;
 
 /// **What it does:** Checks for wildcard dependencies in the `Cargo.toml`.
