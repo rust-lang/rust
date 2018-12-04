@@ -1,0 +1,67 @@
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/trait-object-auto-dedup.rs:28:49
+   |
+LL | fn takes_dyn_trait_send_send(_: Box<dyn Trait + Send + Send>) {}
+   |                                                 ^^^^   ^^^^ subsequent use of auto trait
+   |                                                 |
+   |                                                 first use of auto trait
+   |
+   = note: #[warn(duplicate_auto_traits_in_trait_objects)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/trait-object-auto-dedup.rs:29:54
+   |
+LL | fn takes_dyn_trait_send_sendalias(_: Box<dyn Trait + Send + SendAlias>) {}
+   |                                                      ^^^^   ^^^^^^^^^ subsequent use of auto trait
+   |                                                      |
+   |                                                      first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/trait-object-auto-dedup.rs:31:18
+   |
+LL | impl dyn Trait + Send + Send {
+   |                  ^^^^   ^^^^ subsequent use of auto trait
+   |                  |
+   |                  first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/trait-object-auto-dedup.rs:38:46
+   |
+LL |     let dyn_trait_send_send: Box<dyn Trait + Send + Send> = dyn_trait_send;
+   |                                              ^^^^   ^^^^ subsequent use of auto trait
+   |                                              |
+   |                                              first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/trait-object-auto-dedup.rs:45:67
+   |
+LL |     let dyn_trait_send_send = Box::new(Struct) as Box<dyn Trait + Send + Send>;
+   |                                                                   ^^^^   ^^^^ subsequent use of auto trait
+   |                                                                   |
+   |                                                                   first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/trait-object-auto-dedup.rs:28:49
+   |
+LL | fn takes_dyn_trait_send_send(_: Box<dyn Trait + Send + Send>) {}
+   |                                                 ^^^^   ^^^^ subsequent use of auto trait
+   |                                                 |
+   |                                                 first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+

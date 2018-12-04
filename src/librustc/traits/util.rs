@@ -1,3 +1,4 @@
+use errors::DiagnosticBuilder;
 use hir;
 use hir::def_id::DefId;
 use smallvec::SmallVec;
@@ -305,6 +306,26 @@ impl<'tcx> TraitRefExpansionInfo<'tcx> {
     }
 }
 
+pub trait TraitRefExpansionInfoDignosticBuilder {
+    fn label_with_exp_info<'tcx>(&mut self,
+                                 info: &TraitRefExpansionInfo<'tcx>,
+                                 top_label: &str) -> &mut Self;
+}
+
+impl<'a> TraitRefExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
+    fn label_with_exp_info<'tcx>(&mut self,
+                                 info: &TraitRefExpansionInfo<'tcx>,
+                                 top_label: &str) -> &mut Self {
+        self.span_label(info.top().1, top_label);
+        if info.items.len() > 1 {
+            for (_, sp) in info.items[1..(info.items.len() - 1)].iter().rev() {
+                self.span_label(*sp, "referenced here");
+            }
+        }
+        self
+    }
+}
+
 pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
@@ -314,7 +335,12 @@ pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
         .into_iter()
         .map(|(tr, sp)| TraitRefExpansionInfo::new(tr, sp))
         .collect();
-    items.retain(|i| visited.insert(&i.trait_ref().to_predicate()));
+    // Note: we also retain auto traits here for the purpose of linting duplicate auto traits
+    // in the `AstConv::conv_object_ty_poly_trait_ref` function.
+    items.retain(|i| {
+        let trait_ref = i.trait_ref();
+        visited.insert(&trait_ref.to_predicate()) || tcx.trait_is_auto(trait_ref.def_id())
+    });
     TraitRefExpander { stack: items, visited: visited, }
 }
 
@@ -323,6 +349,8 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
     fn push(&mut self, item: &TraitRefExpansionInfo<'tcx>) -> bool {
         let tcx = self.visited.tcx;
         let trait_ref = item.trait_ref();
+
+        debug!("expand_trait_refs: trait_ref={:?}", trait_ref);
 
         if !ty::is_trait_alias(tcx, trait_ref.def_id()) {
             return true;
@@ -341,11 +369,15 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
             })
             .collect();
 
-        debug!("expand_trait_refs: trait_ref={:?} items={:?}",
-                trait_ref, items);
+        debug!("expand_trait_refs: items={:?}", items);
 
         // Only keep those items that we haven't already seen.
-        items.retain(|i| self.visited.insert(&i.trait_ref().to_predicate()));
+        // Note: we also retain auto traits here for the purpose of linting duplicate auto traits
+        // in the `AstConv::conv_object_ty_poly_trait_ref` function.
+        items.retain(|i| {
+            let trait_ref = i.trait_ref();
+            self.visited.insert(&trait_ref.to_predicate()) || tcx.trait_is_auto(trait_ref.def_id())
+        });
 
         self.stack.extend(items);
         false

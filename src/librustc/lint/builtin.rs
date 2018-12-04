@@ -352,6 +352,12 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
+declare_lint! {
+    pub DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS,
+    Warn,
+    "duplicate auto traits in trait object bounds"
+}
+
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
@@ -430,6 +436,7 @@ impl LintPass for HardwiredLints {
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+            DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS,
             parser::QUESTION_MARK_MACRO_SEP,
             DEPRECATED_IN_FUTURE,
         )

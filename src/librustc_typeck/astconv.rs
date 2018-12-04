@@ -29,6 +29,7 @@ use util::nodemap::FxHashMap;
 
 use std::collections::BTreeSet;
 use std::iter;
+use std::ops::Range;
 use std::slice;
 
 use super::{check_type_alias_enum_variants_enabled};
@@ -954,6 +955,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     fn conv_object_ty_poly_trait_ref(&self,
+        node_id: ast::NodeId,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
         lifetime: &hir::Lifetime)
@@ -978,7 +980,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         debug!("principal: {:?}", principal);
 
         for trait_bound in trait_bounds[1..].iter().rev() {
-            // sanity check for non-principal trait bounds
+            // Perform sanity check for non-principal trait bounds.
             let (tr, _) = self.instantiate_poly_trait_ref(trait_bound,
                                                           dummy_self,
                                                           &mut Vec::new());
@@ -987,18 +989,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         bound_trait_refs.push((principal, trait_bounds[0].span));
 
         let expanded_traits = traits::expand_trait_refs(tcx, bound_trait_refs);
-        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
+        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
             let extra_trait = &regular_traits[1];
             let mut err = struct_span_err!(tcx.sess, extra_trait.bottom().1, E0225,
                 "only auto traits can be used as additional traits in a trait object");
-            err.span_label(extra_trait.top().1, "non-auto additional trait");
-            if extra_trait.items.len() > 2 {
-                for (_, sp) in extra_trait.items[1..(extra_trait.items.len() - 1)].iter().rev() {
-                    err.span_label(*sp, "referenced by this alias");
-                }
-            }
+            err.label_with_exp_info(extra_trait, "non-auto additional trait");
             err.emit();
         }
 
@@ -1142,26 +1139,48 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             })
         });
 
-        // Dedup auto traits so that e.g. `dyn Trait + Send + Send` is the same as
-        // `dyn Trait + Send`. Skip the first auto trait if it is the principal trait.
-        let auto_traits_start_index =
-            if auto_traits.first().map_or(false, |i| i.trait_ref() == &principal) {
-                1
-            } else {
-                0
-            };
-        let mut auto_traits: Vec<_> =
-            auto_traits[auto_traits_start_index..].into_iter()
-                                                  .map(|i| i.trait_ref().def_id())
-                                                  .collect();
-        auto_traits.sort();
-        auto_traits.dedup();
+        // Lint duplicate auto traits, and then remove duplicates.
+        auto_traits.sort_by_key(|i| i.trait_ref().def_id());
+        let emit_dup_traits_err = |range: Range<usize>| {
+            let mut err = tcx.struct_span_lint_node(
+                lint::builtin::DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS,
+                node_id,
+                auto_traits[range.clone()].iter().map(|i| i.bottom().1).collect::<Vec<_>>(),
+                &format!("duplicate auto trait `{}` found in trait object",
+                         auto_traits[range.start].trait_ref()));
+            err.label_with_exp_info(&auto_traits[range.start], "first use of auto trait");
+            for i in (range.start + 1)..range.end {
+                err.label_with_exp_info(&auto_traits[i], "subsequent use of auto trait");
+            }
+            err.emit();
+        };
+        let mut seq_start = 0;
+        for i in 1..auto_traits.len() {
+            if auto_traits[i].trait_ref().def_id() != auto_traits[i - 1].trait_ref().def_id() {
+                if i - seq_start > 1 {
+                    emit_dup_traits_err(seq_start..i);
+                }
+                seq_start = i;
+            }
+        }
+        if auto_traits.len() - seq_start > 1 {
+            emit_dup_traits_err(seq_start..auto_traits.len());
+        }
+        // Remove first auto trait if it is the principal trait.
+        // HACK(alexreg): we really want to do this *after* dedup, but we must maintain this
+        // behaviour for the sake of backwards compatibility, until the duplicate traits lint
+        // becomes a hard error.
+        if auto_traits.first().map_or(false, |tr| tr.trait_ref().def_id() == principal.def_id()) {
+            auto_traits.remove(0);
+        }
+        auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
         debug!("auto_traits: {:?}", auto_traits);
 
         // Calling `skip_binder` is okay, since the predicates are re-bound.
         let mut v =
             iter::once(ty::ExistentialPredicate::Trait(*existential_principal.skip_binder()))
-            .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
+            .chain(auto_traits.into_iter()
+                .map(|i| ty::ExistentialPredicate::AutoTrait(i.trait_ref().def_id())))
             .chain(existential_projections
                 .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
             .collect::<SmallVec<[_; 8]>>();
@@ -1766,7 +1785,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
-                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
+                self.conv_object_ty_poly_trait_ref(ast_ty.id, ast_ty.span, bounds, lifetime)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);

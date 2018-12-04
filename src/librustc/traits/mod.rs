@@ -61,7 +61,7 @@ pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{supertraits, supertrait_def_ids, transitive_bounds,
                      Supertraits, SupertraitDefIds};
-pub use self::util::{expand_trait_refs, TraitRefExpander};
+pub use self::util::{expand_trait_refs, TraitRefExpander, TraitRefExpansionInfoDignosticBuilder};
 
 pub use self::chalk_fulfill::{
     CanonicalGoal as ChalkCanonicalGoal,

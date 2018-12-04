@@ -336,7 +336,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
             edition: None,
         },
-        ]);
+        FutureIncompatibleInfo {
+            id: LintId::of(DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS),
+            reference: "issue #56522 <https://github.com/rust-lang/rust/issues/56522>",
+            edition: None,
+        },
+    ]);
 
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");

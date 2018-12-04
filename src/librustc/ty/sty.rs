@@ -519,11 +519,11 @@ impl<'tcx> UpvarSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ExistentialPredicate<'tcx> {
-    /// e.g., Iterator
+    /// E.g., `Iterator`.
     Trait(ExistentialTraitRef<'tcx>),
-    /// e.g., Iterator::Item = T
+    /// E.g., `Iterator::Item = T`.
     Projection(ExistentialProjection<'tcx>),
-    /// e.g., Send
+    /// E.g., `Send`.
     AutoTrait(DefId),
 }
 
@@ -1312,11 +1312,11 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 
 impl DebruijnIndex {
     /// Returns the resulting index when this value is moved into
-    /// `amount` number of new binders. So e.g., if you had
+    /// `amount` number of new binders. So, e.g., if you had
     ///
     ///    for<'a> fn(&'a x)
     ///
-    /// and you wanted to change to
+    /// and you wanted to change it to
     ///
     ///    for<'a> fn(for<'b> fn(&'a x))
     ///

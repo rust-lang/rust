@@ -1,0 +1,48 @@
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/lint-duplicate-traits.rs:11:18
+   |
+LL | impl Foo for dyn Send + Send {}
+   |                  ^^^^   ^^^^ subsequent use of auto trait
+   |                  |
+   |                  first use of auto trait
+   |
+   = note: #[warn(duplicate_auto_traits_in_trait_objects)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/lint-duplicate-traits.rs:13:18
+   |
+LL | impl Foo for dyn Send + Sync + Send + SyncAlias {}
+   |                  ^^^^          ^^^^ subsequent use of auto trait
+   |                  |
+   |                  first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Sync` found in trait object
+  --> $DIR/lint-duplicate-traits.rs:13:25
+   |
+LL | trait SyncAlias = Sync;
+   |                   ---- subsequent use of auto trait
+...
+LL | impl Foo for dyn Send + Sync + Send + SyncAlias {}
+   |                         ^^^^          ^^^^^^^^^
+   |                         |
+   |                         first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+
+warning: duplicate auto trait `std::marker::Send` found in trait object
+  --> $DIR/lint-duplicate-traits.rs:11:18
+   |
+LL | impl Foo for dyn Send + Send {}
+   |                  ^^^^   ^^^^ subsequent use of auto trait
+   |                  |
+   |                  first use of auto trait
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56522 <https://github.com/rust-lang/rust/issues/56522>
+

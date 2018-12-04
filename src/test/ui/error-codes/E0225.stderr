@@ -10,7 +10,7 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
 LL | trait Foo = std::io::Read + std::io::Write;
    |                             -------------- non-auto additional trait
 LL | trait Bar = Foo;
-   |             --- referenced by this alias
+   |             --- referenced here
 ...
 LL |     let _: Box<Bar>;
    |                ^^^
