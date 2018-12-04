@@ -4,6 +4,7 @@ use self::State::*;
 
 use rustc_data_structures::thin_vec::ThinVec;
 
+use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::ext::base;
 use syntax::ext::base::*;
@@ -51,6 +52,34 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                                        feature_gate::EXPLAIN_ASM);
     }
 
+    let mut inline_asm = match parse_inline_asm(cx, sp, tts) {
+        Ok(Some(inline_asm)) => inline_asm,
+        Ok(None) => return DummyResult::expr(sp),
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::expr(sp);
+        }
+    };
+
+    // If there are no outputs, the inline assembly is executed just for its side effects,
+    // so ensure that it is volatile
+    if inline_asm.outputs.is_empty() {
+        inline_asm.volatile = true;
+    }
+
+    MacEager::expr(P(ast::Expr {
+        id: ast::DUMMY_NODE_ID,
+        node: ast::ExprKind::InlineAsm(P(inline_asm)),
+        span: sp,
+        attrs: ThinVec::new(),
+    }))
+}
+
+fn parse_inline_asm<'a>(
+    cx: &mut ExtCtxt<'a>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree],
+) -> Result<Option<ast::InlineAsm>, DiagnosticBuilder<'a>> {
     // Split the tts before the first colon, to avoid `asm!("x": y)`  being
     // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
     let first_colon = tts.iter()
@@ -80,22 +109,33 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 if asm_str_style.is_some() {
                     // If we already have a string with instructions,
                     // ending up in Asm state again is an error.
-                    span_err!(cx, sp, E0660, "malformed inline assembly");
-                    return DummyResult::expr(sp);
+                    return Err(struct_span_err!(
+                        cx.parse_sess.span_diagnostic,
+                        sp,
+                        E0660,
+                        "malformed inline assembly"
+                    ));
                 }
                 // Nested parser, stop before the first colon (see above).
                 let mut p2 = cx.new_parser_from_tts(&tts[..first_colon]);
-                let (s, style) = match expr_to_string(cx,
-                                                      panictry!(p2.parse_expr()),
-                                                      "inline assembly must be a string literal") {
-                    Some((s, st)) => (s, st),
-                    // let compilation continue
-                    None => return DummyResult::expr(sp),
-                };
+
+                if p2.token == token::Eof {
+                    let mut err =
+                        cx.struct_span_err(sp, "macro requires a string literal as an argument");
+                    err.span_label(sp, "string literal required");
+                    return Err(err);
+                }
+
+                let expr = p2.parse_expr()?;
+                let (s, style) =
+                    match expr_to_string(cx, expr, "inline assembly must be a string literal") {
+                        Some((s, st)) => (s, st),
+                        None => return Ok(None),
+                    };
 
                 // This is most likely malformed.
                 if p2.token != token::Eof {
-                    let mut extra_tts = panictry!(p2.parse_all_token_trees());
+                    let mut extra_tts = p2.parse_all_token_trees()?;
                     extra_tts.extend(tts[first_colon..].iter().cloned());
                     p = parse::stream_to_parser(cx.parse_sess, extra_tts.into_iter().collect());
                 }
@@ -105,18 +145,17 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             }
             Outputs => {
                 while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
-
                     if !outputs.is_empty() {
                         p.eat(&token::Comma);
                     }
 
-                    let (constraint, _str_style) = panictry!(p.parse_str());
+                    let (constraint, _) = p.parse_str()?;
 
                     let span = p.prev_span;
 
-                    panictry!(p.expect(&token::OpenDelim(token::Paren)));
-                    let out = panictry!(p.parse_expr());
-                    panictry!(p.expect(&token::CloseDelim(token::Paren)));
+                    p.expect(&token::OpenDelim(token::Paren))?;
+                    let expr = p.parse_expr()?;
+                    p.expect(&token::CloseDelim(token::Paren))?;
 
                     // Expands a read+write operand into two operands.
                     //
@@ -143,7 +182,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     let is_indirect = constraint_str.contains("*");
                     outputs.push(ast::InlineAsmOutput {
                         constraint: output.unwrap_or(constraint),
-                        expr: out,
+                        expr,
                         is_rw,
                         is_indirect,
                     });
@@ -151,12 +190,11 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             }
             Inputs => {
                 while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
-
                     if !inputs.is_empty() {
                         p.eat(&token::Comma);
                     }
 
-                    let (constraint, _str_style) = panictry!(p.parse_str());
+                    let (constraint, _) = p.parse_str()?;
 
                     if constraint.as_str().starts_with("=") {
                         span_err!(cx, p.prev_span, E0662,
@@ -166,21 +204,20 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                                                 "input operand constraint contains '+'");
                     }
 
-                    panictry!(p.expect(&token::OpenDelim(token::Paren)));
-                    let input = panictry!(p.parse_expr());
-                    panictry!(p.expect(&token::CloseDelim(token::Paren)));
+                    p.expect(&token::OpenDelim(token::Paren))?;
+                    let input = p.parse_expr()?;
+                    p.expect(&token::CloseDelim(token::Paren))?;
 
                     inputs.push((constraint, input));
                 }
             }
             Clobbers => {
                 while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
-
                     if !clobs.is_empty() {
                         p.eat(&token::Comma);
                     }
 
-                    let (s, _str_style) = panictry!(p.parse_str());
+                    let (s, _) = p.parse_str()?;
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
@@ -193,7 +230,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 }
             }
             Options => {
-                let (option, _str_style) = panictry!(p.parse_str());
+                let (option, _) = p.parse_str()?;
 
                 if option == "volatile" {
                     // Indicates that the inline assembly has side effects
@@ -234,26 +271,15 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
         }
     }
 
-    // If there are no outputs, the inline assembly is executed just for its side effects,
-    // so ensure that it is volatile
-    if outputs.is_empty() {
-        volatile = true;
-    }
-
-    MacEager::expr(P(ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {
-            asm,
-            asm_str_style: asm_str_style.unwrap(),
-            outputs,
-            inputs,
-            clobbers: clobs,
-            volatile,
-            alignstack,
-            dialect,
-            ctxt: cx.backtrace(),
-        })),
-        span: sp,
-        attrs: ThinVec::new(),
+    Ok(Some(ast::InlineAsm {
+        asm,
+        asm_str_style: asm_str_style.unwrap(),
+        outputs,
+        inputs,
+        clobbers: clobs,
+        volatile,
+        alignstack,
+        dialect,
+        ctxt: cx.backtrace(),
     }))
 }
