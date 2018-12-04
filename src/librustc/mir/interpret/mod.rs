@@ -404,7 +404,7 @@ impl<'tcx> AllocMap<'tcx> {
 
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    pub fn set_alloc_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
+    fn set_alloc_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
         self.id_to_kind.insert_same(id, AllocKind::Memory(mem));
     }
 }
