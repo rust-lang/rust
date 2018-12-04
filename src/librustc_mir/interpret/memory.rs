@@ -638,7 +638,7 @@ where
         // ensure llvm knows not to put this into immutable memory
         alloc.mutability = mutability;
         let alloc = self.tcx.intern_const_alloc(alloc);
-        self.tcx.alloc_map.lock().set_id_memory(alloc_id, alloc);
+        self.tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
         // recurse into inner allocations
         for &(_, alloc) in alloc.relocations.values() {
             // FIXME: Reusing the mutability here is likely incorrect.  It is originally

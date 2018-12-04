@@ -255,7 +255,7 @@ impl<'s> AllocDecodingSession<'s> {
                     // We already have a reserved AllocId.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-                    decoder.tcx().alloc_map.lock().set_id_same_memory(alloc_id, allocation);
+                    decoder.tcx().alloc_map.lock().set_alloc_id_same_memory(alloc_id, allocation);
                     Ok(alloc_id)
                 },
                 AllocDiscriminant::Fn => {
@@ -325,8 +325,8 @@ impl<'tcx> AllocMap<'tcx> {
     /// Obtains a new allocation ID that can be referenced but does not
     /// yet have an allocation backing it.
     ///
-    /// Make sure to call `set_id_memory` or `set_id_same_memory` before returning such an
-    /// `AllocId` from a query.
+    /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
+    /// an `AllocId` from a query.
     pub fn reserve(
         &mut self,
     ) -> AllocId {
@@ -390,13 +390,13 @@ impl<'tcx> AllocMap<'tcx> {
     // inside rustc?
     pub fn allocate(&mut self, mem: &'tcx Allocation) -> AllocId {
         let id = self.reserve();
-        self.set_id_memory(id, mem);
+        self.set_alloc_id_memory(id, mem);
         id
     }
 
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
-    pub fn set_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
+    pub fn set_alloc_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
         if let Some(old) = self.id_to_kind.insert(id, AllocKind::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
@@ -404,7 +404,7 @@ impl<'tcx> AllocMap<'tcx> {
 
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    pub fn set_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
+    pub fn set_alloc_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
         self.id_to_kind.insert_same(id, AllocKind::Memory(mem));
     }
 }
