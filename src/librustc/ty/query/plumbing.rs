@@ -543,13 +543,15 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             p.record_query(Q::CATEGORY);
         });
 
+        let provider = Q::provider(self, &key);
+
         let res = if dep_node.kind.is_eval_always() {
             self.dep_graph.with_eval_always_task(self, dep_node, |task| {
-                job.with_context(self, task, |tcx| Q::compute(tcx, key))
+                job.with_context(self, task, |tcx| provider(tcx, key))
             })
         } else {
             self.dep_graph.with_query_task(self, dep_node, |task| {
-                job.with_context(self, task, |tcx| Q::compute(tcx, key))
+                job.with_context(self, task, |tcx| provider(tcx, key))
             })
         };
 
@@ -841,9 +843,11 @@ macro_rules! define_queries_inner {
                 DepNode::new_inlined(tcx, $node(*key))
             }
 
-            // FIXME: Change back to inline
-            #[inline(never)]
-            fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
+            #[inline(always)]
+            fn provider(
+                tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                key: &Self::Key
+            ) -> fn(TyCtxt<'_, 'tcx, 'tcx>, Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
                     let provider = tcx.queries.providers.get(key.query_crate())
                         // HACK(eddyb) it's possible crates may be loaded after
@@ -852,7 +856,7 @@ macro_rules! define_queries_inner {
                         // would be be missing appropriate entries in `providers`.
                         .unwrap_or(&tcx.queries.fallback_extern_providers)
                         .$name;
-                    provider(tcx.global_tcx(), key)
+                    provider
                 })
             }
 
@@ -870,7 +874,7 @@ macro_rules! define_queries_inner {
             ///
             /// Note: The optimization is only available during incr. comp.
             pub fn ensure(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> () {
-                tcx.ensure_query::<queries::$name<'_>>(key);
+                tcx.global_tcx().ensure_query::<queries::$name<'_>>(key);
             }
         })*
 
@@ -1048,7 +1052,11 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
     macro_rules! force {
         ($query:ident, $key:expr) => {
             {
-                tcx.force_query::<::ty::query::queries::$query<'_>>($key, DUMMY_SP, *dep_node);
+                tcx.global_tcx().force_query::<::ty::query::queries::$query<'_>>(
+                    $key,
+                    DUMMY_SP,
+                    *dep_node
+                );
             }
         }
     };

@@ -417,7 +417,7 @@ impl DepGraph {
             let result = op(&task);
             let dep_node_index = data.current
                                      .borrow_mut()
-                                     .pop_anon_task(dep_kind, task);
+                                     .complete_anon_task(dep_kind, task);
             (result, dep_node_index)
         } else {
             (op(&OpenTask::Ignore), DepNodeIndex::INVALID)
@@ -994,6 +994,7 @@ impl CurrentDepGraph {
         }
     }
 
+    #[inline(always)]
     fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::Regular(task) = task {
             let RegularOpenTask {
@@ -1031,7 +1032,8 @@ impl CurrentDepGraph {
         }
     }
 
-    fn pop_anon_task(&mut self, kind: DepKind, task: OpenTask) -> DepNodeIndex {
+    #[inline(always)]
+    fn complete_anon_task(&mut self, kind: DepKind, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::Anon(task) = task {
             let AnonOpenTask {
                 read_set: _,
@@ -1070,6 +1072,7 @@ impl CurrentDepGraph {
         }
     }
 
+    #[inline(always)]
     fn complete_eval_always_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::EvalAlways {
             node,

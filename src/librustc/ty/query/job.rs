@@ -85,6 +85,9 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     pub fn extract_diagnostics(&self) -> Vec<Diagnostic> {
+        // FIXME: Find a way to remove this lock access since we should have
+        // ownership of the content back now. Other crates may free the Lrc though
+        // and the, but only after we replace this.
         mem::replace(&mut *self.diagnostics.lock(), Vec::new())
     }
 
