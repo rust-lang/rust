@@ -340,7 +340,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 
 /// Determines whether the current thread is unwinding because of panic.
 pub fn panicking() -> bool {
-    with_panic_count(|c| c.get() != 0)
+    update_panic_count(0) != 0
 }
 
 /// Entry point of panic from the libcore crate.
