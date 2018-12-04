@@ -221,13 +221,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
+impl<'a> HashStable<StableHashingContext<'a>> for ast::MetaPath {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         self.segments.len().hash_stable(hcx, hasher);
-        for segment in &self.segments {
-            segment.ident.name.hash_stable(hcx, hasher);
+        for ident in &self.segments {
+            ident.name.hash_stable(hcx, hasher);
         }
     }
 }

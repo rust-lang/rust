@@ -2071,10 +2071,22 @@ impl<'a> Parser<'a> {
     crate fn parse_path_common(&mut self, style: PathStyle, enable_warning: bool)
                              -> PResult<'a, ast::Path> {
         maybe_whole!(self, NtPath, |path| {
-            if style == PathStyle::Mod &&
-               path.segments.iter().any(|segment| segment.args.is_some()) {
-                self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
+            let mut path = path;
+
+            // Check for disallowed generic arguments, and remove them.
+            // This guarantees a generic-less path for `PathStyle::Mod`,
+            // implying `MetaPath::from_regular_path` always succeeds.
+            if style == PathStyle::Mod {
+                for segment in &mut path.segments{
+                    if let Some(args) = segment.args.take() {
+                        self.diagnostic().span_err(
+                            args.span(),
+                            "unexpected generic arguments in path",
+                        );
+                    }
+                }
             }
+
             path
         });
 
@@ -2092,17 +2104,17 @@ impl<'a> Parser<'a> {
     /// Like `parse_path`, but also supports parsing `Word` meta items into paths for back-compat.
     /// This is used when parsing derive macro paths in `#[derive]` attributes.
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
-        let meta_ident = match self.token {
+        let meta_path = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(meta.path.clone()),
+                    ast::MetaItemKind::Word => Some(meta.path.to_regular_path()),
                     _ => None,
                 },
                 _ => None,
             },
             _ => None,
         };
-        if let Some(path) = meta_ident {
+        if let Some(path) = meta_path {
             self.bump();
             return Ok(path);
         }
@@ -6479,7 +6491,9 @@ impl<'a> Parser<'a> {
                     let attr = Attribute {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
-                        path: ast::Path::from_ident(Ident::from_str("warn_directory_ownership")),
+                        path: ast::MetaPath::from_ident(
+                            Ident::from_str("warn_directory_ownership"),
+                        ),
                         tokens: TokenStream::empty(),
                         is_sugared_doc: false,
                         span: syntax_pos::DUMMY_SP,

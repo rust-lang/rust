@@ -235,12 +235,12 @@ pub mod rt {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
             let mut inner = Vec::new();
-            for (i, segment) in self.path.segments.iter().enumerate() {
+            for (i, &ident) in self.path.segments.iter().enumerate() {
                 if i > 0 {
                     inner.push(TokenTree::Token(self.span, token::Colon).into());
                 }
                 inner.push(TokenTree::Token(
-                    self.span, token::Token::from_ast_ident(segment.ident)
+                    self.span, token::Token::from_ast_ident(ident)
                 ).into());
             }
             inner.push(self.tokens.clone());

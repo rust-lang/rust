@@ -799,8 +799,8 @@ fn prepend_attrs(sess: &ParseSess,
         let mut brackets = tokenstream::TokenStreamBuilder::new();
 
         // For simple paths, push the identifier directly
-        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
-            let ident = attr.path.segments[0].ident;
+        if attr.path.segments.len() == 1 {
+            let ident = attr.path.segments[0];
             let token = Ident(ident, ident.as_str().starts_with("r#"));
             brackets.push(tokenstream::TokenTree::Token(ident.span, token));
 
@@ -809,7 +809,7 @@ fn prepend_attrs(sess: &ParseSess,
         } else {
             let stream = parse_stream_from_source_str(
                 FileName::MacroExpansion,
-                pprust::path_to_string(&attr.path),
+                pprust::meta_path_to_string(&attr.path),
                 sess,
                 Some(span),
             );

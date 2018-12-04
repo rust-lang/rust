@@ -63,6 +63,66 @@ impl fmt::Debug for Lifetime {
     }
 }
 
+/// Simpler version of `Path` for `Attribute` and `MetaItem`.
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct MetaPath {
+    pub span: Span,
+    pub segments: Vec<Ident>,
+}
+
+impl<'a> PartialEq<&'a str> for MetaPath {
+    fn eq(&self, string: &&'a str) -> bool {
+        self.segments.len() == 1 && self.segments[0].name == *string
+    }
+}
+
+impl fmt::Debug for MetaPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "path({})", pprust::meta_path_to_string(self))
+    }
+}
+
+impl fmt::Display for MetaPath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", pprust::meta_path_to_string(self))
+    }
+}
+
+impl MetaPath {
+    // convert a span and an identifier to the corresponding
+    // 1-segment path
+    pub fn from_ident(ident: Ident) -> MetaPath {
+        MetaPath {
+            span: ident.span,
+            segments: vec![ident],
+        }
+    }
+
+    /// Try to convert a `Path` into a `MetaPath`, returning `None`
+    /// if any of the path's segments had any generic arguments.
+    pub fn from_regular_path(path: &Path) -> Option<MetaPath> {
+        Some(MetaPath {
+            span: path.span,
+            segments: path.segments.iter().map(|segment| {
+                if segment.args.is_none() {
+                    Some(segment.ident)
+                } else {
+                    None
+                }
+            }).collect::<Option<_>>()?,
+        })
+    }
+
+    pub fn to_regular_path(&self) -> Path {
+        Path {
+            span: self.span,
+            segments: self.segments.iter().map(|&ident| {
+                PathSegment::from_ident(ident)
+            }).collect(),
+        }
+    }
+}
+
 /// A "Path" is essentially Rust's notion of a name.
 ///
 /// It's represented as a sequence of identifiers,
@@ -430,7 +490,7 @@ pub enum NestedMetaItemKind {
 /// E.g. `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MetaItem {
-    pub path: Path,
+    pub path: MetaPath,
     pub node: MetaItemKind,
     pub span: Span,
 }
@@ -1988,7 +2048,7 @@ impl Idx for AttrId {
 pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
-    pub path: Path,
+    pub path: MetaPath,
     pub tokens: TokenStream,
     pub is_sugared_doc: bool,
     pub span: Span,

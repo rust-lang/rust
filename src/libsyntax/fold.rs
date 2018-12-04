@@ -541,7 +541,7 @@ pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Option<At
     Some(Attribute {
         id: attr.id,
         style: attr.style,
-        path: fld.fold_path(attr.path),
+        path: attr.path.clone(),
         tokens: fld.fold_tts(attr.tokens),
         is_sugared_doc: attr.is_sugared_doc,
         span: fld.new_span(attr.span),
@@ -581,7 +581,7 @@ pub fn noop_fold_meta_list_item<T: Folder>(li: NestedMetaItem, fld: &mut T)
 
 pub fn noop_fold_meta_item<T: Folder>(mi: MetaItem, fld: &mut T) -> MetaItem {
     MetaItem {
-        path: fld.fold_path(mi.path),
+        path: mi.path.clone(),
         node: match mi.node {
             MetaItemKind::Word => MetaItemKind::Word,
             MetaItemKind::List(mis) => {

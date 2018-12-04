@@ -265,8 +265,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let msg = if attr.path.segments[0].ident.name ==
-                                 prev_attr.path.segments[0].ident.name {
+                    let msg = if attr.path.segments[0].name ==
+                                 prev_attr.path.segments[0].name {
                         format!("Only one `#[{}]` attribute is allowed on any given function",
                                 attr.path)
                     } else {

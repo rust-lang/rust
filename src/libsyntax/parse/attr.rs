@@ -147,7 +147,7 @@ impl<'a> Parser<'a> {
     /// PATH
     /// PATH `=` TOKEN_TREE
     /// The delimiters or `=` are still put into the resulting token stream.
-    crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
+    crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::MetaPath, TokenStream)> {
         let meta = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
             } else {
                 TokenStream::empty()
             };
-            (path, tokens)
+            (ast::MetaPath::from_regular_path(&path).unwrap(), tokens)
         })
     }
 
@@ -251,7 +251,11 @@ impl<'a> Parser<'a> {
         let path = self.parse_path(PathStyle::Mod)?;
         let node = self.parse_meta_item_kind()?;
         let span = lo.to(self.prev_span);
-        Ok(ast::MetaItem { path, node, span })
+        Ok(ast::MetaItem {
+            path: ast::MetaPath::from_regular_path(&path).unwrap(),
+            node,
+            span,
+        })
     }
 
     crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {

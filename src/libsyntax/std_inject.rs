@@ -103,7 +103,9 @@ pub fn maybe_inject_crates_ref(
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,
-            path: ast::Path::from_ident(ast::Ident::new(Symbol::intern("prelude_import"), span)),
+            path: ast::MetaPath::from_ident(
+                ast::Ident::new(Symbol::intern("prelude_import"), span),
+            ),
             tokens: TokenStream::empty(),
             id: attr::mk_attr_id(),
             is_sugared_doc: false,

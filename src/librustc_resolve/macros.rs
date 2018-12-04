@@ -299,7 +299,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                         }).into();
                     }
                     return Some(ast::Attribute {
-                        path: ast::Path::from_ident(Ident::new(legacy_name, span)),
+                        path: ast::MetaPath::from_ident(Ident::new(legacy_name, span)),
                         tokens: TokenStream::empty(),
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
@@ -315,11 +315,14 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
+        let path;
         let (path, kind, derives_in_scope, after_derive) = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } =>
                 return Ok(None),
-            InvocationKind::Attr { attr: Some(ref attr), ref traits, after_derive, .. } =>
-                (&attr.path, MacroKind::Attr, traits.clone(), after_derive),
+            InvocationKind::Attr { attr: Some(ref attr), ref traits, after_derive, .. } => {
+                path = attr.path.to_regular_path();
+                (&path, MacroKind::Attr, traits.clone(), after_derive)
+            }
             InvocationKind::Bang { ref mac, .. } =>
                 (&mac.node.path, MacroKind::Bang, Vec::new(), false),
             InvocationKind::Derive { ref path, .. } =>

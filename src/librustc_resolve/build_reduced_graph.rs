@@ -1021,7 +1021,7 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
                 derives: Vec::new(),
             };
             parent_scope.module.builtin_attrs.borrow_mut().push((
-                attr.path.segments[0].ident, parent_scope
+                attr.path.segments[0], parent_scope
             ));
         }
         visit::walk_attribute(self, attr);

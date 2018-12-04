@@ -601,7 +601,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let input = self.extract_proc_macro_attr_input(attr.tokens, attr.span);
                 let tok_result = mac.expand(self.cx, attr.span, input, item_tok);
                 let res = self.parse_ast_fragment(tok_result, invoc.fragment_kind,
-                                                  &attr.path, attr.span);
+                                                  &attr.path.to_regular_path(), attr.span);
                 self.gate_proc_macro_expansion(attr.span, &res);
                 res
             }
@@ -928,7 +928,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    path: Path::from_ident(keywords::Invalid.ident()),
+                    path: ast::MetaPath::from_ident(keywords::Invalid.ident()),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };

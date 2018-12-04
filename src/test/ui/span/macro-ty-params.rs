@@ -17,6 +17,5 @@ macro_rules! m {
 fn main() {
     foo::<T>!(); //~ ERROR generic arguments in macro path
     foo::<>!(); //~ ERROR generic arguments in macro path
-    m!(MyTrait<>); //~ ERROR generic arguments in macro path
-    //~^ ERROR unexpected generic arguments in path
+    m!(MyTrait<>); //~ ERROR unexpected generic arguments in path
 }

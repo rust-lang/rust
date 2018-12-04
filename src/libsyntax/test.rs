@@ -443,7 +443,7 @@ fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path
             sd.span_fatal(test_attr.span(),
                 "#![test_runner(..)] accepts exactly 1 argument").raise()
         }
-        Some(meta_list[0].word().as_ref().unwrap().path.clone())
+        Some(meta_list[0].word().as_ref().unwrap().path.to_regular_path())
     } else {
         sd.span_fatal(test_attr.span(),
             "test_runner must be of the form #[test_runner(..)]").raise()

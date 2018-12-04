@@ -22,7 +22,7 @@ pub use self::ReprAttr::*;
 pub use self::StabilityLevel::*;
 
 use ast;
-use ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
+use ast::{AttrId, Attribute, AttrStyle, Name, Ident, MetaPath};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use source_map::{BytePos, Spanned, respan, dummy_spanned};
@@ -166,8 +166,8 @@ impl NestedMetaItem {
     }
 }
 
-fn name_from_path(path: &Path) -> Name {
-    path.segments.last().expect("empty path in attribute").ident.name
+fn name_from_path(path: &MetaPath) -> Name {
+    path.segments.last().expect("empty path in attribute").name
 }
 
 impl Attribute {
@@ -270,7 +270,7 @@ impl MetaItem {
 
     pub fn is_scoped(&self) -> Option<Ident> {
         if self.path.segments.len() > 1 {
-            Some(self.path.segments[0].ident)
+            Some(self.path.segments[0])
         } else {
             None
         }
@@ -366,15 +366,15 @@ pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem 
 }
 
 pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
+    MetaItem { path: MetaPath::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
 }
 
 pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
+    MetaItem { path: MetaPath::from_ident(ident), span, node: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
+    MetaItem { path: MetaPath::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
 }
 
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
@@ -432,7 +432,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     Attribute {
         id,
         style,
-        path: Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
+        path: MetaPath::from_ident(Ident::from_str("doc").with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,
@@ -470,17 +470,17 @@ impl MetaItem {
     fn tokens(&self) -> TokenStream {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
-        for (i, segment) in self.path.segments.iter().enumerate() {
+        for (i, &ident) in self.path.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
                 let mod_sep_span = Span::new(last_pos,
-                                             segment.ident.span.lo(),
-                                             segment.ident.span.ctxt());
+                                             ident.span.lo(),
+                                             ident.span.ctxt());
                 idents.push(TokenTree::Token(mod_sep_span, Token::ModSep).into());
             }
-            idents.push(TokenTree::Token(segment.ident.span,
-                                         Token::from_ast_ident(segment.ident)).into());
-            last_pos = segment.ident.span.hi();
+            idents.push(TokenTree::Token(ident.span,
+                                         Token::from_ast_ident(ident)).into());
+            last_pos = ident.span.hi();
         }
         idents.push(self.node.tokens(self.span));
         TokenStream::concat(idents)
@@ -493,12 +493,12 @@ impl MetaItem {
         let path = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
                 if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
-                    let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
+                    let mut segments = vec![ident.with_span_pos(span)];
                     tokens.next();
                     loop {
                         if let Some(TokenTree::Token(span,
                                                      Token::Ident(ident, _))) = tokens.next() {
-                            segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
+                            segments.push(ident.with_span_pos(span));
                         } else {
                             return None;
                         }
@@ -508,16 +508,18 @@ impl MetaItem {
                             break;
                         }
                     }
-                    let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                    Path { span, segments }
+                    let span = span.with_hi(segments.last().unwrap().span.hi());
+                    MetaPath { span, segments }
                 } else {
-                    Path::from_ident(ident.with_span_pos(span))
+                    MetaPath::from_ident(ident.with_span_pos(span))
                 }
             }
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
+                token::Nonterminal::NtIdent(ident, _) => MetaPath::from_ident(ident),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
-                token::Nonterminal::NtPath(ref path) => path.clone(),
+                token::Nonterminal::NtPath(ref path) => {
+                    ast::MetaPath::from_regular_path(path)?
+                }
                 _ => return None,
             },
             _ => return None,
