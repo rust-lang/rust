@@ -41,63 +41,58 @@ pub use self::{
 
 pub use self::function::FnSignatureInfo;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FnId(u32);
-ra_db::impl_numeric_id!(FnId);
-
-impl FnId {
-    pub fn from_loc(
-        db: &impl AsRef<LocationIntener<SourceItemId, FnId>>,
-        loc: &SourceItemId,
-    ) -> FnId {
-        db.as_ref().loc2id(loc)
-    }
-    pub fn loc(self, db: &impl AsRef<LocationIntener<SourceItemId, FnId>>) -> SourceItemId {
-        db.as_ref().id2loc(self)
-    }
-}
-
+/// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
+/// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(u32);
 ra_db::impl_numeric_id!(DefId);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum DefKind {
+    Module,
+    Function,
+    Item,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum DefLoc {
-    Module {
-        id: ModuleId,
-        source_root: SourceRootId,
-    },
-    Item {
-        source_item_id: SourceItemId,
-    },
+pub struct DefLoc {
+    pub(crate) kind: DefKind,
+    source_root_id: SourceRootId,
+    module_id: ModuleId,
+    source_item_id: SourceItemId,
 }
 
 impl DefId {
-    pub fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
+    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
         db.as_ref().id2loc(self)
     }
 }
 
 impl DefLoc {
-    pub fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
+    pub(crate) fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
         db.as_ref().loc2id(&self)
     }
 }
 
 pub enum Def {
     Module(Module),
+    Function(Function),
     Item,
 }
 
 impl DefId {
     pub fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
         let loc = self.loc(db);
-        let res = match loc {
-            DefLoc::Module { id, source_root } => {
-                let descr = Module::new(db, source_root, id)?;
-                Def::Module(descr)
+        let res = match loc.kind {
+            DefKind::Module => {
+                let module = Module::new(db, loc.source_root_id, loc.module_id)?;
+                Def::Module(module)
             }
-            DefLoc::Item { .. } => Def::Item,
+            DefKind::Function => {
+                let function = Function::new(self);
+                Def::Function(function)
+            }
+            DefKind::Item => Def::Item,
         };
         Ok(res)
     }
@@ -129,6 +124,10 @@ impl SourceFileItems {
             .iter()
             .find(|(_id, i)| i.borrowed() == item)
             .unwrap();
+        id
+    }
+    pub fn id_of_source_file(&self) -> SourceFileItemId {
+        let (id, _syntax) = self.arena.iter().next().unwrap();
         id
     }
 }

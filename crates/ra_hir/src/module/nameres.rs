@@ -28,7 +28,7 @@ use ra_db::SourceRootId;
 
 use crate::{
     Cancelable, FileId,
-    DefId, DefLoc,
+    DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
     HirDatabase,
@@ -247,7 +247,10 @@ where
                 // handle submodules separatelly
                 continue;
             }
-            let def_loc = DefLoc::Item {
+            let def_loc = DefLoc {
+                kind: DefKind::Item,
+                source_root_id: self.source_root,
+                module_id,
                 source_item_id: SourceItemId {
                     file_id,
                     item_id: item.id,
@@ -261,10 +264,12 @@ where
             module_items.items.insert(item.name.clone(), resolution);
         }
 
-        for (name, mod_id) in module_id.children(&self.module_tree) {
-            let def_loc = DefLoc::Module {
-                id: mod_id,
-                source_root: self.source_root,
+        for (name, module_id) in module_id.children(&self.module_tree) {
+            let def_loc = DefLoc {
+                kind: DefKind::Module,
+                source_root_id: self.source_root,
+                module_id,
+                source_item_id: module_id.source(&self.module_tree).0,
             };
             let def_id = def_loc.id(self.db);
             let resolution = Resolution {
@@ -316,7 +321,11 @@ where
 
             if !is_last {
                 curr = match def_id.loc(self.db) {
-                    DefLoc::Module { id, .. } => id,
+                    DefLoc {
+                        kind: DefKind::Module,
+                        module_id,
+                        ..
+                    } => module_id,
                     _ => return,
                 }
             } else {

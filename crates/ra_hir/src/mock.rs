@@ -6,7 +6,7 @@ use ra_db::{LocationIntener, BaseDatabase, FilePosition, mock::FileMap, FileId, 
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
-use crate::{db, DefId, DefLoc, FnId, SourceItemId};
+use crate::{db, DefId, DefLoc};
 
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
@@ -65,7 +65,6 @@ impl MockDatabase {
 
 #[derive(Debug, Default)]
 struct IdMaps {
-    fns: LocationIntener<SourceItemId, FnId>,
     defs: LocationIntener<DefLoc, DefId>,
 }
 
@@ -114,12 +113,6 @@ impl BaseDatabase for MockDatabase {}
 impl AsRef<LocationIntener<DefLoc, DefId>> for MockDatabase {
     fn as_ref(&self) -> &LocationIntener<DefLoc, DefId> {
         &self.id_maps.defs
-    }
-}
-
-impl AsRef<LocationIntener<SourceItemId, FnId>> for MockDatabase {
-    fn as_ref(&self) -> &LocationIntener<SourceItemId, FnId> {
-        &self.id_maps.fns
     }
 }
 
