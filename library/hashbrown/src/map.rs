@@ -3400,27 +3400,6 @@ mod test_map {
         assert_eq!(map[&6], 60);
     }
 
-    #[cfg(adaptive_resize_not_implemented)]
-    #[test]
-    fn test_adaptive() {
-        const TEST_LEN: usize = 5000;
-        // by cloning we get maps with the same hasher seed
-        let mut first = HashMap::new();
-        let mut second = first.clone();
-        first.extend((0..TEST_LEN).map(|i| (i, i)));
-        second.extend((TEST_LEN..TEST_LEN * 2).map(|i| (i, i)));
-
-        for (&k, &v) in &second {
-            let prev_cap = first.capacity();
-            let expect_grow = first.len() == prev_cap;
-            first.insert(k, v);
-            if !expect_grow && first.capacity() != prev_cap {
-                return;
-            }
-        }
-        panic!("Adaptive early resize failed");
-    }
-
     #[test]
     fn test_try_reserve() {
         let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
