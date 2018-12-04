@@ -185,7 +185,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
+        modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         timeline: &mut Timeline
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
@@ -215,6 +215,12 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         timeline: &mut Timeline
     ) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, diag_handler, module, config, timeline)
+    }
+    fn prepare_thin(
+        cgcx: &CodegenContext<Self>,
+        module: ModuleCodegen<Self::Module>
+    ) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(cgcx, module)
     }
     fn run_lto_pass_manager(
         cgcx: &CodegenContext<Self>,

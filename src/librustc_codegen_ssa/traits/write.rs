@@ -36,7 +36,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     /// can simply be copied over from the incr. comp. cache.
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
+        modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         timeline: &mut Timeline,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
@@ -60,6 +60,10 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         config: &ModuleConfig,
         timeline: &mut Timeline,
     ) -> Result<CompiledModule, FatalError>;
+    fn prepare_thin(
+        cgcx: &CodegenContext<Self>,
+        module: ModuleCodegen<Self::Module>
+    ) -> (String, Self::ThinBuffer);
     fn run_lto_pass_manager(
         cgcx: &CodegenContext<Self>,
         llmod: &ModuleCodegen<Self::Module>,

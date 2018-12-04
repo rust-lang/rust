@@ -159,7 +159,7 @@ pub(crate) fn run_fat(cgcx: &CodegenContext<LlvmCodegenBackend>,
 /// lists, one of the modules that need optimization and another for modules that
 /// can simply be copied over from the incr. comp. cache.
 pub(crate) fn run_thin(cgcx: &CodegenContext<LlvmCodegenBackend>,
-                       modules: Vec<ModuleCodegen<ModuleLlvm>>,
+                       modules: Vec<(String, ThinBuffer)>,
                        cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
                        timeline: &mut Timeline)
     -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError>
@@ -180,6 +180,31 @@ pub(crate) fn run_thin(cgcx: &CodegenContext<LlvmCodegenBackend>,
              cached_modules,
              &symbol_white_list,
              timeline)
+}
+
+pub(crate) fn prepare_thin(
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    module: ModuleCodegen<ModuleLlvm>
+) -> (String, ThinBuffer) {
+    let name = module.name.clone();
+    let buffer = ThinBuffer::new(module.module_llvm.llmod());
+
+    // We emit the module after having serialized it into a ThinBuffer
+    // because only then it will contain the ThinLTO module summary.
+    if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir {
+        if cgcx.config(module.kind).emit_pre_thin_lto_bc {
+            let path = incr_comp_session_dir
+                .join(pre_lto_bitcode_filename(&name));
+
+            fs::write(&path, buffer.data()).unwrap_or_else(|e| {
+                panic!("Error writing pre-lto-bitcode file `{}`: {}",
+                       path.display(),
+                       e);
+            });
+        }
+    }
+
+    (name, buffer)
 }
 
 fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
@@ -341,7 +366,7 @@ impl Drop for Linker<'a> {
 /// they all go out of scope.
 fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             diag_handler: &Handler,
-            modules: Vec<ModuleCodegen<ModuleLlvm>>,
+            modules: Vec<(String, ThinBuffer)>,
             serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
             cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
             symbol_white_list: &[*const libc::c_char],
@@ -361,41 +386,17 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         let mut module_names = Vec::with_capacity(full_scope_len);
         let mut thin_modules = Vec::with_capacity(full_scope_len);
 
-        // FIXME: right now, like with fat LTO, we serialize all in-memory
-        //        modules before working with them and ThinLTO. We really
-        //        shouldn't do this, however, and instead figure out how to
-        //        extract a summary from an in-memory module and then merge that
-        //        into the global index. It turns out that this loop is by far
-        //        the most expensive portion of this small bit of global
-        //        analysis!
-        for (i, module) in modules.into_iter().enumerate() {
-            info!("local module: {} - {}", i, module.name);
-            let name = CString::new(module.name.clone()).unwrap();
-            let buffer = ThinBuffer::new(module.module_llvm.llmod());
-
-            // We emit the module after having serialized it into a ThinBuffer
-            // because only then it will contain the ThinLTO module summary.
-            if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir {
-                if cgcx.config(module.kind).emit_pre_thin_lto_bc {
-                    let path = incr_comp_session_dir
-                        .join(pre_lto_bitcode_filename(&module.name));
-
-                    fs::write(&path, buffer.data()).unwrap_or_else(|e| {
-                        panic!("Error writing pre-lto-bitcode file `{}`: {}",
-                               path.display(),
-                               e);
-                    });
-                }
-            }
-
+        for (i, (name, buffer)) in modules.into_iter().enumerate() {
+            info!("local module: {} - {}", i, name);
+            let cname = CString::new(name.clone()).unwrap();
             thin_modules.push(llvm::ThinLTOModule {
-                identifier: name.as_ptr(),
+                identifier: cname.as_ptr(),
                 data: buffer.data().as_ptr(),
                 len: buffer.data().len(),
             });
             thin_buffers.push(buffer);
-            module_names.push(name);
-            timeline.record(&module.name);
+            module_names.push(cname);
+            timeline.record(&name);
         }
 
         // FIXME: All upstream crates are deserialized internally in the

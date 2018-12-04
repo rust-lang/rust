@@ -253,7 +253,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     needs_fat_lto: Vec<ModuleCodegen<B::Module>>,
-    needs_thin_lto: Vec<ModuleCodegen<B::Module>>,
+    needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
     let mut timeline = cgcx.time_graph.as_ref().map(|tg| {
@@ -678,17 +678,17 @@ impl<B: WriteBackendMethods> WorkItem<B> {
     }
 }
 
-enum WorkItemResult<M> {
+enum WorkItemResult<B: WriteBackendMethods> {
     Compiled(CompiledModule),
-    NeedsFatLTO(ModuleCodegen<M>),
-    NeedsThinLTO(ModuleCodegen<M>),
+    NeedsFatLTO(ModuleCodegen<B::Module>),
+    NeedsThinLTO(String, B::ThinBuffer),
 }
 
 fn execute_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     work_item: WorkItem<B>,
     timeline: &mut Timeline
-) -> Result<WorkItemResult<B::Module>, FatalError> {
+) -> Result<WorkItemResult<B>, FatalError> {
     let module_config = cgcx.config(work_item.module_kind());
 
     match work_item {
@@ -716,7 +716,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
     timeline: &mut Timeline
-) -> Result<WorkItemResult<B::Module>, FatalError> {
+) -> Result<WorkItemResult<B>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
 
     unsafe {
@@ -772,7 +772,10 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
             };
             WorkItemResult::Compiled(module)
         }
-        ComputedLtoType::Thin => WorkItemResult::NeedsThinLTO(module),
+        ComputedLtoType::Thin => {
+            let (name, thin_buffer) = B::prepare_thin(cgcx, module);
+            WorkItemResult::NeedsThinLTO(name, thin_buffer)
+        }
         ComputedLtoType::Fat => WorkItemResult::NeedsFatLTO(module),
     })
 }
@@ -782,7 +785,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     module: CachedModuleCodegen,
     module_config: &ModuleConfig,
     _: &mut Timeline
-) -> Result<WorkItemResult<B::Module>, FatalError> {
+) -> Result<WorkItemResult<B>, FatalError> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir
                                     .as_ref()
                                     .unwrap();
@@ -844,7 +847,7 @@ fn execute_lto_work_item<B: ExtraBackendMethods>(
     mut module: lto::LtoModuleCodegen<B>,
     module_config: &ModuleConfig,
     timeline: &mut Timeline
-) -> Result<WorkItemResult<B::Module>, FatalError> {
+) -> Result<WorkItemResult<B>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
 
     unsafe {
@@ -861,7 +864,8 @@ pub enum Message<B: WriteBackendMethods> {
         worker_id: usize,
     },
     NeedsThinLTO {
-        result: ModuleCodegen<B::Module>,
+        name: String,
+        thin_buffer: B::ThinBuffer,
         worker_id: usize,
     },
     Done {
@@ -1423,10 +1427,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     free_worker(worker_id);
                     needs_fat_lto.push(result);
                 }
-                Message::NeedsThinLTO { result, worker_id } => {
+                Message::NeedsThinLTO { name, thin_buffer, worker_id } => {
                     assert!(!started_lto);
                     free_worker(worker_id);
-                    needs_thin_lto.push(result);
+                    needs_thin_lto.push((name, thin_buffer));
                 }
                 Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
@@ -1514,7 +1518,7 @@ fn spawn_work<B: ExtraBackendMethods>(
         // we exit.
         struct Bomb<B: ExtraBackendMethods> {
             coordinator_send: Sender<Box<dyn Any + Send>>,
-            result: Option<WorkItemResult<B::Module>>,
+            result: Option<WorkItemResult<B>>,
             worker_id: usize,
         }
         impl<B: ExtraBackendMethods> Drop for Bomb<B> {
@@ -1527,8 +1531,8 @@ fn spawn_work<B: ExtraBackendMethods>(
                     Some(WorkItemResult::NeedsFatLTO(m)) => {
                         Message::NeedsFatLTO::<B> { result: m, worker_id }
                     }
-                    Some(WorkItemResult::NeedsThinLTO(m)) => {
-                        Message::NeedsThinLTO::<B> { result: m, worker_id }
+                    Some(WorkItemResult::NeedsThinLTO(name, thin_buffer)) => {
+                        Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
                     }
                     None => Message::Done::<B> { result: Err(()), worker_id }
                 };
