@@ -229,40 +229,40 @@ fn default_hook(info: &PanicInfo) {
     }
 }
 
-fn with_panic_count<R>(f: impl FnOnce(&Cell<usize>) -> R) -> R {
-    // Use `static mut` on wasm32 if there are no atomics.
-    #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
-    {
-        static mut PANIC_COUNT: Cell<usize> = Cell::new(0);
-        unsafe { f(&PANIC_COUNT) }
-    }
-
-    // Use fast `#[thread_local]` on platforms that support it.
-    #[cfg(all(
-        target_thread_local,
-        not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
-    ))]
-    {
-        #[thread_local]
-        static PANIC_COUNT: Cell<usize> = Cell::new(0);
-        f(&PANIC_COUNT)
-    }
-
-    // Fall back to regular `thread_local!` in all other cases.
-    #[cfg(all(
-        not(target_thread_local),
-        not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
-    ))]
-    {
-        thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
-        PANIC_COUNT.with(f)
-    }
-}
-
 #[cfg(not(test))]
 #[doc(hidden)]
 #[unstable(feature = "update_panic_count", issue = "0")]
 pub fn update_panic_count(amt: isize) -> usize {
+    fn with_panic_count<R>(f: impl FnOnce(&Cell<usize>) -> R) -> R {
+        // Use `static mut` on wasm32 if there are no atomics.
+        #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+        {
+            static mut PANIC_COUNT: Cell<usize> = Cell::new(0);
+            unsafe { f(&PANIC_COUNT) }
+        }
+
+        // Use fast `#[thread_local]` on platforms that support it.
+        #[cfg(all(
+            target_thread_local,
+            not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+        ))]
+        {
+            #[thread_local]
+            static PANIC_COUNT: Cell<usize> = Cell::new(0);
+            f(&PANIC_COUNT)
+        }
+
+        // Fall back to regular `thread_local!` in all other cases.
+        #[cfg(all(
+            not(target_thread_local),
+            not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+        ))]
+        {
+            thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
+            PANIC_COUNT.with(f)
+        }
+    }
+
     with_panic_count(|c| {
         let next = (c.get() as isize + amt) as usize;
         c.set(next);
