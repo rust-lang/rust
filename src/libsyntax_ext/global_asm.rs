@@ -28,7 +28,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use syntax::tokenstream;
 
-pub const MACRO: &'static str = "global_asm";
+pub const MACRO: &str = "global_asm";
 
 pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,

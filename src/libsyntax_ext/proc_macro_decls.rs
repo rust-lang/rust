@@ -30,8 +30,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use deriving;
 
-const PROC_MACRO_KINDS: [&'static str; 3] =
-    ["proc_macro_derive", "proc_macro_attribute", "proc_macro"];
+const PROC_MACRO_KINDS: [&str; 3] = ["proc_macro_derive", "proc_macro_attribute", "proc_macro"];
 
 struct ProcMacroDerive {
     trait_name: ast::Name,

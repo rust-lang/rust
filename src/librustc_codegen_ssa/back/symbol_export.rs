@@ -225,7 +225,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
-        const PROFILER_WEAK_SYMBOLS: [&'static str; 2] = [
+        const PROFILER_WEAK_SYMBOLS: [&str; 2] = [
             "__llvm_profile_raw_version",
             "__llvm_profile_filename",
         ];

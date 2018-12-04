@@ -128,10 +128,10 @@ use std::time::{UNIX_EPOCH, SystemTime, Duration};
 
 use rand::{RngCore, thread_rng};
 
-const LOCK_FILE_EXT: &'static str = ".lock";
-const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
-const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
-const QUERY_CACHE_FILENAME: &'static str = "query-cache.bin";
+const LOCK_FILE_EXT: &str = ".lock";
+const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
+const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
+const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 
 // We encode integers using the following base, so they are shorter than decimal
 // or hexadecimal numbers (we want short file and directory names). Since these

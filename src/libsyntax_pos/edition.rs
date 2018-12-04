@@ -33,7 +33,7 @@ pub enum Edition {
 // must be in order from oldest to newest
 pub const ALL_EDITIONS: &[Edition] = &[Edition::Edition2015, Edition::Edition2018];
 
-pub const EDITION_NAME_LIST: &'static str = "2015|2018";
+pub const EDITION_NAME_LIST: &str = "2015|2018";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 

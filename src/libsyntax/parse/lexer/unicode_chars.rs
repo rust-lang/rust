@@ -306,7 +306,7 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('＞', "Fullwidth Greater-Than Sign", '>'), ];
 
 
-const ASCII_ARRAY: &'static [(char, &'static str)] = &[
+const ASCII_ARRAY: &[(char, &str)] = &[
     (' ', "Space"),
     ('_', "Underscore"),
     ('-', "Minus/Hyphen"),

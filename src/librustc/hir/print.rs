@@ -65,7 +65,7 @@ pub trait PpAnn {
 
 pub struct NoAnn;
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &'static dyn PpAnn = &NoAnn;
+pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate {
     fn try_fetch_item(&self, item: ast::NodeId) -> Option<&hir::Item> {
