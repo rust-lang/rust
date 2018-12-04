@@ -83,20 +83,20 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 body_ids: _,
             } = *krate;
 
-            root_mod_sig_dep_index = dep_graph.input_task(
+            root_mod_sig_dep_index = dep_graph.input_dep_index(
                 root_mod_def_path_hash.to_dep_node(DepKind::Hir),
                 &hcx,
-                HirItemLike { item_like: (module, attrs, span), hash_bodies: false },
-            ).1;
-            root_mod_full_dep_index = dep_graph.input_task(
+                &HirItemLike { item_like: (module, attrs, span), hash_bodies: false },
+            );
+            root_mod_full_dep_index = dep_graph.input_dep_index(
                 root_mod_def_path_hash.to_dep_node(DepKind::HirBody),
                 &hcx,
-                HirItemLike { item_like: (module, attrs, span), hash_bodies: true },
-            ).1;
+                &HirItemLike { item_like: (module, attrs, span), hash_bodies: true },
+            );
         }
 
         {
-            dep_graph.input_task(
+            dep_graph.input_dep_index(
                 DepNode::new_no_params(DepKind::AllLocalTraitImpls),
                 &hcx,
                 &krate.trait_impls,
@@ -169,11 +169,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         source_file_names.sort_unstable();
 
-        let (_, crate_dep_node_index) = self
+        let crate_dep_node_index = self
             .dep_graph
-            .input_task(DepNode::new_no_params(DepKind::Krate),
+            .input_dep_index(DepNode::new_no_params(DepKind::Krate),
                        &self.hcx,
-                       (((node_hashes, upstream_crates), source_file_names),
+                       &(((node_hashes, upstream_crates), source_file_names),
                         (commandline_args_hash,
                          crate_disambiguator.to_fingerprint())));
 
@@ -261,17 +261,17 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
-        self.current_signature_dep_index = self.dep_graph.input_task(
+        self.current_signature_dep_index = self.dep_graph.input_dep_index(
             def_path_hash.to_dep_node(DepKind::Hir),
             &self.hcx,
-            HirItemLike { item_like, hash_bodies: false },
-        ).1;
+            &HirItemLike { item_like, hash_bodies: false },
+        );
 
-        self.current_full_dep_index = self.dep_graph.input_task(
+        self.current_full_dep_index = self.dep_graph.input_dep_index(
             def_path_hash.to_dep_node(DepKind::HirBody),
             &self.hcx,
-            HirItemLike { item_like, hash_bodies: true },
-        ).1;
+            &HirItemLike { item_like, hash_bodies: true },
+        );
 
         self.hir_body_nodes.push((def_path_hash, self.current_full_dep_index));
 
