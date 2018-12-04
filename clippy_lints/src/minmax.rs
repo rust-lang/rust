@@ -51,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
                 }
                 match (
                     outer_max,
-                    Constant::partial_cmp(cx.tcx, &cx.tables.expr_ty(ie).sty, &outer_c, &inner_c),
+                    Constant::partial_cmp(cx.tcx, cx.tables.expr_ty(ie), &outer_c, &inner_c),
                 ) {
                     (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
