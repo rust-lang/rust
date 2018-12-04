@@ -10,17 +10,25 @@
 
 //! This module provides two passes:
 //!
-//!   - [CleanAscribeUserType], that replaces all
-//!     [StatementKind::AscribeUserType] statements with [StatementKind::Nop].
-//!   - [CleanFakeReadsAndBorrows], that replaces all [FakeRead] statements and
-//!     borrows that are read by [FakeReadCause::ForMatchGuard] fake reads with
-//!     [StatementKind::Nop].
+//!   - [`CleanAscribeUserType`], that replaces all [`AscribeUserType`]
+//!     statements with [`Nop`].
+//!   - [`CleanFakeReadsAndBorrows`], that replaces all [`FakeRead`] statements
+//!     and borrows that are read by [`ForMatchGuard`] fake reads with [`Nop`].
 //!
-//! The [CleanFakeReadsAndBorrows] "pass" is actually implemented as two
+//! The `CleanFakeReadsAndBorrows` "pass" is actually implemented as two
 //! traversals (aka visits) of the input MIR. The first traversal,
-//! [DeleteAndRecordFakeReads], deletes the fake reads and finds the temporaries
-//! read by [ForMatchGuard] reads, and [DeleteFakeBorrows] deletes the
-//! initialization of those temporaries.
+//! [`DeleteAndRecordFakeReads`], deletes the fake reads and finds the
+//! temporaries read by [`ForMatchGuard`] reads, and [`DeleteFakeBorrows`]
+//! deletes the initialization of those temporaries.
+//!
+//! [`CleanAscribeUserType`]: cleanup_post_borrowck::CleanAscribeUserType
+//! [`CleanFakeReadsAndBorrows`]: cleanup_post_borrowck::CleanFakeReadsAndBorrows
+//! [`DeleteAndRecordFakeReads`]: cleanup_post_borrowck::DeleteAndRecordFakeReads
+//! [`DeleteFakeBorrows`]: cleanup_post_borrowck::DeleteFakeBorrows
+//! [`AscribeUserType`]: rustc::mir::StatementKind::AscribeUserType
+//! [`Nop`]: rustc::mir::StatementKind::Nop
+//! [`FakeRead`]: rustc::mir::StatementKind::FakeRead
+//! [`ForMatchGuard`]: rustc::mir::FakeReadCause::ForMatchGuard
 
 use rustc_data_structures::fx::FxHashSet;
 
