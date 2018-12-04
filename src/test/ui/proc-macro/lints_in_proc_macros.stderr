@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `foobar2` in this scope
+  --> $DIR/lints_in_proc_macros.rs:22:5
+   |
+LL |     bang_proc_macro2!();
+   |     ^^^^^^^^^^^^^^^^^^^^ did you mean `foobar`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.
