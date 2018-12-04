@@ -303,7 +303,7 @@ pub enum AllocKind<'tcx> {
 
 pub struct AllocMap<'tcx> {
     /// Lets you know what an AllocId refers to
-    id_to_type: FxHashMap<AllocId, AllocKind<'tcx>>,
+    id_to_kind: FxHashMap<AllocId, AllocKind<'tcx>>,
 
     /// Used to ensure that statics only get one associated AllocId
     type_interner: FxHashMap<AllocKind<'tcx>, AllocId>,
@@ -316,7 +316,7 @@ pub struct AllocMap<'tcx> {
 impl<'tcx> AllocMap<'tcx> {
     pub fn new() -> Self {
         AllocMap {
-            id_to_type: Default::default(),
+            id_to_kind: Default::default(),
             type_interner: Default::default(),
             next_id: AllocId(0),
         }
@@ -345,7 +345,7 @@ impl<'tcx> AllocMap<'tcx> {
         }
         let id = self.reserve();
         debug!("creating alloc_kind {:?} with id {}", alloc_kind, id);
-        self.id_to_type.insert(id, alloc_kind.clone());
+        self.id_to_kind.insert(id, alloc_kind.clone());
         self.type_interner.insert(alloc_kind, id);
         id
     }
@@ -356,7 +356,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
         let id = self.reserve();
-        self.id_to_type.insert(id, AllocKind::Function(instance));
+        self.id_to_kind.insert(id, AllocKind::Function(instance));
         id
     }
 
@@ -366,7 +366,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
     pub fn get(&self, id: AllocId) -> Option<AllocKind<'tcx>> {
-        self.id_to_type.get(&id).cloned()
+        self.id_to_kind.get(&id).cloned()
     }
 
     /// Panics if the `AllocId` does not refer to an `Allocation`
@@ -397,7 +397,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-        if let Some(old) = self.id_to_type.insert(id, AllocKind::Memory(mem)) {
+        if let Some(old) = self.id_to_kind.insert(id, AllocKind::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
     }
@@ -405,7 +405,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
     pub fn set_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
-        self.id_to_type.insert_same(id, AllocKind::Memory(mem));
+        self.id_to_kind.insert_same(id, AllocKind::Memory(mem));
     }
 }
 
