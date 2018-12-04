@@ -86,6 +86,7 @@ impl<'a> StableHashingContext<'a> {
     // The `krate` here is only used for mapping BodyIds to Bodies.
     // Don't use it for anything else or you'll run the risk of
     // leaking data out of the tracking system.
+    #[inline]
     pub fn new(sess: &'a Session,
                krate: &'a hir::Crate,
                definitions: &'a Definitions,

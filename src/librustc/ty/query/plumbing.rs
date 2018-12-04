@@ -153,8 +153,14 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             };
             mem::drop(lock);
 
-            if let Err(cycle) = job.await(tcx, span) {
-                return TryGetJob::JobCompleted(Err(cycle));
+            #[cfg(not(parallel_queries))]
+            return job.await(tcx, span);
+
+            #[cfg(parallel_queries)]
+            {
+                if let Err(cycle) = job.await(tcx, span) {
+                    return TryGetJob::JobCompleted(Err(cycle));
+                }
             }
         }
     }
@@ -241,12 +247,16 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     /// The query was already completed.
     /// Returns the result of the query and its dep node index
     /// if it succeeded or a cycle error if it failed
-    JobCompleted(Result<(D::Value, DepNodeIndex), CycleError<'tcx>>),
+    JobCompleted(Result<(D::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub(super) fn report_cycle(self, CycleError { usage, cycle: stack }: CycleError<'gcx>)
-        -> DiagnosticBuilder<'a>
+    #[inline(never)]
+    #[cold]
+    pub(super) fn report_cycle(
+        self,
+        box CycleError { usage, cycle: stack }: Box<CycleError<'gcx>>
+    ) -> Box<DiagnosticBuilder<'a>>
     {
         assert!(!stack.is_empty());
 
@@ -280,7 +290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                               &format!("cycle used when {}", query.describe(self)));
             }
 
-            return err
+            return Box::new(err)
         })
     }
 
@@ -345,11 +355,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline(never)]
     fn try_get_with<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key)
-    -> Result<Q::Value, CycleError<'gcx>>
+    -> Result<Q::Value, Box<CycleError<'gcx>>>
     {
         debug!("ty::queries::{}::try_get_with(key={:?}, span={:?})",
                Q::NAME,
@@ -409,7 +420,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return Ok(result);
         }
 
-        if !dep_node.kind.is_input() {
+        if !dep_node.kind.is_input_inlined() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
                 profq_msg!(self, ProfileQueriesMsg::CacheHit);
                 self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
@@ -436,7 +447,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         job: JobOwner<'a, 'gcx, Q>,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
-    ) -> Result<Q::Value, CycleError<'gcx>>
+    ) -> Result<Q::Value, Box<CycleError<'gcx>>>
     {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly
@@ -522,7 +533,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         key: Q::Key,
         job: JobOwner<'_, 'gcx, Q>,
         dep_node: DepNode)
-    -> Result<(Q::Value, DepNodeIndex), CycleError<'gcx>> {
+    -> Result<(Q::Value, DepNodeIndex), Box<CycleError<'gcx>>> {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in DepGraph::try_mark_green()
@@ -585,7 +596,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // Ensuring an "input" or anonymous query makes no sense
         assert!(!dep_node.kind.is_anon());
-        assert!(!dep_node.kind.is_input());
+        assert!(!dep_node.kind.is_input_inlined());
         if self.try_mark_green_and_read(&dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -611,36 +622,54 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         key: Q::Key,
         span: Span,
         dep_node: DepNode
-    ) -> Result<(Q::Value, DepNodeIndex), CycleError<'gcx>> {
+    ) {
+        profq_msg!(
+            self,
+            ProfileQueriesMsg::QueryBegin(span.data(), profq_query_msg!(Q::NAME, self, key))
+        );
+
         // We may be concurrently trying both execute and force a query
         // Ensure that only one of them runs the query
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::JobCompleted(result) => return result,
+            TryGetJob::JobCompleted(_) => return,
         };
-        self.force_query_with_job::<Q>(key, job, dep_node)
+        if let Err(e) = self.force_query_with_job::<Q>(key, job, dep_node) {
+            self.report_cycle(e).emit();
+        }
     }
 
     pub(super) fn try_get_query<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key,
-    ) -> Result<Q::Value, DiagnosticBuilder<'a>> {
+    ) -> Result<Q::Value, Box<DiagnosticBuilder<'a>>> {
         match self.try_get_with::<Q>(span, key) {
             Ok(e) => Ok(e),
             Err(e) => Err(self.report_cycle(e)),
         }
     }
 
+    // FIXME: Try uninlining this
+    #[inline(always)]
     pub(super) fn get_query<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key,
     ) -> Q::Value {
-        self.try_get_query::<Q>(span, key).unwrap_or_else(|mut e| {
-            e.emit();
-            Q::handle_cycle_error(self)
+        self.try_get_with::<Q>(span, key).unwrap_or_else(|e| {
+            self.emit_error::<Q>(e)
         })
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn emit_error<Q: QueryDescription<'gcx>>(
+        self,
+        e: Box<CycleError<'gcx>>,
+    ) -> Q::Value {
+        self.report_cycle(e).emit();
+        Q::handle_cycle_error(self)
     }
 }
 
@@ -806,15 +835,18 @@ macro_rules! define_queries_inner {
         }
 
         impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {
+            #[inline(always)]
             fn query(key: Self::Key) -> Query<'tcx> {
                 Query::$name(key)
             }
 
+            #[inline(always)]
             fn query_cache<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
                 &tcx.queries.$name
             }
 
             #[allow(unused)]
+            #[inline(always)]
             fn to_dep_node(tcx: TyCtxt<'_, $tcx, '_>, key: &Self::Key) -> DepNode {
                 use dep_graph::DepConstructor::*;
 
@@ -861,6 +893,7 @@ macro_rules! define_queries_inner {
 
         impl<'a, 'gcx, 'tcx> Deref for TyCtxtAt<'a, 'gcx, 'tcx> {
             type Target = TyCtxt<'a, 'gcx, 'tcx>;
+            #[inline(always)]
             fn deref(&self) -> &Self::Target {
                 &self.tcx
             }
@@ -869,6 +902,7 @@ macro_rules! define_queries_inner {
         impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
             /// Return a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
+            #[inline(always)]
             pub fn at(self, span: Span) -> TyCtxtAt<'a, $tcx, 'lcx> {
                 TyCtxtAt {
                     tcx: self,
@@ -877,6 +911,7 @@ macro_rules! define_queries_inner {
             }
 
             $($(#[$attr])*
+            #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
                 self.at(DUMMY_SP).$name(key)
             })*
@@ -884,6 +919,7 @@ macro_rules! define_queries_inner {
 
         impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
             $($(#[$attr])*
+            #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
                 self.tcx.get_query::<queries::$name<'_>>(self.span, key)
             })*
@@ -1023,20 +1059,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
     macro_rules! force {
         ($query:ident, $key:expr) => {
             {
-                use $crate::util::common::{ProfileQueriesMsg, profq_msg};
-
-                profq_msg!(tcx,
-                    ProfileQueriesMsg::QueryBegin(
-                        DUMMY_SP.data(),
-                        profq_query_msg!(::ty::query::queries::$query::NAME, tcx, $key),
-                    )
-                );
-
-                if let Err(e) = tcx.force_query::<::ty::query::queries::$query<'_>>(
-                    $key, DUMMY_SP, *dep_node
-                ) {
-                    tcx.report_cycle(e).emit();
-                }
+                tcx.force_query::<::ty::query::queries::$query<'_>>($key, DUMMY_SP, *dep_node);
             }
         }
     };

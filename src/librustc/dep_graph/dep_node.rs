@@ -162,7 +162,9 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline]
+            // FIXME: Make `is_anon`, `is_input`, `is_eval_always` and `has_params` properties
+            // of queries
+            #[inline(always)]
             pub fn is_anon(&self) -> bool {
                 match *self {
                     $(
@@ -171,8 +173,8 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline]
-            pub fn is_input(&self) -> bool {
+            #[inline(always)]
+            pub fn is_input_inlined(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => { contains_input_attr!($($attr),*) }
@@ -180,7 +182,11 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline]
+            pub fn is_input(&self) -> bool {
+                self.is_input_inlined()
+            }
+
+            #[inline(always)]
             pub fn is_eval_always(&self) -> bool {
                 match *self {
                     $(
@@ -190,8 +196,8 @@ macro_rules! define_dep_nodes {
             }
 
             #[allow(unreachable_code)]
-            #[inline]
-            pub fn has_params(&self) -> bool {
+            #[inline(always)]
+            pub fn has_params_inlined(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => {
@@ -212,6 +218,10 @@ macro_rules! define_dep_nodes {
                     )*
                 }
             }
+
+            pub fn has_params(&self) -> bool {
+                self.has_params_inlined()
+            }
         }
 
         pub enum DepConstructor<$tcx> {
@@ -230,6 +240,7 @@ macro_rules! define_dep_nodes {
 
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
+            #[inline(always)]
             pub fn new<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        dep: DepConstructor<'gcx>)
                                        -> DepNode
@@ -299,7 +310,7 @@ macro_rules! define_dep_nodes {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
-            #[inline]
+            #[inline(always)]
             pub fn from_def_path_hash(kind: DepKind,
                                       def_path_hash: DefPathHash)
                                       -> DepNode {
@@ -313,9 +324,9 @@ macro_rules! define_dep_nodes {
             /// Create a new, parameterless DepNode. This method will assert
             /// that the DepNode corresponding to the given DepKind actually
             /// does not require any parameters.
-            #[inline]
+            #[inline(always)]
             pub fn new_no_params(kind: DepKind) -> DepNode {
-                assert!(!kind.has_params());
+                assert!(!kind.has_params_inlined());
                 DepNode {
                     kind,
                     hash: Fingerprint::ZERO,
@@ -418,14 +429,14 @@ impl fmt::Debug for DepNode {
 
 
 impl DefPathHash {
-    #[inline]
+    #[inline(always)]
     pub fn to_dep_node(self, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, self)
     }
 }
 
 impl DefId {
-    #[inline]
+    #[inline(always)]
     pub fn to_dep_node(self, tcx: TyCtxt<'_, '_, '_>, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, tcx.def_path_hash(self))
     }

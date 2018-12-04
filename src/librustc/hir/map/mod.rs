@@ -159,6 +159,10 @@ impl Forest {
         self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
         &self.krate
     }
+
+    pub fn untracked_krate<'hir>(&'hir self) -> &'hir Crate {
+        &self.krate
+    }
 }
 
 /// Represents a mapping from Node IDs to AST elements and their parent
