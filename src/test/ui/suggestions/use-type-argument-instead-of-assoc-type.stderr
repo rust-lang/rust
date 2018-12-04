@@ -1,29 +1,29 @@
 error[E0107]: wrong number of type arguments: expected 2, found 4
-  --> $DIR/use-type-argument-instead-of-assoc-type.rs:6:42
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:28
    |
-LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
-   |                                          ^^^^^  ^^^^^ unexpected type argument
-   |                                          |
-   |                                          unexpected type argument
+LL |     i: Box<T<usize, usize, usize, usize, B=usize>>,
+   |                            ^^^^^  ^^^^^ unexpected type argument
+   |                            |
+   |                            unexpected type argument
 
 error[E0191]: the value of the associated types `A` (from the trait `T`), `C` (from the trait `T`) must be specified
-  --> $DIR/use-type-argument-instead-of-assoc-type.rs:6:26
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:12
    |
 LL |     type A;
    |     ------- `A` defined here
 LL |     type B;
 LL |     type C;
    |     ------- `C` defined here
-LL | }
-LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                          |
-   |                          associated type `A` must be specified
-   |                          associated type `C` must be specified
+...
+LL |     i: Box<T<usize, usize, usize, usize, B=usize>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            associated type `A` must be specified
+   |            associated type `C` must be specified
 help: if you meant to specify the associated types, write
    |
-LL |  pub struct Foo { i: Box<T<usize, usize, A = usize, C = usize, B=usize>> }
-   |                                          ^^^^^^^^^  ^^^^^^^^^
+LL |     i: Box<T<usize, usize, A = usize, C = usize, B=usize>>,
+   |                            ^^^^^^^^^  ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -16,5 +16,6 @@ mod foo {
     /// ```
     /// assert!(false);
     /// ```
+    //~^^^^^ ERROR Documentation test in private item
     fn bar() {}
 }

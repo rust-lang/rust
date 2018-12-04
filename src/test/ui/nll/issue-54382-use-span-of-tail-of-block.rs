@@ -5,6 +5,7 @@ fn main() {
             let _thing2 = D("thing2");
             side_effects();
             D("other").next(&_thing1)
+//~^ ERROR does not live long enough
         }
     }
 

@@ -1,3 +1,4 @@
+//~ ERROR Missing code example in this documentation
 // Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -11,10 +12,13 @@
 #![deny(missing_doc_code_examples)]
 
 /// Some docs.
+//~^ ERROR Missing code example in this documentation
 pub struct Foo;
 
 /// And then, the princess died.
+//~^ ERROR Missing code example in this documentation
 pub mod foo {
     /// Or maybe not because she saved herself!
+    //~^ ERROR Missing code example in this documentation
     pub fn bar() {}
 }

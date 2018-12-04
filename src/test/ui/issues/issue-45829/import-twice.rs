@@ -14,5 +14,6 @@ mod foo {
 }
 
 use foo::{A, A};
+//~^ ERROR is defined multiple times
 
 fn main() {}

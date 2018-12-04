@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `self`
-  --> $DIR/import-self.rs:18:12
+  --> $DIR/import-self.rs:19:12
    |
 LL | use foo as self;
    |            ^^^^ expected identifier, found keyword
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/import-self.rs:20:5
+  --> $DIR/import-self.rs:22:5
    |
 LL | use foo::self;
    |     ^^^^^^^^^
@@ -26,7 +26,7 @@ LL | use foo::{self as other_foo};
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `A` is defined multiple times
-  --> $DIR/import-self.rs:23:11
+  --> $DIR/import-self.rs:26:11
    |
 LL | use foo::A;
    |     ------ previous import of the type `A` here

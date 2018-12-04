@@ -19,7 +19,7 @@ impl Mutex {
 fn main() {
     let counter = Mutex;
 
-    if let Ok(_) = counter.lock() { }
+    if let Ok(_) = counter.lock() { } //~ ERROR does not live long enough
 
     // With this code as written, the dynamic semantics here implies
     // that `Mutex::drop` for `counter` runs *before*

@@ -14,9 +14,11 @@ pub trait Graph<'a> {
 
     fn out_neighbors(&'a self, u: &Self::Node) -> Box<Iterator<Item = Self::Node>> {
         Box::new(self.out_edges(u).map(|e| e.target()))
+//~^ ERROR cannot infer
     }
 
     fn in_neighbors(&'a self, u: &Self::Node) -> Box<Iterator<Item = Self::Node>> {
         Box::new(self.in_edges(u).map(|e| e.target()))
+//~^ ERROR cannot infer
     }
 }

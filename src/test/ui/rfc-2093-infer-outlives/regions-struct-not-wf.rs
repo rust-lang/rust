@@ -20,7 +20,7 @@ trait Trait1<'a, 'b, T> {
 }
 
 impl<'a, T> Trait<'a, T> for usize {
-    type Out = &'a T;
+    type Out = &'a T; //~ ERROR `T` may not live long enough
 }
 
 struct RefOk<'a, T:'a> {
@@ -28,11 +28,11 @@ struct RefOk<'a, T:'a> {
 }
 
 impl<'a, T> Trait<'a, T> for u32 {
-    type Out = RefOk<'a, T>;
+    type Out = RefOk<'a, T>; //~ ERROR `T` may not live long enough
 }
 
 impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
-    type Out = &'a &'b T;
+    type Out = &'a &'b T; //~ ERROR reference has a longer lifetime than the data
 }
 
 fn main() { }

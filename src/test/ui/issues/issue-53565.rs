@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use std::time::{foo, bar, buzz};
+//~^ ERROR unresolved imports
 use std::time::{abc, def};
+//~^ ERROR unresolved imports
 fn main(){
-   println!("Hello World!");
+    println!("Hello World!");
 }

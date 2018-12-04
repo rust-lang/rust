@@ -31,6 +31,6 @@ mod baz {
 
 use foo::Bar;
 
-use foobar::Baz;
+use foobar::Baz; //~ ERROR unresolved import `foobar`
 
 fn main() { }

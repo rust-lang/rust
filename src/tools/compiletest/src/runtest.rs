@@ -2781,12 +2781,14 @@ impl<'test> TestCx<'test> {
                explicit, self.config.compare_mode, expected_errors, proc_res.status,
                self.props.error_patterns);
         if !explicit && self.config.compare_mode.is_none() {
-            if !expected_errors.is_empty() && !proc_res.status.success() {
-                // "//~ERROR comments"
-                self.check_expected_errors(expected_errors, &proc_res);
-            } else if !self.props.error_patterns.is_empty() && !proc_res.status.success() {
-                // "// error-pattern" comments
-                self.check_error_patterns(&proc_res.stderr, &proc_res);
+            if !proc_res.status.success() {
+                if !self.props.error_patterns.is_empty() {
+                    // "// error-pattern" comments
+                    self.check_error_patterns(&proc_res.stderr, &proc_res);
+                } else {
+                    // "//~ERROR comments"
+                    self.check_expected_errors(expected_errors, &proc_res);
+                }
             }
         }
 

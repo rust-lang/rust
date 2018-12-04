@@ -1,5 +1,5 @@
 error: expected expression, found keyword `impl`
-  --> $DIR/feature-gate-impl_trait_in_bindings.rs:16:15
+  --> $DIR/feature-gate-impl_trait_in_bindings.rs:18:15
    |
 LL |     let foo = impl Copy = 42;
    |               ^^^^ expected expression
@@ -13,7 +13,7 @@ LL | const FOO: impl Copy = 42;
    = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/feature-gate-impl_trait_in_bindings.rs:13:13
+  --> $DIR/feature-gate-impl_trait_in_bindings.rs:14:13
    |
 LL | static BAR: impl Copy = 42;
    |             ^^^^^^^^^

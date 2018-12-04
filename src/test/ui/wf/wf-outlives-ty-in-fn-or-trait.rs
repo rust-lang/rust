@@ -16,7 +16,7 @@ trait Trait<'a, T> {
 }
 
 impl<'a, T> Trait<'a, T> for usize {
-    type Out = &'a fn(T);
+    type Out = &'a fn(T); //~ ERROR `T` may not live long enough
 }
 
 struct Foo<'a,T> {
@@ -26,7 +26,7 @@ struct Foo<'a,T> {
 trait Baz<T> { }
 
 impl<'a, T> Trait<'a, T> for u32 {
-    type Out = &'a Baz<T>;
+    type Out = &'a Baz<T>; //~ ERROR `T` may not live long enough
 }
 
 fn main() { }

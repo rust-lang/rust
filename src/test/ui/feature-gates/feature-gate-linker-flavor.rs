@@ -14,6 +14,7 @@
 // book
 
 #[used]
+//~^ ERROR attribute must be applied to a `static` variable
 fn foo() {}
 
 fn main() {}

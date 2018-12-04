@@ -29,13 +29,13 @@ mod foo {
 
     fn in_foo() {
         let x: u32 = 22;
-        x.foobar();
+        x.foobar(); //~ ERROR no method named `foobar`
     }
 }
 
 fn main() {
     let x: u32 = 22;
-    x.bar();
-    x.baz();
-    let y = u32::from_str("33");
+    x.bar(); //~ ERROR no method named `bar`
+    x.baz(); //~ ERROR no method named `baz`
+    let y = u32::from_str("33"); //~ ERROR no function or associated item named `from_str`
 }

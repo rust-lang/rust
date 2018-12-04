@@ -5,11 +5,23 @@
 
 mod outer_mod {
     pub mod r#await {
+//~^ ERROR `await` is a keyword
+//~| WARN was previously accepted
         pub struct r#await;
+//~^ ERROR `await` is a keyword
+//~| WARN was previously accepted
     }
 }
 use outer_mod::r#await::r#await;
+//~^ ERROR `await` is a keyword
+//~| ERROR `await` is a keyword
+//~| WARN was previously accepted
+//~| WARN was previously accepted
 
 fn main() {
     match r#await { r#await => {} }
+//~^ ERROR `await` is a keyword
+//~| ERROR `await` is a keyword
+//~| WARN was previously accepted
+//~| WARN was previously accepted
 }

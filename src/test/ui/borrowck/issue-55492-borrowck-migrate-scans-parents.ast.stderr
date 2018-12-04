@@ -9,7 +9,7 @@ LL |         x
    |
 
 error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:29:22
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:32:22
    |
 LL |         let mut c1 = |z: &'static mut isize| {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow mutably
@@ -19,7 +19,7 @@ LL |         x
    |
 
 error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:40:9
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:46:9
    |
 LL |     pub fn capture_assign_whole(x: (i32,)) {
    |                                 - help: make this binding mutable: `mut x`
@@ -27,7 +27,7 @@ LL |         || { x = (1,); };
    |         ^^ cannot borrow mutably
 
 error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:43:9
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:52:9
    |
 LL |     pub fn capture_assign_part(x: (i32,)) {
    |                                - help: make this binding mutable: `mut x`
@@ -35,7 +35,7 @@ LL |         || { x.0 = 1; };
    |         ^^ cannot borrow mutably
 
 error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:46:9
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:58:9
    |
 LL |     pub fn capture_reborrow_whole(x: (i32,)) {
    |                                   - help: make this binding mutable: `mut x`
@@ -43,7 +43,7 @@ LL |         || { &mut x; };
    |         ^^ cannot borrow mutably
 
 error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:49:9
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:64:9
    |
 LL |     pub fn capture_reborrow_part(x: (i32,)) {
    |                                  - help: make this binding mutable: `mut x`

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generic_associated_types)]
+#![feature(generic_associated_types)] //~ WARN `generic_associated_types` is incomplete
 
 // Checking the interaction with this other feature
 #![feature(associated_type_defaults)]
