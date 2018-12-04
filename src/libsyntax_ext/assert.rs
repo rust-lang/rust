@@ -24,6 +24,14 @@ pub fn expand_assert<'cx>(
     tts: &[TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
     let mut parser = cx.new_parser_from_tts(tts);
+
+    if parser.token == token::Eof {
+        cx.struct_span_err(sp, "macro requires a boolean expression as an argument")
+            .span_label(sp, "boolean expression required")
+            .emit();
+        return DummyResult::expr(sp);
+    }
+
     let cond_expr = panictry!(parser.parse_expr());
     let custom_msg_args = if parser.eat(&token::Comma) {
         let ts = parser.parse_tokens();
