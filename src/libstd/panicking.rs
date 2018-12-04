@@ -229,18 +229,45 @@ fn default_hook(info: &PanicInfo) {
     }
 }
 
-#[thread_local]
-static PANIC_COUNT: Cell<usize> = Cell::new(0);
+fn with_panic_count<R>(f: impl FnOnce(&Cell<usize>) -> R) -> R {
+    // Use `static mut` on wasm32 if there are no atomics.
+    #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+    {
+        static mut PANIC_COUNT: Cell<usize> = Cell::new(0);
+        unsafe { f(&PANIC_COUNT) }
+    }
 
-// This function must not be `#[inline]` because it touches a `#[thread_local]` variable.
-// See: https://github.com/rust-lang/rust/pull/56469#issuecomment-443810577
+    // Use fast `#[thread_local]` on platforms that support it.
+    #[cfg(all(
+        target_thread_local,
+        not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+    ))]
+    {
+        #[thread_local]
+        static PANIC_COUNT: Cell<usize> = Cell::new(0);
+        f(&PANIC_COUNT)
+    }
+
+    // Fall back to regular `thread_local!` in all other cases.
+    #[cfg(all(
+        not(target_thread_local),
+        not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+    ))]
+    {
+        thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
+        PANIC_COUNT.with(f)
+    }
+}
+
 #[cfg(not(test))]
 #[doc(hidden)]
 #[unstable(feature = "update_panic_count", issue = "0")]
 pub fn update_panic_count(amt: isize) -> usize {
-    let next = (PANIC_COUNT.get() as isize + amt) as usize;
-    PANIC_COUNT.set(next);
-    next
+    with_panic_count(|c| {
+        let next = (c.get() as isize + amt) as usize;
+        c.set(next);
+        next
+    })
 }
 
 #[cfg(test)]
@@ -312,10 +339,8 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
-// This function must not be `#[inline]` because it touches a `#[thread_local]` variable.
-// See: https://github.com/rust-lang/rust/pull/56469#issuecomment-443810577
 pub fn panicking() -> bool {
-    PANIC_COUNT.get() != 0
+    with_panic_count(|c| c.get() != 0)
 }
 
 /// Entry point of panic from the libcore crate.
