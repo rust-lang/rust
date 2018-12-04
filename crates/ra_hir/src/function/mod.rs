@@ -27,6 +27,11 @@ pub struct Function {
 }
 
 impl Function {
+    pub(crate) fn new(def_id: DefId) -> Function {
+        let fn_id = FnId(def_id);
+        Function { fn_id }
+    }
+
     pub fn guess_from_source(
         db: &impl HirDatabase,
         file_id: FileId,
@@ -42,8 +47,7 @@ impl Function {
             module_id: module.module_id,
             source_item_id,
         };
-        let fn_id = FnId(def_loc.id(db));
-        Ok(Some(Function { fn_id }))
+        Ok(Some(Function::new(def_loc.id(db))))
     }
 
     pub fn guess_for_name_ref(

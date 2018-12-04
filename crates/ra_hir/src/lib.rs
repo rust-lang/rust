@@ -41,6 +41,8 @@ pub use self::{
 
 pub use self::function::FnSignatureInfo;
 
+/// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
+/// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(u32);
 ra_db::impl_numeric_id!(DefId);
@@ -61,13 +63,13 @@ pub struct DefLoc {
 }
 
 impl DefId {
-    pub fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
+    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
         db.as_ref().id2loc(self)
     }
 }
 
 impl DefLoc {
-    pub fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
+    pub(crate) fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
         db.as_ref().loc2id(&self)
     }
 }
@@ -83,10 +85,14 @@ impl DefId {
         let loc = self.loc(db);
         let res = match loc.kind {
             DefKind::Module => {
-                let descr = Module::new(db, loc.source_root_id, loc.module_id)?;
-                Def::Module(descr)
+                let module = Module::new(db, loc.source_root_id, loc.module_id)?;
+                Def::Module(module)
             }
-            DefKind::Item | DefKind::Function => Def::Item,
+            DefKind::Function => {
+                let function = Function::new(self);
+                Def::Function(function)
+            }
+            DefKind::Item => Def::Item,
         };
         Ok(res)
     }
