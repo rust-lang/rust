@@ -9,7 +9,7 @@
 
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::TyKind;
+use crate::rustc::ty;
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if_chain! {
             let ty = cx.tables.expr_ty(expr);
-            if let TyKind::Float(fty) = ty.sty;
+            if let ty::Float(fty) = ty.sty;
             if let hir::ExprKind::Lit(ref lit) = expr.node;
             if let LitKind::Float(sym, _) | LitKind::FloatUnsuffixed(sym) = lit.node;
             if let Some(sugg) = self.check(sym, fty);
