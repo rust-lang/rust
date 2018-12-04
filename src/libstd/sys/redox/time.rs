@@ -41,10 +41,6 @@ impl Timespec {
         }
     }
 
-    fn add_duration(&self, other: &Duration) -> Timespec {
-        self.checked_add_duration(other).expect("overflow when adding duration to time")
-    }
-
     fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
@@ -150,8 +146,8 @@ impl Instant {
         })
     }
 
-    pub fn add_duration(&self, other: &Duration) -> Instant {
-        Instant { t: self.t.add_duration(other) }
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+        self.t.checked_add_duration(other).map(|t| Instant { t })
     }
 
     pub fn sub_duration(&self, other: &Duration) -> Instant {
@@ -176,10 +172,6 @@ impl SystemTime {
     pub fn sub_time(&self, other: &SystemTime)
                     -> Result<Duration, Duration> {
         self.t.sub_timespec(&other.t)
-    }
-
-    pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime { t: self.t.add_duration(other) }
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {

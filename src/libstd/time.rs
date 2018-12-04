@@ -208,6 +208,14 @@ impl Instant {
     pub fn elapsed(&self) -> Duration {
         Instant::now() - *self
     }
+
+    /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
+    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
+        self.0.checked_add_duration(&duration).map(|t| Instant(t))
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -215,7 +223,8 @@ impl Add<Duration> for Instant {
     type Output = Instant;
 
     fn add(self, other: Duration) -> Instant {
-        Instant(self.0.add_duration(&other))
+        self.checked_add(other)
+            .expect("overflow when adding duration to instant")
     }
 }
 
@@ -372,7 +381,8 @@ impl Add<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn add(self, dur: Duration) -> SystemTime {
-        SystemTime(self.0.add_duration(&dur))
+        self.checked_add(dur)
+            .expect("overflow when adding duration to instant")
     }
 }
 
@@ -521,6 +531,19 @@ mod tests {
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a - second + second, a);
+
+        // checked_add_duration will not panic on overflow
+        let mut maybe_t = Some(Instant::now());
+        let max_duration = Duration::from_secs(u64::max_value());
+        // in case `Instant` can store `>= now + max_duration`.
+        for _ in 0..2 {
+            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
+        }
+        assert_eq!(maybe_t, None);
+
+        // checked_add_duration calculates the right time and will work for another year
+        let year = Duration::from_secs(60 * 60 * 24 * 365);
+        assert_eq!(a + year, a.checked_add(year).unwrap());
     }
 
     #[test]

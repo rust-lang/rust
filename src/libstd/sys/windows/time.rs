@@ -68,17 +68,15 @@ impl Instant {
         Duration::new(nanos / NANOS_PER_SEC, (nanos % NANOS_PER_SEC) as u32)
     }
 
-    pub fn add_duration(&self, other: &Duration) -> Instant {
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
         let freq = frequency() as u64;
-        let t = other.as_secs().checked_mul(freq).and_then(|i| {
-            (self.t as u64).checked_add(i)
-        }).and_then(|i| {
-            i.checked_add(mul_div_u64(other.subsec_nanos() as u64, freq,
-                                      NANOS_PER_SEC))
-        }).expect("overflow when adding duration to time");
-        Instant {
+        let t = other.as_secs()
+            .checked_mul(freq)?
+            .checked_add(mul_div_u64(other.subsec_nanos() as u64, freq, NANOS_PER_SEC))?
+            .checked_add(self.t as u64)?;
+        Some(Instant {
             t: t as c::LARGE_INTEGER,
-        }
+        })
     }
 
     pub fn sub_duration(&self, other: &Duration) -> Instant {
@@ -86,8 +84,7 @@ impl Instant {
         let t = other.as_secs().checked_mul(freq).and_then(|i| {
             (self.t as u64).checked_sub(i)
         }).and_then(|i| {
-            i.checked_sub(mul_div_u64(other.subsec_nanos() as u64, freq,
-                                      NANOS_PER_SEC))
+            i.checked_sub(mul_div_u64(other.subsec_nanos() as u64, freq, NANOS_PER_SEC))
         }).expect("overflow when subtracting duration from time");
         Instant {
             t: t as c::LARGE_INTEGER,
@@ -125,10 +122,6 @@ impl SystemTime {
         } else {
             Err(intervals2dur((other - me) as u64))
         }
-    }
-
-    pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        self.checked_add_duration(other).expect("overflow when adding duration to time")
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
@@ -184,11 +177,12 @@ impl Hash for SystemTime {
     }
 }
 
-fn checked_dur2intervals(d: &Duration) -> Option<i64> {
-    d.as_secs()
-        .checked_mul(INTERVALS_PER_SEC)
-        .and_then(|i| i.checked_add(d.subsec_nanos() as u64 / 100))
-        .and_then(|i| i.try_into().ok())
+fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
+    dur.as_secs()
+        .checked_mul(INTERVALS_PER_SEC)?
+        .checked_add(dur.subsec_nanos() as u64 / 100)?
+        .try_into()
+        .ok()
 }
 
 fn dur2intervals(d: &Duration) -> i64 {

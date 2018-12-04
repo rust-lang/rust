@@ -28,8 +28,8 @@ impl Instant {
         self.0 - other.0
     }
 
-    pub fn add_duration(&self, other: &Duration) -> Instant {
-        Instant(self.0 + *other)
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+        self.0.checked_add(*other).map(|d| Instant(d))
     }
 
     pub fn sub_duration(&self, other: &Duration) -> Instant {
@@ -45,10 +45,6 @@ impl SystemTime {
     pub fn sub_time(&self, other: &SystemTime)
                     -> Result<Duration, Duration> {
         self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
-    }
-
-    pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime(self.0 + *other)
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
