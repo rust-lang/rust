@@ -999,6 +999,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    #[allow(dead_code)]
+    fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        self.count_insn("vaarg");
+        unsafe {
+            llvm::LLVMBuildVAArg(self.llbuilder, list, ty, noname())
+        }
+    }
+
     fn extract_element(&mut self, vec: &'ll Value, idx: &'ll Value) -> &'ll Value {
         self.count_insn("extractelement");
         unsafe {
@@ -1263,7 +1271,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 impl StaticBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn get_static(&mut self, def_id: DefId) -> &'ll Value {
+fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
         self.cx().get_static(def_id)
     }
