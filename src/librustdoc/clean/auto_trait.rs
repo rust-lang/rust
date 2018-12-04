@@ -37,7 +37,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
 
     pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
         get_def_from_node_id(&self.cx, id, name, &|def_ctor, name| {
-            let did = self.cx.tcx.hir.local_def_id(id);
+            let did = self.cx.tcx.hir().local_def_id(id);
             self.get_auto_trait_impls(did, &def_ctor, Some(name))
         })
     }

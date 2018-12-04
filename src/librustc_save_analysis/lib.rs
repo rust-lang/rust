@@ -383,7 +383,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let name = ident.to_string();
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
             filter!(self.span_utils, ident.span);
-            let def_id = self.tcx.hir.local_def_id(field.id);
+            let def_id = self.tcx.hir().local_def_id(field.id);
             let typ = self.tcx.type_of(def_id).to_string();
 
 
@@ -415,18 +415,18 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let (qualname, parent_scope, decl_id, docs, attributes) =
-            match self.tcx.impl_of_method(self.tcx.hir.local_def_id(id)) {
-                Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
+            match self.tcx.impl_of_method(self.tcx.hir().local_def_id(id)) {
+                Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                     Some(Node::Item(item)) => match item.node {
                         hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
-                            qualname.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
+                            qualname.push_str(&self.tcx.hir().node_to_pretty_string(ty.id));
 
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;
                             let mut docs = String::new();
                             let mut attrs = vec![];
-                            if let Some(Node::ImplItem(item)) = self.tcx.hir.find(id) {
+                            if let Some(Node::ImplItem(item)) = self.tcx.hir().find(id) {
                                 docs = self.docs_for_attrs(&item.attrs);
                                 attrs = item.attrs.to_vec();
                             }
@@ -463,12 +463,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         );
                     }
                 },
-                None => match self.tcx.trait_of_item(self.tcx.hir.local_def_id(id)) {
+                None => match self.tcx.trait_of_item(self.tcx.hir().local_def_id(id)) {
                     Some(def_id) => {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(Node::TraitItem(item)) = self.tcx.hir.find(id) {
+                        if let Some(Node::TraitItem(item)) = self.tcx.hir().find(id) {
                             docs = self.docs_for_attrs(&item.attrs);
                             attrs = item.attrs.to_vec();
                         }
@@ -529,14 +529,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
-        let hir_node = self.tcx.hir.expect_expr(expr.id);
+        let hir_node = self.tcx.hir().expect_expr(expr.id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::Error {
             return None;
         }
         match expr.node {
             ast::ExprKind::Field(ref sub_ex, ident) => {
-                let hir_node = match self.tcx.hir.find(sub_ex.id) {
+                let hir_node = match self.tcx.hir().find(sub_ex.id) {
                     Some(Node::Expr(expr)) => expr,
                     _ => {
                         debug!(
@@ -587,7 +587,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::MethodCall(ref seg, ..) => {
-                let expr_hir_id = self.tcx.hir.definitions().node_to_hir_id(expr.id);
+                let expr_hir_id = self.tcx.hir().definitions().node_to_hir_id(expr.id);
                 let method_id = match self.tables.type_dependent_defs().get(expr_hir_id) {
                     Some(id) => id.def_id(),
                     None => {
@@ -622,7 +622,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_def(&self, id: NodeId) -> HirDef {
-        match self.tcx.hir.get(id) {
+        match self.tcx.hir().get(id) {
             Node::TraitRef(tr) => tr.path.def,
 
             Node::Item(&hir::Item {
@@ -656,7 +656,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 node: hir::PatKind::TupleStruct(ref qpath, ..),
                 ..
             }) => {
-                let hir_id = self.tcx.hir.node_to_hir_id(id);
+                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 self.tables.qpath_def(qpath, hir_id)
             }
 
@@ -1183,7 +1183,7 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 }
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
-    let def_id = scx.tcx.hir.opt_local_def_id(id);
+    let def_id = scx.tcx.hir().opt_local_def_id(id);
     def_id.map(|id| id_from_def_id(id)).unwrap_or_else(|| {
         // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
         // out of the maximum u32 value. This will work unless you have *billions*

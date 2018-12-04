@@ -860,7 +860,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 {
     let tcx = infcx.tcx;
     let gcx = tcx.global_tcx();
-    let def_id = tcx.hir.local_def_id(ctor_id);
+    let def_id = tcx.hir().local_def_id(ctor_id);
     let param_env = gcx.param_env(def_id);
 
     // Normalize the sig.

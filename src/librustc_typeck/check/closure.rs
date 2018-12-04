@@ -64,7 +64,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(ty) => self.deduce_expectations_from_expected_type(ty),
             None => (None, None),
         };
-        let body = self.tcx.hir.body(body_id);
+        let body = self.tcx.hir().body(body_id);
         self.check_closure(expr, expected_kind, decl, body, gen, expected_sig)
     }
 
@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir.local_def_id(expr.id);
+        let expr_def_id = self.tcx.hir().local_def_id(expr.id);
 
         let ClosureSignatures {
             bound_sig,
@@ -496,7 +496,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         body: &hir::Body,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
-        let expr_map_node = self.tcx.hir.get_if_local(expr_def_id).unwrap();
+        let expr_map_node = self.tcx.hir().get_if_local(expr_def_id).unwrap();
         let expected_args: Vec<_> = expected_sig
             .sig
             .inputs()

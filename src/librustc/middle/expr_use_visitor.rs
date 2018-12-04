@@ -622,7 +622,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match local.init {
             None => {
                 local.pat.each_binding(|_, hir_id, span, _| {
-                    let node_id = self.mc.tcx.hir.hir_to_node_id(hir_id);
+                    let node_id = self.mc.tcx.hir().hir_to_node_id(hir_id);
                     self.delegate.decl_without_init(node_id, span);
                 })
             }
@@ -935,8 +935,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let var_hir_id = self.tcx().hir.node_to_hir_id(freevar.var_id());
-                let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
+                let var_hir_id = self.tcx().hir().node_to_hir_id(freevar.var_id());
+                let closure_def_id = self.tcx().hir().local_def_id(closure_expr.id);
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
                     closure_expr_id: closure_def_id.to_local(),
@@ -973,7 +973,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_hir_id = self.tcx().hir.node_to_hir_id(upvar.var_id());
+        let var_hir_id = self.tcx().hir().node_to_hir_id(upvar.var_id());
         let var_ty = self.mc.node_ty(var_hir_id)?;
         self.mc.cat_def(closure_hir_id, closure_span, var_ty, upvar.def)
     }

@@ -1258,8 +1258,8 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
 }
 
 pub fn describe_def(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<Def> {
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        tcx.hir.describe_def(node_id)
+    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
+        tcx.hir().describe_def(node_id)
     } else {
         bug!("Calling local describe_def query provider for upstream DefId: {:?}",
              def_id)

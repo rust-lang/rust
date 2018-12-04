@@ -100,7 +100,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir.local_def_id(item.id));
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.id));
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
@@ -352,7 +352,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
@@ -375,7 +375,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut checker = CheckAttrVisitor { tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
+    tcx.hir().krate().visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {

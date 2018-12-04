@@ -39,10 +39,10 @@ use super::lints;
 
 /// Construct the MIR for a given def-id.
 pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
-    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let id = tcx.hir().as_local_node_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
-    let (body_id, return_ty_span) = match tcx.hir.get(id) {
+    let (body_id, return_ty_span) = match tcx.hir().get(id) {
         Node::Variant(variant) =>
             return create_constructor_shim(tcx, id, &variant.node.data),
         Node::StructCtor(ctor) =>
@@ -76,10 +76,10 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             (*body_id, ty.span)
         }
         Node::AnonConst(hir::AnonConst { body, id, .. }) => {
-            (*body, tcx.hir.span(*id))
+            (*body, tcx.hir().span(*id))
         }
 
-        _ => span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id),
+        _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def_id),
     };
 
     tcx.infer_ctxt().enter(|infcx| {
@@ -89,9 +89,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         } else if let hir::BodyOwnerKind::Fn = cx.body_owner_kind {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_hir_id = tcx.hir.node_to_hir_id(id);
+            let fn_hir_id = tcx.hir().node_to_hir_id(id);
             let fn_sig = cx.tables().liberated_fn_sigs()[fn_hir_id].clone();
-            let fn_def_id = tcx.hir.local_def_id(id);
+            let fn_def_id = tcx.hir().local_def_id(id);
 
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
@@ -121,18 +121,18 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                 hir::Unsafety::Unsafe => Safety::FnUnsafe,
             };
 
-            let body = tcx.hir.body(body_id);
+            let body = tcx.hir().body(body_id);
             let explicit_arguments =
                 body.arguments
                     .iter()
                     .enumerate()
                     .map(|(index, arg)| {
-                        let owner_id = tcx.hir.body_owner(body_id);
+                        let owner_id = tcx.hir().body_owner(body_id);
                         let opt_ty_info;
                         let self_arg;
-                        if let Some(ref fn_decl) = tcx.hir.fn_decl(owner_id) {
+                        if let Some(ref fn_decl) = tcx.hir().fn_decl(owner_id) {
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir.span(tcx.hir.hir_to_node_id(ty_hir_id));
+                            let ty_span = tcx.hir().span(tcx.hir().hir_to_node_id(ty_hir_id));
                             opt_ty_info = Some(ty_span);
                             self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                                 match fn_decl.implicit_self {
@@ -159,7 +159,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     ty::Generator(gen_def_id, gen_substs, ..) =>
                         gen_substs.sig(gen_def_id, tcx),
                     _ =>
-                        span_bug!(tcx.hir.span(id), "generator w/o generator type: {:?}", ty),
+                        span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
             } else {
@@ -246,7 +246,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      v: &'tcx hir::VariantData)
                                      -> Mir<'tcx>
 {
-    let span = tcx.hir.span(ctor_id);
+    let span = tcx.hir().span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
@@ -263,7 +263,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             mir_util::dump_mir(tcx, None, "mir_map", &0,
-                               MirSource::item(tcx.hir.local_def_id(ctor_id)),
+                               MirSource::item(tcx.hir().local_def_id(ctor_id)),
                                &mir, |_, _| Ok(()) );
 
             mir
@@ -280,7 +280,7 @@ fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                             closure_expr_id: ast::NodeId,
                                             body_id: hir::BodyId)
                                             -> Ty<'tcx> {
-    let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
+    let closure_expr_hir_id = tcx.hir().node_to_hir_id(closure_expr_id);
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
@@ -662,14 +662,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let arguments: Vec<_> = arguments.collect();
 
     let tcx = hir.tcx();
-    let span = tcx.hir.span(fn_id);
+    let span = tcx.hir().span(fn_id);
 
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
             let var_id = fv.var_id();
-            let var_hir_id = tcx.hir.node_to_hir_id(var_id);
-            let closure_expr_id = tcx.hir.local_def_id(fn_id);
+            let var_hir_id = tcx.hir().node_to_hir_id(var_id);
+            let closure_expr_id = tcx.hir().local_def_id(fn_id);
             let capture = hir.tables().upvar_capture(ty::UpvarId {
                 var_path: ty::UpvarPath {hir_id: var_hir_id},
                 closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
@@ -684,7 +684,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 by_ref,
                 mutability: Mutability::Not,
             };
-            if let Some(Node::Binding(pat)) = tcx.hir.find(var_id) {
+            if let Some(Node::Binding(pat)) = tcx.hir().find(var_id) {
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     decl.debug_name = ident.name;
 
@@ -711,7 +711,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         return_ty_span,
         upvar_decls);
 
-    let fn_def_id = tcx.hir.local_def_id(fn_id);
+    let fn_def_id = tcx.hir().local_def_id(fn_id);
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,
         data: region::ScopeData::CallSite
@@ -754,7 +754,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         // RustCall pseudo-ABI untuples the last argument.
         spread_arg = Some(Local::new(arguments.len()));
     }
-    let closure_expr_id = tcx.hir.local_def_id(fn_id);
+    let closure_expr_id = tcx.hir().local_def_id(fn_id);
     info!("fn_id {:?} has attrs {:?}", closure_expr_id,
           tcx.get_attrs(closure_expr_id));
 
@@ -769,10 +769,10 @@ fn construct_const<'a, 'gcx, 'tcx>(
     ty_span: Span,
 ) -> Mir<'tcx> {
     let tcx = hir.tcx();
-    let ast_expr = &tcx.hir.body(body_id).value;
+    let ast_expr = &tcx.hir().body(body_id).value;
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
-    let owner_id = tcx.hir.body_owner(body_id);
-    let span = tcx.hir.span(owner_id);
+    let owner_id = tcx.hir().body_owner(body_id);
+    let span = tcx.hir().span(owner_id);
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, ty_span,vec![]);
 
     let mut block = START_BLOCK;
@@ -798,8 +798,8 @@ fn construct_const<'a, 'gcx, 'tcx>(
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                    body_id: hir::BodyId)
                                    -> Mir<'tcx> {
-    let owner_id = hir.tcx().hir.body_owner(body_id);
-    let span = hir.tcx().hir.span(owner_id);
+    let owner_id = hir.tcx().hir().body_owner(body_id);
+    let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![]);
     let source_info = builder.source_info(span);

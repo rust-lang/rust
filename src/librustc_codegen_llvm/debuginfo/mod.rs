@@ -300,7 +300,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        let local_id = self.tcx().hir.as_local_node_id(def_id);
+        let local_id = self.tcx().hir().as_local_node_id(def_id);
         if let Some((id, _, _)) = *self.sess().entry_fn.borrow() {
             if local_id == Some(id) {
                 flags |= DIFlags::FlagMainSubprogram;

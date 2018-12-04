@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     )
                 };
                 let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir.find(scope.node_id(self, region_scope_tree)) {
+                let tag = match self.hir().find(scope.node_id(self, region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
                     Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
@@ -190,8 +190,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let cm = self.sess.source_map();
 
         let scope = region.free_region_binding_scope(self);
-        let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
-        let tag = match self.hir.find(node) {
+        let node = self.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
+        let tag = match self.hir().find(node) {
             Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
@@ -200,8 +200,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
-                let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(param) = self.hir
+                let mut sp = cm.def_span(self.hir().span(node));
+                if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&br.name))
                 {
@@ -213,8 +213,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 bound_region: ty::BoundRegion::BrNamed(_, ref name),
                 ..
             }) => {
-                let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(param) = self.hir
+                let mut sp = cm.def_span(self.hir().span(node));
+                if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&name))
                 {
@@ -225,15 +225,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
-                    self.hir.span(node),
+                    self.hir().span(node),
                 ),
                 ty::BrFresh(_) => (
                     "an anonymous lifetime defined on".to_owned(),
-                    self.hir.span(node),
+                    self.hir().span(node),
                 ),
                 _ => (
                     format!("the lifetime {} as defined on", fr.bound_region),
-                    cm.def_span(self.hir.span(node)),
+                    cm.def_span(self.hir().span(node)),
                 ),
             },
             _ => bug!(),
@@ -1083,7 +1083,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // the expected type argument.
                     if !param.is_self() {
                         let type_param = generics.type_param(param, self.tcx);
-                        let hir = &self.tcx.hir;
+                        let hir = &self.tcx.hir();
                         hir.as_local_node_id(type_param.def_id).map(|id| {
                             // Get the `hir::Param` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
@@ -1315,8 +1315,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_path.hir_id);
-                let var_name = self.tcx.hir.name(var_node_id);
+                let var_node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(var_node_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
             infer::NLL(..) => bug!("NLL variable found in lexical phase"),

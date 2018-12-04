@@ -217,7 +217,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
 impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_node_id = if item.is_mod() {
-            if let Some(id) = self.cx.tcx.hir.as_local_node_id(item.def_id) {
+            if let Some(id) = self.cx.tcx.hir().as_local_node_id(item.def_id) {
                 Some(id)
             } else {
                 debug!("attempting to fold on a non-local item: {:?}", item);
@@ -231,7 +231,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
         let parent_node = self.cx.as_local_node_id(item.def_id).and_then(|node_id| {
             // FIXME: this fails hard for impls in non-module scope, but is necessary for the
             // current resolve() implementation
-            match self.cx.tcx.hir.get_module_parent_node(node_id) {
+            match self.cx.tcx.hir().get_module_parent_node(node_id) {
                 id if id != node_id => Some(id),
                 _ => None,
             }
@@ -253,7 +253,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                     match parent_node.or(self.mod_ids.last().cloned()) {
                         Some(parent) if parent != NodeId::from_u32(0) => {
                             //FIXME: can we pull the parent module's name from elsewhere?
-                            Some(self.cx.tcx.hir.name(parent).to_string())
+                            Some(self.cx.tcx.hir().name(parent).to_string())
                         }
                         _ => None,
                     }

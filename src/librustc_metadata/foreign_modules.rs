@@ -18,7 +18,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<ForeignModule> {
         tcx,
         modules: Vec::new(),
     };
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
+    tcx.hir().krate().visit_all_item_likes(&mut collector);
     return collector.modules
 }
 
@@ -35,11 +35,11 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
         };
 
         let foreign_items = fm.items.iter()
-            .map(|it| self.tcx.hir.local_def_id(it.id))
+            .map(|it| self.tcx.hir().local_def_id(it.id))
             .collect();
         self.modules.push(ForeignModule {
             foreign_items,
-            def_id: self.tcx.hir.local_def_id(it.id),
+            def_id: self.tcx.hir().local_def_id(it.id),
         });
     }
 

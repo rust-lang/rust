@@ -305,7 +305,7 @@ pub fn compile_input(
                             outdir,
                             output,
                             opt_crate,
-                            tcx.hir.krate(),
+                            tcx.hir().krate(),
                             &analysis,
                             tcx,
                             &crate_name,

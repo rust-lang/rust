@@ -322,11 +322,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let same_lint_scopes = tcx.dep_graph.with_ignore(|| {
                 let sets = tcx.lint_levels(LOCAL_CRATE);
                 let parent_hir_id =
-                    tcx.hir.definitions().node_to_hir_id(
+                    tcx.hir().definitions().node_to_hir_id(
                         self.source_scope_local_data[source_scope].lint_root
                     );
                 let current_hir_id =
-                    tcx.hir.definitions().node_to_hir_id(node_id);
+                    tcx.hir().definitions().node_to_hir_id(node_id);
                 sets.lint_level_set(parent_hir_id) ==
                     sets.lint_level_set(current_hir_id)
             });

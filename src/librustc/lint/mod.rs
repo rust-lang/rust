@@ -643,7 +643,7 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
         levels: LintLevelSets::builder(tcx.sess),
         tcx: tcx,
     };
-    let krate = tcx.hir.krate();
+    let krate = tcx.hir().krate();
 
     builder.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |builder| {
         intravisit::walk_crate(builder, krate);
@@ -665,7 +665,7 @@ impl<'a, 'tcx> LintLevelMapBuilder<'a, 'tcx> {
         where F: FnOnce(&mut Self)
     {
         let push = self.levels.push(attrs);
-        self.levels.register_id(self.tcx.hir.definitions().node_to_hir_id(id));
+        self.levels.register_id(self.tcx.hir().definitions().node_to_hir_id(id));
         f(self);
         self.levels.pop(push);
     }
@@ -673,7 +673,7 @@ impl<'a, 'tcx> LintLevelMapBuilder<'a, 'tcx> {
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir)
+        intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {

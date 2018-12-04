@@ -114,10 +114,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap()).as_interned_str()
+            tcx.hir().name(tcx.hir().as_local_node_id(def_id).unwrap()).as_interned_str()
         };
 
-        let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
+        let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
         let r = match tcx.named_region(hir_id) {
             Some(rl::Region::Static) => {
                 tcx.types.re_static
@@ -1135,7 +1135,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
+                let hir_id = tcx.hir().node_to_hir_id(lifetime.id);
                 if tcx.named_region(hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
@@ -1190,8 +1190,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let suitable_bounds = traits::transitive_bounds(tcx, bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
-        let param_node_id = tcx.hir.as_local_node_id(ty_param_def_id).unwrap();
-        let param_name = tcx.hir.ty_param_name(param_node_id);
+        let param_node_id = tcx.hir().as_local_node_id(ty_param_def_id).unwrap();
+        let param_name = tcx.hir().ty_param_name(param_node_id);
         self.one_bound_for_assoc_type(suitable_bounds,
                                       &param_name.as_str(),
                                       assoc_name,
@@ -1235,7 +1235,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     item.kind == ty::AssociatedKind::Type &&
                         self.tcx().hygienic_eq(assoc_name, item.ident, bound.def_id())
                 })
-                .and_then(|item| self.tcx().hir.span_if_local(item.def_id));
+                .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
 
                 if let Some(span) = bound_span {
                     err.span_label(span, format!("ambiguous `{}` from `{}`",
@@ -1485,12 +1485,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let node_id = tcx.hir.as_local_node_id(did).unwrap();
-                let item_id = tcx.hir.get_parent_node(node_id);
-                let item_def_id = tcx.hir.local_def_id(item_id);
+                let node_id = tcx.hir().as_local_node_id(did).unwrap();
+                let item_id = tcx.hir().get_parent_node(node_id);
+                let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
-                tcx.mk_ty_param(index, tcx.hir.name(node_id).as_interned_str())
+                let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
+                tcx.mk_ty_param(index, tcx.hir().name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // `Self` in impl (we know the concrete type)
@@ -1579,7 +1579,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 self.def_to_ty(opt_self_ty, path, false)
             }
             hir::TyKind::Def(item_id, ref lifetimes) => {
-                let did = tcx.hir.local_def_id(item_id.id);
+                let did = tcx.hir().local_def_id(item_id.id);
                 self.impl_trait_ty_to_ty(did, lifetimes)
             },
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
@@ -1594,7 +1594,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length_def_id = tcx.hir.local_def_id(length.id);
+                let length_def_id = tcx.hir().local_def_id(length.id);
                 let substs = Substs::identity_for_item(tcx, length_def_id);
                 let length = ty::Const::unevaluated(tcx, length_def_id, substs, tcx.types.usize);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));

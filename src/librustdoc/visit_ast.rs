@@ -79,12 +79,12 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx.hir.opt_local_def_id(id)
+        self.cx.tcx.hir().opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_stability(def_id)).cloned()
     }
 
     fn deprecation(&self, id: ast::NodeId) -> Option<attr::Deprecation> {
-        self.cx.tcx.hir.opt_local_def_id(id)
+        self.cx.tcx.hir().opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
@@ -257,7 +257,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
         for i in &m.item_ids {
-            let item = self.cx.tcx.hir.expect_item(i.id);
+            let item = self.cx.tcx.hir().expect_item(i.id);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
@@ -282,9 +282,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                           please_inline: bool) -> bool {
 
         fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
-            while let Some(id) = cx.tcx.hir.get_enclosing_scope(node) {
+            while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
-                if cx.tcx.hir.attrs(node).lists("doc").has_word("hidden") {
+                if cx.tcx.hir().attrs(node).lists("doc").has_word("hidden") {
                     return true;
                 }
                 if node == ast::CRATE_NODE_ID {
@@ -302,7 +302,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         }
         let def_did = def.def_id();
 
-        let use_attrs = tcx.hir.attrs(id);
+        let use_attrs = tcx.hir().attrs(id);
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists("doc").has_word("no_inline") ||
                            use_attrs.lists("doc").has_word("hidden");
@@ -335,7 +335,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             return false
         }
 
-        let def_node_id = match tcx.hir.as_local_node_id(def_did) {
+        let def_node_id = match tcx.hir().as_local_node_id(def_did) {
             Some(n) => n, None => return false
         };
 
@@ -349,11 +349,11 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
 
         if !self.view_item_stack.insert(def_node_id) { return false }
 
-        let ret = match tcx.hir.get(def_node_id) {
+        let ret = match tcx.hir().get(def_node_id) {
             Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
-                    let i = self.cx.tcx.hir.expect_item(i.id);
+                    let i = self.cx.tcx.hir().expect_item(i.id);
                     self.visit_item(i, None, om);
                 }
                 self.inlining = prev;
@@ -368,7 +368,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             Node::ForeignItem(it) if !glob => {
                 // generate a fresh `extern {}` block if we want to inline a foreign item.
                 om.foreigns.push(hir::ForeignMod {
-                    abi: tcx.hir.get_foreign_abi(it.id),
+                    abi: tcx.hir().get_foreign_abi(it.id),
                     items: vec![hir::ForeignItem {
                         name: renamed.unwrap_or(it.name),
                         .. it.clone()
@@ -392,7 +392,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         let name = renamed.unwrap_or(item.name);
 
         if item.vis.node.is_pub() {
-            let def_id = self.cx.tcx.hir.local_def_id(item.id);
+            let def_id = self.cx.tcx.hir().local_def_id(item.id);
             self.store_path(def_id);
         }
 
@@ -412,7 +412,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::ExternCrate(orig_name) => {
-                let def_id = self.cx.tcx.hir.local_def_id(item.id);
+                let def_id = self.cx.tcx.hir().local_def_id(item.id);
                 om.extern_crates.push(ExternCrate {
                     cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
                                 .unwrap_or(LOCAL_CRATE),
@@ -540,7 +540,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             },
             hir::ItemKind::Trait(is_auto, unsafety, ref gen, ref b, ref item_ids) => {
                 let items = item_ids.iter()
-                                    .map(|ti| self.cx.tcx.hir.trait_item(ti.id).clone())
+                                    .map(|ti| self.cx.tcx.hir().trait_item(ti.id).clone())
                                     .collect();
                 let t = Trait {
                     is_auto,
@@ -573,7 +573,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 // them up regardless of where they're located.
                 if !self.inlining && tr.is_none() {
                     let items = item_ids.iter()
-                                        .map(|ii| self.cx.tcx.hir.impl_item(ii.id).clone())
+                                        .map(|ii| self.cx.tcx.hir().impl_item(ii.id).clone())
                                         .collect();
                     let i = Impl {
                         unsafety,
@@ -608,7 +608,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect();
 
         Macro {
-            def_id: self.cx.tcx.hir.local_def_id(def.id),
+            def_id: self.cx.tcx.hir().local_def_id(def.id),
             attrs: def.attrs.clone(),
             name: renamed.unwrap_or(def.name),
             whence: def.span,

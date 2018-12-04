@@ -41,18 +41,18 @@ struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         intravisit::walk_body(self, body);
-        let def_id = self.tcx.hir.body_owner_def_id(body.id());
+        let def_id = self.tcx.hir().body_owner_def_id(body.id());
         let _ = self.tcx.check_match(def_id);
     }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx }.as_deep_visitor());
+    tcx.hir().krate().visit_all_item_likes(&mut OuterVisitor { tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
@@ -60,8 +60,8 @@ pub(crate) fn check_match<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Result<(), ErrorReported> {
-    let body_id = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        tcx.hir.body_owned_by(id)
+    let body_id = if let Some(id) = tcx.hir().as_local_node_id(def_id) {
+        tcx.hir().body_owned_by(id)
     } else {
         return Ok(());
     };
@@ -73,7 +73,7 @@ pub(crate) fn check_match<'a, 'tcx>(
             region_scope_tree: &tcx.region_scope_tree(def_id),
             param_env: tcx.param_env(def_id),
             identity_substs: Substs::identity_for_item(tcx, def_id),
-        }.visit_body(tcx.hir.body(body_id));
+        }.visit_body(tcx.hir().body(body_id));
     })
 }
 
@@ -192,7 +192,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir.get_module_parent(scrut.id);
+        let module = self.tcx.hir().get_module_parent(scrut.id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -224,7 +224,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
-            let module = self.tcx.hir.get_module_parent(scrut.id);
+            let module = self.tcx.hir().get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
@@ -267,7 +267,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir.get_module_parent(pat.id);
+        let module = self.tcx.hir().get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),

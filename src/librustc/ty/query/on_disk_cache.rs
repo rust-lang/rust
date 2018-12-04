@@ -725,7 +725,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx, 'x> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
         let hir_id = hir::HirId::decode(self)?;
-        Ok(self.tcx().hir.hir_to_node_id(hir_id))
+        Ok(self.tcx().hir().hir_to_node_id(hir_id))
     }
 }
 
@@ -926,7 +926,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'enc, 'a
             local_id,
         } = *id;
 
-        let def_path_hash = self.tcx.hir.definitions().def_path_hash(owner);
+        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner);
 
         def_path_hash.encode(self)?;
         local_id.encode(self)
@@ -968,7 +968,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'enc, 'a, 't
 {
     #[inline]
     fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
-        let hir_id = self.tcx.hir.node_to_hir_id(*node_id);
+        let hir_id = self.tcx.hir().node_to_hir_id(*node_id);
         hir_id.encode(self)
     }
 }

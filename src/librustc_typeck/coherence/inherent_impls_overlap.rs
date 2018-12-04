@@ -20,7 +20,7 @@ use lint;
 pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                     crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
-    let krate = tcx.hir.krate();
+    let krate = tcx.hir().krate();
     krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
 }
 
@@ -46,7 +46,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
             for &item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
-                    let node_id = self.tcx.hir.as_local_node_id(impl1);
+                    let node_id = self.tcx.hir().as_local_node_id(impl1);
                     let mut err = if used_to_be_allowed && node_id.is_some() {
                         self.tcx.struct_span_lint_node(
                             lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
@@ -126,7 +126,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) |
             hir::ItemKind::Union(..) => {
-                let type_def_id = self.tcx.hir.local_def_id(item.id);
+                let type_def_id = self.tcx.hir().local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }
             _ => {}

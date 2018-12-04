@@ -182,11 +182,11 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               main_id: ast::NodeId,
                               main_span: Span) {
-    let main_def_id = tcx.hir.local_def_id(main_id);
+    let main_def_id = tcx.hir().local_def_id(main_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir.find(main_id) {
+            if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
                     let mut error = false;
                     if !generics.params.is_empty() {
@@ -248,11 +248,11 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                start_id: ast::NodeId,
                                start_span: Span) {
-    let start_def_id = tcx.hir.local_def_id(start_id);
+    let start_def_id = tcx.hir().local_def_id(start_id);
     let start_t = tcx.type_of(start_def_id);
     match start_t.sty {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir.find(start_id) {
+            if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
                     let mut error = false;
                     if !generics.params.is_empty() {
@@ -373,8 +373,8 @@ pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> 
     // In case there are any projections etc, find the "environment"
     // def-id that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
-    let env_node_id = tcx.hir.get_parent(hir_ty.id);
-    let env_def_id = tcx.hir.local_def_id(env_node_id);
+    let env_node_id = tcx.hir().get_parent(hir_ty.id);
+    let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
 
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
@@ -385,8 +385,8 @@ pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait:
     // In case there are any projections etc, find the "environment"
     // def-id that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
-    let env_node_id = tcx.hir.get_parent(hir_trait.ref_id);
-    let env_def_id = tcx.hir.local_def_id(env_node_id);
+    let env_node_id = tcx.hir().get_parent(hir_trait.ref_id);
+    let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
     let mut projections = Vec::new();
     let (principal, _) = astconv::AstConv::instantiate_poly_trait_ref_inner(

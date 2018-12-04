@@ -54,7 +54,7 @@ pub fn get_def_from_node_id<F>(cx: &DocContext,
                                callback: &F,
 ) -> Vec<Item>
 where F: Fn(& dyn Fn(DefId) -> Def, String) -> Vec<Item> {
-    let item = &cx.tcx.hir.expect_item(id).node;
+    let item = &cx.tcx.hir().expect_item(id).node;
 
     callback(&match *item {
         hir::ItemKind::Struct(_, _) => Def::Struct,

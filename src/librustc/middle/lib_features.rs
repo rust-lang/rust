@@ -140,7 +140,7 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for LibFeatureCollector<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.tcx.hir)
+        NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {
@@ -152,6 +152,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LibFeatureCollector<'a, 'tcx> {
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
-    intravisit::walk_crate(&mut collector, tcx.hir.krate());
+    intravisit::walk_crate(&mut collector, tcx.hir().krate());
     collector.lib_features
 }

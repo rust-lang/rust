@@ -62,7 +62,7 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             available_cgus
         };
 
-        for attr in &tcx.hir.krate().attrs {
+        for attr in &tcx.hir().krate().attrs {
             ams.check_attr(attr);
         }
     })

@@ -535,9 +535,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {
-        match self.hir.as_local_node_id(node_item_def_id) {
+        match self.hir().as_local_node_id(node_item_def_id) {
             Some(node_id) => {
-                let item = self.hir.expect_item(node_id);
+                let item = self.hir().expect_item(node_id);
                 if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.node {
                     defaultness.is_default()
                 } else {

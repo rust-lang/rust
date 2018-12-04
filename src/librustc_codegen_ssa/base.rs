@@ -453,7 +453,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
         Some((id, span, _)) => {
-            (cx.tcx().hir.local_def_id(id), span)
+            (cx.tcx().hir().local_def_id(id), span)
         }
         None => return,
     };

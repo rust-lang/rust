@@ -954,7 +954,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
         let kind = match cv.ty.sty {
             ty::Float(_) => {
-                let id = self.tcx.hir.hir_to_node_id(id);
+                let id = self.tcx.hir().hir_to_node_id(id);
                 self.tcx.lint_node(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,

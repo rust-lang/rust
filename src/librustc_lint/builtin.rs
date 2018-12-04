@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) => {
-                let def_id = cx.tcx.hir.local_def_id(it.id);
+                let def_id = cx.tcx.hir().local_def_id(it.id);
                 self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
             _ => ()
@@ -142,7 +142,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Struct(ref struct_def, _) |
             hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir.local_def_id(struct_field.id);
+                    let def_id = cx.tcx.hir().local_def_id(struct_field.id);
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.type_of(def_id));
                 }
@@ -424,8 +424,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.def.def_id();
-                if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
-                    match cx.tcx.hir.find(node_id) {
+                if let Some(node_id) = cx.tcx.hir().as_local_node_id(real_trait) {
+                    match cx.tcx.hir().find(node_id) {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
@@ -527,21 +527,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir().local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -606,7 +606,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             let mut impls = NodeSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def.did) {
+                    if let Some(node_id) = cx.tcx.hir().as_local_node_id(ty_def.did) {
                         impls.insert(node_id);
                     }
                 }
@@ -871,7 +871,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             _ => return,
         };
 
-        let def_id = cx.tcx.hir.local_def_id(it.id);
+        let def_id = cx.tcx.hir().local_def_id(it.id);
         let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
             Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
@@ -1073,7 +1073,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemKind::Union(ref vdata, _) = item.node {
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
+                let field_ty = ctx.tcx.type_of(ctx.tcx.hir().local_def_id(field.id));
                 if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
@@ -1275,7 +1275,7 @@ impl LintPass for UnusedBrokenConst {
     }
 }
 fn check_const(cx: &LateContext, body_id: hir::BodyId) {
-    let def_id = cx.tcx.hir.body_owner_def_id(body_id);
+    let def_id = cx.tcx.hir().body_owner_def_id(body_id);
     let is_static = cx.tcx.is_static(def_id).is_some();
     let param_env = if is_static {
         // Use the same param_env as `codegen_static_initializer`, to reuse the cache.
@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
 
 
         if cx.tcx.features().trivial_bounds {
-            let def_id = cx.tcx.hir.local_def_id(item.id);
+            let def_id = cx.tcx.hir().local_def_id(item.id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in &predicates.predicates {
                 let predicate_kind_name = match predicate {
@@ -1746,7 +1746,7 @@ impl ExplicitOutlivesRequirements {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
-        let def_id = cx.tcx.hir.local_def_id(item.id);
+        let def_id = cx.tcx.hir().local_def_id(item.id);
         if let hir::ItemKind::Struct(_, ref generics) = item.node {
             let mut bound_count = 0;
             let mut lint_spans = Vec::new();

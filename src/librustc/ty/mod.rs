@@ -289,7 +289,7 @@ impl Visibility {
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.hir.get_module_parent(id))
+                Visibility::Restricted(tcx.hir().get_module_parent(id))
             }
         }
     }
@@ -2619,29 +2619,29 @@ impl<'gcx> ::std::ops::Deref for Attributes<'gcx> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'gcx TypeckTables<'gcx> {
-        self.typeck_tables_of(self.hir.body_owner_def_id(body))
+        self.typeck_tables_of(self.hir().body_owner_def_id(body))
     }
 
     /// Returns an iterator of the def-ids for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
-    /// themselves, you can do `self.hir.krate().body_ids.iter()`.
+    /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(
         self,
     ) -> impl Iterator<Item = DefId> + Captures<'tcx> + Captures<'gcx> + 'a {
-        self.hir.krate()
-                .body_ids
-                .iter()
-                .map(move |&body_id| self.hir.body_owner_def_id(body_id))
+        self.hir().krate()
+                  .body_ids
+                  .iter()
+                  .map(move |&body_id| self.hir().body_owner_def_id(body_id))
     }
 
     pub fn par_body_owners<F: Fn(DefId) + sync::Sync + sync::Send>(self, f: F) {
-        par_iter(&self.hir.krate().body_ids).for_each(|&body_id| {
-            f(self.hir.body_owner_def_id(body_id))
+        par_iter(&self.hir().krate().body_ids).for_each(|&body_id| {
+            f(self.hir().body_owner_def_id(body_id))
         });
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {
-        match self.hir.find(id) {
+        match self.hir().find(id) {
             Some(Node::Expr(e)) => {
                 e.span
             }
@@ -2667,8 +2667,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssociatedItem> {
-        let is_associated_item = if let Some(node_id) = self.hir.as_local_node_id(def_id) {
-            match self.hir.get(node_id) {
+        let is_associated_item = if let Some(node_id) = self.hir().as_local_node_id(def_id) {
+            match self.hir().get(node_id) {
                 Node::TraitItem(_) | Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -2691,7 +2691,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            parent_vis: &hir::Visibility,
                                            trait_item_ref: &hir::TraitItemRef)
                                            -> AssociatedItem {
-        let def_id = self.hir.local_def_id(trait_item_ref.id.node_id);
+        let def_id = self.hir().local_def_id(trait_item_ref.id.node_id);
         let (kind, has_self) = match trait_item_ref.kind {
             hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
             hir::AssociatedItemKind::Method { has_self } => {
@@ -2717,7 +2717,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                           parent_def_id: DefId,
                                           impl_item_ref: &hir::ImplItemRef)
                                           -> AssociatedItem {
-        let def_id = self.hir.local_def_id(impl_item_ref.id.node_id);
+        let def_id = self.hir().local_def_id(impl_item_ref.id.node_id);
         let (kind, has_self) = match impl_item_ref.kind {
             hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
             hir::AssociatedItemKind::Method { has_self } => {
@@ -2740,7 +2740,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn field_index(self, node_id: NodeId, tables: &TypeckTables<'_>) -> usize {
-        let hir_id = self.hir.node_to_hir_id(node_id);
+        let hir_id = self.hir().node_to_hir_id(node_id);
         tables.field_indices().get(hir_id).cloned().expect("no index for a field")
     }
 
@@ -2878,8 +2878,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Get the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Attributes<'gcx> {
-        if let Some(id) = self.hir.as_local_node_id(did) {
-            Attributes::Borrowed(self.hir.attrs(id))
+        if let Some(id) = self.hir().as_local_node_id(did) {
+            Attributes::Borrowed(self.hir().attrs(id))
         } else {
             Attributes::Owned(self.item_attrs(did))
         }
@@ -2930,8 +2930,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// with the name of the crate containing the impl.
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if impl_did.is_local() {
-            let node_id = self.hir.as_local_node_id(impl_did).unwrap();
-            Ok(self.hir.span(node_id))
+            let node_id = self.hir().as_local_node_id(impl_did).unwrap();
+            Ok(self.hir().span(node_id))
         } else {
             Err(self.crate_name(impl_did.krate))
         }
@@ -2947,14 +2947,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: NodeId) -> (Ident, DefId) {
         ident = ident.modern();
         let target_expansion = match scope.krate {
-            LOCAL_CRATE => self.hir.definitions().expansion_that_defined(scope.index),
+            LOCAL_CRATE => self.hir().definitions().expansion_that_defined(scope.index),
             _ => Mark::root(),
         };
         let scope = match ident.span.adjust(target_expansion) {
             Some(actual_expansion) =>
-                self.hir.definitions().parent_module_of_macro_def(actual_expansion),
+                self.hir().definitions().parent_module_of_macro_def(actual_expansion),
             None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
-            None => self.hir.get_module_parent(block),
+            None => self.hir().get_module_parent(block),
         };
         (ident, scope)
     }
@@ -2980,7 +2980,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {
-        let def_id = self.hir.local_def_id(fid);
+        let def_id = self.hir().local_def_id(fid);
         match self.freevars(def_id) {
             None => f(&[]),
             Some(d) => f(&d),
@@ -2989,10 +2989,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> AssociatedItem {
-    let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let parent_id = tcx.hir.get_parent(id);
-    let parent_def_id = tcx.hir.local_def_id(parent_id);
-    let parent_item = tcx.hir.expect_item(parent_id);
+    let id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let parent_id = tcx.hir().get_parent(id);
+    let parent_def_id = tcx.hir().local_def_id(parent_id);
+    let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.node {
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
             if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.node_id == id) {
@@ -3049,19 +3049,19 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> Lrc<Vec<DefId>> {
-    let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let item = tcx.hir.expect_item(id);
+    let id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let item = tcx.hir().expect_item(id);
     let vec: Vec<_> = match item.node {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             trait_item_refs.iter()
                            .map(|trait_item_ref| trait_item_ref.id)
-                           .map(|id| tcx.hir.local_def_id(id.node_id))
+                           .map(|id| tcx.hir().local_def_id(id.node_id))
                            .collect()
         }
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
             impl_item_refs.iter()
                           .map(|impl_item_ref| impl_item_ref.id)
-                          .map(|id| tcx.hir.local_def_id(id.node_id))
+                          .map(|id| tcx.hir().local_def_id(id.node_id))
                           .collect()
         }
         hir::ItemKind::TraitAlias(..) => vec![],
@@ -3071,7 +3071,7 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
-    tcx.hir.span_if_local(def_id).unwrap()
+    tcx.hir().span_if_local(def_id).unwrap()
 }
 
 /// If the given def ID describes an item belonging to a trait,
@@ -3089,8 +3089,8 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 
 /// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefId> {
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        if let Node::Item(item) = tcx.hir.get(node_id) {
+    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
+        if let Node::Item(item) = tcx.hir().get(node_id) {
             if let hir::ItemKind::Existential(ref exist_ty) = item.node {
                 return exist_ty.impl_trait_fn;
             }
@@ -3101,8 +3101,8 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefI
 
 /// Returns `true` if `def_id` is a trait alias.
 pub fn is_trait_alias(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        if let Node::Item(item) = tcx.hir.get(node_id) {
+    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
+        if let Node::Item(item) = tcx.hir().get(node_id) {
             if let hir::ItemKind::TraitAlias(..) = item.node {
                 return true;
             }
@@ -3140,8 +3140,8 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
                                              traits::Reveal::UserFacing);
 
-    let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
-        tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
+    let body_id = tcx.hir().as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
+        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.node_id)
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
@@ -3163,7 +3163,7 @@ fn crate_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         crate_num: CrateNum)
                         -> Svh {
     assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.hir.crate_hash
+    tcx.hir().crate_hash
 }
 
 fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

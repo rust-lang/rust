@@ -137,7 +137,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
     let id = tcx
-        .hir
+        .hir()
         .as_local_node_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
@@ -173,7 +173,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
 
-    let locals_are_invalidated_at_exit = match tcx.hir.body_owner_kind(id) {
+    let locals_are_invalidated_at_exit = match tcx.hir().body_owner_kind(id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
             hir::BodyOwnerKind::Fn => true,
     };
@@ -229,7 +229,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
-    let movable_generator = match tcx.hir.get(id) {
+    let movable_generator = match tcx.hir().get(id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..

@@ -193,7 +193,7 @@ fn dump_path(
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
-    let item_name = tcx.hir
+    let item_name = tcx.hir()
         .def_path(source.def_id)
         .to_filename_friendly_no_crate();
 
@@ -569,8 +569,8 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
 }
 
 fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
-    let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
-    let body_owner_kind = tcx.hir.body_owner_kind(id);
+    let id = tcx.hir().as_local_node_id(src.def_id).unwrap();
+    let body_owner_kind = tcx.hir().body_owner_kind(id);
     match (body_owner_kind, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in", i)?,
         (hir::BodyOwnerKind::Fn, _) => write!(w, "fn")?,

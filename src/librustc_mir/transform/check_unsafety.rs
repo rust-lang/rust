@@ -473,8 +473,8 @@ fn check_unused_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  unsafe_blocks: &'a mut Vec<(ast::NodeId, bool)>)
 {
     let body_id =
-        tcx.hir.as_local_node_id(def_id).and_then(|node_id| {
-            tcx.hir.maybe_body_owned_by(node_id)
+        tcx.hir().as_local_node_id(def_id).and_then(|node_id| {
+            tcx.hir().maybe_body_owned_by(node_id)
         });
 
     let body_id = match body_id {
@@ -484,7 +484,7 @@ fn check_unused_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             return
         }
     };
-    let body = tcx.hir.body(body_id);
+    let body = tcx.hir().body(body_id);
     debug!("check_unused_unsafe({:?}, body={:?}, used_unsafe={:?})",
            def_id, body, used_unsafe);
 
@@ -526,7 +526,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 }
 
 fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let lint_node_id = match tcx.hir.as_local_node_id(def_id) {
+    let lint_node_id = match tcx.hir().as_local_node_id(def_id) {
         Some(node_id) => node_id,
         None => bug!("checking unsafety for non-local def id {:?}", def_id)
     };
@@ -550,14 +550,14 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
 fn is_enclosed(tcx: TyCtxt,
                used_unsafe: &FxHashSet<ast::NodeId>,
                id: ast::NodeId) -> Option<(String, ast::NodeId)> {
-    let parent_id = tcx.hir.get_parent_node(id);
+    let parent_id = tcx.hir().get_parent_node(id);
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(Node::Item(&hir::Item {
             node: hir::ItemKind::Fn(_, header, _, _),
             ..
-        })) = tcx.hir.find(parent_id) {
+        })) = tcx.hir().find(parent_id) {
             match header.unsafety {
                 hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
                 hir::Unsafety::Normal => None,
@@ -571,12 +571,12 @@ fn is_enclosed(tcx: TyCtxt,
 }
 
 fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: ast::NodeId) {
-    let span = tcx.sess.source_map().def_span(tcx.hir.span(id));
+    let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
     let msg = "unnecessary `unsafe` block";
     let mut db = tcx.struct_span_lint_node(UNUSED_UNSAFE, id, span, msg);
     db.span_label(span, msg);
     if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
-        db.span_label(tcx.sess.source_map().def_span(tcx.hir.span(id)),
+        db.span_label(tcx.sess.source_map().def_span(tcx.hir().span(id)),
                       format!("because it's nested under this `unsafe` {}", kind));
     }
     db.emit();

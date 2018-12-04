@@ -206,7 +206,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             -> Ty<'tcx> {
         let (fn_sig, def_span) = match callee_ty.sty {
             ty::FnDef(def_id, _) => {
-                (callee_ty.fn_sig(self.tcx), self.tcx.hir.span_if_local(def_id))
+                (callee_ty.fn_sig(self.tcx), self.tcx.hir().span_if_local(def_id))
             }
             ty::FnPtr(sig) => (sig, None),
             ref t => {
@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
-                            unit_variant = Some(self.tcx.hir.node_to_pretty_string(expr.id))
+                            unit_variant = Some(self.tcx.hir().node_to_pretty_string(expr.id))
                         }
                     }
                 }
@@ -278,9 +278,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let def_span = match def {
                         Def::Err => None,
                         Def::Local(id) | Def::Upvar(id, ..) => {
-                            Some(self.tcx.hir.span(id))
+                            Some(self.tcx.hir().span(id))
                         }
-                        _ => self.tcx.hir.span_if_local(def.def_id())
+                        _ => self.tcx.hir().span_if_local(def.def_id())
                     };
                     if let Some(span) = def_span {
                         let label = match (unit_variant, inner_callee_path) {

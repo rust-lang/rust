@@ -189,8 +189,8 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        for &node_id in tcx.hir.trait_impls(trait_id) {
-            add_impl(tcx.hir.local_def_id(node_id));
+        for &node_id in tcx.hir().trait_impls(trait_id) {
+            add_impl(tcx.hir().local_def_id(node_id));
         }
     }
 

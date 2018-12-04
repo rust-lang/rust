@@ -121,7 +121,7 @@ macro_rules! ignore_err {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn regionck_expr(&self, body: &'gcx hir::Body) {
-        let subject = self.tcx.hir.body_owner_def_id(body.id());
+        let subject = self.tcx.hir().body_owner_def_id(body.id());
         let id = body.value.id;
         let mut rcx = RegionCtxt::new(
             self,
@@ -150,7 +150,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// types from which we should derive implied bounds, if any.
     pub fn regionck_item(&self, item_id: ast::NodeId, span: Span, wf_tys: &[Ty<'tcx>]) {
         debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
-        let subject = self.tcx.hir.local_def_id(item_id);
+        let subject = self.tcx.hir().local_def_id(item_id);
         let mut rcx = RegionCtxt::new(
             self,
             RepeatingScope(item_id),
@@ -175,7 +175,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// constraints to add.
     pub fn regionck_fn(&self, fn_id: ast::NodeId, body: &'gcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
-        let subject = self.tcx.hir.body_owner_def_id(body.id());
+        let subject = self.tcx.hir().body_owner_def_id(body.id());
         let node_id = body.value.id;
         let mut rcx = RegionCtxt::new(
             self,
@@ -187,7 +187,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, body, self.tcx.hir.span(fn_id));
+            rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
         }
 
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
@@ -328,7 +328,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.call_site_scope = Some(call_site);
 
         let fn_sig = {
-            let fn_hir_id = self.tcx.hir.node_to_hir_id(id);
+            let fn_hir_id = self.tcx.hir().node_to_hir_id(id);
             match self.tables.borrow().liberated_fn_sigs().get(fn_hir_id) {
                 Some(f) => f.clone(),
                 None => {
@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         );
         let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
 
-        let body_hir_id = self.tcx.hir.node_to_hir_id(body_id.node_id);
+        let body_hir_id = self.tcx.hir().node_to_hir_id(body_id.node_id);
         self.type_of_node_must_outlive(infer::CallReturn(span), body_hir_id, call_site_region);
 
         self.constrain_opaque_types(
@@ -483,7 +483,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         let old_call_site_scope = self.call_site_scope;
         let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
 
-        let body = self.tcx.hir.body(body_id);
+        let body = self.tcx.hir().body(body_id);
         self.visit_fn_body(id, body, span);
 
         // Restore state from previous function.
