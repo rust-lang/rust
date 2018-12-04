@@ -360,7 +360,9 @@ impl<'tcx> AllocMap<'tcx> {
         id
     }
 
-    /// Returns `None` in case the `AllocId` is dangling.
+    /// Returns `None` in case the `AllocId` is dangling. An `EvalContext` can still have a
+    /// local `Allocation` for that `AllocId`, but having such an `AllocId` in a constant is
+    /// illegal and will likely ICE.
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
     pub fn get(&self, id: AllocId) -> Option<AllocKind<'tcx>> {
