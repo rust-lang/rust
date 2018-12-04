@@ -282,7 +282,7 @@ nav.sub {
 	padding-left: 0;
 }
 
-:not(.source) .example-wrap {
+.rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
 }
@@ -300,7 +300,7 @@ nav.sub {
 	text-align: right;
 }
 
-:not(.source) .example-wrap > pre.rust {
+.rustdoc:not(.source) .example-wrap > pre.rust {
 	width: 100%;
 }
 
