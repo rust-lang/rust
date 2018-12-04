@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub mod os {
-    pub const FAMILY: &'static str = "windows";
-    pub const OS: &'static str = "windows";
-    pub const DLL_PREFIX: &'static str = "";
-    pub const DLL_SUFFIX: &'static str = ".dll";
-    pub const DLL_EXTENSION: &'static str = "dll";
-    pub const EXE_SUFFIX: &'static str = ".exe";
-    pub const EXE_EXTENSION: &'static str = "exe";
+    pub const FAMILY: &str = "windows";
+    pub const OS: &str = "windows";
+    pub const DLL_PREFIX: &str = "";
+    pub const DLL_SUFFIX: &str = ".dll";
+    pub const DLL_EXTENSION: &str = "dll";
+    pub const EXE_SUFFIX: &str = ".exe";
+    pub const EXE_EXTENSION: &str = "exe";
 }
