@@ -442,7 +442,8 @@ impl<'a> Builder<'a> {
                 doc::RustdocBook,
                 doc::RustByExample,
                 doc::RustcBook,
-                doc::CargoBook
+                doc::CargoBook,
+                doc::EditionGuide,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
