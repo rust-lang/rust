@@ -24,5 +24,29 @@ error: equality checks against false can be replaced by a negation
 20 |     if false == x { "yes" } else { "no" };
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
-error: aborting due to 4 previous errors
+error: inequality checks against true can be replaced by a negation
+  --> $DIR/bool_comparison.rs:21:8
+   |
+21 |     if x != true { "yes" } else { "no" };
+   |        ^^^^^^^^^ help: try simplifying it as shown: `!x`
+
+error: inequality checks against false are unnecessary
+  --> $DIR/bool_comparison.rs:22:8
+   |
+22 |     if x != false { "yes" } else { "no" };
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `x`
+
+error: inequality checks against true can be replaced by a negation
+  --> $DIR/bool_comparison.rs:23:8
+   |
+23 |     if true != x { "yes" } else { "no" };
+   |        ^^^^^^^^^ help: try simplifying it as shown: `!x`
+
+error: inequality checks against false are unnecessary
+  --> $DIR/bool_comparison.rs:24:8
+   |
+24 |     if false != x { "yes" } else { "no" };
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `x`
+
+error: aborting due to 8 previous errors
 
