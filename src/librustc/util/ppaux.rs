@@ -404,17 +404,16 @@ impl PrintContext {
                     *has_default.unwrap_or(&false)
                 };
                 if has_default {
-                    if let Some(substs) = tcx.lift(&substs) {
-                        let types = substs.types().rev().skip(child_types);
-                        for ((def_id, has_default), actual) in type_params.zip(types) {
-                            if !has_default {
-                                break;
-                            }
-                            if tcx.type_of(def_id).subst(tcx, substs) != actual {
-                                break;
-                            }
-                            num_supplied_defaults += 1;
+                    let substs = tcx.lift(&substs).expect("could not lift for printing");
+                    let types = substs.types().rev().skip(child_types);
+                    for ((def_id, has_default), actual) in type_params.zip(types) {
+                        if !has_default {
+                            break;
                         }
+                        if tcx.type_of(def_id).subst(tcx, substs) != actual {
+                            break;
+                        }
+                        num_supplied_defaults += 1;
                     }
                 }
             }
@@ -527,15 +526,13 @@ impl PrintContext {
         Ok(())
     }
 
-    // FIXME(eddyb) replace `'almost_tcx` with `'tcx` when possible/needed.
-    fn in_binder<'a, 'gcx, 'tcx, 'almost_tcx, T, U, F>(
+    fn in_binder<'a, 'gcx, 'tcx, T, F>(
         &mut self,
         f: &mut F,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        original: &ty::Binder<T>,
-        lifted: Option<ty::Binder<U>>,
+        value: ty::Binder<T>,
     ) -> fmt::Result
-        where T: Print<'almost_tcx>, U: Print<'tcx> + TypeFoldable<'tcx>, F: fmt::Write
+        where T: Print<'tcx> + TypeFoldable<'tcx>, F: fmt::Write
     {
         fn name_by_region_index(index: usize) -> InternedString {
             match index {
@@ -550,12 +547,6 @@ impl PrintContext {
         // clearly differentiate between named and unnamed regions in
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
-        let value = if let Some(v) = lifted {
-            v
-        } else {
-            return original.skip_binder().print_display(f, self);
-        };
-
         if self.binder_depth == 0 {
             self.prepare_late_bound_region_info(&value);
         }
@@ -1101,7 +1092,8 @@ impl fmt::Debug for ty::FloatVarValue {
           for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
+        ty::tls::with(|tcx| in_binder(f, tcx, tcx.lift(self)
+            .expect("could not lift for printing")))
     }
 }*/
 
@@ -1118,7 +1110,8 @@ define_print_multi! {
     ]
     (self, f, cx) {
         display {
-            ty::tls::with(|tcx| cx.in_binder(f, tcx, self, tcx.lift(self)))
+            ty::tls::with(|tcx| cx.in_binder(f, tcx, tcx.lift(self)
+                .expect("could not lift for printing")))
         }
     }
 }
@@ -1186,10 +1179,9 @@ define_print! {
                 }
                 FnDef(def_id, substs) => {
                     ty::tls::with(|tcx| {
-                        let mut sig = tcx.fn_sig(def_id);
-                        if let Some(substs) = tcx.lift(&substs) {
-                            sig = sig.subst(tcx, substs);
-                        }
+                        let substs = tcx.lift(&substs)
+                            .expect("could not lift for printing");
+                        let sig = tcx.fn_sig(def_id).subst(tcx, substs);
                         print!(f, cx, print(sig), write(" {{"))
                     })?;
                     cx.parameterized(f, substs, def_id, &[])?;
@@ -1260,11 +1252,9 @@ define_print! {
                         }
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                         // by looking up the projections associated with the def_id.
-                        let predicates_of = tcx.predicates_of(def_id);
-                        let substs = tcx.lift(&substs).unwrap_or_else(|| {
-                            tcx.intern_substs(&[])
-                        });
-                        let bounds = predicates_of.instantiate(tcx, substs);
+                        let substs = tcx.lift(&substs)
+                            .expect("could not lift for printing");
+                        let bounds = tcx.predicates_of(def_id).instantiate(tcx, substs);
 
                         let mut first = true;
                         let mut is_sized = false;
@@ -1331,7 +1321,8 @@ define_print! {
                     print!(f, cx, write(" "), print(witness), write("]"))
                 }),
                 GeneratorWitness(types) => {
-                    ty::tls::with(|tcx| cx.in_binder(f, tcx, &types, tcx.lift(&types)))
+                    ty::tls::with(|tcx| cx.in_binder(f, tcx, tcx.lift(&types)
+                        .expect("could not lift for printing")))
                 }
                 Closure(did, substs) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
