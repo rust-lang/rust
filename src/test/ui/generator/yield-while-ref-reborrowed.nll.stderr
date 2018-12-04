@@ -7,7 +7,7 @@ LL |         let a = &mut *x;
    |                       - first borrow occurs due to use of `x` in generator
 ...
 LL |     println!("{}", x); //~ ERROR
-   |                    ^ borrow occurs here
+   |                    ^ second borrow occurs here
 LL |     b.resume();
    |     - first borrow later used here
 
