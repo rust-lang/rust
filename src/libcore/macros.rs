@@ -238,6 +238,10 @@ macro_rules! debug_assert_ne {
 /// with converting downstream errors.
 ///
 /// The `?` operator was added to replace `try!` and should be used instead.
+/// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
+/// it, you will need to use the [raw-identifier syntax][ris]: `r#try`.
+///
+/// [ris]: https://doc.rust-lang.org/nightly/rust-by-example/compatibility/raw_identifiers.html
 ///
 /// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
 /// expression has the value of the wrapped value.
