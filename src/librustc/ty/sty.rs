@@ -572,7 +572,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
         match self[0] {
             ExistentialPredicate::Trait(tr) => Some(tr),
-            other => bug!("first predicate is {:?}", other),
+            _ => None
         }
     }
 
