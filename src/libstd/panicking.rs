@@ -22,7 +22,7 @@ use core::panic::BoxMeUp;
 use io::prelude::*;
 
 use any::Any;
-use cell::{Cell, RefCell};
+use cell::RefCell;
 use core::panic::{PanicInfo, Location};
 use fmt;
 use intrinsics;
@@ -233,6 +233,8 @@ fn default_hook(info: &PanicInfo) {
 #[doc(hidden)]
 #[unstable(feature = "update_panic_count", issue = "0")]
 pub fn update_panic_count(amt: isize) -> usize {
+    use cell::Cell;
+
     fn with_panic_count<R>(f: impl FnOnce(&Cell<usize>) -> R) -> R {
         // Use `static mut` on wasm32 if there are no atomics.
         #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
