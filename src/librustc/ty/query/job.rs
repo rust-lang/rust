@@ -84,6 +84,10 @@ impl<'tcx> QueryJob<'tcx> {
         }
     }
 
+    pub fn extract_diagnostics(&self) -> Vec<Diagnostic> {
+        mem::replace(&mut *self.diagnostics.lock(), Vec::new())
+    }
+
     /// Awaits for the query job to complete.
     ///
     /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any

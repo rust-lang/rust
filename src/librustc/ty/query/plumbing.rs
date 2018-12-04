@@ -12,10 +12,9 @@
 //! that generate the actual methods on tcx which find and execute the
 //! provider, manage the caches, and so forth.
 
-use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor};
+use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor, OpenTask};
 use errors::DiagnosticBuilder;
 use errors::Level;
-use errors::Diagnostic;
 use errors::FatalError;
 use ty::tls;
 use ty::{TyCtxt};
@@ -30,6 +29,7 @@ use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::mem;
 use std::ptr;
+use std::intrinsics::unlikely;
 use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 use syntax::source_map::DUMMY_SP;
@@ -189,36 +189,35 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// Executes a job by changing the ImplicitCtxt to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
-    pub(super) fn start<'lcx, F, R>(
+    // FIXME: Remove inline(never)
+    #[inline(never)]
+    pub(super) fn with_context<'lcx, F, R>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        task: &OpenTask,
         compute: F)
-    -> (R, Vec<Diagnostic>)
+    -> R
     where
         F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'lcx>) -> R
     {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
         // when accessing the ImplicitCtxt
-        let r = tls::with_related_context(tcx, move |current_icx| {
+        tls::with_related_context(tcx, move |current_icx| {
             // Update the ImplicitCtxt to point to our new query job
             let new_icx = tls::ImplicitCtxt {
                 tcx,
                 query: Some(self.job.clone()),
+                // FIXME: Remove `layout_depth` to avoid accessing ImplicitCtxt here
                 layout_depth: current_icx.layout_depth,
-                task: current_icx.task,
+                task,
             };
 
             // Use the ImplicitCtxt while we execute the query
             tls::enter_context(&new_icx, |_| {
                 compute(tcx)
             })
-        });
-
-        // Extract the diagnostic from the job
-        let diagnostics = mem::replace(&mut *self.job.diagnostics.lock(), Vec::new());
-
-        (r, diagnostics)
+        })
     }
 }
 
@@ -400,20 +399,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
             self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
-            let res = job.start(self, |tcx| {
-                tcx.dep_graph.with_anon_task(dep_node.kind, || {
-                    Q::compute(tcx.global_tcx(), key)
-                })
+            let res = self.dep_graph.with_anon_open_task(dep_node.kind, |open_task| {
+                job.with_context(self, open_task, |tcx | Q::compute(tcx.global_tcx(), key))
             });
 
             self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
             profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
-            let ((result, dep_node_index), diagnostics) = res;
+            let (result, dep_node_index) = res;
 
             self.dep_graph.read_index(dep_node_index);
 
             self.queries.on_disk_cache
-                .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+                .store_diagnostics_for_anon_node(dep_node_index, job.job.extract_diagnostics());
 
             job.complete(&result, dep_node_index);
 
@@ -483,19 +480,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // The diagnostics for this query have already been
             // promoted to the current session during
             // try_mark_green(), so we can ignore them here.
-            let (result, _) = job.start(self, |tcx| {
-                // The dep-graph for this computation is already in
-                // place
-                tcx.dep_graph.with_ignore(|| {
-                    Q::compute(tcx, key)
-                })
-            });
-            result
+            // The dep-graph for this computation is already in
+            // place so we pass OpenTask::Ignore.
+            job.with_context(self, &OpenTask::Ignore, |tcx| Q::compute(tcx, key))
         };
 
         // If -Zincremental-verify-ich is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
-        if self.sess.opts.debugging_opts.incremental_verify_ich {
+        if unsafe { unlikely(self.sess.opts.debugging_opts.incremental_verify_ich) } {
             use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
             use ich::Fingerprint;
 
@@ -519,7 +511,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 for {:?}", dep_node);
         }
 
-        if self.sess.opts.debugging_opts.query_dep_graph {
+        if unsafe { unlikely(self.sess.opts.debugging_opts.query_dep_graph) } {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, true);
         }
 
@@ -528,6 +520,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         Ok(result)
     }
 
+    // FIXME: Inline this so LLVM can tell what kind of DepNode we are using
+    #[inline(never)]
     fn force_query_with_job<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
@@ -551,32 +545,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             p.record_query(Q::CATEGORY);
         });
 
-        let res = job.start(self, |tcx| {
-            if dep_node.kind.is_eval_always() {
-                tcx.dep_graph.with_eval_always_task(dep_node,
-                                                    tcx,
-                                                    key,
-                                                    Q::compute)
-            } else {
-                tcx.dep_graph.with_task(dep_node,
-                                        tcx,
-                                        key,
-                                        Q::compute)
-            }
-        });
+        let res = if dep_node.kind.is_eval_always() {
+            self.dep_graph.with_eval_always_task(self, dep_node, |task| {
+                job.with_context(self, task, |tcx| Q::compute(tcx, key))
+            })
+        } else {
+            self.dep_graph.with_query_task(self, dep_node, |task| {
+                job.with_context(self, task, |tcx| Q::compute(tcx, key))
+            })
+        };
 
         self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
-        let ((result, dep_node_index), diagnostics) = res;
+        let (result, dep_node_index) = res;
 
-        if self.sess.opts.debugging_opts.query_dep_graph {
+        if unsafe { unlikely(self.sess.opts.debugging_opts.query_dep_graph) } {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
         if dep_node.kind != ::dep_graph::DepKind::Null {
             self.queries.on_disk_cache
-                .store_diagnostics(dep_node_index, diagnostics);
+                .store_diagnostics(dep_node_index, job.job.extract_diagnostics());
         }
 
         job.complete(&result, dep_node_index);
@@ -853,7 +843,8 @@ macro_rules! define_queries_inner {
                 DepNode::new_inlined(tcx, $node(*key))
             }
 
-            #[inline]
+            // FIXME: Change back to inline
+            #[inline(never)]
             fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
                     let provider = tcx.queries.providers.get(key.query_crate())
