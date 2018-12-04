@@ -1161,8 +1161,8 @@ fn collect_miri<'a, 'tcx>(
     alloc_id: AllocId,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    let alloc_type = tcx.alloc_map.lock().get(alloc_id);
-    match alloc_type {
+    let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
+    match alloc_kind {
         Some(AllocKind::Static(did)) => {
             let instance = Instance::mono(tcx, did);
             if should_monomorphize_locally(tcx, &instance) {

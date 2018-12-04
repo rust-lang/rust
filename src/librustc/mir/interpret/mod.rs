@@ -103,9 +103,9 @@ pub fn specialized_encode_alloc_id<
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    let alloc_type: AllocKind<'tcx> =
+    let alloc_kind: AllocKind<'tcx> =
         tcx.alloc_map.lock().get(alloc_id).expect("no value for AllocId");
-    match alloc_type {
+    match alloc_kind {
         AllocKind::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocDiscriminant::Alloc.encode(encoder)?;
@@ -339,14 +339,14 @@ impl<'tcx> AllocMap<'tcx> {
         next
     }
 
-    fn intern(&mut self, alloc_type: AllocKind<'tcx>) -> AllocId {
-        if let Some(&alloc_id) = self.type_interner.get(&alloc_type) {
+    fn intern(&mut self, alloc_kind: AllocKind<'tcx>) -> AllocId {
+        if let Some(&alloc_id) = self.type_interner.get(&alloc_kind) {
             return alloc_id;
         }
         let id = self.reserve();
-        debug!("creating alloc_type {:?} with id {}", alloc_type, id);
-        self.id_to_type.insert(id, alloc_type.clone());
-        self.type_interner.insert(alloc_type, id);
+        debug!("creating alloc_kind {:?} with id {}", alloc_kind, id);
+        self.id_to_type.insert(id, alloc_kind.clone());
+        self.type_interner.insert(alloc_kind, id);
         id
     }
 
