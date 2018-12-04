@@ -97,6 +97,8 @@ pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
     cache: &'a Lock<QueryCache<'tcx, Q>>,
     key: Q::Key,
     job: Lrc<QueryJob<'tcx>>,
+    // FIXME: Remove ImplicitCtxt.layout_depth to get rid of this field
+    layout_depth: usize,
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
@@ -145,6 +147,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             cache,
                             job: job.clone(),
                             key: (*key).clone(),
+                            layout_depth: icx.layout_depth,
                         };
                         entry.insert(QueryResult::Started(job));
                         TryGetJob::NotYetStarted(owner)
@@ -200,23 +203,17 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     where
         F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'lcx>) -> R
     {
-        // The TyCtxt stored in TLS has the same global interner lifetime
-        // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
-        // when accessing the ImplicitCtxt
-        tls::with_related_context(tcx, move |current_icx| {
-            // Update the ImplicitCtxt to point to our new query job
-            let new_icx = tls::ImplicitCtxt {
-                tcx,
-                query: Some(self.job.clone()),
-                // FIXME: Remove `layout_depth` to avoid accessing ImplicitCtxt here
-                layout_depth: current_icx.layout_depth,
-                task,
-            };
+        // Update the ImplicitCtxt to point to our new query job
+        let new_icx = tls::ImplicitCtxt {
+            tcx,
+            query: Some(self.job.clone()),
+            layout_depth: self.layout_depth,
+            task,
+        };
 
-            // Use the ImplicitCtxt while we execute the query
-            tls::enter_context(&new_icx, |_| {
-                compute(tcx)
-            })
+        // Use the ImplicitCtxt while we execute the query
+        tls::enter_context(&new_icx, |_| {
+            compute(tcx)
         })
     }
 }
