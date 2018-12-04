@@ -52,6 +52,7 @@ const EXCEPTIONS: &[&str] = &[
     "cloudabi",           // BSD-2-Clause, (rls -> crossbeam-channel 0.2 -> rand 0.5)
     "ryu",                // Apache-2.0, rls/cargo/... (b/c of serde)
     "bytesize",           // Apache-2.0, cargo
+    "im-rc",              // MPL-2.0+, cargo
 ];
 
 /// Which crates to check against the whitelist?
