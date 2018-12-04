@@ -58,4 +58,5 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
         span: Span,
     );
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
+    fn set_value_name(&mut self, value: Self::Value, name: &str);
 }

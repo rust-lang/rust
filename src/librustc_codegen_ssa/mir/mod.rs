@@ -295,7 +295,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 // Temporary or return place
                 if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return place) -> place", local);
-                    let llretptr = fx.cx.get_param(llfn, 0);
+                    let llretptr = bx.get_param(0);
                     LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align.abi))
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
@@ -523,18 +523,18 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 }
                 PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {
-                    let llarg = bx.get_param(bx.llfn(), llarg_idx);
+                    let llarg = bx.get_param(llarg_idx);
                     bx.set_value_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
                         OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = bx.get_param(bx.llfn(), llarg_idx);
+                    let a = bx.get_param(llarg_idx);
                     bx.set_value_name(a, &(name.clone() + ".0"));
                     llarg_idx += 1;
 
-                    let b = bx.get_param(bx.llfn(), llarg_idx);
+                    let b = bx.get_param(llarg_idx);
                     bx.set_value_name(b, &(name + ".1"));
                     llarg_idx += 1;
 
@@ -551,16 +551,16 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
-            let llarg = bx.get_param(bx.llfn(), llarg_idx);
+            let llarg = bx.get_param(llarg_idx);
             bx.set_value_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout, arg.layout.align.abi)
         } else if arg.is_unsized_indirect() {
             // As the storage for the indirect argument lives during
             // the whole function call, we just copy the fat pointer.
-            let llarg = bx.get_param(bx.llfn(), llarg_idx);
+            let llarg = bx.get_param(llarg_idx);
             llarg_idx += 1;
-            let llextra = bx.get_param(bx.llfn(), llarg_idx);
+            let llextra = bx.get_param(llarg_idx);
             llarg_idx += 1;
             let indirect_operand = OperandValue::Pair(llarg, llextra);
 

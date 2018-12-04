@@ -501,8 +501,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
         // Params from native main() used as args for rust start function
-        let param_argc = cx.get_param(llfn, 0);
-        let param_argv = cx.get_param(llfn, 1);
+        let param_argc = bx.get_param(0);
+        let param_argv = bx.get_param(1);
         let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
         let arg_argv = param_argv;
 

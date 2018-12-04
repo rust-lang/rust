@@ -121,22 +121,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Builder::new_block(self.cx, self.llfn(), name)
     }
 
-    fn llfn(&self) -> &'ll Value {
-        unsafe {
-            llvm::LLVMGetBasicBlockParent(self.llbb())
-        }
-    }
-
     fn llbb(&self) -> &'ll BasicBlock {
         unsafe {
             llvm::LLVMGetInsertBlock(self.llbuilder)
-        }
-    }
-
-    fn set_value_name(&mut self, value: &'ll Value, name: &str) {
-        let cname = SmallCStr::new(name);
-        unsafe {
-            llvm::LLVMSetValueName(value, cname.as_ptr());
         }
     }
 
@@ -768,6 +755,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn struct_gep(&mut self, ptr: &'ll Value, idx: u64) -> &'ll Value {
+        self.count_insn("structgep");
+        assert_eq!(idx as c_uint as u64, idx);
+        unsafe {
+            llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
+        }
+    }
+
     /* Casts */
     fn trunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("trunc");
@@ -996,6 +991,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.count_insn("select");
         unsafe {
             llvm::LLVMBuildSelect(self.llbuilder, cond, then_val, else_val, noname())
+        }
+    }
+
+    #[allow(dead_code)]
+    fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        self.count_insn("vaarg");
+        unsafe {
+            llvm::LLVMBuildVAArg(self.llbuilder, list, ty, noname())
         }
     }
 
@@ -1241,13 +1244,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn struct_gep(&mut self, ptr: &'ll Value, idx: u64) -> &'ll Value {
-        self.count_insn("structgep");
-        assert_eq!(idx as c_uint as u64, idx);
-        unsafe {
-            llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
-        }
-    }
 
     fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
         self.cx
@@ -1263,7 +1259,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 impl StaticBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn get_static(&mut self, def_id: DefId) -> &'ll Value {
+fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
         self.cx().get_static(def_id)
     }
@@ -1300,6 +1296,12 @@ impl StaticBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 impl Builder<'a, 'll, 'tcx> {
+    pub fn llfn(&self) -> &'ll Value {
+        unsafe {
+            llvm::LLVMGetBasicBlockParent(self.llbb())
+        }
+    }
+
     fn count_insn(&self, category: &str) {
         if self.sess().codegen_stats() {
             self.stats.borrow_mut().n_llvm_insns += 1;
