@@ -1208,7 +1208,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         blame_span: blame_span_category.1,
                         category: blame_span_category.0,
                     });
-                    return;
+                    continue;
                 }
             }
 

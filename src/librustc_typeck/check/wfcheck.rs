@@ -355,13 +355,13 @@ fn check_item_type<'a, 'tcx>(
 ) {
     debug!("check_item_type: {:?}", item_id);
 
-    for_id(tcx, item_id, ty_span).with_fcx(|fcx, _this| {
-        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item_id));
+    for_id(tcx, item_id, ty_span).with_fcx(|fcx, gcx| {
+        let ty = gcx.type_of(gcx.hir.local_def_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
         let mut forbid_unsized = true;
         if allow_foreign_ty {
-            if let TyKind::Foreign(_) = tcx.struct_tail(item_ty).sty {
+            if let TyKind::Foreign(_) = fcx.tcx.struct_tail(item_ty).sty {
                 forbid_unsized = false;
             }
         }
