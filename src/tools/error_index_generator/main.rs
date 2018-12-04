@@ -13,7 +13,7 @@
 extern crate env_logger;
 extern crate syntax;
 extern crate rustdoc;
-extern crate serialize as rustc_serialize;
+extern crate serde_json;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -27,7 +27,6 @@ use std::cell::RefCell;
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
 use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, PLAYGROUND};
-use rustc_serialize::json;
 
 enum OutputFormat {
     HTML(HTMLFormatter),
@@ -213,7 +212,7 @@ fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<dyn Erro
         let mut metadata_str = String::new();
         File::open(&path).and_then(|mut f| f.read_to_string(&mut metadata_str))?;
 
-        let some_errors: ErrorMetadataMap = json::decode(&metadata_str)?;
+        let some_errors: ErrorMetadataMap = serde_json::from_str(&metadata_str)?;
 
         for (err_code, info) in some_errors {
             all_errors.insert(err_code, info);
