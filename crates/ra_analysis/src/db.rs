@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use salsa::{self, Database};
 use ra_db::{LocationIntener, BaseDatabase};
-use hir::{self, DefId, DefLoc, FnId, SourceItemId};
+use hir::{self, DefId, DefLoc};
 
 use crate::{
     symbol_index,
@@ -15,7 +15,6 @@ pub(crate) struct RootDatabase {
 
 #[derive(Debug, Default)]
 struct IdMaps {
-    fns: LocationIntener<SourceItemId, FnId>,
     defs: LocationIntener<DefLoc, DefId>,
 }
 
@@ -55,12 +54,6 @@ impl BaseDatabase for RootDatabase {}
 impl AsRef<LocationIntener<DefLoc, DefId>> for RootDatabase {
     fn as_ref(&self) -> &LocationIntener<DefLoc, DefId> {
         &self.id_maps.defs
-    }
-}
-
-impl AsRef<LocationIntener<hir::SourceItemId, FnId>> for RootDatabase {
-    fn as_ref(&self) -> &LocationIntener<hir::SourceItemId, FnId> {
-        &self.id_maps.fns
     }
 }
 

@@ -163,7 +163,7 @@ fn complete_path(
     };
     let target_module = match def_id.resolve(db)? {
         Def::Module(it) => it,
-        Def::Item => return Ok(()),
+        _ => return Ok(()),
     };
     let module_scope = target_module.scope(db)?;
     let completions = module_scope.entries().map(|(name, _res)| CompletionItem {

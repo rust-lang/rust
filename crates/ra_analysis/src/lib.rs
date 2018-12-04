@@ -248,7 +248,7 @@ impl Analysis {
         self.imp.approximately_resolve_symbol(position)
     }
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        Ok(self.imp.find_all_refs(position))
+        self.imp.find_all_refs(position)
     }
     pub fn doc_comment_for(
         &self,

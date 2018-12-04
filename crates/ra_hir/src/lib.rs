@@ -42,28 +42,13 @@ pub use self::{
 pub use self::function::FnSignatureInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FnId(u32);
-ra_db::impl_numeric_id!(FnId);
-
-impl FnId {
-    pub fn from_loc(
-        db: &impl AsRef<LocationIntener<SourceItemId, FnId>>,
-        loc: &SourceItemId,
-    ) -> FnId {
-        db.as_ref().loc2id(loc)
-    }
-    pub fn loc(self, db: &impl AsRef<LocationIntener<SourceItemId, FnId>>) -> SourceItemId {
-        db.as_ref().id2loc(self)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(u32);
 ra_db::impl_numeric_id!(DefId);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum DefKind {
     Module,
+    Function,
     Item,
 }
 
@@ -89,6 +74,7 @@ impl DefLoc {
 
 pub enum Def {
     Module(Module),
+    Function(Function),
     Item,
 }
 
@@ -100,7 +86,7 @@ impl DefId {
                 let descr = Module::new(db, loc.source_root_id, loc.module_id)?;
                 Def::Module(descr)
             }
-            DefKind::Item => Def::Item,
+            DefKind::Item | DefKind::Function => Def::Item,
         };
         Ok(res)
     }

@@ -7,10 +7,11 @@ use ra_syntax::{
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, FileId, Cancelable};
 
 use crate::{
-    DefLoc, DefId, FnId,
+    DefLoc, DefId,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
+    function::FnId,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
 };
@@ -19,7 +20,6 @@ salsa::query_group! {
 
 pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
-    + AsRef<LocationIntener<SourceItemId, FnId>>
 {
     fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
         type FnScopesQuery;

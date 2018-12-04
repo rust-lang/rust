@@ -11,21 +11,21 @@ use ra_syntax::{
 use ra_db::{SourceRootId, FileId, Cancelable,};
 
 use crate::{
-        FnId,
-        SourceFileItems, SourceItemId,
-        db::HirDatabase,
-        function::FnScopes,
-        module::{
-            ModuleSource, ModuleSourceNode, ModuleId,
-            imp::Submodule,
-            nameres::{InputModuleItems, ItemMap, Resolver},
-        },
+    SourceFileItems, SourceItemId, DefKind,
+    db::HirDatabase,
+    function::{FnScopes, FnId},
+    module::{
+        ModuleSource, ModuleSourceNode, ModuleId,
+        imp::Submodule,
+        nameres::{InputModuleItems, ItemMap, Resolver},
+    },
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`
 pub(super) fn fn_syntax(db: &impl HirDatabase, fn_id: FnId) -> FnDefNode {
-    let item_id = fn_id.loc(db);
-    let syntax = db.file_item(item_id);
+    let def_loc = fn_id.0.loc(db);
+    assert!(def_loc.kind == DefKind::Function);
+    let syntax = db.file_item(def_loc.source_item_id);
     FnDef::cast(syntax.borrowed()).unwrap().owned()
 }
 

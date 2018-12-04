@@ -8,7 +8,7 @@ use ra_editor::find_node_at_offset;
 use ra_syntax::{
     algo::generate,
     ast::{self, AstNode, NameOwner},
-    SmolStr, SyntaxNode,
+    SmolStr, SyntaxNode, SyntaxNodeRef,
 };
 use ra_db::{SourceRootId, FileId, FilePosition, Cancelable};
 use relative_path::RelativePathBuf;
@@ -25,8 +25,8 @@ pub use self::nameres::ModuleScope;
 #[derive(Debug, Clone)]
 pub struct Module {
     tree: Arc<ModuleTree>,
-    source_root_id: SourceRootId,
-    module_id: ModuleId,
+    pub(crate) source_root_id: SourceRootId,
+    pub(crate) module_id: ModuleId,
 }
 
 impl Module {
@@ -53,6 +53,23 @@ impl Module {
         {
             Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
             _ => ModuleSource::new_file(db, position.file_id),
+        };
+        Module::guess_from_source(db, module_source)
+    }
+
+    pub fn guess_from_child_node(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        node: SyntaxNodeRef,
+    ) -> Cancelable<Option<Module>> {
+        let module_source = if let Some(m) = node
+            .ancestors()
+            .filter_map(ast::Module::cast)
+            .find(|it| !it.has_semi())
+        {
+            ModuleSource::new_inline(db, file_id, m)
+        } else {
+            ModuleSource::new_file(db, file_id)
         };
         Module::guess_from_source(db, module_source)
     }
