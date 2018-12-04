@@ -229,10 +229,11 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "__llvm_profile_raw_version",
             "__llvm_profile_filename",
         ];
-        for sym in &PROFILER_WEAK_SYMBOLS {
+
+        symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
-            symbols.push((exported_symbol, SymbolExportLevel::C));
-        }
+            (exported_symbol, SymbolExportLevel::C)
+        }));
     }
 
     if tcx.sess.crate_types.borrow().contains(&config::CrateType::Dylib) {

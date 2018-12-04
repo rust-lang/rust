@@ -31,14 +31,12 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
         return Vec::new();
     }
 
-    let mut flags = Vec::new();
-
     debug!("preparing the RPATH!");
 
     let libs = config.used_crates.clone();
     let libs = libs.iter().filter_map(|&(_, ref l)| l.option()).collect::<Vec<_>>();
     let rpaths = get_rpaths(config, &libs);
-    flags.extend_from_slice(&rpaths_to_flags(&rpaths));
+    let mut flags = rpaths_to_flags(&rpaths);
 
     // Use DT_RUNPATH instead of DT_RPATH if available
     if config.linker_is_gnu {
@@ -49,7 +47,8 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
 }
 
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
-    let mut ret = Vec::new();
+    let mut ret = Vec::with_capacity(rpaths.len()); // the minimum needed capacity
+
     for rpath in rpaths {
         if rpath.contains(',') {
             ret.push("-Wl,-rpath".into());
