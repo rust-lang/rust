@@ -505,17 +505,18 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         match self_ty.value.value.sty {
             ty::Dynamic(ref data, ..) => {
-                let p = data.principal();
-                self.fcx.probe(|_| {
-                    let InferOk { value: self_ty, obligations: _ } =
-                        self.fcx.probe_instantiate_query_response(
-                            self.span, &self.orig_steps_var_values, self_ty)
-                        .unwrap_or_else(|_| {
-                            span_bug!(self.span, "{:?} was applicable but now isn't?", self_ty)
-                        });
-                    self.assemble_inherent_candidates_from_object(self_ty);
-                });
-                self.assemble_inherent_impl_candidates_for_type(p.def_id());
+                if let Some(p) = data.principal() {
+                    self.fcx.probe(|_| {
+                        let InferOk { value: self_ty, obligations: _ } =
+                            self.fcx.probe_instantiate_query_response(
+                                self.span, &self.orig_steps_var_values, self_ty)
+                            .unwrap_or_else(|_| {
+                                span_bug!(self.span, "{:?} was applicable but now isn't?", self_ty)
+                            });
+                        self.assemble_inherent_candidates_from_object(self_ty);
+                    });
+                    self.assemble_inherent_impl_candidates_for_type(p.def_id());
+                }
             }
             ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
@@ -680,10 +681,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                self_ty);
 
         let principal = match self_ty.sty {
-            ty::Dynamic(ref data, ..) => data.principal(),
-            _ => span_bug!(self.span, "non-object {:?} in assemble_inherent_candidates_from_object",
-                           self_ty)
-        };
+            ty::Dynamic(ref data, ..) => Some(data),
+            _ => None
+        }.and_then(|data| data.principal()).unwrap_or_else(|| {
+            span_bug!(self.span, "non-object {:?} in assemble_inherent_candidates_from_object",
+                      self_ty)
+        });
 
         // It is illegal to invoke a method on a trait instance that
         // refers to the `Self` type. An error will be reported by

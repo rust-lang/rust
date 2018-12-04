@@ -2016,7 +2016,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         return;
                     }
 
-                    data.principal().with_self_ty(self.tcx(), self_ty)
+                    if let Some(principal) = data.principal() {
+                        principal.with_self_ty(self.tcx(), self_ty)
+                    } else {
+                        // Only auto-trait bounds exist.
+                        return;
+                    }
                 }
                 ty::Infer(ty::TyVar(_)) => {
                     debug!("assemble_candidates_from_object_ty: ambiguous");
@@ -2108,7 +2113,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 //
                 // We always upcast when we can because of reason
                 // #2 (region bounds).
-                data_a.principal().def_id() == data_b.principal().def_id()
+                data_a.principal_def_id() == data_b.principal_def_id()
                     && data_b.auto_traits()
                     // All of a's auto traits need to be in b's auto traits.
                     .all(|b| data_a.auto_traits().any(|a| a == b))
@@ -2919,7 +2924,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let self_ty = self.infcx
             .shallow_resolve(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
-            ty::Dynamic(ref data, ..) => data.principal().with_self_ty(self.tcx(), self_ty),
+            ty::Dynamic(ref data, ..) =>
+                data.principal().unwrap_or_else(|| {
+                    span_bug!(obligation.cause.span, "object candidate with no principal")
+                }).with_self_ty(self.tcx(), self_ty),
             _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
         };
 
@@ -3222,8 +3230,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See assemble_candidates_for_unsizing for more info.
                 let existential_predicates = data_a.map_bound(|data_a| {
-                    let iter = iter::once(ty::ExistentialPredicate::Trait(data_a.principal()))
-                        .chain(
+                    let iter =
+                        data_a.principal().map(|x| ty::ExistentialPredicate::Trait(x))
+                        .into_iter().chain(
                             data_a
                                 .projection_bounds()
                                 .map(|x| ty::ExistentialPredicate::Projection(x)),
@@ -3260,7 +3269,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // T -> Trait.
             (_, &ty::Dynamic(ref data, r)) => {
                 let mut object_dids = data.auto_traits()
-                    .chain(iter::once(data.principal().def_id()));
+                    .chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }

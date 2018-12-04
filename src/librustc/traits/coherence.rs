@@ -485,7 +485,13 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
         ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
         ty::Foreign(did) => def_id_is_local(did, in_crate),
 
-        ty::Dynamic(ref tt, ..) => def_id_is_local(tt.principal().def_id(), in_crate),
+        ty::Dynamic(ref tt, ..) => {
+            if let Some(principal) = tt.principal() {
+                def_id_is_local(principal.def_id(), in_crate)
+            } else {
+                false
+            }
+        }
 
         ty::Error => true,
 
