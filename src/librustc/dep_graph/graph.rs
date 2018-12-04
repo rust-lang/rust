@@ -1089,6 +1089,8 @@ impl CurrentDepGraph {
                 OpenTask::Regular(ref task) => {
                     let mut task = task.lock();
                     self.total_read_count += 1;
+                    // FIXME: Only use the set of the SmallVec moved to the heap
+                    // Use an array and switch to the set after?
                     if task.read_set.insert(source) {
                         task.reads.push(source);
 
