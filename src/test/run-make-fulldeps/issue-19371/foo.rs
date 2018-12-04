@@ -72,7 +72,8 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         driver::spawn_thread_pool(opts, |opts| {
             let (sess, cstore, codegen_backend) = basic_sess(opts);
             let control = CompileController::basic();
-            let input = Input::Str { name: FileName::Anon, input: code };
+            let name = FileName::anon_source_code(&code);
+            let input = Input::Str { name, input: code };
             let _ = compile_input(
                 codegen_backend,
                 &sess,

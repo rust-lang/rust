@@ -197,8 +197,14 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
     // FIXME(#44940): if doctests ever support path remapping, then this filename
     // needs to be the result of SourceMap::span_to_unmapped_path
+
+    let path = match filename {
+        FileName::Real(path) => path.clone(),
+        _ => PathBuf::from(r"doctest.rs"),
+    };
+
     let input = config::Input::Str {
-        name: filename.to_owned(),
+        name: FileName::DocTest(path, line as isize - line_offset as isize),
         input: test,
     };
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
@@ -252,9 +258,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        let source_map = Lrc::new(SourceMap::new_doctest(
-            sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
-        ));
+        let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                         Some(source_map.clone()),
                                                         false,
@@ -401,7 +405,7 @@ pub fn make_test(s: &str,
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
-        let filename = FileName::Anon;
+        let filename = FileName::anon_source_code(s);
         let source = crates + &everything_else;
 
         // any errors in parsing should also appear when the doctest is compiled for real, so just
@@ -410,8 +414,6 @@ pub fn make_test(s: &str,
         let emitter = EmitterWriter::new(box io::sink(), None, false, false);
         let handler = Handler::with_emitter(false, false, box emitter);
         let sess = ParseSess::with_span_handler(handler, cm);
-
-        debug!("about to parse: \n{}", source);
 
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();
@@ -486,8 +488,6 @@ pub fn make_test(s: &str,
         prog.push_str(everything_else);
         prog.push_str("\n}");
     }
-
-    info!("final test program: {}", prog);
 
     (prog, line_offset)
 }

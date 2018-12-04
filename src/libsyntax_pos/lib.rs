@@ -103,6 +103,7 @@ pub enum FileName {
     CliCrateAttr(u64),
     /// Custom sources for explicit parser calls from plugins and drivers
     Custom(String),
+    DocTest(PathBuf, isize),
 }
 
 impl std::fmt::Display for FileName {
@@ -119,6 +120,7 @@ impl std::fmt::Display for FileName {
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
+            DocTest(ref path, _) => write!(fmt, "{}", path.display()),
         }
     }
 }
@@ -142,7 +144,8 @@ impl FileName {
             CfgSpec(_) |
             CliCrateAttr(_) |
             Custom(_) |
-            QuoteExpansion(_) => false,
+            QuoteExpansion(_) |
+            DocTest(_, _) => false,
         }
     }
 
@@ -156,7 +159,8 @@ impl FileName {
             CfgSpec(_) |
             CliCrateAttr(_) |
             Custom(_) |
-            QuoteExpansion(_) => false,
+            QuoteExpansion(_) |
+            DocTest(_, _) => false,
             Macros(_) => true,
         }
     }
@@ -195,6 +199,10 @@ impl FileName {
         let mut hasher = StableHasher::new();
         src.hash(&mut hasher);
         FileName::CliCrateAttr(hasher.finish())
+    }
+
+    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName{
+        FileName::DocTest(path, line)
     }
 }
 

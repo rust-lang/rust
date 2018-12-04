@@ -423,7 +423,8 @@ impl_stable_hash_for!(enum ::syntax_pos::FileName {
     ProcMacroSourceCode(s),
     CliCrateAttr(s),
     CfgSpec(s),
-    Custom(s)
+    Custom(s),
+    DocTest(pb, line),
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {

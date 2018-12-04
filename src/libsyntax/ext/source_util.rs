@@ -204,6 +204,7 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: String) -> PathBuf 
         let callsite = sp.source_callsite();
         let mut path = match cx.source_map().span_to_unmapped_path(callsite) {
             FileName::Real(path) => path,
+            FileName::DocTest(path, _) => path,
             other => panic!("cannot resolve relative path in non-file source `{}`", other),
         };
         path.pop();
