@@ -728,9 +728,6 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 }
             }
         }
-        clean::Unique(..) => {
-            panic!("should have been cleaned")
-        }
     }
 }
 

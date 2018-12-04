@@ -4824,9 +4824,6 @@ fn collect_paths_for_type(first_ty: clean::Type) -> Vec<String> {
             clean::Type::Array(ty, _) => {
                 work.push_back(*ty);
             },
-            clean::Type::Unique(ty) => {
-                work.push_back(*ty);
-            },
             clean::Type::RawPointer(_, ty) => {
                 work.push_back(*ty);
             },

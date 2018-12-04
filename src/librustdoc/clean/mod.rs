@@ -230,7 +230,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tc
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct ExternalCrate {
     pub name: String,
     pub src: FileName,
@@ -357,7 +357,7 @@ impl Clean<ExternalCrate> for CrateNum {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone)]
 pub struct Item {
     /// Stringified span
     pub source: Span,
@@ -506,7 +506,7 @@ impl Item {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub enum ItemEnum {
     ExternCrateItem(String, Option<String>),
     ImportItem(Import),
@@ -570,7 +570,7 @@ impl ItemEnum {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Module {
     pub items: Vec<Item>,
     pub is_crate: bool,
@@ -706,7 +706,7 @@ impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
 /// Included files are kept separate from inline doc comments so that proper line-number
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum DocFragment {
     // FIXME #44229 (misdreavus): sugared and raw doc comments can be brought back together once
     // hoedown is completely removed from rustdoc.
@@ -758,7 +758,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
@@ -1021,7 +1021,7 @@ impl Clean<Attributes> for [ast::Attribute] {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifier),
     Outlives(Lifetime),
@@ -1197,7 +1197,7 @@ impl<'tcx> Clean<Option<Vec<GenericBound>>> for Substs<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Lifetime(String);
 
 impl Lifetime {
@@ -1281,7 +1281,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
@@ -1394,7 +1394,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type {
@@ -1405,7 +1405,7 @@ pub enum GenericParamDefKind {
     },
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParamDef {
     pub name: String,
 
@@ -1489,7 +1489,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
 }
 
 // maybe use a Generic enum and use Vec<Generic>?
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Default, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
 pub struct Generics {
     pub params: Vec<GenericParamDef>,
     pub where_predicates: Vec<WherePredicate>,
@@ -1637,7 +1637,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Method {
     pub generics: Generics,
     pub decl: FnDecl,
@@ -1657,14 +1657,14 @@ impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) 
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct TyMethod {
     pub header: hir::FnHeader,
     pub decl: FnDecl,
     pub generics: Generics,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
@@ -1694,7 +1694,7 @@ impl Clean<Item> for doctree::Function {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
@@ -1708,7 +1708,7 @@ impl FnDecl {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Arguments {
     pub values: Vec<Argument>,
 }
@@ -1784,13 +1784,13 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Argument {
     pub type_: Type,
     pub name: String,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum SelfTy {
     SelfValue,
     SelfBorrowed(Option<Lifetime>, Mutability),
@@ -1814,7 +1814,7 @@ impl Argument {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum FunctionRetTy {
     Return(Type),
     DefaultReturn,
@@ -1838,7 +1838,7 @@ impl GetDefId for FunctionRetTy {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Trait {
     pub auto: bool,
     pub unsafety: hir::Unsafety,
@@ -2118,7 +2118,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
 }
 
 /// A trait reference, which may have higher ranked lifetimes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct PolyTrait {
     pub trait_: Type,
     pub generic_params: Vec<GenericParamDef>,
@@ -2127,7 +2127,7 @@ pub struct PolyTrait {
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
     /// structs/enums/traits (most that'd be an hir::TyKind::Path)
     ResolvedPath {
@@ -2149,7 +2149,6 @@ pub enum Type {
     Slice(Box<Type>),
     Array(Box<Type>, String),
     Never,
-    Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
         lifetime: Option<Lifetime>,
@@ -2171,7 +2170,7 @@ pub enum Type {
     ImplTrait(Vec<GenericBound>),
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
 pub enum PrimitiveType {
     Isize, I8, I16, I32, I64, I128,
     Usize, U8, U16, U32, U64, U128,
@@ -2189,7 +2188,7 @@ pub enum PrimitiveType {
     Never,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum TypeKind {
     Enum,
     Function,
@@ -2199,7 +2198,6 @@ pub enum TypeKind {
     Struct,
     Union,
     Trait,
-    Variant,
     Typedef,
     Foreign,
     Macro,
@@ -2783,7 +2781,7 @@ impl<'tcx> Clean<Item> for ty::FieldDef {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Visibility {
     Public,
     Inherited,
@@ -2812,7 +2810,7 @@ impl Clean<Option<Visibility>> for ty::Visibility {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Struct {
     pub struct_type: doctree::StructType,
     pub generics: Generics,
@@ -2820,7 +2818,7 @@ pub struct Struct {
     pub fields_stripped: bool,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Union {
     pub struct_type: doctree::StructType,
     pub generics: Generics,
@@ -2871,7 +2869,7 @@ impl Clean<Item> for doctree::Union {
 /// This is a more limited form of the standard Struct, different in that
 /// it lacks the things most items have (name, id, parameterization). Found
 /// only as a variant in an enum.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct VariantStruct {
     pub struct_type: doctree::StructType,
     pub fields: Vec<Item>,
@@ -2888,7 +2886,7 @@ impl Clean<VariantStruct> for ::rustc::hir::VariantData {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Enum {
     pub variants: IndexVec<VariantIdx, Item>,
     pub generics: Generics,
@@ -2914,7 +2912,7 @@ impl Clean<Item> for doctree::Enum {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Variant {
     pub kind: VariantKind,
 }
@@ -2977,7 +2975,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub enum VariantKind {
     CLike,
     Tuple(Vec<Type>),
@@ -2996,7 +2994,7 @@ impl Clean<VariantKind> for hir::VariantData {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Span {
     pub filename: FileName,
     pub loline: usize,
@@ -3035,7 +3033,7 @@ impl Clean<Span> for syntax_pos::Span {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Path {
     pub global: bool,
     pub def: Def,
@@ -3058,7 +3056,7 @@ impl Clean<Path> for hir::Path {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum GenericArgs {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
@@ -3104,7 +3102,7 @@ impl Clean<GenericArgs> for hir::GenericArgs {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct PathSegment {
     pub name: String,
     pub args: GenericArgs,
@@ -3129,7 +3127,6 @@ fn strip_type(ty: Type) -> Type {
         }
         Type::Slice(inner_ty) => Type::Slice(Box::new(strip_type(*inner_ty))),
         Type::Array(inner_ty, s) => Type::Array(Box::new(strip_type(*inner_ty)), s),
-        Type::Unique(inner_ty) => Type::Unique(Box::new(strip_type(*inner_ty))),
         Type::RawPointer(m, inner_ty) => Type::RawPointer(m, Box::new(strip_type(*inner_ty))),
         Type::BorrowedRef { lifetime, mutability, type_ } => {
             Type::BorrowedRef { lifetime, mutability, type_: Box::new(strip_type(*type_)) }
@@ -3193,7 +3190,7 @@ impl Clean<String> for InternedString {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Typedef {
     pub type_: Type,
     pub generics: Generics,
@@ -3217,7 +3214,7 @@ impl Clean<Item> for doctree::Typedef {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Existential {
     pub bounds: Vec<GenericBound>,
     pub generics: Generics,
@@ -3241,7 +3238,7 @@ impl Clean<Item> for doctree::Existential {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BareFunctionDecl {
     pub unsafety: hir::Unsafety,
     pub generic_params: Vec<GenericParamDef>,
@@ -3263,7 +3260,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Static {
     pub type_: Type,
     pub mutability: Mutability,
@@ -3293,7 +3290,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Constant {
     pub type_: Type,
     pub expr: String,
@@ -3317,7 +3314,7 @@ impl Clean<Item> for doctree::Constant {
     }
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Copy, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -3332,7 +3329,7 @@ impl Clean<Mutability> for hir::Mutability {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Copy, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Copy, Debug, Hash)]
 pub enum ImplPolarity {
     Positive,
     Negative,
@@ -3347,7 +3344,7 @@ impl Clean<ImplPolarity> for hir::ImplPolarity {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
@@ -3557,7 +3554,7 @@ impl Clean<Vec<Item>> for doctree::Import {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub enum Import {
     // use source as str;
     Simple(String, ImportSource),
@@ -3565,7 +3562,7 @@ pub enum Import {
     Glob(ImportSource)
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct ImportSource {
     pub path: Path,
     pub did: Option<DefId>,
@@ -3785,7 +3782,7 @@ fn resolve_use_source(cx: &DocContext, path: Path) -> ImportSource {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Macro {
     pub source: String,
     pub imported_from: Option<String>,
@@ -3814,7 +3811,7 @@ impl Clean<Item> for doctree::Macro {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct ProcMacro {
     pub kind: MacroKind,
     pub helpers: Vec<String>,
@@ -3838,7 +3835,7 @@ impl Clean<Item> for doctree::ProcMacro {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Stability {
     pub level: stability::StabilityLevel,
     pub feature: String,
@@ -3849,7 +3846,7 @@ pub struct Stability {
     pub issue: Option<u32>
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Deprecation {
     pub since: String,
     pub note: String,
@@ -3900,7 +3897,7 @@ impl Clean<Deprecation> for attr::Deprecation {
 }
 
 /// An equality constraint on an associated type, e.g. `A=Bar` in `Foo<A=Bar>`
-#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,
     pub ty: Type
