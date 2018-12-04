@@ -4249,13 +4249,30 @@ impl<'a> fmt::Display for Sidebar<'a> {
     }
 }
 
-fn get_methods(i: &clean::Impl, for_deref: bool) -> Vec<String> {
+fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
+    if used_links.insert(url.clone()) {
+        return url;
+    }
+    let mut add = 1;
+    while used_links.insert(format!("{}-{}", url, add)) == false {
+        add += 1;
+    }
+    format!("{}-{}", url, add)
+}
+
+fn get_methods(
+    i: &clean::Impl,
+    for_deref: bool,
+    used_links: &mut FxHashSet<String>,
+) -> Vec<String> {
     i.items.iter().filter_map(|item| {
         match item.name {
             // Maybe check with clean::Visibility::Public as well?
             Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
                 if !for_deref || should_render_item(item, false) {
-                    Some(format!("<a href=\"#method.{name}\">{name}</a>", name = name))
+                    Some(format!("<a href=\"#{}\">{}</a>",
+                                 get_next_url(used_links, format!("method.{}", name)),
+                                 name))
                 } else {
                     None
                 }
@@ -4285,13 +4302,20 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
     let mut out = String::new();
     let c = cache();
     if let Some(v) = c.impls.get(&it.def_id) {
-        let ret = v.iter()
-                   .filter(|i| i.inner_impl().trait_.is_none())
-                   .flat_map(|i| get_methods(i.inner_impl(), false))
-                   .collect::<String>();
-        if !ret.is_empty() {
-            out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                   </a><div class=\"sidebar-links\">{}</div>", ret));
+        let mut used_links = FxHashSet::default();
+
+        {
+            let used_links_bor = Rc::new(RefCell::new(&mut used_links));
+            let ret = v.iter()
+                       .filter(|i| i.inner_impl().trait_.is_none())
+                       .flat_map(move |i| get_methods(i.inner_impl(),
+                                                      false,
+                                                      &mut used_links_bor.borrow_mut()))
+                       .collect::<String>();
+            if !ret.is_empty() {
+                out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
+                                       </a><div class=\"sidebar-links\">{}</div>", ret));
+            }
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
@@ -4316,7 +4340,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         out.push_str("</a>");
                         let ret = impls.iter()
                                        .filter(|i| i.inner_impl().trait_.is_none())
-                                       .flat_map(|i| get_methods(i.inner_impl(), true))
+                                       .flat_map(|i| get_methods(i.inner_impl(),
+                                                                 true,
+                                                                 &mut used_links))
                                        .collect::<String>();
                         out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
                     }
@@ -4324,27 +4350,28 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
+
                 impls.iter()
-                           .filter_map(|i| {
-                               let is_negative_impl = is_negative_impl(i.inner_impl());
-                               if let Some(ref i) = i.inner_impl().trait_ {
-                                   let i_display = format!("{:#}", i);
-                                   let out = Escape(&i_display);
-                                   let encoded = small_url_encode(&format!("{:#}", i));
-                                   let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
-                                                           encoded,
-                                                           if is_negative_impl { "!" } else { "" },
-                                                           out);
-                                   if links.insert(generated.clone()) {
-                                       Some(generated)
-                                   } else {
-                                       None
-                                   }
-                               } else {
-                                   None
-                               }
-                           })
-                           .collect::<String>()
+                     .filter_map(|i| {
+                         let is_negative_impl = is_negative_impl(i.inner_impl());
+                         if let Some(ref i) = i.inner_impl().trait_ {
+                             let i_display = format!("{:#}", i);
+                             let out = Escape(&i_display);
+                             let encoded = small_url_encode(&format!("{:#}", i));
+                             let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
+                                                     encoded,
+                                                     if is_negative_impl { "!" } else { "" },
+                                                     out);
+                             if links.insert(generated.clone()) {
+                                 Some(generated)
+                             } else {
+                                 None
+                             }
+                         } else {
+                             None
+                         }
+                     })
+                     .collect::<String>()
             };
 
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) = v
