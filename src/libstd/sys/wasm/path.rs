@@ -25,5 +25,5 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix> {
     None
 }
 
-pub const MAIN_SEP_STR: &'static str = "/";
+pub const MAIN_SEP_STR: &str = "/";
 pub const MAIN_SEP: char = '/';
