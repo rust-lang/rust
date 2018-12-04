@@ -14,7 +14,7 @@ use ra_db::{SourceRootId, FileId, FilePosition, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
-    DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId,
+    DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId,
     arena::{Arena, Id},
 };
 
@@ -37,7 +37,8 @@ impl Module {
         db: &impl HirDatabase,
         file_id: FileId,
     ) -> Cancelable<Option<Module>> {
-        Module::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
+        let module_source = ModuleSource::new_file(db, file_id);
+        Module::guess_from_source(db, module_source)
     }
 
     /// Lookup `Module` by position in the source code. Note that this
@@ -51,17 +52,16 @@ impl Module {
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
             Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
-            _ => ModuleSource::SourceFile(position.file_id),
+            _ => ModuleSource::new_file(db, position.file_id),
         };
-        Module::guess_from_source(db, position.file_id, module_source)
+        Module::guess_from_source(db, module_source)
     }
 
     fn guess_from_source(
         db: &impl HirDatabase,
-        file_id: FileId,
         module_source: ModuleSource,
     ) -> Cancelable<Option<Module>> {
-        let source_root_id = db.file_source_root(file_id);
+        let source_root_id = db.file_source_root(module_source.file_id());
         let module_tree = db.module_tree(source_root_id)?;
 
         let res = match module_tree.any_module_for_source(module_source) {
@@ -209,10 +209,7 @@ impl ModuleTree {
 /// `ModuleSource` is the syntax tree element that produced this module:
 /// either a file, or an inlinde module.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ModuleSource {
-    SourceFile(FileId),
-    Module(SourceItemId),
-}
+pub struct ModuleSource(SourceItemId);
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
@@ -310,45 +307,41 @@ pub struct ModuleData {
 }
 
 impl ModuleSource {
+    // precondition: item_id **must** point to module
+    fn new(file_id: FileId, item_id: SourceFileItemId) -> ModuleSource {
+        let source_item_id = SourceItemId { file_id, item_id };
+        ModuleSource(source_item_id)
+    }
+
+    pub(crate) fn new_file(db: &impl HirDatabase, file_id: FileId) -> ModuleSource {
+        let file_items = db.file_items(file_id);
+        let item_id = file_items.id_of_source_file();
+        ModuleSource::new(file_id, item_id)
+    }
+
     pub(crate) fn new_inline(
         db: &impl HirDatabase,
         file_id: FileId,
-        module: ast::Module,
+        m: ast::Module,
     ) -> ModuleSource {
-        assert!(!module.has_semi());
-        let items = db.file_items(file_id);
-        let item_id = items.id_of(module.syntax());
-        let id = SourceItemId { file_id, item_id };
-        ModuleSource::Module(id)
-    }
-
-    pub fn as_file(self) -> Option<FileId> {
-        match self {
-            ModuleSource::SourceFile(f) => Some(f),
-            ModuleSource::Module(..) => None,
-        }
+        assert!(!m.has_semi());
+        let file_items = db.file_items(file_id);
+        let item_id = file_items.id_of(m.syntax());
+        ModuleSource::new(file_id, item_id)
     }
 
     pub fn file_id(self) -> FileId {
-        match self {
-            ModuleSource::SourceFile(f) => f,
-            ModuleSource::Module(source_item_id) => source_item_id.file_id,
-        }
+        self.0.file_id
     }
 
     pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
-        match self {
-            ModuleSource::SourceFile(file_id) => {
-                let syntax = db.source_file(file_id);
-                ModuleSourceNode::SourceFile(syntax.ast().owned())
-            }
-            ModuleSource::Module(item_id) => {
-                let syntax = db.file_item(item_id);
-                let syntax = syntax.borrowed();
-                let module = ast::Module::cast(syntax).unwrap();
-                ModuleSourceNode::Module(module.owned())
-            }
+        let syntax_node = db.file_item(self.0);
+        let syntax_node = syntax_node.borrowed();
+        if let Some(file) = ast::SourceFile::cast(syntax_node) {
+            return ModuleSourceNode::SourceFile(file.owned());
         }
+        let module = ast::Module::cast(syntax_node).unwrap();
+        ModuleSourceNode::Module(module.owned())
     }
 }
 

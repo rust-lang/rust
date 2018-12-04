@@ -190,10 +190,7 @@ impl AnalysisImpl {
             Some(it) => it,
         };
         let root = descr.crate_root();
-        let file_id = root
-            .source()
-            .as_file()
-            .expect("root module always has a file as a source");
+        let file_id = root.source().file_id();
 
         let crate_graph = self.db.crate_graph();
         let crate_id = crate_graph.crate_id_for_crate_root(file_id);

@@ -66,7 +66,7 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.iter() {
-        let source = ModuleSource::SourceFile(file_id);
+        let source = ModuleSource::new_file(db, file_id);
         if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
@@ -126,7 +126,7 @@ fn build_subtree(
                             visited,
                             roots,
                             Some(link),
-                            ModuleSource::SourceFile(file_id),
+                            ModuleSource::new_file(db, file_id),
                         ),
                     })
                     .collect::<Cancelable<Vec<_>>>()?;
@@ -157,13 +157,8 @@ fn resolve_submodule(
     name: &SmolStr,
     file_resolver: &FileResolverImp,
 ) -> (Vec<FileId>, Option<Problem>) {
-    let file_id = match source {
-        ModuleSource::SourceFile(it) => it,
-        ModuleSource::Module(..) => {
-            // TODO
-            return (Vec::new(), None);
-        }
-    };
+    // TODO: handle submodules of inline modules properly
+    let file_id = source.file_id();
     let mod_name = file_resolver.file_stem(file_id);
     let is_dir_owner = mod_name == "mod" || mod_name == "lib" || mod_name == "main";
 

@@ -131,6 +131,10 @@ impl SourceFileItems {
             .unwrap();
         id
     }
+    pub fn id_of_source_file(&self) -> SourceFileItemId {
+        let (id, _syntax) = self.arena.iter().next().unwrap();
+        id
+    }
 }
 
 impl Index<SourceFileItemId> for SourceFileItems {
