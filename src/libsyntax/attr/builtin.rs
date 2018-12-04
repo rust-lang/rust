@@ -499,8 +499,8 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             gated_cfg.check_and_emit(sess, feats);
         }
         let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
-        if cfg.ident.segments.len() != 1 {
-            return error(cfg.ident.span, "`cfg` predicate key must be an identifier");
+        if cfg.path.segments.len() != 1 {
+            return error(cfg.path.span, "`cfg` predicate key must be an identifier");
         }
         match &cfg.node {
             MetaItemKind::List(..) => {
