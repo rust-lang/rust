@@ -19,7 +19,6 @@ use errors::{Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use ptr::P;
-use str::char_at;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
@@ -436,9 +435,7 @@ fn raw_str_lit(lit: &str) -> String {
 
 // check if `s` looks like i32 or u1234 etc.
 fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-    s.len() > 1 &&
-        first_chars.contains(&char_at(s, 0)) &&
-        s[1..].chars().all(|c| '0' <= c && c <= '9')
+    s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
 }
 
 macro_rules! err {
@@ -645,11 +642,11 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     let orig = s;
     let mut ty = ast::LitIntType::Unsuffixed;
 
-    if char_at(s, 0) == '0' && s.len() > 1 {
-        match char_at(s, 1) {
-            'x' => base = 16,
-            'o' => base = 8,
-            'b' => base = 2,
+    if s.starts_with('0') && s.len() > 1 {
+        match s.as_bytes()[1] {
+            b'x' => base = 16,
+            b'o' => base = 8,
+            b'b' => base = 2,
             _ => { }
         }
     }

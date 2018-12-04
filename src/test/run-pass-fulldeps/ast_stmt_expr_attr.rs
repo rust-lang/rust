@@ -25,7 +25,6 @@ use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::str::char_at;
 use syntax::parse::attr::*;
 use syntax::print::pprust;
 use std::fmt;

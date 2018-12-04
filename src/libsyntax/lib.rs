@@ -173,7 +173,6 @@ pub mod parse;
 pub mod ptr;
 pub mod show_span;
 pub mod std_inject;
-pub mod str;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod test;
