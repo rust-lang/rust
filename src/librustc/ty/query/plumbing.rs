@@ -246,7 +246,7 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     JobCompleted(Result<(D::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
     #[inline(never)]
     #[cold]
     pub(super) fn report_cycle(
@@ -337,7 +337,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if !self.dep_graph.is_fully_enabled() {
                     return None;
                 }
-                match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
+                match self.dep_graph.try_mark_green(self, &dep_node) {
                     Some(dep_node_index) => {
                         debug_assert!(self.dep_graph.is_green(&dep_node));
                         self.dep_graph.read_index(dep_node_index);
@@ -909,7 +909,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
-                self.tcx.get_query::<queries::$name<'_>>(self.span, key)
+                self.tcx.global_tcx().get_query::<queries::$name<'_>>(self.span, key)
             })*
         }
 
