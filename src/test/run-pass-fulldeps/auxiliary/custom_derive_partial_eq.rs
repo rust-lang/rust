@@ -34,7 +34,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                   MultiDecorator(Box::new(expand_deriving_partial_eq)));
 }
 
-fn expand_deriving_partial_eq(cx: &mut ExtCtxt, span: Span, mitem: &MetaItem, item: &Annotatable,
+fn expand_deriving_partial_eq(cx: &mut ExtCtxt, span: Span, item: &Annotatable,
                               push: &mut FnMut(Annotatable)) {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different

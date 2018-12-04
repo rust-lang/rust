@@ -15,7 +15,7 @@ use deriving::generic::ty::*;
 use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast::{self, Ident};
-use syntax::ast::{Expr, MetaItem};
+use syntax::ast::Expr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -23,7 +23,6 @@ use syntax_pos::{DUMMY_SP, Span};
 
 pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                              span: Span,
-                             mitem: &MetaItem,
                              item: &Annotatable,
                              push: &mut dyn FnMut(Annotatable)) {
     // &mut ::std::fmt::Formatter
@@ -53,7 +52,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                       }],
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 /// We use the debug builders to do the heavy lifting here

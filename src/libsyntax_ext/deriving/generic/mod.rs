@@ -397,15 +397,13 @@ fn find_type_parameters(ty: &ast::Ty,
 impl<'a> TraitDef<'a> {
     pub fn expand(self,
                   cx: &mut ExtCtxt,
-                  mitem: &ast::MetaItem,
                   item: &'a Annotatable,
                   push: &mut dyn FnMut(Annotatable)) {
-        self.expand_ext(cx, mitem, item, push, false);
+        self.expand_ext(cx, item, push, false);
     }
 
     pub fn expand_ext(self,
                       cx: &mut ExtCtxt,
-                      mitem: &ast::MetaItem,
                       item: &'a Annotatable,
                       push: &mut dyn FnMut(Annotatable),
                       from_scratch: bool) {
@@ -461,7 +459,7 @@ impl<'a> TraitDef<'a> {
                                                    generics, from_scratch,
                                                    use_temporaries)
                         } else {
-                            cx.span_err(mitem.span,
+                            cx.span_err(self.span,
                                         "this trait cannot be derived for unions");
                             return;
                         }

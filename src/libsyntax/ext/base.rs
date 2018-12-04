@@ -10,7 +10,7 @@
 
 pub use self::SyntaxExtension::*;
 
-use ast::{self, Attribute, Name, PatKind, MetaItem};
+use ast::{self, Attribute, Name, PatKind};
 use attr::HasAttrs;
 use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
@@ -571,7 +571,7 @@ impl MacResult for DummyResult {
 }
 
 pub type BuiltinDeriveFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable));
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &Annotatable, &mut dyn FnMut(Annotatable));
 
 /// Represents different kinds of macro invocations that can be resolved.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

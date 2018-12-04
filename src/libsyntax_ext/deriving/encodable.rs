@@ -97,7 +97,7 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 use deriving::warn_if_deprecated;
 
-use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
+use syntax::ast::{Expr, ExprKind, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -106,24 +106,21 @@ use syntax_pos::Span;
 
 pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
                                        span: Span,
-                                       mitem: &MetaItem,
                                        item: &Annotatable,
                                        push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
+    expand_deriving_encodable_imp(cx, span, item, push, "rustc_serialize")
 }
 
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
-                                 mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut dyn FnMut(Annotatable)) {
     warn_if_deprecated(cx, span, "Encodable");
-    expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
+    expand_deriving_encodable_imp(cx, span, item, push, "serialize")
 }
 
 fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
-                                 mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut dyn FnMut(Annotatable),
                                  krate: &'static str) {
@@ -169,7 +166,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt,

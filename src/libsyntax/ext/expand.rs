@@ -912,12 +912,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let pretty_name = Symbol::intern(&format!("derive({})", path));
         let span = path.span;
-        let attr = ast::Attribute {
-            path, span,
-            tokens: TokenStream::empty(),
-            // irrelevant:
-            id: ast::AttrId(0), style: ast::AttrStyle::Outer, is_sugared_doc: false,
-        };
 
         let mut expn_info = ExpnInfo {
             call_site: span,
@@ -946,11 +940,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let mut items = Vec::new();
-                func(self.cx, span, &attr.meta()?, &item, &mut |a| items.push(a));
+                func(self.cx, span, &item, &mut |a| items.push(a));
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             _ => {
-                let msg = &format!("macro `{}` may not be used for derive attributes", attr.path);
+                let msg = &format!("macro `{}` may not be used for derive attributes", path);
                 self.cx.span_err(span, msg);
                 self.cx.trace_macros_diag();
                 invoc.fragment_kind.dummy(span)

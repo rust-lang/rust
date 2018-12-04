@@ -12,7 +12,7 @@ use deriving::{path_local, path_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{BinOpKind, Expr, MetaItem};
+use syntax::ast::{BinOpKind, Expr};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -21,7 +21,6 @@ use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
-                                  mitem: &MetaItem,
                                   item: &Annotatable,
                                   push: &mut dyn FnMut(Annotatable)) {
     // structures are equal if all fields are equal, and non equal, if
@@ -109,5 +108,5 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         methods,
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }

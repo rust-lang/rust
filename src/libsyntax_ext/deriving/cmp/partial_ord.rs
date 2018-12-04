@@ -14,7 +14,7 @@ use deriving::{path_local, pathvec_std, path_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{self, BinOpKind, Expr, MetaItem};
+use syntax::ast::{self, BinOpKind, Expr};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -23,7 +23,6 @@ use syntax_pos::Span;
 
 pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                                    span: Span,
-                                   mitem: &MetaItem,
                                    item: &Annotatable,
                                    push: &mut dyn FnMut(Annotatable)) {
     macro_rules! md {
@@ -93,7 +92,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         methods,
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 #[derive(Copy, Clone)]

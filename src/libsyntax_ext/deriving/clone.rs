@@ -12,7 +12,7 @@ use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{self, Expr, Generics, ItemKind, MetaItem, VariantData};
+use syntax::ast::{self, Expr, Generics, ItemKind, VariantData};
 use syntax::ast::GenericArg;
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -23,7 +23,6 @@ use syntax_pos::Span;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
-                             mitem: &MetaItem,
                              item: &Annotatable,
                              push: &mut dyn FnMut(Annotatable)) {
     // check if we can use a short form
@@ -111,7 +110,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand_ext(cx, mitem, item, push, is_shallow)
+    trait_def.expand_ext(cx, item, push, is_shallow)
 }
 
 fn cs_clone_shallow(name: &str,

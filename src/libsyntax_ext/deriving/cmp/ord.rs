@@ -12,7 +12,7 @@ use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{self, Expr, MetaItem};
+use syntax::ast::{self, Expr};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -21,7 +21,6 @@ use syntax_pos::Span;
 
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
-                           mitem: &MetaItem,
                            item: &Annotatable,
                            push: &mut dyn FnMut(Annotatable)) {
     let inline = cx.meta_word(span, Symbol::intern("inline"));
@@ -50,7 +49,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 

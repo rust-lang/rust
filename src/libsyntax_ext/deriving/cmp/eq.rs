@@ -12,7 +12,7 @@ use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{self, Expr, MetaItem, GenericArg};
+use syntax::ast::{self, Expr, GenericArg};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -21,7 +21,6 @@ use syntax_pos::Span;
 
 pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           span: Span,
-                          mitem: &MetaItem,
                           item: &Annotatable,
                           push: &mut dyn FnMut(Annotatable)) {
     let inline = cx.meta_word(span, Symbol::intern("inline"));
@@ -51,7 +50,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                       }],
         associated_types: Vec::new(),
     };
-    trait_def.expand_ext(cx, mitem, item, push, true)
+    trait_def.expand_ext(cx, item, push, true)
 }
 
 fn cs_total_eq_assert(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
