@@ -1926,6 +1926,7 @@ pub mod tls {
     /// to `value` during the call to `f`. It is restored to its previous value after.
     /// This is used to set the pointer to the new ImplicitCtxt.
     #[cfg(parallel_queries)]
+    #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         rayon_core::tlv::with(value, f)
     }
@@ -1933,6 +1934,7 @@ pub mod tls {
     /// Gets Rayon's thread local variable which is preserved for Rayon jobs.
     /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(parallel_queries)]
+    #[inline]
     fn get_tlv() -> usize {
         rayon_core::tlv::get()
     }
@@ -1945,6 +1947,7 @@ pub mod tls {
     /// It is restored to its previous value after.
     /// This is used to set the pointer to the new ImplicitCtxt.
     #[cfg(not(parallel_queries))]
+    #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
         let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
