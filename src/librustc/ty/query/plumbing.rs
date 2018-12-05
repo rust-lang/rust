@@ -30,7 +30,6 @@ use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::by_move::{Move, MoveSlot};
 use std::mem;
 use std::ptr;
-use std::intrinsics::unlikely;
 use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 use syntax::source_map::DUMMY_SP;
@@ -220,7 +219,8 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
-    #[inline]
+    #[inline(never)]
+    #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic
         self.cache.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
@@ -486,37 +486,48 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
 
         // If -Zincremental-verify-ich is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
-        if unsafe { unlikely(self.sess.opts.debugging_opts.incremental_verify_ich) } {
-            use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
-            use ich::Fingerprint;
-
-            assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
-                    self.dep_graph.prev_fingerprint_of(dep_node),
-                    "Fingerprint for green query instance not loaded \
-                     from cache: {:?}", dep_node);
-
-            debug!("BEGIN verify_ich({:?})", dep_node);
-            let mut hcx = self.create_stable_hashing_context();
-            let mut hasher = StableHasher::new();
-
-            result.hash_stable(&mut hcx, &mut hasher);
-
-            let new_hash: Fingerprint = hasher.finish();
-            debug!("END verify_ich({:?})", dep_node);
-
-            let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
-
-            assert!(new_hash == old_hash, "Found unstable fingerprints \
-                for {:?}", dep_node);
+        if unlikely!(self.sess.opts.debugging_opts.incremental_verify_ich) {
+            self.incremental_verify_ich::<Q>(&result, dep_node, dep_node_index);
         }
 
-        if unsafe { unlikely(self.sess.opts.debugging_opts.query_dep_graph) } {
+        if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, true);
         }
 
         job.complete(&result, dep_node_index);
 
         Ok(result)
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn incremental_verify_ich<Q: QueryDescription<'gcx>>(
+        self,
+        result: &Q::Value,
+        dep_node: &DepNode,
+        dep_node_index: DepNodeIndex,
+    ) {
+        use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+        use ich::Fingerprint;
+
+        assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
+                self.dep_graph.prev_fingerprint_of(dep_node),
+                "Fingerprint for green query instance not loaded \
+                    from cache: {:?}", dep_node);
+
+        debug!("BEGIN verify_ich({:?})", dep_node);
+        let mut hcx = self.create_stable_hashing_context();
+        let mut hasher = StableHasher::new();
+
+        result.hash_stable(&mut hcx, &mut hasher);
+
+        let new_hash: Fingerprint = hasher.finish();
+        debug!("END verify_ich({:?})", dep_node);
+
+        let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
+
+        assert!(new_hash == old_hash, "Found unstable fingerprints \
+            for {:?}", dep_node);
     }
 
     // Inlined so LLVM can tell what kind of DepNode we are using
@@ -544,7 +555,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             p.record_query(Q::CATEGORY);
         });
 
-        let res = if dep_node.kind.is_eval_always() {
+        let (result, dep_node_index) = if dep_node.kind.is_eval_always() {
             self.dep_graph.with_eval_always_task(self, dep_node, |task| {
                 job.compute(self, task, key)
             })
@@ -557,9 +568,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
         self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
-        let (result, dep_node_index) = res;
-
-        if unsafe { unlikely(self.sess.opts.debugging_opts.query_dep_graph) } {
+        if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
