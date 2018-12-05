@@ -262,6 +262,7 @@ impl DepGraph {
     }
 
     // FIXME: Merge with with_task?
+    #[inline]
     pub fn with_query_task<'a, F, R>(
         &self,
         tcx: TyCtxt<'a, '_, '_>,
@@ -1142,7 +1143,7 @@ impl CurrentDepGraphAtomic {
                 OpenTask::Anon(ref task) => {
                     let mut task = task.lock();
                     if task.read_set.insert(source) {
-                        task.reads.push(source);
+                        task.reads.push_light(source);
                     }
                 }
                 OpenTask::Ignore | OpenTask::EvalAlways { .. } => {
@@ -1163,6 +1164,12 @@ pub struct RegularOpenTask {
 #[no_mangle]
 pub fn test1(a: &mut SmallVec<[DepNodeIndex; 8]>) {
     a.push(DepNodeIndex::new(8));
+}
+
+// FIXME: Remove
+#[no_mangle]
+pub fn test3(a: &mut SmallVec<[DepNodeIndex; 8]>) {
+    a.push_light(DepNodeIndex::new(8));
 }
 
 #[no_mangle]

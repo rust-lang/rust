@@ -172,6 +172,7 @@ pub struct Decoder<'a> {
 }
 
 impl<'a> Decoder<'a> {
+    #[inline]
     pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
         Decoder {
             data,
