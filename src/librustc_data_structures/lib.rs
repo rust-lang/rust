@@ -21,6 +21,7 @@
 #![feature(hash_raw_entry)]
 #![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
+#![feature(integer_atomics)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
