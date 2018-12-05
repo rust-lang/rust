@@ -2543,7 +2543,6 @@ mod test_map {
     use super::HashMap;
     use rand::{thread_rng, Rng};
     use std::cell::RefCell;
-    use std::mem::size_of;
     use std::usize;
     use std::vec::Vec;
     use CollectionAllocErr::*;
@@ -3406,30 +3405,14 @@ mod test_map {
 
         const MAX_USIZE: usize = usize::MAX;
 
-        // HashMap and RawTables use complicated size calculations
-        // hashes_size is sizeof(u8) * capacity;
-        // pairs_size is sizeof((K. V)) * capacity;
-        // alignment_hashes_size is 8
-        // alignment_pairs size is 4
-        let size_of_multiplier = (size_of::<u8>() + size_of::<(u8, u8)>()).next_power_of_two();
-        // The following formula is used to calculate the new capacity
-        let max_no_ovf = ((MAX_USIZE / 8) * 7) / size_of_multiplier - 1;
-
         if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE) {
         } else {
             panic!("usize::MAX should trigger an overflow!");
         }
 
-        if size_of::<usize>() < 8 {
-            if let Err(CapacityOverflow) = empty_bytes.try_reserve(max_no_ovf) {
-            } else {
-                panic!("isize::MAX + 1 should trigger a CapacityOverflow!")
-            }
+        if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE / 8) {
         } else {
-            if let Err(AllocErr) = empty_bytes.try_reserve(max_no_ovf) {
-            } else {
-                panic!("isize::MAX + 1 should trigger an OOM!")
-            }
+            panic!("usize::MAX / 8 should trigger an OOM!")
         }
     }
 
