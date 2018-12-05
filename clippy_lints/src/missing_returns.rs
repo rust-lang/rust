@@ -39,9 +39,9 @@ declare_clippy_lint! {
     "use a return statement like `return expr` instead of an expression"
 }
 
-pub struct MissingReturnsPass;
+pub struct Pass;
 
-impl MissingReturnsPass {
+impl Pass {
     fn show_suggestion(cx: &LateContext<'_, '_>, span: syntax_pos::Span) {
         span_lint_and_then(cx, MISSING_RETURNS, span, "missing return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, span) {
@@ -80,13 +80,13 @@ impl MissingReturnsPass {
     }
 }
 
-impl LintPass for MissingReturnsPass {
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_RETURNS)
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingReturnsPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
