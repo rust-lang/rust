@@ -16,6 +16,7 @@ use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
 use hir::{
     self,
+    source_binder,
     FnSignatureInfo,
     Problem,
 };
@@ -166,7 +167,7 @@ impl AnalysisImpl {
     /// This return `Vec`: a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let descr = match hir::Module::guess_from_position(&*self.db, position)? {
+        let descr = match source_binder::module_from_position(&*self.db, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -185,7 +186,7 @@ impl AnalysisImpl {
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let descr = match hir::Module::guess_from_file_id(&*self.db, file_id)? {
+        let descr = match source_binder::module_from_file_id(&*self.db, file_id)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -209,9 +210,11 @@ impl AnalysisImpl {
         let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-            if let Some(fn_descr) =
-                hir::Function::guess_for_name_ref(&*self.db, position.file_id, name_ref)?
-            {
+            if let Some(fn_descr) = source_binder::function_from_child_node(
+                &*self.db,
+                position.file_id,
+                name_ref.syntax(),
+            )? {
                 let scope = fn_descr.scope(&*self.db);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
@@ -234,7 +237,7 @@ impl AnalysisImpl {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     let parent_module =
-                        hir::Module::guess_from_file_id(&*self.db, position.file_id)?;
+                        source_binder::module_from_file_id(&*self.db, position.file_id)?;
                     let child_name = module.name();
                     match (parent_module, child_name) {
                         (Some(parent_module), Some(child_name)) => {
@@ -282,18 +285,18 @@ impl AnalysisImpl {
         ) -> Cancelable<Option<(ast::BindPat<'a>, hir::Function)>> {
             let syntax = source_file.syntax();
             if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
-                let descr = ctry!(hir::Function::guess_for_bind_pat(
+                let descr = ctry!(source_binder::function_from_child_node(
                     db,
                     position.file_id,
-                    binding
+                    binding.syntax(),
                 )?);
                 return Ok(Some((binding, descr)));
             };
             let name_ref = ctry!(find_node_at_offset::<ast::NameRef>(syntax, position.offset));
-            let descr = ctry!(hir::Function::guess_for_name_ref(
+            let descr = ctry!(source_binder::function_from_child_node(
                 db,
                 position.file_id,
-                name_ref
+                name_ref.syntax(),
             )?);
             let scope = descr.scope(db);
             let resolved = ctry!(scope.resolve_local_name(name_ref));
@@ -327,7 +330,7 @@ impl AnalysisImpl {
                 fix: None,
             })
             .collect::<Vec<_>>();
-        if let Some(m) = hir::Module::guess_from_file_id(&*self.db, file_id)? {
+        if let Some(m) = source_binder::module_from_file_id(&*self.db, file_id)? {
             for (name_node, problem) in m.problems(&*self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
@@ -418,7 +421,7 @@ impl AnalysisImpl {
             if fs.kind == FN_DEF {
                 let fn_file = self.db.source_file(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
-                    let descr = ctry!(hir::Function::guess_from_source(
+                    let descr = ctry!(source_binder::function_from_source(
                         &*self.db, fn_file_id, fn_def
                     )?);
                     if let Some(descriptor) = descr.signature_info(&*self.db) {

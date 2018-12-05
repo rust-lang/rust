@@ -363,7 +363,9 @@ mod tests {
     fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
         let (db, pos) = MockDatabase::with_position(fixture);
         let source_root = db.file_source_root(pos.file_id);
-        let module = hir::Module::guess_from_position(&db, pos).unwrap().unwrap();
+        let module = hir::source_binder::module_from_position(&db, pos)
+            .unwrap()
+            .unwrap();
         let module_id = module.module_id;
         (db.item_map(source_root).unwrap(), module_id)
     }

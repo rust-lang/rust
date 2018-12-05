@@ -6,16 +6,11 @@ use std::{
 };
 
 use ra_syntax::{
-    TextRange, TextUnit, SyntaxNodeRef,
+    TextRange, TextUnit,
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
 };
-use ra_db::FileId;
 
-use crate::{
-    Cancelable,
-    DefLoc, DefKind, DefId, HirDatabase, SourceItemId,
-    Module,
-};
+use crate::{ DefId, HirDatabase };
 
 pub use self::scope::FnScopes;
 
@@ -30,49 +25,6 @@ impl Function {
     pub(crate) fn new(def_id: DefId) -> Function {
         let fn_id = FnId(def_id);
         Function { fn_id }
-    }
-
-    pub fn guess_from_source(
-        db: &impl HirDatabase,
-        file_id: FileId,
-        fn_def: ast::FnDef,
-    ) -> Cancelable<Option<Function>> {
-        let module = ctry!(Module::guess_from_child_node(db, file_id, fn_def.syntax())?);
-        let file_items = db.file_items(file_id);
-        let item_id = file_items.id_of(fn_def.syntax());
-        let source_item_id = SourceItemId { file_id, item_id };
-        let def_loc = DefLoc {
-            kind: DefKind::Function,
-            source_root_id: module.source_root_id,
-            module_id: module.module_id,
-            source_item_id,
-        };
-        Ok(Some(Function::new(def_loc.id(db))))
-    }
-
-    pub fn guess_for_name_ref(
-        db: &impl HirDatabase,
-        file_id: FileId,
-        name_ref: ast::NameRef,
-    ) -> Cancelable<Option<Function>> {
-        Function::guess_for_node(db, file_id, name_ref.syntax())
-    }
-
-    pub fn guess_for_bind_pat(
-        db: &impl HirDatabase,
-        file_id: FileId,
-        bind_pat: ast::BindPat,
-    ) -> Cancelable<Option<Function>> {
-        Function::guess_for_node(db, file_id, bind_pat.syntax())
-    }
-
-    fn guess_for_node(
-        db: &impl HirDatabase,
-        file_id: FileId,
-        node: SyntaxNodeRef,
-    ) -> Cancelable<Option<Function>> {
-        let fn_def = ctry!(node.ancestors().find_map(ast::FnDef::cast));
-        Function::guess_from_source(db, file_id, fn_def)
     }
 
     pub fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {

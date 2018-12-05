@@ -9,6 +9,7 @@ use ra_syntax::{
 };
 use ra_db::SyntaxDatabase;
 use rustc_hash::{FxHashMap};
+use hir::source_binder;
 
 use crate::{
     db,
@@ -36,7 +37,7 @@ pub(crate) fn completions(
         original_file.reparse(&edit)
     };
 
-    let module = ctry!(hir::Module::guess_from_position(db, position)?);
+    let module = ctry!(source_binder::module_from_position(db, position)?);
 
     let mut res = Vec::new();
     let mut has_completions = false;

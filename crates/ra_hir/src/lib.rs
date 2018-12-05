@@ -22,6 +22,7 @@ mod function;
 mod module;
 mod path;
 mod arena;
+pub mod source_binder;
 
 use std::ops::Index;
 
