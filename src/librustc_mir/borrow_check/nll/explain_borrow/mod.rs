@@ -277,13 +277,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         borrow_region_vid,
                         region,
                     );
-                let opt_place_desc = self.describe_place(&borrow.borrowed_place);
-                BorrowExplanation::MustBeValidFor {
-                    category,
-                    from_closure,
-                    span,
-                    region_name,
-                    opt_place_desc,
+                if let Some(region_name) = region_name {
+                    let opt_place_desc = self.describe_place(&borrow.borrowed_place);
+                    BorrowExplanation::MustBeValidFor {
+                        category,
+                        from_closure,
+                        span,
+                        region_name,
+                        opt_place_desc,
+                    }
+                } else {
+                    BorrowExplanation::Unexplained
                 }
             } else {
                 BorrowExplanation::Unexplained
