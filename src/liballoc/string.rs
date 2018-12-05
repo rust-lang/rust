@@ -1732,18 +1732,31 @@ impl<'a> FromIterator<&'a str> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
+        let iterator = iter.into_iter();
+
+        match iterator.next() {
+            None => String::new(),
+            Some(buf) => {
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }
 
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
+        let iterator = iter.into_iter();
+
+        match iterator.next() {
+            None => String::new(),
+            Some(cow) => {
+                let buf = cow.into_owned();
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }
 
@@ -1753,9 +1766,7 @@ impl Extend<char> for String {
         let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
-        for ch in iterator {
-            self.push(ch)
-        }
+        iterator.for_each(move |c| self.push(c));
     }
 }
 
@@ -1769,27 +1780,21 @@ impl<'a> Extend<&'a char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(s)
-        }
+        iter.into_iter().for_each(move |s| self.push_str(s));
     }
 }
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(&s)
-        }
+        iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
 
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(&s)
-        }
+        iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
 
