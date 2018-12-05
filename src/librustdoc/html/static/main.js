@@ -10,8 +10,12 @@
  * except according to those terms.
  */
 
-/*jslint browser: true, es5: true */
-/*globals $: true, rootPath: true */
+// From rust:
+/* global ALIASES, currentCrate, rootPath */
+
+// Local js definitions:
+/* global addClass, getCurrentValue, hasClass */
+/* global isHidden onEach, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -1300,7 +1304,16 @@ if (!String.prototype.endsWith) {
                 output = '<div class="search-failed"' + extraStyle + '>No results :(<br/>' +
                     'Try on <a href="https://duckduckgo.com/?q=' +
                     encodeURIComponent('rust ' + query.query) +
-                    '">DuckDuckGo</a>?</div>';
+                    '">DuckDuckGo</a>?<br/><br/>' +
+                    'Or try looking in one of these:<ul><li>The <a ' +
+                    'href="https://doc.rust-lang.org/reference/index.html">Rust Reference</a> for' +
+                    ' technical details about the language.</li><li><a ' +
+                    'href="https://doc.rust-lang.org/rust-by-example/index.html">Rust By Example' +
+                    '</a> for expository code examples.</a></li><li>The <a ' +
+                    'href="https://doc.rust-lang.org/book/index.html">Rust Book</a> for ' +
+                    'introductions to language features and the language itself.</li><li><a ' +
+                    'href="https://docs.rs">Docs.rs</a> for documentation of crates released on ' +
+                    '<a href="https://crates.io/">crates.io</a>.</li></ul></div>';
             }
             return [output, length];
         }

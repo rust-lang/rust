@@ -40,7 +40,7 @@ use str;
 use sync::Arc;
 use sys_common::AsInner;
 
-const UTF8_REPLACEMENT_CHARACTER: &'static str = "\u{FFFD}";
+const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 
 /// A Unicode code point: from U+0000 to U+10FFFF.
 ///

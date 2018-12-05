@@ -135,7 +135,6 @@ summary {
 
 code, pre {
 	font-family: "Source Code Pro", monospace;
-	white-space: pre-wrap;
 }
 .docblock code, .docblock-short code {
 	border-radius: 3px;
@@ -283,7 +282,7 @@ nav.sub {
 	padding-left: 0;
 }
 
-:not(.source) .example-wrap {
+.rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
 }
@@ -301,8 +300,9 @@ nav.sub {
 	text-align: right;
 }
 
-:not(.source) .example-wrap > pre.rust {
+.rustdoc:not(.source) .example-wrap > pre.rust {
 	width: 100%;
+	overflow-x: auto;
 }
 
 body:not(.source) .example-wrap > pre {
@@ -1130,6 +1130,13 @@ pre.rust {
 .search-failed {
 	text-align: center;
 	margin-top: 20px;
+}
+
+.search-failed > ul {
+	text-align: left;
+	max-width: 570px;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 #titles {

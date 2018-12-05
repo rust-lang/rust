@@ -67,14 +67,13 @@ impl<'a> Iterator for Iter<'a> {
 
     fn next(&mut self) -> Option<(&'a Path, PathKind)> {
         loop {
-            match self.iter.next() {
-                Some(&(kind, ref p)) if self.kind == PathKind::All ||
-                                        kind == PathKind::All ||
-                                        kind == self.kind => {
+            match *self.iter.next()? {
+                (kind, ref p) if self.kind == PathKind::All ||
+                                  kind == PathKind::All ||
+                                  kind == self.kind => {
                     return Some((p, kind))
                 }
-                Some(..) => {}
-                None => return None,
+                _ => {}
             }
         }
     }

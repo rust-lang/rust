@@ -1250,6 +1250,23 @@ fn test_cloned() {
 }
 
 #[test]
+fn test_cloned_side_effects() {
+    let mut count = 0;
+    {
+        let iter = [1, 2, 3]
+            .iter()
+            .map(|x| {
+                count += 1;
+                x
+            })
+            .cloned()
+            .zip(&[1]);
+        for _ in iter {}
+    }
+    assert_eq!(count, 2);
+}
+
+#[test]
 fn test_double_ended_map() {
     let xs = [1, 2, 3, 4, 5, 6];
     let mut it = xs.iter().map(|&x| x * -1);
