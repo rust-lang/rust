@@ -45,6 +45,9 @@ pub static BRUSH_SVG: &'static [u8] = include_bytes!("static/brush.svg");
 /// The file contents of `wheel.svg`, the icon used for the settings button.
 pub static WHEEL_SVG: &'static [u8] = include_bytes!("static/wheel.svg");
 
+/// The file contents of `down-arrow.svg`, the icon used for the crate choice combobox.
+pub static DOWN_ARROW_SVG: &'static [u8] = include_bytes!("static/down-arrow.svg");
+
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.
 pub static COPYRIGHT: &'static [u8] = include_bytes!("static/COPYRIGHT.txt");
