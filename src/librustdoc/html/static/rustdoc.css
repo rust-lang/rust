@@ -135,7 +135,6 @@ summary {
 
 code, pre {
 	font-family: "Source Code Pro", monospace;
-	white-space: pre-wrap;
 }
 .docblock code, .docblock-short code {
 	border-radius: 3px;
@@ -303,6 +302,7 @@ nav.sub {
 
 :not(.source) .example-wrap > pre.rust {
 	width: 100%;
+	overflow-x: auto;
 }
 
 body:not(.source) .example-wrap > pre {
