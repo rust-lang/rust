@@ -19,6 +19,23 @@ fn get_signature(text: &str) -> (FnSignatureInfo, Option<usize>) {
 }
 
 #[test]
+fn approximate_resolve_works_in_items() {
+    let (analysis, pos) = analysis_and_position(
+        "
+        //- /lib.rs
+        struct Foo;
+        enum E { X(Foo<|>) }
+    ",
+    );
+
+    let symbols = analysis.approximately_resolve_symbol(pos).unwrap();
+    assert_eq_dbg(
+        r#"[(FileId(1), FileSymbol { name: "Foo", node_range: [0; 11), kind: STRUCT_DEF })]"#,
+        &symbols,
+    );
+}
+
+#[test]
 fn test_resolve_module() {
     let (analysis, pos) = analysis_and_position(
         "

@@ -214,7 +214,7 @@ impl AnalysisImpl {
             {
                 let scope = fn_descr.scope(&*self.db);
                 // First try to resolve the symbol locally
-                return if let Some(entry) = scope.resolve_local_name(name_ref) {
+                if let Some(entry) = scope.resolve_local_name(name_ref) {
                     let mut vec = vec![];
                     vec.push((
                         position.file_id,
@@ -224,12 +224,11 @@ impl AnalysisImpl {
                             kind: NAME,
                         },
                     ));
-                    Ok(vec)
-                } else {
-                    // If that fails try the index based approach.
-                    self.index_resolve(name_ref)
+                    return Ok(vec);
                 };
             }
+            // If that fails try the index based approach.
+            return self.index_resolve(name_ref);
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
