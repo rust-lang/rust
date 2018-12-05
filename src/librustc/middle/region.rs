@@ -592,10 +592,7 @@ impl<'tcx> ScopeTree {
                 return Some(scope.item_local_id());
             }
 
-            match self.opt_encl_scope(scope) {
-                None => return None,
-                Some(parent) => scope = parent,
-            }
+            scope = self.opt_encl_scope(scope)?;
         }
     }
 

@@ -2220,13 +2220,13 @@ impl<'a> Item<'a> {
                 return None;
             }
         } else {
-            let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
-                Some(&(ref name, ref src, Local)) => (name, src),
-                Some(&(ref name, ref src, Remote(ref s))) => {
+            let (krate, src_root) = match *cache.extern_locations.get(&self.item.def_id.krate)? {
+                (ref name, ref src, Local) => (name, src),
+                (ref name, ref src, Remote(ref s)) => {
                     root = s.to_string();
                     (name, src)
                 }
-                Some(&(_, _, Unknown)) | None => return None,
+                (_, _, Unknown) => return None,
             };
 
             clean_srcpath(&src_root, file, false, |component| {
