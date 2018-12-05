@@ -1732,11 +1732,11 @@ impl<'a> FromIterator<&'a str> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
-        let iterator = iter.into_iter();
+        let mut iterator = iter.into_iter();
 
         match iterator.next() {
             None => String::new(),
-            Some(buf) => {
+            Some(mut buf) => {
                 buf.extend(iterator);
                 buf
             }
@@ -1747,12 +1747,12 @@ impl FromIterator<String> for String {
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
-        let iterator = iter.into_iter();
+        let mut iterator = iter.into_iter();
 
         match iterator.next() {
             None => String::new(),
             Some(cow) => {
-                let buf = cow.into_owned();
+                let mut buf = cow.into_owned();
                 buf.extend(iterator);
                 buf
             }
