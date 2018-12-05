@@ -202,8 +202,8 @@ impl Impl {
 
 #[derive(Debug)]
 pub struct Error {
-    file: PathBuf,
-    error: io::Error,
+    pub file: PathBuf,
+    pub error: io::Error,
 }
 
 impl error::Error for Error {
