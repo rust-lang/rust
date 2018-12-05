@@ -153,17 +153,10 @@ impl ModuleTree {
         self.mods.iter().map(|(id, _)| id)
     }
 
-    fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
-        self.mods
-            .iter()
-            .filter(|(_idx, it)| it.source == source)
-            .map(|(idx, _)| idx)
-            .collect()
-    }
-
-    //TODO: move to source binders?
-    pub(crate) fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
-        self.modules_for_source(source).pop()
+    pub(crate) fn modules_with_sources<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (ModuleId, ModuleSource)> + 'a {
+        self.mods.iter().map(|(id, m)| (id, m.source))
     }
 }
 

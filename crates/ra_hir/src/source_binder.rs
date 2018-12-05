@@ -61,8 +61,10 @@ fn module_from_source(
 ) -> Cancelable<Option<Module>> {
     let source_root_id = db.file_source_root(module_source.file_id());
     let module_tree = db.module_tree(source_root_id)?;
-
-    let module_id = ctry!(module_tree.any_module_for_source(module_source));
+    let m = module_tree
+        .modules_with_sources()
+        .find(|(_id, src)| src == &module_source);
+    let module_id = ctry!(m).0;
     Ok(Some(Module::new(db, source_root_id, module_id)?))
 }
 
