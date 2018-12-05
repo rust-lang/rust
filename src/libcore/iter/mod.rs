@@ -547,7 +547,7 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Copied<I>
     where I: DoubleEndedIterator<Item=&'a T>, T: Copy
 {
     fn next_back(&mut self) -> Option<T> {
-        self.it.next_back().cloned()
+        self.it.next_back().copied()
     }
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
