@@ -105,13 +105,30 @@ pub(super) fn emit_va_arg(
 ) -> &'ll Value {
     // Determine the va_arg implementation to use. The LLVM va_arg instruction
     // is lacking in some instances, so we should only use it as a fallback.
+    let target = &bx.cx.tcx.sess.target.target;
     let arch = &bx.cx.tcx.sess.target.target.arch;
-    match (&**arch,
-           bx.cx.tcx.sess.target.target.options.is_like_windows) {
+    match (&**arch, target.options.is_like_windows) {
+        // Windows x86
         ("x86", true) => {
             emit_ptr_va_arg(bx, addr, target_ty, false,
                             Align::from_bytes(4).unwrap(), false)
         }
+        // Generic x86
+        ("x86", _) => {
+            emit_ptr_va_arg(bx, addr, target_ty, false,
+                            Align::from_bytes(4).unwrap(), true)
+        }
+        // Windows Aarch64
+        ("aarch4", true) => {
+            emit_ptr_va_arg(bx, addr, target_ty, false,
+                            Align::from_bytes(8).unwrap(), false)
+        }
+        // iOS Aarch64
+        ("aarch4", _) if target.target_os == "ios" => {
+            emit_ptr_va_arg(bx, addr, target_ty, false,
+                            Align::from_bytes(8).unwrap(), true)
+        }
+        // Windows x86_64
         ("x86_64", true) => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
             let indirect = if target_ty_size > 8 || !target_ty_size.is_power_of_two() {
@@ -122,15 +139,14 @@ pub(super) fn emit_va_arg(
             emit_ptr_va_arg(bx, addr, target_ty, indirect,
                             Align::from_bytes(8).unwrap(), false)
         }
-        ("x86", false) => {
-            emit_ptr_va_arg(bx, addr, target_ty, false,
-                            Align::from_bytes(4).unwrap(), true)
-        }
+        // For all other architecture/OS combinations fall back to using
+        // the LLVM va_arg instruction.
+        // https://llvm.org/docs/LangRef.html#va-arg-instruction
         _ => {
-            let va_list = if (bx.tcx().sess.target.target.arch == "aarch64" ||
-                              bx.tcx().sess.target.target.arch == "x86_64" ||
-                              bx.tcx().sess.target.target.arch == "powerpc") &&
-                             !bx.tcx().sess.target.target.options.is_like_windows {
+            let va_list = if (target.arch == "aarch64" ||
+                              target.arch == "x86_64" ||
+                              target.arch == "powerpc") &&
+                             !target.options.is_like_windows {
                 bx.load(addr.immediate(), bx.tcx().data_layout.pointer_align.abi)
             } else {
                 addr.immediate()
