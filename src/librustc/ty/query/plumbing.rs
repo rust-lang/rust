@@ -28,9 +28,10 @@ use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::by_move::{Move, MoveSlot};
+use std::hash::{Hash, Hasher, BuildHasher};
 use std::mem;
 use std::ptr;
-use std::collections::hash_map::Entry;
+use std::collections::hash_map::RawEntryMut;
 use syntax_pos::Span;
 use syntax::source_map::DUMMY_SP;
 
@@ -96,6 +97,7 @@ macro_rules! profq_query_msg {
 pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
     cache: &'a Lock<QueryCache<'tcx, Q>>,
     key: Q::Key,
+    key_hash: u64,
     job: Lrc<QueryJob<'tcx>>,
     // FIXME: Remove ImplicitCtxt.layout_depth to get rid of this field
     layout_depth: usize,
@@ -120,7 +122,16 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         let cache = Q::query_cache(tcx);
         loop {
             let mut lock = cache.borrow_mut();
-            if let Some(value) = lock.results.get(key) {
+
+            // Calculate the key hash
+            let mut hasher = lock.results.hasher().build_hasher();
+            key.hash(&mut hasher);
+            let key_hash = hasher.finish();
+
+            // QueryCache::results and QueryCache::active use the same
+            // hasher so we can reuse the hash for the key
+            if let Some((_, value)) = lock.results.raw_entry()
+                                          .from_key_hashed_nocheck(key_hash, key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                 tcx.sess.profiler(|p| {
                     p.record_query(Q::CATEGORY);
@@ -130,14 +141,14 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 let result = Ok((value.value.clone(), value.index));
                 return TryGetJob::JobCompleted(result);
             }
-            let job = match lock.active.entry((*key).clone()) {
-                Entry::Occupied(entry) => {
+            let job = match lock.active.raw_entry_mut().from_key_hashed_nocheck(key_hash, key) {
+                RawEntryMut::Occupied(entry) => {
                     match *entry.get() {
                         QueryResult::Started(ref job) => job.clone(),
                         QueryResult::Poisoned => FatalError.raise(),
                     }
                 }
-                Entry::Vacant(entry) => {
+                RawEntryMut::Vacant(entry) => {
                     // No job entry for this query. Return a new one to be started later
                     return tls::with_related_context(tcx, |icx| {
                         let info = QueryInfo {
@@ -149,9 +160,13 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             cache,
                             job: job.clone(),
                             key: (*key).clone(),
+                            key_hash,
                             layout_depth: icx.layout_depth,
                         });
-                        entry.insert(QueryResult::Started(job));
+                        entry.insert_hashed_nocheck(
+                            key_hash,
+                            key.clone(),
+                            QueryResult::Started(job));
                         TryGetJob::NotYetStarted(owner)
                     })
                 }
@@ -177,6 +192,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let job = unsafe { ptr::read(&self.job) };
+        let key_hash = self.key_hash;
         let cache = self.cache;
 
         // Forget ourself so our destructor won't poison the query
@@ -185,8 +201,13 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         let value = QueryValue::new(result.clone(), dep_node_index);
         {
             let mut lock = cache.borrow_mut();
-            lock.active.remove(&key);
-            lock.results.insert(key, value);
+
+            match lock.active.raw_entry_mut().from_key_hashed_nocheck(key_hash, &key) {
+                RawEntryMut::Occupied(entry) => entry.remove(),
+                _ => unreachable!(),
+            };
+            lock.results.raw_entry_mut().from_key_hashed_nocheck(key_hash, &key)
+                                        .or_insert(key, value);
         }
 
         job.signal_complete();

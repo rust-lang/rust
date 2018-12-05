@@ -72,6 +72,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
 #![feature(arbitrary_self_types)]
+#![feature(hash_raw_entry)]
 
 #![recursion_limit="512"]
 
