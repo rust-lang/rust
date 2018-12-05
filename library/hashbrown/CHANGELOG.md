@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.7] - 2018-12-05
+
+### Fixed
+- Fixed non-SSE version of convert_special_to_empty_and_full_to_deleted. (#32)
+- Fixed overflow in rehash_in_place. (#33)
+
 ## [v0.1.6] - 2018-11-17
 
 ### Fixed
@@ -46,7 +52,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.7...HEAD
+[v0.1.7]: https://github.com/Amanieu/hashbrown/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/Amanieu/hashbrown/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/Amanieu/hashbrown/compare/v0.1.3...v0.1.4
