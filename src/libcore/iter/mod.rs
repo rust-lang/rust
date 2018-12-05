@@ -602,7 +602,9 @@ unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
     }
 
     #[inline]
-    fn may_have_side_effect() -> bool { false }
+    fn may_have_side_effect() -> bool {
+        I::may_have_side_effect()
+    }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
