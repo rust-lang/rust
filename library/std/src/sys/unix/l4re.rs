@@ -497,7 +497,7 @@ pub mod net {
 
     impl LookupHost {
         pub fn port(&self) -> u16 {
-            unimpl!();
+            0 // unimplemented
         }
     }
 
