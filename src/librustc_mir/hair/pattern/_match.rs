@@ -309,6 +309,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// outside it's module and should not be matchable with an empty match
     /// statement.
     pub module: DefId,
+    param_env: ty::ParamEnv<'tcx>,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
     pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
@@ -316,6 +317,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         module: DefId,
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
@@ -324,51 +326,11 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
         f(MatchCheckCtxt {
             tcx,
+            param_env,
             module,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap::default(),
         })
-    }
-
-    // convert a byte-string pattern to a list of u8 patterns.
-    fn lower_byte_str_pattern<'p>(&mut self, pat: &'p Pattern<'tcx>) -> Vec<&'p Pattern<'tcx>>
-            where 'a: 'p
-    {
-        let pattern_arena = &*self.pattern_arena;
-        let tcx = self.tcx;
-        self.byte_array_map.entry(pat).or_insert_with(|| {
-            match pat.kind {
-                box PatternKind::Constant {
-                    value: const_val
-                } => {
-                    if let Some(ptr) = const_val.to_ptr() {
-                        let is_array_ptr = const_val.ty
-                            .builtin_deref(true)
-                            .and_then(|t| t.ty.builtin_index())
-                            .map_or(false, |t| t == tcx.types.u8);
-                        assert!(is_array_ptr);
-                        let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                        assert_eq!(ptr.offset.bytes(), 0);
-                        // FIXME: check length
-                        alloc.bytes.iter().map(|b| {
-                            &*pattern_arena.alloc(Pattern {
-                                ty: tcx.types.u8,
-                                span: pat.span,
-                                kind: box PatternKind::Constant {
-                                    value: ty::Const::from_bits(
-                                        tcx,
-                                        *b as u128,
-                                        ty::ParamEnv::empty().and(tcx.types.u8))
-                                }
-                            })
-                        }).collect()
-                    } else {
-                        bug!("not a byte str: {:?}", const_val)
-                    }
-                }
-                _ => span_bug!(pat.span, "unexpected byte array pattern {:?}", pat)
-            }
-        }).clone()
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
@@ -1393,11 +1355,6 @@ fn slice_pat_covered_by_constructor<'tcx>(
                 ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
             };
             if let Ok(ptr) = val.to_ptr() {
-                let is_array_ptr = const_val.ty
-                    .builtin_deref(true)
-                    .and_then(|t| t.ty.builtin_index())
-                    .map_or(false, |t| t == tcx.types.u8);
-                assert!(is_array_ptr);
                 tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
             } else {
                 bug!("unexpected non-ptr ConstantValue")
@@ -1705,26 +1662,63 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         PatternKind::Constant { value } => {
             match *constructor {
                 Slice(..) => {
-                    if let Some(ptr) = value.to_ptr() {
-                        let is_array_ptr = value.ty
-                            .builtin_deref(true)
-                            .and_then(|t| t.ty.builtin_index())
-                            .map_or(false, |t| t == cx.tcx.types.u8);
-                        assert!(is_array_ptr);
-                        let data_len = cx.tcx
-                            .alloc_map
-                            .lock()
-                            .unwrap_memory(ptr.alloc_id)
-                            .bytes
-                            .len();
-                        if wild_patterns.len() == data_len {
-                            Some(cx.lower_byte_str_pattern(pat))
-                        } else {
-                            None
+                    // we extract an `Option` for the pointer because slices of zero elements don't
+                    // necessarily point to memory, they are usually just integers. The only time
+                    // they should be pointing to memory is when they are subslices of nonzero
+                    // slices
+                    let (opt_ptr, n, ty) = match value.ty.builtin_deref(false).unwrap().ty.sty {
+                        ty::TyKind::Array(t, n) => (value.to_ptr(), n.unwrap_usize(cx.tcx), t),
+                        ty::TyKind::Slice(t) => {
+                            match value.val {
+                                ConstValue::ScalarPair(ptr, n) => (
+                                    ptr.to_ptr().ok(),
+                                    n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64,
+                                    t,
+                                ),
+                                _ => span_bug!(
+                                    pat.span,
+                                    "slice pattern constant must be scalar pair but is {:?}",
+                                    value,
+                                ),
+                            }
+                        },
+                        _ => span_bug!(
+                            pat.span,
+                            "unexpected const-val {:?} with ctor {:?}",
+                            value,
+                            constructor,
+                        ),
+                    };
+                    if wild_patterns.len() as u64 == n {
+                        // convert a constant slice/array pattern to a list of patterns.
+                        match (n, opt_ptr) {
+                            (0, _) => Some(Vec::new()),
+                            (_, Some(ptr)) => {
+                                let alloc = cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+                                (0..n).map(|i| {
+                                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                                    let scalar = alloc.read_scalar(
+                                        &cx.tcx, ptr, layout.size,
+                                    ).ok()?;
+                                    let scalar = scalar.not_undef().ok()?;
+                                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                                    let pattern = Pattern {
+                                        ty,
+                                        span: pat.span,
+                                        kind: box PatternKind::Constant { value },
+                                    };
+                                    Some(&*cx.pattern_arena.alloc(pattern))
+                                }).collect()
+                            },
+                            (_, None) => span_bug!(
+                                pat.span,
+                                "non zero length slice with const-val {:?}",
+                                value,
+                            ),
                         }
                     } else {
-                        span_bug!(pat.span,
-                        "unexpected const-val {:?} with ctor {:?}", value, constructor)
+                        None
                     }
                 }
                 _ => {
