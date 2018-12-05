@@ -1,14 +1,14 @@
-error[E0004]: non-exhaustive patterns: `-9223372036854775808isize..=-6isize` and `21isize..=9223372036854775807isize` not covered
-  --> $DIR/precise_pointer_size_matching.rs:17:11
+error[E0004]: non-exhaustive patterns: `$ISIZE_MIN..=-6isize` and `21isize..=$ISIZE_MAX` not covered
+  --> $DIR/precise_pointer_size_matching.rs:24:11
    |
 LL |     match 0isize { //~ ERROR non-exhaustive patterns
-   |           ^^^^^^ patterns `-9223372036854775808isize..=-6isize` and `21isize..=9223372036854775807isize` not covered
+   |           ^^^^^^ patterns `$ISIZE_MIN..=-6isize` and `21isize..=$ISIZE_MAX` not covered
 
-error[E0004]: non-exhaustive patterns: `0usize` and `21usize..=18446744073709551615usize` not covered
-  --> $DIR/precise_pointer_size_matching.rs:22:11
+error[E0004]: non-exhaustive patterns: `0usize` and `21usize..=$USIZE_MAX` not covered
+  --> $DIR/precise_pointer_size_matching.rs:29:11
    |
 LL |     match 0usize { //~ ERROR non-exhaustive patterns
-   |           ^^^^^^ patterns `0usize` and `21usize..=18446744073709551615usize` not covered
+   |           ^^^^^^ patterns `0usize` and `21usize..=$USIZE_MAX` not covered
 
 error: aborting due to 2 previous errors
 
