@@ -211,7 +211,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
         if !ch.is_whitespace() {
             return None;
         }
-        idx = i;
+        idx = i + ch.len_utf8();
     }
     Some(idx)
 }
