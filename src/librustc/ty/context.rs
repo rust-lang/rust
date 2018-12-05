@@ -1926,6 +1926,7 @@ pub mod tls {
     /// to `value` during the call to `f`. It is restored to its previous value after.
     /// This is used to set the pointer to the new ImplicitCtxt.
     #[cfg(parallel_queries)]
+    #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         rayon_core::tlv::with(value, f)
     }
@@ -1933,6 +1934,7 @@ pub mod tls {
     /// Gets Rayon's thread local variable which is preserved for Rayon jobs.
     /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(parallel_queries)]
+    #[inline]
     fn get_tlv() -> usize {
         rayon_core::tlv::get()
     }
@@ -1945,6 +1947,7 @@ pub mod tls {
     /// It is restored to its previous value after.
     /// This is used to set the pointer to the new ImplicitCtxt.
     #[cfg(not(parallel_queries))]
+    #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
         let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
@@ -2009,6 +2012,7 @@ pub mod tls {
     }
 
     /// Sets `context` as the new current ImplicitCtxt for the duration of the function `f`
+    #[inline]
     pub fn enter_context<'a, 'gcx: 'tcx, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'gcx, 'tcx>,
                                                      f: F) -> R
         where F: FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
@@ -2080,6 +2084,7 @@ pub mod tls {
     }
 
     /// Allows access to the current ImplicitCtxt in a closure if one is available
+    #[inline]
     pub fn with_context_opt<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'gcx, 'tcx>>) -> R
     {
@@ -2097,6 +2102,7 @@ pub mod tls {
 
     /// Allows access to the current ImplicitCtxt.
     /// Panics if there is no ImplicitCtxt available
+    #[inline]
     pub fn with_context<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
     {
@@ -2108,6 +2114,7 @@ pub mod tls {
     /// with the same 'gcx lifetime as the TyCtxt passed in.
     /// This will panic if you pass it a TyCtxt which has a different global interner from
     /// the current ImplicitCtxt's tcx field.
+    #[inline]
     pub fn with_related_context<'a, 'gcx, 'tcx1, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx1>, f: F) -> R
         where F: for<'b, 'tcx2> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx2>) -> R
     {
@@ -2126,6 +2133,7 @@ pub mod tls {
     /// is given an ImplicitCtxt with the same 'tcx and 'gcx lifetimes as the TyCtxt passed in.
     /// This will panic if you pass it a TyCtxt which has a different global interner or
     /// a different local interner from the current ImplicitCtxt's tcx field.
+    #[inline]
     pub fn with_fully_related_context<'a, 'gcx, 'tcx, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx>, f: F) -> R
         where F: for<'b> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx>) -> R
     {
@@ -2143,6 +2151,7 @@ pub mod tls {
 
     /// Allows access to the TyCtxt in the current ImplicitCtxt.
     /// Panics if there is no ImplicitCtxt available
+    #[inline]
     pub fn with<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
@@ -2151,6 +2160,7 @@ pub mod tls {
 
     /// Allows access to the TyCtxt in the current ImplicitCtxt.
     /// The closure is passed None if there is no ImplicitCtxt available
+    #[inline]
     pub fn with_opt<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(Option<TyCtxt<'a, 'gcx, 'tcx>>) -> R
     {

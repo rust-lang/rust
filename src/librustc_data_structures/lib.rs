@@ -113,12 +113,14 @@ pub struct OnDrop<F: Fn()>(pub F);
 impl<F: Fn()> OnDrop<F> {
       /// Forgets the function which prevents it from running.
       /// Ensure that the function owns no memory, otherwise it will be leaked.
+      #[inline]
       pub fn disable(self) {
             std::mem::forget(self);
       }
 }
 
 impl<F: Fn()> Drop for OnDrop<F> {
+      #[inline]
       fn drop(&mut self) {
             (self.0)();
       }
