@@ -10,7 +10,7 @@
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
-use crate::rustc::ty::{self, Predicate, Ty, TyKind};
+use crate::rustc::ty::{self, Predicate, Ty};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
@@ -978,7 +978,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             // if return type is impl trait, check the associated types
-            if let TyKind::Opaque(def_id, _) = ret_ty.sty {
+            if let ty::Opaque(def_id, _) = ret_ty.sty {
                 // one of the associated types must be Self
                 for predicate in &cx.tcx.predicates_of(def_id).predicates {
                     match predicate {
@@ -2204,7 +2204,7 @@ fn ty_has_iter_method(
     ];
 
     let (self_ty, mutbl) = match self_ref_ty.sty {
-        ty::TyKind::Ref(_, self_ty, mutbl) => (self_ty, mutbl),
+        ty::Ref(_, self_ty, mutbl) => (self_ty, mutbl),
         _ => unreachable!(),
     };
     let method_name = match mutbl {
@@ -2213,8 +2213,8 @@ fn ty_has_iter_method(
     };
 
     let def_id = match self_ty.sty {
-        ty::TyKind::Array(..) => return Some((INTO_ITER_ON_ARRAY, "array", method_name)),
-        ty::TyKind::Slice(..) => return Some((INTO_ITER_ON_REF, "slice", method_name)),
+        ty::Array(..) => return Some((INTO_ITER_ON_ARRAY, "array", method_name)),
+        ty::Slice(..) => return Some((INTO_ITER_ON_REF, "slice", method_name)),
         ty::Adt(adt, _) => adt.did,
         _ => return None,
     };

@@ -1252,7 +1252,7 @@ fn is_end_eq_array_len(cx: &LateContext<'_, '_>, end: &Expr, limits: ast::RangeL
     if_chain! {
         if let ExprKind::Lit(ref lit) = end.node;
         if let ast::LitKind::Int(end_int, _) = lit.node;
-        if let ty::TyKind::Array(_, arr_len_const) = indexed_ty.sty;
+        if let ty::Array(_, arr_len_const) = indexed_ty.sty;
         if let Some(arr_len) = arr_len_const.assert_usize(cx.tcx);
         then {
             return match limits {
@@ -1375,7 +1375,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                     match cx.tables.expr_ty(&args[0]).sty {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
-                        ty::TyKind::Array(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
+                        ty::Array(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {

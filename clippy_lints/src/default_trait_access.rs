@@ -9,7 +9,7 @@
 
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::TyKind;
+use crate::rustc::ty;
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use if_chain::if_chain;
@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
                         // TODO: Work out a way to put "whatever the imported way of referencing
                         // this type in this file" rather than a fully-qualified type.
                         let expr_ty = cx.tables.expr_ty(expr);
-                        if let TyKind::Adt(..) = expr_ty.sty {
+                        if let ty::Adt(..) = expr_ty.sty {
                             let replacement = format!("{}::default()", expr_ty);
                             span_lint_and_sugg(
                                 cx,

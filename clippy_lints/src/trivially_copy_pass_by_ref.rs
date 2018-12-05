@@ -14,7 +14,7 @@ use crate::rustc::hir::intravisit::FnKind;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::session::config::Config as SessionConfig;
-use crate::rustc::ty::{FnSig, TyKind};
+use crate::rustc::ty::{self, FnSig};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::rustc_target::abi::LayoutOf;
@@ -99,8 +99,8 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         // argument. In that case we can't switch to pass-by-value as the
         // argument will not live long enough.
         let output_lts = match sig.output().sty {
-            TyKind::Ref(output_lt, _, _) => vec![output_lt],
-            TyKind::Adt(_, substs) => substs.regions().collect(),
+            ty::Ref(output_lt, _, _) => vec![output_lt],
+            ty::Adt(_, substs) => substs.regions().collect(),
             _ => vec![],
         };
 
@@ -112,7 +112,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
             }
 
             if_chain! {
-                if let TyKind::Ref(input_lt, ty, Mutability::MutImmutable) = ty.sty;
+                if let ty::Ref(input_lt, ty, Mutability::MutImmutable) = ty.sty;
                 if !output_lts.contains(&input_lt);
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
