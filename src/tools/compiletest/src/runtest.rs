@@ -458,11 +458,7 @@ impl<'test> TestCx<'test> {
             None => 2,
         };
 
-        let mut src = String::new();
-        File::open(&self.testpaths.file)
-            .unwrap()
-            .read_to_string(&mut src)
-            .unwrap();
+        let src = fs::read_to_string(&self.testpaths.file).unwrap();
         let mut srcs = vec![src];
 
         let mut round = 0;
@@ -500,12 +496,7 @@ impl<'test> TestCx<'test> {
         let mut expected = match self.props.pp_exact {
             Some(ref file) => {
                 let filepath = self.testpaths.file.parent().unwrap().join(file);
-                let mut s = String::new();
-                File::open(&filepath)
-                    .unwrap()
-                    .read_to_string(&mut s)
-                    .unwrap();
-                s
+                fs::read_to_string(&filepath).unwrap()
             }
             None => srcs[srcs.len() - 2].clone(),
         };
@@ -1949,10 +1940,7 @@ impl<'test> TestCx<'test> {
 
     fn dump_output_file(&self, out: &str, extension: &str) {
         let outfile = self.make_out_name(extension);
-        File::create(&outfile)
-            .unwrap()
-            .write_all(out.as_bytes())
-            .unwrap();
+        fs::write(&outfile, out).unwrap();
     }
 
     /// Create a filename for output with the given extension.  Example:
@@ -2149,11 +2137,7 @@ impl<'test> TestCx<'test> {
         path: &P,
         mut other_files: Option<&mut Vec<String>>,
     ) -> Vec<usize> {
-        let mut file =
-            fs::File::open(path).expect("markdown_test_output_check_entry File::open failed");
-        let mut content = String::new();
-        file.read_to_string(&mut content)
-            .expect("markdown_test_output_check_entry read_to_string failed");
+        let content = fs::read_to_string(&path).unwrap();
         let mut ignore = false;
         content
             .lines()
@@ -2826,11 +2810,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_mir_dump(&self) {
-        let mut test_file_contents = String::new();
-        fs::File::open(self.testpaths.file.clone())
-            .unwrap()
-            .read_to_string(&mut test_file_contents)
-            .unwrap();
+        let test_file_contents = fs::read_to_string(&self.testpaths.file).unwrap();
         if let Some(idx) = test_file_contents.find("// END RUST SOURCE") {
             let (_, tests_text) = test_file_contents.split_at(idx + "// END_RUST SOURCE".len());
             let tests_text_str = String::from(tests_text);
@@ -2894,9 +2874,7 @@ impl<'test> TestCx<'test> {
         }
         self.check_mir_test_timestamp(test_name, &output_file);
 
-        let mut dumped_file = fs::File::open(output_file.clone()).unwrap();
-        let mut dumped_string = String::new();
-        dumped_file.read_to_string(&mut dumped_string).unwrap();
+        let dumped_string = fs::read_to_string(&output_file).unwrap();
         let mut dumped_lines = dumped_string
             .lines()
             .map(|l| nocomment_mir_line(l))
@@ -3108,19 +3086,13 @@ impl<'test> TestCx<'test> {
     }
 
     fn load_expected_output_from_path(&self, path: &Path) -> Result<String, String> {
-        let mut result = String::new();
-        match File::open(path).and_then(|mut f| f.read_to_string(&mut result)) {
-            Ok(_) => Ok(result),
-            Err(e) => Err(format!(
-                "failed to load expected output from `{}`: {}",
-                path.display(),
-                e
-            )),
-        }
+        fs::read_to_string(path).map_err(|err| {
+            format!("failed to load expected output from `{}`: {}", path.display(), err)
+        })
     }
 
     fn delete_file(&self, file: &PathBuf) {
-        if let Err(e) = ::std::fs::remove_file(file) {
+        if let Err(e) = fs::remove_file(file) {
             self.fatal(&format!(
                 "failed to delete `{}`: {}",
                 file.display(),
@@ -3182,16 +3154,13 @@ impl<'test> TestCx<'test> {
         for output_file in &files {
             if actual.is_empty() {
                 self.delete_file(output_file);
-            } else {
-                match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
-                    Ok(()) => {}
-                    Err(e) => self.fatal(&format!(
-                        "failed to write {} to `{}`: {}",
-                        kind,
-                        output_file.display(),
-                        e
-                    )),
-                }
+            } else if let Err(err) = fs::write(&output_file, &actual) {
+                self.fatal(&format!(
+                    "failed to write {} to `{}`: {}",
+                    kind,
+                    output_file.display(),
+                    err,
+                ));
             }
         }
 
@@ -3243,9 +3212,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let mut f = File::create(::stamp(&self.config, self.testpaths, self.revision)).unwrap();
-        f.write_all(compute_stamp_hash(&self.config).as_bytes())
-            .unwrap();
+        let stamp = ::stamp(&self.config, self.testpaths, self.revision);
+        fs::write(&stamp, compute_stamp_hash(&self.config)).unwrap();
     }
 }
 
