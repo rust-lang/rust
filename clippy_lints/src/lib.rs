@@ -185,6 +185,7 @@ pub mod reference;
 pub mod regex;
 pub mod replace_consts;
 pub mod returns;
+pub mod forced_return;
 pub mod serde_api;
 pub mod shadow;
 pub mod slow_vector_initialization;
@@ -371,6 +372,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
+    reg.register_late_lint_pass(box forced_return::ForcedReturnPass);
     reg.register_late_lint_pass(box methods::Pass);
     reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box shadow::Pass);
@@ -502,6 +504,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         strings::STRING_ADD,
         write::PRINT_STDOUT,
         write::USE_DEBUG,
+        forced_return::FORCED_RETURN,
     ]);
 
     reg.register_lint_group("clippy::pedantic", Some("clippy_pedantic"), vec![
