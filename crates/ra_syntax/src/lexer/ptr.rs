@@ -28,7 +28,7 @@ impl<'s> Ptr<'s> {
     }
 
     /// Gets the nth character from the current.
-    /// For example, 0 will return the current token, 1 will return the next, etc.
+    /// For example, 0 will return the current character, 1 will return the next, etc.
     pub fn nth(&self, n: u32) -> Option<char> {
         self.chars().nth(n as usize)
     }
