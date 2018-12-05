@@ -14,24 +14,51 @@ pub struct CrateId(pub u32);
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CrateGraph {
-    crate_roots: FxHashMap<CrateId, FileId>,
+    arena: FxHashMap<CrateId, CrateData>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CrateData {
+    file_id: FileId,
+    deps: Vec<Dependency>,
+}
+
+impl CrateData {
+    fn new(file_id: FileId) -> CrateData {
+        CrateData {
+            file_id,
+            deps: Vec::new(),
+        }
+    }
+
+    fn add_dep(&mut self, dep: CrateId) {
+        self.deps.push(Dependency { crate_: dep })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Dependency {
+    crate_: CrateId,
 }
 
 impl CrateGraph {
-    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.crate_roots[&crate_id]
-    }
     pub fn add_crate_root(&mut self, file_id: FileId) -> CrateId {
-        let crate_id = CrateId(self.crate_roots.len() as u32);
-        let prev = self.crate_roots.insert(crate_id, file_id);
+        let crate_id = CrateId(self.arena.len() as u32);
+        let prev = self.arena.insert(crate_id, CrateData::new(file_id));
         assert!(prev.is_none());
         crate_id
     }
+    pub fn add_dep(&mut self, from: CrateId, to: CrateId) {
+        self.arena.get_mut(&from).unwrap().add_dep(to)
+    }
+    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
+        self.arena[&crate_id].file_id
+    }
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
         let (&crate_id, _) = self
-            .crate_roots
+            .arena
             .iter()
-            .find(|(_crate_id, &root_id)| root_id == file_id)?;
+            .find(|(_crate_id, data)| data.file_id == file_id)?;
         Some(crate_id)
     }
 }
