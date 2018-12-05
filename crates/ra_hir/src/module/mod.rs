@@ -3,14 +3,12 @@ pub(super) mod nameres;
 
 use std::sync::Arc;
 
-use ra_editor::find_node_at_offset;
-
 use ra_syntax::{
     algo::generate,
     ast::{self, AstNode, NameOwner},
-    SmolStr, SyntaxNode, SyntaxNodeRef,
+    SmolStr, SyntaxNode,
 };
-use ra_db::{SourceRootId, FileId, FilePosition, Cancelable};
+use ra_db::{SourceRootId, FileId, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
@@ -30,68 +28,6 @@ pub struct Module {
 }
 
 impl Module {
-    /// Lookup `Module` by `FileId`. Note that this is inherently
-    /// lossy transformation: in general, a single source might correspond to
-    /// several modules.
-    pub fn guess_from_file_id(
-        db: &impl HirDatabase,
-        file_id: FileId,
-    ) -> Cancelable<Option<Module>> {
-        let module_source = ModuleSource::new_file(db, file_id);
-        Module::guess_from_source(db, module_source)
-    }
-
-    /// Lookup `Module` by position in the source code. Note that this
-    /// is inherently lossy transformation: in general, a single source might
-    /// correspond to several modules.
-    pub fn guess_from_position(
-        db: &impl HirDatabase,
-        position: FilePosition,
-    ) -> Cancelable<Option<Module>> {
-        let file = db.source_file(position.file_id);
-        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
-        {
-            Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
-            _ => ModuleSource::new_file(db, position.file_id),
-        };
-        Module::guess_from_source(db, module_source)
-    }
-
-    pub fn guess_from_child_node(
-        db: &impl HirDatabase,
-        file_id: FileId,
-        node: SyntaxNodeRef,
-    ) -> Cancelable<Option<Module>> {
-        let module_source = if let Some(m) = node
-            .ancestors()
-            .filter_map(ast::Module::cast)
-            .find(|it| !it.has_semi())
-        {
-            ModuleSource::new_inline(db, file_id, m)
-        } else {
-            ModuleSource::new_file(db, file_id)
-        };
-        Module::guess_from_source(db, module_source)
-    }
-
-    fn guess_from_source(
-        db: &impl HirDatabase,
-        module_source: ModuleSource,
-    ) -> Cancelable<Option<Module>> {
-        let source_root_id = db.file_source_root(module_source.file_id());
-        let module_tree = db.module_tree(source_root_id)?;
-
-        let res = match module_tree.any_module_for_source(module_source) {
-            None => None,
-            Some(module_id) => Some(Module {
-                tree: module_tree,
-                source_root_id,
-                module_id,
-            }),
-        };
-        Ok(res)
-    }
-
     pub(super) fn new(
         db: &impl HirDatabase,
         source_root_id: SourceRootId,
@@ -217,16 +153,10 @@ impl ModuleTree {
         self.mods.iter().map(|(id, _)| id)
     }
 
-    fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
-        self.mods
-            .iter()
-            .filter(|(_idx, it)| it.source == source)
-            .map(|(idx, _)| idx)
-            .collect()
-    }
-
-    fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
-        self.modules_for_source(source).pop()
+    pub(crate) fn modules_with_sources<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (ModuleId, ModuleSource)> + 'a {
+        self.mods.iter().map(|(id, m)| (id, m.source))
     }
 }
 
