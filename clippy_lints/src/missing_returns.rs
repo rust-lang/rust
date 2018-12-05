@@ -16,8 +16,8 @@ use crate::utils::{snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for missing return statements at the end of a block.
 ///
-/// **Why is this bad?** Actually it is idiomatic Rust code. Programmers coming
-/// from other languages might prefer the expressiveness of `return`.
+/// **Why is this bad?** Actually omitting the return keyword is idiomatic Rust code. Programmers
+/// coming from other languages might prefer the expressiveness of `return`.
 ///
 /// **Known problems:** None.
 ///
@@ -34,16 +34,16 @@ use crate::utils::{snippet_opt, span_lint_and_then};
 /// }
 /// ```
 declare_clippy_lint! {
-    pub FORCED_RETURN,
+    pub MISSING_RETURNS,
     restriction,
     "use a return statement like `return expr` instead of an expression"
 }
 
-pub struct ForcedReturnPass;
+pub struct MissingReturnsPass;
 
-impl ForcedReturnPass {
+impl MissingReturnsPass {
     fn show_suggestion(cx: &LateContext<'_, '_>, span: syntax_pos::Span) {
-        span_lint_and_then(cx, FORCED_RETURN, span, "missing return statement", |db| {
+        span_lint_and_then(cx, MISSING_RETURNS, span, "missing return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, span) {
                 db.span_suggestion_with_applicability(
                     span,
@@ -80,13 +80,13 @@ impl ForcedReturnPass {
     }
 }
 
-impl LintPass for ForcedReturnPass {
+impl LintPass for MissingReturnsPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(FORCED_RETURN)
+        lint_array!(MISSING_RETURNS)
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ForcedReturnPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingReturnsPass {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

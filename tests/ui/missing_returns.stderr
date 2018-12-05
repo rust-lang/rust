@@ -1,43 +1,43 @@
 error: missing return statement
-  --> $DIR/forced_return.rs:21:5
+  --> $DIR/missing_returns.rs:21:5
    |
 21 |     true
    |     ^^^^ help: add `return` as shown: `return true`
    |
-   = note: `-D clippy::forced-return` implied by `-D warnings`
+   = note: `-D clippy::missing-returns` implied by `-D warnings`
 
 error: missing return statement
-  --> $DIR/forced_return.rs:27:9
+  --> $DIR/missing_returns.rs:27:9
    |
 27 |         true
    |         ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/forced_return.rs:29:9
+  --> $DIR/missing_returns.rs:29:9
    |
 29 |         false
    |         ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/forced_return.rs:36:17
+  --> $DIR/missing_returns.rs:36:17
    |
 36 |         true => false,
    |                 ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/forced_return.rs:38:13
+  --> $DIR/missing_returns.rs:38:13
    |
 38 |             true
    |             ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/forced_return.rs:45:9
+  --> $DIR/missing_returns.rs:45:9
    |
 45 |         true
    |         ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/forced_return.rs:47:16
+  --> $DIR/missing_returns.rs:47:16
    |
 47 |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`

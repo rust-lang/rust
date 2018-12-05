@@ -152,6 +152,7 @@ pub mod misc;
 pub mod misc_early;
 pub mod missing_doc;
 pub mod missing_inline;
+pub mod missing_returns;
 pub mod multiple_crate_versions;
 pub mod mut_mut;
 pub mod mut_reference;
@@ -185,7 +186,6 @@ pub mod reference;
 pub mod regex;
 pub mod replace_consts;
 pub mod returns;
-pub mod forced_return;
 pub mod serde_api;
 pub mod shadow;
 pub mod slow_vector_initialization;
@@ -372,7 +372,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
-    reg.register_late_lint_pass(box forced_return::ForcedReturnPass);
+    reg.register_late_lint_pass(box missing_returns::MissingReturnsPass);
     reg.register_late_lint_pass(box methods::Pass);
     reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box shadow::Pass);
@@ -498,13 +498,13 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         misc::FLOAT_CMP_CONST,
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
+        missing_returns::MISSING_RETURNS,
         panic_unimplemented::UNIMPLEMENTED,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         strings::STRING_ADD,
         write::PRINT_STDOUT,
         write::USE_DEBUG,
-        forced_return::FORCED_RETURN,
     ]);
 
     reg.register_lint_group("clippy::pedantic", Some("clippy_pedantic"), vec![

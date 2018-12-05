@@ -11,7 +11,7 @@
 
 
 
-#![warn(clippy::forced_return)]
+#![warn(clippy::missing_returns)]
 
 fn test_end_of_fn() -> bool {
     if true {
