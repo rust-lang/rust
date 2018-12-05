@@ -10,6 +10,9 @@
  * except according to those terms.
  */
 
+// From rust:
+/* global resourcesSuffix */
+
 var currentTheme = document.getElementById("themeStyle");
 var mainTheme = document.getElementById("mainThemeStyle");
 
