@@ -71,6 +71,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
+#![feature(arbitrary_self_types)]
 
 #![recursion_limit="512"]
 

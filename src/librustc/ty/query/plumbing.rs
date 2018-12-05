@@ -27,6 +27,7 @@ use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::by_move::{Move, MoveSlot};
 use std::mem;
 use std::ptr;
 use std::intrinsics::unlikely;
@@ -115,6 +116,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         tcx: TyCtxt<'a, 'tcx, '_>,
         span: Span,
         key: &Q::Key,
+        mut job_storage: MoveSlot<'a, JobOwner<'a, 'tcx, Q>>,
     ) -> TryGetJob<'a, 'tcx, Q> {
         let cache = Q::query_cache(tcx);
         loop {
@@ -144,12 +146,12 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             query: Q::query(key.clone()),
                         };
                         let job = Lrc::new(QueryJob::new(info, icx.query.clone()));
-                        let owner = JobOwner {
+                        let owner = job_storage.init(JobOwner {
                             cache,
                             job: job.clone(),
                             key: (*key).clone(),
                             layout_depth: icx.layout_depth,
-                        };
+                        });
                         entry.insert(QueryResult::Started(job));
                         TryGetJob::NotYetStarted(owner)
                     })
@@ -172,7 +174,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline]
-    pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
+    pub(super) fn complete(self: Move<'_, Self>, result: &Q::Value, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let job = unsafe { ptr::read(&self.job) };
@@ -236,14 +238,14 @@ pub struct CycleError<'tcx> {
 }
 
 /// The result of `try_get_lock`
-pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
+pub(super) enum TryGetJob<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'a, 'tcx, D>),
+    NotYetStarted(Move<'a, JobOwner<'a, 'tcx, Q>>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep node index
     /// if it succeeded or a cycle error if it failed
-    JobCompleted(Result<(D::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
+    JobCompleted(Result<(Q::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
 }
 
 impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
@@ -372,7 +374,8 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
 
         self.sess.profiler(|p| p.record_query(Q::CATEGORY));
 
-        let job = match JobOwner::try_get(self, span, &key) {
+        let job_slot = uninit_slot!();
+        let job = match JobOwner::try_get(self, span, &key, Move::uninit(job_slot)) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(result) => {
                 return result.map(|(v, index)| {
@@ -438,7 +441,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
     fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
-        job: JobOwner<'a, 'gcx, Q>,
+        job: Move<'_, JobOwner<'_, 'gcx, Q>>,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
     ) -> Result<Q::Value, Box<CycleError<'gcx>>>
@@ -521,7 +524,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
     fn force_query_with_job<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
-        job: JobOwner<'_, 'gcx, Q>,
+        job: Move<'_, JobOwner<'_, 'gcx, Q>>,
         dep_node: DepNode)
     -> Result<(Q::Value, DepNodeIndex), Box<CycleError<'gcx>>> {
         // If the following assertion triggers, it can have two reasons:
@@ -616,7 +619,8 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
 
         // We may be concurrently trying both execute and force a query
         // Ensure that only one of them runs the query
-        let job = match JobOwner::try_get(self, span, &key) {
+        let job_slot = uninit_slot!();
+        let job = match JobOwner::try_get(self, span, &key, Move::uninit(job_slot)) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(_) => return,
         };

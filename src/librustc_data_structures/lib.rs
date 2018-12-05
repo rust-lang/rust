@@ -33,6 +33,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
 #![feature(integer_atomics)]
+#![feature(maybe_uninit)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -104,6 +105,7 @@ pub mod sync;
 pub mod tiny_list;
 pub mod thin_vec;
 pub mod vec;
+pub mod by_move;
 pub mod transitive_relation;
 pub use ena::unify;
 pub mod vec_linked_list;
