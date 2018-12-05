@@ -29,7 +29,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
         return None
     }
 
-    let saved_files: Option<Vec<_>> =
+    let saved_files =
         files.iter()
              .map(|&(kind, ref path)| {
                  let extension = match kind {
@@ -51,11 +51,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
                      }
                  }
              })
-             .collect();
-    let saved_files = match saved_files {
-        None => return None,
-        Some(v) => v,
-    };
+             .collect::<Option<Vec<_>>>()?;
 
     let work_product = WorkProduct {
         cgu_name: cgu_name.to_string(),
