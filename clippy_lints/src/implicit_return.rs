@@ -17,7 +17,10 @@ use crate::utils::{snippet_opt, span_lint_and_then};
 /// **What it does:** Checks for missing return statements at the end of a block.
 ///
 /// **Why is this bad?** Actually omitting the return keyword is idiomatic Rust code. Programmers
-/// coming from other languages might prefer the expressiveness of `return`.
+/// coming from other languages might prefer the expressiveness of `return`. It's possible to miss
+/// the last returning statement because the only difference is a missing `;`. Especially in bigger
+/// code with multiple return paths having a `return` keyword makes it easier to find the
+/// corresponding statements.
 ///
 /// **Known problems:** None.
 ///
@@ -124,6 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let def_id = cx.tcx.hir.body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
 
+        // checking return type through MIR, HIR is not able to determine inferred closure return types
         if !mir.return_ty().is_unit() {
             Self::expr_match(cx, &body.value);
         }
