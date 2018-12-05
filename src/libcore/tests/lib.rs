@@ -20,6 +20,7 @@
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
+#![feature(iter_copied)]
 #![feature(iter_unfold)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
