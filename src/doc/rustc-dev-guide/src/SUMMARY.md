@@ -65,6 +65,7 @@
     - [miri const evaluator](./miri.md)
 - [Parameter Environments](./param_env.md)
 - [Code Generation](./codegen.md)
+  - [Updating LLVM](./codegen/updating-llvm.md)
 - [Emitting Diagnostics](./diag.md)
 
 ---
