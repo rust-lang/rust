@@ -52,6 +52,12 @@ pub(in borrow_check) enum LaterUseKind {
 }
 
 impl BorrowExplanation {
+    pub(in borrow_check) fn is_explained(&self) -> bool {
+        match self {
+            BorrowExplanation::Unexplained => false,
+            _ => true,
+        }
+    }
     pub(in borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx, 'tcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,

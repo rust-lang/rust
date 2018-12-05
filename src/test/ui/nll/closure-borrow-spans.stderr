@@ -126,7 +126,7 @@ LL |     let f = || *x = 0;
    |             |
    |             closure construction occurs here
 LL |     let y = &x; //~ ERROR
-   |             ^^ borrow occurs here
+   |             ^^ second borrow occurs here
 LL |     f.use_ref();
    |     - first borrow later used here
 
@@ -138,7 +138,7 @@ LL |     let f = || *x = 0;
    |             |
    |             closure construction occurs here
 LL |     let y = &mut x; //~ ERROR
-   |             ^^^^^^ borrow occurs here
+   |             ^^^^^^ second borrow occurs here
 LL |     f.use_ref();
    |     - first borrow later used here
 
