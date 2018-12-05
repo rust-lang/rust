@@ -126,6 +126,7 @@ pub mod functions;
 pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_not_else;
+pub mod implicit_return;
 pub mod indexing_slicing;
 pub mod infallible_destructuring_match;
 pub mod infinite_iter;
@@ -152,7 +153,6 @@ pub mod misc;
 pub mod misc_early;
 pub mod missing_doc;
 pub mod missing_inline;
-pub mod missing_returns;
 pub mod multiple_crate_versions;
 pub mod mut_mut;
 pub mod mut_reference;
@@ -372,7 +372,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
-    reg.register_late_lint_pass(box missing_returns::Pass);
+    reg.register_late_lint_pass(box implicit_return::Pass);
     reg.register_late_lint_pass(box methods::Pass);
     reg.register_late_lint_pass(box map_clone::Pass);
     reg.register_late_lint_pass(box shadow::Pass);
@@ -487,6 +487,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
+        implicit_return::IMPLICIT_RETURN,
         indexing_slicing::INDEXING_SLICING,
         inherent_impl::MULTIPLE_INHERENT_IMPL,
         literal_representation::DECIMAL_LITERAL_REPRESENTATION,
@@ -498,7 +499,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         misc::FLOAT_CMP_CONST,
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
-        missing_returns::MISSING_RETURNS,
         panic_unimplemented::UNIMPLEMENTED,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,

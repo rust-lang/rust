@@ -11,7 +11,7 @@
 
 
 
-#![warn(clippy::missing_returns)]
+#![warn(clippy::implicit_return)]
 
 fn test_end_of_fn() -> bool {
     if true {
@@ -40,6 +40,13 @@ fn test_match(x: bool) -> bool {
     }
 }
 
+#[allow(clippy::never_loop)]
+fn test_loop() -> bool {
+    loop {
+        break true;
+    }
+}
+
 fn test_closure() {
     let _ = || {
         true
@@ -51,5 +58,6 @@ fn main() {
     let _ = test_end_of_fn();
     let _ = test_if_block();
     let _ = test_match(true);
+    let _ = test_loop();
     test_closure();
 }
