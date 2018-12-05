@@ -137,8 +137,8 @@ where MWF: MirWithFlowState<'tcx>,
                                          block: BasicBlock,
                                          mir: &Mir) -> io::Result<()> {
         // Header rows
-        const HDRS: [&'static str; 4] = ["ENTRY", "MIR", "BLOCK GENS", "BLOCK KILLS"];
-        const HDR_FMT: &'static str = "bgcolor=\"grey\"";
+        const HDRS: [&str; 4] = ["ENTRY", "MIR", "BLOCK GENS", "BLOCK KILLS"];
+        const HDR_FMT: &str = "bgcolor=\"grey\"";
         write!(w, "<table><tr><td rowspan=\"{}\">", HDRS.len())?;
         write!(w, "{:?}", block.index())?;
         write!(w, "</td></tr><tr>")?;

@@ -28,7 +28,7 @@ use lazy_static;
 use session::Session;
 
 // The name of the associated type for `Fn` return types
-pub const FN_OUTPUT_NAME: &'static str = "Output";
+pub const FN_OUTPUT_NAME: &str = "Output";
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
