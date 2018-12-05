@@ -1132,6 +1132,13 @@ pre.rust {
 	margin-top: 20px;
 }
 
+.search-failed > ul {
+	text-align: left;
+	max-width: 570px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
 #titles {
 	height: 35px;
 }
