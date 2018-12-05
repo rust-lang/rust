@@ -38,7 +38,8 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
             current = next;
             t_last = j;
         }
-    } dcol[t_last + 1]
+    }
+    dcol[t_last + 1]
 }
 
 /// Find the best match for a given word in the given iterator

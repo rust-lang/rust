@@ -13,12 +13,12 @@ use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
 use source_map::{SourceMap, FilePathMapping};
 use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
 use parse::{token, ParseSess};
-use str::char_at;
 use symbol::{Symbol, keywords};
 use core::unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
 use std::char;
+use std::iter;
 use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
 
@@ -459,45 +459,42 @@ impl<'a> StringReader<'a> {
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'b>(&self, start: BytePos, s: &'b str, errmsg: &'b str) -> Cow<'b, str> {
-        let mut i = 0;
-        while i < s.len() {
-            let ch = char_at(s, i);
-            let next = i + ch.len_utf8();
+        let mut chars = s.char_indices().peekable();
+        while let Some((i, ch)) = chars.next() {
             if ch == '\r' {
-                if next < s.len() && char_at(s, next) == '\n' {
-                    return translate_crlf_(self, start, s, errmsg, i).into();
+                if let Some((lf_idx, '\n')) = chars.peek() {
+                    return translate_crlf_(self, start, s, *lf_idx, chars, errmsg).into();
                 }
                 let pos = start + BytePos(i as u32);
-                let end_pos = start + BytePos(next as u32);
+                let end_pos = start + BytePos((i + ch.len_utf8()) as u32);
                 self.err_span_(pos, end_pos, errmsg);
             }
-            i = next;
         }
         return s.into();
 
         fn translate_crlf_(rdr: &StringReader,
                            start: BytePos,
                            s: &str,
-                           errmsg: &str,
-                           mut i: usize)
+                           mut j: usize,
+                           mut chars: iter::Peekable<impl Iterator<Item = (usize, char)>>,
+                           errmsg: &str)
                            -> String {
             let mut buf = String::with_capacity(s.len());
-            let mut j = 0;
-            while i < s.len() {
-                let ch = char_at(s, i);
-                let next = i + ch.len_utf8();
+            // Skip first CR
+            buf.push_str(&s[.. j - 1]);
+            while let Some((i, ch)) = chars.next() {
                 if ch == '\r' {
                     if j < i {
                         buf.push_str(&s[j..i]);
                     }
+                    let next = i + ch.len_utf8();
                     j = next;
-                    if next >= s.len() || char_at(s, next) != '\n' {
+                    if chars.peek().map(|(_, ch)| *ch) != Some('\n') {
                         let pos = start + BytePos(i as u32);
                         let end_pos = start + BytePos(next as u32);
                         rdr.err_span_(pos, end_pos, errmsg);
                     }
                 }
-                i = next;
             }
             if j < s.len() {
                 buf.push_str(&s[j..]);
@@ -1856,6 +1853,11 @@ fn ident_continue(c: Option<char>) -> bool {
 
     (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' ||
     (c > '\x7f' && c.is_xid_continue())
+}
+
+#[inline]
+fn char_at(s: &str, byte: usize) -> char {
+    s[byte..].chars().next().unwrap()
 }
 
 #[cfg(test)]
