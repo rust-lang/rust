@@ -167,7 +167,7 @@ impl NonSnakeCase {
     fn to_snake_case(mut str: &str) -> String {
         let mut words = vec![];
         // Preserve leading underscores
-        str = str.trim_left_matches(|c: char| {
+        str = str.trim_start_matches(|c: char| {
             if c == '_' {
                 words.push(String::new());
                 true
@@ -199,7 +199,7 @@ impl NonSnakeCase {
             if ident.is_empty() {
                 return true;
             }
-            let ident = ident.trim_left_matches('\'');
+            let ident = ident.trim_start_matches('\'');
             let ident = ident.trim_matches('_');
 
             let mut allow_underscore = true;

@@ -76,7 +76,7 @@ pub fn error_string(mut errnum: i32) -> String {
         match String::from_utf16(&buf[..res]) {
             Ok(mut msg) => {
                 // Trim trailing CRLF inserted by FormatMessageW
-                let len = msg.trim_right().len();
+                let len = msg.trim_end().len();
                 msg.truncate(len);
                 msg
             },

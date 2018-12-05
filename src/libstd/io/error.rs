@@ -555,6 +555,7 @@ impl error::Error for Error {
         }
     }
 
+    #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn error::Error> {
         match self.repr {
             Repr::Os(..) => None,

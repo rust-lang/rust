@@ -35,7 +35,7 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
     for line in s.lines() {
         if line.starts_with("# ") || line.starts_with("%") {
             // trim the whitespace after the symbol
-            metadata.push(line[1..].trim_left());
+            metadata.push(line[1..].trim_start());
             count += line.len() + 1;
         } else {
             return (metadata, &s[count..]);

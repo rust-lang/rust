@@ -1514,9 +1514,9 @@ fn contains_weird_cases() {
 
 #[test]
 fn trim_ws() {
-    assert_eq!(" \t  a \t  ".trim_left_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t  a \t  ".trim_start_matches(|c: char| c.is_whitespace()),
                     "a \t  ");
-    assert_eq!(" \t  a \t  ".trim_right_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t  a \t  ".trim_end_matches(|c: char| c.is_whitespace()),
                " \t  a");
     assert_eq!(" \t  a \t  ".trim_start_matches(|c: char| c.is_whitespace()),
                     "a \t  ");
@@ -1524,9 +1524,9 @@ fn trim_ws() {
                " \t  a");
     assert_eq!(" \t  a \t  ".trim_matches(|c: char| c.is_whitespace()),
                     "a");
-    assert_eq!(" \t   \t  ".trim_left_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t   \t  ".trim_start_matches(|c: char| c.is_whitespace()),
                          "");
-    assert_eq!(" \t   \t  ".trim_right_matches(|c: char| c.is_whitespace()),
+    assert_eq!(" \t   \t  ".trim_end_matches(|c: char| c.is_whitespace()),
                "");
     assert_eq!(" \t   \t  ".trim_start_matches(|c: char| c.is_whitespace()),
                          "");

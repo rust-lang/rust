@@ -149,7 +149,6 @@ pub fn forget<T>(t: T) {
 ///
 /// [`forget`]: fn.forget.html
 #[inline]
-#[cfg(not(stage0))]
 #[unstable(feature = "forget_unsized", issue = "0")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
     unsafe { intrinsics::forget(t) }

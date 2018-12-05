@@ -95,7 +95,7 @@ fn unindent(s: &str) -> String {
     });
 
     if !lines.is_empty() {
-        let mut unindented = vec![ lines[0].trim_left().to_string() ];
+        let mut unindented = vec![ lines[0].trim_start().to_string() ];
         unindented.extend_from_slice(&lines[1..].iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()

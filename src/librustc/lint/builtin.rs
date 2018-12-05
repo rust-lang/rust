@@ -463,7 +463,7 @@ impl BuiltinLintDiagnostics {
                     Ok(ref s) => {
                         // FIXME(Manishearth) ideally the emitting code
                         // can tell us whether or not this is global
-                        let opt_colon = if s.trim_left().starts_with("::") {
+                        let opt_colon = if s.trim_start().starts_with("::") {
                             ""
                         } else {
                             "::"

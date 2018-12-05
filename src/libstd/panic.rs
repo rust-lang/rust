@@ -264,7 +264,7 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
 #[cfg(target_has_atomic = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI64 {}
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI128 {}
 
@@ -283,7 +283,7 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
 #[cfg(target_has_atomic = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU64 {}
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU128 {}
 

@@ -1262,7 +1262,7 @@ impl EmitterWriter {
 
                         // Do not underline the leading...
                         let start = part.snippet.len()
-                            .saturating_sub(part.snippet.trim_left().len());
+                            .saturating_sub(part.snippet.trim_start().len());
                         // ...or trailing spaces. Account for substitutions containing unicode
                         // characters.
                         let sub_len = part.snippet.trim().chars().fold(0, |acc, ch| {
