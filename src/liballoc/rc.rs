@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(specialization)]
 #![allow(deprecated)]
 
 //! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
@@ -902,6 +901,38 @@ impl<T: Default> Default for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+trait RcEqIdent<T: ?Sized + PartialEq> {
+    fn eq(&self, other: &Rc<T>) -> bool;
+    fn ne(&self, other: &Rc<T>) -> bool;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
+    #[inline]
+    default fn eq(&self, other: &Rc<T>) -> bool {
+        **self == **other
+    }
+
+    #[inline]
+    default fn ne(&self, other: &Rc<T>) -> bool {
+        **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Eq> RcEqIdent<T> for Rc<T> {
+    #[inline]
+    fn eq(&self, other: &Rc<T>) -> bool {
+        Rc::ptr_eq(self, other) || **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &Rc<T>) -> bool {
+        !Rc::ptr_eq(self, other) && **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// Equality for two `Rc`s.
     ///
@@ -919,9 +950,9 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     ///
     /// assert!(five == Rc::new(5));
     /// ```
-    #[inline(always)]
-    default fn eq(&self, other: &Rc<T>) -> bool {
-        **self == **other
+    #[inline]
+    fn eq(&self, other: &Rc<T>) -> bool {
+        RcEqIdent::eq(self, other)
     }
 
     /// Inequality for two `Rc`s.
@@ -940,23 +971,9 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     ///
     /// assert!(five != Rc::new(6));
     /// ```
-    #[inline(always)]
-    default fn ne(&self, other: &Rc<T>) -> bool {
-        **self != **other
-    }
-}
-
-#[doc(hidden)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + Eq> PartialEq for Rc<T> {
-    #[inline(always)]
-    fn eq(&self, other: &Rc<T>) -> bool {
-        Rc::ptr_eq(self, other) || **self == **other
-    }
-
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &Rc<T>) -> bool {
-        !Rc::ptr_eq(self, other) && **self != **other
+        RcEqIdent::ne(self, other)
     }
 }
 
