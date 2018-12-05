@@ -553,13 +553,13 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Copied<I>
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
-        self.it.try_rfold(init, move |acc, elt| f(acc, elt.clone()))
+        self.it.try_rfold(init, move |acc, &elt| f(acc, elt))
     }
 
     fn rfold<Acc, F>(self, init: Acc, mut f: F) -> Acc
         where F: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.it.rfold(init, move |acc, elt| f(acc, elt.clone()))
+        self.it.rfold(init, move |acc, &elt| f(acc, elt))
     }
 }
 
