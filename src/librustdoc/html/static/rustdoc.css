@@ -288,10 +288,6 @@ nav.sub {
 	margin-bottom: 10px;
 }
 
-.example-wrap {
-	width: 100%;
-}
-
 .example-wrap > pre.line-number {
 	overflow: initial;
 	border: 1px solid;
