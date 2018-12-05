@@ -900,7 +900,7 @@ impl Session {
     /// This expends fuel if applicable, and records fuel if applicable.
     #[inline(always)]
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
-        if likely!(self.optimization_fuel_crate.is_none()) {
+        if likely!(self.optimization_fuel_crate.is_none() && self.print_fuel_crate.is_none()) {
             true
         } else {
             self.consider_optimizing_cold(crate_name, msg)
