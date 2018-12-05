@@ -590,7 +590,9 @@ unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Copied<I>
     }
 
     #[inline]
-    fn may_have_side_effect() -> bool { false }
+    fn may_have_side_effect() -> bool {
+        I::may_have_side_effect()
+    }
 }
 
 #[unstable(feature = "iter_copied", issue = "0")]
