@@ -9,7 +9,7 @@ use languageserver_types::{
     WorkspaceEdit, ParameterInformation, SignatureInformation, Hover, HoverContents,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
-use ra_syntax::{TextUnit, text_utils::contains_offset_nonstrict};
+use ra_syntax::{TextUnit, text_utils::{contains_offset_nonstrict, intersect}};
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
 
@@ -618,7 +618,7 @@ pub fn handle_code_action(
         .diagnostics(file_id)?
         .into_iter()
         .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(range, _fix)| contains_offset_nonstrict(*range, range.start()))
+        .filter(|(diag_range, _fix)| intersect(*diag_range, range).is_some())
         .map(|(_range, fix)| fix);
 
     let mut res = Vec::new();
