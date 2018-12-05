@@ -53,16 +53,7 @@ pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     #[inline(always)]
-    fn compute(tcx: TyCtxt<'_, 'tcx, 'tcx>, key: Self::Key) -> Self::Value {
-        let provider = Self::provider(tcx, &key);
-        provider(tcx, key)
-    }
-
-    // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn provider(
-        tcx: TyCtxt<'_, 'tcx, 'tcx>,
-        key: &Self::Key
-    ) -> fn(TyCtxt<'_, 'tcx, 'tcx>, Self::Key) -> Self::Value;
+    fn compute(tcx: TyCtxt<'_, 'tcx, 'tcx>, key: Self::Key) -> Self::Value;
 
     fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
 }

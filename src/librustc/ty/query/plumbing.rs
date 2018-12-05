@@ -193,16 +193,13 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// Executes a job by changing the ImplicitCtxt to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
-    // FIXME: Remove inline(never)
-    #[inline(never)]
-    pub(super) fn with_context<'lcx, F, R>(
+    #[inline(always)]
+    pub(super) fn compute(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        tcx: TyCtxt<'_, 'tcx, 'tcx>,
         task: &OpenTask,
-        compute: F)
-    -> R
-    where
-        F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'lcx>) -> R
+        key: Q::Key,
+    ) -> Q::Value
     {
         // Update the ImplicitCtxt to point to our new query job
         let new_icx = tls::ImplicitCtxt {
@@ -214,7 +211,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 
         // Use the ImplicitCtxt while we execute the query
         tls::enter_context(&new_icx, |_| {
-            compute(tcx)
+            Q::compute(tcx, key)
         })
     }
 }
@@ -398,7 +395,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
             let res = self.dep_graph.with_anon_open_task(dep_node.kind, |open_task| {
-                job.with_context(self, open_task, |tcx | Q::compute(tcx.global_tcx(), key))
+                job.compute(self, open_task, key)
             });
 
             self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
@@ -454,8 +451,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
                         self.sess.opts.debugging_opts.incremental_queries {
             let prev_dep_node_index =
                 self.dep_graph.prev_dep_node_index_of(dep_node);
-            let result = Q::try_load_from_disk(self.global_tcx(),
-                                               prev_dep_node_index);
+            let result = Q::try_load_from_disk(self, prev_dep_node_index);
 
             // We always expect to find a cached result for things that
             // can be forced from DepNode.
@@ -480,7 +476,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             // try_mark_green(), so we can ignore them here.
             // The dep-graph for this computation is already in
             // place so we pass OpenTask::Ignore.
-            job.with_context(self, &OpenTask::Ignore, |tcx| Q::compute(tcx, key))
+            job.compute(self, &OpenTask::Ignore, key)
         };
 
         // If -Zincremental-verify-ich is specified, re-hash results from
@@ -518,8 +514,8 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
         Ok(result)
     }
 
-    // FIXME: Inline this so LLVM can tell what kind of DepNode we are using
-    #[inline(never)]
+    // Inlined so LLVM can tell what kind of DepNode we are using
+    #[inline(always)]
     fn force_query_with_job<Q: QueryDescription<'gcx>>(
         self,
         key: Q::Key,
@@ -543,15 +539,13 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             p.record_query(Q::CATEGORY);
         });
 
-        let provider = Q::provider(self, &key);
-
         let res = if dep_node.kind.is_eval_always() {
             self.dep_graph.with_eval_always_task(self, dep_node, |task| {
-                job.with_context(self, task, |tcx| provider(tcx, key))
+                job.compute(self, task, key)
             })
         } else {
             self.dep_graph.with_query_task(self, dep_node, |task| {
-                job.with_context(self, task, |tcx| provider(tcx, key))
+                job.compute(self, task, key)
             })
         };
 
@@ -806,16 +800,6 @@ macro_rules! define_queries_inner {
             })*
         }
 
-        // This module and the functions in it exist only to provide a
-        // predictable symbol name prefix for query providers. This is helpful
-        // for analyzing queries in profilers.
-        pub(super) mod __query_compute {
-            $(#[inline(never)]
-            pub fn $name<F: FnOnce() -> R, R>(f: F) -> R {
-                f()
-            })*
-        }
-
         $(impl<$tcx> QueryConfig<$tcx> for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
@@ -844,20 +828,18 @@ macro_rules! define_queries_inner {
             }
 
             #[inline(always)]
-            fn provider(
+            fn compute(
                 tcx: TyCtxt<'_, 'tcx, 'tcx>,
-                key: &Self::Key
-            ) -> fn(TyCtxt<'_, 'tcx, 'tcx>, Self::Key) -> Self::Value {
-                __query_compute::$name(move || {
-                    let provider = tcx.queries.providers.get(key.query_crate())
-                        // HACK(eddyb) it's possible crates may be loaded after
-                        // the query engine is created, and because crate loading
-                        // is not yet integrated with the query engine, such crates
-                        // would be be missing appropriate entries in `providers`.
-                        .unwrap_or(&tcx.queries.fallback_extern_providers)
-                        .$name;
-                    provider
-                })
+                key: Self::Key
+            ) -> Self::Value {
+                let provider = tcx.queries.providers.get(key.query_crate())
+                    // HACK(eddyb) it's possible crates may be loaded after
+                    // the query engine is created, and because crate loading
+                    // is not yet integrated with the query engine, such crates
+                    // would be be missing appropriate entries in `providers`.
+                    .unwrap_or(&tcx.queries.fallback_extern_providers)
+                    .$name;
+                provider(tcx, key)
             }
 
             fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value {
