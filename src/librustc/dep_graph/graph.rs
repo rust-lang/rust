@@ -13,7 +13,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, Lock, AtomicU64, Ordering::Relaxed};
+use rustc_data_structures::vec::SmallVecExt;
 use std::env;
 use std::hash::Hash;
 use ty::{self, TyCtxt};
@@ -69,6 +70,8 @@ struct DepGraphData {
     /// current one anymore.
     current: Lock<CurrentDepGraph>,
 
+    current_atomic: CurrentDepGraphAtomic,
+
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
     previous: PreviousDepGraph,
@@ -98,11 +101,13 @@ impl DepGraph {
 
         let fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO,
                                                  (prev_graph_node_count * 115) / 100);
+        let (current, current_atomic) = CurrentDepGraph::new();
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
-                current: Lock::new(CurrentDepGraph::new()),
+                current: Lock::new(current),
+                current_atomic,
                 previous: prev_graph,
                 colors: Lock::new(DepNodeColorMap::new(prev_graph_node_count)),
                 loaded_from_cache: Default::default(),
@@ -446,9 +451,10 @@ impl DepGraph {
     #[inline]
     pub fn read(&self, v: DepNode) {
         if let Some(ref data) = self.data {
-            let mut current = data.current.borrow_mut();
+            let current = data.current.borrow_mut();
             if let Some(&dep_node_index) = current.node_to_node_index.get(&v) {
-                current.read_index(dep_node_index);
+                std::mem::drop(current);
+                data.current_atomic.read_index(&data.current, dep_node_index);
             } else {
                 bug!("DepKind {:?} should be pre-allocated but isn't.", v.kind)
             }
@@ -458,7 +464,7 @@ impl DepGraph {
     #[inline]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            data.current.borrow_mut().read_index(dep_node_index);
+            data.current_atomic.read_index(&data.current, dep_node_index);
         }
     }
 
@@ -549,9 +555,10 @@ impl DepGraph {
     }
 
     pub fn edge_deduplication_data(&self) -> (u64, u64) {
-        let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
+        let current_dep_graph = &self.data.as_ref().unwrap().current_atomic;
 
-        (current_dep_graph.total_read_count, current_dep_graph.total_duplicate_read_count)
+        (current_dep_graph.total_read_count.load(Relaxed),
+         current_dep_graph.total_duplicate_read_count.load(Relaxed))
     }
 
     pub fn serialize(&self) -> SerializedDepGraph {
@@ -936,6 +943,11 @@ pub enum WorkProductFileKind {
     BytecodeCompressed,
 }
 
+pub(super) struct CurrentDepGraphAtomic {
+    total_read_count: AtomicU64,
+    total_duplicate_read_count: AtomicU64,
+}
+
 pub(super) struct CurrentDepGraph {
     nodes: IndexVec<DepNodeIndex, DepNode>,
     edges: IndexVec<DepNodeIndex, SmallVec<[DepNodeIndex; 8]>>,
@@ -954,13 +966,10 @@ pub(super) struct CurrentDepGraph {
     // each anon node. The session-key is just a random number generated when
     // the DepGraph is created.
     anon_id_seed: Fingerprint,
-
-    total_read_count: u64,
-    total_duplicate_read_count: u64,
 }
 
 impl CurrentDepGraph {
-    fn new() -> CurrentDepGraph {
+    fn new() -> (CurrentDepGraph, CurrentDepGraphAtomic) {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -983,15 +992,16 @@ impl CurrentDepGraph {
             None
         };
 
-        CurrentDepGraph {
+        (CurrentDepGraph {
             nodes: IndexVec::new(),
             edges: IndexVec::new(),
             node_to_node_index: Default::default(),
             anon_id_seed: stable_hasher.finish(),
             forbidden_edge,
-            total_read_count: 0,
-            total_duplicate_read_count: 0,
-        }
+        }, CurrentDepGraphAtomic {
+            total_read_count: AtomicU64::new(0),
+            total_duplicate_read_count: AtomicU64::new(0),
+        })
     }
 
     #[inline(always)]
@@ -1085,22 +1095,39 @@ impl CurrentDepGraph {
         }
     }
 
-    fn read_index(&mut self, source: DepNodeIndex) {
+    fn alloc_node(&mut self,
+                  dep_node: DepNode,
+                  edges: SmallVec<[DepNodeIndex; 8]>)
+                  -> DepNodeIndex {
+        debug_assert_eq!(self.edges.len(), self.nodes.len());
+        debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
+        debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
+        let dep_node_index = DepNodeIndex::new(self.nodes.len());
+        self.nodes.push(dep_node);
+        self.node_to_node_index.insert(dep_node, dep_node_index);
+        self.edges.push(edges);
+        dep_node_index
+    }
+}
+
+impl CurrentDepGraphAtomic {
+    fn read_index(&self, lock: &Lock<CurrentDepGraph>, source: DepNodeIndex) {
         ty::tls::with_context_opt(|icx| {
             let icx = if let Some(icx) = icx { icx } else { return };
             match *icx.task {
                 OpenTask::Regular(ref task) => {
                     let mut task = task.lock();
-                    self.total_read_count += 1;
+                    self.total_read_count.fetch_add(1, Relaxed);
                     // FIXME: Only use the set of the SmallVec moved to the heap
                     // Use an array and switch to the set after?
                     if task.read_set.insert(source) {
-                        task.reads.push(source);
+                        task.reads.push_light(source);
 
                         if cfg!(debug_assertions) {
-                            if let Some(ref forbidden_edge) = self.forbidden_edge {
+                            let graph = lock.lock();
+                            if let Some(ref forbidden_edge) = graph.forbidden_edge {
                                 let target = &task.node;
-                                let source = self.nodes[source];
+                                let source = graph.nodes[source];
                                 if forbidden_edge.test(&source, &target) {
                                     bug!("forbidden edge {:?} -> {:?} created",
                                         source,
@@ -1109,7 +1136,7 @@ impl CurrentDepGraph {
                             }
                         }
                     } else {
-                        self.total_duplicate_read_count += 1;
+                        self.total_duplicate_read_count.fetch_add(1, Relaxed);
                     }
                 }
                 OpenTask::Anon(ref task) => {
@@ -1123,20 +1150,6 @@ impl CurrentDepGraph {
                 }
             }
         })
-    }
-
-    fn alloc_node(&mut self,
-                  dep_node: DepNode,
-                  edges: SmallVec<[DepNodeIndex; 8]>)
-                  -> DepNodeIndex {
-        debug_assert_eq!(self.edges.len(), self.nodes.len());
-        debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
-        debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
-        let dep_node_index = DepNodeIndex::new(self.nodes.len());
-        self.nodes.push(dep_node);
-        self.node_to_node_index.insert(dep_node, dep_node_index);
-        self.edges.push(edges);
-        dep_node_index
     }
 }
 
