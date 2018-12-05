@@ -2516,6 +2516,36 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
 
+/// Hash the raw pointer address behind a reference, rather than the value
+/// it points to.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(ptr_hash)]
+/// use std::collections::hash_map::DefaultHasher;
+/// use std::hash::{Hash, Hasher};
+/// use std::ptr;
+///
+/// let five = 5;
+/// let five_ref = &five;
+///
+/// let mut hasher = DefaultHasher::new();
+/// ptr::hash(five_ref, &mut hasher);
+/// let actual = hasher.finish();
+///
+/// let mut hasher = DefaultHasher::new();
+/// (five_ref as *const i32).hash(&mut hasher);
+/// let expected = hasher.finish();
+///
+/// assert_eq!(actual, expected);
+/// ```
+#[unstable(feature = "ptr_hash", reason = "newly added", issue = "56286")]
+pub fn hash<T, S: hash::Hasher>(hashee: *const T, into: &mut S) {
+    use hash::Hash;
+    hashee.hash(into);
+}
+
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
