@@ -14,7 +14,7 @@ pub struct CrateId(pub u32);
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CrateGraph {
-    pub(crate) crate_roots: FxHashMap<CrateId, FileId>,
+    crate_roots: FxHashMap<CrateId, FileId>,
 }
 
 impl CrateGraph {
