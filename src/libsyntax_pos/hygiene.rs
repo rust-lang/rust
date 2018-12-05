@@ -17,7 +17,7 @@
 
 use GLOBALS;
 use Span;
-use edition::Edition;
+use edition::{Edition, DEFAULT_EDITION};
 use symbol::Symbol;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -217,7 +217,7 @@ impl HygieneData {
                 opaque_and_semitransparent: SyntaxContext(0),
             }],
             markings: FxHashMap::default(),
-            default_edition: Edition::Edition2015,
+            default_edition: DEFAULT_EDITION,
         }
     }
 

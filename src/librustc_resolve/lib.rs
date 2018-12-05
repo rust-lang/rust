@@ -769,7 +769,7 @@ impl<'a, 'tcx, 'cl> Visitor<'tcx> for Resolver<'a, 'cl> {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
-                let self_ty = keywords::SelfType.ident();
+                let self_ty = keywords::SelfUpper.ident();
                 let def = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                               .map_or(Def::Err, |d| d.def());
                 self.record_def(ty.id, PathResolution::new(def));
@@ -1679,7 +1679,7 @@ impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
         components: &[&str],
         is_value: bool
     ) -> hir::Path {
-        let segments = iter::once(keywords::CrateRoot.ident())
+        let segments = iter::once(keywords::PathRoot.ident())
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
@@ -1721,7 +1721,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         let path = if path_str.starts_with("::") {
             ast::Path {
                 span,
-                segments: iter::once(keywords::CrateRoot.ident())
+                segments: iter::once(keywords::PathRoot.ident())
                     .chain({
                         path_str.split("::").skip(1).map(Ident::from_str)
                     })
@@ -2036,7 +2036,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let record_used = record_used_id.is_some();
         assert!(ns == TypeNS  || ns == ValueNS);
         if ns == TypeNS {
-            ident.span = if ident.name == keywords::SelfType.name() {
+            ident.span = if ident.name == keywords::SelfUpper.name() {
                 // FIXME(jseyfried) improve `Self` hygiene
                 ident.span.with_ctxt(SyntaxContext::empty())
             } else {
@@ -2649,7 +2649,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // plain insert (no renaming, types are not currently hygienic....)
-        self_type_rib.bindings.insert(keywords::SelfType.ident(), self_def);
+        self_type_rib.bindings.insert(keywords::SelfUpper.ident(), self_def);
         self.ribs[TypeNS].push(self_type_rib);
         f(self);
         self.ribs[TypeNS].pop();
@@ -2660,7 +2660,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     {
         let self_def = Def::SelfCtor(impl_id);
         let mut self_type_rib = Rib::new(NormalRibKind);
-        self_type_rib.bindings.insert(keywords::SelfType.ident(), self_def);
+        self_type_rib.bindings.insert(keywords::SelfUpper.ident(), self_def);
         self.ribs[ValueNS].push(self_type_rib);
         f(self);
         self.ribs[ValueNS].pop();
@@ -3146,7 +3146,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 let item_span = path.last().unwrap().ident.span;
                 let (mod_prefix, mod_str) = if path.len() == 1 {
                     (String::new(), "this scope".to_string())
-                } else if path.len() == 2 && path[0].ident.name == keywords::CrateRoot.name() {
+                } else if path.len() == 2 && path[0].ident.name == keywords::PathRoot.name() {
                     (String::new(), "the crate root".to_string())
                 } else {
                     let mod_path = &path[..path.len() - 1];
@@ -3515,13 +3515,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
-        let binding = self.resolve_ident_in_lexical_scope(keywords::SelfType.ident(),
+        let binding = self.resolve_ident_in_lexical_scope(keywords::SelfUpper.ident(),
                                                           TypeNS, None, span);
         if let Some(LexicalScopeBinding::Def(def)) = binding { def != Def::Err } else { false }
     }
 
     fn self_value_is_available(&mut self, self_span: Span, path_span: Span) -> bool {
-        let ident = Ident::new(keywords::SelfValue.name(), self_span);
+        let ident = Ident::new(keywords::SelfLower.name(), self_span);
         let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
         if let Some(LexicalScopeBinding::Def(def)) = binding { def != Def::Err } else { false }
     }
@@ -3673,7 +3673,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         };
 
         if path.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
-           path[0].ident.name != keywords::CrateRoot.name() &&
+           path[0].ident.name != keywords::PathRoot.name() &&
            path[0].ident.name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path_without_parent_scope(
@@ -3755,7 +3755,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let name = ident.name;
 
             allow_super &= ns == TypeNS &&
-                (name == keywords::SelfValue.name() ||
+                (name == keywords::SelfLower.name() ||
                  name == keywords::Super.name());
 
             if ns == TypeNS {
@@ -3779,24 +3779,24 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     return PathResult::Failed(ident.span, msg, false);
                 }
                 if i == 0 {
-                    if name == keywords::SelfValue.name() {
+                    if name == keywords::SelfLower.name() {
                         let mut ctxt = ident.span.ctxt().modern();
                         module = Some(ModuleOrUniformRoot::Module(
                             self.resolve_self(&mut ctxt, self.current_module)));
                         continue;
                     }
                     if name == keywords::Extern.name() ||
-                       name == keywords::CrateRoot.name() && ident.span.rust_2018() {
+                       name == keywords::PathRoot.name() && ident.span.rust_2018() {
                         module = Some(ModuleOrUniformRoot::ExternPrelude);
                         continue;
                     }
-                    if name == keywords::CrateRoot.name() &&
+                    if name == keywords::PathRoot.name() &&
                        ident.span.rust_2015() && self.session.rust_2018() {
                         // `::a::b` from 2015 macro on 2018 global edition
                         module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
                         continue;
                     }
-                    if name == keywords::CrateRoot.name() ||
+                    if name == keywords::PathRoot.name() ||
                        name == keywords::Crate.name() ||
                        name == keywords::DollarCrate.name() {
                         // `::a::b`, `crate::a::b` or `$crate::a::b`
@@ -3809,12 +3809,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && i != 0 {
-                let name_str = if name == keywords::CrateRoot.name() {
+                let name_str = if name == keywords::PathRoot.name() {
                     "crate root".to_string()
                 } else {
                     format!("`{}`", name)
                 };
-                let msg = if i == 1 && path[0].ident.name == keywords::CrateRoot.name() {
+                let msg = if i == 1 && path[0].ident.name == keywords::PathRoot.name() {
                     format!("global paths cannot start with {}", name_str)
                 } else {
                     format!("{} in paths can only be used in start position", name_str)
@@ -3944,7 +3944,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         // We're only interested in `use` paths which should start with
         // `{{root}}` or `extern` currently.
-        if first_name != keywords::Extern.name() && first_name != keywords::CrateRoot.name() {
+        if first_name != keywords::Extern.name() && first_name != keywords::PathRoot.name() {
             return
         }
 
@@ -3953,7 +3953,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             Some(Segment { ident, .. }) if ident.name == keywords::Crate.name() => return,
             // Otherwise go below to see if it's an extern crate
             Some(_) => {}
-            // If the path has length one (and it's `CrateRoot` most likely)
+            // If the path has length one (and it's `PathRoot` most likely)
             // then we don't know whether we're gonna be importing a crate or an
             // item in our crate. Defer this lint to elsewhere
             None => return,
@@ -4740,7 +4740,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 } else {
                     let ctxt = ident.span.ctxt();
                     Some(Segment::from_ident(Ident::new(
-                        keywords::CrateRoot.name(), path.span.shrink_to_lo().with_ctxt(ctxt)
+                        keywords::PathRoot.name(), path.span.shrink_to_lo().with_ctxt(ctxt)
                     )))
                 };
 
@@ -5090,17 +5090,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 }
 
 fn is_self_type(path: &[Segment], namespace: Namespace) -> bool {
-    namespace == TypeNS && path.len() == 1 && path[0].ident.name == keywords::SelfType.name()
+    namespace == TypeNS && path.len() == 1 && path[0].ident.name == keywords::SelfUpper.name()
 }
 
 fn is_self_value(path: &[Segment], namespace: Namespace) -> bool {
-    namespace == ValueNS && path.len() == 1 && path[0].ident.name == keywords::SelfValue.name()
+    namespace == ValueNS && path.len() == 1 && path[0].ident.name == keywords::SelfLower.name()
 }
 
 fn names_to_string(idents: &[Ident]) -> String {
     let mut result = String::new();
     for (i, ident) in idents.iter()
-                            .filter(|ident| ident.name != keywords::CrateRoot.name())
+                            .filter(|ident| ident.name != keywords::PathRoot.name())
                             .enumerate() {
         if i > 0 {
             result.push_str("::");

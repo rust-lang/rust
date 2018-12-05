@@ -444,7 +444,6 @@ where
             macro_node_id,
         ),
         Edition::Edition2018 => parse_sep_and_kleene_op_2018(input, span, sess, features, attrs),
-        _ => unimplemented!(),
     }
 }
 

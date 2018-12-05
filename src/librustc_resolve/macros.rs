@@ -167,7 +167,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
                 if path.segments[0].ident.name == keywords::DollarCrate.name() {
                     let module = self.0.resolve_crate_root(path.segments[0].ident);
-                    path.segments[0].ident.name = keywords::CrateRoot.name();
+                    path.segments[0].ident.name = keywords::PathRoot.name();
                     if !module.is_local() {
                         let span = path.segments[0].ident.span;
                         path.segments.insert(1, match module.kind {
@@ -674,7 +674,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     _ => Err(Determinacy::Determined),
                 }
                 WhereToResolve::CrateRoot => {
-                    let root_ident = Ident::new(keywords::CrateRoot.name(), orig_ident.span);
+                    let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
                     let root_module = self.resolve_crate_root(root_ident);
                     let binding = self.resolve_ident_in_module_ext(
                         ModuleOrUniformRoot::Module(root_module),
@@ -960,7 +960,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     break 'ok;
                 }
                 if rust_2015 {
-                    let root_ident = Ident::new(keywords::CrateRoot.name(), orig_ident.span);
+                    let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
                     let root_module = self.resolve_crate_root(root_ident);
                     if self.resolve_ident_in_module_ext(ModuleOrUniformRoot::Module(root_module),
                                                         orig_ident, ns, None, false, path_span)

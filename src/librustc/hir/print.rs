@@ -1622,7 +1622,7 @@ impl<'a> State<'a> {
             if i > 0 {
                 self.s.word("::")?
             }
-            if segment.ident.name != keywords::CrateRoot.name() &&
+            if segment.ident.name != keywords::PathRoot.name() &&
                segment.ident.name != keywords::DollarCrate.name() {
                self.print_ident(segment.ident)?;
                segment.with_generic_args(|generic_args| {
@@ -1636,7 +1636,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_path_segment(&mut self, segment: &hir::PathSegment) -> io::Result<()> {
-        if segment.ident.name != keywords::CrateRoot.name() &&
+        if segment.ident.name != keywords::PathRoot.name() &&
            segment.ident.name != keywords::DollarCrate.name() {
            self.print_ident(segment.ident)?;
            segment.with_generic_args(|generic_args| {
@@ -1664,7 +1664,7 @@ impl<'a> State<'a> {
                     if i > 0 {
                         self.s.word("::")?
                     }
-                    if segment.ident.name != keywords::CrateRoot.name() &&
+                    if segment.ident.name != keywords::PathRoot.name() &&
                        segment.ident.name != keywords::DollarCrate.name() {
                         self.print_ident(segment.ident)?;
                         segment.with_generic_args(|generic_args| {

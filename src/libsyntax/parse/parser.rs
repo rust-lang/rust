@@ -2082,7 +2082,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         let mod_sep_ctxt = self.span.ctxt();
         if self.eat(&token::ModSep) {
-            segments.push(PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
+            segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, enable_warning)?;
 
@@ -5508,7 +5508,7 @@ impl<'a> Parser<'a> {
             _ => unreachable!()
         };
         let isolated_self = |this: &mut Self, n| {
-            this.look_ahead(n, |t| t.is_keyword(keywords::SelfValue)) &&
+            this.look_ahead(n, |t| t.is_keyword(keywords::SelfLower)) &&
             this.look_ahead(n + 1, |t| t != &token::ModSep)
         };
 
@@ -6330,7 +6330,7 @@ impl<'a> Parser<'a> {
                 return Ok(vis)
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
                       self.look_ahead(1, |t| t.is_keyword(keywords::Super) ||
-                                             t.is_keyword(keywords::SelfValue))
+                                             t.is_keyword(keywords::SelfLower))
             {
                 // `pub(self)` or `pub(super)`
                 self.bump(); // `(`
@@ -6782,7 +6782,7 @@ impl<'a> Parser<'a> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";
-        let mut ident = if self.token.is_keyword(keywords::SelfValue) {
+        let mut ident = if self.token.is_keyword(keywords::SelfLower) {
             self.parse_path_segment_ident()
         } else {
             self.parse_ident()
@@ -7685,7 +7685,7 @@ impl<'a> Parser<'a> {
             let mod_sep_ctxt = self.span.ctxt();
             if self.eat(&token::ModSep) {
                 prefix.segments.push(
-                    PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
+                    PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
                 );
             }
 

@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             // Deliberately fall into this case for all implicit self types,
                             // so that we don't fall in to the next case with them.
                             *kind == mir::ImplicitSelfKind::MutRef
-                        } else if Some(keywords::SelfValue.name()) == local_decl.name {
+                        } else if Some(keywords::SelfLower.name()) == local_decl.name {
                             // Otherwise, check if the name is the self kewyord - in which case
                             // we have an explicit self. Do the same thing in this case and check
                             // for a `self: &mut Self` to suggest removing the `&mut`.
