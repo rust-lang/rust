@@ -671,7 +671,7 @@ impl fmt::Debug for CStr {
 #[stable(feature = "cstr_default", since = "1.10.0")]
 impl<'a> Default for &'a CStr {
     fn default() -> &'a CStr {
-        const SLICE: &'static [c_char] = &[0];
+        const SLICE: &[c_char] = &[0];
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
     }
 }
@@ -1475,7 +1475,7 @@ mod tests {
 
     #[test]
     fn cstr_const_constructor() {
-        const CSTR: &'static CStr = unsafe {
+        const CSTR: &CStr = unsafe {
             CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0")
         };
 
