@@ -10,6 +10,12 @@
  * except according to those terms.
  */
 
+// From rust:
+/* global sourcesIndex */
+
+// Local js definitions:
+/* global addClass, getCurrentValue, hasClass, removeClass, updateLocalStorage */
+
 function getCurrentFilePath() {
     var parts = window.location.pathname.split("/");
     var rootPathParts = window.rootPath.split("/");

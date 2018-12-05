@@ -10,8 +10,12 @@
  * except according to those terms.
  */
 
-/*jslint browser: true, es5: true */
-/*globals $: true, rootPath: true */
+// From rust:
+/* global ALIASES, currentCrate, rootPath */
+
+// Local js definitions:
+/* global addClass, getCurrentValue, hasClass */
+/* global isHidden onEach, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
