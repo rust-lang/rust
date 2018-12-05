@@ -36,15 +36,13 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
-use rustc_data_structures::sync::{self, Lrc, Lock, LockCell};
+use rustc_data_structures::sync::{self, Lrc, Lock, AtomicUsize, AtomicBool, SeqCst};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::{error, fmt};
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::SeqCst;
 use std::panic;
 
 use termcolor::{ColorSpec, Color};
@@ -281,7 +279,7 @@ pub struct Handler {
 
     err_count: AtomicUsize,
     emitter: Lock<Box<dyn Emitter + sync::Send>>,
-    continue_after_error: LockCell<bool>,
+    continue_after_error: AtomicBool,
     delayed_span_bugs: Lock<Vec<Diagnostic>>,
 
     // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
@@ -380,7 +378,7 @@ impl Handler {
             flags,
             err_count: AtomicUsize::new(0),
             emitter: Lock::new(e),
-            continue_after_error: LockCell::new(true),
+            continue_after_error: AtomicBool::new(true),
             delayed_span_bugs: Lock::new(Vec::new()),
             taught_diagnostics: Default::default(),
             emitted_diagnostic_codes: Default::default(),
@@ -389,7 +387,7 @@ impl Handler {
     }
 
     pub fn set_continue_after_error(&self, continue_after_error: bool) {
-        self.continue_after_error.set(continue_after_error);
+        self.continue_after_error.store(continue_after_error, SeqCst);
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
@@ -668,7 +666,7 @@ impl Handler {
         let mut db = DiagnosticBuilder::new(self, lvl, msg);
         db.set_span(msp.clone());
         db.emit();
-        if !self.continue_after_error.get() {
+        if !self.continue_after_error.load(SeqCst) {
             self.abort_if_errors();
         }
     }
@@ -679,7 +677,7 @@ impl Handler {
         let mut db = DiagnosticBuilder::new_with_code(self, lvl, Some(code), msg);
         db.set_span(msp.clone());
         db.emit();
-        if !self.continue_after_error.get() {
+        if !self.continue_after_error.load(SeqCst) {
             self.abort_if_errors();
         }
     }

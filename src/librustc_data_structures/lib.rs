@@ -30,6 +30,9 @@
 #![feature(allow_internal_unstable)]
 #![feature(vec_resize_with)]
 #![feature(hash_raw_entry)]
+#![feature(stmt_expr_attributes)]
+#![feature(core_intrinsics)]
+#![feature(integer_atomics)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -58,6 +61,26 @@ extern crate rustc_cratesio_shim;
 
 pub use rustc_serialize::hex::ToHex;
 
+#[macro_export]
+macro_rules! likely {
+      ($e:expr) => {
+            #[allow(unused_unsafe)]
+            {
+                  unsafe { std::intrinsics::likely($e) }
+            }
+      }
+}
+
+#[macro_export]
+macro_rules! unlikely {
+    ($e:expr) => {
+            #[allow(unused_unsafe)]
+            {
+                  unsafe { std::intrinsics::unlikely($e) }
+            }
+      }
+}
+
 pub mod macros;
 pub mod svh;
 pub mod base_n;
@@ -80,6 +103,7 @@ pub mod sorted_map;
 pub mod sync;
 pub mod tiny_list;
 pub mod thin_vec;
+pub mod vec;
 pub mod transitive_relation;
 pub use ena::unify;
 pub mod vec_linked_list;
