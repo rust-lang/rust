@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // re-consider the current implementations of the
                 // propagate_call_return method.
 
-                if let mir::Rvalue::Ref(region, _, ref place) = **rhs {
+                if let mir::Rvalue::Ref(_, _, ref place) = **rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.mir,
@@ -258,13 +258,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
 
-                    assert!(self.borrow_set.region_map
-                        .get(&region.to_region_vid())
-                        .unwrap_or_else(|| {
-                            panic!("could not find BorrowIndexs for RegionVid {:?}", region);
-                        })
-                        .contains(&index)
-                    );
                     sets.gen(*index);
 
                     // Issue #46746: Two-phase borrows handles
