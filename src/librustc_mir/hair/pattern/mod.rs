@@ -1259,34 +1259,32 @@ pub fn compare_const_vals<'a, 'tcx>(
         }
     }
 
-    if let ty::Ref(_, rty, _) = ty.value.sty {
-        if let ty::Str = rty.sty {
-            match (a.val, b.val) {
-                (
-                    ConstValue::ScalarPair(
-                        Scalar::Ptr(ptr_a),
-                        len_a,
-                    ),
-                    ConstValue::ScalarPair(
-                        Scalar::Ptr(ptr_b),
-                        len_b,
-                    ),
-                ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
-                    if let Ok(len_a) = len_a.to_bits(tcx.data_layout.pointer_size) {
-                        if let Ok(len_b) = len_b.to_bits(tcx.data_layout.pointer_size) {
-                            if len_a == len_b {
-                                let map = tcx.alloc_map.lock();
-                                let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
-                                let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
-                                if alloc_a.bytes.len() as u128 == len_a {
-                                    return from_bool(alloc_a == alloc_b);
-                                }
+    if let ty::Str = ty.value.sty {
+        match (a.val, b.val) {
+            (
+                ConstValue::ScalarPair(
+                    Scalar::Ptr(ptr_a),
+                    len_a,
+                ),
+                ConstValue::ScalarPair(
+                    Scalar::Ptr(ptr_b),
+                    len_b,
+                ),
+            ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
+                if let Ok(len_a) = len_a.to_bits(tcx.data_layout.pointer_size) {
+                    if let Ok(len_b) = len_b.to_bits(tcx.data_layout.pointer_size) {
+                        if len_a == len_b {
+                            let map = tcx.alloc_map.lock();
+                            let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
+                            let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
+                            if alloc_a.bytes.len() as u128 == len_a {
+                                return from_bool(alloc_a == alloc_b);
                             }
                         }
                     }
                 }
-                _ => (),
             }
+            _ => (),
         }
     }
 
