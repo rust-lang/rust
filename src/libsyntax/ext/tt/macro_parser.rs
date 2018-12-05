@@ -309,7 +309,7 @@ fn create_matches(len: usize) -> Box<[Rc<NamedMatchVec>]> {
         vec![]
     } else {
         let empty_matches = Rc::new(SmallVec::new());
-        vec![empty_matches.clone(); len]
+        vec![empty_matches; len]
     }.into_boxed_slice()
 }
 
