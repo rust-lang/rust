@@ -10,6 +10,11 @@
 
 #![feature(trait_alias)]
 
+mod alpha {
+    pub trait A { }
+    pub trait C = A;
+}
+
 trait SimpleAlias = Default;
 trait GenericAlias<T> = Iterator<Item = T>;
 trait Partial<T> = IntoIterator<Item = T>;
