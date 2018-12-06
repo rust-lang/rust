@@ -1,12 +1,9 @@
-extern crate difference;
-extern crate itertools;
-extern crate text_unit;
+use std::fmt;
 
 use itertools::Itertools;
-use std::fmt;
 use text_unit::{TextRange, TextUnit};
 
-pub use self::difference::Changeset as __Changeset;
+pub use difference::Changeset as __Changeset;
 
 pub const CURSOR_MARKER: &str = "<|>";
 
