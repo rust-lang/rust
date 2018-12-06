@@ -159,7 +159,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
                 MaybeItem::Modifiers
             } else {
                 MaybeItem::None
-            }
+            };
         }
     };
 

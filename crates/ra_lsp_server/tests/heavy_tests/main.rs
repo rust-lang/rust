@@ -1,5 +1,7 @@
 mod support;
 
+use serde_json::json;
+
 use ra_lsp_server::req::{Runnables, RunnablesParams};
 
 use crate::support::project;
@@ -21,7 +23,7 @@ fn foo() {
             text_document: server.doc_id("lib.rs"),
             position: None,
         },
-        r#"[
+        json!([
           {
             "args": [ "test", "--", "foo", "--nocapture" ],
             "bin": "cargo",
@@ -51,7 +53,7 @@ fn foo() {
               }
             }
           }
-        ]"#,
+        ]),
     );
 }
 
@@ -78,7 +80,7 @@ fn test_eggs() {}
             text_document: server.doc_id("tests/spam.rs"),
             position: None,
         },
-        r#"[
+        json!([
           {
             "args": [ "test", "--package", "foo", "--test", "spam", "--", "test_eggs", "--nocapture" ],
             "bin": "cargo",
@@ -111,6 +113,6 @@ fn test_eggs() {}
               }
             }
           }
-        ]"#
+        ])
     );
 }

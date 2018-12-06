@@ -2,6 +2,7 @@ use std::fmt;
 
 use itertools::Itertools;
 use text_unit::{TextRange, TextUnit};
+use serde_json::Value;
 
 pub use difference::Changeset as __Changeset;
 
@@ -144,4 +145,97 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
     }
     flush!();
     res
+}
+
+// Comparison functionality borrowed from cargo:
+
+/// Compare a line with an expected pattern.
+/// - Use `[..]` as a wildcard to match 0 or more characters on the same line
+///   (similar to `.*` in a regex).
+pub fn lines_match(expected: &str, actual: &str) -> bool {
+    // Let's not deal with / vs \ (windows...)
+    // First replace backslash-escaped backslashes with forward slashes
+    // which can occur in, for example, JSON output
+    let expected = expected.replace("\\\\", "/").replace("\\", "/");
+    let mut actual: &str = &actual.replace("\\\\", "/").replace("\\", "/");
+    for (i, part) in expected.split("[..]").enumerate() {
+        match actual.find(part) {
+            Some(j) => {
+                if i == 0 && j != 0 {
+                    return false;
+                }
+                actual = &actual[j + part.len()..];
+            }
+            None => return false,
+        }
+    }
+    actual.is_empty() || expected.ends_with("[..]")
+}
+
+#[test]
+fn lines_match_works() {
+    assert!(lines_match("a b", "a b"));
+    assert!(lines_match("a[..]b", "a b"));
+    assert!(lines_match("a[..]", "a b"));
+    assert!(lines_match("[..]", "a b"));
+    assert!(lines_match("[..]b", "a b"));
+
+    assert!(!lines_match("[..]b", "c"));
+    assert!(!lines_match("b", "c"));
+    assert!(!lines_match("b", "cb"));
+}
+
+// Compares JSON object for approximate equality.
+// You can use `[..]` wildcard in strings (useful for OS dependent things such
+// as paths).  You can use a `"{...}"` string literal as a wildcard for
+// arbitrary nested JSON (useful for parts of object emitted by other programs
+// (e.g. rustc) rather than Cargo itself).  Arrays are sorted before comparison.
+pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a Value, &'a Value)> {
+    use serde_json::Value::*;
+    match (expected, actual) {
+        (&Number(ref l), &Number(ref r)) if l == r => None,
+        (&Bool(l), &Bool(r)) if l == r => None,
+        (&String(ref l), &String(ref r)) if lines_match(l, r) => None,
+        (&Array(ref l), &Array(ref r)) => {
+            if l.len() != r.len() {
+                return Some((expected, actual));
+            }
+
+            let mut l = l.iter().collect::<Vec<_>>();
+            let mut r = r.iter().collect::<Vec<_>>();
+
+            l.retain(
+                |l| match r.iter().position(|r| find_mismatch(l, r).is_none()) {
+                    Some(i) => {
+                        r.remove(i);
+                        false
+                    }
+                    None => true,
+                },
+            );
+
+            if !l.is_empty() {
+                assert!(!r.is_empty());
+                Some((&l[0], &r[0]))
+            } else {
+                assert_eq!(r.len(), 0);
+                None
+            }
+        }
+        (&Object(ref l), &Object(ref r)) => {
+            let same_keys = l.len() == r.len() && l.keys().all(|k| r.contains_key(k));
+            if !same_keys {
+                return Some((expected, actual));
+            }
+
+            l.values()
+                .zip(r.values())
+                .filter_map(|(l, r)| find_mismatch(l, r))
+                .nth(0)
+        }
+        (&Null, &Null) => None,
+        // magic string literal "{...}" acts as wildcard for any sub-JSON
+        (&String(ref l), _) if l == "{...}" => None,
+        _ => Some((expected, actual)),
+    }
 }
