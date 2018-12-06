@@ -47,7 +47,8 @@ use rustc::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
     ELIDED_LIFETIMES_IN_PATHS,
     EXPLICIT_OUTLIVES_REQUIREMENTS,
-    parser::QUESTION_MARK_MACRO_SEP
+    parser::QUESTION_MARK_MACRO_SEP,
+    parser::INCORRECT_MACRO_FRAGMENT_REPETITION,
 };
 use rustc::session;
 use rustc::util;
@@ -325,6 +326,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(QUESTION_MARK_MACRO_SEP),
             reference: "issue #48075 <https://github.com/rust-lang/rust/issues/48075>",
             edition: Some(Edition::Edition2018),
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(INCORRECT_MACRO_FRAGMENT_REPETITION),
+            reference: "issue #56575 <https://github.com/rust-lang/rust/issues/56575>",
+            edition: None,
         },
         FutureIncompatibleInfo {
             id: LintId::of(MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS),

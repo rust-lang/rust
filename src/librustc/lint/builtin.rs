@@ -366,7 +366,7 @@ pub mod parser {
 
     declare_lint! {
         pub INCORRECT_MACRO_FRAGMENT_REPETITION,
-        Warn,
+        Allow,
         "detects incorrect macro fragment follow due to repetition"
     }
 }
@@ -433,6 +433,7 @@ impl LintPass for HardwiredLints {
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             parser::QUESTION_MARK_MACRO_SEP,
+            parser::INCORRECT_MACRO_FRAGMENT_REPETITION,
         )
     }
 }

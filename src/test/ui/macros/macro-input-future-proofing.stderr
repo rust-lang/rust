@@ -1,5 +1,5 @@
 error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
-  --> $DIR/macro-input-future-proofing.rs:14:13
+  --> $DIR/macro-input-future-proofing.rs:5:13
    |
 LL |     ($ty:ty <) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
    |             ^ not allowed after `ty` fragments
@@ -7,7 +7,7 @@ LL |     ($ty:ty <) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not a
    = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
-  --> $DIR/macro-input-future-proofing.rs:15:13
+  --> $DIR/macro-input-future-proofing.rs:6:13
    |
 LL |     ($ty:ty < foo ,) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
    |             ^ not allowed after `ty` fragments
@@ -15,7 +15,7 @@ LL |     ($ty:ty < foo ,) => (); //~ ERROR `$ty:ty` is followed by `<`, which is
    = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$pa:pat` is followed by `>`, which is not allowed for `pat` fragments
-  --> $DIR/macro-input-future-proofing.rs:21:14
+  --> $DIR/macro-input-future-proofing.rs:12:14
    |
 LL |     ($pa:pat >) => (); //~ ERROR `$pa:pat` is followed by `>`, which is not allowed for `pat`
    |              ^ not allowed after `pat` fragments
@@ -23,7 +23,7 @@ LL |     ($pa:pat >) => (); //~ ERROR `$pa:pat` is followed by `>`, which is not
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
 error: `$pa:pat` is followed by `$pb:pat`, which is not allowed for `pat` fragments
-  --> $DIR/macro-input-future-proofing.rs:23:14
+  --> $DIR/macro-input-future-proofing.rs:14:14
    |
 LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
    |              ^^^^^^^ not allowed after `pat` fragments
@@ -31,7 +31,7 @@ LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
 error: `$pb:pat` is followed by `$ty:ty`, which is not allowed for `pat` fragments
-  --> $DIR/macro-input-future-proofing.rs:23:22
+  --> $DIR/macro-input-future-proofing.rs:14:22
    |
 LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
    |                      ^^^^^^ not allowed after `pat` fragments
@@ -39,7 +39,7 @@ LL |     ($pa:pat $pb:pat $ty:ty ,) => ();
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
 error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
-  --> $DIR/macro-input-future-proofing.rs:26:13
+  --> $DIR/macro-input-future-proofing.rs:17:13
    |
 LL |     ($ty:ty -) => (); //~ ERROR `$ty:ty` is followed by `-`
    |             ^ not allowed after `ty` fragments
@@ -47,7 +47,7 @@ LL |     ($ty:ty -) => (); //~ ERROR `$ty:ty` is followed by `-`
    = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$b:ty` is followed by `-`, which is not allowed for `ty` fragments
-  --> $DIR/macro-input-future-proofing.rs:27:19
+  --> $DIR/macro-input-future-proofing.rs:18:19
    |
 LL |     ($a:ty, $b:ty -) => (); //~ ERROR `$b:ty` is followed by `-`
    |                   ^ not allowed after `ty` fragments
@@ -55,7 +55,7 @@ LL |     ($a:ty, $b:ty -) => (); //~ ERROR `$b:ty` is followed by `-`
    = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
-  --> $DIR/macro-input-future-proofing.rs:28:7
+  --> $DIR/macro-input-future-proofing.rs:19:7
    |
 LL |     ($($ty:ty)-+) => (); //~ ERROR `$ty:ty` is followed by `-`, which is not allowed for `ty`
    |       ^^^^^^^^ not allowed after `ty` fragments
@@ -63,7 +63,7 @@ LL |     ($($ty:ty)-+) => (); //~ ERROR `$ty:ty` is followed by `-`, which is no
    = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
-  --> $DIR/macro-input-future-proofing.rs:29:17
+  --> $DIR/macro-input-future-proofing.rs:20:17
    |
 LL |     ( $a:expr $($b:tt)* ) => { };
    |                 ^^^^^ not allowed after `expr` fragments
@@ -71,7 +71,7 @@ LL |     ( $a:expr $($b:tt)* ) => { };
    = note: allowed there are: `;`, `=>` or `,`
 
 error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
-  --> $DIR/macro-input-future-proofing.rs:31:21
+  --> $DIR/macro-input-future-proofing.rs:22:21
    |
 LL |     ( $($a:expr)* $($b:tt)* ) => { };
    |                     ^^^^^ not allowed after `expr` fragments
@@ -79,7 +79,7 @@ LL |     ( $($a:expr)* $($b:tt)* ) => { };
    = note: allowed there are: `;`, `=>` or `,`
 
 error: `$a:expr` may be followed by `$b:tt`, which is not allowed for `expr` fragments
-  --> $DIR/macro-input-future-proofing.rs:34:22
+  --> $DIR/macro-input-future-proofing.rs:26:22
    |
 LL |     ( $($a:expr),* $($b:tt)* ) => { };
    |                      ^^^^^ not allowed after `expr` fragments
@@ -87,12 +87,18 @@ LL |     ( $($a:expr),* $($b:tt)* ) => { };
    = note: allowed there are: `;`, `=>` or `,`
 
 warning: `$a:expr` is followed (through repetition) by itself, which is not allowed for `expr` fragments
-  --> $DIR/macro-input-future-proofing.rs:31:9
+  --> $DIR/macro-input-future-proofing.rs:22:9
    |
 LL |     ( $($a:expr)* $($b:tt)* ) => { };
    |         ^^^^^^^ this fragment is followed by itself without a valid separator
    |
-   = note: #[warn(incorrect_macro_fragment_repetition)] on by default
+note: lint level defined here
+  --> $DIR/macro-input-future-proofing.rs:2:9
+   |
+LL | #![warn(incorrect_macro_fragment_repetition)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56575 <https://github.com/rust-lang/rust/issues/56575>
    = note: allowed there are: `;`, `=>` or `,`
 help: add a valid separator for the repetition to be unambiguous, for example
    |
