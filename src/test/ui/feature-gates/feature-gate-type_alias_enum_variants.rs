@@ -17,9 +17,17 @@ type Alias = Foo;
 
 fn main() {
     let t = Alias::Bar(0);
+    //~^ ERROR enum variants on type aliases are experimental
+    //~^^ ERROR no variant named `Bar` found for type `Foo` in the current scope
     let t = Alias::Baz { i: 0 };
+    //~^ ERROR enum variants on type aliases are experimental
+    //~^^ ERROR ambiguous associated type
     match t {
         Alias::Bar(_i) => {}
+        //~^ ERROR enum variants on type aliases are experimental
+        //~^^ ERROR no variant named `Bar` found for type `Foo` in the current scope
         Alias::Baz { i: _i } => {}
+        //~^ ERROR enum variants on type aliases are experimental
+        //~^^ ERROR ambiguous associated type
     }
 }
