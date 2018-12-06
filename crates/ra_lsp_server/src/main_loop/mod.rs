@@ -3,7 +3,7 @@ mod subscriptions;
 
 use std::path::PathBuf;
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, select, Receiver, Sender};
 use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
@@ -12,6 +12,8 @@ use ra_analysis::{Canceled, FileId, LibraryData};
 use rayon::{self, ThreadPool};
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
+use failure::{format_err, bail};
+use failure_derive::Fail;
 
 use crate::{
     main_loop::subscriptions::Subscriptions,
@@ -54,14 +56,14 @@ pub fn main_loop(
 ) -> Result<()> {
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(4)
-        .panic_handler(|_| error!("thread panicked :("))
+        .panic_handler(|_| log::error!("thread panicked :("))
         .build()
         .unwrap();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (fs_worker, fs_watcher) = vfs::roots_loader();
     let (ws_worker, ws_watcher) = workspace_loader();
 
-    info!("server initialized, serving requests");
+    log::info!("server initialized, serving requests");
     let mut state = ServerWorldState::default();
 
     let mut pending_requests = FxHashSet::default();
@@ -82,12 +84,12 @@ pub fn main_loop(
         &mut subs,
     );
 
-    info!("waiting for tasks to finish...");
+    log::info!("waiting for tasks to finish...");
     task_receiver.for_each(|task| on_task(task, msg_sender, &mut pending_requests));
-    info!("...tasks have finished");
-    info!("joining threadpool...");
+    log::info!("...tasks have finished");
+    log::info!("joining threadpool...");
     drop(pool);
-    info!("...threadpool has finished");
+    log::info!("...threadpool has finished");
 
     let fs_res = fs_watcher.stop();
     let ws_res = ws_watcher.stop();
@@ -126,7 +128,7 @@ fn main_loop_inner(
             Ws(Result<CargoWorkspace>),
             Lib(LibraryData),
         }
-        trace!("selecting");
+        log::trace!("selecting");
         let event = select! {
             recv(msg_receiver, msg) => match msg {
                 Some(msg) => Event::Msg(msg),
@@ -147,7 +149,7 @@ fn main_loop_inner(
         match event {
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
             Event::Fs(root, events) => {
-                info!("fs change, {}, {} events", root.display(), events.len());
+                log::info!("fs change, {}, {} events", root.display(), events.len());
                 if root == ws_root {
                     state.apply_fs_changes(events);
                 } else {
@@ -155,9 +157,9 @@ fn main_loop_inner(
                     let sender = libdata_sender.clone();
                     pool.spawn(move || {
                         let start = ::std::time::Instant::now();
-                        info!("indexing {} ... ", root.display());
+                        log::info!("indexing {} ... ", root.display());
                         let data = LibraryData::prepare(files, resolver);
-                        info!("indexed {:?} {}", start.elapsed(), root.display());
+                        log::info!("indexed {:?} {}", start.elapsed(), root.display());
                         sender.send(data);
                     });
                 }
@@ -195,14 +197,14 @@ fn main_loop_inner(
                             .map(|(_idx, root)| root);
 
                         for root in unique {
-                            debug!("sending root, {}", root.display());
+                            log::debug!("sending root, {}", root.display());
                             fs_worker.send(root.to_owned());
                         }
                     }
                     state.set_workspaces(workspaces);
                     state_changed = true;
                 }
-                Err(e) => warn!("loading workspace failed: {}", e),
+                Err(e) => log::warn!("loading workspace failed: {}", e),
             },
             Event::Lib(lib) => {
                 feedback(internal_mode, "library loaded", msg_sender);
@@ -217,7 +219,7 @@ fn main_loop_inner(
                     match on_request(state, pending_requests, pool, &task_sender, req)? {
                         None => (),
                         Some(req) => {
-                            error!("unknown request: {:?}", req);
+                            log::error!("unknown request: {:?}", req);
                             let resp = RawResponse::err(
                                 req.id,
                                 ErrorCode::MethodNotFound as i32,
@@ -231,7 +233,7 @@ fn main_loop_inner(
                     on_notification(msg_sender, state, pending_requests, subs, not)?;
                     state_changed = true;
                 }
-                RawMessage::Response(resp) => error!("unexpected response: {:?}", resp),
+                RawMessage::Response(resp) => log::error!("unexpected response: {:?}", resp),
             },
         };
 
@@ -370,7 +372,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    error!("unhandled notification: {:?}", not);
+    log::error!("unhandled notification: {:?}", not);
     Ok(())
 }
 
@@ -455,7 +457,7 @@ fn update_file_notifications_on_threadpool(
             match handlers::publish_diagnostics(&world, file_id) {
                 Err(e) => {
                     if !is_canceled(&e) {
-                        error!("failed to compute diagnostics: {:?}", e);
+                        log::error!("failed to compute diagnostics: {:?}", e);
                     }
                 }
                 Ok(params) => {
@@ -467,7 +469,7 @@ fn update_file_notifications_on_threadpool(
                 match handlers::publish_decorations(&world, file_id) {
                     Err(e) => {
                         if !is_canceled(&e) {
-                            error!("failed to compute decorations: {:?}", e);
+                            log::error!("failed to compute decorations: {:?}", e);
                         }
                     }
                     Ok(params) => {

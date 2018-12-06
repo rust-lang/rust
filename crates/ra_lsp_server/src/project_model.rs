@@ -1,12 +1,14 @@
 use std::path::{Path, PathBuf};
 
+use serde_derive::Serialize;
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHashSet};
+use failure::{format_err, bail};
 
 use crate::{
-    thread_watcher::{ThreadWatcher, Worker},
     Result,
+    thread_watcher::{ThreadWatcher, Worker},
 };
 
 #[derive(Debug, Clone)]

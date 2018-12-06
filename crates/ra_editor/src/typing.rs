@@ -238,7 +238,7 @@ fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{add_cursor, check_action, extract_offset, extract_range};
+    use crate::test_utils::{add_cursor, check_action, extract_offset, extract_range, assert_eq_text};
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {

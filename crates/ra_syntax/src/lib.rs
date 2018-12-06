@@ -20,17 +20,6 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
-extern crate arrayvec;
-extern crate drop_bomb;
-extern crate itertools;
-extern crate parking_lot;
-extern crate rowan;
-extern crate unicode_xid;
-
-#[cfg(test)]
-#[macro_use]
-extern crate test_utils;
-
 pub mod algo;
 pub mod ast;
 mod lexer;
@@ -48,11 +37,11 @@ pub mod utils;
 mod validation;
 mod yellow;
 
+pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use crate::{
     ast::AstNode,
     lexer::{tokenize, Token},
     reparsing::AtomEdit,
-    rowan::{SmolStr, TextRange, TextUnit},
     syntax_kinds::SyntaxKind,
     yellow::{
         Direction, OwnedRoot, RefRoot, SyntaxError, SyntaxNode, SyntaxNodeRef, TreeRoot, WalkEvent, Location,

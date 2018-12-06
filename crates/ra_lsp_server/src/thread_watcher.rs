@@ -2,6 +2,7 @@ use std::thread;
 
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use drop_bomb::DropBomb;
+use failure::format_err;
 
 use crate::Result;
 
@@ -48,7 +49,7 @@ impl ThreadWatcher {
     }
 
     pub fn stop(mut self) -> Result<()> {
-        info!("waiting for {} to finish ...", self.name);
+        log::info!("waiting for {} to finish ...", self.name);
         let name = self.name;
         self.bomb.defuse();
         let res = self
@@ -56,8 +57,8 @@ impl ThreadWatcher {
             .join()
             .map_err(|_| format_err!("ThreadWatcher {} died", name));
         match &res {
-            Ok(()) => info!("... {} terminated with ok", name),
-            Err(_) => error!("... {} terminated with err", name),
+            Ok(()) => log::info!("... {} terminated with ok", name),
+            Err(_) => log::error!("... {} terminated with err", name),
         }
         res
     }

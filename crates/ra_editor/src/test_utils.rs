@@ -1,6 +1,7 @@
-use crate::LocalEdit;
-pub use crate::_test_utils::*;
 use ra_syntax::{SourceFileNode, TextRange, TextUnit};
+
+use crate::LocalEdit;
+pub use test_utils::*;
 
 pub fn check_action<F: Fn(&SourceFileNode, TextUnit) -> Option<LocalEdit>>(
     before: &str,

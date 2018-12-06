@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use crossbeam_channel::{after, Receiver};
+use crossbeam_channel::{after, select, Receiver};
 use flexi_logger::Logger;
 use gen_lsp_server::{RawMessage, RawNotification, RawRequest};
 use languageserver_types::{

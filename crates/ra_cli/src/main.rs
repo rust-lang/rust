@@ -1,11 +1,3 @@
-extern crate clap;
-#[macro_use]
-extern crate failure;
-extern crate join_to_string;
-extern crate ra_editor;
-extern crate ra_syntax;
-extern crate tools;
-
 use std::{fs, io::Read, path::Path, time::Instant};
 
 use clap::{App, Arg, SubCommand};
@@ -97,7 +89,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         *start_line <= line && line <= *start_line + t.text.lines().count()
     });
     let test = match test {
-        None => bail!("No test found at line {} at {}", line, file.display()),
+        None => failure::bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
     let file = SourceFileNode::parse(&test.text);

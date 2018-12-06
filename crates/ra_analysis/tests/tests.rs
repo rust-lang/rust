@@ -1,10 +1,3 @@
-extern crate ra_analysis;
-extern crate ra_editor;
-extern crate ra_syntax;
-extern crate relative_path;
-extern crate rustc_hash;
-extern crate test_utils;
-
 use ra_syntax::TextRange;
 use test_utils::assert_eq_dbg;
 

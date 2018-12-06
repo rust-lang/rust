@@ -1,15 +1,5 @@
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate flexi_logger;
-extern crate gen_lsp_server;
-extern crate ra_lsp_server;
-
-use serde::Deserialize;
+use serde_derive::Deserialize;
+use serde::Deserialize as _D;
 use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
 use ra_lsp_server::Result;
@@ -21,15 +11,15 @@ fn main() -> Result<()> {
         .log_to_file()
         .directory("log")
         .start()?;
-    info!("lifecycle: server started");
+    log::info!("lifecycle: server started");
     match ::std::panic::catch_unwind(main_inner) {
         Ok(res) => {
-            info!("lifecycle: terminating process with {:?}", res);
+            log::info!("lifecycle: terminating process with {:?}", res);
             res
         }
         Err(_) => {
-            error!("server panicked");
-            bail!("server panicked")
+            log::error!("server panicked");
+            failure::bail!("server panicked")
         }
     }
 }
@@ -60,8 +50,8 @@ fn main_inner() -> Result<()> {
             ra_lsp_server::main_loop(false, root, publish_decorations, r, s)
         },
     )?;
-    info!("shutting down IO...");
+    log::info!("shutting down IO...");
     threads.join()?;
-    info!("... IO is down");
+    log::info!("... IO is down");
     Ok(())
 }

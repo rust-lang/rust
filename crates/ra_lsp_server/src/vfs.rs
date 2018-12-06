@@ -25,9 +25,9 @@ pub fn roots_loader() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, ThreadWatc
         |input_receiver, output_sender| {
             input_receiver
                 .map(|path| {
-                    debug!("loading {} ...", path.as_path().display());
+                    log::debug!("loading {} ...", path.as_path().display());
                     let events = load_root(path.as_path());
-                    debug!("... loaded {}", path.as_path().display());
+                    log::debug!("... loaded {}", path.as_path().display());
                     (path, events)
                 })
                 .for_each(|it| output_sender.send(it))
@@ -41,7 +41,7 @@ fn load_root(path: &Path) -> Vec<FileEvent> {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
-                warn!("watcher error: {}", e);
+                log::warn!("watcher error: {}", e);
                 continue;
             }
         };
@@ -55,7 +55,7 @@ fn load_root(path: &Path) -> Vec<FileEvent> {
         let text = match fs::read_to_string(path) {
             Ok(text) => text,
             Err(e) => {
-                warn!("watcher error: {}", e);
+                log::warn!("watcher error: {}", e);
                 continue;
             }
         };

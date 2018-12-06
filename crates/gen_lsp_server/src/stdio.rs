@@ -4,8 +4,9 @@ use std::{
 };
 
 use crossbeam_channel::{bounded, Receiver, Sender};
+use failure::bail;
 
-use {RawMessage, Result};
+use crate::{RawMessage, Result};
 
 pub fn stdio_transport() -> (Receiver<RawMessage>, Sender<RawMessage>, Threads) {
     let (writer_sender, mut writer_receiver) = bounded::<RawMessage>(16);

@@ -1,7 +1,3 @@
-extern crate failure;
-extern crate itertools;
-extern crate teraron;
-
 use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -12,7 +8,7 @@ use itertools::Itertools;
 
 pub use teraron::{Mode, Overwrite, Verify};
 
-pub type Result<T> = ::std::result::Result<T, failure::Error>;
+pub type Result<T> = std::result::Result<T, failure::Error>;
 
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
 pub const SYNTAX_KINDS: &str = "crates/ra_syntax/src/syntax_kinds/generated.rs.tera";

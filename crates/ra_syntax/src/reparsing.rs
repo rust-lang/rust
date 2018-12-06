@@ -179,10 +179,10 @@ fn merge_errors(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        super::{test_utils::extract_range, text_utils::replace_range, utils::dump_tree, SourceFileNode},
-        reparse_block, reparse_leaf, AtomEdit, GreenNode, SyntaxError, SyntaxNodeRef,
-};
+    use test_utils::{extract_range, assert_eq_text};
+
+    use crate::{SourceFileNode, text_utils::replace_range, utils::dump_tree };
+    use super::*;
 
     fn do_check<F>(before: &str, replace_with: &str, reparser: F)
     where
