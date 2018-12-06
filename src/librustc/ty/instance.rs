@@ -347,9 +347,10 @@ fn resolve_associated_item<'a, 'tcx>(
 ) -> Option<Instance<'tcx>> {
     let def_id = trait_item.def_id;
     debug!("resolve_associated_item(trait_item={:?}, \
+            param_env={:?}, \
             trait_id={:?}, \
             rcvr_substs={:?})",
-           def_id, trait_id, rcvr_substs);
+            def_id, param_env, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
     let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
@@ -359,7 +360,7 @@ fn resolve_associated_item<'a, 'tcx>(
     match vtbl {
         traits::VtableImpl(impl_data) => {
             let (def_id, substs) = traits::find_associated_item(
-                tcx, trait_item, rcvr_substs, &impl_data);
+                tcx, param_env, trait_item, rcvr_substs, &impl_data);
             let substs = tcx.erase_regions(&substs);
             Some(ty::Instance::new(def_id, substs))
         }
