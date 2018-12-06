@@ -253,11 +253,13 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 RawEntryMut::Vacant(entry) => {
                     // No job entry for this query. Return a new one to be started later
                     return tls::with_related_context(tcx, |icx| {
+                        // Create the `parent` variable before `info`. This allows LLVM
+                        // to elide the move of `info`
+                        let parent = icx.query.map(|q| LrcRef::into(q));
                         let info = QueryInfo {
                             span,
                             query: Q::query(key.clone()),
                         };
-                        let parent = icx.query.map(|q| LrcRef::into(q));
                         let job = Lrc::new(QueryJob::new(info, parent));
                         let owner = job_storage.init(JobOwner {
                             cache,
