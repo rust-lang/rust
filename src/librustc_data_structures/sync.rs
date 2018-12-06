@@ -31,6 +31,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, BuildHasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use std::mem::ManuallyDrop;
 use owning_ref::{Erased, OwningRef};
 
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
@@ -667,5 +668,42 @@ impl<T> DerefMut for OneThread<T> {
     fn deref_mut(&mut self) -> &mut T {
         self.check();
         &mut self.inner
+    }
+}
+
+pub struct LrcRef<'a, T: ?Sized>(&'a T);
+
+impl<'a, T: 'a + ?Sized> Clone for LrcRef<'a, T> {
+    fn clone(&self) -> Self {
+        LrcRef(self.0)
+    }
+}
+impl<'a, T: 'a + ?Sized> Copy for LrcRef<'a, T> {}
+
+impl<'a, T: 'a + ?Sized> LrcRef<'a, T> {
+    #[inline]
+    pub fn new(lrc: &Lrc<T>) -> LrcRef<'_, T> {
+        LrcRef(&*lrc)
+    }
+
+    #[inline]
+    pub fn into(self) -> Lrc<T> {
+        unsafe {
+            // We know that we have a reference to an Lrc here.
+            // Pretend to take ownership of the Lrc with from_raw
+            // and the clone a new one.
+            // We use ManuallyDrop to ensure the reference count
+            // isn't decreased
+            let lrc = ManuallyDrop::new(Lrc::from_raw(self.0));
+            (*lrc).clone()
+        }
+    }
+}
+
+impl<'a, T: ?Sized> Deref for LrcRef<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.0
     }
 }

@@ -12,7 +12,7 @@
 
 use std::mem;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
+use rustc_data_structures::sync::{Lock, LockGuard, Lrc, LrcRef, Weak};
 use rustc_data_structures::OnDrop;
 use syntax_pos::Span;
 use ty::tls;
@@ -118,7 +118,7 @@ impl<'tcx> QueryJob<'tcx> {
     ) -> Result<(), Box<CycleError<'tcx>>> {
         tls::with_related_context(tcx, move |icx| {
             let mut waiter = Lrc::new(QueryWaiter {
-                query: icx.query.clone(),
+                query: icx.query.map(|q| LrcRef::into(q)),
                 span,
                 cycle: Lock::new(None),
                 condvar: Condvar::new(),
@@ -142,7 +142,9 @@ impl<'tcx> QueryJob<'tcx> {
         span: Span,
     ) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents
-        let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
+        let mut current_job = tls::with_related_context(tcx, |icx| {
+            icx.query.map(|q| LrcRef::into(q))
+        });
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
@@ -163,7 +165,7 @@ impl<'tcx> QueryJob<'tcx> {
                 return CycleError { usage, cycle };
             }
 
-            current_job = job.parent.clone();
+            current_job = job.parent.as_ref().map(|parent| parent.clone());
         }
 
         panic!("did not find a cycle")

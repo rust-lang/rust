@@ -1872,7 +1872,7 @@ pub mod tls {
     use ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::{self, Lrc, Lock};
+    use rustc_data_structures::sync::{self, Lock, LrcRef};
     use dep_graph::OpenTask;
 
     #[cfg(not(parallel_queries))]
@@ -1894,7 +1894,7 @@ pub mod tls {
 
         /// The current query job, if any. This is updated by start_job in
         /// ty::query::plumbing when executing a query
-        pub query: Option<Lrc<query::QueryJob<'gcx>>>,
+        pub query: Option<LrcRef<'a, query::QueryJob<'gcx>>>,
 
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
