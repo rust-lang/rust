@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// exact-check
 
-fn func((1, (Some(1), 2..=3)): (isize, (Option<isize>, isize))) { }
-//~^ ERROR refutable pattern in function argument: `(_, _)` not covered
+const QUERY = 'hashmap';
+const FILTER_CRATE = 'core';
 
-fn main() {
-    let (1, (Some(1), 2..=3)) = (1, (None, 2));
-    //~^ ERROR refutable pattern in local binding: `(-2147483648i32..=0i32, _)` not covered
-}
+const EXPECTED = {
+    'others': [
+    ],
+};

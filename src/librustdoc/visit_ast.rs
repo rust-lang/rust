@@ -100,7 +100,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                                               None);
         // attach the crate's exported macros to the top-level module:
         let macro_exports: Vec<_> =
-            krate.exported_macros.iter().map(|def| self.visit_local_macro(def)).collect();
+            krate.exported_macros.iter().map(|def| self.visit_local_macro(def, None)).collect();
         self.module.macros.extend(macro_exports);
         self.module.is_crate = true;
 
@@ -376,6 +376,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 });
                 true
             }
+            Node::MacroDef(def) if !glob => {
+                om.macros.push(self.visit_local_macro(def, renamed));
+                true
+            }
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
@@ -593,7 +597,11 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
     }
 
     // convert each exported_macro into a doc item
-    fn visit_local_macro(&self, def: &hir::MacroDef) -> Macro {
+    fn visit_local_macro(
+        &self,
+        def: &hir::MacroDef,
+        renamed: Option<ast::Name>
+    ) -> Macro {
         debug!("visit_local_macro: {}", def.name);
         let tts = def.body.trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.
@@ -602,7 +610,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         Macro {
             def_id: self.cx.tcx.hir.local_def_id(def.id),
             attrs: def.attrs.clone(),
-            name: def.name,
+            name: renamed.unwrap_or(def.name),
             whence: def.span,
             matchers,
             stab: self.stability(def.id),

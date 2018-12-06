@@ -53,8 +53,7 @@ macro_rules! declare_features {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
         const ACTIVE_FEATURES:
-                &'static [(&'static str, &'static str, Option<u32>,
-                           Option<Edition>, fn(&mut Features, Span))] =
+            &[(&str, &str, Option<u32>, Option<Edition>, fn(&mut Features, Span))] =
             &[$((stringify!($feature), $ver, $issue, $edition, set!($feature))),+];
 
         /// A set of features to be used by later passes.
@@ -439,8 +438,8 @@ declare_features! (
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
 
-    // Integer match exhaustiveness checking
-    (active, exhaustive_integer_patterns, "1.30.0", Some(50907), None),
+    // Exhaustive pattern matching on `usize` and `isize`.
+    (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
     // #[doc(keyword = "...")]
     (active, doc_keyword, "1.28.0", Some(51315), None),
@@ -686,6 +685,8 @@ declare_features! (
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
+    // Integer match exhaustiveness checking (RFC 2591)
+    (accepted, exhaustive_integer_patterns, "1.32.0", Some(50907), None),
     // Use `?` as the Kleene "at most one" operator
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
     // `Self` struct constructor (RFC 2302)
@@ -772,7 +773,7 @@ pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
-pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGate)] = &[
+pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeGate)] = &[
     // Normal attributes
 
     ("warn", Normal, Ungated),
@@ -1386,48 +1387,48 @@ fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue
 
 }
 
-const EXPLAIN_BOX_SYNTAX: &'static str =
+const EXPLAIN_BOX_SYNTAX: &str =
     "box expression syntax is experimental; you can call `Box::new` instead.";
 
-pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
+pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
     "attributes on expressions are experimental.";
 
-pub const EXPLAIN_ASM: &'static str =
+pub const EXPLAIN_ASM: &str =
     "inline assembly is not stable enough for use and is subject to change";
 
-pub const EXPLAIN_GLOBAL_ASM: &'static str =
+pub const EXPLAIN_GLOBAL_ASM: &str =
     "`global_asm!` is not stable enough for use and is subject to change";
 
-pub const EXPLAIN_CUSTOM_TEST_FRAMEWORKS: &'static str =
+pub const EXPLAIN_CUSTOM_TEST_FRAMEWORKS: &str =
     "custom test frameworks are an unstable feature";
 
-pub const EXPLAIN_LOG_SYNTAX: &'static str =
+pub const EXPLAIN_LOG_SYNTAX: &str =
     "`log_syntax!` is not stable enough for use and is subject to change";
 
-pub const EXPLAIN_CONCAT_IDENTS: &'static str =
+pub const EXPLAIN_CONCAT_IDENTS: &str =
     "`concat_idents` is not stable enough for use and is subject to change";
 
-pub const EXPLAIN_FORMAT_ARGS_NL: &'static str =
+pub const EXPLAIN_FORMAT_ARGS_NL: &str =
     "`format_args_nl` is only for internal language use and is subject to change";
 
-pub const EXPLAIN_TRACE_MACROS: &'static str =
+pub const EXPLAIN_TRACE_MACROS: &str =
     "`trace_macros` is not stable enough for use and is subject to change";
-pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
+pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &str =
     "allow_internal_unstable side-steps feature gating and stability checks";
-pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &'static str =
+pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &str =
     "allow_internal_unsafe side-steps the unsafe_code lint";
 
-pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
+pub const EXPLAIN_CUSTOM_DERIVE: &str =
     "`#[derive]` for custom traits is deprecated and will be removed in the future.";
 
-pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
+pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &str =
     "`#[derive]` for custom traits is deprecated and will be removed in the future. \
     Prefer using procedural macro custom derive.";
 
-pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
+pub const EXPLAIN_DERIVE_UNDERSCORE: &str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
 
-pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
+pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
     "unsized tuple coercion is not stable enough for use and is subject to change";
 
 struct PostExpansionVisitor<'a> {

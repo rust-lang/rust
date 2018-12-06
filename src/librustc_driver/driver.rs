@@ -356,10 +356,10 @@ pub fn compile_input(
 
     if sess.opts.debugging_opts.self_profile {
         sess.print_profiler_results();
+    }
 
-        if sess.opts.debugging_opts.profile_json {
-            sess.save_json_results();
-        }
+    if sess.opts.debugging_opts.profile_json {
+        sess.save_json_results();
     }
 
     controller_entry_point!(

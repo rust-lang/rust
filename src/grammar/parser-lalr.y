@@ -741,14 +741,14 @@ fn_anon_params
 ;
 
 fn_params_with_self
-: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_params ')'              { $$ = mk_node("SelfValue", 3, $2, $4, $5); }
+: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_params ')'              { $$ = mk_node("SelfLower", 3, $2, $4, $5); }
 | '(' '&' maybe_mut SELF maybe_ty_ascription maybe_comma_params ')'          { $$ = mk_node("SelfRegion", 3, $3, $5, $6); }
 | '(' '&' lifetime maybe_mut SELF maybe_ty_ascription maybe_comma_params ')' { $$ = mk_node("SelfRegion", 4, $3, $4, $6, $7); }
 | '(' maybe_params ')'                                                       { $$ = mk_node("SelfStatic", 1, $2); }
 ;
 
 fn_anon_params_with_self
-: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')'              { $$ = mk_node("SelfValue", 3, $2, $4, $5); }
+: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')'              { $$ = mk_node("SelfLower", 3, $2, $4, $5); }
 | '(' '&' maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')'          { $$ = mk_node("SelfRegion", 3, $3, $5, $6); }
 | '(' '&' lifetime maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')' { $$ = mk_node("SelfRegion", 4, $3, $4, $6, $7); }
 | '(' maybe_anon_params ')'                                                       { $$ = mk_node("SelfStatic", 1, $2); }

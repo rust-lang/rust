@@ -8,9 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x: u8 = 0;
-    match x { //~ ERROR non-exhaustive patterns: `_` not covered
-        0 ..= 255 => {}
+// run-pass
+
+#![feature(specialization)]
+
+pub trait Foo {
+    fn abc() -> u32;
+    fn def() -> u32;
+}
+
+pub trait Marker {}
+
+impl Marker for () {}
+
+impl<T> Foo for T {
+    default fn abc() -> u32 { 16 }
+    default fn def() -> u32 { 42 }
+}
+
+impl<T: Marker> Foo for T {
+    fn def() -> u32 {
+        Self::abc()
     }
+}
+
+fn main() {
+   assert_eq!(<()>::def(), 16);
+   assert_eq!(<i32>::def(), 42);
 }

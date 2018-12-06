@@ -112,7 +112,7 @@ pub fn maybe_inject_crates_ref(
         vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
-                segments: iter::once(keywords::CrateRoot.ident())
+                segments: iter::once(keywords::PathRoot.ident())
                     .chain(
                         [name, "prelude", "v1"].iter().cloned()
                             .map(ast::Ident::from_str)

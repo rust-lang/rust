@@ -475,7 +475,7 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            Node::Item(&Item { node: ItemKind::Trait(..), .. }) => keywords::SelfType.name(),
+            Node::Item(&Item { node: ItemKind::Trait(..), .. }) => keywords::SelfUpper.name(),
             Node::GenericParam(param) => param.name.ident().name,
             _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }

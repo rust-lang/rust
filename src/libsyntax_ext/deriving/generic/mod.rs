@@ -938,7 +938,7 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 ast::Arg::from_self(explicit_self,
-                                    keywords::SelfValue.ident().with_span_pos(trait_.span))
+                                    keywords::SelfLower.ident().with_span_pos(trait_.span))
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.arg(trait_.span, name, ty));

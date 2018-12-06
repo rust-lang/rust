@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(exhaustive_integer_patterns)]
+#![feature(precise_pointer_size_matching)]
 #![feature(exclusive_range_pattern)]
+
 #![deny(unreachable_patterns)]
 
-use std::{char, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128};
+use std::{char, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128};
 
 fn main() {
     let x: u8 = 0;
@@ -68,10 +69,6 @@ fn main() {
         '\u{E000}' ..= '\u{10_FFFF}' => {}
     }
 
-    match 0usize {
-        0 ..= usize::MAX => {} // ok
-    }
-
     match 0u16 {
         0 ..= u16::MAX => {} // ok
     }
@@ -86,10 +83,6 @@ fn main() {
 
     match 0u128 {
         0 ..= u128::MAX => {} // ok
-    }
-
-    match 0isize {
-        isize::MIN ..= isize::MAX => {} // ok
     }
 
     match 0i8 {
