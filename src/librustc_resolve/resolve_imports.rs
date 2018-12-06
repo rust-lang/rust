@@ -323,7 +323,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         let unexpanded_macros = !module.unresolved_invocations.borrow().is_empty();
         if let Some(binding) = resolution.binding {
-            if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
+            if !unexpanded_macros || restricted_shadowing {
                 return check_usable(self, binding);
             } else {
                 return Err((Undetermined, Weak::No));
@@ -492,14 +492,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                         } else {
                             (binding, old_binding)
                         };
-                        if glob_binding.def() != nonglob_binding.def() &&
-                           ns == MacroNS && nonglob_binding.expansion != Mark::root() {
-                            resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsExpanded,
-                                                                    nonglob_binding, glob_binding));
-                        } else {
-                            resolution.binding = Some(nonglob_binding);
-                            resolution.shadowed_glob = Some(glob_binding);
-                        }
+                        resolution.binding = Some(nonglob_binding);
+                        resolution.shadowed_glob = Some(glob_binding);
                     }
                     (false, false) => {
                         if let (&NameBindingKind::Def(_, true), &NameBindingKind::Def(_, true)) =
