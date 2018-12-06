@@ -1520,7 +1520,7 @@ mod dolor;
 mod sit;
 ```
 
-**Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantic
+**Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantics
 of the original source code.
 
 ## `reorder_impl_items`

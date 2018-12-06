@@ -63,15 +63,15 @@ Some details of the philosophy behind the implementation.
 ### Operate on the AST
 
 A reformatting tool can be based on either the AST or a token stream (in Rust
-this is actually a stream of token trees, but its not a fundamental difference).
+this is actually a stream of token trees, but it's not a fundamental difference).
 There are pros and cons to the two approaches. I have chosen to use the AST
 approach. The primary reasons are that it allows us to do more sophisticated
 manipulations, rather than just change whitespace, and it gives us more context
 when making those changes.
 
-The advantage of the tokens approach are that you can operate on non-parsable
+The advantage of the tokens approach is that you can operate on non-parsable
 code. I don't care too much about that, it would be nice, but I think being able
-to perform sophisticated transformations is more important. In the future I hope to
+to perform sophisticated transformations is more important. In the future, I hope to
 (optionally) be able to use type information for informing reformatting too. One
 specific case of unparsable code is macros. Using tokens is certainly easier
 here, but I believe it is perfectly solvable with the AST approach. At the limit,
@@ -80,7 +80,7 @@ we can operate on just tokens in the macro case.
 I believe that there is not in fact that much difference between the two
 approaches. Due to imperfect span information, under the AST approach, we
 sometimes are reduced to examining tokens or do some re-lexing of our own. Under
-the tokens approach you need to implement your own (much simpler) parser. I
+the tokens approach, you need to implement your own (much simpler) parser. I
 believe that as the tool gets more sophisticated, you end up doing more at the
 token-level, or having an increasingly sophisticated parser, until at the limit
 you have the same tool.
@@ -99,7 +99,7 @@ to good old fashioned abstraction and code sharing. This will give a bigger code
 base, but hopefully a better result.
 
 It also means that there will be some cases we can't format and we have to give
-up. I think that is OK. Hopefully they are rare enough that manually fixing them
+up. I think that is OK. Hopefully, they are rare enough that manually fixing them
 is not painful. Better to have a tool that gives great code in 99% of cases and
 fails in 1% than a tool which gives 50% great code and 50% ugly code, but never
 fails.
@@ -150,9 +150,9 @@ for its configuration.
 
 Our visitor keeps track of the desired current indent due to blocks (
 `block_indent`). Each `visit_*` method reformats code according to this indent,
-`config.comment_width()` and `config.max_width()`. Most reformatting done in the
-`visit_*` methods is a bit hacky and is meant to be temporary until it can be
-done properly.
+`config.comment_width()` and `config.max_width()`. Most reformatting that is done 
+in the `visit_*` methods is a bit hacky and is meant to be temporary until it can 
+be done properly.
 
 There are a bunch of methods called `rewrite_*`. They do the bulk of the
 reformatting. These take the AST node to be reformatted (this may not literally
@@ -163,7 +163,7 @@ code in the box given by the indent and width budget. If the method fails, it
 returns `None` and the calling method then has to fallback in some way to give
 the callee more space.
 
-So, in summary to format a node, we calculate the width budget and then walk down
+So, in summary, to format a node, we calculate the width budget and then walk down
 the tree from the node. At a leaf, we generate an actual string and then unwind,
 combining these strings as we go back up the tree.
 

@@ -1,7 +1,7 @@
 # Contributing
 
 There are many ways to contribute to Rustfmt. This document lays out what they
-are and has information for how to get started. If you have any questions about
+are and has information on how to get started. If you have any questions about
 contributing or need help with anything, please ask in the WG-Rustfmt channel
 on [Discord](https://discordapp.com/invite/rust-lang). Feel free to also ask questions
 on issues, or file new issues specifically to get help.
@@ -129,14 +129,14 @@ can.
 
 Our primary tool here is to look between spans for text we've missed. For
 example, in a function call `foo(a, b)`, we have spans for `a` and `b`, in this
-case there is only a comma and a single space between the end of `a` and the
+case, there is only a comma and a single space between the end of `a` and the
 start of `b`, so there is nothing much to do. But if we look at
 `foo(a /* a comment */, b)`, then between `a` and `b` we find the comment.
 
 At a higher level, Rustfmt has machinery so that we account for text between
 'top level' items. Then we can reproduce that text pretty much verbatim. We only
 count spans we actually reformat, so if we can't format a span it is not missed
-completely, but is reproduced in the output without being formatted. This is
+completely but is reproduced in the output without being formatted. This is
 mostly handled in [src/missed_spans.rs](src/missed_spans.rs). See also `FmtVisitor::last_pos` in
 [src/visitor.rs](src/visitor.rs).
 
@@ -152,7 +152,7 @@ then walk their own children.
 The `Rewrite` trait is defined in [src/rewrite.rs](src/rewrite.rs). It is implemented for many
 things that can be rewritten, mostly AST nodes. It has a single function,
 `rewrite`, which is called to rewrite `self` into an `Option<String>`. The
-arguments are `width` which is the horizontal space we write into, and `offset`
+arguments are `width` which is the horizontal space we write into and `offset`
 which is how much we are currently indented from the lhs of the page. We also
 take a context which contains information used for parsing, the current block
 indent, and a configuration (see below).
@@ -199,11 +199,11 @@ space we have. Something like `available_space = budget - overhead`. Since
 widths are unsized integers, this would cause underflow. Therefore we use
 checked subtraction: `available_space = budget.checked_sub(overhead)?`.
 `checked_sub` returns an `Option`, and if we would underflow `?` returns
-`None`, otherwise we proceed with the computed space.
+`None`, otherwise, we proceed with the computed space.
 
 ##### Rewrite of list-like expressions
 
-Much syntax in Rust is lists: lists of arguments, lists of fields, lists of
+Much of the syntax in Rust is lists: lists of arguments, lists of fields, lists of
 array elements, etc. We have some generic code to handle lists, including how to
 space them in horizontal and vertical space, indentation, comments between
 items, trailing separators, etc. However, since there are so many options, the
