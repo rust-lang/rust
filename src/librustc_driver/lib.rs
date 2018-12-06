@@ -498,6 +498,9 @@ fn run_compiler_with_pool<'a>(
     let codegen_backend = get_codegen_backend(&sess);
 
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    if sess.opts.debugging_opts.internal_lints {
+        rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    }
 
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
@@ -815,10 +818,16 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 if sopts.describe_lints {
                     let mut ls = lint::LintStore::new();
                     rustc_lint::register_builtins(&mut ls, Some(&sess));
+                    if sess.opts.debugging_opts.internal_lints {
+                        rustc_lint::register_internals(&mut ls, Some(&sess));
+                    }
                     describe_lints(&sess, &ls, false);
                     return None;
                 }
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+                if sess.opts.debugging_opts.internal_lints {
+                    rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+                }
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 let codegen_backend = get_codegen_backend(&sess);
                 target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);

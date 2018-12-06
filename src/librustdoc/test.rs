@@ -75,6 +75,9 @@ pub fn run(mut options: Options) -> isize {
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        if sess.opts.debugging_opts.internal_lints {
+            rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        }
 
         let mut cfg = config::build_configuration(&sess,
                                                   config::parse_cfgspecs(options.cfgs.clone()));
@@ -279,6 +282,9 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        if sess.opts.debugging_opts.internal_lints {
+            rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        }
 
         let outdir = Mutex::new(
             if let Some(mut path) = persist_doctests {

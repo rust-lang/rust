@@ -428,6 +428,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        if sess.opts.debugging_opts.internal_lints {
+            rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        }
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
