@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use super::graphviz::write_mir_fn_graphviz;
 use transform::MirSource;
 
-const INDENT: &'static str = "    ";
+const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
 pub(crate) const ALIGN: usize = 40;
 

@@ -577,7 +577,7 @@ impl String {
             return Cow::Borrowed("");
         };
 
-        const REPLACEMENT: &'static str = "\u{FFFD}";
+        const REPLACEMENT: &str = "\u{FFFD}";
 
         let mut res = String::with_capacity(v.len());
         res.push_str(first_valid);

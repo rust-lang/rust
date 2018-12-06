@@ -389,7 +389,7 @@ impl SymbolPathBuffer {
 
 impl ItemPathBuffer for SymbolPathBuffer {
     fn root_mode(&self) -> &RootMode {
-        const ABSOLUTE: &'static RootMode = &RootMode::Absolute;
+        const ABSOLUTE: &RootMode = &RootMode::Absolute;
         ABSOLUTE
     }
 

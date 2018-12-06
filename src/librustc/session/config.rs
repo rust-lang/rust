@@ -780,43 +780,42 @@ macro_rules! options {
     }
 
     pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
-    pub const $stat: &'static [(&'static str, $setter_name,
-                                Option<&'static str>, &'static str)] =
+    pub const $stat: &[(&str, $setter_name, Option<&str>, &str)] =
         &[ $( (stringify!($opt), $mod_set::$opt, $mod_desc::$parse, $desc) ),* ];
 
     #[allow(non_upper_case_globals, dead_code)]
     mod $mod_desc {
-        pub const parse_bool: Option<&'static str> = None;
-        pub const parse_opt_bool: Option<&'static str> =
+        pub const parse_bool: Option<&str> = None;
+        pub const parse_opt_bool: Option<&str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
-        pub const parse_string: Option<&'static str> = Some("a string");
-        pub const parse_string_push: Option<&'static str> = Some("a string");
-        pub const parse_pathbuf_push: Option<&'static str> = Some("a path");
-        pub const parse_opt_string: Option<&'static str> = Some("a string");
-        pub const parse_opt_pathbuf: Option<&'static str> = Some("a path");
-        pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
-        pub const parse_opt_list: Option<&'static str> = Some("a space-separated list of strings");
-        pub const parse_uint: Option<&'static str> = Some("a number");
-        pub const parse_passes: Option<&'static str> =
+        pub const parse_string: Option<&str> = Some("a string");
+        pub const parse_string_push: Option<&str> = Some("a string");
+        pub const parse_pathbuf_push: Option<&str> = Some("a path");
+        pub const parse_opt_string: Option<&str> = Some("a string");
+        pub const parse_opt_pathbuf: Option<&str> = Some("a path");
+        pub const parse_list: Option<&str> = Some("a space-separated list of strings");
+        pub const parse_opt_list: Option<&str> = Some("a space-separated list of strings");
+        pub const parse_uint: Option<&str> = Some("a number");
+        pub const parse_passes: Option<&str> =
             Some("a space-separated list of passes, or `all`");
-        pub const parse_opt_uint: Option<&'static str> =
+        pub const parse_opt_uint: Option<&str> =
             Some("a number");
-        pub const parse_panic_strategy: Option<&'static str> =
+        pub const parse_panic_strategy: Option<&str> =
             Some("either `unwind` or `abort`");
-        pub const parse_relro_level: Option<&'static str> =
+        pub const parse_relro_level: Option<&str> =
             Some("one of: `full`, `partial`, or `off`");
-        pub const parse_sanitizer: Option<&'static str> =
+        pub const parse_sanitizer: Option<&str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
-        pub const parse_linker_flavor: Option<&'static str> =
+        pub const parse_linker_flavor: Option<&str> =
             Some(::rustc_target::spec::LinkerFlavor::one_of());
-        pub const parse_optimization_fuel: Option<&'static str> =
+        pub const parse_optimization_fuel: Option<&str> =
             Some("crate=integer");
-        pub const parse_unpretty: Option<&'static str> =
+        pub const parse_unpretty: Option<&str> =
             Some("`string` or `string=string`");
-        pub const parse_lto: Option<&'static str> =
+        pub const parse_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
                   `fat`, or omitted");
-        pub const parse_cross_lang_lto: Option<&'static str> =
+        pub const parse_cross_lang_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
     }

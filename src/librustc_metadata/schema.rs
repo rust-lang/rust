@@ -52,7 +52,7 @@ pub const METADATA_VERSION: u8 = 4;
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
 /// and further followed by the rustc version string.
-pub const METADATA_HEADER: &'static [u8; 12] =
+pub const METADATA_HEADER: &[u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// A value of type T referred to by its absolute position

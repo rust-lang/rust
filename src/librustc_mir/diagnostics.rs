@@ -606,7 +606,7 @@ static X: i32 = 1;
 const C: i32 = 2;
 
 // these three are not allowed:
-const CR: &'static mut i32 = &mut C;
+const CR: &mut i32 = &mut C;
 static STATIC_REF: &'static mut i32 = &mut X;
 static CONST_REF: &'static mut i32 = &mut C;
 ```
@@ -1163,7 +1163,7 @@ You can also have this error while using a cell type:
 use std::cell::Cell;
 
 const A: Cell<usize> = Cell::new(1);
-const B: &'static Cell<usize> = &A;
+const B: &Cell<usize> = &A;
 // error: cannot borrow a constant which may contain interior mutability,
 //        create a static instead
 
@@ -1171,10 +1171,10 @@ const B: &'static Cell<usize> = &A;
 struct C { a: Cell<usize> }
 
 const D: C = C { a: Cell::new(1) };
-const E: &'static Cell<usize> = &D.a; // error
+const E: &Cell<usize> = &D.a; // error
 
 // or:
-const F: &'static C = &D; // error
+const F: &C = &D; // error
 ```
 
 This is because cell types do operations that are not thread-safe. Due to this,
