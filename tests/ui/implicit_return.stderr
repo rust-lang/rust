@@ -31,6 +31,12 @@ error: missing return statement
    |             ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
+  --> $DIR/implicit_return.rs:46:9
+   |
+46 |         break true;
+   |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
+
+error: missing return statement
   --> $DIR/implicit_return.rs:52:9
    |
 52 |         true
@@ -42,5 +48,5 @@ error: missing return statement
 54 |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 

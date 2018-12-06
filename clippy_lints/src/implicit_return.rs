@@ -90,6 +90,12 @@ impl Pass {
                 if let Some(expr) = &block.expr {
                     Self::expr_match(cx, expr);
                 }
+                // only needed in the case of `break` with `;` at the end
+                else if let Some(stmt) = block.stmts.last() {
+                    if let rustc::hir::StmtKind::Semi(expr, ..) = &stmt.node {
+                        Self::expr_match(cx, expr);
+                    }
+                }
             },
             // skip if it already has a return statement
             ExprKind::Ret(..) => (),
