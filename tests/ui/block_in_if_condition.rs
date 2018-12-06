@@ -98,3 +98,11 @@ fn condition_is_unsafe_block() {
 
 fn main() {
 }
+
+fn macro_in_closure() {
+    let option = Some(true);
+
+    if option.unwrap_or_else(|| unimplemented!()) {
+        unimplemented!()
+    }
+}
