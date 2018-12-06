@@ -193,51 +193,18 @@ for mir::TerminatorKind<'gcx> {
 
 impl_stable_hash_for!(struct mir::Statement<'tcx> { source_info, kind });
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for mir::StatementKind<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            mir::StatementKind::Assign(ref place, ref rvalue) => {
-                place.hash_stable(hcx, hasher);
-                rvalue.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::FakeRead(ref cause, ref place) => {
-                cause.hash_stable(hcx, hasher);
-                place.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
-                place.hash_stable(hcx, hasher);
-                variant_index.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::StorageLive(ref place) |
-            mir::StatementKind::StorageDead(ref place) => {
-                place.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::EscapeToRaw(ref place) => {
-                place.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::Retag { fn_entry, ref place } => {
-                fn_entry.hash_stable(hcx, hasher);
-                place.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::AscribeUserType(ref place, ref variance, ref c_ty) => {
-                place.hash_stable(hcx, hasher);
-                variance.hash_stable(hcx, hasher);
-                c_ty.hash_stable(hcx, hasher);
-            }
-            mir::StatementKind::Nop => {}
-            mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
-                asm.hash_stable(hcx, hasher);
-                outputs.hash_stable(hcx, hasher);
-                inputs.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
+impl_stable_hash_for!(impl<'gcx> for enum mir::StatementKind<'gcx> [ mir::StatementKind ] {
+    Assign(place, rvalue),
+    FakeRead(cause, place),
+    SetDiscriminant { place, variant_index },
+    StorageLive(place),
+    StorageDead(place),
+    EscapeToRaw(place),
+    Retag { fn_entry, two_phase, place },
+    AscribeUserType(place, variance, c_ty),
+    Nop,
+    InlineAsm { asm, outputs, inputs },
+});
 
 impl_stable_hash_for!(enum mir::FakeReadCause { ForMatchGuard, ForMatchedPlace, ForLet });
 

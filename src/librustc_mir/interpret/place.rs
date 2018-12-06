@@ -115,6 +115,16 @@ impl<Tag> MemPlace<Tag> {
         }
     }
 
+    #[inline]
+    pub fn with_tag(self, new_tag: Tag) -> Self
+    {
+        MemPlace {
+            ptr: self.ptr.with_tag(new_tag),
+            align: self.align,
+            meta: self.meta,
+        }
+    }
+
     #[inline(always)]
     pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
         MemPlace {
@@ -187,6 +197,16 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
         }
     }
 
+    #[inline]
+    pub fn with_tag(self, new_tag: Tag) -> Self
+    {
+        MPlaceTy {
+            mplace: self.mplace.with_tag(new_tag),
+            layout: self.layout,
+        }
+    }
+
+    #[inline]
     pub fn offset(
         self,
         offset: Size,

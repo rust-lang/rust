@@ -118,7 +118,7 @@ impl MirPass for AddRetag {
             basic_blocks[START_BLOCK].statements.splice(0..0,
                 places.into_iter().map(|place| Statement {
                     source_info,
-                    kind: StatementKind::Retag { fn_entry: true, place },
+                    kind: StatementKind::Retag { fn_entry: true, two_phase: false, place },
                 })
             );
         }
@@ -154,7 +154,7 @@ impl MirPass for AddRetag {
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(0, Statement {
                 source_info,
-                kind: StatementKind::Retag { fn_entry: false, place: dest_place },
+                kind: StatementKind::Retag { fn_entry: false, two_phase: false, place: dest_place },
             });
         }
 
@@ -191,12 +191,21 @@ impl MirPass for AddRetag {
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
                     // we also retag after taking a reference!
-                    StatementKind::Assign(ref place, _) if needs_retag(place) => {
+                    StatementKind::Assign(ref place, box ref rvalue) if needs_retag(place) => {
+                        let two_phase = match rvalue {
+                            Rvalue::Ref(_, borrow_kind, _) =>
+                                borrow_kind.allows_two_phase_borrow(),
+                            _ => false
+                        };
                         // Insert a retag after the assignment.
                         let source_info = block_data.statements[i].source_info;
                         block_data.statements.insert(i+1, Statement {
                             source_info,
-                            kind: StatementKind::Retag { fn_entry: false, place: place.clone() },
+                            kind: StatementKind::Retag {
+                                fn_entry: false,
+                                two_phase,
+                                place: place.clone(),
+                            },
                         });
                     }
                     // Do nothing for the rest
