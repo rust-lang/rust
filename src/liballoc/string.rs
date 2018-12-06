@@ -1734,6 +1734,9 @@ impl FromIterator<String> for String {
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
         let mut iterator = iter.into_iter();
 
+        // Because we're iterating over `String`s, we can avoid at least
+        // one allocation by getting the first string from the iterator
+        // and appending to it all the subsequent strings.
         match iterator.next() {
             None => String::new(),
             Some(mut buf) => {
@@ -1749,6 +1752,9 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
         let mut iterator = iter.into_iter();
 
+        // Because we're iterating over CoWs, we can (potentially) avoid at least
+        // one allocation by getting the first item and appending to it all the
+        // subsequent items.
         match iterator.next() {
             None => String::new(),
             Some(cow) => {
