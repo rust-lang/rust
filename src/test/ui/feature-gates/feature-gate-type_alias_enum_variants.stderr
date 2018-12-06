@@ -1,4 +1,4 @@
-error: type alias enum variants are not yet allowed
+error: enum variants on type aliases are experimental
   --> $DIR/feature-gate-type_alias_enum_variants.rs:19:13
    |
 LL |     let t = Alias::Bar(0);
@@ -19,8 +19,8 @@ LL |     let t = Alias::Bar(0);
    |
    = help: did you mean `Bar`?
 
-error: type alias enum variants are not yet allowed
-  --> $DIR/feature-gate-type_alias_enum_variants.rs:20:13
+error: enum variants on type aliases are experimental
+  --> $DIR/feature-gate-type_alias_enum_variants.rs:22:13
    |
 LL |     let t = Alias::Baz { i: 0 };
    |             ^^^^^^^^^^
@@ -28,13 +28,13 @@ LL |     let t = Alias::Baz { i: 0 };
    = help: add `#![feature(type_alias_enum_variants)]` to the crate attributes to enable
 
 error[E0223]: ambiguous associated type
-  --> $DIR/feature-gate-type_alias_enum_variants.rs:20:13
+  --> $DIR/feature-gate-type_alias_enum_variants.rs:22:13
    |
 LL |     let t = Alias::Baz { i: 0 };
    |             ^^^^^^^^^^ help: use fully-qualified syntax: `<Foo as Trait>::Baz`
 
-error: type alias enum variants are not yet allowed
-  --> $DIR/feature-gate-type_alias_enum_variants.rs:22:9
+error: enum variants on type aliases are experimental
+  --> $DIR/feature-gate-type_alias_enum_variants.rs:26:9
    |
 LL |         Alias::Bar(_i) => {}
    |         ^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL |         Alias::Bar(_i) => {}
    = help: add `#![feature(type_alias_enum_variants)]` to the crate attributes to enable
 
 error[E0599]: no variant named `Bar` found for type `Foo` in the current scope
-  --> $DIR/feature-gate-type_alias_enum_variants.rs:22:16
+  --> $DIR/feature-gate-type_alias_enum_variants.rs:26:16
    |
 LL | enum Foo {
    | -------- variant `Bar` not found here
@@ -52,8 +52,8 @@ LL |         Alias::Bar(_i) => {}
    |
    = help: did you mean `Bar`?
 
-error: type alias enum variants are not yet allowed
-  --> $DIR/feature-gate-type_alias_enum_variants.rs:23:9
+error: enum variants on type aliases are experimental
+  --> $DIR/feature-gate-type_alias_enum_variants.rs:29:9
    |
 LL |         Alias::Baz { i: _i } => {}
    |         ^^^^^^^^^^
@@ -61,7 +61,7 @@ LL |         Alias::Baz { i: _i } => {}
    = help: add `#![feature(type_alias_enum_variants)]` to the crate attributes to enable
 
 error[E0223]: ambiguous associated type
-  --> $DIR/feature-gate-type_alias_enum_variants.rs:23:9
+  --> $DIR/feature-gate-type_alias_enum_variants.rs:29:9
    |
 LL |         Alias::Baz { i: _i } => {}
    |         ^^^^^^^^^^ help: use fully-qualified syntax: `<Foo as Trait>::Baz`

@@ -141,7 +141,7 @@ fn allow_type_alias_enum_variants<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             if let Def::TyAlias(_) = path.def {
                 let mut err = tcx.sess.struct_span_err(
                     span,
-                    "type alias enum variants are not yet allowed"
+                    "enum variants on type aliases are experimental"
                 );
                 if nightly_options::is_nightly_build() {
                     help!(&mut err,
