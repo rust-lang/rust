@@ -270,6 +270,23 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        if self.start >= self.end {
+            return Try::from_ok(accum);
+        }
+
+        while self.start < self.end {
+            let n = self.start.add_one();
+            accum = f(accum, mem::replace(&mut self.start, n))?;
+        }
+
+        Try::from_ok(accum)
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
