@@ -15,9 +15,9 @@ use languageserver_types::{
     DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url,
 };
 use serde::Serialize;
-use serde_json::{from_str, to_string_pretty, Value};
+use serde_json::{to_string_pretty, Value};
 use tempdir::TempDir;
-use test_utils::parse_fixture;
+use test_utils::{parse_fixture, find_mismatch};
 
 use ra_lsp_server::{
     main_loop, req,
@@ -88,23 +88,24 @@ impl Server {
         }
     }
 
-    pub fn request<R>(&self, params: R::Params, expected_resp: &str)
+    pub fn request<R>(&self, params: R::Params, expected_resp: Value)
     where
         R: Request,
         R::Params: Serialize,
     {
         let id = self.req_id.get();
         self.req_id.set(id + 1);
-        let expected_resp: Value = from_str(expected_resp).unwrap();
         let actual = self.send_request::<R>(id, params);
-        assert_eq!(
-            expected_resp,
-            actual,
-            "Expected:\n{}\n\
-             Actual:\n{}\n",
-            to_string_pretty(&expected_resp).unwrap(),
-            to_string_pretty(&actual).unwrap(),
-        );
+        match find_mismatch(&expected_resp, &actual) {
+            Some((expected_part, actual_part)) => panic!(
+                "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",
+                to_string_pretty(&expected_resp).unwrap(),
+                to_string_pretty(&actual).unwrap(),
+                to_string_pretty(expected_part).unwrap(),
+                to_string_pretty(actual_part).unwrap(),
+            ),
+            None => {}
+        }
     }
 
     fn send_request<R>(&self, id: u64, params: R::Params) -> Value
@@ -139,7 +140,7 @@ impl Server {
     pub fn wait_for_feedback_n(&self, feedback: &str, n: usize) {
         let f = |msg: &RawMessage| match msg {
             RawMessage::Notification(n) if n.method == "internalFeedback" => {
-                return n.clone().cast::<req::InternalFeedback>().unwrap() == feedback
+                return n.clone().cast::<req::InternalFeedback>().unwrap() == feedback;
             }
             _ => false,
         };
