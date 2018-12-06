@@ -171,7 +171,7 @@ use raw_vec::RawVec;
 ///
 /// # Slicing
 ///
-/// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
+/// A slice is a reference to a part of the vector.
 /// To get a slice, use `&`. Example:
 ///
 /// ```
