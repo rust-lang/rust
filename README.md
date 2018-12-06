@@ -66,7 +66,7 @@ rustup update
 Once you have rustup and the latest stable release (at least Rust 1.29) installed, run the following command:
 
 ```terminal
-rustup component add clippy-preview
+rustup component add clippy
 ```
 
 Now you can run Clippy by invoking `cargo clippy`.
@@ -95,7 +95,7 @@ rust:
   - stable
   - beta
 before_script:
-  - rustup component add clippy-preview
+  - rustup component add clippy
 script:
   - cargo clippy
   # if you want the build job to fail when encountering warnings, use
@@ -114,7 +114,7 @@ language: rust
 rust:
   - nightly
 before_script:
-   - rustup component add clippy-preview --toolchain=nightly || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
+   - rustup component add clippy --toolchain=nightly || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
    # etc
 ```
 
