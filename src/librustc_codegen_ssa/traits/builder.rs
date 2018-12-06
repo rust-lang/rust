@@ -23,6 +23,47 @@ pub enum OverflowOp {
     Mul,
 }
 
+pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
+    fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
+    fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
+    fn array_alloca(
+        &mut self,
+        ty: Self::Type,
+        len: Self::Value,
+        name: &str,
+        align: Align,
+    ) -> Self::Value;
+
+    fn load(&mut self, ptr: Self::Value, align: Align) -> Self::Value;
+    fn volatile_load(&mut self, ptr: Self::Value) -> Self::Value;
+    fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
+    fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
+        -> OperandRef<'tcx, Self::Value>;
+
+    fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
+    fn nonnull_metadata(&mut self, load: Self::Value);
+
+    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
+    fn store_with_flags(
+        &mut self,
+        val: Self::Value,
+        ptr: Self::Value,
+        align: Align,
+        flags: MemFlags,
+    ) -> Self::Value;
+    fn atomic_store(
+        &mut self,
+        val: Self::Value,
+        ptr: Self::Value,
+        order: AtomicOrdering,
+        size: Size,
+    );
+
+    fn gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
+    fn inbounds_gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
+    fn struct_gep(&mut self, ptr: Self::Value, idx: u64) -> Self::Value;
+}
+
 pub trait BuilderMethods<'a, 'tcx: 'a>:
     HasCodegen<'tcx>
     + DebugInfoBuilderMethods<'tcx>
@@ -31,15 +72,14 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods<'tcx>
+    + MemoryBuilderMethods<'tcx>
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
     fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
     fn cx(&self) -> &Self::CodegenCx;
-    fn llfn(&self) -> Self::Value;
     fn llbb(&self) -> Self::BasicBlock;
 
-    fn set_value_name(&mut self, value: Self::Value, name: &str);
     fn position_at_end(&mut self, llbb: Self::BasicBlock);
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
@@ -101,45 +141,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value);
-
-    fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
-    fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
-    fn array_alloca(
-        &mut self,
-        ty: Self::Type,
-        len: Self::Value,
-        name: &str,
-        align: Align,
-    ) -> Self::Value;
-
-    fn load(&mut self, ptr: Self::Value, align: Align) -> Self::Value;
-    fn volatile_load(&mut self, ptr: Self::Value) -> Self::Value;
-    fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
-    fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
-        -> OperandRef<'tcx, Self::Value>;
-
-    fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
-    fn nonnull_metadata(&mut self, load: Self::Value);
-
-    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
-    fn store_with_flags(
-        &mut self,
-        val: Self::Value,
-        ptr: Self::Value,
-        align: Align,
-        flags: MemFlags,
-    ) -> Self::Value;
-    fn atomic_store(
-        &mut self,
-        val: Self::Value,
-        ptr: Self::Value,
-        order: AtomicOrdering,
-        size: Size,
-    );
-
-    fn gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
-    fn inbounds_gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
-    fn struct_gep(&mut self, ptr: Self::Value, idx: u64) -> Self::Value;
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;

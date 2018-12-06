@@ -56,7 +56,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
-    pub fn alloca<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn alloca<Bx: MemoryBuilderMethods<'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str
@@ -68,7 +68,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     /// Returns a place for an indirect reference to an unsized place.
-    pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn alloca_unsized_indirect<Bx: MemoryBuilderMethods<'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
         name: &str,

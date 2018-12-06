@@ -30,7 +30,7 @@ mod write;
 pub use self::abi::{AbiBuilderMethods, AbiMethods};
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
 pub use self::backend::{Backend, BackendTypes, ExtraBackendMethods};
-pub use self::builder::{BuilderMethods, OverflowOp};
+pub use self::builder::{BuilderMethods, MemoryBuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};

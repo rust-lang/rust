@@ -87,6 +87,275 @@ impl HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
 }
 
+impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
+        let mut bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe {
+            llvm::LLVMGetFirstBasicBlock(self.llfn())
+        });
+        bx.dynamic_alloca(ty, name, align)
+    }
+
+    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
+        self.count_insn("alloca");
+        unsafe {
+            let alloca = if name.is_empty() {
+                llvm::LLVMBuildAlloca(self.llbuilder, ty, noname())
+            } else {
+                let name = SmallCStr::new(name);
+                llvm::LLVMBuildAlloca(self.llbuilder, ty,
+                                      name.as_ptr())
+            };
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            alloca
+        }
+    }
+
+    fn array_alloca(&mut self,
+                        ty: &'ll Type,
+                        len: &'ll Value,
+                        name: &str,
+                        align: Align) -> &'ll Value {
+        self.count_insn("alloca");
+        unsafe {
+            let alloca = if name.is_empty() {
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, noname())
+            } else {
+                let name = SmallCStr::new(name);
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len,
+                                           name.as_ptr())
+            };
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            alloca
+        }
+    }
+
+    fn load(&mut self, ptr: &'ll Value, align: Align) -> &'ll Value {
+        self.count_insn("load");
+        unsafe {
+            let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
+            llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
+            load
+        }
+    }
+
+    fn volatile_load(&mut self, ptr: &'ll Value) -> &'ll Value {
+        self.count_insn("load.volatile");
+        unsafe {
+            let insn = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
+            llvm::LLVMSetVolatile(insn, llvm::True);
+            insn
+        }
+    }
+
+    fn atomic_load(
+        &mut self,
+        ptr: &'ll Value,
+        order: rustc_codegen_ssa::common::AtomicOrdering,
+        size: Size,
+    ) -> &'ll Value {
+        self.count_insn("load.atomic");
+        unsafe {
+            let load = llvm::LLVMRustBuildAtomicLoad(
+                self.llbuilder,
+                ptr,
+                noname(),
+                AtomicOrdering::from_generic(order),
+            );
+            // LLVM requires the alignment of atomic loads to be at least the size of the type.
+            llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
+            load
+        }
+    }
+
+    fn load_operand(
+        &mut self,
+        place: PlaceRef<'tcx, &'ll Value>
+    ) -> OperandRef<'tcx, &'ll Value> {
+        debug!("PlaceRef::load: {:?}", place);
+
+        assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
+
+        if place.layout.is_zst() {
+            return OperandRef::new_zst(self, place.layout);
+        }
+
+        fn scalar_load_metadata<'a, 'll, 'tcx>(
+            bx: &mut Builder<'a, 'll, 'tcx>,
+            load: &'ll Value,
+            scalar: &layout::Scalar
+        ) {
+            let vr = scalar.valid_range.clone();
+            match scalar.value {
+                layout::Int(..) => {
+                    let range = scalar.valid_range_exclusive(bx);
+                    if range.start != range.end {
+                        bx.range_metadata(load, range);
+                    }
+                }
+                layout::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
+                    bx.nonnull_metadata(load);
+                }
+                _ => {}
+            }
+        }
+
+        let val = if let Some(llextra) = place.llextra {
+            OperandValue::Ref(place.llval, Some(llextra), place.align)
+        } else if place.layout.is_llvm_immediate() {
+            let mut const_llval = None;
+            unsafe {
+                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.llval) {
+                    if llvm::LLVMIsGlobalConstant(global) == llvm::True {
+                        const_llval = llvm::LLVMGetInitializer(global);
+                    }
+                }
+            }
+            let llval = const_llval.unwrap_or_else(|| {
+                let load = self.load(place.llval, place.align);
+                if let layout::Abi::Scalar(ref scalar) = place.layout.abi {
+                    scalar_load_metadata(self, load, scalar);
+                }
+                load
+            });
+            OperandValue::Immediate(to_immediate(self, llval, place.layout))
+        } else if let layout::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
+            let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+
+            let mut load = |i, scalar: &layout::Scalar, align| {
+                let llptr = self.struct_gep(place.llval, i as u64);
+                let load = self.load(llptr, align);
+                scalar_load_metadata(self, load, scalar);
+                if scalar.is_bool() {
+                    self.trunc(load, self.type_i1())
+                } else {
+                    load
+                }
+            };
+
+            OperandValue::Pair(
+                load(0, a, place.align),
+                load(1, b, place.align.restrict_for_offset(b_offset)),
+            )
+        } else {
+            OperandValue::Ref(place.llval, None, place.align)
+        };
+
+        OperandRef { val, layout: place.layout }
+    }
+
+
+
+    fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
+        if self.sess().target.target.arch == "amdgpu" {
+            // amdgpu/LLVM does something weird and thinks a i64 value is
+            // split into a v2i32, halving the bitwidth LLVM expects,
+            // tripping an assertion. So, for now, just disable this
+            // optimization.
+            return;
+        }
+
+        unsafe {
+            let llty = self.cx.val_ty(load);
+            let v = [
+                self.cx.const_uint_big(llty, range.start),
+                self.cx.const_uint_big(llty, range.end)
+            ];
+
+            llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx,
+                                                            v.as_ptr(),
+                                                            v.len() as c_uint));
+        }
+    }
+
+    fn nonnull_metadata(&mut self, load: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
+        }
+    }
+
+    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
+        self.store_with_flags(val, ptr, align, MemFlags::empty())
+    }
+
+    fn store_with_flags(
+        &mut self,
+        val: &'ll Value,
+        ptr: &'ll Value,
+        align: Align,
+        flags: MemFlags,
+    ) -> &'ll Value {
+        debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
+        self.count_insn("store");
+        let ptr = self.check_store(val, ptr);
+        unsafe {
+            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            let align = if flags.contains(MemFlags::UNALIGNED) {
+                1
+            } else {
+                align.bytes() as c_uint
+            };
+            llvm::LLVMSetAlignment(store, align);
+            if flags.contains(MemFlags::VOLATILE) {
+                llvm::LLVMSetVolatile(store, llvm::True);
+            }
+            if flags.contains(MemFlags::NONTEMPORAL) {
+                // According to LLVM [1] building a nontemporal store must
+                // *always* point to a metadata value of the integer 1.
+                //
+                // [1]: http://llvm.org/docs/LangRef.html#store-instruction
+                let one = self.cx.const_i32(1);
+                let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
+                llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+            }
+            store
+        }
+    }
+
+   fn atomic_store(&mut self, val: &'ll Value, ptr: &'ll Value,
+                   order: rustc_codegen_ssa::common::AtomicOrdering, size: Size) {
+        debug!("Store {:?} -> {:?}", val, ptr);
+        self.count_insn("store.atomic");
+        let ptr = self.check_store(val, ptr);
+        unsafe {
+            let store = llvm::LLVMRustBuildAtomicStore(
+                self.llbuilder,
+                val,
+                ptr,
+                AtomicOrdering::from_generic(order),
+            );
+            // LLVM requires the alignment of atomic stores to be at least the size of the type.
+            llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
+        }
+    }
+
+    fn gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
+        self.count_insn("gep");
+        unsafe {
+            llvm::LLVMBuildGEP(self.llbuilder, ptr, indices.as_ptr(),
+                               indices.len() as c_uint, noname())
+        }
+    }
+
+    fn inbounds_gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
+        self.count_insn("inboundsgep");
+        unsafe {
+            llvm::LLVMBuildInBoundsGEP(
+                self.llbuilder, ptr, indices.as_ptr(), indices.len() as c_uint, noname())
+        }
+    }
+
+    fn struct_gep(&mut self, ptr: &'ll Value, idx: u64) -> &'ll Value {
+        self.count_insn("structgep");
+        assert_eq!(idx as c_uint as u64, idx);
+        unsafe {
+            llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
+        }
+    }
+}
+
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx>,
@@ -121,22 +390,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Builder::new_block(self.cx, self.llfn(), name)
     }
 
-    fn llfn(&self) -> &'ll Value {
-        unsafe {
-            llvm::LLVMGetBasicBlockParent(self.llbb())
-        }
-    }
-
     fn llbb(&self) -> &'ll BasicBlock {
         unsafe {
             llvm::LLVMGetInsertBlock(self.llbuilder)
-        }
-    }
-
-    fn set_value_name(&mut self, value: &'ll Value, name: &str) {
-        let cname = SmallCStr::new(name);
-        unsafe {
-            llvm::LLVMSetValueName(value, cname.as_ptr());
         }
     }
 
@@ -507,265 +763,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             self.extract_value(res, 0),
             self.extract_value(res, 1),
         )
-    }
-
-    fn alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
-        let mut bx = Builder::with_cx(self.cx);
-        bx.position_at_start(unsafe {
-            llvm::LLVMGetFirstBasicBlock(self.llfn())
-        });
-        bx.dynamic_alloca(ty, name, align)
-    }
-
-    fn dynamic_alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
-        self.count_insn("alloca");
-        unsafe {
-            let alloca = if name.is_empty() {
-                llvm::LLVMBuildAlloca(self.llbuilder, ty, noname())
-            } else {
-                let name = SmallCStr::new(name);
-                llvm::LLVMBuildAlloca(self.llbuilder, ty,
-                                      name.as_ptr())
-            };
-            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
-            alloca
-        }
-    }
-
-    fn array_alloca(&mut self,
-                        ty: &'ll Type,
-                        len: &'ll Value,
-                        name: &str,
-                        align: Align) -> &'ll Value {
-        self.count_insn("alloca");
-        unsafe {
-            let alloca = if name.is_empty() {
-                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, noname())
-            } else {
-                let name = SmallCStr::new(name);
-                llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len,
-                                           name.as_ptr())
-            };
-            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
-            alloca
-        }
-    }
-
-    fn load(&mut self, ptr: &'ll Value, align: Align) -> &'ll Value {
-        self.count_insn("load");
-        unsafe {
-            let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
-            load
-        }
-    }
-
-    fn volatile_load(&mut self, ptr: &'ll Value) -> &'ll Value {
-        self.count_insn("load.volatile");
-        unsafe {
-            let insn = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            llvm::LLVMSetVolatile(insn, llvm::True);
-            insn
-        }
-    }
-
-    fn atomic_load(
-        &mut self,
-        ptr: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-        size: Size,
-    ) -> &'ll Value {
-        self.count_insn("load.atomic");
-        unsafe {
-            let load = llvm::LLVMRustBuildAtomicLoad(
-                self.llbuilder,
-                ptr,
-                noname(),
-                AtomicOrdering::from_generic(order),
-            );
-            // LLVM requires the alignment of atomic loads to be at least the size of the type.
-            llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
-            load
-        }
-    }
-
-    fn load_operand(
-        &mut self,
-        place: PlaceRef<'tcx, &'ll Value>
-    ) -> OperandRef<'tcx, &'ll Value> {
-        debug!("PlaceRef::load: {:?}", place);
-
-        assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
-
-        if place.layout.is_zst() {
-            return OperandRef::new_zst(self, place.layout);
-        }
-
-        fn scalar_load_metadata<'a, 'll, 'tcx>(
-            bx: &mut Builder<'a, 'll, 'tcx>,
-            load: &'ll Value,
-            scalar: &layout::Scalar
-        ) {
-            let vr = scalar.valid_range.clone();
-            match scalar.value {
-                layout::Int(..) => {
-                    let range = scalar.valid_range_exclusive(bx);
-                    if range.start != range.end {
-                        bx.range_metadata(load, range);
-                    }
-                }
-                layout::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
-                    bx.nonnull_metadata(load);
-                }
-                _ => {}
-            }
-        }
-
-        let val = if let Some(llextra) = place.llextra {
-            OperandValue::Ref(place.llval, Some(llextra), place.align)
-        } else if place.layout.is_llvm_immediate() {
-            let mut const_llval = None;
-            unsafe {
-                if let Some(global) = llvm::LLVMIsAGlobalVariable(place.llval) {
-                    if llvm::LLVMIsGlobalConstant(global) == llvm::True {
-                        const_llval = llvm::LLVMGetInitializer(global);
-                    }
-                }
-            }
-            let llval = const_llval.unwrap_or_else(|| {
-                let load = self.load(place.llval, place.align);
-                if let layout::Abi::Scalar(ref scalar) = place.layout.abi {
-                    scalar_load_metadata(self, load, scalar);
-                }
-                load
-            });
-            OperandValue::Immediate(to_immediate(self, llval, place.layout))
-        } else if let layout::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
-            let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
-
-            let mut load = |i, scalar: &layout::Scalar, align| {
-                let llptr = self.struct_gep(place.llval, i as u64);
-                let load = self.load(llptr, align);
-                scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() {
-                    self.trunc(load, self.type_i1())
-                } else {
-                    load
-                }
-            };
-
-            OperandValue::Pair(
-                load(0, a, place.align),
-                load(1, b, place.align.restrict_for_offset(b_offset)),
-            )
-        } else {
-            OperandValue::Ref(place.llval, None, place.align)
-        };
-
-        OperandRef { val, layout: place.layout }
-    }
-
-
-
-    fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
-        if self.sess().target.target.arch == "amdgpu" {
-            // amdgpu/LLVM does something weird and thinks a i64 value is
-            // split into a v2i32, halving the bitwidth LLVM expects,
-            // tripping an assertion. So, for now, just disable this
-            // optimization.
-            return;
-        }
-
-        unsafe {
-            let llty = self.cx.val_ty(load);
-            let v = [
-                self.cx.const_uint_big(llty, range.start),
-                self.cx.const_uint_big(llty, range.end)
-            ];
-
-            llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.cx.llcx,
-                                                            v.as_ptr(),
-                                                            v.len() as c_uint));
-        }
-    }
-
-    fn nonnull_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
-        }
-    }
-
-    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
-        self.store_with_flags(val, ptr, align, MemFlags::empty())
-    }
-
-    fn store_with_flags(
-        &mut self,
-        val: &'ll Value,
-        ptr: &'ll Value,
-        align: Align,
-        flags: MemFlags,
-    ) -> &'ll Value {
-        debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
-        self.count_insn("store");
-        let ptr = self.check_store(val, ptr);
-        unsafe {
-            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
-            let align = if flags.contains(MemFlags::UNALIGNED) {
-                1
-            } else {
-                align.bytes() as c_uint
-            };
-            llvm::LLVMSetAlignment(store, align);
-            if flags.contains(MemFlags::VOLATILE) {
-                llvm::LLVMSetVolatile(store, llvm::True);
-            }
-            if flags.contains(MemFlags::NONTEMPORAL) {
-                // According to LLVM [1] building a nontemporal store must
-                // *always* point to a metadata value of the integer 1.
-                //
-                // [1]: http://llvm.org/docs/LangRef.html#store-instruction
-                let one = self.cx.const_i32(1);
-                let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
-                llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
-            }
-            store
-        }
-    }
-
-   fn atomic_store(&mut self, val: &'ll Value, ptr: &'ll Value,
-                   order: rustc_codegen_ssa::common::AtomicOrdering, size: Size) {
-        debug!("Store {:?} -> {:?}", val, ptr);
-        self.count_insn("store.atomic");
-        let ptr = self.check_store(val, ptr);
-        unsafe {
-            let store = llvm::LLVMRustBuildAtomicStore(
-                self.llbuilder,
-                val,
-                ptr,
-                AtomicOrdering::from_generic(order),
-            );
-            // LLVM requires the alignment of atomic stores to be at least the size of the type.
-            llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
-        }
-    }
-
-    fn gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
-        self.count_insn("gep");
-        unsafe {
-            llvm::LLVMBuildGEP(self.llbuilder, ptr, indices.as_ptr(),
-                               indices.len() as c_uint, noname())
-        }
-    }
-
-    fn inbounds_gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
-        self.count_insn("inboundsgep");
-        unsafe {
-            llvm::LLVMBuildInBoundsGEP(
-                self.llbuilder, ptr, indices.as_ptr(), indices.len() as c_uint, noname())
-        }
     }
 
     /* Casts */
@@ -1249,13 +1246,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn struct_gep(&mut self, ptr: &'ll Value, idx: u64) -> &'ll Value {
-        self.count_insn("structgep");
-        assert_eq!(idx as c_uint as u64, idx);
-        unsafe {
-            llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
-        }
-    }
 
     fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
         self.cx
@@ -1308,6 +1298,12 @@ fn get_static(&mut self, def_id: DefId) -> &'ll Value {
 }
 
 impl Builder<'a, 'll, 'tcx> {
+    pub fn llfn(&self) -> &'ll Value {
+        unsafe {
+            llvm::LLVMGetBasicBlockParent(self.llbb())
+        }
+    }
+
     fn count_insn(&self, category: &str) {
         if self.sess().codegen_stats() {
             self.stats.borrow_mut().n_llvm_insns += 1;

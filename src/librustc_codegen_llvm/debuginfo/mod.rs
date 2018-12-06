@@ -225,6 +225,13 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
+
+    fn set_value_name(&mut self, value: &'ll Value, name: &str) {
+        let cname = SmallCStr::new(name);
+        unsafe {
+            llvm::LLVMSetValueName(value, cname.as_ptr());
+        }
+    }
 }
 
 impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {

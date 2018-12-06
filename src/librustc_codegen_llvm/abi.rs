@@ -859,4 +859,8 @@ impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     ) {
         ty.apply_attrs_callsite(self, callsite)
     }
+
+    fn get_param(&self, index: usize) -> Self::Value {
+        llvm::get_param(self.llfn(), index as c_uint)
+    }
 }
