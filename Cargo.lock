@@ -1975,6 +1975,7 @@ dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "polonius-engine 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_apfloat 0.0.0",

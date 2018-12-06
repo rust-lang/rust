@@ -103,6 +103,75 @@ pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
     layout_depth: usize,
 }
 
+    use std::mem::MaybeUninit;
+#[inline(never)]
+pub fn may_panic<'tcx>(job: Lrc<QueryJob<'tcx>>) {
+    Box::new(job);
+}
+
+#[inline(never)]
+pub fn test_space() {
+}
+
+#[no_mangle]
+fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, 
+    key: &::hir::def_id::DefId, key_hash: u64,
+        span: Span,
+        parent: &Option<Lrc<QueryJob<'tcx>>>,
+    mut job_storage: MoveSlot<'a, JobOwner<'a, 'tcx, ::ty::query::queries::type_of<'tcx>>>,
+) -> TryGetJob<'a, 'tcx, ::ty::query::queries::type_of<'tcx>> {
+    use ty::query::config::QueryAccessors;
+    let mut job = Lrc::new(MaybeUninit::uninitialized());
+    let parent = parent.clone();
+    let info = QueryInfo {
+        span,
+        query: ::ty::query::queries::type_of::query(*key),
+    };
+    *Lrc::get_mut(&mut job).unwrap() = 
+        MaybeUninit::new(QueryJob::new(info, parent));
+    let job: Lrc<QueryJob<'tcx>> = unsafe { std::mem::transmute(job) };
+    let job_clone = job.clone();
+    may_panic(job);
+    let owner = job_storage.init(JobOwner {
+        cache: ::ty::query::queries::type_of::query_cache(tcx),
+        job: job_clone,
+        key: (*key).clone(),
+        key_hash,
+        layout_depth: 83952,
+    });
+    TryGetJob::NotYetStarted(owner)
+}
+
+#[no_mangle]
+fn test_moves<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, 
+    key: &::hir::def_id::DefId, key_hash: u64,
+        span: Span,
+    mut job_storage: MoveSlot<'a, JobOwner<'a, 'tcx, ::ty::query::queries::type_of<'tcx>>>,
+) -> TryGetJob<'a, 'tcx, ::ty::query::queries::type_of<'tcx>> {
+    use ty::query::config::QueryAccessors;
+    tls::with_related_context(tcx, |icx| {
+        let mut job = Lrc::new(MaybeUninit::uninitialized());
+        let parent = icx.query.clone();
+        let info = QueryInfo {
+            span,
+            query: ::ty::query::queries::type_of::query(*key),
+        };
+        *Lrc::get_mut(&mut job).unwrap() = 
+            MaybeUninit::new(QueryJob::new(info, parent));
+        let job: Lrc<QueryJob<'tcx>> = unsafe { std::mem::transmute(job) };
+        let job_clone = job.clone();
+        may_panic(job);
+        let owner = job_storage.init(JobOwner {
+            cache: ::ty::query::queries::type_of::query_cache(tcx),
+            job: job_clone,
+            key: (*key).clone(),
+            key_hash,
+            layout_depth: icx.layout_depth,
+        });
+        TryGetJob::NotYetStarted(owner)
+    })
+}
+
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// Either gets a JobOwner corresponding the query, allowing us to
     /// start executing the query, or it returns with the result of the query.

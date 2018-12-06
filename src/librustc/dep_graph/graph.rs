@@ -1176,6 +1176,36 @@ pub fn test3(a: &mut SmallVec<[DepNodeIndex; 8]>) {
 pub fn test2(a: &mut DepGraph, dep_node_index: DepNodeIndex) {
     a.read_index(dep_node_index)
 }
+use hir::def_id::DefId;
+use std::hash::{BuildHasher, Hasher};
+use rustc_hash::FxHasher;
+#[no_mangle]
+pub fn test4(a: DefId) -> u64 {
+    let mut hasher = FxHasher::default();
+    a.hash(&mut hasher);
+    hasher.finish()
+}
+use hir::def_id::CrateNum;
+#[no_mangle]
+pub fn test7(a: CrateNum) -> u64 {
+    let mut hasher = FxHasher::default();
+    a.hash(&mut hasher);
+    hasher.finish()
+}
+use syntax::ast::NodeId;
+#[no_mangle]
+pub fn test5(a: NodeId) -> u64 {
+    let mut hasher = FxHasher::default();
+    a.hash(&mut hasher);
+    hasher.finish()
+}
+use hir::HirId;
+#[no_mangle]
+pub fn test6(a: HirId) -> u64 {
+    let mut hasher = FxHasher::default();
+    a.hash(&mut hasher);
+    hasher.finish()
+}
 
 pub struct AnonOpenTask {
     reads: SmallVec<[DepNodeIndex; 8]>,

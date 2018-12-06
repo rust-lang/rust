@@ -73,12 +73,14 @@
 #![feature(transpose_result)]
 #![feature(arbitrary_self_types)]
 #![feature(hash_raw_entry)]
+#![feature(maybe_uninit)]
 
 #![recursion_limit="512"]
 
 #![warn(elided_lifetimes_in_paths)]
 
 extern crate arena;
+extern crate rustc_hash;
 #[macro_use] extern crate bitflags;
 extern crate core;
 extern crate fmt_macros;
