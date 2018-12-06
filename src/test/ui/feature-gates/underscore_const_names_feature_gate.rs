@@ -9,6 +9,5 @@
 // except according to those terms.
 
 const _: () = (); //~ ERROR is unstable
-static _: () = (); //~ ERROR is unstable
 
 fn main() {}

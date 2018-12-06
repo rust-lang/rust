@@ -1,0 +1,20 @@
+error: unused import: `core::any`
+  --> $DIR/unused-2018.rs:7:9
+   |
+LL |     use core::any; //~ ERROR unused import: `core::any`
+   |         ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unused-2018.rs:4:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unused import: `core`
+  --> $DIR/unused-2018.rs:11:9
+   |
+LL |     use core; //~ ERROR unused import: `core`
+   |         ^^^^
+
+error: aborting due to 2 previous errors
+

@@ -2017,6 +2017,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
+        match self.token {
+            token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
+                let span = self.span;
+                self.bump();
+                Ok(Ident::new(ident.name, span))
+            }
+            _ => self.parse_ident(),
+        }
+    }
+
     /// Parses qualified path.
     /// Assumes that the leading `<` has been parsed already.
     ///
@@ -6434,13 +6445,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_item_const(&mut self, m: Option<Mutability>) -> PResult<'a, ItemInfo> {
-        let id = match self.token {
-                token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
-                    self.bump(); // `_`
-                    ident.gensym()
-                    },
-                _ => self.parse_ident()?,
-            };
+        let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         self.expect(&token::Eq)?;
@@ -7725,13 +7730,7 @@ impl<'a> Parser<'a> {
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
         if self.eat_keyword(keywords::As) {
-            match self.token {
-                token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
-                    self.bump(); // `_`
-                    Ok(Some(ident.gensym()))
-                }
-                _ => self.parse_ident().map(Some),
-            }
+            self.parse_ident_or_underscore().map(Some)
         } else {
             Ok(None)
         }
