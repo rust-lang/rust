@@ -103,6 +103,39 @@ pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
     layout_depth: usize,
 }
 
+#[no_mangle]
+fn size_JobOwner() -> usize {
+    std::mem::size_of::<JobOwner<::ty::query::queries::type_of>>()
+}
+
+#[no_mangle]
+fn size_QueryJob() -> usize {
+    std::mem::size_of::<QueryJob>()
+}
+
+#[no_mangle]
+fn size_Query() -> usize {
+    std::mem::size_of::<::ty::query::Query>()
+}
+
+use hir::def_id::DefId;
+
+#[no_mangle]
+fn size_DefId() -> usize {
+    std::mem::size_of::<DefId>()
+}
+ use hir::def_id::CrateId;
+#[no_mangle]
+fn size_CrateId() -> usize {
+    std::mem::size_of::<CrateId>()
+}
+
+ use hir::def_id::CrateNum;
+#[no_mangle]
+fn size_CrateNum() -> usize {
+    std::mem::size_of::<CrateNum>()
+}
+
     use std::mem::MaybeUninit;
 #[inline(never)]
 pub fn may_panic<'tcx>(job: Lrc<QueryJob<'tcx>>) {
@@ -115,7 +148,7 @@ pub fn test_space() {
 
 #[no_mangle]
 fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, 
-    key: &::hir::def_id::DefId, key_hash: u64,
+    key: &DefId, key_hash: u64,
         span: Span,
         parent: &Option<Lrc<QueryJob<'tcx>>>,
     mut job_storage: MoveSlot<'a, JobOwner<'a, 'tcx, ::ty::query::queries::type_of<'tcx>>>,
@@ -128,7 +161,7 @@ fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         query: ::ty::query::queries::type_of::query(*key),
     };
     *Lrc::get_mut(&mut job).unwrap() = 
-        MaybeUninit::new(QueryJob::new(info, parent));
+        MaybeUninit::new(QueryJob::new(info, parent.clone()));
     let job: Lrc<QueryJob<'tcx>> = unsafe { std::mem::transmute(job) };
     let job_clone = job.clone();
     may_panic(job);
@@ -151,11 +184,11 @@ fn test_moves<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     use ty::query::config::QueryAccessors;
     tls::with_related_context(tcx, |icx| {
         let mut job = Lrc::new(MaybeUninit::uninitialized());
-        let parent = icx.query.clone();
         let info = QueryInfo {
             span,
             query: ::ty::query::queries::type_of::query(*key),
         };
+        let parent = icx.query.map(|q| LrcRef::into(q));
         *Lrc::get_mut(&mut job).unwrap() = 
             MaybeUninit::new(QueryJob::new(info, parent));
         let job: Lrc<QueryJob<'tcx>> = unsafe { std::mem::transmute(job) };
