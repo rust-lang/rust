@@ -10,7 +10,7 @@
 
 use convert::TryFrom;
 use mem;
-use ops::{self, Add, Sub};
+use ops::{self, Add, Sub, Try};
 use usize;
 
 use super::{FusedIterator, TrustedLen};
@@ -406,6 +406,26 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return Try::from_ok(accum);
+        }
+
+        while self.start < self.end {
+            let n = self.start.add_one();
+            accum = f(accum, mem::replace(&mut self.start, n))?;
+        }
+
+        self.is_empty = Some(true);
+        f(accum, self.start.clone())
+    }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -424,6 +444,26 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         } else {
             self.end.clone()
         })
+    }
+
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return Try::from_ok(accum);
+        }
+
+        while self.start < self.end {
+            let n = self.end.sub_one();
+            accum = f(accum, mem::replace(&mut self.end, n))?;
+        }
+
+        self.is_empty = Some(true);
+        f(accum, self.end.clone())
     }
 }
 
