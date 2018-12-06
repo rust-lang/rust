@@ -1,58 +1,60 @@
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe.rs:27:51
+  --> $DIR/min_const_fn_unsafe.rs:31:59
    |
-LL | const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
-   |                                                   ^^
+LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+   |                                                           ^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: unions in const fn are unstable (see issue #51909)
-  --> $DIR/min_const_fn_unsafe.rs:34:5
+  --> $DIR/min_const_fn_unsafe.rs:38:5
    |
 LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
    |     ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:19:14
+error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
+  --> $DIR/min_const_fn_unsafe.rs:21:14
    |
-LL |     unsafe { foo4() } //~ ERROR unsafe operations are not allowed in const fn
-   |              ^^^^^^ call to unsafe function
+LL |     unsafe { ret_i32_no_unsafe() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
+   |              ^^^^^^^^^^^^^^^^^^^
    |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:22:14
+error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
+  --> $DIR/min_const_fn_unsafe.rs:24:14
    |
-LL |     unsafe { foo5::<String>() } //~ ERROR unsafe operations are not allowed in const fn
-   |              ^^^^^^^^^^^^^^^^ call to unsafe function
+LL |     unsafe { ret_null_ptr_no_unsafe::<String>() }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:25:14
+error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
+  --> $DIR/min_const_fn_unsafe.rs:28:14
    |
-LL |     unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR not allowed in const fn
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+LL |     unsafe { ret_null_mut_ptr_no_unsafe::<Vec<std::cell::Cell<u32>>>() }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
 error: dereference of raw pointer is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:27:51
+  --> $DIR/min_const_fn_unsafe.rs:31:59
    |
-LL | const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
-   |                                                   ^^ dereference of raw pointer
+LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+   |                                                           ^^ dereference of raw pointer
    |
    = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
 
 error: access to union field is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:34:5
+  --> $DIR/min_const_fn_unsafe.rs:38:5
    |
 LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
    |     ^^^^^^^^^^^^^^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
 
 error: aborting due to 7 previous errors
 

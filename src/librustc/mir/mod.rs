@@ -25,7 +25,7 @@ use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
-use rustc_serialize as serialize;
+use rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
@@ -2778,8 +2778,11 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
-    /// unsafety is not allowed at all in min const fn
-    MinConstFn,
+    /// Right now function calls to `const unsafe fn` are only permitted behind a feature gate
+    /// Also, even `const unsafe fn` need an `unsafe` block to do the allowed operations.
+    GatedConstFnCall,
+    /// Permitted in const fn and regular fns
+    GeneralAndConstFn,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
 }

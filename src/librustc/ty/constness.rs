@@ -5,7 +5,6 @@ use ty::TyCtxt;
 use syntax_pos::symbol::Symbol;
 use hir::map::blocks::FnLikeNode;
 use syntax::attr;
-use rustc_target::spec::abi;
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// Whether the `def_id` counts as const fn in your current crate, considering all active
@@ -40,19 +39,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     /// Returns true if this function must conform to `min_const_fn`
     pub fn is_min_const_fn(self, def_id: DefId) -> bool {
+        // Bail out if the signature doesn't contain `const`
+        if !self.is_const_fn_raw(def_id) {
+            return false;
+        }
+
         if self.features().staged_api {
-            // some intrinsics are waved through if called inside the
-            // standard library. Users never need to call them directly
-            if let abi::Abi::RustIntrinsic = self.fn_sig(def_id).abi() {
-                assert!(!self.is_const_fn(def_id));
-                match &self.item_name(def_id).as_str()[..] {
-                    | "size_of"
-                    | "min_align_of"
-                    | "needs_drop"
-                    => return true,
-                    _ => {},
-                }
-            }
             // in order for a libstd function to be considered min_const_fn
             // it needs to be stable and have no `rustc_const_unstable` attribute
             match self.lookup_stability(def_id) {
