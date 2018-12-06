@@ -31,7 +31,7 @@ use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
 
-use super::{allow_type_alias_enum_variants};
+use super::{check_type_alias_enum_variants_enabled};
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
@@ -1277,7 +1277,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                      ref_id: ast::NodeId,
                                      span: Span,
                                      ty: Ty<'tcx>,
-                                     qself: &hir::Ty,
                                      ty_path_def: Def,
                                      item_segment: &hir::PathSegment)
                                      -> (Ty<'tcx>, Def)
@@ -1296,10 +1295,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    if allow_type_alias_enum_variants(tcx, qself, span) {
-                        let def = Def::Variant(variant_def.did);
-                        return (ty, def);
-                    }
+                    check_type_alias_enum_variants_enabled(tcx, span);
+
+                    let def = Def::Variant(variant_def.did);
+                    tcx.check_stability(def.def_id(), Some(ref_id), span);
+                    return (ty, def);
                 }
             }
         }
@@ -1376,8 +1376,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
                 i.ident.modern() == assoc_ident
-        })
-        .expect("missing associated type");
+        }).expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, bound);
         let ty = self.normalize_ty(span, ty);
@@ -1618,7 +1617,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 } else {
                     Def::Err
                 };
-                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, qself, def, segment).0
+                self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.id);

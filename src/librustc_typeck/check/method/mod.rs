@@ -25,7 +25,7 @@ use rustc::infer::{self, InferOk};
 use syntax::ast;
 use syntax_pos::Span;
 
-use crate::{allow_type_alias_enum_variants};
+use crate::{check_type_alias_enum_variants_enabled};
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers) {
@@ -361,7 +361,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span,
                         method_name: ast::Ident,
                         self_ty: Ty<'tcx>,
-                        qself: &hir::Ty,
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
         debug!("resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",
@@ -379,10 +378,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
                 });
                 if let Some(variant_def) = variant_def {
-                    if allow_type_alias_enum_variants(tcx, qself, span) {
-                        let def = Def::VariantCtor(variant_def.did, variant_def.ctor_kind);
-                        return Ok(def);
-                    }
+                    check_type_alias_enum_variants_enabled(tcx, span);
+
+                    let def = Def::VariantCtor(variant_def.did, variant_def.ctor_kind);
+                    tcx.check_stability(def.def_id(), Some(expr_id), span);
+                    return Ok(def);
                 }
             }
         }

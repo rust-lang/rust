@@ -4539,7 +4539,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Def::Err
                 };
                 let (ty, def) = AstConv::associated_path_def_to_ty(self, node_id, path_span,
-                                                                   ty, qself, def, segment);
+                                                                   ty, def, segment);
 
                 // Write back the new resolution.
                 let hir_id = self.tcx.hir().node_to_hir_id(node_id);
@@ -4575,7 +4575,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return (*cached_def, Some(ty), slice::from_ref(&**item_segment))
         }
         let item_name = item_segment.ident;
-        let def = match self.resolve_ufcs(span, item_name, ty, qself, node_id) {
+        let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
             Ok(def) => def,
             Err(error) => {
                 let def = match error {

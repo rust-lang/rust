@@ -645,7 +645,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_derefs_to_local(&self,
                             span: Span,
                             rcvr_ty: Ty<'tcx>,
-                            rcvr_expr: Option<&hir::Expr>) -> bool {
+                            source: SelfSource) -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
                 ty::Adt(def, _) => def.did.is_local(),
