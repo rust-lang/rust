@@ -30,5 +30,13 @@ pub fn opts() -> TargetOptions {
     // These targets allow the user to choose between static and dynamic linking.
     base.crt_static_respected = true;
 
+    // Defaults for dynamic linking
+    base.dynamic_linking = true;
+    base.executables = true;
+    base.has_elf_tls = true;
+    base.has_rpath = true;
+    base.position_independent_executables = true;
+    base.relro_level = true;
+
     base
 }
