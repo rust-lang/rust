@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, TargetOptions};
+use spec::{LinkerFlavor, TargetOptions, RelroLevel};
 
 pub fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();
@@ -46,7 +46,7 @@ pub fn opts() -> TargetOptions {
     base.has_elf_tls = true;
     base.has_rpath = true;
     base.position_independent_executables = true;
-    base.relro_level = true;
+    base.relro_level = RelroLevel::Full;
 
     base
 }
