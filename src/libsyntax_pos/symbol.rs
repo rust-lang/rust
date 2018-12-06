@@ -349,11 +349,11 @@ declare_keywords! {
     // Special reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     (0,  Invalid,            "")
-    (1,  CrateRoot,          "{{root}}")
+    (1,  PathRoot,           "{{root}}")
     (2,  DollarCrate,        "$crate")
     (3,  Underscore,         "_")
 
-    // Keywords used in the language.
+    // Keywords that are used in stable Rust.
     (4,  As,                 "as")
     (5,  Box,                "box")
     (6,  Break,              "break")
@@ -378,8 +378,8 @@ declare_keywords! {
     (25, Pub,                "pub")
     (26, Ref,                "ref")
     (27, Return,             "return")
-    (28, SelfValue,          "self")
-    (29, SelfType,           "Self")
+    (28, SelfLower,          "self")
+    (29, SelfUpper,          "Self")
     (30, Static,             "static")
     (31, Struct,             "struct")
     (32, Super,              "super")
@@ -391,7 +391,7 @@ declare_keywords! {
     (38, Where,              "where")
     (39, While,              "while")
 
-    // Keywords reserved for future use.
+    // Keywords that are used in unstable Rust or reserved for future use.
     (40, Abstract,           "abstract")
     (41, Become,             "become")
     (42, Do,                 "do")
@@ -404,9 +404,11 @@ declare_keywords! {
     (49, Virtual,            "virtual")
     (50, Yield,              "yield")
 
-    // Edition-specific keywords reserved for future use.
-    (51, Async,              "async") // >= 2018 Edition only
-    (52, Dyn,                "dyn") // >= 2018 Edition only
+    // Edition-specific keywords that are used in stable Rust.
+    (51, Dyn,                "dyn") // >= 2018 Edition only
+
+    // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+    (52, Async,              "async") // >= 2018 Edition only
     (53, Try,                "try") // >= 2018 Edition only
 
     // Special lifetime names
@@ -417,11 +419,15 @@ declare_keywords! {
     (56, Auto,               "auto")
     (57, Catch,              "catch")
     (58, Default,            "default")
-    (59, Union,              "union")
-    (60, Existential,        "existential")
+    (59, Existential,        "existential")
+    (60, Union,              "union")
 }
 
 impl Symbol {
+    fn is_used_keyword_2018(self) -> bool {
+        self == keywords::Dyn.name()
+    }
+
     fn is_unused_keyword_2018(self) -> bool {
         self >= keywords::Async.name() && self <= keywords::Try.name()
     }
@@ -436,7 +442,9 @@ impl Ident {
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
-        self.name >= keywords::As.name() && self.name <= keywords::While.name()
+        // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
+        self.name >= keywords::As.name() && self.name <= keywords::While.name() ||
+        self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
@@ -454,11 +462,11 @@ impl Ident {
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
         self.name == keywords::Super.name() ||
-        self.name == keywords::SelfValue.name() ||
-        self.name == keywords::SelfType.name() ||
+        self.name == keywords::SelfLower.name() ||
+        self.name == keywords::SelfUpper.name() ||
         self.name == keywords::Extern.name() ||
         self.name == keywords::Crate.name() ||
-        self.name == keywords::CrateRoot.name() ||
+        self.name == keywords::PathRoot.name() ||
         self.name == keywords::DollarCrate.name()
     }
 

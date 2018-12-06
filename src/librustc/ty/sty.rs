@@ -1020,7 +1020,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfType.name().as_interned_str())
+        ParamTy::new(0, keywords::SelfUpper.name().as_interned_str())
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
@@ -1035,7 +1035,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
         // but this should only be possible when using `-Z continue-parse-after-error` like
         // `compile-fail/issue-36638.rs`.
-        self.name == keywords::SelfType.name().as_str() && self.idx == 0
+        self.name == keywords::SelfUpper.name().as_str() && self.idx == 0
     }
 }
 

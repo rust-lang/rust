@@ -73,7 +73,7 @@ impl fmt::Debug for Lifetime {
 pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
-    /// Global paths begin with `keywords::CrateRoot`.
+    /// Global paths begin with `keywords::PathRoot`.
     pub segments: Vec<PathSegment>,
 }
 
@@ -105,19 +105,8 @@ impl Path {
         }
     }
 
-    // Make a "crate root" segment for this path unless it already has it
-    // or starts with something like `self`/`super`/`$crate`/etc.
-    pub fn make_root(&self) -> Option<PathSegment> {
-        if let Some(ident) = self.segments.get(0).map(|seg| seg.ident) {
-            if ident.is_path_segment_keyword() {
-                return None;
-            }
-        }
-        Some(PathSegment::crate_root(self.span.shrink_to_lo()))
-    }
-
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == keywords::CrateRoot.name()
+        !self.segments.is_empty() && self.segments[0].ident.name == keywords::PathRoot.name()
     }
 }
 
@@ -144,8 +133,8 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
         PathSegment { ident, id: DUMMY_NODE_ID, args: None }
     }
-    pub fn crate_root(span: Span) -> Self {
-        PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span))
+    pub fn path_root(span: Span) -> Self {
+        PathSegment::from_ident(Ident::new(keywords::PathRoot.name(), span))
     }
 }
 
@@ -1688,7 +1677,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.node {
-            if ident.name == keywords::SelfValue.name() {
+            if ident.name == keywords::SelfLower.name() {
                 return match self.ty.node {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
                     TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.node.is_implicit_self() => {
@@ -1706,7 +1695,7 @@ impl Arg {
 
     pub fn is_self(&self) -> bool {
         if let PatKind::Ident(_, ident, _) = self.pat.node {
-            ident.name == keywords::SelfValue.name()
+            ident.name == keywords::SelfLower.name()
         } else {
             false
         }

@@ -318,9 +318,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
+        assert!(!idents.is_empty());
+        let add_root = global && !idents[0].is_path_segment_keyword();
+        let mut segments = Vec::with_capacity(idents.len() + add_root as usize);
+        if add_root {
+            segments.push(ast::PathSegment::path_root(span));
+        }
         let last_ident = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = vec![];
-
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
@@ -334,13 +338,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             args,
         });
-        let mut path = ast::Path { span, segments };
-        if global {
-            if let Some(seg) = path.make_root() {
-                path.segments.insert(0, seg);
-            }
-        }
-        path
+        ast::Path { span, segments }
     }
 
     /// Constructs a qualified path.
@@ -625,7 +623,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, keywords::SelfValue.ident())
+        self.expr_ident(span, keywords::SelfLower.ident())
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,

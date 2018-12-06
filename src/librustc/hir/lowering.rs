@@ -1201,7 +1201,7 @@ impl<'a> LoweringContext<'a> {
                 None,
                 P(hir::Path {
                     def: self.expect_full_def(t.id),
-                    segments: hir_vec![hir::PathSegment::from_ident(keywords::SelfType.ident())],
+                    segments: hir_vec![hir::PathSegment::from_ident(keywords::SelfUpper.ident())],
                     span: t.span,
                 }),
             )),
@@ -2425,7 +2425,7 @@ impl<'a> LoweringContext<'a> {
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
                 // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
                 // Instead, use gensym("Self") to create a distinct name that looks the same.
-                let ident = if param.ident.name == keywords::SelfType.name() {
+                let ident = if param.ident.name == keywords::SelfUpper.name() {
                     param.ident.gensym()
                 } else {
                     param.ident
@@ -2981,7 +2981,7 @@ impl<'a> LoweringContext<'a> {
 
                 // Correctly resolve `self` imports
                 if path.segments.len() > 1
-                    && path.segments.last().unwrap().ident.name == keywords::SelfValue.name()
+                    && path.segments.last().unwrap().ident.name == keywords::SelfLower.name()
                 {
                     let _ = path.segments.pop();
                     if rename.is_none() {

@@ -198,7 +198,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                                         .to_name_binding(self.arenas);
                         return Ok(binding);
                     } else if ident.name == keywords::Super.name() ||
-                                ident.name == keywords::SelfValue.name() {
+                                ident.name == keywords::SelfLower.name() {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
                         // Fall through here to get an error from `early_resolve_...`.
@@ -1263,8 +1263,8 @@ fn import_path_to_string(names: &[Ident],
                          subclass: &ImportDirectiveSubclass,
                          span: Span) -> String {
     let pos = names.iter()
-        .position(|p| span == p.span && p.name != keywords::CrateRoot.name());
-    let global = !names.is_empty() && names[0].name == keywords::CrateRoot.name();
+        .position(|p| span == p.span && p.name != keywords::PathRoot.name());
+    let global = !names.is_empty() && names[0].name == keywords::PathRoot.name();
     if let Some(pos) = pos {
         let names = if global { &names[1..pos + 1] } else { &names[..pos + 1] };
         names_to_string(names)

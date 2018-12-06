@@ -938,7 +938,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
-                        name: keywords::SelfType.name().as_interned_str(),
+                        name: keywords::SelfUpper.name().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param_id),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
@@ -1007,7 +1007,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                     synthetic,
                     ..
                 } => {
-                    if param.name.ident().name == keywords::SelfType.name() {
+                    if param.name.ident().name == keywords::SelfUpper.name() {
                         span_bug!(
                             param.span,
                             "`Self` should not be the name of a regular parameter"
