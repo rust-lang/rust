@@ -1,5 +1,6 @@
+use drop_bomb::DropBomb;
+
 use crate::{
-    drop_bomb::DropBomb,
     parser_impl::ParserImpl,
     token_set::TokenSet,
     SyntaxKind::{self, ERROR},
