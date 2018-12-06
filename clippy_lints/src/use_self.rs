@@ -14,7 +14,7 @@ use crate::rustc::ty;
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast::NodeId;
-use crate::syntax_pos::symbol::keywords::SelfType;
+use crate::syntax_pos::symbol::keywords::SelfUpper;
 use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
 
@@ -226,7 +226,7 @@ struct UseSelfVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if self.item_path.def == path.def && path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfType.name() {
+        if self.item_path.def == path.def && path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
             span_use_self_lint(self.cx, path);
         }
 
