@@ -11,12 +11,14 @@
 #![allow(dead_code)] // runtime init functions not used during testing
 
 use os::windows::prelude::*;
+use sys::windows::os::current_exe;
 use sys::c;
-use slice;
-use ops::Range;
 use ffi::OsString;
-use libc::{c_int, c_void};
 use fmt;
+use collections::VecDeque;
+use core::iter;
+use slice;
+use path::PathBuf;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) { }
 
@@ -24,20 +26,146 @@ pub unsafe fn cleanup() { }
 
 pub fn args() -> Args {
     unsafe {
-        let mut nArgs: c_int = 0;
-        let lpCmdLine = c::GetCommandLineW();
-        let szArgList = c::CommandLineToArgvW(lpCmdLine, &mut nArgs);
+        let lp_cmd_line = c::GetCommandLineW();
+        let parsed_args_list = parse_lp_cmd_line(
+            lp_cmd_line as *const u16,
+            || current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new()));
 
-        // szArcList can be NULL if CommandLinToArgvW failed,
-        // but in that case nArgs is 0 so we won't actually
-        // try to read a null pointer
-        Args { cur: szArgList, range: 0..(nArgs as isize) }
+        Args { parsed_args_list: parsed_args_list }
     }
 }
 
+/// Implements the Windows command-line argument parsing algorithm, described at
+/// <https://docs.microsoft.com/en-us/previous-versions//17w5ykft(v=vs.85)>.
+///
+/// Windows includes a function to do this in shell32.dll,
+/// but linking with that DLL causes the process to be registered as a GUI application.
+/// GUI applications add a bunch of overhead, even if no windows are drawn. See
+/// <https://randomascii.wordpress.com/2018/12/03/a-not-called-function-can-cause-a-5x-slowdown/>.
+unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_name: F)
+                                                 -> VecDeque<OsString> {
+    const BACKSLASH: u16 = '\\' as u16;
+    const QUOTE: u16 = '"' as u16;
+    const TAB: u16 = '\t' as u16;
+    const SPACE: u16 = ' ' as u16;
+    let mut in_quotes = false;
+    let mut was_in_quotes = false;
+    let mut backslash_count: usize = 0;
+    let mut ret_val = VecDeque::new();
+    let mut cur = Vec::new();
+    if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
+        ret_val.push_back(exe_name());
+        return ret_val;
+    }
+    let mut i = 0;
+    // The executable name at the beginning is special.
+    match *lp_cmd_line {
+        // The executable name ends at the next quote mark,
+        // no matter what.
+        QUOTE => {
+            loop {
+                i += 1;
+                if *lp_cmd_line.offset(i) == 0 {
+                    ret_val.push_back(OsString::from_wide(
+                        slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
+                    ));
+                    return ret_val;
+                }
+                if *lp_cmd_line.offset(i) == QUOTE {
+                    break;
+                }
+            }
+            ret_val.push_back(OsString::from_wide(
+                slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
+            ));
+            i += 1;
+        }
+        // Implement quirk: when they say whitespace here,
+        // they include the entire ASCII control plane:
+        // "However, if lpCmdLine starts with any amount of whitespace, CommandLineToArgvW
+        // will consider the first argument to be an empty string. Excess whitespace at the
+        // end of lpCmdLine is ignored."
+        0...SPACE => {
+            ret_val.push_back(OsString::new());
+            i += 1;
+        },
+        // The executable name ends at the next quote mark,
+        // no matter what.
+        _ => {
+            loop {
+                i += 1;
+                if *lp_cmd_line.offset(i) == 0 {
+                    ret_val.push_back(OsString::from_wide(
+                        slice::from_raw_parts(lp_cmd_line, i as usize)
+                    ));
+                    return ret_val;
+                }
+                if let 0...SPACE = *lp_cmd_line.offset(i) {
+                    break;
+                }
+            }
+            ret_val.push_back(OsString::from_wide(
+                slice::from_raw_parts(lp_cmd_line, i as usize)
+            ));
+            i += 1;
+        }
+    }
+    loop {
+        let c = *lp_cmd_line.offset(i);
+        match c {
+            // backslash
+            BACKSLASH => {
+                backslash_count += 1;
+                was_in_quotes = false;
+            },
+            QUOTE if backslash_count % 2 == 0 => {
+                cur.extend(iter::repeat(b'\\' as u16).take(backslash_count / 2));
+                backslash_count = 0;
+                if was_in_quotes {
+                    cur.push('"' as u16);
+                    was_in_quotes = false;
+                } else {
+                    was_in_quotes = in_quotes;
+                    in_quotes = !in_quotes;
+                }
+            }
+            QUOTE if backslash_count % 2 != 0 => {
+                cur.extend(iter::repeat(b'\\' as u16).take(backslash_count / 2));
+                backslash_count = 0;
+                was_in_quotes = false;
+                cur.push(b'"' as u16);
+            }
+            SPACE | TAB if !in_quotes => {
+                cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
+                if !cur.is_empty() || was_in_quotes {
+                    ret_val.push_back(OsString::from_wide(&cur[..]));
+                    cur.truncate(0);
+                }
+                backslash_count = 0;
+                was_in_quotes = false;
+            }
+            0x00 => {
+                cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
+                // include empty quoted strings at the end of the arguments list
+                if !cur.is_empty() || was_in_quotes || in_quotes {
+                    ret_val.push_back(OsString::from_wide(&cur[..]));
+                }
+                break;
+            }
+            _ => {
+                cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
+                backslash_count = 0;
+                was_in_quotes = false;
+                cur.push(c);
+            }
+        }
+        i += 1;
+    }
+    ret_val
+}
+
 pub struct Args {
-    range: Range<isize>,
-    cur: *mut *mut u16,
+    parsed_args_list: VecDeque<OsString>,
 }
 
 pub struct ArgsInnerDebug<'a> {
@@ -48,14 +176,13 @@ impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("[")?;
         let mut first = true;
-        for i in self.args.range.clone() {
+        for i in &self.args.parsed_args_list {
             if !first {
                 f.write_str(", ")?;
             }
             first = false;
 
-            // Here we do allocation which could be avoided.
-            fmt::Debug::fmt(&unsafe { os_string_from_ptr(*self.args.cur.offset(i)) }, f)?;
+            fmt::Debug::fmt(i, f)?;
         }
         f.write_str("]")?;
         Ok(())
@@ -70,38 +197,79 @@ impl Args {
     }
 }
 
-unsafe fn os_string_from_ptr(ptr: *mut u16) -> OsString {
-    let mut len = 0;
-    while *ptr.offset(len) != 0 { len += 1; }
-
-    // Push it onto the list.
-    let ptr = ptr as *const u16;
-    let buf = slice::from_raw_parts(ptr, len as usize);
-    OsStringExt::from_wide(buf)
-}
-
 impl Iterator for Args {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.range.next().map(|i| unsafe { os_string_from_ptr(*self.cur.offset(i)) } )
+    fn next(&mut self) -> Option<OsString> { self.parsed_args_list.pop_front() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.parsed_args_list.len(), Some(self.parsed_args_list.len()))
     }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
 }
 
 impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.range.next_back().map(|i| unsafe { os_string_from_ptr(*self.cur.offset(i)) } )
-    }
+    fn next_back(&mut self) -> Option<OsString> { self.parsed_args_list.pop_back() }
 }
 
 impl ExactSizeIterator for Args {
-    fn len(&self) -> usize { self.range.len() }
+    fn len(&self) -> usize { self.parsed_args_list.len() }
 }
 
-impl Drop for Args {
-    fn drop(&mut self) {
-        // self.cur can be null if CommandLineToArgvW previously failed,
-        // but LocalFree ignores NULL pointers
-        unsafe { c::LocalFree(self.cur as *mut c_void); }
+#[cfg(test)]
+mod tests {
+    use sys::windows::args::*;
+    use ffi::OsString;
+
+    fn chk(string: &str, parts: &[&str]) {
+        let mut wide: Vec<u16> = OsString::from(string).encode_wide().collect();
+        wide.push(0);
+        let parsed = unsafe {
+            parse_lp_cmd_line(wide.as_ptr() as *const u16, || OsString::from("TEST.EXE"))
+        };
+        let expected: Vec<OsString> = parts.iter().map(|k| OsString::from(k)).collect();
+        assert_eq!(parsed, expected);
+    }
+
+    #[test]
+    fn empty() {
+        chk("", &["TEST.EXE"]);
+        chk("\0", &["TEST.EXE"]);
+    }
+
+    #[test]
+    fn single_words() {
+        chk("EXE one_word", &["EXE", "one_word"]);
+        chk("EXE a", &["EXE", "a"]);
+        chk("EXE 😅", &["EXE", "😅"]);
+        chk("EXE 😅🤦", &["EXE", "😅🤦"]);
+    }
+
+    #[test]
+    fn official_examples() {
+        chk(r#"EXE "abc" d e"#, &["EXE", "abc", "d", "e"]);
+        chk(r#"EXE a\\\b d"e f"g h"#, &["EXE", r#"a\\\b"#, "de fg", "h"]);
+        chk(r#"EXE a\\\"b c d"#, &["EXE", r#"a\"b"#, "c", "d"]);
+        chk(r#"EXE a\\\\"b c" d e"#, &["EXE", r#"a\\b c"#, "d", "e"]);
+    }
+
+    #[test]
+    fn whitespace_behavior() {
+        chk(r#" test"#, &["", "test"]);
+        chk(r#"  test"#, &["", "test"]);
+        chk(r#" test test2"#, &["", "test", "test2"]);
+        chk(r#" test  test2"#, &["", "test", "test2"]);
+        chk(r#"test test2 "#, &["test", "test2"]);
+        chk(r#"test  test2 "#, &["test", "test2"]);
+        chk(r#"test "#, &["test"]);
+    }
+
+    #[test]
+    fn genius_quotes() {
+        chk(r#"EXE "" """#, &["EXE", "", ""]);
+        chk(r#"EXE "" """"#, &["EXE", "", "\""]);
+        chk(
+            r#"EXE "this is """all""" in the same argument""#,
+            &["EXE", "this is \"all\" in the same argument"]
+        );
+        chk(r#"EXE "\u{1}"""#, &["EXE", "\u{1}\""]);
+        chk(r#"EXE "a"" a"#, &["EXE", "a\"", "a"]);
     }
 }
