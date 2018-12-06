@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has macros/macro.my_macro.html //pre 'macro_rules! my_macro {'
-// @has - //pre '() => { ... };'
-// @has - //pre '($a:tt) => { ... };'
-// @has - //pre '($e:expr) => { ... };'
+#![crate_name = "foo"]
+
+// @has foo/macro.bar.html
+// @!has foo/macro.bar!.html
+// @!has foo/bar.m.html
 #[macro_export]
-macro_rules! my_macro {
-    () => [];
-    ($a:tt) => ();
-    ($e:expr) => {};
+macro_rules! bar {
+    () => {}
 }
+
+// @has foo/struct.Bar.html
+// @!has foo/Bar.t.html
+pub struct Bar;
