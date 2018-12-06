@@ -1,0 +1,8 @@
+warning: unknown lint: `default_hash_types`
+  --> $DIR/without_compile_flag.rs:17:8
+   |
+LL | #[deny(default_hash_types)] //~ WARNING unknown lint: `default_hash_types`
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(unknown_lints)] on by default
+
