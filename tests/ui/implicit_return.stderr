@@ -1,0 +1,46 @@
+error: missing return statement
+  --> $DIR/implicit_return.rs:21:5
+   |
+21 |     true
+   |     ^^^^ help: add `return` as shown: `return true`
+   |
+   = note: `-D clippy::implicit-return` implied by `-D warnings`
+
+error: missing return statement
+  --> $DIR/implicit_return.rs:27:9
+   |
+27 |         true
+   |         ^^^^ help: add `return` as shown: `return true`
+
+error: missing return statement
+  --> $DIR/implicit_return.rs:29:9
+   |
+29 |         false
+   |         ^^^^^ help: add `return` as shown: `return false`
+
+error: missing return statement
+  --> $DIR/implicit_return.rs:36:17
+   |
+36 |         true => false,
+   |                 ^^^^^ help: add `return` as shown: `return false`
+
+error: missing return statement
+  --> $DIR/implicit_return.rs:38:13
+   |
+38 |             true
+   |             ^^^^ help: add `return` as shown: `return true`
+
+error: missing return statement
+  --> $DIR/implicit_return.rs:52:9
+   |
+52 |         true
+   |         ^^^^ help: add `return` as shown: `return true`
+
+error: missing return statement
+  --> $DIR/implicit_return.rs:54:16
+   |
+54 |     let _ = || true;
+   |                ^^^^ help: add `return` as shown: `return true`
+
+error: aborting due to 7 previous errors
+
