@@ -9,7 +9,7 @@ env:
 
 build: &rust_build
   language: rust
-  rust: beta
+  rust: stable
   script:
     - cargo gen-tests --verify
     - cargo gen-syntax --verify
