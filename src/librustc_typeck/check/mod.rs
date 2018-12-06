@@ -914,6 +914,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fcx.resolve_generator_interiors(def_id);
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
+            let ty = fcx.normalize_ty(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
         fcx.select_all_obligations_or_error();
@@ -3969,7 +3970,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         //
                         // to work in stable even if the Sized bound on `drop` is relaxed.
                         for i in 0..fn_sig.inputs().skip_binder().len() {
-                            let input = tcx.erase_late_bound_regions(&fn_sig.input(i));
+                            // We just want to check sizedness, so instead of introducing
+                            // placeholder lifetimes with probing, we just replace higher lifetimes
+                            // with fresh vars.
+                            let input = self.replace_bound_vars_with_fresh_vars(
+                                expr.span,
+                                infer::LateBoundRegionConversionTime::FnCall,
+                                &fn_sig.input(i)).0;
                             self.require_type_is_sized_deferred(input, expr.span,
                                                                 traits::SizedArgumentType);
                         }
@@ -3977,7 +3984,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Here we want to prevent struct constructors from returning unsized types.
                     // There were two cases this happened: fn pointer coercion in stable
                     // and usual function call in presense of unsized_locals.
-                    let output = tcx.erase_late_bound_regions(&fn_sig.output());
+                    // Also, as we just want to check sizedness, instead of introducing
+                    // placeholder lifetimes with probing, we just replace higher lifetimes
+                    // with fresh vars.
+                    let output = self.replace_bound_vars_with_fresh_vars(
+                        expr.span,
+                        infer::LateBoundRegionConversionTime::FnCall,
+                        &fn_sig.output()).0;
                     self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
                 }
 
