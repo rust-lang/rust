@@ -11,7 +11,7 @@
 use session::config::Options;
 
 use std::fs;
-use std::io::{self, StdoutLock, Write};
+use std::io::{self, StderrLock, Write};
 use std::time::{Duration, Instant};
 
 macro_rules! define_categories {
@@ -61,7 +61,7 @@ macro_rules! define_categories {
                 }
             }
 
-            fn print(&self, lock: &mut StdoutLock<'_>) {
+            fn print(&self, lock: &mut StderrLock<'_>) {
                 writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
                     .unwrap();
                 writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")
@@ -235,7 +235,7 @@ impl SelfProfiler {
             self.timer_stack.is_empty(),
             "there were timers running when print_results() was called");
 
-        let out = io::stdout();
+        let out = io::stderr();
         let mut lock = out.lock();
 
         let crate_name =
