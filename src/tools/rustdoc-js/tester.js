@@ -259,6 +259,7 @@ function main(argv) {
                                'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;
+        const filter_crate = loadedFile.FILTER_CRATE;
         const ignore_order = loadedFile.ignore_order;
         const exact_check = loadedFile.exact_check;
         const should_fail = loadedFile.should_fail;

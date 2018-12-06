@@ -182,9 +182,15 @@ a.test-arrow {
 	color: #999;
 }
 
+#crate-search {
+	color: #111;
+	background-color: #f0f0f0;
+	border-color: #000;
+}
+
 .search-input {
 	color: #111;
-	box-shadow: 0 0 0 1px #000, 0 0 0 2px transparent;
+	box-shadow: 1px 0 0 1px #000, 0 0 0 2px transparent;
 	background-color: #f0f0f0;
 }
 
