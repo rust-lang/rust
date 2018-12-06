@@ -1,7 +1,10 @@
+// normalize-stderr-16bit: "-32768isize" -> "$$ISIZE_MIN"
 // normalize-stderr-32bit: "-2147483648isize" -> "$$ISIZE_MIN"
 // normalize-stderr-64bit: "-9223372036854775808isize" -> "$$ISIZE_MIN"
+// normalize-stderr-16bit: "32767isize" -> "$$ISIZE_MAX"
 // normalize-stderr-32bit: "2147483647isize" -> "$$ISIZE_MAX"
 // normalize-stderr-64bit: "9223372036854775807isize" -> "$$ISIZE_MAX"
+// normalize-stderr-16bit: "65535usize" -> "$$USIZE_MAX"
 // normalize-stderr-32bit: "4294967295usize" -> "$$USIZE_MAX"
 // normalize-stderr-64bit: "18446744073709551615usize" -> "$$USIZE_MAX"
 
