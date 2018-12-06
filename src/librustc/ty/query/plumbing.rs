@@ -27,7 +27,7 @@ use ty::item_path;
 use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
 use rustc_data_structures::fx::{FxHashMap};
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, LrcRef, Lock};
 use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
@@ -140,7 +140,8 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             span,
                             query: Q::query(key.clone()),
                         };
-                        let job = Lrc::new(QueryJob::new(info, icx.query.clone()));
+                        let parent = icx.query.map(|q| LrcRef::into(q));
+                        let job = Lrc::new(QueryJob::new(info, parent));
                         let owner = JobOwner {
                             cache,
                             job: job.clone(),
@@ -208,7 +209,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             // Update the ImplicitCtxt to point to our new query job
             let new_icx = tls::ImplicitCtxt {
                 tcx: tcx.global_tcx(),
-                query: Some(self.job.clone()),
+                query: Some(LrcRef::new(&self.job)),
                 layout_depth: current_icx.layout_depth,
                 task: current_icx.task,
             };
@@ -303,7 +304,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         tls::with_context_opt(|icx| {
             if let Some(icx) = icx {
-                let mut current_query = icx.query.clone();
+                let mut current_query = icx.query.map(|q| LrcRef::into(q));
                 let mut i = 0;
 
                 while let Some(query) = current_query {
