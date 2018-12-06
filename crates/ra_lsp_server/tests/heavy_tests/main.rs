@@ -1,12 +1,5 @@
 #[macro_use]
 extern crate crossbeam_channel;
-extern crate flexi_logger;
-extern crate gen_lsp_server;
-extern crate languageserver_types;
-extern crate ra_lsp_server;
-extern crate serde;
-extern crate serde_json;
-extern crate tempdir;
 
 mod support;
 

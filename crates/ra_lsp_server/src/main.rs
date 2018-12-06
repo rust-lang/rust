@@ -4,10 +4,6 @@ extern crate log;
 extern crate failure;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
-extern crate flexi_logger;
-extern crate gen_lsp_server;
-extern crate ra_lsp_server;
 
 use serde::Deserialize;
 use flexi_logger::{Duplicate, Logger};
