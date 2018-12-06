@@ -1,14 +1,6 @@
 //! ra_analyzer crate is the brain of Rust analyzer. It relies on the `salsa`
 //! crate, which provides and incremental on-demand database of facts.
 
-extern crate fst;
-extern crate ra_editor;
-extern crate ra_syntax;
-extern crate rayon;
-extern crate relative_path;
-extern crate rustc_hash;
-extern crate salsa;
-
 macro_rules! ctry {
     ($expr:expr) => {
         match $expr {

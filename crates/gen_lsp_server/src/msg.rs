@@ -1,10 +1,11 @@
 use std::io::{BufRead, Write};
 
 use languageserver_types::{notification::Notification, request::Request};
-use serde::{de::DeserializeOwned, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use serde_json::{from_str, from_value, to_string, to_value, Value};
+use failure::{bail, format_err};
 
-use Result;
+use crate::Result;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
@@ -91,7 +92,7 @@ impl RawRequest {
     pub fn new<R>(id: u64, params: &R::Params) -> RawRequest
     where
         R: Request,
-        R::Params: Serialize,
+        R::Params: serde::Serialize,
     {
         RawRequest {
             id,
@@ -102,7 +103,7 @@ impl RawRequest {
     pub fn cast<R>(self) -> ::std::result::Result<(u64, R::Params), RawRequest>
     where
         R: Request,
-        R::Params: DeserializeOwned,
+        R::Params: serde::de::DeserializeOwned,
     {
         if self.method != R::METHOD {
             return Err(self);
@@ -117,7 +118,7 @@ impl RawResponse {
     pub fn ok<R>(id: u64, result: &R::Result) -> RawResponse
     where
         R: Request,
-        R::Result: Serialize,
+        R::Result: serde::Serialize,
     {
         RawResponse {
             id,
@@ -143,7 +144,7 @@ impl RawNotification {
     pub fn new<N>(params: &N::Params) -> RawNotification
     where
         N: Notification,
-        N::Params: Serialize,
+        N::Params: serde::Serialize,
     {
         RawNotification {
             method: N::METHOD.to_string(),
@@ -153,7 +154,7 @@ impl RawNotification {
     pub fn cast<N>(self) -> ::std::result::Result<N::Params, RawNotification>
     where
         N: Notification,
-        N::Params: DeserializeOwned,
+        N::Params: serde::de::DeserializeOwned,
     {
         if self.method != N::METHOD {
             return Err(self);
@@ -191,12 +192,12 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
     buf.resize(size, 0);
     inp.read_exact(&mut buf)?;
     let buf = String::from_utf8(buf)?;
-    debug!("< {}", buf);
+    log::debug!("< {}", buf);
     Ok(Some(buf))
 }
 
 fn write_msg_text(out: &mut impl Write, msg: &str) -> Result<()> {
-    debug!("> {}", msg);
+    log::debug!("> {}", msg);
     write!(out, "Content-Length: {}\r\n\r\n", msg.len())?;
     out.write_all(msg.as_bytes())?;
     out.flush()?;

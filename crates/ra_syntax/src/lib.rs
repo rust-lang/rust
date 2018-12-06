@@ -20,10 +20,6 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
-#[cfg(test)]
-#[macro_use]
-extern crate test_utils;
-
 pub mod algo;
 pub mod ast;
 mod lexer;

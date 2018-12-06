@@ -1,12 +1,3 @@
-extern crate itertools;
-extern crate join_to_string;
-extern crate ra_syntax;
-extern crate rustc_hash;
-extern crate superslice;
-#[cfg(test)]
-#[macro_use]
-extern crate test_utils as _test_utils;
-
 mod code_actions;
 mod edit;
 mod extend_selection;
@@ -154,7 +145,7 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{add_cursor, assert_eq_dbg, extract_offset};
+    use crate::test_utils::{add_cursor, assert_eq_dbg, extract_offset, assert_eq_text};
 
     #[test]
     fn test_highlighting() {

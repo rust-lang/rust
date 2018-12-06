@@ -59,16 +59,7 @@
 //! }
 //! ```
 
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate log;
-extern crate serde;
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-extern crate crossbeam_channel;
-extern crate languageserver_types;
+use failure::{bail, format_err};
 
 mod msg;
 mod stdio;
@@ -81,7 +72,7 @@ use languageserver_types::{
 };
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
-pub use {
+pub use crate::{
     msg::{ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse, RawResponseError},
     stdio::{stdio_transport, Threads},
 };
@@ -98,18 +89,18 @@ pub fn run_server(
     sender: Sender<RawMessage>,
     server: impl FnOnce(InitializeParams, &Receiver<RawMessage>, &Sender<RawMessage>) -> Result<()>,
 ) -> Result<()> {
-    info!("lsp server initializes");
+    log::info!("lsp server initializes");
     let params = initialize(&receiver, &sender, caps)?;
-    info!("lsp server initialized, serving requests");
+    log::info!("lsp server initialized, serving requests");
     server(params, &receiver, &sender)?;
-    info!("lsp server waiting for exit notification");
+    log::info!("lsp server waiting for exit notification");
     match receiver.recv() {
         Some(RawMessage::Notification(n)) => n
             .cast::<Exit>()
             .map_err(|n| format_err!("unexpected notification during shutdown: {:?}", n))?,
         m => bail!("unexpected message during shutdown: {:?}", m),
     }
-    info!("lsp server shutdown complete");
+    log::info!("lsp server shutdown complete");
     Ok(())
 }
 
