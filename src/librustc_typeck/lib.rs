@@ -105,7 +105,6 @@ mod outlives;
 mod variance;
 
 use hir::Node;
-use hir::def::Def;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::infer::InferOk;
@@ -131,28 +130,20 @@ pub struct TypeAndSubsts<'tcx> {
     ty: Ty<'tcx>,
 }
 
-fn allow_type_alias_enum_variants<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                  qself: &hir::Ty,
-                                                  span: Span) -> bool {
-    let allow_feature = tcx.features().type_alias_enum_variants;
-    if !allow_feature {
-        // Only print error if we know the type is an alias.
-        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = qself.node {
-            if let Def::TyAlias(_) = path.def {
-                let mut err = tcx.sess.struct_span_err(
-                    span,
-                    "enum variants on type aliases are experimental"
-                );
-                if nightly_options::is_nightly_build() {
-                    help!(&mut err,
-                        "add `#![feature(type_alias_enum_variants)]` to the \
-                        crate attributes to enable");
-                }
-                err.emit();
-            }
+fn check_type_alias_enum_variants_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                          span: Span) {
+    if !tcx.features().type_alias_enum_variants {
+        let mut err = tcx.sess.struct_span_err(
+            span,
+            "enum variants on type aliases are experimental"
+        );
+        if nightly_options::is_nightly_build() {
+            help!(&mut err,
+                "add `#![feature(type_alias_enum_variants)]` to the \
+                crate attributes to enable");
         }
+        err.emit();
     }
-    allow_feature
 }
 
 fn require_c_abi_if_variadic(tcx: TyCtxt,
