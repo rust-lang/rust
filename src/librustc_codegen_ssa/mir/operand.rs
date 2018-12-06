@@ -54,10 +54,12 @@ impl<V: CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
 }
 
 impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
-    pub fn new_zst<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn new_zst<Bx: HasCodegen<'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>
-    ) -> OperandRef<'tcx, V> {
+    ) -> OperandRef<'tcx, V>
+        where Bx::CodegenCx: ConstMethods<'tcx>
+    {
         assert!(layout.is_zst());
         OperandRef {
             val: OperandValue::Immediate(bx.const_undef(bx.immediate_backend_type(layout))),

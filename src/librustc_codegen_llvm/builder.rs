@@ -354,6 +354,63 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
         }
     }
+
+    fn memcpy(&mut self, dst: &'ll Value, dst_align: Align,
+                  src: &'ll Value, src_align: Align,
+                  size: &'ll Value, flags: MemFlags) {
+        if flags.contains(MemFlags::NONTEMPORAL) {
+            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
+            let val = self.load(src, src_align);
+            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
+            self.store_with_flags(val, ptr, dst_align, flags);
+            return;
+        }
+        let size = self.intcast(size, self.type_isize(), false);
+        let is_volatile = flags.contains(MemFlags::VOLATILE);
+        let dst = self.pointercast(dst, self.type_i8p());
+        let src = self.pointercast(src, self.type_i8p());
+        unsafe {
+            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.bytes() as c_uint,
+                                      src, src_align.bytes() as c_uint, size, is_volatile);
+        }
+    }
+
+    fn memmove(&mut self, dst: &'ll Value, dst_align: Align,
+                  src: &'ll Value, src_align: Align,
+                  size: &'ll Value, flags: MemFlags) {
+        if flags.contains(MemFlags::NONTEMPORAL) {
+            // HACK(nox): This is inefficient but there is no nontemporal memmove.
+            let val = self.load(src, src_align);
+            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
+            self.store_with_flags(val, ptr, dst_align, flags);
+            return;
+        }
+        let size = self.intcast(size, self.type_isize(), false);
+        let is_volatile = flags.contains(MemFlags::VOLATILE);
+        let dst = self.pointercast(dst, self.type_i8p());
+        let src = self.pointercast(src, self.type_i8p());
+        unsafe {
+            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.bytes() as c_uint,
+                                      src, src_align.bytes() as c_uint, size, is_volatile);
+        }
+    }
+
+    fn memset(
+        &mut self,
+        ptr: &'ll Value,
+        fill_byte: &'ll Value,
+        size: &'ll Value,
+        align: Align,
+        flags: MemFlags,
+    ) {
+        let ptr_width = &self.sess().target.target.target_pointer_width;
+        let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
+        let llintrinsicfn = self.get_intrinsic(&intrinsic_key);
+        let ptr = self.pointercast(ptr, self.type_i8p());
+        let align = self.const_u32(align.bytes() as u32);
+        let volatile = self.const_bool(flags.contains(MemFlags::VOLATILE));
+        self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
+    }
 }
 
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
@@ -926,63 +983,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 None
             }
         }
-    }
-
-    fn memcpy(&mut self, dst: &'ll Value, dst_align: Align,
-                  src: &'ll Value, src_align: Align,
-                  size: &'ll Value, flags: MemFlags) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-            let val = self.load(src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
-        let size = self.intcast(size, self.type_isize(), false);
-        let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.type_i8p());
-        let src = self.pointercast(src, self.type_i8p());
-        unsafe {
-            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.bytes() as c_uint,
-                                      src, src_align.bytes() as c_uint, size, is_volatile);
-        }
-    }
-
-    fn memmove(&mut self, dst: &'ll Value, dst_align: Align,
-                  src: &'ll Value, src_align: Align,
-                  size: &'ll Value, flags: MemFlags) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
-        let size = self.intcast(size, self.type_isize(), false);
-        let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.type_i8p());
-        let src = self.pointercast(src, self.type_i8p());
-        unsafe {
-            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.bytes() as c_uint,
-                                      src, src_align.bytes() as c_uint, size, is_volatile);
-        }
-    }
-
-    fn memset(
-        &mut self,
-        ptr: &'ll Value,
-        fill_byte: &'ll Value,
-        size: &'ll Value,
-        align: Align,
-        flags: MemFlags,
-    ) {
-        let ptr_width = &self.sess().target.target.target_pointer_width;
-        let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-        let llintrinsicfn = self.get_intrinsic(&intrinsic_key);
-        let ptr = self.pointercast(ptr, self.type_i8p());
-        let align = self.const_u32(align.bytes() as u32);
-        let volatile = self.const_bool(flags.contains(MemFlags::VOLATILE));
-        self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
     }
 
     fn select(

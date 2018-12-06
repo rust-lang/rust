@@ -62,6 +62,33 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
     fn gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
     fn inbounds_gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
     fn struct_gep(&mut self, ptr: Self::Value, idx: u64) -> Self::Value;
+
+    fn memcpy(
+        &mut self,
+        dst: Self::Value,
+        dst_align: Align,
+        src: Self::Value,
+        src_align: Align,
+        size: Self::Value,
+        flags: MemFlags,
+    );
+    fn memmove(
+        &mut self,
+        dst: Self::Value,
+        dst_align: Align,
+        src: Self::Value,
+        src_align: Align,
+        size: Self::Value,
+        flags: MemFlags,
+    );
+    fn memset(
+        &mut self,
+        ptr: Self::Value,
+        fill_byte: Self::Value,
+        size: Self::Value,
+        align: Align,
+        flags: MemFlags,
+    );
 }
 
 pub trait BuilderMethods<'a, 'tcx: 'a>:
@@ -175,33 +202,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         alignstack: bool,
         dia: AsmDialect,
     ) -> Option<Self::Value>;
-
-    fn memcpy(
-        &mut self,
-        dst: Self::Value,
-        dst_align: Align,
-        src: Self::Value,
-        src_align: Align,
-        size: Self::Value,
-        flags: MemFlags,
-    );
-    fn memmove(
-        &mut self,
-        dst: Self::Value,
-        dst_align: Align,
-        src: Self::Value,
-        src_align: Align,
-        size: Self::Value,
-        flags: MemFlags,
-    );
-    fn memset(
-        &mut self,
-        ptr: Self::Value,
-        fill_byte: Self::Value,
-        size: Self::Value,
-        align: Align,
-        flags: MemFlags,
-    );
 
     fn select(
         &mut self,
