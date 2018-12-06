@@ -35,6 +35,7 @@
 #![feature(concat_idents)]
 #![feature(link_args)]
 #![feature(static_nobundle)]
+#![feature(rustc_private)]
 
 use back::write::create_target_machine;
 use syntax_pos::symbol::Symbol;

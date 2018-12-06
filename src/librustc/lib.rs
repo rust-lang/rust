@@ -69,6 +69,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
+#![feature(rustc_private)]
 
 #![recursion_limit="512"]
 

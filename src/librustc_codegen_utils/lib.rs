@@ -23,6 +23,7 @@
 #![allow(unused_attributes)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(rustc_private)]
 
 #![recursion_limit="256"]
 

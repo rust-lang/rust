@@ -35,6 +35,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(non_exhaustive)]
 #![feature(specialization)]
+#![feature(rustc_private)]
 
 #![recursion_limit="256"]
 

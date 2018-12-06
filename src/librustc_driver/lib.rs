@@ -27,6 +27,7 @@
 #![feature(set_stdio)]
 #![feature(rustc_stack_internals)]
 #![feature(no_debug)]
+#![feature(rustc_private)]
 
 #![recursion_limit="256"]
 
