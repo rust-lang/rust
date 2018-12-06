@@ -1,15 +1,3 @@
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate crossbeam_channel;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate failure_derive;
-
-
 mod caps;
 mod conv;
 mod main_loop;

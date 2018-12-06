@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate crossbeam_channel;
-
 mod support;
 
 use ra_lsp_server::req::{Runnables, RunnablesParams};

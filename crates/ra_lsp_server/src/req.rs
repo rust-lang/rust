@@ -1,3 +1,4 @@
+use serde_derive::{Serialize, Deserialize};
 use languageserver_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
 use url_serde;

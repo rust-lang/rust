@@ -9,6 +9,7 @@ use ra_analysis::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FileResolver, LibraryData,
 };
 use rustc_hash::FxHashMap;
+use failure::{bail, format_err};
 
 use crate::{
     path_map::{PathMap, Root},
