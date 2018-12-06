@@ -78,7 +78,11 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
     }
-    config.target_rustcflags = Some(format!("-L {0} -L {0}/deps -Dwarnings --sysroot {1}", host_libs().display(), rustc_sysroot_path().display()));
+    config.target_rustcflags = Some(format!(
+        "-L {0} -L {0}/deps -Dwarnings --sysroot {1}",
+        host_libs().display(),
+        rustc_sysroot_path().display()
+    ));
 
     config.mode = cfg_mode;
     config.build_base = if rustc_test_suite().is_some() {
