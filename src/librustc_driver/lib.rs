@@ -594,7 +594,7 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
             } else {
                 None
             };
-            Some((Input::Str { name: FileName::Anon, input: src },
+            Some((Input::Str { name: FileName::anon_source_code(&src), input: src },
                   None, err))
         } else {
             Some((Input::File(PathBuf::from(ifile)),

@@ -353,27 +353,27 @@ pub mod rt {
     impl<'a> ExtParseUtils for ExtCtxt<'a> {
         fn parse_item(&self, s: String) -> P<ast::Item> {
             panictry!(parse::parse_item_from_source_str(
-                FileName::QuoteExpansion,
+                FileName::quote_expansion_source_code(&s),
                 s,
                 self.parse_sess())).expect("parse error")
         }
 
         fn parse_stmt(&self, s: String) -> ast::Stmt {
             panictry!(parse::parse_stmt_from_source_str(
-                FileName::QuoteExpansion,
+                FileName::quote_expansion_source_code(&s),
                 s,
                 self.parse_sess())).expect("parse error")
         }
 
         fn parse_expr(&self, s: String) -> P<ast::Expr> {
             panictry!(parse::parse_expr_from_source_str(
-                FileName::QuoteExpansion,
+                FileName::quote_expansion_source_code(&s),
                 s,
                 self.parse_sess()))
         }
 
         fn parse_tts(&self, s: String) -> Vec<TokenTree> {
-            let source_name = FileName::QuoteExpansion;
+            let source_name = FileName::quote_expansion_source_code(&s);
             parse::parse_stream_from_source_str(source_name, s, self.parse_sess(), None)
                 .into_trees().collect()
         }

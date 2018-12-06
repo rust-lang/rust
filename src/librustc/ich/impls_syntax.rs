@@ -417,13 +417,14 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
 impl_stable_hash_for!(enum ::syntax_pos::FileName {
     Real(pb),
     Macros(s),
-    QuoteExpansion,
-    Anon,
-    MacroExpansion,
-    ProcMacroSourceCode,
-    CliCrateAttr,
-    CfgSpec,
-    Custom(s)
+    QuoteExpansion(s),
+    Anon(s),
+    MacroExpansion(s),
+    ProcMacroSourceCode(s),
+    CliCrateAttr(s),
+    CfgSpec(s),
+    Custom(s),
+    DocTest(pb, line),
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {

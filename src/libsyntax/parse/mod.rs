@@ -974,23 +974,25 @@ mod tests {
         with_globals(|| {
             let sess = ParseSess::new(FilePathMapping::empty());
 
-            let name = FileName::Custom("source".to_string());
+            let name_1 = FileName::Custom("crlf_source_1".to_string());
             let source = "/// doc comment\r\nfn foo() {}".to_string();
-            let item = parse_item_from_source_str(name.clone(), source, &sess)
+            let item = parse_item_from_source_str(name_1, source, &sess)
                 .unwrap().unwrap();
             let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
             assert_eq!(doc, "/// doc comment");
 
+            let name_2 = FileName::Custom("crlf_source_2".to_string());
             let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
-            let item = parse_item_from_source_str(name.clone(), source, &sess)
+            let item = parse_item_from_source_str(name_2, source, &sess)
                 .unwrap().unwrap();
             let docs = item.attrs.iter().filter(|a| a.path == "doc")
                         .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
             let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
             assert_eq!(&docs[..], b);
 
+            let name_3 = FileName::Custom("clrf_source_3".to_string());
             let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
-            let item = parse_item_from_source_str(name, source, &sess).unwrap().unwrap();
+            let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
             let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
             assert_eq!(doc, "/** doc comment\n *  with CRLF */");
         });

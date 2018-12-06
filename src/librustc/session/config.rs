@@ -1756,8 +1756,8 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
         .into_iter()
         .map(|s| {
             let sess = parse::ParseSess::new(FilePathMapping::empty());
-            let mut parser =
-                parse::new_parser_from_source_str(&sess, FileName::CfgSpec, s.to_string());
+            let filename = FileName::cfg_spec_source_code(&s);
+            let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
 
             macro_rules! error {($reason: expr) => {
                 early_error(ErrorOutputType::default(),

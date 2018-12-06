@@ -182,9 +182,12 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
             DummyResult::expr(sp)
         }
         Ok(..) => {
-            // Add this input file to the code map to make it available as
-            // dependency information, but don't enter it's contents
-            cx.source_map().new_source_file(file.into(), String::new());
+            let src = match String::from_utf8(bytes.clone()) {
+                Ok(contents) => contents,
+                Err(..) => "".to_string()
+            };
+
+            cx.source_map().new_source_file(file.into(), src);
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
         }
@@ -201,6 +204,7 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: String) -> PathBuf 
         let callsite = sp.source_callsite();
         let mut path = match cx.source_map().span_to_unmapped_path(callsite) {
             FileName::Real(path) => path,
+            FileName::DocTest(path, _) => path,
             other => panic!("cannot resolve relative path in non-file source `{}`", other),
         };
         path.pop();

@@ -1900,7 +1900,7 @@ mod tests {
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
-        let sf = sm.new_source_file(PathBuf::from("zebra.rs").into(), teststr);
+        let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
         StringReader::new(sess, sf, None)
     }
 

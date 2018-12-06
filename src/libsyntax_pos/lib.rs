@@ -90,19 +90,20 @@ pub enum FileName {
     /// A macro.  This includes the full name of the macro, so that there are no clashes.
     Macros(String),
     /// call to `quote!`
-    QuoteExpansion,
+    QuoteExpansion(u64),
     /// Command line
-    Anon,
+    Anon(u64),
     /// Hack in src/libsyntax/parse.rs
     /// FIXME(jseyfried)
-    MacroExpansion,
-    ProcMacroSourceCode,
+    MacroExpansion(u64),
+    ProcMacroSourceCode(u64),
     /// Strings provided as --cfg [cfgspec] stored in a crate_cfg
-    CfgSpec,
+    CfgSpec(u64),
     /// Strings provided as crate attributes in the CLI
-    CliCrateAttr,
+    CliCrateAttr(u64),
     /// Custom sources for explicit parser calls from plugins and drivers
     Custom(String),
+    DocTest(PathBuf, isize),
 }
 
 impl std::fmt::Display for FileName {
@@ -111,13 +112,15 @@ impl std::fmt::Display for FileName {
         match *self {
             Real(ref path) => write!(fmt, "{}", path.display()),
             Macros(ref name) => write!(fmt, "<{} macros>", name),
-            QuoteExpansion => write!(fmt, "<quote expansion>"),
-            MacroExpansion => write!(fmt, "<macro expansion>"),
-            Anon => write!(fmt, "<anon>"),
-            ProcMacroSourceCode => write!(fmt, "<proc-macro source code>"),
-            CfgSpec => write!(fmt, "cfgspec"),
-            CliCrateAttr => write!(fmt, "<crate attribute>"),
+            QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
+            MacroExpansion(_) => write!(fmt, "<macro expansion>"),
+            Anon(_) => write!(fmt, "<anon>"),
+            ProcMacroSourceCode(_) =>
+                write!(fmt, "<proc-macro source code>"),
+            CfgSpec(_) => write!(fmt, "<cfgspec>"),
+            CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
+            DocTest(ref path, _) => write!(fmt, "{}", path.display()),
         }
     }
 }
@@ -135,13 +138,14 @@ impl FileName {
         match *self {
             Real(_) => true,
             Macros(_) |
-            Anon |
-            MacroExpansion |
-            ProcMacroSourceCode |
-            CfgSpec |
-            CliCrateAttr |
+            Anon(_) |
+            MacroExpansion(_) |
+            ProcMacroSourceCode(_) |
+            CfgSpec(_) |
+            CliCrateAttr(_) |
             Custom(_) |
-            QuoteExpansion => false,
+            QuoteExpansion(_) |
+            DocTest(_, _) => false,
         }
     }
 
@@ -149,15 +153,56 @@ impl FileName {
         use self::FileName::*;
         match *self {
             Real(_) |
-            Anon |
-            MacroExpansion |
-            ProcMacroSourceCode |
-            CfgSpec |
-            CliCrateAttr |
+            Anon(_) |
+            MacroExpansion(_) |
+            ProcMacroSourceCode(_) |
+            CfgSpec(_) |
+            CliCrateAttr(_) |
             Custom(_) |
-            QuoteExpansion => false,
+            QuoteExpansion(_) |
+            DocTest(_, _) => false,
             Macros(_) => true,
         }
+    }
+
+    pub fn quote_expansion_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::QuoteExpansion(hasher.finish())
+    }
+
+    pub fn macro_expansion_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::MacroExpansion(hasher.finish())
+    }
+
+    pub fn anon_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::Anon(hasher.finish())
+    }
+
+    pub fn proc_macro_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::ProcMacroSourceCode(hasher.finish())
+    }
+
+    pub fn cfg_spec_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::QuoteExpansion(hasher.finish())
+    }
+
+    pub fn cli_crate_attr_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::CliCrateAttr(hasher.finish())
+    }
+
+    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName{
+        FileName::DocTest(path, line)
     }
 }
 

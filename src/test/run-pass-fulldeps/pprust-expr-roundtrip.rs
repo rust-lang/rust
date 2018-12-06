@@ -44,9 +44,11 @@ use syntax::ptr::P;
 
 
 fn parse_expr(ps: &ParseSess, src: &str) -> P<Expr> {
+    let src_as_string = src.to_string();
+
     let mut p = parse::new_parser_from_source_str(ps,
-                                                  FileName::Custom("expr".to_owned()),
-                                                  src.to_owned());
+                                                  FileName::Custom(src_as_string.clone()),
+                                                  src_as_string);
     p.parse_expr().unwrap()
 }
 

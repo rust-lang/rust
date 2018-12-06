@@ -402,7 +402,7 @@ impl server::TokenStream for Rustc<'_> {
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
         parse::parse_stream_from_source_str(
-            FileName::ProcMacroSourceCode,
+            FileName::proc_macro_source_code(src.clone()),
             src.to_string(),
             self.sess,
             Some(self.call_site),
