@@ -1,10 +1,10 @@
-use crate::ty;
-use crate::ty::TyCtxt;
-use crate::hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
+use ty::{self, TyCtxt};
+use hir::map::definitions::FIRST_FREE_HIGH_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use serialize;
 use std::fmt;
 use std::u32;
+use syntax::symbol;
 
 newtype_index! {
     pub struct CrateId {
@@ -251,6 +251,33 @@ impl DefId {
         } else {
             format!("module `{}`", tcx.item_path_str(*self))
         }
+    }
+
+    /// Check if a `DefId`'s path matches the given absolute type path usage.
+    // Uplifted from rust-lang/rust-clippy
+    pub fn match_path(self, tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> bool {
+        #[derive(Debug)]
+        struct AbsolutePathBuffer {
+            names: Vec<symbol::LocalInternedString>,
+        }
+
+        impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
+            fn root_mode(&self) -> &ty::item_path::RootMode {
+                const ABSOLUTE: &ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
+                ABSOLUTE
+            }
+
+            fn push(&mut self, text: &str) {
+                self.names.push(symbol::Symbol::intern(text).as_str());
+            }
+        }
+
+        let mut apb = AbsolutePathBuffer { names: vec![] };
+
+        tcx.push_item_path(&mut apb, self, false);
+
+        apb.names.len() == path.len()
+            && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
     }
 }
 
