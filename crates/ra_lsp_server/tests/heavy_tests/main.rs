@@ -2,7 +2,9 @@ mod support;
 
 use serde_json::json;
 
-use ra_lsp_server::req::{Runnables, RunnablesParams};
+use ra_lsp_server::req::{Runnables, RunnablesParams, CodeActionRequest, CodeActionParams};
+
+use languageserver_types::{Position, Range, CodeActionContext};
 
 use crate::support::project;
 
@@ -114,5 +116,62 @@ fn test_eggs() {}
             }
           }
         ])
+    );
+}
+
+#[test]
+fn test_missing_module_code_action() {
+    let server = project(
+        r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+mod bar;
+
+fn main() {}
+"#,
+    );
+    server.wait_for_feedback("workspace loaded");
+    let empty_context = || CodeActionContext {
+        diagnostics: Vec::new(),
+        only: None,
+    };
+    server.request::<CodeActionRequest>(
+        CodeActionParams {
+            text_document: server.doc_id("src/lib.rs"),
+            range: Range::new(Position::new(0, 0), Position::new(0, 7)),
+            context: empty_context(),
+        },
+        json!([
+            {
+              "arguments": [
+                {
+                  "cursorPosition": null,
+                  "fileSystemEdits": [
+                    {
+                        "type": "createFile",
+                        "uri": "file:///[..]/src/bar.rs"
+                    }
+                  ],
+                  "label": "create module",
+                  "sourceFileEdits": []
+                }
+              ],
+              "command": "ra-lsp.applySourceChange",
+              "title": "create module"
+            }
+        ]),
+    );
+
+    server.request::<CodeActionRequest>(
+        CodeActionParams {
+            text_document: server.doc_id("src/lib.rs"),
+            range: Range::new(Position::new(2, 0), Position::new(2, 7)),
+            context: empty_context(),
+        },
+        json!([]),
     );
 }
