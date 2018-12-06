@@ -506,12 +506,19 @@ pub fn handle_hover(
 ) -> Result<Option<Hover>> {
     let position = params.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(position.file_id);
+    let file = world.analysis().file_syntax(position.file_id);
 
     for (file_id, symbol) in world.analysis().approximately_resolve_symbol(position)? {
-        let range = symbol.node_range.conv_with(&line_index);
         let comment = world.analysis.doc_comment_for(file_id, symbol)?;
 
         if comment.is_some() {
+            let range = match ra_syntax::algo::find_leaf_at_offset(file.syntax(), position.offset)
+                .left_biased()
+            {
+                None => return Ok(None),
+                Some(it) => it.range(),
+            };
+            let range = range.conv_with(&line_index);
             let contents = HoverContents::Scalar(MarkedString::String(comment.unwrap()));
 
             return Ok(Some(Hover {
