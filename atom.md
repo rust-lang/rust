@@ -13,7 +13,7 @@ Once installed a file is formatted with `ctrl-shift-c` or `cmd-shift-c`, also av
 Another way is to install [Beautify](https://atom.io/packages/atom-beautify), you
 can do this by running `apm install atom-beautify`.
 
-There are 2 setting that need to be configured in the atom beautifier configuration.
+There are 2 settings that need to be configured in the atom beautifier configuration.
 
 -  Install rustfmt as per the [readme](README.md).
 -  Open the atom beautifier settings

@@ -92,7 +92,7 @@ just need to run on the root file (usually mod.rs or lib.rs). Rustfmt can also
 read data from stdin. Alternatively, you can use `cargo fmt` to format all
 binary and library targets of your crate.
 
-You can run `rustfmt --help` for information about argument.
+You can run `rustfmt --help` for information about available arguments.
 
 When running with `--check`, Rustfmt will exit with `0` if Rustfmt would not
 make any formatting changes to the input, and `1` if Rustfmt would make changes.
