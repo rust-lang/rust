@@ -1787,6 +1787,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_pointer_sized(&self) -> bool {
+        match self.sty {
+            Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_machine(&self) -> bool {
         match self.sty {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => false,
