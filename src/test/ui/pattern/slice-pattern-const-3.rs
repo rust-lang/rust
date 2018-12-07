@@ -21,4 +21,11 @@ fn main() {
         MAGIC_TEST => (), // this should warn
         _ => (),
     }
+    const FOO: [&str; 1] = ["boo"];
+    match ["baa"] {
+        ["0x00"] => (),
+        ["boo"] => (),
+        FOO => (), // this should warn
+        _ => (),
+    }
 }

@@ -21,4 +21,27 @@ fn main() {
         MAGIC_TEST => (), // this should warn
         _ => (),
     }
+    const FOO: [u8; 1] = [4];
+    match [99] {
+        [0x00] => (),
+        [4] => (),
+        FOO => (), // this should warn
+        _ => (),
+    }
+    const BAR: &[u8; 1] = &[4];
+    match &[99] {
+        [0x00] => (),
+        [4] => (),
+        BAR => (), // this should warn
+        b"a" => (),
+        _ => (),
+    }
+
+    const BOO: &[u8; 0] = &[];
+    match &[] {
+        [] => (),
+        BOO => (), // this should warn
+        b"" => (),
+        _ => (),
+    }
 }

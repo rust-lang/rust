@@ -21,4 +21,11 @@ fn main() {
         MAGIC_TEST => (), // this should warn
         _ => (),
     }
+    const FOO: [u32; 1] = [4];
+    match [99] {
+        [0x00] => (),
+        [4] => (),
+        FOO => (), // this should warn
+        _ => (),
+    }
 }
