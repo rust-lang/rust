@@ -112,7 +112,7 @@ pub fn may_panic<'tcx>(job: Lrc<QueryJob<'tcx>>) {
 }
 
 #[no_mangle]
-fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, 
+fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: &DefId, key_hash: u64,
         span: Span,
         parent: &Option<Lrc<QueryJob<'tcx>>>,
@@ -125,7 +125,7 @@ fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         span,
         query: ::ty::query::queries::type_of::query(*key),
     };
-    *Lrc::get_mut(&mut job).unwrap() = 
+    *Lrc::get_mut(&mut job).unwrap() =
         MaybeUninit::new(QueryJob::new(info, parent.clone()));
     let job: Lrc<QueryJob<'tcx>> = unsafe { std::mem::transmute(job) };
     let job_clone = job.clone();
@@ -141,7 +141,7 @@ fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 #[no_mangle]
-fn test_moves<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, 
+fn test_moves<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: &::hir::def_id::DefId, key_hash: u64,
         span: Span,
     mut job_storage: MoveSlot<'a, JobOwner<'a, 'tcx, ::ty::query::queries::type_of<'tcx>>>,
@@ -154,7 +154,7 @@ fn test_moves<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             query: ::ty::query::queries::type_of::query(*key),
         };
         let parent = icx.query.map(|q| LrcRef::into(q));
-        *Lrc::get_mut(&mut job).unwrap() = 
+        *Lrc::get_mut(&mut job).unwrap() =
             MaybeUninit::new(QueryJob::new(info, parent));
         let job: Lrc<QueryJob<'tcx>> = unsafe { std::mem::transmute(job) };
         let job_clone = job.clone();
