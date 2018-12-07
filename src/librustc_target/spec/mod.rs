@@ -400,6 +400,8 @@ supported_targets! {
     ("thumbv7em-none-eabi", thumbv7em_none_eabi),
     ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
     ("thumbv8m.base-none-eabi", thumbv8m_base_none_eabi),
+    ("thumbv8m.main-none-eabi", thumbv8m_main_none_eabi),
+    ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
 
