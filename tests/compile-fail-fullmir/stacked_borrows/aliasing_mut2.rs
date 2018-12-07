@@ -1,8 +1,6 @@
-#![allow(unused_variables)]
-
 use std::mem;
 
-pub fn safe(x: &i32, y: &mut i32) {} //~ ERROR barrier
+pub fn safe(_x: &i32, _y: &mut i32) {} //~ ERROR barrier
 
 fn main() {
     let mut x = 0;

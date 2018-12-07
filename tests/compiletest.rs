@@ -106,7 +106,7 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
         flags.push("-Zmir-opt-level=1".to_owned());
     }
     if !have_fullmir() {
-        // Validation relies on the EscapeToRaw statements being emitted
+        // FIXME: Validation relies on the EscapeToRaw statements being emitted
         flags.push("-Zmiri-disable-validation".to_owned());
     }
 

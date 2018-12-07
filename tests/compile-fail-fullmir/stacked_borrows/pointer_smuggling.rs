@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 static mut PTR: *mut u8 = 0 as *mut _;
 
 fn fun1(x: &mut u8) {
@@ -14,7 +12,8 @@ fn fun2() {
 }
 
 fn main() {
-    let val = &mut 0; // FIXME: This should also work with a local variable, but currently it does not.
+    let mut val = 0;
+    let val = &mut val;
     fun1(val);
     *val = 2; // this invalidates any raw ptrs `fun1` might have created.
     fun2(); // if they now use a raw ptr they break our reference

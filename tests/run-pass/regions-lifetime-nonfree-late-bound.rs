@@ -22,7 +22,6 @@
 // doing region-folding, when really all clients of the region-folding
 // case only want to see FREE lifetime variables, not bound ones.
 
-#![allow(unused_features)]
 #![feature(box_syntax)]
 
 pub fn main() {

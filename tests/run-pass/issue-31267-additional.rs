@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_variables)]
-
 #[derive(Clone, Copy, Debug)]
 struct Bar;
 
@@ -25,5 +23,5 @@ impl Biz {
 }
 
 fn main() {
-    let foo = Biz::BAZ;
+    let _foo = Biz::BAZ;
 }

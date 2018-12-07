@@ -22,7 +22,6 @@ fn foldl<T, U, F>(values: &[T],
         &[ref head, ref tail..] =>
             foldl(tail, function(initial, head), function),
         &[] => {
-            // FIXME: call guards
             let res = initial.clone(); res
         }
     }
@@ -39,7 +38,6 @@ fn foldr<T, U, F>(values: &[T],
         &[ref head.., ref tail] =>
             foldr(head, function(tail, initial), function),
         &[] => {
-            // FIXME: call guards
             let res = initial.clone(); res
         }
     }

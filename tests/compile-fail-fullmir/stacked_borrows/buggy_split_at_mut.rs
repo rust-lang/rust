@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 mod safe {
     use std::slice::from_raw_parts_mut;
 
