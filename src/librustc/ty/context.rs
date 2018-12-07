@@ -1673,6 +1673,7 @@ impl<'gcx> GlobalCtxt<'gcx> {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
                 query: icx.query.clone(),
+                diagnostics: icx.diagnostics,
                 layout_depth: icx.layout_depth,
                 task_deps: icx.task_deps,
             };
@@ -1782,6 +1783,7 @@ pub mod tls {
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::{self, Lrc, Lock};
+    use rustc_data_structures::thin_vec::ThinVec;
     use dep_graph::TaskDeps;
 
     #[cfg(not(parallel_queries))]
@@ -1801,9 +1803,13 @@ pub mod tls {
         /// by `enter_local` with a new local interner
         pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 
-        /// The current query job, if any. This is updated by start_job in
+        /// The current query job, if any. This is updated by JobOwner::start in
         /// ty::query::plumbing when executing a query
         pub query: Option<Lrc<query::QueryJob<'gcx>>>,
+
+        /// Where to store diagnostics for the current query job, if any.
+        /// This is updated by JobOwner::start in ty::query::plumbing when executing a query
+        pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
 
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
@@ -1870,8 +1876,9 @@ pub mod tls {
     fn track_diagnostic(diagnostic: &Diagnostic) {
         with_context_opt(|icx| {
             if let Some(icx) = icx {
-                if let Some(ref query) = icx.query {
-                    query.diagnostics.lock().push(diagnostic.clone());
+                if let Some(ref diagnostics) = icx.diagnostics {
+                    let mut diagnostics = diagnostics.lock();
+                    diagnostics.extend(Some(diagnostic.clone()));
                 }
             }
         })
@@ -1938,6 +1945,7 @@ pub mod tls {
             let icx = ImplicitCtxt {
                 tcx,
                 query: None,
+                diagnostics: None,
                 layout_depth: 0,
                 task_deps: None,
             };
@@ -1967,6 +1975,7 @@ pub mod tls {
         };
         let icx = ImplicitCtxt {
             query: None,
+            diagnostics: None,
             tcx,
             layout_depth: 0,
             task_deps: None,

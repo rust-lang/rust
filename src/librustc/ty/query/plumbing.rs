@@ -18,6 +18,7 @@ use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
 
 use rustc_data_structures::fx::{FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::thin_vec::ThinVec;
 use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
@@ -195,19 +196,21 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     pub(super) fn start<'lcx, F, R>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: F)
-    -> (R, Vec<Diagnostic>)
+    -> R
     where
         F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'lcx>) -> R
     {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
         // when accessing the ImplicitCtxt
-        let r = tls::with_related_context(tcx, move |current_icx| {
+        tls::with_related_context(tcx, move |current_icx| {
             // Update the ImplicitCtxt to point to our new query job
             let new_icx = tls::ImplicitCtxt {
                 tcx: tcx.global_tcx(),
                 query: Some(self.job.clone()),
+                diagnostics,
                 layout_depth: current_icx.layout_depth,
                 task_deps: current_icx.task_deps,
             };
@@ -216,13 +219,19 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             tls::enter_context(&new_icx, |_| {
                 compute(tcx)
             })
-        });
-
-        // Extract the diagnostic from the job
-        let diagnostics = mem::replace(&mut *self.job.diagnostics.lock(), Vec::new());
-
-        (r, diagnostics)
+        })
     }
+
+}
+
+#[inline(always)]
+fn with_diagnostics<F, R>(f: F) -> (R, ThinVec<Diagnostic>)
+where
+    F: FnOnce(Option<&Lock<ThinVec<Diagnostic>>>) -> R
+{
+    let diagnostics = Lock::new(ThinVec::new());
+    let result = f(Some(&diagnostics));
+    (result, diagnostics.into_inner())
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
@@ -402,20 +411,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
             self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
-            let res = job.start(self, |tcx| {
-                tcx.dep_graph.with_anon_task(dep_node.kind, || {
-                    Q::compute(tcx.global_tcx(), key)
+            let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
+                job.start(self, diagnostics, |tcx| {
+                    tcx.dep_graph.with_anon_task(dep_node.kind, || {
+                        Q::compute(tcx.global_tcx(), key)
+                    })
                 })
             });
 
             self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
             profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
-            let ((result, dep_node_index), diagnostics) = res;
 
             self.dep_graph.read_index(dep_node_index);
 
-            self.queries.on_disk_cache
-                .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            if unlikely!(!diagnostics.is_empty()) {
+                self.queries.on_disk_cache
+                    .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            }
 
             job.complete(&result, dep_node_index);
 
@@ -487,7 +499,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // The diagnostics for this query have already been
             // promoted to the current session during
             // try_mark_green(), so we can ignore them here.
-            let (result, _) = job.start(self, |tcx| {
+            let result = job.start(self, None, |tcx| {
                 // The dep-graph for this computation is already in
                 // place
                 tcx.dep_graph.with_ignore(|| {
@@ -566,32 +578,34 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
         self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
-        let res = job.start(self, |tcx| {
-            if dep_node.kind.is_eval_always() {
-                tcx.dep_graph.with_eval_always_task(dep_node,
-                                                    tcx,
-                                                    key,
-                                                    Q::compute)
-            } else {
-                tcx.dep_graph.with_task(dep_node,
-                                        tcx,
-                                        key,
-                                        Q::compute)
-            }
+        let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
+            job.start(self, diagnostics, |tcx| {
+                if dep_node.kind.is_eval_always() {
+                    tcx.dep_graph.with_eval_always_task(dep_node,
+                                                        tcx,
+                                                        key,
+                                                        Q::compute)
+                } else {
+                    tcx.dep_graph.with_task(dep_node,
+                                            tcx,
+                                            key,
+                                            Q::compute)
+                }
+            })
         });
 
         self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
-
-        let ((result, dep_node_index), diagnostics) = res;
 
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
             self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
         }
 
         if dep_node.kind != ::dep_graph::DepKind::Null {
-            self.queries.on_disk_cache
-                .store_diagnostics(dep_node_index, diagnostics);
+            if unlikely!(!diagnostics.is_empty()) {
+                self.queries.on_disk_cache
+                    .store_diagnostics(dep_node_index, diagnostics);
+            }
         }
 
         job.complete(&result, dep_node_index);
