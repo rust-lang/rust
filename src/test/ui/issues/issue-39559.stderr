@@ -1,10 +1,8 @@
 error[E0599]: no function or associated item named `dim` found for type `D` in the current scope
-  --> $DIR/issue-39559.rs:24:21
+  --> $DIR/issue-39559.rs:24:18
    |
 LL |     entries: [T; D::dim()],
-   |                  ---^^^
-   |                  |
-   |                  function or associated item not found in `D`
+   |                  ^^^^^^ function or associated item not found in `D`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `dim`, perhaps you need to implement it:

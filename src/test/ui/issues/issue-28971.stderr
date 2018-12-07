@@ -1,13 +1,13 @@
 error[E0599]: no variant named `Baz` found for type `Foo` in the current scope
-  --> $DIR/issue-28971.rs:19:18
+  --> $DIR/issue-28971.rs:19:13
    |
 LL | enum Foo {
    | -------- variant `Baz` not found here
 ...
 LL |             Foo::Baz(..) => (),
-   |             -----^^^---- variant not found in `Foo`
+   |             ^^^^^^^^^^^^ variant not found in `Foo`
    |
-   = help: did you mean `Bar`?
+   = note: did you mean `Foo::Bar`?
 
 error: aborting due to previous error
 
