@@ -176,10 +176,6 @@ declare_features! (
     // Allows the use of custom attributes; RFC 572
     (active, custom_attribute, "1.0.0", Some(29642), None),
 
-    // Allows the use of #[derive(Anything)] as sugar for
-    // #[derive_Anything].
-    (active, custom_derive, "1.0.0", Some(29644), None),
-
     // Allows the use of rustc_* attributes; RFC 572
     (active, rustc_attrs, "1.0.0", Some(29642), None),
 
@@ -530,6 +526,9 @@ declare_features! (
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, panic_implementation, "1.28.0", Some(44489), None,
      Some("subsumed by `#[panic_handler]`")),
+    // Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
+    (removed, custom_derive, "1.0.0", Some(29644), None,
+     Some("subsumed by `#[proc_macro_derive]`")),
 );
 
 declare_features! (
@@ -1287,8 +1286,6 @@ impl<'a> Context<'a> {
                           "unless otherwise specified, attributes \
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
-        } else if name.starts_with("derive_") {
-            gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs
@@ -1417,16 +1414,6 @@ pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &str =
     "allow_internal_unstable side-steps feature gating and stability checks";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &str =
     "allow_internal_unsafe side-steps the unsafe_code lint";
-
-pub const EXPLAIN_CUSTOM_DERIVE: &str =
-    "`#[derive]` for custom traits is deprecated and will be removed in the future.";
-
-pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &str =
-    "`#[derive]` for custom traits is deprecated and will be removed in the future. \
-    Prefer using procedural macro custom derive.";
-
-pub const EXPLAIN_DERIVE_UNDERSCORE: &str =
-    "attributes of the form `#[derive_*]` are reserved for the compiler";
 
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
     "unsized tuple coercion is not stable enough for use and is subject to change";

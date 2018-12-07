@@ -1,6 +1,0 @@
-warning: `#[derive]` for custom traits is deprecated and will be removed in the future. Prefer using procedural macro custom derive.
-  --> $DIR/custom-derive-partial-eq.rs:17:10
-   |
-LL | #[derive(CustomPartialEq)] // Check that this is not a stability error.
-   |          ^^^^^^^^^^^^^^^
-

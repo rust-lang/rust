@@ -21,22 +21,18 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
 use rustc::hir::def::{Def, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
-use syntax::ast::{self, Name, Ident};
+use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
-use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{self, feature_err, emit_feature_err, is_builtin_attr_name, GateIssue};
-use syntax::feature_gate::EXPLAIN_DERIVE_UNDERSCORE;
+use syntax::feature_gate::{feature_err, is_builtin_attr_name, GateIssue};
 use syntax::fold::{self, Folder};
-use syntax::parse::parser::PathStyle;
-use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax::tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::Applicability;
@@ -194,10 +190,6 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         ret.into_iter().next().unwrap()
     }
 
-    fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool {
-        self.whitelisted_legacy_custom_derives.contains(&name)
-    }
-
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]) {
         let invocation = self.invocations[&mark];
@@ -238,79 +230,6 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 
     fn resolve_imports(&mut self) {
         ImportResolver { resolver: self }.resolve_imports()
-    }
-
-    // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
-    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>, allow_derive: bool)
-                              -> Option<ast::Attribute> {
-        if !allow_derive {
-            return None;
-        }
-
-        // Check for legacy derives
-        for i in 0..attrs.len() {
-            let name = attrs[i].name();
-
-            if name == "derive" {
-                let result = attrs[i].parse_list(&self.session.parse_sess, |parser| {
-                    parser.parse_path_allowing_meta(PathStyle::Mod)
-                });
-
-                let mut traits = match result {
-                    Ok(traits) => traits,
-                    Err(mut e) => {
-                        e.cancel();
-                        continue
-                    }
-                };
-
-                for j in 0..traits.len() {
-                    if traits[j].segments.len() > 1 {
-                        continue
-                    }
-                    let trait_name = traits[j].segments[0].ident.name;
-                    let legacy_name = Symbol::intern(&format!("derive_{}", trait_name));
-                    if !self.builtin_macros.contains_key(&legacy_name) {
-                        continue
-                    }
-                    let span = traits.remove(j).span;
-                    self.gate_legacy_custom_derive(legacy_name, span);
-                    if traits.is_empty() {
-                        attrs.remove(i);
-                    } else {
-                        let mut tokens = Vec::with_capacity(traits.len() - 1);
-                        for (j, path) in traits.iter().enumerate() {
-                            if j > 0 {
-                                tokens.push(TokenTree::Token(attrs[i].span, Token::Comma).into());
-                            }
-                            tokens.reserve((path.segments.len() * 2).saturating_sub(1));
-                            for (k, segment) in path.segments.iter().enumerate() {
-                                if k > 0 {
-                                    tokens.push(TokenTree::Token(path.span, Token::ModSep).into());
-                                }
-                                let tok = Token::from_ast_ident(segment.ident);
-                                tokens.push(TokenTree::Token(path.span, tok).into());
-                            }
-                        }
-                        let delim_span = DelimSpan::from_single(attrs[i].span);
-                        attrs[i].tokens = TokenTree::Delimited(delim_span, Delimited {
-                            delim: token::Paren,
-                            tts: TokenStream::concat(tokens).into(),
-                        }).into();
-                    }
-                    return Some(ast::Attribute {
-                        path: ast::Path::from_ident(Ident::new(legacy_name, span)),
-                        tokens: TokenStream::empty(),
-                        id: attr::mk_attr_id(),
-                        style: ast::AttrStyle::Outer,
-                        is_sugared_doc: false,
-                        span,
-                    });
-                }
-            }
-        }
-
-        None
     }
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
@@ -429,11 +348,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                            `rustc_` are reserved for internal compiler diagnostics";
                                 feature_err(&self.session.parse_sess, "rustc_attrs", path.span,
                                             GateIssue::Language, &msg).emit();
-                            }
-                        } else if name.starts_with("derive_") {
-                            if !features.custom_derive {
-                                feature_err(&self.session.parse_sess, "custom_derive", path.span,
-                                            GateIssue::Language, EXPLAIN_DERIVE_UNDERSCORE).emit();
                             }
                         } else if !features.custom_attribute {
                             let msg = format!("The attribute `{}` is currently unknown to the \
@@ -1216,16 +1130,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 self.unused_macros.insert(def_id);
             }
             self.define(module, ident, MacroNS, (def, vis, item.span, expansion));
-        }
-    }
-
-    fn gate_legacy_custom_derive(&mut self, name: Symbol, span: Span) {
-        if !self.session.features_untracked().custom_derive {
-            let sess = &self.session.parse_sess;
-            let explain = feature_gate::EXPLAIN_CUSTOM_DERIVE;
-            emit_feature_err(sess, "custom_derive", span, GateIssue::Language, explain);
-        } else if !self.is_whitelisted_legacy_custom_derive(name) {
-            self.session.span_warn(span, feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE);
         }
     }
 }

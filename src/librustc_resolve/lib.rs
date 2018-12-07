@@ -1588,7 +1588,6 @@ pub struct Resolver<'a, 'b: 'a> {
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
-    pub whitelisted_legacy_custom_derives: Vec<Name>,
     pub found_unresolved_macro: bool,
 
     /// List of crate local macros that we need to warn about as being unused.
@@ -1922,7 +1921,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             macro_defs,
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
-            whitelisted_legacy_custom_derives: Vec::new(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: Default::default(),
             found_unresolved_macro: false,

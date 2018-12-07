@@ -908,7 +908,6 @@ where
         }
     });
 
-    let whitelisted_legacy_custom_derives = registry.take_whitelisted_custom_derives();
     let Registry {
         syntax_exts,
         early_lint_passes,
@@ -955,7 +954,6 @@ where
         crate_loader,
         &resolver_arenas,
     );
-    resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features_untracked().quote);
 
     // Expand all macros
