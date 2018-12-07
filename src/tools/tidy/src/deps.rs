@@ -11,8 +11,7 @@
 //! Check license of third-party deps by inspecting vendor
 
 use std::collections::{BTreeSet, HashSet, HashMap};
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -262,8 +261,7 @@ fn check_license(path: &Path) -> bool {
     if !path.exists() {
         panic!("{} does not exist", path.display());
     }
-    let mut contents = String::new();
-    t!(t!(File::open(path)).read_to_string(&mut contents));
+    let contents = t!(fs::read_to_string(&path));
 
     let mut found_license = false;
     for line in contents.lines() {

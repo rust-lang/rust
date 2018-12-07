@@ -1067,9 +1067,8 @@ impl Build {
 
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
-        let mut toml = String::new();
         let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
-        t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
+        let toml = t!(fs::read_to_string(&toml_file_name));
         for line in toml.lines() {
             let prefix = "version = \"";
             let suffix = "\"";
@@ -1151,8 +1150,7 @@ impl Build {
         }
 
         let mut paths = Vec::new();
-        let mut contents = Vec::new();
-        t!(t!(File::open(stamp)).read_to_end(&mut contents));
+        let contents = t!(fs::read(stamp));
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {

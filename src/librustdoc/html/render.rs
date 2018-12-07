@@ -778,10 +778,7 @@ fn write_shared(
     let mut themes: FxHashSet<String> = FxHashSet::default();
 
     for entry in &cx.shared.themes {
-        let mut content = Vec::with_capacity(100000);
-
-        let mut f = try_err!(File::open(&entry), &entry);
-        try_err!(f.read_to_end(&mut content), &entry);
+        let content = try_err!(fs::read(&entry), &entry);
         let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
         let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
         write(cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
@@ -881,10 +878,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         if !options.enable_minification {
             try_err!(fs::copy(css, out), css);
         } else {
-            let mut f = try_err!(File::open(css), css);
-            let mut buffer = String::with_capacity(1000);
-
-            try_err!(f.read_to_string(&mut buffer), css);
+            let buffer = try_err!(fs::read_to_string(css), css);
             write_minify(out, &buffer, options.enable_minification)?;
         }
     }
@@ -2102,8 +2096,7 @@ impl Context {
                 if !buf.is_empty() {
                     try_err!(this.shared.ensure_dir(&this.dst), &this.dst);
                     let joint_dst = this.dst.join("index.html");
-                    let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
-                    try_err!(dst.write_all(&buf), &joint_dst);
+                    try_err!(fs::write(&joint_dst, buf), &joint_dst);
                 }
 
                 let m = match item.inner {
@@ -2137,8 +2130,7 @@ impl Context {
                 let file_name = &item_path(item_type, name);
                 try_err!(self.shared.ensure_dir(&self.dst), &self.dst);
                 let joint_dst = self.dst.join(file_name);
-                let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
-                try_err!(dst.write_all(&buf), &joint_dst);
+                try_err!(fs::write(&joint_dst, buf), &joint_dst);
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
