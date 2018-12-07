@@ -15,12 +15,11 @@
 use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor, OpenTask};
 use errors::DiagnosticBuilder;
 use errors::Level;
-use errors::FatalError;
 use ty::tls;
 use ty::{TyCtxt};
 use ty::query::Query;
 use ty::query::config::{QueryConfig, QueryDescription};
-use ty::query::job::{QueryJob, QueryResult, QueryInfo};
+use ty::query::job::{QueryJob, QueryInfo};
 use ty::item_path;
 
 use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
@@ -36,8 +35,12 @@ use syntax_pos::Span;
 use syntax::source_map::DUMMY_SP;
 
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
+    /// Completed queries have their result stored here
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
-    pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
+
+    /// Queries under execution will have an entry in this map.
+    /// The query job inside can be used to await for completion of queries.
+    pub(super) active: FxHashMap<D::Key, Lrc<QueryJob<'tcx>>>,
 }
 
 pub(super) struct QueryValue<T> {
@@ -209,12 +212,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 return TryGetJob::JobCompleted(result);
             }
             let job = match lock.active.raw_entry_mut().from_key_hashed_nocheck(key_hash, key) {
-                RawEntryMut::Occupied(entry) => {
-                    match *entry.get() {
-                        QueryResult::Started(ref job) => job.clone(),
-                        QueryResult::Poisoned => FatalError.raise(),
-                    }
-                }
+                RawEntryMut::Occupied(entry) => entry.get().clone(),
                 RawEntryMut::Vacant(entry) => {
                     // No job entry for this query. Return a new one to be started later
                     return tls::with_related_context(tcx, |icx| {
@@ -236,7 +234,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                         entry.insert_hashed_nocheck(
                             key_hash,
                             key.clone(),
-                            QueryResult::Started(job));
+                            job);
                         TryGetJob::NotYetStarted(owner)
                     })
                 }
@@ -313,10 +311,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
     #[inline(never)]
     #[cold]
     fn drop(&mut self) {
-        // Poison the query so jobs waiting on it panic
-        self.cache.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
-        // Also signal the completion of the job, so waiters
-        // will continue execution
+        // This job failed to execute due to a panic.
+        // Remove it from the list of active queries
+        self.cache.borrow_mut().active.remove(&self.key);
+        // Signal that the job not longer executes, so the waiters will continue execution.
+        // The waiters will try to execute the query which may result in them panicking too.
         self.job.signal_complete();
     }
 }
