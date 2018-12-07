@@ -2516,8 +2516,11 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
 
-/// Hash the raw pointer address behind a reference, rather than the value
-/// it points to.
+/// Hash a raw pointer.
+///
+/// This can be used to hash a `&T` reference (which coerce to `*const T` implicitly)
+/// by its address rather than the value it points to
+/// (which is what the `Hash for &T` implementation does).
 ///
 /// # Examples
 ///
