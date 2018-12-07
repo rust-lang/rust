@@ -177,3 +177,7 @@ fn issue_1832() {}
 
 /// Ok: CamelCase (It should not be surrounded by backticks)
 fn issue_2395() {}
+
+/// An iterator over mycrate::Collection's values.
+/// It should not lint a `'static` lifetime in ticks.
+fn issue_2210() {}
