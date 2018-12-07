@@ -191,6 +191,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         self.in_static = false;
 
         match self.tcx.hir().body_owner_kind(item_id) {
+            hir::BodyOwnerKind::Closure |
             hir::BodyOwnerKind::Fn => self.in_fn = true,
             hir::BodyOwnerKind::Static(_) => self.in_static = true,
             _ => {}

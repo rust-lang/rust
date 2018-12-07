@@ -75,7 +75,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         let cx = Cx::new(&infcx, id);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
-        } else if let hir::BodyOwnerKind::Fn = cx.body_owner_kind {
+        } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
             let fn_hir_id = tcx.hir().node_to_hir_id(id);

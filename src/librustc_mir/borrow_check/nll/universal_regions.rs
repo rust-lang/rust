@@ -476,6 +476,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
 
         match tcx.hir().body_owner_kind(self.mir_node_id) {
+            BodyOwnerKind::Closure |
             BodyOwnerKind::Fn => {
                 let defining_ty = if self.mir_def_id == closure_base_def_id {
                     tcx.type_of(closure_base_def_id)

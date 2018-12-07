@@ -1270,11 +1270,23 @@ pub enum BodyOwnerKind {
     /// Functions and methods.
     Fn,
 
+    /// Closures
+    Closure,
+
     /// Constants and associated constants.
     Const,
 
     /// Initializer of a `static` item.
     Static(Mutability),
+}
+
+impl BodyOwnerKind {
+    pub fn is_fn_or_closure(self) -> bool {
+        match self {
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure => true,
+            BodyOwnerKind::Const | BodyOwnerKind::Static(_) => false,
+        }
+    }
 }
 
 /// A constant (expression) that's not an item or associated item,

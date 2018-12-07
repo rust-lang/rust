@@ -613,6 +613,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             hir::BodyOwnerKind::Static(_) =>
                 // No need to free storage in this context.
                 None,
+            hir::BodyOwnerKind::Closure |
             hir::BodyOwnerKind::Fn =>
                 Some(self.topmost_scope()),
         }

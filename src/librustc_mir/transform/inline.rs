@@ -1,6 +1,5 @@
 //! Inlining pass for MIR functions
 
-use rustc::hir;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
@@ -74,15 +73,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_node_id(self.source.def_id).unwrap();
-        let body_owner_kind = self.tcx.hir().body_owner_kind(id);
-
-        if let (hir::BodyOwnerKind::Fn, None) = (body_owner_kind, self.source.promoted) {
-
+        if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
-                                                                     bb_data,
-                                                                     caller_mir,
-                                                                     param_env) {
+                                                                    bb_data,
+                                                                    caller_mir,
+                                                                    param_env) {
                     callsites.push_back(callsite);
                 }
             }
