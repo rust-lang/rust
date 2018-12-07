@@ -702,8 +702,7 @@ impl<T> [T] {
     /// resulting code better than in the case of [`chunks`].
     ///
     /// See [`chunks`] for a variant of this iterator that also returns the remainder as a smaller
-    /// chunk, and [`rchunks_exact`] for the same iterator but starting at the end of the slice of
-    /// the slice.
+    /// chunk, and [`rchunks_exact`] for the same iterator but starting at the end of the slice.
     ///
     /// # Panics
     ///

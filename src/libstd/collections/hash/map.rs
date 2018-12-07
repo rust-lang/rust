@@ -11,6 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
+use intrinsics::unlikely;
 use collections::CollectionAllocErr;
 use cell::Cell;
 use borrow::Borrow;
@@ -1992,6 +1993,9 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
     fn search<F>(self, hash: u64, is_match: F, compare_hashes: bool) -> Option<(&'a K, &'a V)>
         where F: FnMut(&K) -> bool
     {
+        if unsafe { unlikely(self.map.table.size() == 0) } {
+            return None;
+        }
         match search_hashed_nonempty(&self.map.table,
                                      SafeHash::new(hash),
                                      is_match,
@@ -3610,7 +3614,7 @@ mod test_map {
             for i in 1..1001 {
                 assert!(m.insert(i, i).is_none());
 
-                for j in 1..i + 1 {
+                for j in 1..=i {
                     let r = m.get(&j);
                     assert_eq!(r, Some(&j));
                 }
@@ -3629,7 +3633,7 @@ mod test_map {
             for i in 1..1001 {
                 assert!(m.remove(&i).is_some());
 
-                for j in 1..i + 1 {
+                for j in 1..=i {
                     assert!(!m.contains_key(&j));
                 }
 

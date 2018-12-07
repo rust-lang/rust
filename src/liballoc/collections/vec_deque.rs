@@ -2795,7 +2795,7 @@ mod tests {
             // 0, 1, 2, .., len - 1
             let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
-                for to_remove in 0..len + 1 {
+                for to_remove in 0..=len {
                     tester.tail = tail_pos;
                     tester.head = tail_pos;
                     for i in 0..len {
@@ -2821,10 +2821,10 @@ mod tests {
         let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
 
         let cap = tester.capacity();
-        for len in 0..cap + 1 {
-            for tail in 0..cap + 1 {
-                for drain_start in 0..len + 1 {
-                    for drain_end in drain_start..len + 1 {
+        for len in 0..=cap {
+            for tail in 0..=cap {
+                for drain_start in 0..=len {
+                    for drain_end in drain_start..=len {
                         tester.tail = tail;
                         tester.head = tail;
                         for i in 0..len {
@@ -2866,10 +2866,10 @@ mod tests {
         tester.reserve(63);
         let max_cap = tester.capacity();
 
-        for len in 0..cap + 1 {
+        for len in 0..=cap {
             // 0, 1, 2, .., len - 1
             let expected = (0..).take(len).collect::<VecDeque<_>>();
-            for tail_pos in 0..max_cap + 1 {
+            for tail_pos in 0..=max_cap {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
                 tester.reserve(63);
@@ -2899,7 +2899,7 @@ mod tests {
         // len is the length *before* splitting
         for len in 0..cap {
             // index to split at
-            for at in 0..len + 1 {
+            for at in 0..=len {
                 // 0, 1, 2, .., at - 1 (may be empty)
                 let expected_self = (0..).take(at).collect::<VecDeque<_>>();
                 // at, at + 1, .., len - 1 (may be empty)
@@ -2927,7 +2927,7 @@ mod tests {
     fn test_from_vec() {
         use vec::Vec;
         for cap in 0..35 {
-            for len in 0..cap + 1 {
+            for len in 0..=cap {
                 let mut vec = Vec::with_capacity(cap);
                 vec.extend(0..len);
 

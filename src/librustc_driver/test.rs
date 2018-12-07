@@ -98,7 +98,7 @@ fn errors(msgs: &[&str]) -> (Box<dyn Emitter + sync::Send>, usize) {
 
 fn test_env<F>(source_string: &str, args: (Box<dyn Emitter + sync::Send>, usize), body: F)
 where
-    F: FnOnce(Env),
+    F: FnOnce(Env) + sync::Send,
 {
     syntax::with_globals(|| {
         let mut options = config::Options::default();

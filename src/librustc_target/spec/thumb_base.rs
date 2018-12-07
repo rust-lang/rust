@@ -18,6 +18,7 @@
 // - Cortex-M4(F)
 // - Cortex-M7(F)
 // - Cortex-M23
+// - Cortex-M33
 //
 // We have opted for these instead of one target per processor (e.g. `cortex-m0`, `cortex-m3`,
 // etc) because the differences between some processors like the cortex-m0 and cortex-m1 are almost

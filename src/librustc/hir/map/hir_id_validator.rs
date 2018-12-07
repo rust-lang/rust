@@ -100,7 +100,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
 
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
-            let missing: Vec<_> = (0 .. max as u32 + 1)
+            let missing: Vec<_> = (0 ..= max as u32)
               .filter(|&i| !self.hir_ids_seen.contains_key(&ItemLocalId::from_u32(i)))
               .collect();
 

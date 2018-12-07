@@ -549,7 +549,7 @@ impl EmitterWriter {
         // 3 |
         // 4 |   }
         //   |
-        for pos in 0..line_len + 1 {
+        for pos in 0..=line_len {
             draw_col_separator(buffer, line_offset + pos + 1, width_offset - 2);
             buffer.putc(line_offset + pos + 1,
                         width_offset - 2,
@@ -617,7 +617,7 @@ impl EmitterWriter {
             let pos = pos + 1;
 
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
-                for p in line_offset + 1..line_offset + pos + 1 {
+                for p in line_offset + 1..=line_offset + pos {
                     buffer.putc(p,
                                 code_offset + annotation.start_col,
                                 '|',
@@ -634,7 +634,7 @@ impl EmitterWriter {
                     }
                 }
                 AnnotationType::MultilineEnd(depth) => {
-                    for p in line_offset..line_offset + pos + 1 {
+                    for p in line_offset..=line_offset + pos {
                         buffer.putc(p,
                                     width_offset + depth - 1,
                                     '|',

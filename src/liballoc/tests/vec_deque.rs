@@ -861,7 +861,7 @@ fn test_as_slices() {
         ring.push_back(i);
 
         let (left, right) = ring.as_slices();
-        let expected: Vec<_> = (0..i + 1).collect();
+        let expected: Vec<_> = (0..=i).collect();
         assert_eq!(left, &expected[..]);
         assert_eq!(right, []);
     }
@@ -869,7 +869,7 @@ fn test_as_slices() {
     for j in -last..0 {
         ring.push_front(j);
         let (left, right) = ring.as_slices();
-        let expected_left: Vec<_> = (-last..j + 1).rev().collect();
+        let expected_left: Vec<_> = (-last..=j).rev().collect();
         let expected_right: Vec<_> = (0..first).collect();
         assert_eq!(left, &expected_left[..]);
         assert_eq!(right, &expected_right[..]);
@@ -889,7 +889,7 @@ fn test_as_mut_slices() {
         ring.push_back(i);
 
         let (left, right) = ring.as_mut_slices();
-        let expected: Vec<_> = (0..i + 1).collect();
+        let expected: Vec<_> = (0..=i).collect();
         assert_eq!(left, &expected[..]);
         assert_eq!(right, []);
     }
@@ -897,7 +897,7 @@ fn test_as_mut_slices() {
     for j in -last..0 {
         ring.push_front(j);
         let (left, right) = ring.as_mut_slices();
-        let expected_left: Vec<_> = (-last..j + 1).rev().collect();
+        let expected_left: Vec<_> = (-last..=j).rev().collect();
         let expected_right: Vec<_> = (0..first).collect();
         assert_eq!(left, &expected_left[..]);
         assert_eq!(right, &expected_right[..]);
