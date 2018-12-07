@@ -14,6 +14,7 @@ use crate::mir::interpret::ConstValue;
 
 use std::cell::Cell;
 use std::fmt;
+use std::iter;
 use std::usize;
 
 use rustc_target::spec::abi::Abi;
@@ -182,7 +183,9 @@ impl RegionHighlightMode {
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            PrintCx::with(|mut cx| $with(self, f, &mut cx))
+            PrintCx::with(|mut cx| {
+                $with(&cx.tcx.lift(self).expect("could not lift for printing"), f, &mut cx)
+            })
         }
     };
 }
@@ -215,7 +218,7 @@ macro_rules! gen_print_impl {
             fn print<F: fmt::Write>(
                 &$self,
                 $f: &mut F,
-                $cx: &mut PrintCx<'_, '_, '_>,
+                $cx: &mut PrintCx<'_, '_, 'tcx>,
             ) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
@@ -227,7 +230,7 @@ macro_rules! gen_print_impl {
             fn print<F: fmt::Write>(
                 &$self,
                 $f: &mut F,
-                $cx: &mut PrintCx<'_, '_, '_>,
+                $cx: &mut PrintCx<'_, '_, 'tcx>,
             ) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
@@ -285,9 +288,9 @@ macro_rules! print {
 impl PrintCx<'a, 'gcx, 'tcx> {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
-                             inputs: &[Ty<'_>],
+                             inputs: &[Ty<'tcx>],
                              c_variadic: bool,
-                             output: Ty<'_>)
+                             output: Ty<'tcx>)
                              -> fmt::Result {
         write!(f, "(")?;
         let mut inputs = inputs.iter();
@@ -308,12 +311,13 @@ impl PrintCx<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn parameterized<F: fmt::Write>(&mut self,
-                                    f: &mut F,
-                                    substs: SubstsRef<'_>,
-                                    did: DefId,
-                                    projections: &[ty::ProjectionPredicate<'_>])
-                                    -> fmt::Result {
+    fn parameterized<F: fmt::Write>(
+        &mut self,
+        f: &mut F,
+        did: DefId,
+        substs: SubstsRef<'tcx>,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>> + Clone,
+    ) -> fmt::Result {
         let key = self.tcx.def_key(did);
 
         let verbose = self.is_verbose;
@@ -411,7 +415,6 @@ impl PrintCx<'a, 'gcx, 'tcx> {
                     *has_default.unwrap_or(&false)
                 };
                 if has_default {
-                    let substs = self.tcx.lift(&substs).expect("could not lift for printing");
                     let types = substs.types().rev().skip(child_types);
                     for ((def_id, has_default), actual) in type_params.zip(types) {
                         if !has_default {
@@ -428,10 +431,12 @@ impl PrintCx<'a, 'gcx, 'tcx> {
         print!(f, self, write("{}", self.tcx.item_path_str(path_def_id)))?;
         let fn_trait_kind = self.tcx.lang_items().fn_trait_kind(path_def_id);
 
-        if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
-            let projection_ty = projections[0].ty;
+        if !verbose && fn_trait_kind.is_some() {
             if let Tuple(ref args) = substs.type_at(1).sty {
-                return self.fn_sig(f, args, false, projection_ty);
+                let mut projections = projections.clone();
+                if let (Some(proj), None) = (projections.next(), projections.next()) {
+                    return self.fn_sig(f, args, false, proj.ty);
+                }
             }
         }
 
@@ -490,7 +495,7 @@ impl PrintCx<'a, 'gcx, 'tcx> {
             start_or_continue(f, "<", ", ")?;
             print!(f, self,
                     write("{}=",
-                            self.tcx.associated_item(projection.projection_ty.item_def_id).ident),
+                            self.tcx.associated_item(projection.item_def_id).ident),
                     print_display(projection.ty))?;
         }
 
@@ -530,7 +535,7 @@ impl PrintCx<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn in_binder<T, F>(&mut self, f: &mut F, value: ty::Binder<T>) -> fmt::Result
+    fn in_binder<T, F>(&mut self, f: &mut F, value: &ty::Binder<T>) -> fmt::Result
         where T: Print<'tcx> + TypeFoldable<'tcx>, F: fmt::Write
     {
         fn name_by_region_index(index: usize) -> InternedString {
@@ -547,7 +552,7 @@ impl PrintCx<'a, 'gcx, 'tcx> {
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
         if self.binder_depth == 0 {
-            self.prepare_late_bound_region_info(&value);
+            self.prepare_late_bound_region_info(value);
         }
 
         let mut empty = true;
@@ -562,7 +567,7 @@ impl PrintCx<'a, 'gcx, 'tcx> {
 
         let old_region_index = self.region_index;
         let mut region_index = old_region_index;
-        let new_value = self.tcx.replace_late_bound_regions(&value, |br| {
+        let new_value = self.tcx.replace_late_bound_regions(value, |br| {
             let _ = start_or_continue(f, "for<", ", ");
             let br = match br {
                 ty::BrNamed(_, name) => {
@@ -604,16 +609,15 @@ impl PrintCx<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn parameterized<F: fmt::Write>(f: &mut F,
-                                    substs: SubstsRef<'_>,
-                                    did: DefId,
-                                    projections: &[ty::ProjectionPredicate<'_>])
-                                    -> fmt::Result {
-    PrintCx::with(|mut cx| cx.parameterized(f, substs, did, projections))
+pub fn parameterized<F: fmt::Write>(f: &mut F, did: DefId, substs: SubstsRef<'_>) -> fmt::Result {
+    PrintCx::with(|mut cx| {
+        let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
+        cx.parameterized(f, did, substs, iter::empty())
+    })
 }
 
 impl<'a, 'tcx, T: Print<'tcx>> Print<'tcx> for &'a T {
-    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, '_>) -> fmt::Result {
+    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, 'tcx>) -> fmt::Result {
         (*self).print(f, cx)
     }
 }
@@ -628,16 +632,13 @@ define_print! {
             let mut first = true;
 
             if let Some(principal) = self.principal() {
-                let principal = cx.tcx
-                    .lift(&principal)
-                    .expect("could not lift for printing")
-                    .with_self_ty(cx.tcx, dummy_self);
-                let projections = self.projection_bounds().map(|p| {
-                    cx.tcx.lift(&p)
-                        .expect("could not lift for printing")
-                        .with_self_ty(cx.tcx, dummy_self)
-                }).collect::<Vec<_>>();
-                cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                let principal = principal.with_self_ty(cx.tcx, dummy_self);
+                cx.parameterized(
+                    f,
+                    principal.def_id,
+                    principal.substs,
+                    self.projection_bounds(),
+                )?;
                 first = false;
             }
 
@@ -755,15 +756,15 @@ define_print! {
 define_print! {
     ('tcx) ty::ExistentialTraitRef<'tcx>, (self, f, cx) {
         display {
-            cx.parameterized(f, self.substs, self.def_id, &[])
-        }
-        debug {
             let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
 
-            let trait_ref = *cx.tcx.lift(&ty::Binder::bind(*self))
-                                .expect("could not lift for printing")
-                                .with_self_ty(cx.tcx, dummy_self).skip_binder();
-            cx.parameterized(f, trait_ref.substs, trait_ref.def_id, &[])
+            let trait_ref = *ty::Binder::bind(*self)
+                .with_self_ty(cx.tcx, dummy_self)
+                .skip_binder();
+            cx.parameterized(f, trait_ref.def_id, trait_ref.substs, iter::empty())
+        }
+        debug {
+            self.print_display(f, cx)
         }
     }
 }
@@ -958,22 +959,6 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::GenericPredicates<'tcx>, (self, f, cx) {
-        debug {
-            write!(f, "GenericPredicates({:?})", self.predicates)
-        }
-    }
-}
-
-define_print! {
-    ('tcx) ty::InstantiatedPredicates<'tcx>, (self, f, cx) {
-        debug {
-            write!(f, "InstantiatedPredicates({:?})", self.predicates)
-        }
-    }
-}
-
-define_print! {
     ('tcx) ty::FnSig<'tcx>, (self, f, cx) {
         display {
             if self.unsafety == hir::Unsafety::Unsafe {
@@ -1098,8 +1083,7 @@ define_print_multi! {
     ]
     (self, f, cx) {
         display {
-            cx.in_binder(f, cx.tcx.lift(self)
-                .expect("could not lift for printing"))
+            cx.in_binder(f, self)
         }
     }
 }
@@ -1107,7 +1091,7 @@ define_print_multi! {
 define_print! {
     ('tcx) ty::TraitRef<'tcx>, (self, f, cx) {
         display {
-            cx.parameterized(f, self.substs, self.def_id, &[])
+            cx.parameterized(f, self.def_id, self.substs, iter::empty())
         }
         debug {
             // when printing out the debug representation, we don't need
@@ -1117,7 +1101,7 @@ define_print! {
                    write("<"),
                    print(self.self_ty()),
                    write(" as "))?;
-            cx.parameterized(f, self.substs, self.def_id, &[])?;
+            cx.parameterized(f, self.def_id, self.substs, iter::empty())?;
             write!(f, ">")
         }
     }
@@ -1166,11 +1150,9 @@ define_print! {
                     write!(f, ")")
                 }
                 FnDef(def_id, substs) => {
-                    let substs = cx.tcx.lift(&substs)
-                        .expect("could not lift for printing");
                     let sig = cx.tcx.fn_sig(def_id).subst(cx.tcx, substs);
                     print!(f, cx, print(sig), write(" {{"))?;
-                    cx.parameterized(f, substs, def_id, &[])?;
+                    cx.parameterized(f, def_id, substs, iter::empty())?;
                     write!(f, "}}")
                 }
                 FnPtr(ref bare_fn) => {
@@ -1192,7 +1174,7 @@ define_print! {
                         ty::BoundTyKind::Param(p) => write!(f, "{}", p),
                     }
                 }
-                Adt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
+                Adt(def, substs) => cx.parameterized(f, def.did, substs, iter::empty()),
                 Dynamic(data, r) => {
                     let r = r.print_to_string(cx);
                     if !r.is_empty() {
@@ -1206,7 +1188,9 @@ define_print! {
                         Ok(())
                     }
                 }
-                Foreign(def_id) => parameterized(f, subst::InternalSubsts::empty(), def_id, &[]),
+                Foreign(def_id) => {
+                    cx.parameterized(f, def_id, subst::InternalSubsts::empty(), iter::empty())
+                }
                 Projection(ref data) => data.print(f, cx),
                 UnnormalizedProjection(ref data) => {
                     write!(f, "Unnormalized(")?;
@@ -1237,8 +1221,6 @@ define_print! {
                     }
                     // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                     // by looking up the projections associated with the def_id.
-                    let substs = cx.tcx.lift(&substs)
-                        .expect("could not lift for printing");
                     let bounds = cx.tcx.predicates_of(def_id).instantiate(cx.tcx, substs);
 
                     let mut first = true;
@@ -1305,8 +1287,7 @@ define_print! {
                     print!(f, cx, write(" "), print(witness), write("]"))
                 },
                 GeneratorWitness(types) => {
-                    cx.in_binder(f, cx.tcx.lift(&types)
-                        .expect("could not lift for printing"))
+                    cx.in_binder(f, &types)
                 }
                 Closure(did, substs) => {
                     let upvar_tys = substs.upvar_tys(did, cx.tcx);
@@ -1347,8 +1328,8 @@ define_print! {
                         write!(
                             f,
                             " closure_kind_ty={:?} closure_sig_ty={:?}",
-                            substs.closure_kind_ty(did, tcx),
-                            substs.closure_sig_ty(did, tcx),
+                            substs.closure_kind_ty(did, cx.tcx),
+                            substs.closure_sig_ty(did, cx.tcx),
                         )?;
                     }
 
@@ -1435,8 +1416,12 @@ define_print! {
     }
 }
 
-define_print! {
-    ('tcx, T: Print<'tcx> + fmt::Debug, U: Print<'tcx> + fmt::Debug) ty::OutlivesPredicate<T, U>,
+// Similar problem to `Binder<T>`, can't define a generic impl.
+define_print_multi! {
+    [
+    ('tcx) ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
+    ('tcx) ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+    ]
     (self, f, cx) {
         display {
             print!(f, cx, print(self.0), write(" : "), print(self.1))
@@ -1524,7 +1509,7 @@ define_print! {
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     write!(f, "the constant `")?;
-                    cx.parameterized(f, substs, def_id, &[])?;
+                    cx.parameterized(f, def_id, substs, iter::empty())?;
                     write!(f, "` can be evaluated")
                 }
             }

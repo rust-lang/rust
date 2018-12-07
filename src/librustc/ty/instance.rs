@@ -175,7 +175,7 @@ impl<'tcx> InstanceDef<'tcx> {
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ppaux::parameterized(f, self.substs, self.def_id(), &[])?;
+        ppaux::parameterized(f, self.def_id(), self.substs)?;
         match self.def {
             InstanceDef::Item(_) => Ok(()),
             InstanceDef::VtableShim(_) => {

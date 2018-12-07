@@ -616,7 +616,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=ExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item=ExistentialProjection<'tcx>> + Clone + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::Projection(p) => Some(p),

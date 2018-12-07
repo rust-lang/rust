@@ -2405,7 +2405,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        ppaux::parameterized(fmt, substs, variant_def.did, &[])?;
+                        ppaux::parameterized(fmt, variant_def.did, substs)?;
 
                         match variant_def.ctor_kind {
                             CtorKind::Const => Ok(()),
