@@ -182,8 +182,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     ///
     /// This function is inlined because that results in a noticeable speedup
     /// for some compile-time benchmarks.
-    #[inline(never)]
-    // FIXME: Remove inline(never)
+    #[inline(always)]
     pub(super) fn try_get(
         tcx: TyCtxt<'a, 'tcx, '_>,
         span: Span,
