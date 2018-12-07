@@ -5,9 +5,7 @@ use crate::common::{self, TypeKind};
 use crate::mir::place::PlaceRef;
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::{self, Ty};
-use rustc::util::nodemap::FxHashMap;
 use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
-use std::cell::RefCell;
 use syntax::ast;
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
@@ -49,7 +47,6 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn int_width(&self, ty: Self::Type) -> u64;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
-    fn scalar_lltypes(&self) -> &RefCell<FxHashMap<Ty<'tcx>, Self::Type>>;
 }
 
 pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
