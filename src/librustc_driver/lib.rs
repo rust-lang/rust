@@ -258,7 +258,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
             .unwrap_or(&sess.target.target.options.codegen_backend);
         let backend = match &codegen_name[..] {
             "metadata_only" => {
-                rustc_codegen_utils::codegen_backend::MetadataOnlyCodegenBackend::new
+                rustc_codegen_utils::codegen_backend::MetadataOnlyCodegenBackend::boxed
             }
             filename if filename.contains(".") => {
                 load_backend_from_dylib(filename.as_ref())
@@ -291,7 +291,7 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
     // let's just return a dummy creation function which won't be used in
     // general anyway.
     if cfg!(test) {
-        return rustc_codegen_utils::codegen_backend::MetadataOnlyCodegenBackend::new
+        return rustc_codegen_utils::codegen_backend::MetadataOnlyCodegenBackend::boxed
     }
 
     let target = session::config::host_triple();

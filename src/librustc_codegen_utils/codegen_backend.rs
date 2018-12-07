@@ -86,8 +86,8 @@ impl MetadataLoader for NoLlvmMetadataLoader {
 
         let mut buf = Vec::new();
         io::copy(&mut file, &mut buf).unwrap();
-        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-        return Ok(rustc_erase_owner!(buf.map_owner_box()));
+        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
+        Ok(rustc_erase_owner!(buf.map_owner_box()))
     }
 
     fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String> {
@@ -103,7 +103,7 @@ pub struct OngoingCodegen {
 }
 
 impl MetadataOnlyCodegenBackend {
-    pub fn new() -> Box<dyn CodegenBackend> {
+    pub fn boxed() -> Box<dyn CodegenBackend> {
         box MetadataOnlyCodegenBackend(())
     }
 }
@@ -165,15 +165,12 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
                 tcx,
                 collector::MonoItemCollectionMode::Eager
             ).0 {
-            match mono_item {
-                MonoItem::Fn(inst) => {
-                    let def_id = inst.def_id();
-                    if def_id.is_local()  {
-                        let _ = inst.def.is_inline(tcx);
-                        let _ = tcx.codegen_fn_attrs(def_id);
-                    }
+            if let MonoItem::Fn(inst) = mono_item {
+                let def_id = inst.def_id();
+                if def_id.is_local()  {
+                    let _ = inst.def.is_inline(tcx);
+                    let _ = tcx.codegen_fn_attrs(def_id);
                 }
-                _ => {}
             }
         }
         tcx.sess.abort_if_errors();
@@ -181,7 +178,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         let metadata = tcx.encode_metadata();
 
         box OngoingCodegen {
-            metadata: metadata,
+            metadata,
             metadata_version: tcx.metadata_encoding_version().to_vec(),
             crate_name: tcx.crate_name(LOCAL_CRATE),
         }
