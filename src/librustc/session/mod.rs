@@ -131,6 +131,9 @@ pub struct Session {
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
     /// Used by -Z self-profile
+    pub self_profiling_active: bool,
+
+    /// Used by -Z self-profile
     pub self_profiling: Lock<SelfProfiler>,
 
     /// Some measurements that are being gathered during compilation.
@@ -830,15 +833,13 @@ impl Session {
     #[inline(never)]
     #[cold]
     fn profiler_active<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        if self.opts.debugging_opts.self_profile || self.opts.debugging_opts.profile_json {
-            let mut profiler = self.self_profiling.borrow_mut();
-            f(&mut profiler);
-        }
+        let mut profiler = self.self_profiling.borrow_mut();
+        f(&mut profiler);
     }
 
     #[inline(always)]
     pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        if unlikely!(self.opts.debugging_opts.self_profile  || self.opts.debugging_opts.profile_json) {
+        if unlikely!(self.self_profiling_active) {
             self.profiler_active(f)
         }
     }
@@ -1160,6 +1161,9 @@ pub fn build_session_(
         CguReuseTracker::new_disabled()
     };
 
+    let self_profiling_active = sopts.debugging_opts.self_profile ||
+                                sopts.debugging_opts.profile_json;
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1190,6 +1194,7 @@ pub fn build_session_(
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
+        self_profiling_active,
         self_profiling: Lock::new(SelfProfiler::new()),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
