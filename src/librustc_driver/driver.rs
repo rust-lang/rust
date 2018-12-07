@@ -246,8 +246,6 @@ pub fn compile_input(
             }
         }
 
-        let arenas = AllArenas::new();
-
         // Construct the HIR map
         let hir_map = time(sess, "indexing hir", || {
             hir_map::map_crate(sess, cstore, &mut hir_forest, &defs)
@@ -263,7 +261,6 @@ pub fn compile_input(
                     sess,
                     outdir,
                     output,
-                    &arenas,
                     &cstore,
                     &hir_map,
                     &analysis,
@@ -284,6 +281,8 @@ pub fn compile_input(
             None
         };
 
+        let mut arenas = AllArenas::new();
+
         phase_3_run_analysis_passes(
             &*codegen_backend,
             control,
@@ -292,7 +291,7 @@ pub fn compile_input(
             hir_map,
             analysis,
             resolutions,
-            &arenas,
+            &mut arenas,
             &crate_name,
             &outputs,
             |tcx, analysis, rx, result| {
@@ -533,7 +532,6 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
-    pub arenas: Option<&'tcx AllArenas<'tcx>>,
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
@@ -549,7 +547,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             session,
             out_dir: out_dir.as_ref().map(|s| &**s),
             out_file: None,
-            arenas: None,
             krate: None,
             registry: None,
             cstore: None,
@@ -605,7 +602,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         session: &'tcx Session,
         out_dir: &'a Option<PathBuf>,
         out_file: &'a Option<PathBuf>,
-        arenas: &'tcx AllArenas<'tcx>,
         cstore: &'tcx CStore,
         hir_map: &'a hir_map::Map<'tcx>,
         analysis: &'a ty::CrateAnalysis,
@@ -617,7 +613,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     ) -> Self {
         CompileState {
             crate_name: Some(crate_name),
-            arenas: Some(arenas),
             cstore: Some(cstore),
             hir_map: Some(hir_map),
             analysis: Some(analysis),
@@ -1216,7 +1211,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     hir_map: hir_map::Map<'tcx>,
     mut analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
-    arenas: &'tcx AllArenas<'tcx>,
+    arenas: &'tcx mut AllArenas<'tcx>,
     name: &str,
     output_filenames: &OutputFilenames,
     f: F,
