@@ -309,10 +309,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "no {} named `{}` found for type `{}` in the current scope",
                             item_kind,
                             item_name,
-                            ty_string
+                            ty_str
                         );
                         if let Some(suggestion) = suggestion {
-                            err.note(&format!("did you mean `{}::{}`?", ty_string, suggestion));
+                            err.note(&format!("did you mean `{}::{}`?", ty_str, suggestion));
                         }
                         err
                     }
@@ -651,7 +651,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_derefs_to_local(&self,
                             span: Span,
                             rcvr_ty: Ty<'tcx>,
-                            source: SelfSource) -> bool {
+                            rcvr_expr: Option<&hir::Expr>) -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
                 ty::Adt(def, _) => def.did.is_local(),

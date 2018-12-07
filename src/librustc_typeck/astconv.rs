@@ -20,7 +20,7 @@ use hir::HirVec;
 use lint;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::traits::{self, TraitRefExpansionInfoDignosticBuilder};
+use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -39,7 +39,6 @@ use util::nodemap::FxHashMap;
 
 use std::collections::BTreeSet;
 use std::iter;
-use std::ops::Range;
 use std::slice;
 
 pub trait AstConv<'gcx, 'tcx> {
