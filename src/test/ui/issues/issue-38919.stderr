@@ -1,8 +1,10 @@
 error[E0599]: no associated item named `Item` found for type `T` in the current scope
-  --> $DIR/issue-38919.rs:2:5
+  --> $DIR/issue-38919.rs:2:8
    |
 LL |     T::Item; //~ ERROR no associated item named `Item` found for type `T` in the current scope
-   |     ^^^^^^^ associated item not found in `T`
+   |     ---^^^^
+   |     |
+   |     associated item not found in `T`
 
 error: aborting due to previous error
 

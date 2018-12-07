@@ -33,26 +33,30 @@ LL |     c.a(); //~ ERROR method `a` is private
    |       ^
 
 error[E0599]: no function or associated item named `a` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:78:5
+  --> $DIR/trait-item-privacy.rs:78:8
    |
 LL | struct S;
    | --------- function or associated item `a` not found for this
 ...
 LL |     S::a(&S);
-   |     ^^^^ function or associated item not found in `S`
+   |     ---^
+   |     |
+   |     function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `a`, perhaps you need to implement it:
            candidate #1: `method::A`
 
 error[E0599]: no function or associated item named `b` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:80:5
+  --> $DIR/trait-item-privacy.rs:80:8
    |
 LL | struct S;
    | --------- function or associated item `b` not found for this
 ...
 LL |     S::b(&S);
-   |     ^^^^ function or associated item not found in `S`
+   |     ---^
+   |     |
+   |     function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope, perhaps add a `use` for it:
@@ -67,26 +71,30 @@ LL |     C::a(&S); //~ ERROR method `a` is private
    |     ^^^^
 
 error[E0599]: no associated item named `A` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:97:5
+  --> $DIR/trait-item-privacy.rs:97:8
    |
 LL | struct S;
    | --------- associated item `A` not found for this
 ...
 LL |     S::A; //~ ERROR no associated item named `A` found for type `S` in the current scope
-   |     ^^^^ associated item not found in `S`
+   |     ---^
+   |     |
+   |     associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `A`, perhaps you need to implement it:
            candidate #1: `assoc_const::A`
 
 error[E0599]: no associated item named `B` found for type `S` in the current scope
-  --> $DIR/trait-item-privacy.rs:98:5
+  --> $DIR/trait-item-privacy.rs:98:8
    |
 LL | struct S;
    | --------- associated item `B` not found for this
 ...
 LL |     S::B; //~ ERROR no associated item named `B` found for type `S` in the current scope
-   |     ^^^^ associated item not found in `S`
+   |     ---^
+   |     |
+   |     associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope, perhaps add a `use` for it:
