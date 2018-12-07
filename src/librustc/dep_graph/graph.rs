@@ -1177,7 +1177,7 @@ pub fn test2(a: &mut DepGraph, dep_node_index: DepNodeIndex) {
     a.read_index(dep_node_index)
 }
 use hir::def_id::DefId;
-use std::hash::{BuildHasher, Hasher};
+use std::hash::Hasher;
 use rustc_hash::FxHasher;
 #[no_mangle]
 pub fn test4(a: DefId) -> u64 {

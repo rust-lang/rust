@@ -103,38 +103,7 @@ pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
     layout_depth: usize,
 }
 
-#[no_mangle]
-fn size_JobOwner() -> usize {
-    std::mem::size_of::<JobOwner<::ty::query::queries::type_of>>()
-}
-
-#[no_mangle]
-fn size_QueryJob() -> usize {
-    std::mem::size_of::<QueryJob>()
-}
-
-#[no_mangle]
-fn size_Query() -> usize {
-    std::mem::size_of::<::ty::query::Query>()
-}
-
 use hir::def_id::DefId;
-
-#[no_mangle]
-fn size_DefId() -> usize {
-    std::mem::size_of::<DefId>()
-}
- use hir::def_id::CrateId;
-#[no_mangle]
-fn size_CrateId() -> usize {
-    std::mem::size_of::<CrateId>()
-}
-
- use hir::def_id::CrateNum;
-#[no_mangle]
-fn size_CrateNum() -> usize {
-    std::mem::size_of::<CrateNum>()
-}
 
     use std::mem::MaybeUninit;
 #[inline(never)]
