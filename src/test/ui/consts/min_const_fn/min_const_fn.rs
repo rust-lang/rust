@@ -90,9 +90,13 @@ static BAR: u32 = 42;
 const fn foo25() -> u32 { BAR } //~ ERROR cannot access `static` items in const fn
 const fn foo26() -> &'static u32 { &BAR } //~ ERROR cannot access `static` items
 const fn foo30(x: *const u32) -> usize { x as usize }
-//~^ ERROR casting pointers to int
+//~^ ERROR casting pointers to ints is unstable
+const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
+//~^ ERROR casting pointers to ints is unstable
 const fn foo30_2(x: *mut u32) -> usize { x as usize }
-//~^ ERROR casting pointers to int
+//~^ ERROR casting pointers to ints is unstable
+const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
+//~^ ERROR casting pointers to ints is unstable
 const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
 //~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
 const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
