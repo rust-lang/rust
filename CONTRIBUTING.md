@@ -156,7 +156,7 @@ to style guidelines. The code has to be formatted by `rustfmt` before a PR will 
 
 It can be installed via `rustup`:
 ```bash
-rustup component add rustfmt-preview
+rustup component add rustfmt
 ```
 
 Use `cargo fmt --all` to format the whole codebase.
@@ -220,7 +220,7 @@ That's why the `else_if_without_else` example uses the `register_early_lint_pass
 
 ### Fixing build failures caused by Rust
 
-Clippy will sometimes break because it still depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
+Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
 
 In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit history][toolstate_commit_history].
 You will then have to look for the last commit that contains `test-pass -> build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
