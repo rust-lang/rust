@@ -47,8 +47,6 @@ ENV HOSTS=x86_64-unknown-linux-musl \
 #    CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_LINKER=musl-gcc \
 #    CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="qemu-arm -L /musl-arm"
 
-ENV RUSTFLAGS="-C target-feature=-crt-static"
-
 ENV SCRIPT \
       python2.7 ../x.py test --host $HOSTS --target $HOSTS && \
       python2.7 ../x.py dist --host $HOSTS --target $HOSTS
