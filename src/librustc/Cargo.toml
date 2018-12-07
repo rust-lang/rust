@@ -32,7 +32,7 @@ parking_lot = "0.6"
 byteorder = { version = "1.1", features = ["i128"]}
 chalk-engine = { version = "0.8.0", default-features=false }
 rustc_fs_util = { path = "../librustc_fs_util" }
-smallvec = { version = "0.6.5", features = ["union"] }
+
 
 # Note that these dependencies are a lie, they're just here to get linkage to
 # work.
@@ -63,3 +63,8 @@ smallvec = { version = "0.6.5", features = ["union"] }
 #        compiles, then please feel free to do so!
 flate2 = "1.0"
 tempfile = "3.0"
+
+[dependencies.smallvec]
+git = "https://github.com/Zoxc/rust-smallvec"
+branch = "push_light_def"
+features = ["union", "likely", "push_light"]

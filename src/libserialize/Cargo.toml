@@ -8,5 +8,7 @@ name = "serialize"
 path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
-[dependencies]
-smallvec = { version = "0.6.5", features = ["union"] }
+[dependencies.smallvec]
+git = "https://github.com/Zoxc/rust-smallvec"
+branch = "push_light_def"
+features = ["union", "likely", "push_light"]

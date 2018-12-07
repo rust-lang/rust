@@ -10,4 +10,8 @@ path = "lib.rs"
 [dependencies]
 bitflags = "1.0"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
-smallvec = { version = "0.6.5", features = ["union"] }
+
+[dependencies.smallvec]
+git = "https://github.com/Zoxc/rust-smallvec"
+branch = "push_light_def"
+features = ["union", "likely", "push_light"]

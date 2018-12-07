@@ -1984,7 +1984,7 @@ dependencies = [
  "rustc_target 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
  "tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2164,7 +2164,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2175,7 +2175,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
 ]
 
 [[package]]
@@ -2280,7 +2280,7 @@ dependencies = [
  "rustc-rayon-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
  "serialize 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2314,7 +2314,7 @@ dependencies = [
  "rustc_typeck 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
@@ -2420,7 +2420,7 @@ dependencies = [
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
  "serialize 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2533,7 +2533,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_target 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2560,7 +2560,7 @@ dependencies = [
  "rustc_errors 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
  "rustc_target 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2729,7 +2729,7 @@ dependencies = [
 name = "serialize"
 version = "0.0.0"
 dependencies = [
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
 ]
 
 [[package]]
@@ -2751,6 +2751,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "smallvec"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "smallvec"
+version = "0.6.7"
+source = "git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def#b5c9040b44576c59580eccd085a53d4ddb78d587"
 dependencies = [
  "unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2915,7 +2923,7 @@ dependencies = [
  "rustc_target 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax_pos 0.0.0",
 ]
 
@@ -2928,7 +2936,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -3500,6 +3508,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 "checksum siphasher 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0df90a788073e8d0235a67e50441d47db7c8ad9debd91cbf43736a2a92d36537"
 "checksum smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "153ffa32fd170e9944f7e0838edf824a754ec4c1fc64746fcc9fe1f8fa602e5d"
+"checksum smallvec 0.6.7 (git+https://github.com/Zoxc/rust-smallvec?branch=push_light_def)" = "<none>"
 "checksum socket2 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "c4d11a52082057d87cb5caa31ad812f4504b97ab44732cd8359df2e9ff9f48e7"
 "checksum stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ffbc596e092fe5f598b12ef46cc03754085ac2f4d8c739ad61c4ae266cc3b3fa"
 "checksum string_cache 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)" = "25d70109977172b127fe834e5449e5ab1740b9ba49fa18a2020f509174f25423"

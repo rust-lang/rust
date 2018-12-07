@@ -19,7 +19,11 @@ stable_deref_trait = "1.0.0"
 rustc-rayon = "0.1.1"
 rustc-rayon-core = "0.1.1"
 rustc-hash = "1.0.1"
-smallvec = { version = "0.6.5", features = ["union"] }
+
+[dependencies.smallvec]
+git = "https://github.com/Zoxc/rust-smallvec"
+branch = "push_light_def"
+features = ["union", "likely", "push_light"]
 
 [dependencies.parking_lot]
 version = "0.6"

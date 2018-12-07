@@ -17,6 +17,11 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 rustc_target = { path = "../librustc_target" }
-smallvec = { version = "0.6.5", features = ["union"] }
+
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+
+[dependencies.smallvec]
+git = "https://github.com/Zoxc/rust-smallvec"
+branch = "push_light_def"
+features = ["union", "likely", "push_light"]
