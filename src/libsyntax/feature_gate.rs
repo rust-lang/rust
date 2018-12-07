@@ -197,7 +197,7 @@ declare_features! (
     // rustc internal
     (active, allow_internal_unsafe, "1.0.0", None, None),
 
-    // Allows the use of slice patterns (RFC 23121).
+    // Allows the use of slice patterns (issue #23121).
     (active, slice_patterns, "1.0.0", Some(23121), None),
 
     // Allows the definition of `const` functions with some advanced features.
