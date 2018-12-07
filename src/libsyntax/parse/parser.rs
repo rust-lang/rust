@@ -1850,6 +1850,15 @@ impl<'a> Parser<'a> {
                         Applicability::HasPlaceholders,
                     );
                 } else if require_name && is_trait_item {
+                    if let PatKind::Ident(_, ident, _) = pat.node {
+                        err.span_suggestion_with_applicability(
+                            pat.span,
+                            "explicitly ignore parameter",
+                            format!("_: {}", ident),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+
                     err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
                 }
 
