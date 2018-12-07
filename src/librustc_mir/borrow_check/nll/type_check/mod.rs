@@ -1467,7 +1467,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             value_ty,
                             ty,
                             term_location.to_locations(),
-                            ConstraintCategory::Return,
+                            ConstraintCategory::Yield,
                         ) {
                             span_mirbug!(
                                 self,

@@ -471,6 +471,7 @@ impl_stable_hash_for!(struct mir::ClosureOutlivesRequirement<'tcx> {
 
 impl_stable_hash_for!(enum mir::ConstraintCategory {
     Return,
+    Yield,
     UseAsConst,
     UseAsStatic,
     TypeAnnotation,
