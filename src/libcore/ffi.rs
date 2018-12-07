@@ -13,11 +13,12 @@ use ::fmt;
 /// and `*mut c_void` is equivalent to C's `void*`. That said, this is
 /// *not* the same as C's `void` return type, which is Rust's `()` type.
 ///
-/// Ideally, this type would be equivalent to [`!`], but currently it may
-/// be more ideal to use `c_void` for FFI purposes.
+/// To model pointers to opaque types in FFI, until `extern type` is
+/// stabilized, it is recommended to use a newtype wrapper around an empty
+/// byte array. See the [Nomicon] for details.
 ///
-/// [`!`]: ../../std/primitive.never.html
 /// [pointer]: ../../std/primitive.pointer.html
+/// [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
