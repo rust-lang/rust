@@ -351,11 +351,13 @@ impl<'sess> OnDiskCache<'sess> {
     /// Store a diagnostic emitted during the current compilation session.
     /// Anything stored like this will be available via `load_diagnostics` in
     /// the next compilation session.
+    #[inline(never)]
+    #[cold]
     pub fn store_diagnostics(&self,
                              dep_node_index: DepNodeIndex,
-                             diagnostics: Vec<Diagnostic>) {
+                             diagnostics: Box<Vec<Diagnostic>>) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
-        let prev = current_diagnostics.insert(dep_node_index, diagnostics);
+        let prev = current_diagnostics.insert(dep_node_index, *diagnostics);
         debug_assert!(prev.is_none());
     }
 
@@ -377,13 +379,15 @@ impl<'sess> OnDiskCache<'sess> {
     /// Since many anonymous queries can share the same `DepNode`, we aggregate
     /// them -- as opposed to regular queries where we assume that there is a
     /// 1:1 relationship between query-key and `DepNode`.
+    #[inline(never)]
+    #[cold]
     pub fn store_diagnostics_for_anon_node(&self,
                                            dep_node_index: DepNodeIndex,
-                                           mut diagnostics: Vec<Diagnostic>) {
+                                           mut diagnostics: Box<Vec<Diagnostic>>) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
 
         let x = current_diagnostics.entry(dep_node_index).or_insert_with(|| {
-            mem::replace(&mut diagnostics, Vec::new())
+            mem::replace(&mut *diagnostics, Vec::new())
         });
 
         x.extend(diagnostics.into_iter());

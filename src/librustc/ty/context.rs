@@ -1972,7 +1972,11 @@ pub mod tls {
         with_context_opt(|icx| {
             if let Some(icx) = icx {
                 if let Some(ref query) = icx.query {
-                    query.diagnostics.lock().push(diagnostic.clone());
+                    let mut diagnostics = query.diagnostics.lock();
+                    if diagnostics.is_none() {
+                        *diagnostics = Some(Box::new(Vec::new()));
+                    }
+                    diagnostics.as_mut().unwrap().push(diagnostic.clone());
                 }
             }
         })

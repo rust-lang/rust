@@ -500,8 +500,10 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
 
             self.dep_graph.read_index(dep_node_index);
 
-            self.queries.on_disk_cache
-                .store_diagnostics_for_anon_node(dep_node_index, job.job.extract_diagnostics());
+            if let Some(diagnostics) = job.job.extract_diagnostics() {
+                self.queries.on_disk_cache
+                    .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            }
 
             job.complete(&result, dep_node_index);
 
@@ -664,8 +666,10 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
         }
 
         if dep_node.kind != ::dep_graph::DepKind::Null {
-            self.queries.on_disk_cache
-                .store_diagnostics(dep_node_index, job.job.extract_diagnostics());
+            if let Some(diagnostics) = job.job.extract_diagnostics() {
+                self.queries.on_disk_cache
+                    .store_diagnostics(dep_node_index, diagnostics);
+            }
         }
 
         job.complete(&result, dep_node_index);
