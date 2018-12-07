@@ -48,5 +48,41 @@ error: inequality checks against false are unnecessary
 48 |     if false != x {
    |        ^^^^^^^^^^ help: try simplifying it as shown: `x`
 
-error: aborting due to 8 previous errors
+error: less than comparison against true can be replaced by a negation
+  --> $DIR/bool_comparison.rs:53:8
+   |
+53 |     if x < true {
+   |        ^^^^^^^^ help: try simplifying it as shown: `!x`
+
+error: greater than checks against false are unnecessary
+  --> $DIR/bool_comparison.rs:58:8
+   |
+58 |     if false < x {
+   |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+
+error: greater than checks against false are unnecessary
+  --> $DIR/bool_comparison.rs:63:8
+   |
+63 |     if x > false {
+   |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+
+error: less than comparison against true can be replaced by a negation
+  --> $DIR/bool_comparison.rs:68:8
+   |
+68 |     if true > x {
+   |        ^^^^^^^^ help: try simplifying it as shown: `!x`
+
+error: order comparisons between booleans can be simplified
+  --> $DIR/bool_comparison.rs:74:8
+   |
+74 |     if x < y {
+   |        ^^^^^ help: try simplifying it as shown: `!x && y`
+
+error: order comparisons between booleans can be simplified
+  --> $DIR/bool_comparison.rs:79:8
+   |
+79 |     if x > y {
+   |        ^^^^^ help: try simplifying it as shown: `x && !y`
+
+error: aborting due to 14 previous errors
 

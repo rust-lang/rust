@@ -45,8 +45,9 @@ declare_clippy_lint! {
     "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
 }
 
-/// **What it does:** Checks for expressions of the form `x == true` and
-/// `x != true` (or vice versa) and suggest using the variable directly.
+/// **What it does:** Checks for expressions of the form `x == true`,
+/// `x != true` and order comparisons such as `x < true` (or vice versa) and
+/// suggest using the variable directly.
 ///
 /// **Why is this bad?** Unnecessary code.
 ///
@@ -143,22 +144,54 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
         }
 
         if let ExprKind::Binary(Spanned { node, .. }, ..) = e.node {
+            let ignore_case = None::<(fn(_) -> _, &str)>;
+            let ignore_no_literal = None::<(fn(_, _) -> _, &str)>;
             match node {
-                BinOpKind::Eq => check_comparison(
+                BinOpKind::Eq => {
+                    let true_case = Some((|h| h, "equality checks against true are unnecessary"));
+                    let false_case = Some((
+                        |h: Sugg<'_>| !h,
+                        "equality checks against false can be replaced by a negation",
+                    ));
+                    check_comparison(cx, e, true_case, false_case, true_case, false_case, ignore_no_literal)
+                },
+                BinOpKind::Ne => {
+                    let true_case = Some((
+                        |h: Sugg<'_>| !h,
+                        "inequality checks against true can be replaced by a negation",
+                    ));
+                    let false_case = Some((|h| h, "inequality checks against false are unnecessary"));
+                    check_comparison(cx, e, true_case, false_case, true_case, false_case, ignore_no_literal)
+                },
+                BinOpKind::Lt => check_comparison(
                     cx,
                     e,
-                    "equality checks against true are unnecessary",
-                    "equality checks against false can be replaced by a negation",
-                    |h| h,
-                    |h| !h,
+                    ignore_case,
+                    Some((|h| h, "greater than checks against false are unnecessary")),
+                    Some((
+                        |h: Sugg<'_>| !h,
+                        "less than comparison against true can be replaced by a negation",
+                    )),
+                    ignore_case,
+                    Some((
+                        |l: Sugg<'_>, r: Sugg<'_>| (!l).and(&r),
+                        "order comparisons between booleans can be simplified",
+                    )),
                 ),
-                BinOpKind::Ne => check_comparison(
+                BinOpKind::Gt => check_comparison(
                     cx,
                     e,
-                    "inequality checks against true can be replaced by a negation",
-                    "inequality checks against false are unnecessary",
-                    |h| !h,
-                    |h| h,
+                    Some((
+                        |h: Sugg<'_>| !h,
+                        "less than comparison against true can be replaced by a negation",
+                    )),
+                    ignore_case,
+                    ignore_case,
+                    Some((|h| h, "greater than checks against false are unnecessary")),
+                    Some((
+                        |l: Sugg<'_>, r: Sugg<'_>| l.and(&(!r)),
+                        "order comparisons between booleans can be simplified",
+                    )),
                 ),
                 _ => (),
             }
@@ -169,22 +202,45 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
 fn check_comparison<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     e: &'tcx Expr,
-    true_message: &str,
-    false_message: &str,
-    true_hint: impl FnOnce(Sugg<'_>) -> Sugg<'_>,
-    false_hint: impl FnOnce(Sugg<'_>) -> Sugg<'_>,
+    left_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
+    left_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
+    right_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
+    right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
+    no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &str)>,
 ) {
     use self::Expression::*;
 
     if let ExprKind::Binary(_, ref left_side, ref right_side) = e.node {
-        let applicability = Applicability::MachineApplicable;
+        let mut applicability = Applicability::MachineApplicable;
         match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-            (Bool(true), Other) => suggest_bool_comparison(cx, e, right_side, applicability, true_message, true_hint),
-            (Other, Bool(true)) => suggest_bool_comparison(cx, e, left_side, applicability, true_message, true_hint),
-            (Bool(false), Other) => {
-                suggest_bool_comparison(cx, e, right_side, applicability, false_message, false_hint)
-            },
-            (Other, Bool(false)) => suggest_bool_comparison(cx, e, left_side, applicability, false_message, false_hint),
+            (Bool(true), Other) => left_true.map_or((), |(h, m)| {
+                suggest_bool_comparison(cx, e, right_side, applicability, m, h)
+            }),
+            (Other, Bool(true)) => right_true.map_or((), |(h, m)| {
+                suggest_bool_comparison(cx, e, left_side, applicability, m, h)
+            }),
+            (Bool(false), Other) => left_false.map_or((), |(h, m)| {
+                suggest_bool_comparison(cx, e, right_side, applicability, m, h)
+            }),
+            (Other, Bool(false)) => right_false.map_or((), |(h, m)| {
+                suggest_bool_comparison(cx, e, left_side, applicability, m, h)
+            }),
+            (Other, Other) => no_literal.map_or((), |(h, m)| {
+                let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
+                if l_ty.is_bool() && r_ty.is_bool() {
+                    let left_side = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
+                    let right_side = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
+                    span_lint_and_sugg(
+                        cx,
+                        BOOL_COMPARISON,
+                        e.span,
+                        m,
+                        "try simplifying it as shown",
+                        h(left_side, right_side).to_string(),
+                        applicability,
+                    )
+                }
+            }),
             _ => (),
         }
     }
@@ -196,7 +252,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
     expr: &Expr,
     mut applicability: Applicability,
     message: &str,
-    conv_hint: impl FnOnce(Sugg<'_>) -> Sugg<'_>,
+    conv_hint: impl FnOnce(Sugg<'a>) -> Sugg<'a>,
 ) {
     let hint = Sugg::hir_with_applicability(cx, expr, "..", &mut applicability);
     span_lint_and_sugg(
