@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir;
 use hir::def_id::DefId;
 use traits::specialize::specialization_graph::NodeItem;
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
-use ty::subst::{Kind, Subst};
+use ty::subst::{Kind, Subst, Substs};
 use util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};

@@ -44,6 +44,9 @@ use ty::error::{ExpectedFound, TypeError};
 use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
 use util::common::ErrorReported;
 
+use std::fmt::Debug;
+use std::rc::Rc;
+
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;

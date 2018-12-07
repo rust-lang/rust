@@ -1277,7 +1277,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
             (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
-                // `Self` in an impl of a trait - we have a concrete `self` type and a
+                // `Self` in an impl of a trait -- we have a concrete `self` type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
                     Some(trait_ref) => trait_ref,
