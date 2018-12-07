@@ -1,10 +1,10 @@
-error[E0658]: attributes of the form `#[derive_*]` are reserved for the compiler (see issue #29644)
+error[E0658]: The attribute `derive_A` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
   --> $DIR/derive-still-gated.rs:18:3
    |
-LL | #[derive_A] //~ ERROR: attributes of the form `#[derive_*]` are reserved for the compiler
+LL | #[derive_A] //~ ERROR attribute `derive_A` is currently unknown
    |   ^^^^^^^^
    |
-   = help: add #![feature(custom_derive)] to the crate attributes to enable
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to previous error
 
