@@ -9,7 +9,7 @@ use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind, ParamConst};
-use crate::ty::print::{PrintContext, Print};
+use crate::ty::print::{PrintCx, Print};
 use crate::mir::interpret::ConstValue;
 
 use std::cell::Cell;
@@ -182,7 +182,7 @@ impl RegionHighlightMode {
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let mut cx = PrintContext::new();
+            let mut cx = PrintCx::new();
             $with(self, f, &mut cx)
         }
     };
@@ -213,7 +213,7 @@ macro_rules! gen_display_debug {
 macro_rules! gen_print_impl {
     ( ($($x:tt)+) $target:ty, ($self:ident, $f:ident, $cx:ident) $disp:block $dbg:block ) => {
         impl<$($x)+> Print<'tcx> for $target {
-            fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintContext) -> fmt::Result {
+            fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintCx) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
             }
@@ -221,7 +221,7 @@ macro_rules! gen_print_impl {
     };
     ( () $target:ty, ($self:ident, $f:ident, $cx:ident) $disp:block $dbg:block ) => {
         impl Print<'tcx> for $target {
-            fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintContext) -> fmt::Result {
+            fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintCx) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
             }
@@ -275,7 +275,7 @@ macro_rules! print {
     };
 }
 
-impl PrintContext {
+impl PrintCx {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
                              inputs: &[Ty<'_>],
@@ -618,11 +618,11 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
-    PrintContext::new().parameterized(f, substs, did, projections)
+    PrintCx::new().parameterized(f, substs, did, projections)
 }
 
 impl<'a, 'tcx, T: Print<'tcx>> Print<'tcx> for &'a T {
-    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
+    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result {
         (*self).print(f, cx)
     }
 }

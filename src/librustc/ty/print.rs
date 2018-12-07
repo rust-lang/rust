@@ -22,7 +22,7 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
 }
 
 #[derive(Debug)]
-pub struct PrintContext {
+pub struct PrintCx {
     pub(crate) is_debug: bool,
     pub(crate) is_verbose: bool,
     pub(crate) identify_regions: bool,
@@ -31,12 +31,12 @@ pub struct PrintContext {
     pub(crate) binder_depth: usize,
 }
 
-impl PrintContext {
+impl PrintCx {
     pub(crate) fn new() -> Self {
         ty::tls::with(|tcx| {
             let (is_verbose, identify_regions) =
                 (tcx.sess.verbose(), tcx.sess.opts.debugging_opts.identify_regions);
-            PrintContext {
+            PrintCx {
                 is_debug: false,
                 is_verbose: is_verbose,
                 identify_regions: identify_regions,
@@ -57,32 +57,32 @@ impl PrintContext {
 }
 
 pub trait Print<'tcx> {
-    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result;
-    fn print_to_string(&self, cx: &mut PrintContext) -> String {
+    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result;
+    fn print_to_string(&self, cx: &mut PrintCx) -> String {
         let mut result = String::new();
         let _ = self.print(&mut result, cx);
         result
     }
-    fn print_display<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
+    fn print_display<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result {
         let old_debug = cx.is_debug;
         cx.is_debug = false;
         let result = self.print(f, cx);
         cx.is_debug = old_debug;
         result
     }
-    fn print_display_to_string(&self, cx: &mut PrintContext) -> String {
+    fn print_display_to_string(&self, cx: &mut PrintCx) -> String {
         let mut result = String::new();
         let _ = self.print_display(&mut result, cx);
         result
     }
-    fn print_debug<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
+    fn print_debug<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result {
         let old_debug = cx.is_debug;
         cx.is_debug = true;
         let result = self.print(f, cx);
         cx.is_debug = old_debug;
         result
     }
-    fn print_debug_to_string(&self, cx: &mut PrintContext) -> String {
+    fn print_debug_to_string(&self, cx: &mut PrintCx) -> String {
         let mut result = String::new();
         let _ = self.print_debug(&mut result, cx);
         result

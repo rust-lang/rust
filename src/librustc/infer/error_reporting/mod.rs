@@ -683,7 +683,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// For generic types with parameters with defaults, remove the parameters corresponding to
-    /// the defaults. This repeats a lot of the logic found in `PrintContext::parameterized`.
+    /// the defaults. This repeats a lot of the logic found in `PrintCx::parameterized`.
     fn strip_generic_default_params(
         &self,
         def_id: DefId,
