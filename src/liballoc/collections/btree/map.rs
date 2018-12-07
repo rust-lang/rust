@@ -98,7 +98,7 @@ use self::Entry::*;
 /// }
 ///
 /// // Look up the value for a key (will panic if the key is not found).
-/// println!("Review for Jane: {}", movie_reviews["Pride and Prejudice"]);
+/// println!("Movie review: {}", movie_reviews["Office Space"]);
 ///
 /// // iterate over everything.
 /// for (movie, review) in &movie_reviews {
