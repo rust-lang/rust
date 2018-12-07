@@ -57,9 +57,11 @@ pub mod bytestring;
 pub mod process;
 
 cfg_if! {
-    if #[cfg(any(target_os = "cloudabi", target_os = "l4re", target_os = "redox"))] {
-        pub use sys::net;
-    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+    if #[cfg(any(target_os = "cloudabi",
+                 target_os = "l4re",
+                 target_os = "redox",
+                 all(target_arch = "wasm32", not(target_os = "emscripten")),
+                 target_env = "sgx"))] {
         pub use sys::net;
     } else {
         pub mod net;

@@ -874,6 +874,7 @@ impl Step for Src {
             "src/rustc/compiler_builtins_shim",
             "src/rustc/libc_shim",
             "src/rustc/dlmalloc_shim",
+            "src/rustc/fortanix-sgx-abi_shim",
             "src/libtest",
             "src/libterm",
             "src/libprofiler_builtins",

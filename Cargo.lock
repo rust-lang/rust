@@ -798,6 +798,14 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "fortanix-sgx-abi"
+version = "0.0.0"
+dependencies = [
+ "compiler_builtins 0.0.0",
+ "core 0.0.0",
+]
+
+[[package]]
 name = "fs2"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2773,6 +2781,7 @@ dependencies = [
  "compiler_builtins 0.0.0",
  "core 0.0.0",
  "dlmalloc 0.0.0",
+ "fortanix-sgx-abi 0.0.0",
  "libc 0.0.0",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",

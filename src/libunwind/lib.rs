@@ -26,7 +26,10 @@ mod macros;
 cfg_if! {
     if #[cfg(target_env = "msvc")] {
         // no extra unwinder support needed
-    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+    } else if #[cfg(any(
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        target_env = "sgx"
+    ))] {
         // no unwinder on the system!
     } else {
         extern crate libc;

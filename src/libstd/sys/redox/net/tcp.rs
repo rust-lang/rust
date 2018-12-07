@@ -24,8 +24,8 @@ use super::{path_to_peer_addr, path_to_local_addr};
 pub struct TcpStream(File);
 
 impl TcpStream {
-    pub fn connect(addr: &SocketAddr) -> Result<TcpStream> {
-        let path = format!("tcp:{}", addr);
+    pub fn connect(addr: Result<&SocketAddr>) -> Result<TcpStream> {
+        let path = format!("tcp:{}", addr?);
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
@@ -180,8 +180,8 @@ impl IntoInner<File> for TcpStream {
 pub struct TcpListener(File);
 
 impl TcpListener {
-    pub fn bind(addr: &SocketAddr) -> Result<TcpListener> {
-        let path = format!("tcp:/{}", addr);
+    pub fn bind(addr: Result<&SocketAddr>) -> Result<TcpListener> {
+        let path = format!("tcp:/{}", addr?);
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
