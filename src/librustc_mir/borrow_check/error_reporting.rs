@@ -1799,7 +1799,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // (https://github.com/rust-lang/rfcs/pull/1546)
                     bug!(
                         "End-user description not implemented for field access on `{:?}`",
-                        ty.sty
+                        ty
                     );
                 }
             }

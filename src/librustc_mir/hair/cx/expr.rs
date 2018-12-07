@@ -955,7 +955,8 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_provided_types = cx.tables.user_provided_types();
             let user_provided_type = user_provided_types.get(expr.hir_id).map(|u_ty| *u_ty);
             debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
-            match cx.tables().node_type(expr.hir_id).sty {
+            let ty = cx.tables().node_type(expr.hir_id);
+            match ty.sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::Adt(adt_def, substs) => {
@@ -968,7 +969,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         base: None,
                     }
                 }
-                ref sty => bug!("unexpected sty: {:?}", sty),
+                _ => bug!("unexpected ty: {:?}", ty),
             }
         }
 

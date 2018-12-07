@@ -1124,9 +1124,9 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::TyKind<'tcx>, (self, f, cx) {
+    ('tcx) ty::TyS<'tcx>, (self, f, cx) {
         display {
-            match *self {
+            match self.sty {
                 Bool => write!(f, "bool"),
                 Char => write!(f, "char"),
                 Int(t) => write!(f, "{}", t.ty_to_string()),
@@ -1376,16 +1376,8 @@ define_print! {
                 }
             }
         }
-    }
-}
-
-define_print! {
-    ('tcx) ty::TyS<'tcx>, (self, f, cx) {
-        display {
-            self.sty.print(f, cx)
-        }
         debug {
-            self.sty.print_display(f, cx)
+            self.print_display(f, cx)
         }
     }
 }

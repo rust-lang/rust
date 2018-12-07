@@ -84,7 +84,7 @@ impl BoundRegion {
 
 /// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `libsyntax/ast.rs` as well.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
          RustcEncodable, RustcDecodable, HashStable)]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
@@ -383,9 +383,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
     ///
     /// If you have an inference context, use `infcx.closure_sig()`.
     pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
-        match self.closure_sig_ty(def_id, tcx).sty {
+        let ty = self.closure_sig_ty(def_id, tcx);
+        match ty.sty {
             ty::FnPtr(sig) => sig,
-            ref t => bug!("closure_sig_ty is not a fn-ptr: {:?}", t),
+            _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty),
         }
     }
 }

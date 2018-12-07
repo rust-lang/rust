@@ -3885,7 +3885,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Adt(adt, substs) => {
                         Some((adt.variant_of_def(def), adt.did, substs))
                     }
-                    _ => bug!("unexpected type: {:?}", ty.sty)
+                    _ => bug!("unexpected type: {:?}", ty)
                 }
             }
             Def::Struct(..) | Def::Union(..) | Def::TyAlias(..) |
@@ -5226,8 +5226,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.node);
                 let sp = ty.span;
                 let ty = AstConv::ast_ty_to_ty(self, ty);
-                debug!("suggest_missing_return_type: return type sty {:?}", ty.sty);
-                debug!("suggest_missing_return_type: expected type sty {:?}", ty.sty);
+                debug!("suggest_missing_return_type: return type {:?}", ty);
+                debug!("suggest_missing_return_type: expected type {:?}", ty);
                 if ty.sty == expected.sty {
                     err.span_label(sp, format!("expected `{}` because of return type",
                                                expected));
