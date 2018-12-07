@@ -26,13 +26,13 @@ use std::process::{Command, Stdio};
 
 use build_helper::output;
 
-use {Compiler, Mode, LLVM_TOOLS};
-use channel;
-use util::{libdir, is_dylib, exe};
-use builder::{Builder, RunConfig, ShouldRun, Step};
-use compile;
-use tool::{self, Tool};
-use cache::{INTERNER, Interned};
+use crate::{Compiler, Mode, LLVM_TOOLS};
+use crate::channel;
+use crate::util::{libdir, is_dylib, exe};
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::compile;
+use crate::tool::{self, Tool};
+use crate::cache::{INTERNER, Interned};
 use time;
 
 pub fn pkgname(builder: &Builder, component: &str) -> String {

@@ -10,11 +10,12 @@
 
 //! Implementation of compiling the compiler and standard library, in "check" mode.
 
-use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env, add_to_sysroot};
-use builder::{RunConfig, Builder, ShouldRun, Step};
-use tool::{prepare_tool_cargo, SourceType};
-use {Compiler, Mode};
-use cache::{INTERNER, Interned};
+use crate::compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env,
+                     add_to_sysroot};
+use crate::builder::{RunConfig, Builder, ShouldRun, Step};
+use crate::tool::{prepare_tool_cargo, SourceType};
+use crate::{Compiler, Mode};
+use crate::cache::{INTERNER, Interned};
 use std::path::PathBuf;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

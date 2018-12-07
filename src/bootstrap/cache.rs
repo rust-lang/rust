@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::cmp::{PartialOrd, Ord, Ordering};
 
-use builder::Step;
+use crate::builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
 

@@ -21,8 +21,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, Instant};
 
-use config::Config;
-use builder::Builder;
+use crate::config::Config;
+use crate::builder::Builder;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
