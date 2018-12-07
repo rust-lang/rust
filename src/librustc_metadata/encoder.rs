@@ -1141,7 +1141,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
                 EntryKind::Impl(self.lazy(&data))
             }
-            hir::ItemKind::Trait(..) => {
+            hir::ItemKind::Trait(..) |
+            hir::ItemKind::TraitAlias(..) => {
                 let trait_def = tcx.trait_def(def_id);
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
@@ -1154,7 +1155,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 EntryKind::Trait(self.lazy(&data))
             }
             hir::ItemKind::ExternCrate(_) |
-            hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::Use(..) => bug!("cannot encode info for item {:?}", item),
         };
 
