@@ -209,10 +209,16 @@ struct LiteralExpander<'a, 'tcx> {
 
 impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
     /// Derefs `val` and potentially unsizes the value if `crty` is an array and `rty` a slice
+    ///
+    /// `crty` and `rty` can differ because you can use array constants in the presence of slice
+    /// patterns. So the pattern may end up being a slice, but the constant is an array. We convert
+    /// the array to a slice in that case
     fn fold_const_value_deref(
         &mut self,
         val: ConstValue<'tcx>,
+        // the pattern's pointee type
         rty: Ty<'tcx>,
+        // the constant's pointee type
         crty: Ty<'tcx>,
     ) -> ConstValue<'tcx> {
         match (val, &crty.sty, &rty.sty) {
@@ -776,6 +782,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     for row in patterns {
         match *row.kind {
             PatternKind::Constant { value } => {
+                // extract the length of an array/slice from a constant
                 match (value.val, &value.ty.sty) {
                     (_, ty::Array(_, n)) => max_fixed_len = cmp::max(
                         max_fixed_len,
@@ -1393,53 +1400,55 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn slice_pat_covered_by_constructor<'tcx>(
+// checks whether a constant is equal to a user-written slice pattern. Only supports byte slices,
+// meaning all other types will compare unequal and thus equal patterns often do not cause the
+// second pattern to lint about unreachable match arms.
+fn slice_pat_covered_by_const<'tcx>(
     tcx: TyCtxt<'_, 'tcx, '_>,
     _span: Span,
-    ctor: &Constructor,
+    const_val: &ty::Const<'tcx>,
     prefix: &[Pattern<'tcx>],
     slice: &Option<Pattern<'tcx>>,
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
-    let data: &[u8] = match *ctor {
-        ConstantValue(const_val) => {
-            match (const_val.val, &const_val.ty.sty) {
-                (ConstValue::ByRef(id, alloc, offset), ty::Array(t, n)) => {
-                    if *t != tcx.types.u8 {
-                        // FIXME(oli-obk): can't mix const patterns with slice patterns and get
-                        // any sort of exhaustiveness/unreachable check yet
-                        return Ok(false);
-                    }
-                    let ptr = Pointer::new(id, offset);
-                    let n = n.assert_usize(tcx).unwrap();
-                    alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
-                },
-                (ConstValue::ScalarPair(Scalar::Bits { .. }, n), ty::Slice(_)) => {
-                    assert_eq!(n.to_usize(&tcx).unwrap(), 0);
-                    &[]
-                },
-                (ConstValue::ScalarPair(Scalar::Ptr(ptr), n), ty::Slice(t)) => {
-                    if *t != tcx.types.u8 {
-                        // FIXME(oli-obk): can't mix const patterns with slice patterns and get
-                        // any sort of exhaustiveness/unreachable check yet
-                        return Ok(false);
-                    }
-                    let n = n.to_usize(&tcx).unwrap();
-                    tcx.alloc_map
-                        .lock()
-                        .unwrap_memory(ptr.alloc_id)
-                        .get_bytes(&tcx, ptr, Size::from_bytes(n))
-                        .unwrap()
-                },
-                _ => bug!(
-                    "slice_pat_covered_by_constructor: {:#?}, {:#?}, {:#?}, {:#?}",
-                    ctor, prefix, slice, suffix,
-                ),
+    let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
+        (ConstValue::ByRef(id, alloc, offset), ty::Array(t, n)) => {
+            if *t != tcx.types.u8 {
+                // FIXME(oli-obk): can't mix const patterns with slice patterns and get
+                // any sort of exhaustiveness/unreachable check yet
+                return Ok(false);
             }
-        }
+            let ptr = Pointer::new(id, offset);
+            let n = n.assert_usize(tcx).unwrap();
+            alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
+        },
+        // a slice fat pointer to a zero length slice
+        (ConstValue::ScalarPair(Scalar::Bits { .. }, n), ty::Slice(t)) => {
+            if *t != tcx.types.u8 {
+                // FIXME(oli-obk): can't mix const patterns with slice patterns and get
+                // any sort of exhaustiveness/unreachable check yet
+                return Ok(false);
+            }
+            assert_eq!(n.to_usize(&tcx).unwrap(), 0);
+            &[]
+        },
+        //
+        (ConstValue::ScalarPair(Scalar::Ptr(ptr), n), ty::Slice(t)) => {
+            if *t != tcx.types.u8 {
+                // FIXME(oli-obk): can't mix const patterns with slice patterns and get
+                // any sort of exhaustiveness/unreachable check yet
+                return Ok(false);
+            }
+            let n = n.to_usize(&tcx).unwrap();
+            tcx.alloc_map
+                .lock()
+                .unwrap_memory(ptr.alloc_id)
+                .get_bytes(&tcx, ptr, Size::from_bytes(n))
+                .unwrap()
+        },
         _ => bug!(
-            "slice_pat_covered_by_constructor not ConstValue: {:#?}, {:#?}, {:#?}, {:#?}",
-            ctor, prefix, slice, suffix,
+            "slice_pat_covered_by_const: {:#?}, {:#?}, {:#?}, {:#?}",
+            const_val, prefix, slice, suffix,
         ),
     };
 
@@ -1837,9 +1846,9 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         None
                     }
                 }
-                ConstantValue(..) => {
-                    match slice_pat_covered_by_constructor(
-                        cx.tcx, pat.span, constructor, prefix, slice, suffix
+                ConstantValue(cv) => {
+                    match slice_pat_covered_by_const(
+                        cx.tcx, pat.span, cv, prefix, slice, suffix
                             ) {
                         Ok(true) => Some(smallvec![]),
                         Ok(false) => None,
