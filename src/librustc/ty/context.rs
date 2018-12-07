@@ -1623,7 +1623,8 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
         ty::tls::with_related_context(tcx.global_tcx(), |icx| {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
-                query: icx.query.clone(),
+                query: icx.query,
+                diagnostics: icx.diagnostics,
                 layout_depth: icx.layout_depth,
                 task: icx.task,
             };
@@ -1896,6 +1897,10 @@ pub mod tls {
         /// ty::query::plumbing when executing a query
         pub query: Option<LrcRef<'a, query::QueryJob<'gcx>>>,
 
+        /// Where to store diagnostics for the current query job, if any.
+        /// This is updated by start_job in ty::query::plumbing when executing a query
+        pub diagnostics: Option<&'a Lock<Option<Box<Vec<Diagnostic>>>>>,
+
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
 
@@ -1971,8 +1976,8 @@ pub mod tls {
     fn track_diagnostic(diagnostic: &Diagnostic) {
         with_context_opt(|icx| {
             if let Some(icx) = icx {
-                if let Some(ref query) = icx.query {
-                    let mut diagnostics = query.diagnostics.lock();
+                if let Some(ref diagnostics) = icx.diagnostics {
+                    let mut diagnostics = diagnostics.lock();
                     if diagnostics.is_none() {
                         *diagnostics = Some(Box::new(Vec::new()));
                     }
@@ -2042,6 +2047,7 @@ pub mod tls {
             let icx = ImplicitCtxt {
                 tcx,
                 query: None,
+                diagnostics: None,
                 layout_depth: 0,
                 task: &OpenTask::Ignore,
             };
@@ -2070,6 +2076,7 @@ pub mod tls {
         };
         let icx = ImplicitCtxt {
             query: None,
+            diagnostics: None,
             tcx,
             layout_depth: 0,
             task: &OpenTask::Ignore,

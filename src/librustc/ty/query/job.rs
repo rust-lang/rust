@@ -24,7 +24,6 @@ use ty::query::{
     config::QueryDescription,
 };
 use ty::context::TyCtxt;
-use errors::Diagnostic;
 use std::process;
 use std::{fmt, ptr};
 
@@ -55,9 +54,6 @@ pub struct QueryJob<'tcx> {
     /// The parent query job which created this job and is implicitly waiting on it.
     pub parent: Option<Lrc<QueryJob<'tcx>>>,
 
-    /// Diagnostic messages which are emitted while the query executes
-    pub diagnostics: Lock<Option<Box<Vec<Diagnostic>>>>,
-
     /// The latch which is used to wait on this job
     #[cfg(parallel_queries)]
     latch: QueryLatch<'tcx>,
@@ -67,20 +63,11 @@ impl<'tcx> QueryJob<'tcx> {
     /// Creates a new query job
     pub fn new(info: QueryInfo<'tcx>, parent: Option<Lrc<QueryJob<'tcx>>>) -> Self {
         QueryJob {
-            diagnostics: Lock::new(None),
             info,
             parent,
             #[cfg(parallel_queries)]
             latch: QueryLatch::new(),
         }
-    }
-
-    #[inline(always)]
-    pub fn extract_diagnostics(&self) -> Option<Box<Vec<Diagnostic>>> {
-        // FIXME: Find a way to remove this lock access since we should have
-        // ownership of the content back now. Other crates may free the Lrc though
-        // and the, but only after we replace this.
-        mem::replace(&mut *self.diagnostics.lock(), None)
     }
 
     /// Awaits for the query job to complete.

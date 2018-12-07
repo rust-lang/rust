@@ -15,6 +15,7 @@
 use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor, OpenTask};
 use errors::DiagnosticBuilder;
 use errors::Level;
+use errors::Diagnostic;
 use ty::tls;
 use ty::{TyCtxt};
 use ty::query::Query;
@@ -289,6 +290,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         &self,
         tcx: TyCtxt<'_, 'tcx, 'tcx>,
         task: &OpenTask,
+        diagnostics: Option<&Lock<Option<Box<Vec<Diagnostic>>>>>,
         key: Q::Key,
     ) -> Q::Value
     {
@@ -296,6 +298,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         let new_icx = tls::ImplicitCtxt {
             tcx,
             query: Some(LrcRef::new(&self.job)),
+            diagnostics,
             layout_depth: self.layout_depth,
             task,
         };
@@ -305,6 +308,17 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             Q::compute(tcx, key)
         })
     }
+
+}
+
+#[inline(always)]
+fn with_diagnostics<F, R>(f: F) -> (R, Option<Box<Vec<Diagnostic>>>)
+where
+    F: FnOnce(Option<&Lock<Option<Box<Vec<Diagnostic>>>>>) -> R
+{
+    let diagnostics = Lock::new(None);
+    let result = f(Some(&diagnostics));
+    (result, diagnostics.into_inner())
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
@@ -489,8 +503,10 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
             self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
-            let res = self.dep_graph.with_anon_open_task(dep_node.kind, |open_task| {
-                job.compute(self, open_task, key)
+            let (res, diag) = with_diagnostics(|diagnostics| {
+                    self.dep_graph.with_anon_open_task(dep_node.kind, |open_task| {
+                    job.compute(self, open_task, diagnostics, key)
+                })
             });
 
             self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
@@ -499,7 +515,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
 
             self.dep_graph.read_index(dep_node_index);
 
-            if let Some(diagnostics) = job.job.extract_diagnostics() {
+            if let Some(diagnostics) = diag {
                 self.queries.on_disk_cache
                     .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
             }
@@ -573,7 +589,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             // try_mark_green(), so we can ignore them here.
             // The dep-graph for this computation is already in
             // place so we pass OpenTask::Ignore.
-            job.compute(self, &OpenTask::Ignore, key)
+            job.compute(self, &OpenTask::Ignore, None, key)
         };
 
         // If -Zincremental-verify-ich is specified, re-hash results from
@@ -647,15 +663,17 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
             p.record_query(Q::CATEGORY);
         });
 
-        let (result, dep_node_index) = if dep_node.kind.is_eval_always() {
-            self.dep_graph.with_eval_always_task(self, dep_node, |task| {
-                job.compute(self, task, key)
-            })
-        } else {
-            self.dep_graph.with_query_task(self, dep_node, |task| {
-                job.compute(self, task, key)
-            })
-        };
+        let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
+            if dep_node.kind.is_eval_always() {
+                self.dep_graph.with_eval_always_task(self, dep_node, |task| {
+                    job.compute(self, task, diagnostics, key)
+                })
+            } else {
+                self.dep_graph.with_query_task(self, dep_node, |task| {
+                    job.compute(self, task, diagnostics, key)
+                })
+            }
+        });
 
         self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
@@ -665,7 +683,7 @@ impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
         }
 
         if dep_node.kind != ::dep_graph::DepKind::Null {
-            if let Some(diagnostics) = job.job.extract_diagnostics() {
+            if let Some(diagnostics) = diagnostics {
                 self.queries.on_disk_cache
                     .store_diagnostics(dep_node_index, diagnostics);
             }
