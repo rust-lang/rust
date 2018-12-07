@@ -141,7 +141,7 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         )?;
     }
 
-    write!(w, ") -&gt; {}", escape(mir.return_ty()))?;
+    write!(w, ") -&gt; {}", escape(&mir.return_ty()))?;
     write!(w, r#"<br align="left"/>"#)?;
 
     for local in mir.vars_and_temps_iter() {

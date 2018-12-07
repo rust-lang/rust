@@ -134,7 +134,7 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
             ty::FnDef(def_id, ..) |
             ty::Closure(def_id, ..) |
             ty::Generator(def_id, ..) => {
-                if self.def_id_visitor.visit_def_id(def_id, "type", ty) {
+                if self.def_id_visitor.visit_def_id(def_id, "type", &ty) {
                     return true;
                 }
                 if self.def_id_visitor.shallow() {

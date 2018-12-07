@@ -1124,7 +1124,7 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::TyS<'tcx>, (self, f, cx) {
+    ('tcx) ty::Ty<'tcx>, (self, f, cx) {
         display {
             match self.sty {
                 Bool => write!(f, "bool"),
