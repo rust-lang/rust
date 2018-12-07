@@ -812,8 +812,6 @@ macro_rules! define_queries_inner {
         [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use std::mem;
-        #[cfg(parallel_queries)]
-        use ty::query::job::QueryResult;
         use rustc_data_structures::sync::Lock;
         use {
             rustc_data_structures::stable_hasher::HashStable,
@@ -850,13 +848,7 @@ macro_rules! define_queries_inner {
                 // deadlock handler, and this shouldn't be locked
                 $(
                     jobs.extend(
-                        self.$name.try_lock().unwrap().active.values().filter_map(|v|
-                            if let QueryResult::Started(ref job) = *v {
-                                Some(job.clone())
-                            } else {
-                                None
-                            }
-                        )
+                        self.$name.try_lock().unwrap().active.values().cloned()
                     );
                 )*
 
