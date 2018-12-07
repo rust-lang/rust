@@ -8,7 +8,7 @@ use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind, ParamConst};
+use crate::ty::{self, Ty, TypeFoldable, GenericParamCount, GenericParamDefKind, ParamConst};
 use crate::ty::print::{PrintCx, Print};
 use crate::mir::interpret::ConstValue;
 
@@ -182,8 +182,7 @@ impl RegionHighlightMode {
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let mut cx = PrintCx::new();
-            $with(self, f, &mut cx)
+            PrintCx::with(|mut cx| $with(self, f, &mut cx))
         }
     };
 }
@@ -213,7 +212,11 @@ macro_rules! gen_display_debug {
 macro_rules! gen_print_impl {
     ( ($($x:tt)+) $target:ty, ($self:ident, $f:ident, $cx:ident) $disp:block $dbg:block ) => {
         impl<$($x)+> Print<'tcx> for $target {
-            fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintCx) -> fmt::Result {
+            fn print<F: fmt::Write>(
+                &$self,
+                $f: &mut F,
+                $cx: &mut PrintCx<'_, '_, '_>,
+            ) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
             }
@@ -221,7 +224,11 @@ macro_rules! gen_print_impl {
     };
     ( () $target:ty, ($self:ident, $f:ident, $cx:ident) $disp:block $dbg:block ) => {
         impl Print<'tcx> for $target {
-            fn print<F: fmt::Write>(&$self, $f: &mut F, $cx: &mut PrintCx) -> fmt::Result {
+            fn print<F: fmt::Write>(
+                &$self,
+                $f: &mut F,
+                $cx: &mut PrintCx<'_, '_, '_>,
+            ) -> fmt::Result {
                 if $cx.is_debug $dbg
                 else $disp
             }
@@ -275,7 +282,7 @@ macro_rules! print {
     };
 }
 
-impl PrintCx {
+impl PrintCx<'a, 'gcx, 'tcx> {
     fn fn_sig<F: fmt::Write>(&mut self,
                              f: &mut F,
                              inputs: &[Ty<'_>],
@@ -307,21 +314,22 @@ impl PrintCx {
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
-        let key = ty::tls::with(|tcx| tcx.def_key(did));
+        let key = self.tcx.def_key(did);
 
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
-        let mut has_self = false;
+        let has_self;
         let mut own_counts: GenericParamCount = Default::default();
         let mut is_value_path = false;
         let mut item_name = Some(key.disambiguated_data.data.as_interned_str());
-        let fn_trait_kind = ty::tls::with(|tcx| {
+        let mut path_def_id = did;
+        {
             // Unfortunately, some kinds of items (e.g., closures) don't have
             // generics. So walk back up the find the closest parent that DOES
             // have them.
             let mut item_def_id = did;
             loop {
-                let key = tcx.def_key(item_def_id);
+                let key = self.tcx.def_key(item_def_id);
                 match key.disambiguated_data.data {
                     DefPathData::AssocTypeInTrait(_) |
                     DefPathData::AssocTypeInImpl(_) |
@@ -360,9 +368,8 @@ impl PrintCx {
                     }
                 }
             }
-            let mut generics = tcx.generics_of(item_def_id);
+            let mut generics = self.tcx.generics_of(item_def_id);
             let child_own_counts = generics.own_counts();
-            let mut path_def_id = did;
             has_self = generics.has_self;
 
             let mut child_types = 0;
@@ -370,7 +377,7 @@ impl PrintCx {
                 // Methods.
                 assert!(is_value_path);
                 child_types = child_own_counts.types;
-                generics = tcx.generics_of(def_id);
+                generics = self.tcx.generics_of(def_id);
                 own_counts = generics.own_counts();
 
                 if has_self {
@@ -404,23 +411,22 @@ impl PrintCx {
                     *has_default.unwrap_or(&false)
                 };
                 if has_default {
-                    let substs = tcx.lift(&substs).expect("could not lift for printing");
+                    let substs = self.tcx.lift(&substs).expect("could not lift for printing");
                     let types = substs.types().rev().skip(child_types);
                     for ((def_id, has_default), actual) in type_params.zip(types) {
                         if !has_default {
                             break;
                         }
-                        if tcx.type_of(def_id).subst(tcx, substs) != actual {
+                        if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
                             break;
                         }
                         num_supplied_defaults += 1;
                     }
                 }
             }
-
-            print!(f, self, write("{}", tcx.item_path_str(path_def_id)))?;
-            Ok(tcx.lang_items().fn_trait_kind(path_def_id))
-        })?;
+        }
+        print!(f, self, write("{}", self.tcx.item_path_str(path_def_id)))?;
+        let fn_trait_kind = self.tcx.lang_items().fn_trait_kind(path_def_id);
 
         if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
             let projection_ty = projections[0].ty;
@@ -482,12 +488,10 @@ impl PrintCx {
 
         for projection in projections {
             start_or_continue(f, "<", ", ")?;
-            ty::tls::with(|tcx|
-                print!(f, self,
-                       write("{}=",
-                             tcx.associated_item(projection.projection_ty.item_def_id).ident),
-                       print_display(projection.ty))
-            )?;
+            print!(f, self,
+                    write("{}=",
+                            self.tcx.associated_item(projection.projection_ty.item_def_id).ident),
+                    print_display(projection.ty))?;
         }
 
         // FIXME(const_generics::defaults)
@@ -526,12 +530,7 @@ impl PrintCx {
         Ok(())
     }
 
-    fn in_binder<'a, 'gcx, 'tcx, T, F>(
-        &mut self,
-        f: &mut F,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        value: ty::Binder<T>,
-    ) -> fmt::Result
+    fn in_binder<T, F>(&mut self, f: &mut F, value: ty::Binder<T>) -> fmt::Result
         where T: Print<'tcx> + TypeFoldable<'tcx>, F: fmt::Write
     {
         fn name_by_region_index(index: usize) -> InternedString {
@@ -563,7 +562,7 @@ impl PrintCx {
 
         let old_region_index = self.region_index;
         let mut region_index = old_region_index;
-        let new_value = tcx.replace_late_bound_regions(&value, |br| {
+        let new_value = self.tcx.replace_late_bound_regions(&value, |br| {
             let _ = start_or_continue(f, "for<", ", ");
             let br = match br {
                 ty::BrNamed(_, name) => {
@@ -581,10 +580,10 @@ impl PrintCx {
                         }
                     };
                     let _ = write!(f, "{}", name);
-                    ty::BrNamed(tcx.hir().local_def_id(CRATE_NODE_ID), name)
+                    ty::BrNamed(self.tcx.hir().local_def_id(CRATE_NODE_ID), name)
                 }
             };
-            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
+            self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
         }).0;
         start_or_continue(f, "", "> ")?;
 
@@ -605,24 +604,16 @@ impl PrintCx {
     }
 }
 
-pub fn verbose() -> bool {
-    ty::tls::with(|tcx| tcx.sess.verbose())
-}
-
-pub fn identify_regions() -> bool {
-    ty::tls::with(|tcx| tcx.sess.opts.debugging_opts.identify_regions)
-}
-
 pub fn parameterized<F: fmt::Write>(f: &mut F,
                                     substs: SubstsRef<'_>,
                                     did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
-    PrintCx::new().parameterized(f, substs, did, projections)
+    PrintCx::with(|mut cx| cx.parameterized(f, substs, did, projections))
 }
 
 impl<'a, 'tcx, T: Print<'tcx>> Print<'tcx> for &'a T {
-    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result {
+    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, '_>) -> fmt::Result {
         (*self).print(f, cx)
     }
 }
@@ -631,50 +622,47 @@ define_print! {
     ('tcx) &'tcx ty::List<ty::ExistentialPredicate<'tcx>>, (self, f, cx) {
         display {
             // Generate the main trait ref, including associated types.
-            ty::tls::with(|tcx| {
-                // Use a type that can't appear in defaults of type parameters.
-                let dummy_self = tcx.mk_infer(ty::FreshTy(0));
-                let mut first = true;
 
-                if let Some(principal) = self.principal() {
-                    let principal = tcx
-                        .lift(&principal)
+            // Use a type that can't appear in defaults of type parameters.
+            let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
+            let mut first = true;
+
+            if let Some(principal) = self.principal() {
+                let principal = cx.tcx
+                    .lift(&principal)
+                    .expect("could not lift for printing")
+                    .with_self_ty(cx.tcx, dummy_self);
+                let projections = self.projection_bounds().map(|p| {
+                    cx.tcx.lift(&p)
                         .expect("could not lift for printing")
-                        .with_self_ty(tcx, dummy_self);
-                    let projections = self.projection_bounds().map(|p| {
-                        tcx.lift(&p)
-                            .expect("could not lift for printing")
-                            .with_self_ty(tcx, dummy_self)
-                    }).collect::<Vec<_>>();
-                    cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
-                    first = false;
+                        .with_self_ty(cx.tcx, dummy_self)
+                }).collect::<Vec<_>>();
+                cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                first = false;
+            }
+
+            // Builtin bounds.
+            let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
+                cx.tcx.item_path_str(did)
+            }).collect();
+
+            // The auto traits come ordered by `DefPathHash`. While
+            // `DefPathHash` is *stable* in the sense that it depends on
+            // neither the host nor the phase of the moon, it depends
+            // "pseudorandomly" on the compiler version and the target.
+            //
+            // To avoid that causing instabilities in compiletest
+            // output, sort the auto-traits alphabetically.
+            auto_traits.sort();
+
+            for auto_trait in auto_traits {
+                if !first {
+                    write!(f, " + ")?;
                 }
+                first = false;
 
-                // Builtin bounds.
-                let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
-                    tcx.item_path_str(did)
-                }).collect();
-
-                // The auto traits come ordered by `DefPathHash`. While
-                // `DefPathHash` is *stable* in the sense that it depends on
-                // neither the host nor the phase of the moon, it depends
-                // "pseudorandomly" on the compiler version and the target.
-                //
-                // To avoid that causing instabilities in compiletest
-                // output, sort the auto-traits alphabetically.
-                auto_traits.sort();
-
-                for auto_trait in auto_traits {
-                    if !first {
-                        write!(f, " + ")?;
-                    }
-                    first = false;
-
-                    write!(f, "{}", auto_trait)?;
-                }
-
-                Ok(())
-            })?;
+                write!(f, "{}", auto_trait)?;
+            }
 
             Ok(())
         }
@@ -698,16 +686,16 @@ impl fmt::Debug for ty::GenericParamDef {
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            write!(f, "{}", tcx.item_path_str(self.def_id))
+        PrintCx::with(|cx| {
+            write!(f, "{}", cx.tcx.item_path_str(self.def_id))
         })
     }
 }
 
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            write!(f, "{}", tcx.item_path_str(self.did))
+        PrintCx::with(|cx| {
+            write!(f, "{}", cx.tcx.item_path_str(self.did))
         })
     }
 }
@@ -724,7 +712,9 @@ impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarId({:?};`{}`;{:?})",
                self.var_path.hir_id,
-               ty::tls::with(|tcx| tcx.hir().name_by_hir_id(self.var_path.hir_id)),
+               PrintCx::with(|cx| {
+                    cx.tcx.hir().name_by_hir_id(self.var_path.hir_id)
+               }),
                self.closure_expr_id)
     }
 }
@@ -768,14 +758,12 @@ define_print! {
             cx.parameterized(f, self.substs, self.def_id, &[])
         }
         debug {
-            ty::tls::with(|tcx| {
-                let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+            let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
 
-                let trait_ref = *tcx.lift(&ty::Binder::bind(*self))
-                                   .expect("could not lift for printing")
-                                   .with_self_ty(tcx, dummy_self).skip_binder();
-                cx.parameterized(f, trait_ref.substs, trait_ref.def_id, &[])
-            })
+            let trait_ref = *cx.tcx.lift(&ty::Binder::bind(*self))
+                                .expect("could not lift for printing")
+                                .with_self_ty(cx.tcx, dummy_self).skip_binder();
+            cx.parameterized(f, trait_ref.substs, trait_ref.def_id, &[])
         }
     }
 }
@@ -1092,7 +1080,7 @@ impl fmt::Debug for ty::FloatVarValue {
           for<'a> <T as ty::Lift<'a>>::Lifted: fmt::Display + TypeFoldable<'a>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| in_binder(f, tcx, tcx.lift(self)
+        PrintCx::with(|cx| cx.in_binder(f, cx.tcx.lift(self)
             .expect("could not lift for printing")))
     }
 }*/
@@ -1110,8 +1098,8 @@ define_print_multi! {
     ]
     (self, f, cx) {
         display {
-            ty::tls::with(|tcx| cx.in_binder(f, tcx, tcx.lift(self)
-                .expect("could not lift for printing")))
+            cx.in_binder(f, cx.tcx.lift(self)
+                .expect("could not lift for printing"))
         }
     }
 }
@@ -1178,12 +1166,10 @@ define_print! {
                     write!(f, ")")
                 }
                 FnDef(def_id, substs) => {
-                    ty::tls::with(|tcx| {
-                        let substs = tcx.lift(&substs)
-                            .expect("could not lift for printing");
-                        let sig = tcx.fn_sig(def_id).subst(tcx, substs);
-                        print!(f, cx, print(sig), write(" {{"))
-                    })?;
+                    let substs = cx.tcx.lift(&substs)
+                        .expect("could not lift for printing");
+                    let sig = cx.tcx.fn_sig(def_id).subst(cx.tcx, substs);
+                    print!(f, cx, print(sig), write(" {{"))?;
                     cx.parameterized(f, substs, def_id, &[])?;
                     write!(f, "}}")
                 }
@@ -1235,71 +1221,69 @@ define_print! {
                         return write!(f, "Opaque({:?}, {:?})", def_id, substs);
                     }
 
-                    ty::tls::with(|tcx| {
-                        let def_key = tcx.def_key(def_id);
-                        if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
-                            write!(f, "{}", name)?;
-                            let mut substs = substs.iter();
-                            if let Some(first) = substs.next() {
-                                write!(f, "::<")?;
-                                write!(f, "{}", first)?;
-                                for subst in substs {
-                                    write!(f, ", {}", subst)?;
-                                }
-                                write!(f, ">")?;
+                    let def_key = cx.tcx.def_key(def_id);
+                    if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
+                        write!(f, "{}", name)?;
+                        let mut substs = substs.iter();
+                        if let Some(first) = substs.next() {
+                            write!(f, "::<")?;
+                            write!(f, "{}", first)?;
+                            for subst in substs {
+                                write!(f, ", {}", subst)?;
                             }
-                            return Ok(());
+                            write!(f, ">")?;
                         }
-                        // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                        // by looking up the projections associated with the def_id.
-                        let substs = tcx.lift(&substs)
-                            .expect("could not lift for printing");
-                        let bounds = tcx.predicates_of(def_id).instantiate(tcx, substs);
+                        return Ok(());
+                    }
+                    // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+                    // by looking up the projections associated with the def_id.
+                    let substs = cx.tcx.lift(&substs)
+                        .expect("could not lift for printing");
+                    let bounds = cx.tcx.predicates_of(def_id).instantiate(cx.tcx, substs);
 
-                        let mut first = true;
-                        let mut is_sized = false;
-                        write!(f, "impl")?;
-                        for predicate in bounds.predicates {
-                            if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                                // Don't print +Sized, but rather +?Sized if absent.
-                                if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
-                                    is_sized = true;
-                                    continue;
-                                }
-
-                                print!(f, cx,
-                                       write("{}", if first { " " } else { "+" }),
-                                       print(trait_ref))?;
-                                first = false;
+                    let mut first = true;
+                    let mut is_sized = false;
+                    write!(f, "impl")?;
+                    for predicate in bounds.predicates {
+                        if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                            // Don't print +Sized, but rather +?Sized if absent.
+                            if Some(trait_ref.def_id()) == cx.tcx.lang_items().sized_trait() {
+                                is_sized = true;
+                                continue;
                             }
+
+                            print!(f, cx,
+                                    write("{}", if first { " " } else { "+" }),
+                                    print(trait_ref))?;
+                            first = false;
                         }
-                        if !is_sized {
-                            write!(f, "{}?Sized", if first { " " } else { "+" })?;
+                    }
+                    if !is_sized {
+                        write!(f, "{}?Sized", if first { " " } else { "+" })?;
                         } else if first {
                             write!(f, " Sized")?;
-                        }
-                        Ok(())
-                    })
+                    }
+                    Ok(())
                 }
                 Str => write!(f, "str"),
-                Generator(did, substs, movability) => ty::tls::with(|tcx| {
-                    let upvar_tys = substs.upvar_tys(did, tcx);
-                    let witness = substs.witness(did, tcx);
+                Generator(did, substs, movability) => {
+                    let upvar_tys = substs.upvar_tys(did, cx.tcx);
+                    let witness = substs.witness(did, cx.tcx);
                     if movability == hir::GeneratorMovability::Movable {
                         write!(f, "[generator")?;
                     } else {
                         write!(f, "[static generator")?;
                     }
 
-                    if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
-                        write!(f, "@{:?}", tcx.hir().span_by_hir_id(hir_id))?;
+                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
+                        write!(f, "@{:?}", cx.tcx.hir().span_by_hir_id(hir_id))?;
                         let mut sep = " ";
-                        tcx.with_freevars(hir_id, |freevars| {
+                        cx.tcx.with_freevars(hir_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",
                                              sep,
-                                             tcx.hir().name(freevar.var_id())),
+                                             cx.tcx.hir().name(freevar.var_id())),
                                        print(upvar_ty))?;
                                 sep = ", ";
                             }
@@ -1319,28 +1303,28 @@ define_print! {
                     }
 
                     print!(f, cx, write(" "), print(witness), write("]"))
-                }),
+                },
                 GeneratorWitness(types) => {
-                    ty::tls::with(|tcx| cx.in_binder(f, tcx, tcx.lift(&types)
-                        .expect("could not lift for printing")))
+                    cx.in_binder(f, cx.tcx.lift(&types)
+                        .expect("could not lift for printing"))
                 }
-                Closure(did, substs) => ty::tls::with(|tcx| {
-                    let upvar_tys = substs.upvar_tys(did, tcx);
+                Closure(did, substs) => {
+                    let upvar_tys = substs.upvar_tys(did, cx.tcx);
                     write!(f, "[closure")?;
 
-                    if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
-                        if tcx.sess.opts.debugging_opts.span_free_formats {
+                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
+                        if cx.tcx.sess.opts.debugging_opts.span_free_formats {
                             write!(f, "@{:?}", hir_id)?;
                         } else {
-                            write!(f, "@{:?}", tcx.hir().span_by_hir_id(hir_id))?;
+                            write!(f, "@{:?}", cx.tcx.hir().span_by_hir_id(hir_id))?;
                         }
                         let mut sep = " ";
-                        tcx.with_freevars(hir_id, |freevars| {
+                        cx.tcx.with_freevars(hir_id, |freevars| {
                             for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
                                 print!(f, cx,
                                        write("{}{}:",
                                              sep,
-                                             tcx.hir().name(freevar.var_id())),
+                                             cx.tcx.hir().name(freevar.var_id())),
                                        print(upvar_ty))?;
                                 sep = ", ";
                             }
@@ -1369,21 +1353,21 @@ define_print! {
                     }
 
                     write!(f, "]")
-                }),
+                },
                 Array(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz {
                         ty::LazyConst::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
                         }
-                        ty::LazyConst::Evaluated(c) => ty::tls::with(|tcx| {
+                        ty::LazyConst::Evaluated(c) => {
                             match c.val {
-                                ConstValue::Infer(..) => write!(f, "_"),
+                                ConstValue::Infer(..) => write!(f, "_")?,
                                 ConstValue::Param(ParamConst { name, .. }) =>
-                                    write!(f, "{}", name),
-                                _ => write!(f, "{}", c.unwrap_usize(tcx)),
+                                    write!(f, "{}", name)?,
+                                _ => write!(f, "{}", c.unwrap_usize(cx.tcx))?,
                             }
-                        })?,
+                        }
                     }
                     write!(f, "]")
                 }
@@ -1510,9 +1494,8 @@ define_print! {
             // FIXME(tschottdorf): use something like
             //   parameterized(f, self.substs, self.item_def_id, &[])
             // (which currently ICEs).
-            let (trait_ref, item_name) = ty::tls::with(|tcx|
-                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).ident)
-            );
+            let trait_ref = self.trait_ref(cx.tcx);
+            let item_name = cx.tcx.associated_item(self.item_def_id).ident;
             print!(f, cx, print_debug(trait_ref), write("::{}", item_name))
         }
     }
@@ -1540,15 +1523,13 @@ define_print! {
                 ty::Predicate::TypeOutlives(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::Projection(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::WellFormed(ty) => print!(f, cx, print(ty), write(" well-formed")),
-                ty::Predicate::ObjectSafe(trait_def_id) =>
-                    ty::tls::with(|tcx| {
-                        write!(f, "the trait `{}` is object-safe", tcx.item_path_str(trait_def_id))
-                    }),
-                ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) =>
-                    ty::tls::with(|tcx| {
-                        write!(f, "the closure `{}` implements the trait `{}`",
-                               tcx.item_path_str(closure_def_id), kind)
-                    }),
+                ty::Predicate::ObjectSafe(trait_def_id) => {
+                    write!(f, "the trait `{}` is object-safe", cx.tcx.item_path_str(trait_def_id))
+                }
+                ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
+                    write!(f, "the closure `{}` implements the trait `{}`",
+                           cx.tcx.item_path_str(closure_def_id), kind)
+                }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     write!(f, "the constant `")?;
                     cx.parameterized(f, substs, def_id, &[])?;

@@ -1,4 +1,4 @@
-use crate::ty::{self, TypeFoldable};
+use crate::ty::{self, TyCtxt, TypeFoldable};
 
 use rustc_data_structures::fx::FxHashSet;
 use syntax::symbol::InternedString;
@@ -21,8 +21,8 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     }
 }
 
-#[derive(Debug)]
-pub struct PrintCx {
+pub struct PrintCx<'a, 'gcx, 'tcx> {
+    pub(crate) tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub(crate) is_debug: bool,
     pub(crate) is_verbose: bool,
     pub(crate) identify_regions: bool,
@@ -31,22 +31,21 @@ pub struct PrintCx {
     pub(crate) binder_depth: usize,
 }
 
-impl PrintCx {
-    pub(crate) fn new() -> Self {
+impl PrintCx<'a, 'gcx, 'tcx> {
+    pub(crate) fn with<R>(f: impl FnOnce(PrintCx<'_, '_, '_>) -> R) -> R {
         ty::tls::with(|tcx| {
-            let (is_verbose, identify_regions) =
-                (tcx.sess.verbose(), tcx.sess.opts.debugging_opts.identify_regions);
-            PrintCx {
+            f(PrintCx {
+                tcx,
                 is_debug: false,
-                is_verbose: is_verbose,
-                identify_regions: identify_regions,
+                is_verbose: tcx.sess.verbose(),
+                identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
                 used_region_names: None,
                 region_index: 0,
                 binder_depth: 0,
-            }
+            })
         })
     }
-    pub(crate) fn prepare_late_bound_region_info<'tcx, T>(&mut self, value: &ty::Binder<T>)
+    pub(crate) fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
     where T: TypeFoldable<'tcx>
     {
         let mut collector = LateBoundRegionNameCollector(Default::default());
@@ -57,32 +56,32 @@ impl PrintCx {
 }
 
 pub trait Print<'tcx> {
-    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result;
-    fn print_to_string(&self, cx: &mut PrintCx) -> String {
+    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, '_>) -> fmt::Result;
+    fn print_to_string(&self, cx: &mut PrintCx<'_, '_, '_>) -> String {
         let mut result = String::new();
         let _ = self.print(&mut result, cx);
         result
     }
-    fn print_display<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result {
+    fn print_display<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, '_>) -> fmt::Result {
         let old_debug = cx.is_debug;
         cx.is_debug = false;
         let result = self.print(f, cx);
         cx.is_debug = old_debug;
         result
     }
-    fn print_display_to_string(&self, cx: &mut PrintCx) -> String {
+    fn print_display_to_string(&self, cx: &mut PrintCx<'_, '_, '_>) -> String {
         let mut result = String::new();
         let _ = self.print_display(&mut result, cx);
         result
     }
-    fn print_debug<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx) -> fmt::Result {
+    fn print_debug<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, '_>) -> fmt::Result {
         let old_debug = cx.is_debug;
         cx.is_debug = true;
         let result = self.print(f, cx);
         cx.is_debug = old_debug;
         result
     }
-    fn print_debug_to_string(&self, cx: &mut PrintCx) -> String {
+    fn print_debug_to_string(&self, cx: &mut PrintCx<'_, '_, '_>) -> String {
         let mut result = String::new();
         let _ = self.print_debug(&mut result, cx);
         result
