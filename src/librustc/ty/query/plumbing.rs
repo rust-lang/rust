@@ -142,10 +142,6 @@ pub fn may_panic<'tcx>(job: Lrc<QueryJob<'tcx>>) {
     Box::new(job);
 }
 
-#[inline(never)]
-pub fn test_space() {
-}
-
 #[no_mangle]
 fn test_moves2<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, 
     key: &DefId, key_hash: u64,
