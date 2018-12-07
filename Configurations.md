@@ -275,8 +275,8 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 
 Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
 
-- **Default value**: `Default`
-- **Possible values**: `Default`, `Off`, `Max`
+- **Default value**: `"Default"`
+- **Possible values**: `"Default"`, `"Off"`, `"Max"`
 - **Stable**: Yes
 
 #### `Default` (default):
