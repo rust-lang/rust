@@ -109,10 +109,9 @@ impl ExcessivePrecision {
     }
 }
 
-#[allow(clippy::doc_markdown)]
 /// Should we exclude the float because it has a `.0` or `.` suffix
-/// Ex 1_000_000_000.0
-/// Ex 1_000_000_000.
+/// Ex `1_000_000_000.0`
+/// Ex `1_000_000_000.`
 fn dot_zero_exclusion(s: &str) -> bool {
     if let Some(after_dec) = s.split('.').nth(1) {
         let mut decpart = after_dec.chars().take_while(|c| *c != 'e' || *c != 'E');
