@@ -3610,7 +3610,7 @@ mod test_map {
             for i in 1..1001 {
                 assert!(m.insert(i, i).is_none());
 
-                for j in 1..i + 1 {
+                for j in 1..=i {
                     let r = m.get(&j);
                     assert_eq!(r, Some(&j));
                 }
@@ -3629,7 +3629,7 @@ mod test_map {
             for i in 1..1001 {
                 assert!(m.remove(&i).is_some());
 
-                for j in 1..i + 1 {
+                for j in 1..=i {
                     assert!(!m.contains_key(&j));
                 }
 

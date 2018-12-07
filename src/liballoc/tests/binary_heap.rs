@@ -318,11 +318,11 @@ fn panic_safe() {
     const NTEST: usize = 10;
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
-    let data = (1..DATASZ + 1).collect::<Vec<_>>();
+    let data = (1..=DATASZ).collect::<Vec<_>>();
 
     // since it's a fuzzy test, run several tries.
     for _ in 0..NTEST {
-        for i in 1..DATASZ + 1 {
+        for i in 1..=DATASZ {
             DROP_COUNTER.store(0, Ordering::SeqCst);
 
             let mut panic_ords: Vec<_> = data.iter()

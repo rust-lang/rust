@@ -487,7 +487,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
             } else {
                 if x == '"' as u16 {
                     // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    cmd.extend((0..(backslashes + 1)).map(|_| '\\' as u16));
+                    cmd.extend((0..=backslashes).map(|_| '\\' as u16));
                 }
                 backslashes = 0;
             }

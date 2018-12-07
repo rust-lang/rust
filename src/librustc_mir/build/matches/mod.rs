@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // create binding start block for link them by false edges
         let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
-        let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
+        let pre_binding_blocks: Vec<_> = (0..=candidate_count)
             .map(|_| self.cfg.start_new_block())
             .collect();
 
