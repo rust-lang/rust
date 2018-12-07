@@ -50,7 +50,6 @@ LL |     let mut x = 3;
    = note: consider using `_x` instead
 
 error: value assigned to `x` is never read
-                     (maybe it is overwritten before being read)
   --> $DIR/liveness-unused.rs:42:5
    |
 LL |     x += 4;
@@ -61,6 +60,7 @@ note: lint level defined here
    |
 LL | #![deny(unused_assignments)]
    |         ^^^^^^^^^^^^^^^^^^
+   = help: maybe it is overwritten before being read?
 
 error: variable `z` is assigned to, but never used
   --> $DIR/liveness-unused.rs:47:13
@@ -103,11 +103,12 @@ LL |     let x;
    = note: consider using `_x` instead
 
 error: value assigned to `x` is never read
-                     (maybe it is overwritten before being read)
   --> $DIR/liveness-unused.rs:126:9
    |
 LL |         x = 0;  //~ ERROR value assigned to `x` is never read
    |         ^
+   |
+   = help: maybe it is overwritten before being read?
 
 error: aborting due to 13 previous errors
 
