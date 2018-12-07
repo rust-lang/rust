@@ -105,7 +105,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
         debug!("consume(consume_id={}, cmt={:?}, mode={:?})",
                consume_id, cmt, mode);
 
-        let hir_id = self.tcx().hir.node_to_hir_id(consume_id);
+        let hir_id = self.tcx().hir().node_to_hir_id(consume_id);
         self.consume_common(hir_id.local_id, consume_span, cmt, mode);
     }
 
@@ -139,7 +139,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                borrow_id, cmt, loan_region,
                bk, loan_cause);
 
-        let hir_id = self.tcx().hir.node_to_hir_id(borrow_id);
+        let hir_id = self.tcx().hir().node_to_hir_id(borrow_id);
         if let Some(lp) = opt_loan_path(cmt) {
             let moved_value_use_kind = match loan_cause {
                 euv::ClosureCapture(_) => MovedInCapture,
@@ -185,7 +185,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                 }
             }
         }
-        self.check_assignment(self.tcx().hir.node_to_hir_id(assignment_id).local_id,
+        self.check_assignment(self.tcx().hir().node_to_hir_id(assignment_id).local_id,
                               assignment_span, assignee_cmt);
     }
 
@@ -199,10 +199,10 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      body: &hir::Body) {
     debug!("check_loans(body id={})", body.value.id);
 
-    let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
+    let def_id = bccx.tcx.hir().body_owner_def_id(body.id());
 
-    let node_id = bccx.tcx.hir.as_local_node_id(def_id).unwrap();
-    let movable_generator = !match bccx.tcx.hir.get(node_id) {
+    let node_id = bccx.tcx.hir().as_local_node_id(def_id).unwrap();
+    let movable_generator = !match bccx.tcx.hir().get(node_id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
@@ -907,7 +907,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let lp = opt_loan_path(assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
-                    let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
+                    let hir_id = self.bccx.tcx.hir().node_to_hir_id(local_id);
                     self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                 } else {
                     self.bccx.report_reassigned_immutable_variable(

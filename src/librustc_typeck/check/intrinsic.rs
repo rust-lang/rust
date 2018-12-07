@@ -36,7 +36,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
 ) {
-    let def_id = tcx.hir.local_def_id(it.id);
+    let def_id = tcx.hir().local_def_id(it.id);
 
     match it.node {
         hir::ForeignItemKind::Fn(..) => {}
@@ -401,7 +401,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.mk_ty_param(n, name)
     };
 
-    let def_id = tcx.hir.local_def_id(it.id);
+    let def_id = tcx.hir().local_def_id(it.id);
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     let name = it.name.as_str();
 

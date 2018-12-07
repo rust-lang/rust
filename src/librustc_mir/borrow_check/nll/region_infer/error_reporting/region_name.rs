@@ -225,12 +225,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 },
 
                 ty::BoundRegion::BrEnv => {
-                    let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
+                    let mir_node_id = tcx.hir()
+                                         .as_local_node_id(mir_def_id)
+                                         .expect("non-local mir");
                     let def_ty = self.universal_regions.defining_ty;
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir.expect_expr(mir_node_id).node
+                            tcx.hir().expect_expr(mir_node_id).node
                         {
                             span
                         } else {
@@ -301,10 +303,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         name: &InternedString,
     ) -> Span {
         let scope = error_region.free_region_binding_scope(tcx);
-        let node = tcx.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
+        let node = tcx.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
 
-        let span = tcx.sess.source_map().def_span(tcx.hir.span(node));
-        if let Some(param) = tcx.hir
+        let span = tcx.sess.source_map().def_span(tcx.hir().span(node));
+        if let Some(param) = tcx.hir()
             .get_generics(scope)
             .and_then(|generics| generics.get_named(name))
         {
@@ -360,8 +362,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_index: usize,
         counter: &mut usize,
     ) -> Option<RegionName> {
-        let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id)?;
-        let fn_decl = infcx.tcx.hir.fn_decl(mir_node_id)?;
+        let mir_node_id = infcx.tcx.hir().as_local_node_id(mir_def_id)?;
+        let fn_decl = infcx.tcx.hir().fn_decl(mir_node_id)?;
         let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
         match argument_hir_ty.node {
             // This indicates a variable with no type annotation, like
@@ -684,9 +686,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let type_name = with_highlight_region_for_regionvid(
             fr, *counter, || infcx.extract_type_name(&return_ty));
 
-        let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
+        let mir_node_id = tcx.hir().as_local_node_id(mir_def_id).expect("non-local mir");
 
-        let (return_span, mir_description) = match tcx.hir.get(mir_node_id) {
+        let (return_span, mir_description) = match tcx.hir().get(mir_node_id) {
             hir::Node::Expr(hir::Expr {
                 node: hir::ExprKind::Closure(_, _, _, span, gen_move),
                 ..

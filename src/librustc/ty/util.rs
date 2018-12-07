@@ -601,7 +601,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Return whether the node pointed to by def_id is a static item, and its mutability
     pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
-        if let Some(node) = self.hir.get_if_local(def_id) {
+        if let Some(node) = self.hir().get_if_local(def_id) {
             match node {
                 Node::Item(&hir::Item {
                     node: hir::ItemKind::Static(_, mutbl, _), ..
@@ -711,7 +711,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     // Find non representable fields with their spans
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
-                        let span = tcx.hir.span_if_local(field.did).unwrap_or(sp);
+                        let span = tcx.hir().span_if_local(field.did).unwrap_or(sp);
                         match is_type_structurally_recursive(tcx, span, seen,
                                                              representable_cache, ty)
                         {

@@ -109,13 +109,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut local_visitor = FindLocalByTypeVisitor {
             infcx: &self,
             target_ty: &ty,
-            hir_map: &self.tcx.hir,
+            hir_map: &self.tcx.hir(),
             found_local_pattern: None,
             found_arg_pattern: None,
         };
 
         if let Some(body_id) = body_id {
-            let expr = self.tcx.hir.expect_expr(body_id.node_id);
+            let expr = self.tcx.hir().expect_expr(body_id.node_id);
             local_visitor.visit_expr(expr);
         }
 

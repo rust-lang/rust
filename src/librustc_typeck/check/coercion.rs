@@ -696,7 +696,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let b = self.shallow_resolve(b);
 
-        let node_id_a = self.tcx.hir.as_local_node_id(def_id_a).unwrap();
+        let node_id_a = self.tcx.hir().as_local_node_id(def_id_a).unwrap();
         match b.sty {
             ty::FnPtr(_) if self.tcx.with_freevars(node_id_a, |v| v.is_empty()) => {
                 // We coerce the closure, which has fn type

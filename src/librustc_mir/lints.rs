@@ -20,9 +20,9 @@ use rustc::ty::subst::Substs;
 pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
              mir: &Mir<'tcx>,
              def_id: DefId) {
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
 
-    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
+    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(node_id)) {
         check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), mir, def_id);
     }
 }
@@ -139,8 +139,8 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // no break */ }`) shouldn't be linted unless it actually
     // recurs.
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {
-        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-        let sp = tcx.sess.source_map().def_span(tcx.hir.span(node_id));
+        let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+        let sp = tcx.sess.source_map().def_span(tcx.hir().span(node_id));
         let mut db = tcx.struct_span_lint_node(UNCONDITIONAL_RECURSION,
                                                 node_id,
                                                 sp,

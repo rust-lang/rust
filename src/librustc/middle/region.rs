@@ -181,7 +181,7 @@ impl Scope {
     pub fn node_id(&self, tcx: TyCtxt<'_, '_, '_>, scope_tree: &ScopeTree) -> ast::NodeId {
         match scope_tree.root_body {
             Some(hir_id) => {
-                tcx.hir.hir_to_node_id(hir::HirId {
+                tcx.hir().hir_to_node_id(hir::HirId {
                     owner: hir_id.owner,
                     local_id: self.item_local_id()
                 })
@@ -198,9 +198,9 @@ impl Scope {
         if node_id == ast::DUMMY_NODE_ID {
             return DUMMY_SP;
         }
-        let span = tcx.hir.span(node_id);
+        let span = tcx.hir().span(node_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(ref blk) = tcx.hir.get(node_id) {
+            if let Node::Block(ref blk) = tcx.hir().get(node_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`
@@ -660,9 +660,9 @@ impl<'tcx> ScopeTree {
                                       -> Scope {
         let param_owner = tcx.parent_def_id(br.def_id).unwrap();
 
-        let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
-        let scope = tcx.hir.maybe_body_owned_by(param_owner_id).map(|body_id| {
-            tcx.hir.body(body_id).value.hir_id.local_id
+        let param_owner_id = tcx.hir().as_local_node_id(param_owner).unwrap();
+        let scope = tcx.hir().maybe_body_owned_by(param_owner_id).map(|body_id| {
+            tcx.hir().body(body_id).value.hir_id.local_id
         }).unwrap_or_else(|| {
             // The lifetime was defined on node that doesn't own a body,
             // which in practice can only mean a trait or an impl, that
@@ -671,7 +671,7 @@ impl<'tcx> ScopeTree {
                        "free_scope: {:?} not recognized by the \
                         region scope tree for {:?} / {:?}",
                        param_owner,
-                       self.root_parent.map(|id| tcx.hir.local_def_id(id)),
+                       self.root_parent.map(|id| tcx.hir().local_def_id(id)),
                        self.root_body.map(|hir_id| DefId::local(hir_id.owner)));
 
             // The trait/impl lifetime is in scope for the method's body.
@@ -696,9 +696,9 @@ impl<'tcx> ScopeTree {
         // on the same function that they ended up being freed in.
         assert_eq!(param_owner, fr.scope);
 
-        let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
-        let body_id = tcx.hir.body_owned_by(param_owner_id);
-        Scope { id: tcx.hir.body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
+        let param_owner_id = tcx.hir().as_local_node_id(param_owner).unwrap();
+        let body_id = tcx.hir().body_owned_by(param_owner_id);
+        Scope { id: tcx.hir().body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
     }
 
     /// Checks whether the given scope contains a `yield`. If so,
@@ -845,7 +845,7 @@ fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &
 }
 
 fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
-    let stmt_id = visitor.tcx.hir.node_to_hir_id(stmt.node.id()).local_id;
+    let stmt_id = visitor.tcx.hir().node_to_hir_id(stmt.node.id()).local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     // Every statement will clean up the temporaries created during
@@ -942,7 +942,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
         hir::ExprKind::Closure(.., body, _, _) => {
-            let body = visitor.tcx.hir.body(body);
+            let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
 
@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         let body_id = body.id();
-        let owner_id = self.tcx.hir.body_owner(body_id);
+        let owner_id = self.tcx.hir().body_owner(body_id);
 
         debug!("visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
                owner_id,
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if let hir::BodyOwnerKind::Fn = self.tcx.hir.body_owner_kind(owner_id) {
+        if let hir::BodyOwnerKind::Fn = self.tcx.hir().body_owner_kind(owner_id) {
             self.visit_expr(&body.value);
         } else {
             // Only functions have an outer terminating (drop) scope, while
@@ -1333,8 +1333,8 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         return tcx.region_scope_tree(closure_base_def_id);
     }
 
-    let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let scope_tree = if let Some(body_id) = tcx.hir.maybe_body_owned_by(id) {
+    let id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
@@ -1347,16 +1347,16 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             terminating_scopes: Default::default(),
         };
 
-        let body = tcx.hir.body(body_id);
+        let body = tcx.hir().body(body_id);
         visitor.scope_tree.root_body = Some(body.value.hir_id);
 
         // If the item is an associated const or a method,
         // record its impl/trait parent, as it can also have
         // lifetime parameters free in this body.
-        match tcx.hir.get(id) {
+        match tcx.hir().get(id) {
             Node::ImplItem(_) |
             Node::TraitItem(_) => {
-                visitor.scope_tree.root_parent = Some(tcx.hir.get_parent(id));
+                visitor.scope_tree.root_parent = Some(tcx.hir().get_parent(id));
             }
             _ => {}
         }

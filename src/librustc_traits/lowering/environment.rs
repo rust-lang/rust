@@ -228,8 +228,8 @@ crate fn environment<'a, 'tcx>(
         // could bound lifetimes.
         .map(Clause::ForAll);
 
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let node = tcx.hir.get(node_id);
+    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+    let node = tcx.hir().get(node_id);
 
     let mut is_fn = false;
     let mut is_impl = false;

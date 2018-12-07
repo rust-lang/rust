@@ -615,7 +615,7 @@ pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     let mut visitor = ClauseDumper { tcx };
-    tcx.hir
+    tcx.hir()
         .krate()
         .visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
@@ -626,7 +626,7 @@ struct ClauseDumper<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
     fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir.local_def_id(node_id);
+        let def_id = self.tcx.hir().local_def_id(node_id);
         for attr in attrs {
             let mut clauses = None;
 
@@ -664,7 +664,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ClauseDumper<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {

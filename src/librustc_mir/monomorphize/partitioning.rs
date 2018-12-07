@@ -184,7 +184,7 @@ pub trait CodegenUnitExt<'tcx> {
                         // the codegen tests and can even make item order
                         // unstable.
                         InstanceDef::Item(def_id) => {
-                            tcx.hir.as_local_node_id(def_id)
+                            tcx.hir().as_local_node_id(def_id)
                         }
                         InstanceDef::VtableShim(..) |
                         InstanceDef::Intrinsic(..) |
@@ -198,7 +198,7 @@ pub trait CodegenUnitExt<'tcx> {
                     }
                 }
                 MonoItem::Static(def_id) => {
-                    tcx.hir.as_local_node_id(def_id)
+                    tcx.hir().as_local_node_id(def_id)
                 }
                 MonoItem::GlobalAsm(node_id) => {
                     Some(node_id)
@@ -415,7 +415,7 @@ fn mono_item_visibility(
             };
         }
         MonoItem::GlobalAsm(node_id) => {
-            let def_id = tcx.hir.local_def_id(*node_id);
+            let def_id = tcx.hir().local_def_id(*node_id);
             return if tcx.is_reachable_non_generic(def_id) {
                 *can_be_internalized = false;
                 default_visibility(tcx, def_id, false)
@@ -799,7 +799,7 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
+        MonoItem::GlobalAsm(node_id) => Some(tcx.hir().local_def_id(node_id)),
     }
 }
 

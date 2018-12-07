@@ -83,8 +83,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let param_env = self.tcx.param_env(self.source.def_id);
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir.as_local_node_id(self.source.def_id).unwrap();
-        let body_owner_kind = self.tcx.hir.body_owner_kind(id);
+        let id = self.tcx.hir().as_local_node_id(self.source.def_id).unwrap();
+        let body_owner_kind = self.tcx.hir().body_owner_kind(id);
 
         if let (hir::BodyOwnerKind::Fn, None) = (body_owner_kind, self.source.promoted) {
 

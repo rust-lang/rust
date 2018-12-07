@@ -107,8 +107,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     Namespace::Value,
                                 )
                             }).unwrap();
-                        let note_span = self.tcx.hir.span_if_local(item.def_id).or_else(|| {
-                            self.tcx.hir.span_if_local(impl_did)
+                        let note_span = self.tcx.hir().span_if_local(item.def_id).or_else(|| {
+                            self.tcx.hir().span_if_local(impl_did)
                         });
 
                         let impl_ty = self.impl_self_ty(span, impl_did).ty;
@@ -265,13 +265,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             hir::ExprKind::Path(ref qpath) => {  // local binding
                                 if let &hir::QPath::Resolved(_, ref path) = &qpath {
                                     if let hir::def::Def::Local(node_id) = path.def {
-                                        let span = tcx.hir.span(node_id);
+                                        let span = tcx.hir().span(node_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span)
                                             .unwrap();
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
-                                        let parent_node = self.tcx.hir.get(
-                                            self.tcx.hir.get_parent_node(node_id),
+                                        let parent_node = self.tcx.hir().get(
+                                            self.tcx.hir().get_parent_node(node_id),
                                         );
                                         let msg = format!(
                                             "you must specify a type for this binding, like `{}`",
@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 if let Some(def) = actual.ty_adt_def() {
-                    if let Some(full_sp) = tcx.hir.span_if_local(def.did) {
+                    if let Some(full_sp) = tcx.hir().span_if_local(def.did) {
                         let def_sp = tcx.sess.source_map().def_span(full_sp);
                         err.span_label(def_sp, format!("{} `{}` not found {}",
                                                        item_kind,
@@ -356,7 +356,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     };
 
                                     let field_ty = field.ty(tcx, substs);
-                                    let scope = self.tcx.hir.get_module_parent(self.body_id);
+                                    let scope = self.tcx.hir().get_module_parent(self.body_id);
                                     if field.vis.is_accessible_from(scope, self.tcx) {
                                         if self.is_fn_ty(&field_ty, span) {
                                             err.help(&format!("use `({0}.{1})(...)` if you \
@@ -503,9 +503,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               err: &mut DiagnosticBuilder,
                               mut msg: String,
                               candidates: Vec<DefId>) {
-        let module_did = self.tcx.hir.get_module_parent(self.body_id);
-        let module_id = self.tcx.hir.as_local_node_id(module_did).unwrap();
-        let krate = self.tcx.hir.krate();
+        let module_did = self.tcx.hir().get_module_parent(self.body_id);
+        let module_id = self.tcx.hir().as_local_node_id(module_did).unwrap();
+        let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
             let path_strings = candidates.iter().map(|did| {
@@ -744,8 +744,8 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
             fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
             }
         }
-        tcx.hir.krate().visit_all_item_likes(&mut Visitor {
-            map: &tcx.hir,
+        tcx.hir().krate().visit_all_item_likes(&mut Visitor {
+            map: &tcx.hir(),
             traits: &mut traits,
         });
 
@@ -829,7 +829,7 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
         }
         // find a use statement
         for item_id in &module.item_ids {
-            let item = self.tcx.hir.expect_item(item_id.id);
+            let item = self.tcx.hir().expect_item(item_id.id);
             match item.node {
                 hir::ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude

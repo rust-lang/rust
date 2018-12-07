@@ -470,7 +470,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
         let place = Place::Local(local_id);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
         place
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(
             span,

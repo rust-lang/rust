@@ -38,13 +38,13 @@ mod move_error;
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     body: hir::BodyId)
                                     -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
-    let def_id = bccx.tcx.hir.body_owner_def_id(body);
+    let def_id = bccx.tcx.hir().body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
         bccx,
         all_loans: Vec::new(),
         item_ub: region::Scope {
-            id: bccx.tcx.hir.body(body).value.hir_id.local_id,
+            id: bccx.tcx.hir().body(body).value.hir_id.local_id,
             data: region::ScopeData::Node
         },
         move_data: MoveData::default(),
@@ -88,7 +88,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
                     self.bccx, &self.move_data, &mut self.move_error_collector,
-                    self.bccx.tcx.hir.node_to_hir_id(consume_id).local_id, cmt, move_reason);
+                    self.bccx.tcx.hir().node_to_hir_id(consume_id).local_id, cmt, move_reason);
             }
             euv::Copy => { }
         }
@@ -135,7 +135,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-        let hir_id = self.bccx.tcx.hir.node_to_hir_id(borrow_id);
+        let hir_id = self.bccx.tcx.hir().node_to_hir_id(borrow_id);
         self.guarantee_valid(hir_id.local_id,
                              borrow_span,
                              cmt,
@@ -158,7 +158,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
         let ty = self.bccx
                      .tables
-                     .node_id_to_type(self.bccx.tcx.hir.node_to_hir_id(id));
+                     .node_id_to_type(self.bccx.tcx.hir().node_to_hir_id(id));
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }
@@ -280,7 +280,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     self.mark_loan_path_as_mutated(&lp);
                 }
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
-                                                self.bccx.tcx.hir.node_to_hir_id(assignment_id)
+                                                self.bccx.tcx.hir().node_to_hir_id(assignment_id)
                                                     .local_id,
                                                 assignment_span,
                                                 lp);
@@ -448,7 +448,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             wrapped_path = match current_path.kind {
                 LpVar(local_id) => {
                     if !through_borrow {
-                        let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
+                        let hir_id = self.bccx.tcx.hir().node_to_hir_id(local_id);
                         self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                     }
                     None

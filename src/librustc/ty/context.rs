@@ -250,11 +250,11 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
         if let Some(local_id_root) = local_id_root {
             if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
-                    let node_id = tcx.hir.hir_to_node_id(hir_id);
+                    let node_id = tcx.hir().hir_to_node_id(hir_id);
 
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
-                         tcx.hir.node_to_string(node_id),
+                         tcx.hir().node_to_string(node_id),
                          DefId::local(hir_id.owner),
                          local_id_root)
                 });
@@ -530,8 +530,8 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_id_to_type_opt(id).unwrap_or_else(||
             bug!("node_id_to_type: no type for node `{}`",
                  tls::with(|tcx| {
-                     let id = tcx.hir.hir_to_node_id(id);
-                     tcx.hir.node_to_string(id)
+                     let id = tcx.hir().hir_to_node_id(id);
+                     tcx.hir().node_to_string(id)
                  }))
         )
     }
@@ -903,7 +903,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Lrc<Vec<Export>>>,
 
-    pub hir: hir_map::Map<'tcx>,
+    hir_map: hir_map::Map<'tcx>,
 
     /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -969,6 +969,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             gcx: self.gcx,
             interners: &self.gcx.global_interners,
         }
+    }
+
+    #[inline(always)]
+    pub fn hir(self) -> &'a hir_map::Map<'gcx> {
+        &self.hir_map
     }
 
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
@@ -1186,7 +1191,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .map(|(id, sp)| (hir.local_def_id(id), sp))
                     .collect(),
             extern_prelude: resolutions.extern_prelude,
-            hir,
+            hir_map: hir,
             def_path_hash_to_def_id,
             queries: query::Queries::new(
                 providers,
@@ -1272,7 +1277,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn def_key(self, id: DefId) -> hir_map::DefKey {
         if id.is_local() {
-            self.hir.def_key(id)
+            self.hir().def_key(id)
         } else {
             self.cstore.def_key(id)
         }
@@ -1285,7 +1290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> hir_map::DefPath {
         if id.is_local() {
-            self.hir.def_path(id)
+            self.hir().def_path(id)
         } else {
             self.cstore.def_path(id)
         }
@@ -1294,7 +1299,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if def_id.is_local() {
-            self.hir.definitions().def_path_hash(def_id.index)
+            self.hir().definitions().def_path_hash(def_id.index)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -1332,11 +1337,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'a> {
-        let krate = self.dep_graph.with_ignore(|| self.gcx.hir.krate());
+        let krate = self.dep_graph.with_ignore(|| self.hir().krate());
 
         StableHashingContext::new(self.sess,
                                   krate,
-                                  self.hir.definitions(),
+                                  self.hir().definitions(),
                                   self.cstore)
     }
 
@@ -1524,10 +1529,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             _ => return None, // not a free region
         };
 
-        let node_id = self.hir
+        let node_id = self.hir()
             .as_local_node_id(suitable_region_binding_scope)
             .unwrap();
-        let is_impl_item = match self.hir.find(node_id) {
+        let is_impl_item = match self.hir().find(node_id) {
             Some(Node::Item(..)) | Some(Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
@@ -1547,8 +1552,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         scope_def_id: DefId,
     ) -> Option<Ty<'tcx>> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return None
-        let node_id = self.hir.as_local_node_id(scope_def_id).unwrap();
-        match self.hir.get(node_id) {
+        let node_id = self.hir().as_local_node_id(scope_def_id).unwrap();
+        match self.hir().get(node_id) {
             Node::Item(item) => {
                 match item.node {
                     ItemKind::Fn(..) => { /* type_of_def_id() will work */ }
@@ -2899,11 +2904,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.dep_graph.with_ignore(|| {
             let sets = self.lint_levels(LOCAL_CRATE);
             loop {
-                let hir_id = self.hir.definitions().node_to_hir_id(id);
+                let hir_id = self.hir().definitions().node_to_hir_id(id);
                 if let Some(pair) = sets.level_and_source(lint, hir_id, self.sess) {
                     return pair
                 }
-                let next = self.hir.get_parent_node(id);
+                let next = self.hir().get_parent_node(id);
                 if next == id {
                     bug!("lint traversal reached the root of the crate");
                 }
@@ -2919,7 +2924,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
-        let node_id = self.hir.hir_to_node_id(hir_id);
+        let node_id = self.hir().hir_to_node_id(hir_id);
         let (level, src) = self.lint_level_at_node(lint, node_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
@@ -3043,16 +3048,16 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.lookup_stability = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_stability(id)
     };
     providers.lookup_deprecation_entry = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_deprecation_entry(id)
     };
     providers.extern_mod_stmt_cnum = |tcx, id| {
-        let id = tcx.hir.as_local_node_id(id).unwrap();
+        let id = tcx.hir().as_local_node_id(id).unwrap();
         tcx.cstore.extern_mod_stmt_cnum_untracked(id)
     };
     providers.all_crate_nums = |tcx, cnum| {
@@ -3073,10 +3078,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        attr::contains_name(tcx.hir.krate_attrs(), "panic_runtime")
+        attr::contains_name(tcx.hir().krate_attrs(), "panic_runtime")
     };
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        attr::contains_name(tcx.hir.krate_attrs(), "compiler_builtins")
+        attr::contains_name(tcx.hir().krate_attrs(), "compiler_builtins")
     };
 }

@@ -86,7 +86,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
                                         def_id: DefId,
                                         body_id: hir::BodyId,
                                         interior: Ty<'tcx>) {
-    let body = fcx.tcx.hir.body(body_id);
+    let body = fcx.tcx.hir().body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxHashMap::default(),

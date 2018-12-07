@@ -337,7 +337,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                 let mut err = if used_to_be_allowed {
                     tcx.struct_span_lint_node(
                         lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
-                        tcx.hir.as_local_node_id(impl_def_id).unwrap(),
+                        tcx.hir().as_local_node_id(impl_def_id).unwrap(),
                         impl_span,
                         &msg)
                 } else {

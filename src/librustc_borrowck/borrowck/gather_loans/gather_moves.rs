@@ -57,9 +57,9 @@ pub enum PatternSource<'tcx> {
 /// with a reference to the let
 fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> PatternSource<'tcx> {
 
-    let parent = tcx.hir.get_parent_node(pat.id);
+    let parent = tcx.hir().get_parent_node(pat.id);
 
-    match tcx.hir.get(parent) {
+    match tcx.hir().get(parent) {
         Node::Expr(ref e) => {
             // the enclosing expression must be a `match` or something else
             assert!(match e.node {
@@ -79,7 +79,7 @@ pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              var_id: ast::NodeId,
                              var_ty: Ty<'tcx>) {
     let loan_path = Rc::new(LoanPath::new(LpVar(var_id), var_ty));
-    let hir_id = bccx.tcx.hir.node_to_hir_id(var_id);
+    let hir_id = bccx.tcx.hir().node_to_hir_id(var_id);
     move_data.add_move(bccx.tcx, loan_path, hir_id.local_id, Declared);
 }
 

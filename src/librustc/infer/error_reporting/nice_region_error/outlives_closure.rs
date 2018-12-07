@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             // closure, provide a specific message pointing this out.
             if let (&SubregionOrigin::BindingTypeIsNotValidAtDecl(ref external_span),
                     &RegionKind::ReFree(ref free_region)) = (&sub_origin, sup_region) {
-                let hir = &self.tcx.hir;
+                let hir = &self.tcx.hir();
                 if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
                     if let Node::Expr(Expr {
                         node: Closure(_, _, _, closure_span, None),

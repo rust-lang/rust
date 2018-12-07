@@ -60,7 +60,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             _ => return None, // not a free region
         };
 
-        let hir = &self.tcx.hir;
+        let hir = &self.tcx.hir();
         if let Some(node_id) = hir.as_local_node_id(id) {
             if let Some(body_id) = hir.maybe_body_owned_by(node_id) {
                 let body = hir.body(body_id);

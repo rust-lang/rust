@@ -720,7 +720,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             return Ok(())
         }
         let mut duplicates = FxHashSet::default();
-        let expr_hir_id = self.tcx.hir.node_to_hir_id(expr_id);
+        let expr_hir_id = self.tcx.hir().node_to_hir_id(expr_id);
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {

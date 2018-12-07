@@ -50,8 +50,8 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &body_id in &tcx.hir.krate().body_ids {
-        let def_id = tcx.hir.body_owner_def_id(body_id);
+    for &body_id in &tcx.hir().krate().body_ids {
+        let def_id = tcx.hir().body_owner_def_id(body_id);
         tcx.const_is_rvalue_promotable_to_static(def_id);
     }
     tcx.sess.abort_if_errors();
@@ -63,10 +63,10 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     assert!(def_id.is_local());
 
-    let node_id = tcx.hir.as_local_node_id(def_id)
+    let node_id = tcx.hir().as_local_node_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir.body_owned_by(node_id);
-    let body_hir_id = tcx.hir.node_to_hir_id(body_id.node_id);
+    let body_id = tcx.hir().body_owned_by(node_id);
+    let body_hir_id = tcx.hir().node_to_hir_id(body_id.node_id);
     tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
 }
 
@@ -91,9 +91,9 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     // `def_id` should be a `Body` owner
-    let node_id = tcx.hir.as_local_node_id(def_id)
+    let node_id = tcx.hir().as_local_node_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir.body_owned_by(node_id);
+    let body_id = tcx.hir().body_owned_by(node_id);
     let _ = visitor.check_nested_body(body_id);
 
     Lrc::new(visitor.result)
@@ -189,8 +189,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
-        let item_id = self.tcx.hir.body_owner(body_id);
-        let item_def_id = self.tcx.hir.local_def_id(item_id);
+        let item_id = self.tcx.hir().body_owner(body_id);
+        let item_def_id = self.tcx.hir().local_def_id(item_id);
 
         let outer_in_fn = self.in_fn;
         let outer_tables = self.tables;
@@ -200,7 +200,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         self.in_fn = false;
         self.in_static = false;
 
-        match self.tcx.hir.body_owner_kind(item_id) {
+        match self.tcx.hir().body_owner_kind(item_id) {
             hir::BodyOwnerKind::Fn => self.in_fn = true,
             hir::BodyOwnerKind::Static(_) => self.in_static = true,
             _ => {}
@@ -211,7 +211,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         self.param_env = self.tcx.param_env(item_def_id);
         self.identity_substs = Substs::identity_for_item(self.tcx, item_def_id);
 
-        let body = self.tcx.hir.body(body_id);
+        let body = self.tcx.hir().body(body_id);
 
         let tcx = self.tcx;
         let param_env = self.param_env;

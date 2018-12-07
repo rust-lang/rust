@@ -556,7 +556,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir.local_def_id(count.id);
+            let def_id = cx.tcx.hir().local_def_id(count.id);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
@@ -588,7 +588,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope {
-                        id: cx.tcx.hir.node_to_hir_id(target_id).local_id,
+                        id: cx.tcx.hir().node_to_hir_id(target_id).local_id,
                         data: region::ScopeData::Node
                     },
                     value: value.to_ref(),
@@ -600,7 +600,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope {
-                        id: cx.tcx.hir.node_to_hir_id(loop_id).local_id,
+                        id: cx.tcx.hir().node_to_hir_id(loop_id).local_id,
                         data: region::ScopeData::Node
                     },
                 },
@@ -974,17 +974,17 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    var_id,
                    index,
                    closure_expr_id);
-            let var_hir_id = cx.tcx.hir.node_to_hir_id(var_id);
+            let var_hir_id = cx.tcx.hir().node_to_hir_id(var_id);
             let var_ty = cx.tables().node_id_to_type(var_hir_id);
 
             // FIXME free regions in closures are not right
             let closure_ty = cx.tables()
-                               .node_id_to_type(cx.tcx.hir.node_to_hir_id(closure_expr_id));
+                               .node_id_to_type(cx.tcx.hir().node_to_hir_id(closure_expr_id));
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
-            let closure_def_id = cx.tcx.hir.local_def_id(closure_expr_id);
+            let closure_def_id = cx.tcx.hir().local_def_id(closure_expr_id);
             let region = ty::ReFree(ty::FreeRegion {
                 scope: closure_def_id,
                 bound_region: ty::BoundRegion::BrAnon(0),
@@ -1176,10 +1176,10 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = cx.tcx.hir.node_to_hir_id(freevar.var_id());
+    let var_hir_id = cx.tcx.hir().node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);

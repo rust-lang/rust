@@ -223,7 +223,7 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let krate = tcx.hir.krate();
+        let krate = tcx.hir().krate();
         let mut dirty_clean_visitor = DirtyCleanVisitor {
             tcx,
             checked_attrs: Default::default(),
@@ -333,7 +333,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
     fn auto_labels(&mut self, item_id: ast::NodeId, attr: &Attribute) -> (&'static str, Labels) {
-        let node = self.tcx.hir.get(item_id);
+        let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.node {
@@ -511,7 +511,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     }
 
     fn check_item(&mut self, item_id: ast::NodeId, item_span: Span) {
-        let def_id = self.tcx.hir.local_def_id(item_id);
+        let def_id = self.tcx.hir().local_def_id(item_id);
         for attr in self.tcx.get_attrs(def_id).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FindAllAttrs<'a, 'tcx> {
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir)
+        intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

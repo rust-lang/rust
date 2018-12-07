@@ -186,7 +186,7 @@ fn test_env_with_pool<F>(
                     param_env: param_env,
                 });
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
+                let def_id = tcx.hir().local_def_id(ast::CRATE_NODE_ID);
                 infcx.resolve_regions_and_report_errors(
                     def_id,
                     &region_scope_tree,
@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
     pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
-        return match search_mod(self, &self.infcx.tcx.hir.krate().module, 0, names) {
+        return match search_mod(self, &self.infcx.tcx.hir().krate().module, 0, names) {
             Some(id) => id,
             None => {
                 panic!("no item found: `{}`", names.join("::"));
@@ -271,7 +271,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         ) -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.item_ids {
-                let item = this.infcx.tcx.hir.expect_item(item.id);
+                let item = this.infcx.tcx.hir().expect_item(item.id);
                 if item.name.to_string() == names[idx] {
                     return search(this, item, idx + 1, names);
                 }
@@ -364,7 +364,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx
             .tcx
             .mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                def_id: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
+                def_id: self.infcx.tcx.hir().local_def_id(ast::CRATE_NODE_ID),
                 index,
                 name,
             }))
@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn re_free(&self, id: u32) -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReFree(ty::FreeRegion {
-            scope: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
+            scope: self.infcx.tcx.hir().local_def_id(ast::CRATE_NODE_ID),
             bound_region: ty::BrAnon(id),
         }))
     }

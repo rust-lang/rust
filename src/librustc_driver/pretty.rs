@@ -495,7 +495,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
     }
 
     fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'tcx>> {
-        Some(&self.tcx.hir)
+        Some(&self.tcx.hir())
     }
 
     fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
@@ -514,7 +514,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.tables.set(self.tcx.body_tables(id));
         }
-        pprust_hir::PpAnn::nested(&self.tcx.hir, state, nested)?;
+        pprust_hir::PpAnn::nested(self.tcx.hir(), state, nested)?;
         self.tables.set(old_tables);
         Ok(())
     }
@@ -851,18 +851,18 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
             // Find the function this expression is from.
             let mut node_id = expr.id;
             loop {
-                let node = tcx.hir.get(node_id);
+                let node = tcx.hir().get(node_id);
                 if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
                     break n.body();
                 }
-                let parent = tcx.hir.get_parent_node(node_id);
+                let parent = tcx.hir().get_parent_node(node_id);
                 assert_ne!(node_id, parent);
                 node_id = parent;
             }
         }
         blocks::Code::FnLike(fn_like) => fn_like.body(),
     };
-    let body = tcx.hir.body(body_id);
+    let body = tcx.hir().body(body_id);
     let cfg = cfg::CFG::new(tcx, &body);
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
@@ -1164,7 +1164,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {
-                    let def_id = tcx.hir.local_def_id(nodeid);
+                    let def_id = tcx.hir().local_def_id(nodeid);
                     match ppm {
                         PpmMir => write_mir_pretty(tcx, Some(def_id), &mut out),
                         PpmMirCFG => write_mir_graphviz(tcx, Some(def_id), &mut out),
@@ -1183,11 +1183,11 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 let nodeid =
                     nodeid.expect("`pretty flowgraph=..` needs NodeId (int) or unique path \
                                    suffix (b::c::d)");
-                let node = tcx.hir.find(nodeid).unwrap_or_else(|| {
+                let node = tcx.hir().find(nodeid).unwrap_or_else(|| {
                     tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
                 });
 
-                match blocks::Code::from_node(&tcx.hir, nodeid) {
+                match blocks::Code::from_node(&tcx.hir(), nodeid) {
                     Some(code) => {
                         let variants = gather_flowgraph_variants(tcx.sess);
 
@@ -1200,7 +1200,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                got {:?}",
                                               node);
 
-                        tcx.sess.span_fatal(tcx.hir.span(nodeid), &message)
+                        tcx.sess.span_fatal(tcx.hir().span(nodeid), &message)
                     }
                 }
             }
