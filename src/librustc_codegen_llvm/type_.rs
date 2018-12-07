@@ -11,7 +11,6 @@ use rustc_codegen_ssa::traits::*;
 use crate::common;
 use crate::type_of::LayoutLlvmExt;
 use crate::abi::{LlvmType, FnTypeExt};
-use rustc::util::nodemap::FxHashMap;
 use rustc::ty::Ty;
 use rustc::ty::layout::TyLayout;
 use rustc_target::abi::call::{CastTarget, FnType, Reg};
@@ -19,7 +18,6 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::common::TypeKind;
 
 use std::fmt;
-use std::cell::RefCell;
 use std::ptr;
 
 use libc::c_uint;
@@ -231,10 +229,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
-    }
-
-    fn scalar_lltypes(&self) -> &RefCell<FxHashMap<Ty<'tcx>, Self::Type>> {
-        &self.scalar_lltypes
     }
 }
 
