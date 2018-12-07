@@ -13,7 +13,6 @@ use rustc_macros::HashStable;
 
 use core::intrinsics;
 use std::cmp::Ordering;
-use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -115,26 +114,8 @@ impl<'tcx> Kind<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for Kind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
-            UnpackedKind::Lifetime(lt) => write!(f, "{:?}", lt),
-            UnpackedKind::Type(ty) => write!(f, "{:?}", ty),
             UnpackedKind::Const(ct) => write!(f, "{:?}", ct),
-        }
-    }
-}
-
-impl<'tcx> fmt::Display for Kind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
-            UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
-            UnpackedKind::Type(ty) => write!(f, "{}", ty),
             UnpackedKind::Const(ct) => write!(f, "{}", ct),
-        }
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
     type Lifted = Kind<'tcx>;
 

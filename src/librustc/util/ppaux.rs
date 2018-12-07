@@ -1,7 +1,7 @@
 use crate::hir::def_id::DefId;
 use crate::hir::map::definitions::DefPathData;
 use crate::middle::region;
-use crate::ty::subst::{self, Subst, SubstsRef};
+use crate::ty::subst::{self, Kind, Subst, SubstsRef, UnpackedKind};
 use crate::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use crate::ty::{Bool, Char, Adt};
 use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
@@ -1531,6 +1531,23 @@ define_print! {
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
                 }
+            }
+        }
+    }
+}
+
+define_print! {
+    ('tcx) Kind<'tcx>, (self, f, cx) {
+        display {
+            match self.unpack() {
+                UnpackedKind::Lifetime(lt) => print!(f, cx, print(lt)),
+                UnpackedKind::Type(ty) => print!(f, cx, print(ty)),
+            }
+        }
+        debug {
+            match self.unpack() {
+                UnpackedKind::Lifetime(lt) => print!(f, cx, print(lt)),
+                UnpackedKind::Type(ty) => print!(f, cx, print(ty)),
             }
         }
     }
