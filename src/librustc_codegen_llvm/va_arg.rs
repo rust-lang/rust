@@ -3,9 +3,7 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use rustc_codegen_ssa::mir::operand::OperandRef;
-use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods, MemoryBuilderMethods,
-};
+use rustc_codegen_ssa::traits::*;
 use rustc::ty::layout::{Align, HasDataLayout, HasTyCtxt, LayoutOf, Size};
 use rustc::ty::Ty;
 

@@ -148,25 +148,6 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn atomic_load(
-        &mut self,
-        ptr: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-        size: Size,
-    ) -> &'ll Value {
-        self.count_insn("load.atomic");
-        unsafe {
-            let load = llvm::LLVMRustBuildAtomicLoad(
-                self.llbuilder,
-                ptr,
-                noname(),
-                AtomicOrdering::from_generic(order),
-            );
-            // LLVM requires the alignment of atomic loads to be at least the size of the type.
-            llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
-            load
-        }
-    }
 
     fn load_operand(
         &mut self,
@@ -244,38 +225,6 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         OperandRef { val, layout: place.layout }
     }
 
-
-
-    fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
-        if self.sess().target.target.arch == "amdgpu" {
-            // amdgpu/LLVM does something weird and thinks a i64 value is
-            // split into a v2i32, halving the bitwidth LLVM expects,
-            // tripping an assertion. So, for now, just disable this
-            // optimization.
-            return;
-        }
-
-        unsafe {
-            let llty = self.cx.val_ty(load);
-            let v = [
-                self.cx.const_uint_big(llty, range.start),
-                self.cx.const_uint_big(llty, range.end)
-            ];
-
-            llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.cx.llcx,
-                                                            v.as_ptr(),
-                                                            v.len() as c_uint));
-        }
-    }
-
-    fn nonnull_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
-        }
-    }
-
     fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
@@ -314,23 +263,6 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-   fn atomic_store(&mut self, val: &'ll Value, ptr: &'ll Value,
-                   order: rustc_codegen_ssa::common::AtomicOrdering, size: Size) {
-        debug!("Store {:?} -> {:?}", val, ptr);
-        self.count_insn("store.atomic");
-        let ptr = self.check_store(val, ptr);
-        unsafe {
-            let store = llvm::LLVMRustBuildAtomicStore(
-                self.llbuilder,
-                val,
-                ptr,
-                AtomicOrdering::from_generic(order),
-            );
-            // LLVM requires the alignment of atomic stores to be at least the size of the type.
-            llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
-        }
-    }
-
     fn gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
         self.count_insn("gep");
         unsafe {
@@ -352,6 +284,57 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         assert_eq!(idx as c_uint as u64, idx);
         unsafe {
             llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
+        }
+    }
+
+    fn pointercast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        self.count_insn("pointercast");
+        unsafe {
+            llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty, noname())
+        }
+    }
+
+    fn ptrtoint(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        self.count_insn("ptrtoint");
+        unsafe {
+            llvm::LLVMBuildPtrToInt(self.llbuilder, val, dest_ty, noname())
+        }
+    }
+
+    fn inttoptr(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        self.count_insn("inttoptr");
+        unsafe {
+            llvm::LLVMBuildIntToPtr(self.llbuilder, val, dest_ty, noname())
+        }
+    }
+
+    fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
+        if self.sess().target.target.arch == "amdgpu" {
+            // amdgpu/LLVM does something weird and thinks a i64 value is
+            // split into a v2i32, halving the bitwidth LLVM expects,
+            // tripping an assertion. So, for now, just disable this
+            // optimization.
+            return;
+        }
+
+        unsafe {
+            let llty = self.cx.val_ty(load);
+            let v = [
+                self.cx.const_uint_big(llty, range.start),
+                self.cx.const_uint_big(llty, range.end)
+            ];
+
+            llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx,
+                                                            v.as_ptr(),
+                                                            v.len() as c_uint));
+        }
+    }
+
+    fn nonnull_metadata(&mut self, load: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
         }
     }
 
@@ -411,136 +394,101 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let volatile = self.const_bool(flags.contains(MemFlags::VOLATILE));
         self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
     }
+
+    fn atomic_load(
+        &mut self,
+        ptr: &'ll Value,
+        order: rustc_codegen_ssa::common::AtomicOrdering,
+        size: Size,
+    ) -> &'ll Value {
+        self.count_insn("load.atomic");
+        unsafe {
+            let load = llvm::LLVMRustBuildAtomicLoad(
+                self.llbuilder,
+                ptr,
+                noname(),
+                AtomicOrdering::from_generic(order),
+            );
+            // LLVM requires the alignment of atomic loads to be at least the size of the type.
+            llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
+            load
+        }
+    }
+
+    fn atomic_store(&mut self, val: &'ll Value, ptr: &'ll Value,
+                   order: rustc_codegen_ssa::common::AtomicOrdering, size: Size) {
+        debug!("Store {:?} -> {:?}", val, ptr);
+        self.count_insn("store.atomic");
+        let ptr = self.check_store(val, ptr);
+        unsafe {
+            let store = llvm::LLVMRustBuildAtomicStore(
+                self.llbuilder,
+                val,
+                ptr,
+                AtomicOrdering::from_generic(order),
+            );
+            // LLVM requires the alignment of atomic stores to be at least the size of the type.
+            llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
+        }
+    }
+
+    fn atomic_cmpxchg(
+        &mut self,
+        dst: &'ll Value,
+        cmp: &'ll Value,
+        src: &'ll Value,
+        order: rustc_codegen_ssa::common::AtomicOrdering,
+        failure_order: rustc_codegen_ssa::common::AtomicOrdering,
+        weak: bool,
+    ) -> &'ll Value {
+        let weak = if weak { llvm::True } else { llvm::False };
+        unsafe {
+            llvm::LLVMRustBuildAtomicCmpXchg(
+                self.llbuilder,
+                dst,
+                cmp,
+                src,
+                AtomicOrdering::from_generic(order),
+                AtomicOrdering::from_generic(failure_order),
+                weak
+            )
+        }
+    }
+
+    fn atomic_rmw(
+        &mut self,
+        op: rustc_codegen_ssa::common::AtomicRmwBinOp,
+        dst: &'ll Value,
+        src: &'ll Value,
+        order: rustc_codegen_ssa::common::AtomicOrdering,
+    ) -> &'ll Value {
+        unsafe {
+            llvm::LLVMBuildAtomicRMW(
+                self.llbuilder,
+                AtomicRmwBinOp::from_generic(op),
+                dst,
+                src,
+                AtomicOrdering::from_generic(order),
+                False)
+        }
+    }
+
+    fn atomic_fence(
+        &mut self,
+        order: rustc_codegen_ssa::common::AtomicOrdering,
+        scope: rustc_codegen_ssa::common::SynchronizationScope
+    ) {
+        unsafe {
+            llvm::LLVMRustBuildAtomicFence(
+                self.llbuilder,
+                AtomicOrdering::from_generic(order),
+                SynchronizationScope::from_generic(scope)
+            );
+        }
+    }
 }
 
-impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
-    fn new_block<'b>(
-        cx: &'a CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
-        name: &'b str
-    ) -> Self {
-        let mut bx = Builder::with_cx(cx);
-        let llbb = unsafe {
-            let name = SmallCStr::new(name);
-            llvm::LLVMAppendBasicBlockInContext(
-                cx.llcx,
-                llfn,
-                name.as_ptr()
-            )
-        };
-        bx.position_at_end(llbb);
-        bx
-    }
-
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe {
-            llvm::LLVMCreateBuilderInContext(cx.llcx)
-        };
-        Builder {
-            llbuilder,
-            cx,
-        }
-    }
-
-    fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
-        Builder::new_block(self.cx, self.llfn(), name)
-    }
-
-    fn llbb(&self) -> &'ll BasicBlock {
-        unsafe {
-            llvm::LLVMGetInsertBlock(self.llbuilder)
-        }
-    }
-
-    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
-        }
-    }
-
-    fn ret_void(&mut self) {
-        self.count_insn("retvoid");
-        unsafe {
-            llvm::LLVMBuildRetVoid(self.llbuilder);
-        }
-    }
-
-    fn ret(&mut self, v: &'ll Value) {
-        self.count_insn("ret");
-        unsafe {
-            llvm::LLVMBuildRet(self.llbuilder, v);
-        }
-    }
-
-    fn br(&mut self, dest: &'ll BasicBlock) {
-        self.count_insn("br");
-        unsafe {
-            llvm::LLVMBuildBr(self.llbuilder, dest);
-        }
-    }
-
-    fn cond_br(
-        &mut self,
-        cond: &'ll Value,
-        then_llbb: &'ll BasicBlock,
-        else_llbb: &'ll BasicBlock,
-    ) {
-        self.count_insn("condbr");
-        unsafe {
-            llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
-        }
-    }
-
-    fn switch(
-        &mut self,
-        v: &'ll Value,
-        else_llbb: &'ll BasicBlock,
-        num_cases: usize,
-    ) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
-        }
-    }
-
-    fn invoke(
-        &mut self,
-        llfn: &'ll Value,
-        args: &[&'ll Value],
-        then: &'ll BasicBlock,
-        catch: &'ll BasicBlock,
-        funclet: Option<&Funclet<'ll>>,
-    ) -> &'ll Value {
-        self.count_insn("invoke");
-
-        debug!("Invoke {:?} with args ({:?})",
-               llfn,
-               args);
-
-        let args = self.check_call("invoke", llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
-
-        unsafe {
-            llvm::LLVMRustBuildInvoke(self.llbuilder,
-                                      llfn,
-                                      args.as_ptr(),
-                                      args.len() as c_uint,
-                                      then,
-                                      catch,
-                                      bundle,
-                                      noname())
-        }
-    }
-
-    fn unreachable(&mut self) {
-        self.count_insn("unreachable");
-        unsafe {
-            llvm::LLVMBuildUnreachable(self.llbuilder);
-        }
-    }
-
-    /* Arithmetic */
+impl NumBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn add(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("add");
         unsafe {
@@ -837,6 +785,13 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        self.count_insn("zext");
+        unsafe {
+            llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, noname())
+        }
+    }
+
     fn fptoui(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("fptoui");
         unsafe {
@@ -879,20 +834,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn ptrtoint(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        self.count_insn("ptrtoint");
-        unsafe {
-            llvm::LLVMBuildPtrToInt(self.llbuilder, val, dest_ty, noname())
-        }
-    }
-
-    fn inttoptr(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        self.count_insn("inttoptr");
-        unsafe {
-            llvm::LLVMBuildIntToPtr(self.llbuilder, val, dest_ty, noname())
-        }
-    }
-
     fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.count_insn("bitcast");
         unsafe {
@@ -905,13 +846,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.count_insn("intcast");
         unsafe {
             llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty, is_signed)
-        }
-    }
-
-    fn pointercast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        self.count_insn("pointercast");
-        unsafe {
-            llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
@@ -928,6 +862,134 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.count_insn("fcmp");
         unsafe {
             llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
+        }
+    }
+}
+
+impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
+    fn new_block<'b>(
+        cx: &'a CodegenCx<'ll, 'tcx>,
+        llfn: &'ll Value,
+        name: &'b str
+    ) -> Self {
+        let mut bx = Builder::with_cx(cx);
+        let llbb = unsafe {
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(
+                cx.llcx,
+                llfn,
+                name.as_ptr()
+            )
+        };
+        bx.position_at_end(llbb);
+        bx
+    }
+
+    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe {
+            llvm::LLVMCreateBuilderInContext(cx.llcx)
+        };
+        Builder {
+            llbuilder,
+            cx,
+        }
+    }
+
+    fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
+        Builder::new_block(self.cx, self.llfn(), name)
+    }
+
+    fn llbb(&self) -> &'ll BasicBlock {
+        unsafe {
+            llvm::LLVMGetInsertBlock(self.llbuilder)
+        }
+    }
+
+    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
+        }
+    }
+
+    fn ret_void(&mut self) {
+        self.count_insn("retvoid");
+        unsafe {
+            llvm::LLVMBuildRetVoid(self.llbuilder);
+        }
+    }
+
+    fn ret(&mut self, v: &'ll Value) {
+        self.count_insn("ret");
+        unsafe {
+            llvm::LLVMBuildRet(self.llbuilder, v);
+        }
+    }
+
+    fn br(&mut self, dest: &'ll BasicBlock) {
+        self.count_insn("br");
+        unsafe {
+            llvm::LLVMBuildBr(self.llbuilder, dest);
+        }
+    }
+
+    fn cond_br(
+        &mut self,
+        cond: &'ll Value,
+        then_llbb: &'ll BasicBlock,
+        else_llbb: &'ll BasicBlock,
+    ) {
+        self.count_insn("condbr");
+        unsafe {
+            llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
+        }
+    }
+
+    fn switch(
+        &mut self,
+        v: &'ll Value,
+        else_llbb: &'ll BasicBlock,
+        num_cases: usize,
+    ) -> &'ll Value {
+        unsafe {
+            llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
+        }
+    }
+
+    fn invoke(
+        &mut self,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        then: &'ll BasicBlock,
+        catch: &'ll BasicBlock,
+        funclet: Option<&Funclet<'ll>>,
+    ) -> &'ll Value {
+        self.count_insn("invoke");
+
+        debug!("Invoke {:?} with args ({:?})",
+               llfn,
+               args);
+
+        let args = self.check_call("invoke", llfn, args);
+        let bundle = funclet.map(|funclet| funclet.bundle());
+        let bundle = bundle.as_ref().map(|b| &*b.raw);
+
+        unsafe {
+            llvm::LLVMRustBuildInvoke(self.llbuilder,
+                                      llfn,
+                                      args.as_ptr(),
+                                      args.len() as c_uint,
+                                      then,
+                                      catch,
+                                      bundle,
+                                      noname())
+        }
+    }
+
+    fn unreachable(&mut self) {
+        self.count_insn("unreachable");
+        unsafe {
+            llvm::LLVMBuildUnreachable(self.llbuilder);
         }
     }
 
@@ -1129,61 +1191,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    // Atomic Operations
-    fn atomic_cmpxchg(
-        &mut self,
-        dst: &'ll Value,
-        cmp: &'ll Value,
-        src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-        failure_order: rustc_codegen_ssa::common::AtomicOrdering,
-        weak: bool,
-    ) -> &'ll Value {
-        let weak = if weak { llvm::True } else { llvm::False };
-        unsafe {
-            llvm::LLVMRustBuildAtomicCmpXchg(
-                self.llbuilder,
-                dst,
-                cmp,
-                src,
-                AtomicOrdering::from_generic(order),
-                AtomicOrdering::from_generic(failure_order),
-                weak
-            )
-        }
-    }
-    fn atomic_rmw(
-        &mut self,
-        op: rustc_codegen_ssa::common::AtomicRmwBinOp,
-        dst: &'ll Value,
-        src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-    ) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildAtomicRMW(
-                self.llbuilder,
-                AtomicRmwBinOp::from_generic(op),
-                dst,
-                src,
-                AtomicOrdering::from_generic(order),
-                False)
-        }
-    }
-
-    fn atomic_fence(
-        &mut self,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-        scope: rustc_codegen_ssa::common::SynchronizationScope
-    ) {
-        unsafe {
-            llvm::LLVMRustBuildAtomicFence(
-                self.llbuilder,
-                AtomicOrdering::from_generic(order),
-                SynchronizationScope::from_generic(scope)
-            );
-        }
-    }
-
     fn add_case(&mut self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMAddCase(s, on_val, dest)
@@ -1236,13 +1243,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 bundle, noname()
             )
-        }
-    }
-
-    fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        self.count_insn("zext");
-        unsafe {
-            llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, noname())
         }
     }
 

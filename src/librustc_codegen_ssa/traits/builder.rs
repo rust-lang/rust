@@ -24,6 +24,7 @@ pub enum OverflowOp {
 }
 
 pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
+    // Stack allocations
     fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
     fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
     fn array_alloca(
@@ -36,12 +37,8 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
 
     fn load(&mut self, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ptr: Self::Value) -> Self::Value;
-    fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
         -> OperandRef<'tcx, Self::Value>;
-
-    fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
-    fn nonnull_metadata(&mut self, load: Self::Value);
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
     fn store_with_flags(
@@ -51,18 +48,20 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
         align: Align,
         flags: MemFlags,
     ) -> Self::Value;
-    fn atomic_store(
-        &mut self,
-        val: Self::Value,
-        ptr: Self::Value,
-        order: AtomicOrdering,
-        size: Size,
-    );
 
+    // Pointer operations
     fn gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
     fn inbounds_gep(&mut self, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
     fn struct_gep(&mut self, ptr: Self::Value, idx: u64) -> Self::Value;
 
+    fn pointercast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn ptrtoint(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn inttoptr(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+
+    fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
+    fn nonnull_metadata(&mut self, load: Self::Value);
+
+    // Bulk memory operations
     fn memcpy(
         &mut self,
         dst: Self::Value,
@@ -89,6 +88,92 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
         align: Align,
         flags: MemFlags,
     );
+
+    // Atomics
+    fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
+    fn atomic_store(
+        &mut self,
+        val: Self::Value,
+        ptr: Self::Value,
+        order: AtomicOrdering,
+        size: Size,
+    );
+    fn atomic_cmpxchg(
+        &mut self,
+        dst: Self::Value,
+        cmp: Self::Value,
+        src: Self::Value,
+        order: AtomicOrdering,
+        failure_order: AtomicOrdering,
+        weak: bool,
+    ) -> Self::Value;
+    fn atomic_rmw(
+        &mut self,
+        op: AtomicRmwBinOp,
+        dst: Self::Value,
+        src: Self::Value,
+        order: AtomicOrdering,
+    ) -> Self::Value;
+    fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
+}
+
+pub trait NumBuilderMethods<'tcx>: HasCodegen<'tcx> {
+    // Integers
+    fn add(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn sub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn mul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn udiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn exactudiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn sdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn exactsdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn urem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn srem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn shl(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn lshr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn ashr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn xor(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn neg(&mut self, v: Self::Value) -> Self::Value;
+    fn fneg(&mut self, v: Self::Value) -> Self::Value;
+    fn not(&mut self, v: Self::Value) -> Self::Value;
+
+    fn checked_binop(
+        &mut self,
+        oop: OverflowOp,
+        ty: Ty<'_>,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> (Self::Value, Self::Value);
+
+    fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+
+    fn bitcast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn intcast(&mut self, val: Self::Value, dest_ty: Self::Type, is_signed: bool) -> Self::Value;
+
+    fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+
+    // Floats
+    fn fadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fadd_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fsub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fsub_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fmul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fmul_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn fdiv_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn frem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn frem_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+
+    fn fptoui(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fptosi(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn uitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn sitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fptrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fpext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 }
 
 pub trait BuilderMethods<'a, 'tcx: 'a>:
@@ -100,6 +185,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods<'tcx>
     + MemoryBuilderMethods<'tcx>
+    + NumBuilderMethods<'tcx>
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
@@ -132,59 +218,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
     fn unreachable(&mut self);
-    fn add(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fadd_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn sub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fsub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fsub_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn mul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fmul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fmul_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn udiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn exactudiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn sdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn exactsdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fdiv_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn urem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn srem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn frem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn frem_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn shl(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn lshr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn ashr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn xor(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn neg(&mut self, v: Self::Value) -> Self::Value;
-    fn fneg(&mut self, v: Self::Value) -> Self::Value;
-    fn not(&mut self, v: Self::Value) -> Self::Value;
-
-    fn checked_binop(
-        &mut self,
-        oop: OverflowOp,
-        ty: Ty<'_>,
-        lhs: Self::Value,
-        rhs: Self::Value,
-    ) -> (Self::Value, Self::Value);
-
-    fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn fptoui(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn fptosi(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn uitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn sitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn fptrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn fpext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn ptrtoint(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn inttoptr(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn bitcast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn intcast(&mut self, val: Self::Value, dest_ty: Self::Type, is_signed: bool) -> Self::Value;
-    fn pointercast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-
-    fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 
     fn phi(
         &mut self,
@@ -240,23 +273,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn add_handler(&mut self, catch_switch: Self::Value, handler: Self::BasicBlock);
     fn set_personality_fn(&mut self, personality: Self::Value);
 
-    fn atomic_cmpxchg(
-        &mut self,
-        dst: Self::Value,
-        cmp: Self::Value,
-        src: Self::Value,
-        order: AtomicOrdering,
-        failure_order: AtomicOrdering,
-        weak: bool,
-    ) -> Self::Value;
-    fn atomic_rmw(
-        &mut self,
-        op: AtomicRmwBinOp,
-        dst: Self::Value,
-        src: Self::Value,
-        order: AtomicOrdering,
-    ) -> Self::Value;
-    fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
     fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
     fn add_incoming_to_phi(&mut self, phi: Self::Value, val: Self::Value, bb: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
@@ -273,7 +289,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
-    fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     unsafe fn delete_basic_block(&mut self, bb: Self::BasicBlock);
     fn do_not_inline(&mut self, llret: Self::Value);
