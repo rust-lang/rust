@@ -21,7 +21,7 @@ pub fn get_spans(
     idx: usize,
     replacements: &'static [(&'static str, &'static str)],
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
-    if let Some(body) = opt_body_id.map(|id| cx.tcx.hir.body(id)) {
+    if let Some(body) = opt_body_id.map(|id| cx.tcx.hir().body(id)) {
         get_binding_name(&body.arguments[idx]).map_or_else(
             || Some(vec![]),
             |name| extract_clone_suggestions(cx, name, replacements, body),

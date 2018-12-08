@@ -121,11 +121,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
     }
 
     fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body) {
-        let body_owner = cx.tcx.hir.body_owner(body.id());
+        let body_owner = cx.tcx.hir().body_owner(body.id());
 
-        match cx.tcx.hir.body_owner_kind(body_owner) {
+        match cx.tcx.hir().body_owner_kind(body_owner) {
             hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const => {
-                let body_span = cx.tcx.hir.span(body_owner);
+                let body_span = cx.tcx.hir().span(body_owner);
 
                 if let Some(span) = self.const_span {
                     if span.contains(body_span) {
@@ -139,8 +139,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body) {
-        let body_owner = cx.tcx.hir.body_owner(body.id());
-        let body_span = cx.tcx.hir.span(body_owner);
+        let body_owner = cx.tcx.hir().body_owner(body.id());
+        let body_span = cx.tcx.hir().span(body_owner);
 
         if let Some(span) = self.const_span {
             if span.contains(body_span) {

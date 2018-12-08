@@ -62,8 +62,8 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 }
 
 pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
-    let parent_id = cx.tcx.hir.get_parent(id);
-    match cx.tcx.hir.body_owner_kind(parent_id) {
+    let parent_id = cx.tcx.hir().get_parent(id);
+    match cx.tcx.hir().body_owner_kind(parent_id) {
         hir::BodyOwnerKind::Fn => false,
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(..) => true,
     }
@@ -331,8 +331,8 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 
 /// Get the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
-    let parent_id = cx.tcx.hir.get_parent(expr.id);
-    match cx.tcx.hir.find(parent_id) {
+    let parent_id = cx.tcx.hir().get_parent(expr.id);
+    match cx.tcx.hir().find(parent_id) {
         Some(Node::Item(&Item { ref name, .. })) => Some(*name),
         Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
             Some(ident.name)
@@ -520,7 +520,7 @@ fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_
 
 /// Get a parent expressions if any – this is useful to constrain a lint.
 pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c Expr> {
-    let map = &cx.tcx.hir;
+    let map = &cx.tcx.hir();
     let node_id: NodeId = e.id;
     let parent_id: NodeId = map.get_parent_node(node_id);
     if node_id == parent_id {
@@ -536,7 +536,7 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
 }
 
 pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
-    let map = &cx.tcx.hir;
+    let map = &cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(node)
         .and_then(|enclosing_id| map.find(enclosing_id));
@@ -550,7 +550,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
             | Node::ImplItem(&ImplItem {
                 node: ImplItemKind::Method(_, eid),
                 ..
-            }) => match cx.tcx.hir.body(eid).value.node {
+            }) => match cx.tcx.hir().body(eid).value.node {
                 ExprKind::Block(ref block, _) => Some(block),
                 _ => None,
             },
@@ -836,7 +836,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 
 /// Convenience function to get the return type of a function
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'tcx> {
-    let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
+    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }
@@ -1117,7 +1117,7 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
 }
 
 pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: NodeId) -> bool {
-    let map = &tcx.hir;
+    let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {

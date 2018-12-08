@@ -166,8 +166,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
                         output: &mut self.registered_lints,
                         cx,
                     };
-                    let body_id = cx.tcx.hir.body_owned_by(impl_item_refs[0].id.node_id);
-                    collector.visit_expr(&cx.tcx.hir.body(body_id).value);
+                    let body_id = cx.tcx.hir().body_owned_by(impl_item_refs[0].id.node_id);
+                    collector.visit_expr(&cx.tcx.hir().body(body_id).value);
                 }
             }
         }
@@ -236,7 +236,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }
 

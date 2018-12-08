@@ -74,8 +74,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         node_id: NodeId,
     ) {
         // If the method is an impl for a trait, don't warn
-        let parent_id = cx.tcx.hir.get_parent(node_id);
-        let parent_node = cx.tcx.hir.find(parent_id);
+        let parent_id = cx.tcx.hir().get_parent(node_id);
+        let parent_node = cx.tcx.hir().find(parent_id);
 
         if let Some(Node::Item(item)) = parent_node {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+        let fn_def_id = cx.tcx.hir().local_def_id(node_id);
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
         ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).consume_body(body);
 
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             span_lint(
                 cx,
                 BOXED_LOCAL,
-                cx.tcx.hir.span(node),
+                cx.tcx.hir().span(node),
                 "local variable doesn't need to be boxed here",
             );
         }
@@ -115,7 +115,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
-        let map = &self.cx.tcx.hir;
+        let map = &self.cx.tcx.hir();
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
             if let Some(Node::Expr(..)) = map.find(map.get_parent_node(consume_pat.id)) {

@@ -354,7 +354,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
 
 fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
     if let ItemKind::Fn(_, _, _, eid) = item.node {
-        is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
+        is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value)
     } else {
         true
     }
@@ -362,7 +362,7 @@ fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
 
 fn is_relevant_impl(tcx: TyCtxt<'_, '_, '_>, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value),
+        ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value),
         _ => false,
     }
 }
@@ -371,7 +371,7 @@ fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
-            is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
+            is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value)
         },
         _ => false,
     }

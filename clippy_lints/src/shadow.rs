@@ -371,7 +371,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
         TyKind::Slice(ref sty) => check_ty(cx, sty, bindings),
         TyKind::Array(ref fty, ref anon_const) => {
             check_ty(cx, fty, bindings);
-            check_expr(cx, &cx.tcx.hir.body(anon_const.body).value, bindings);
+            check_expr(cx, &cx.tcx.hir().body(anon_const.body).value, bindings);
         },
         TyKind::Ptr(MutTy { ty: ref mty, .. }) | TyKind::Rptr(_, MutTy { ty: ref mty, .. }) => {
             check_ty(cx, mty, bindings)
@@ -381,7 +381,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
                 check_ty(cx, t, bindings)
             }
         },
-        TyKind::Typeof(ref anon_const) => check_expr(cx, &cx.tcx.hir.body(anon_const.body).value, bindings),
+        TyKind::Typeof(ref anon_const) => check_expr(cx, &cx.tcx.hir().body(anon_const.body).value, bindings),
         _ => (),
     }
 }

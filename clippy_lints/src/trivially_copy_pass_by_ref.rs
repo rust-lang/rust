@@ -82,11 +82,11 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
     }
 
     fn check_trait_method(&mut self, cx: &LateContext<'_, 'tcx>, item: &TraitItemRef) {
-        let method_def_id = cx.tcx.hir.local_def_id(item.id.node_id);
+        let method_def_id = cx.tcx.hir().local_def_id(item.id.node_id);
         let method_sig = cx.tcx.fn_sig(method_def_id);
         let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
 
-        let decl = match cx.tcx.hir.fn_decl(item.id.node_id) {
+        let decl = match cx.tcx.hir().fn_decl(item.id.node_id) {
             Some(b) => b,
             None => return,
         };
@@ -192,7 +192,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(node_id)) {
             if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))
             {
@@ -200,7 +200,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
             }
         }
 
-        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+        let fn_def_id = cx.tcx.hir().local_def_id(node_id);
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);

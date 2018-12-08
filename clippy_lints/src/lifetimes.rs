@@ -204,7 +204,7 @@ fn could_use_elision<'a, 'tcx: 'a>(
         let mut checker = BodyLifetimeChecker {
             lifetimes_used_in_body: false,
         };
-        checker.visit_expr(&cx.tcx.hir.body(body_id).value);
+        checker.visit_expr(&cx.tcx.hir().body(body_id).value);
         if checker.lifetimes_used_in_body {
             return false;
         }
@@ -324,7 +324,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
                     GenericArg::Type(_) => false,
                 })
             {
-                let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
+                let hir_id = self.cx.tcx.hir().node_to_hir_id(ty.id);
                 match self.cx.tables.qpath_def(qpath, hir_id) {
                     Def::TyAlias(def_id) | Def::Struct(def_id) => {
                         let generics = self.cx.tcx.generics_of(def_id);
@@ -360,7 +360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 self.collect_anonymous_lifetimes(path, ty);
             },
             TyKind::Def(item, _) => {
-                if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir.expect_item(item.id).node {
+                if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir().expect_item(item.id).node {
                     for bound in &exist_ty.bounds {
                         if let GenericBound::Outlives(_) = *bound {
                             self.record(&None);

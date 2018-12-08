@@ -911,14 +911,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         let name = implitem.ident.name;
-        let parent = cx.tcx.hir.get_parent(implitem.id);
-        let item = cx.tcx.hir.expect_item(parent);
-        let def_id = cx.tcx.hir.local_def_id(item.id);
+        let parent = cx.tcx.hir().get_parent(implitem.id);
+        let item = cx.tcx.hir().expect_item(parent);
+        let def_id = cx.tcx.hir().local_def_id(item.id);
         let ty = cx.tcx.type_of(def_id);
         if_chain! {
             if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
             if let Some(first_arg_ty) = sig.decl.inputs.get(0);
-            if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next();
+            if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl(_, _, _, _, None, ref self_ty, _) = item.node;
             then {
                 if cx.access_levels.is_exported(implitem.id) {
@@ -1086,7 +1086,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
         }
 
         // don't lint for constant values
-        let owner_def = cx.tcx.hir.get_parent_did(arg.id);
+        let owner_def = cx.tcx.hir().get_parent_did(arg.id);
         let promotable = cx.tcx.rvalue_promotable_map(owner_def).contains(&arg.hir_id.local_id);
         if promotable {
             return;
@@ -1334,8 +1334,8 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
         if let Some(snippet) = sugg::Sugg::hir_opt(cx, arg) {
             // x.clone() might have dereferenced x, possibly through Deref impls
             if cx.tables.expr_ty(arg) != ty {
-                let parent = cx.tcx.hir.get_parent_node(expr.id);
-                match cx.tcx.hir.get(parent) {
+                let parent = cx.tcx.hir().get_parent_node(expr.id);
+                match cx.tcx.hir().get(parent) {
                     hir::Node::Expr(parent) => match parent.node {
                         // &*x is a nop, &x.clone() is not
                         hir::ExprKind::AddrOf(..) |
@@ -1496,7 +1496,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
         if_chain! {
             // Extract the body of the closure passed to fold
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = fold_args[2].node;
-            let closure_body = cx.tcx.hir.body(body_id);
+            let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
 
             // Check if the closure body is of the form `acc <op> some_expr(x)`
