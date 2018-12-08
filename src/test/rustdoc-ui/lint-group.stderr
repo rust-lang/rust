@@ -42,3 +42,5 @@ LL | #![deny(rustdoc)]
    |         ^^^^^^^
    = note: #[deny(missing_doc_code_examples)] implied by #[deny(rustdoc)]
 
+error: aborting due to 3 previous errors
+

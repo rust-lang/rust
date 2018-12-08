@@ -11,6 +11,7 @@ use rustc_target::spec::{Target, TargetTriple};
 use crate::lint;
 use crate::middle::cstore;
 
+use syntax;
 use syntax::ast::{self, IntTy, UintTy, MetaItemKind};
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
@@ -1494,6 +1495,15 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     ret
 }
 
+/// Converts the crate cfg! configuration from String to Symbol.
+/// `rustc_interface::interface::Config` accepts this in the compiler configuration,
+/// but the symbol interner is not yet set up then, so we must convert it later.
+pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> ast::CrateConfig {
+    cfg.into_iter()
+       .map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b))))
+       .collect()
+}
+
 pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -1800,10 +1810,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
-    cfgspecs
-        .into_iter()
-        .map(|s| {
+pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
+    syntax::with_globals(move || {
+        let cfg = cfgspecs.into_iter().map(|s| {
             let sess = parse::ParseSess::new(FilePathMapping::empty());
             let filename = FileName::cfg_spec_source_code(&s);
             let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
@@ -1835,8 +1844,11 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
             }
 
             error!(r#"expected `key` or `key="value"`"#);
-        })
-        .collect::<ast::CrateConfig>()
+        }).collect::<ast::CrateConfig>();
+        cfg.into_iter().map(|(a, b)| {
+            (a.to_string(), b.map(|b| b.to_string()))
+        }).collect()
+    })
 }
 
 pub fn get_cmd_lint_options(matches: &getopts::Matches,
@@ -1864,7 +1876,7 @@ pub fn get_cmd_lint_options(matches: &getopts::Matches,
 
 pub fn build_session_options_and_crate_config(
     matches: &getopts::Matches,
-) -> (Options, ast::CrateConfig) {
+) -> (Options, FxHashSet<(String, Option<String>)>) {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
@@ -2590,7 +2602,11 @@ mod tests {
     use getopts;
     use crate::lint;
     use crate::middle::cstore;
-    use crate::session::config::{build_configuration, build_session_options_and_crate_config};
+    use crate::session::config::{
+        build_configuration,
+        build_session_options_and_crate_config,
+        to_crate_config
+    };
     use crate::session::config::{LtoCli, LinkerPluginLto};
     use crate::session::build_session;
     use crate::session::search_paths::SearchPath;
@@ -2631,7 +2647,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, cfg) = build_session_options_and_crate_config(matches);
             let sess = build_session(sessopts, None, registry);
-            let cfg = build_configuration(&sess, cfg);
+            let cfg = build_configuration(&sess, to_crate_config(cfg));
             assert!(cfg.contains(&(Symbol::intern("test"), None)));
         });
     }
@@ -2649,7 +2665,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, cfg) = build_session_options_and_crate_config(matches);
             let sess = build_session(sessopts, None, registry);
-            let cfg = build_configuration(&sess, cfg);
+            let cfg = build_configuration(&sess, to_crate_config(cfg));
             let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
             assert!(test_items.next().is_some());
             assert!(test_items.next().is_none());

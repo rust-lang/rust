@@ -63,11 +63,12 @@ use std::sync::{mpsc, Arc};
 use rustc::dep_graph::DepGraph;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc::session::{Session, CompileIncomplete};
+use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::time_graph;
 use rustc::util::profiling::ProfileCategory;
+use rustc::util::common::ErrorReported;
 use rustc_mir::monomorphize;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -311,7 +312,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         sess: &Session,
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
-    ) -> Result<(), CompileIncomplete>{
+    ) -> Result<(), ErrorReported>{
         use rustc::util::common::time;
         let (codegen_results, work_products) =
             ongoing_codegen.downcast::

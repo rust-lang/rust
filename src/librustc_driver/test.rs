@@ -1,33 +1,22 @@
 //! Standalone tests for the inference module.
 
-use driver;
-use errors;
 use errors::emitter::Emitter;
 use errors::{DiagnosticBuilder, Level};
 use rustc::hir;
-use rustc::hir::map as hir_map;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::{self, InferOk, InferResult, SuppressRegionErrors};
 use rustc::middle::region;
-use rustc::session::config::{OutputFilenames, OutputTypes};
-use rustc::session::{self, config};
+use rustc::session::{DiagnosticOutput, config};
 use rustc::traits::ObligationCause;
-use rustc::ty::query::OnDiskCache;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_data_structures::sync::{self, Lrc};
-use rustc_interface::util;
-use rustc_lint;
-use rustc_metadata::cstore::CStore;
+use rustc_data_structures::sync;
 use rustc_target::spec::abi::Abi;
-use syntax;
+use rustc_interface::interface;
 use syntax::ast;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::source_map::{FileName, FilePathMapping, SourceMap};
+use syntax::source_map::FileName;
 use syntax::symbol::Symbol;
-
-use std::path::PathBuf;
-use std::sync::mpsc;
 
 struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
@@ -75,102 +64,57 @@ impl Emitter for ExpectErrorEmitter {
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<dyn Emitter + sync::Send>, usize) {
-    let v = msgs.iter().map(|m| m.to_string()).collect();
+fn errors(msgs: &[&str]) -> (Box<dyn Emitter + Send + sync::Send>, usize) {
+    let mut v: Vec<_> = msgs.iter().map(|m| m.to_string()).collect();
+    if !v.is_empty() {
+        v.push("aborting due to previous error".to_owned());
+    }
     (
-        box ExpectErrorEmitter { messages: v } as Box<dyn Emitter + sync::Send>,
+        box ExpectErrorEmitter { messages: v } as Box<dyn Emitter + Send + sync::Send>,
         msgs.len(),
     )
 }
 
-fn test_env<F>(source_string: &str, args: (Box<dyn Emitter + sync::Send>, usize), body: F)
-where
-    F: FnOnce(Env) + sync::Send,
-{
-    syntax::with_globals(|| {
-        let mut options = config::Options::default();
-        options.debugging_opts.verbose = true;
-        options.unstable_features = UnstableFeatures::Allow;
-
-        // When we're compiling this library with `--test` it'll run as a binary but
-        // not actually exercise much functionality.
-        // As a result most of the logic loading the codegen backend is defunkt
-        // (it assumes we're a dynamic library in a sysroot)
-        // so let's just use the metadata only backend which doesn't need to load any libraries.
-        options.debugging_opts.codegen_backend = Some("metadata_only".to_owned());
-
-        driver::spawn_thread_pool(options, |options| {
-            test_env_with_pool(options, source_string, args, body)
-        })
-    });
-}
-
-fn test_env_with_pool<F>(
-    options: config::Options,
+fn test_env<F>(
     source_string: &str,
-    (emitter, expected_err_count): (Box<dyn Emitter + sync::Send>, usize),
+    (emitter, expected_err_count): (Box<dyn Emitter + Send + sync::Send>, usize),
     body: F,
-) where
-    F: FnOnce(Env),
+)
+where
+    F: FnOnce(Env) + Send,
 {
-    let diagnostic_handler = errors::Handler::with_emitter(true, None, emitter);
-    let sess = session::build_session_(
-        options,
-        None,
-        diagnostic_handler,
-        Lrc::new(SourceMap::new(FilePathMapping::empty())),
-        Default::default(),
-    );
-    let cstore = CStore::new(util::get_codegen_backend(&sess).metadata_loader());
-    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+    let mut opts = config::Options::default();
+    opts.debugging_opts.verbose = true;
+    opts.unstable_features = UnstableFeatures::Allow;
+
+    // When we're compiling this library with `--test` it'll run as a binary but
+    // not actually exercise much functionality.
+    // As a result most of the logic loading the codegen backend is defunkt
+    // (it assumes we're a dynamic library in a sysroot)
+    // so let's just use the metadata only backend which doesn't need to load any libraries.
+    opts.debugging_opts.codegen_backend = Some("metadata_only".to_owned());
+
     let input = config::Input::Str {
         name: FileName::anon_source_code(&source_string),
         input: source_string.to_string(),
     };
-    let krate =
-        driver::phase_1_parse_input(&driver::CompileController::basic(), &sess, &input).unwrap();
-    let driver::ExpansionResult {
-        defs,
-        resolutions,
-        mut hir_forest,
-        ..
-    } = {
-        driver::phase_2_configure_and_expand(
-            &sess,
-            &cstore,
-            krate,
-            None,
-            "test",
-            None,
-            |_| Ok(()),
-        ).expect("phase 2 aborted")
+
+    let config = interface::Config {
+        opts,
+        crate_cfg: Default::default(),
+        input,
+        input_path: None,
+        output_file: None,
+        output_dir: None,
+        file_loader: None,
+        diagnostic_output: DiagnosticOutput::Emitter(emitter),
+        stderr: None,
+        crate_name: Some("test".to_owned()),
+        lint_caps: Default::default(),
     };
 
-    let mut arenas = ty::AllArenas::new();
-    let hir_map = hir_map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
-
-    // Run just enough stuff to build a tcx.
-    let (tx, _rx) = mpsc::channel();
-    let outputs = OutputFilenames {
-        out_directory: PathBuf::new(),
-        out_filestem: String::new(),
-        single_output_file: None,
-        extra: String::new(),
-        outputs: OutputTypes::new(&[]),
-    };
-    TyCtxt::create_and_enter(
-        &sess,
-        &cstore,
-        ty::query::Providers::default(),
-        ty::query::Providers::default(),
-        &mut arenas,
-        resolutions,
-        hir_map,
-        OnDiskCache::new_empty(sess.source_map()),
-        "test_crate",
-        tx,
-        &outputs,
-        |tcx| {
+    interface::run_compiler(config, |compiler| {
+        compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             tcx.infer_ctxt().enter(|infcx| {
                 let mut region_scope_tree = region::ScopeTree::default();
                 let param_env = ty::ParamEnv::empty();
@@ -189,8 +133,8 @@ fn test_env_with_pool<F>(
                 );
                 assert_eq!(tcx.sess.err_count(), expected_err_count);
             });
-        },
-    );
+        })
+    });
 }
 
 fn d1() -> ty::DebruijnIndex {

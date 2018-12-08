@@ -203,7 +203,7 @@ pub struct RenderOptions {
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
-    pub fn from_matches(matches: &getopts::Matches) -> Result<Options, isize> {
+    pub fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
         // Check for unstable options.
         nightly_options::check_nightly_options(&matches, &opts());
 

@@ -27,10 +27,10 @@ use crate::doctree::*;
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
-pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
+pub struct RustdocVisitor<'a, 'tcx> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+    pub cx: &'a core::DocContext<'tcx>,
     view_item_stack: FxHashSet<ast::NodeId>,
     inlining: bool,
     /// Are the current module and all of its parents public?
@@ -38,10 +38,10 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
     exact_paths: Option<FxHashMap<DefId, Vec<String>>>,
 }
 
-impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(
-        cx: &'a core::DocContext<'a, 'tcx, 'rcx>
-    ) -> RustdocVisitor<'a, 'tcx, 'rcx> {
+        cx: &'a core::DocContext<'tcx>
+    ) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet::default();
         stack.insert(ast::CRATE_NODE_ID);
@@ -269,7 +269,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                           om: &mut Module,
                           please_inline: bool) -> bool {
 
-        fn inherits_doc_hidden(cx: &core::DocContext<'_, '_, '_>, mut node: ast::NodeId) -> bool {
+        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: ast::NodeId) -> bool {
             while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
                 if cx.tcx.hir().attrs(node).lists("doc").has_word("hidden") {

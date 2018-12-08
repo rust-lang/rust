@@ -946,11 +946,6 @@ impl_stable_hash_for!(struct ty::CrateInherentImpls {
     inherent_impls
 });
 
-impl_stable_hash_for!(enum crate::session::CompileIncomplete {
-    Stopped,
-    Errored(error_reported)
-});
-
 impl_stable_hash_for!(struct crate::util::common::ErrorReported {});
 
 impl_stable_hash_for!(tuple_struct crate::middle::reachable::ReachableSet {

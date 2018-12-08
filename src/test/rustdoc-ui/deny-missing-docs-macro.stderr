@@ -10,5 +10,5 @@ note: lint level defined here
 LL | #![deny(missing_docs)]
    |         ^^^^^^^^^^^^
 
-error: Compilation failed, aborting rustdoc
+error: aborting due to previous error
 

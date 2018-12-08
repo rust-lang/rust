@@ -1,19 +1,18 @@
 use rustc_lint;
-use rustc_driver::{driver, abort_on_err};
 use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
 use rustc::hir::{self, HirId, HirVec};
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, AllArenas};
-use rustc::hir::map as hir_map;
+use rustc::ty::{self, TyCtxt};
 use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
+use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_interface::util;
+use rustc_interface::interface;
+use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
-use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
@@ -24,15 +23,15 @@ use syntax::json::JsonEmitter;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::DUMMY_SP;
-use errors::{self, FatalError};
+use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
 
 use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
-use std::rc::Rc;
 use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
@@ -47,12 +46,13 @@ pub use rustc::session::search_paths::SearchPath;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
+pub struct DocContext<'tcx> {
+
+    pub tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
-    pub cstore: Rc<CStore>,
+    pub cstore: Lrc<CStore>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
@@ -79,9 +79,16 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub all_traits: Vec<DefId>,
 }
 
-impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
+impl<'tcx> DocContext<'tcx> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
+    }
+
+    pub fn enter_resolver<F, R>(&self, f: F) -> R
+    where F: FnOnce(&mut resolve::Resolver<'_>) -> R {
+        let resolver = &*self.resolver;
+        let resolver = resolver.as_ref().unwrap();
+        resolver.borrow_mut().access(f)
     }
 
     /// Call the closure with the given parameters set as
@@ -368,19 +375,31 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
-    let lints = lint::builtin::HardwiredLints.get_lints()
-                    .into_iter()
-                    .chain(rustc_lint::SoftLints.get_lints().into_iter())
-                    .filter_map(|lint| {
-                        if lint.name == warnings_lint_name ||
-                           lint.name == intra_link_resolution_failure_name {
-                            None
-                        } else {
-                            Some((lint.name_lower(), lint::Allow))
-                        }
-                    })
-                    .chain(lint_opts.into_iter())
-                    .collect::<Vec<_>>();
+    let lints = || {
+        lint::builtin::HardwiredLints
+            .get_lints()
+            .into_iter()
+            .chain(rustc_lint::SoftLints.get_lints().into_iter())
+    };
+
+    let lint_opts = lints().filter_map(|lint| {
+        if lint.name == warnings_lint_name ||
+            lint.name == intra_link_resolution_failure_name {
+            None
+        } else {
+            Some((lint.name_lower(), lint::Allow))
+        }
+    }).chain(lint_opts.into_iter()).collect::<Vec<_>>();
+
+    let lint_caps = lints().filter_map(|lint| {
+        // We don't want to whitelist *all* lints so let's
+        // ignore those ones.
+        if whitelisted_lints.iter().any(|l| &lint.name == l) {
+            None
+        } else {
+            Some((lint::LintId::of(lint), lint::Allow))
+        }
+    }).collect();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
     // plays with error output here!
@@ -389,7 +408,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         search_paths: libs,
         crate_types: vec![config::CrateType::Rlib],
         lint_opts: if !display_warnings {
-            lints
+            lint_opts
         } else {
             vec![]
         },
@@ -406,116 +425,42 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         describe_lints,
         ..Options::default()
     };
-    driver::spawn_thread_pool(sessopts, move |sessopts| {
-        let source_map = Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping()));
-        let diagnostic_handler = new_handler(error_format,
-                                             Some(source_map.clone()),
-                                             debugging_options.treat_err_as_bug,
-                                             debugging_options.ui_testing);
 
-        let mut sess = session::build_session_(
-            sessopts, cpath, diagnostic_handler, source_map, Default::default(),
-        );
+    let config = interface::Config {
+        opts: sessopts,
+        crate_cfg: config::parse_cfgspecs(cfgs),
+        input,
+        input_path: cpath,
+        output_file: None,
+        output_dir: None,
+        file_loader: None,
+        diagnostic_output: DiagnosticOutput::Default,
+        stderr: None,
+        crate_name: crate_name.clone(),
+        lint_caps,
+    };
 
-        lint::builtin::HardwiredLints.get_lints()
-                                     .into_iter()
-                                     .chain(rustc_lint::SoftLints.get_lints().into_iter())
-                                     .filter_map(|lint| {
-                                         // We don't want to whitelist *all* lints so let's
-                                         // ignore those ones.
-                                         if whitelisted_lints.iter().any(|l| &lint.name == l) {
-                                             None
-                                         } else {
-                                             Some(lint)
-                                         }
-                                     })
-                                     .for_each(|l| {
-                                         sess.driver_lint_caps.insert(lint::LintId::of(l),
-                                                                      lint::Allow);
-                                     });
+    interface::run_compiler_in_existing_thread_pool(config, |compiler| {
+        let sess = compiler.session();
 
-        let codegen_backend = util::get_codegen_backend(&sess);
-        let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
-        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-
-        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
-        util::add_configuration(&mut cfg, &sess, &*codegen_backend);
-        sess.parse_sess.config = cfg;
-
-        let control = &driver::CompileController::basic();
-
-        let krate = match driver::phase_1_parse_input(control, &sess, &input) {
-            Ok(krate) => krate,
-            Err(mut e) => {
-                e.emit();
-                FatalError.raise();
-            }
-        };
-
-        let name = match crate_name {
-            Some(ref crate_name) => crate_name.clone(),
-            None => ::rustc_codegen_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input),
-        };
-
-        let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
-
-        let resolver_arenas = resolve::Resolver::arenas();
-        let result = driver::phase_2_configure_and_expand_inner(&sess,
-                                                        &cstore,
-                                                        krate,
-                                                        None,
-                                                        &name,
-                                                        None,
-                                                        &resolver_arenas,
-                                                        &mut crate_loader,
-                                                        |_| Ok(()));
-        let driver::InnerExpansionResult {
-            mut hir_forest,
-            resolver,
-            ..
-        } = abort_on_err(result, &sess);
-
-        // We need to hold on to the complete resolver, so we clone everything
-        // for the analysis passes to use. Suboptimal, but necessary in the
+        // We need to hold on to the complete resolver, so we cause everything to be
+        // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let defs = resolver.definitions.clone();
-        let resolutions = ty::Resolutions {
-            freevars: resolver.freevars.clone(),
-            export_map: resolver.export_map.clone(),
-            trait_map: resolver.trait_map.clone(),
-            glob_map: resolver.glob_map.clone(),
-            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
-            maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
-            extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
-                (ident.name, entry.introduced_by_item)
-            }).collect(),
-        };
+        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
 
-        let mut arenas = AllArenas::new();
-        let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
-        let output_filenames = util::build_output_filenames(&input,
-                                                            &None,
-                                                            &None,
-                                                            &[],
-                                                            &sess);
+        if sess.err_count() > 0 {
+            sess.fatal("Compilation failed, aborting rustdoc");
+        }
 
-        let resolver = RefCell::new(resolver);
-        driver::phase_3_run_analysis_passes(&*codegen_backend,
-                                            control,
-                                            &sess,
-                                            &*cstore,
-                                            hir_map,
-                                            resolutions,
-                                            &mut arenas,
-                                            &name,
-                                            &output_filenames,
-                                            |tcx, _, result| {
-            if result.is_err() {
-                sess.fatal("Compilation failed, aborting rustdoc");
-            }
+        let mut global_ctxt = abort_on_err(compiler.global_ctxt(), sess).take();
+
+        global_ctxt.enter(|tcx| {
+            tcx.analysis(LOCAL_CRATE).ok();
+
+            // Abort if there were any errors so far
+            sess.abort_if_errors();
 
             let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
-
             // Convert from a NodeId set to a DefId set since we don't always have easy access
             // to the map from defid -> nodeid
             let access_levels = AccessLevels {
@@ -535,9 +480,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let ctxt = DocContext {
                 tcx,
-                resolver: &resolver,
+                resolver,
                 crate_name,
-                cstore: cstore.clone(),
+                cstore: compiler.cstore().clone(),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
                 renderinfo: RefCell::new(renderinfo),

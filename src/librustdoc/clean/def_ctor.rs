@@ -2,7 +2,7 @@ use crate::core::DocContext;
 
 use super::*;
 
-pub fn get_def_from_def_id<F>(cx: &DocContext<'_, '_, '_>,
+pub fn get_def_from_def_id<F>(cx: &DocContext<'_>,
                               def_id: DefId,
                               callback: &F,
 ) -> Vec<Item>
@@ -38,7 +38,7 @@ where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     }
 }
 
-pub fn get_def_from_hir_id<F>(cx: &DocContext<'_, '_, '_>,
+pub fn get_def_from_hir_id<F>(cx: &DocContext<'_>,
                               id: hir::HirId,
                               name: String,
                               callback: &F,

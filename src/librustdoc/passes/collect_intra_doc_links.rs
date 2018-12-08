@@ -25,7 +25,7 @@ pub const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     description: "reads a crate's documentation to resolve intra-doc-links",
 };
 
-pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_, '_, '_>) -> Crate {
+pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
     if !UnstableFeatures::from_environment().is_nightly_build() {
         krate
     } else {
@@ -47,14 +47,14 @@ enum PathKind {
     Type,
 }
 
-struct LinkCollector<'a, 'tcx: 'a, 'rcx: 'a> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx>,
+struct LinkCollector<'a, 'tcx> {
+    cx: &'a DocContext<'tcx>,
     mod_ids: Vec<ast::NodeId>,
     is_nightly_build: bool,
 }
 
-impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
-    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
+    fn new(cx: &'a DocContext<'tcx>) -> Self {
         LinkCollector {
             cx,
             mod_ids: Vec::new(),
@@ -78,12 +78,11 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
         // path.
         if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
             // FIXME: `with_scope` requires the `NodeId` of a module.
-            let result = cx.resolver.borrow_mut()
-                                    .with_scope(id,
+            let result = cx.enter_resolver(|resolver| resolver.with_scope(id,
                 |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP,
                                                     &path_str, is_val)
-            });
+            }));
 
             if let Ok(result) = result {
                 // In case this is a trait item, skip the
@@ -142,11 +141,9 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
             }
 
             // FIXME: `with_scope` requires the `NodeId` of a module.
-            let ty = cx.resolver.borrow_mut()
-                                .with_scope(id,
-                |resolver| {
+            let ty = cx.enter_resolver(|resolver| resolver.with_scope(id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
-            })?;
+            }))?;
             match ty.def {
                 Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
                     let item = cx.tcx.inherent_impls(did)
@@ -218,7 +215,7 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
     }
 }
 
-impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_hir_id = if item.is_mod() {
             if let Some(id) = self.cx.tcx.hir().as_local_hir_id(item.def_id) {
@@ -437,26 +434,27 @@ impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
 }
 
 /// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<Def> {
+fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
-    let mut resolver = cx.resolver.borrow_mut();
-    let parent_scope = resolver.dummy_parent_scope();
-    if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
-                                                         &parent_scope, false, false) {
-        if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
-            // skip proc-macro stubs, they'll cause `get_macro` to crash
-        } else {
-            if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
-                return Some(def);
+    cx.enter_resolver(|resolver| {
+        let parent_scope = resolver.dummy_parent_scope();
+        if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
+                                                            &parent_scope, false, false) {
+            if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+                // skip proc-macro stubs, they'll cause `get_macro` to crash
+            } else {
+                if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
+                    return Some(def);
+                }
             }
         }
-    }
-    if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
-        return Some(*def);
-    }
-    None
+        if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
+            return Some(*def);
+        }
+        None
+    })
 }
 
 /// Reports a resolution failure diagnostic.
@@ -465,7 +463,7 @@ fn macro_resolve(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<Def> {
 /// documentation attributes themselves. This is a little heavy-handed, so we display the markdown
 /// line containing the failure as a note as well.
 fn resolution_failure(
-    cx: &DocContext<'_, '_, '_>,
+    cx: &DocContext<'_>,
     attrs: &Attributes,
     path_str: &str,
     dox: &str,
@@ -507,7 +505,7 @@ fn resolution_failure(
     diag.emit();
 }
 
-fn ambiguity_error(cx: &DocContext<'_, '_, '_>, attrs: &Attributes,
+fn ambiguity_error(cx: &DocContext<'_>, attrs: &Attributes,
                    path_str: &str,
                    article1: &str, kind1: &str, disambig1: &str,
                    article2: &str, kind2: &str, disambig2: &str) {
@@ -563,7 +561,7 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
 }
 
 /// Given an enum variant's def, return the def of its enum and the associated fragment.
-fn handle_variant(cx: &DocContext<'_, '_, '_>, def: Def) -> Result<(Def, Option<String>), ()> {
+fn handle_variant(cx: &DocContext<'_>, def: Def) -> Result<(Def, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 
     let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {
@@ -604,7 +602,7 @@ fn is_primitive(path_str: &str, is_val: bool) -> Option<Def> {
     }
 }
 
-fn primitive_impl(cx: &DocContext<'_, '_, '_>, path_str: &str) -> Option<DefId> {
+fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
     let tcx = cx.tcx;
     match path_str {
         "u8" => tcx.lang_items().u8_impl(),
