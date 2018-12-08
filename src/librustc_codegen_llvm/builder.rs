@@ -652,7 +652,37 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         OperandRef { val, layout: place.layout }
     }
 
+    fn write_operand_repeatedly(
+        mut self,
+        cg_elem: OperandRef<'tcx, &'ll Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, &'ll Value>,
+    ) -> Self {
+        let zero = self.const_usize(0);
+        let count = self.const_usize(count);
+        let start = dest.project_index(&mut self, zero).llval;
+        let end = dest.project_index(&mut self, count).llval;
 
+        let mut header_bx = self.build_sibling_block("repeat_loop_header");
+        let mut body_bx = self.build_sibling_block("repeat_loop_body");
+        let next_bx = self.build_sibling_block("repeat_loop_next");
+
+        self.br(header_bx.llbb());
+        let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
+
+        let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
+        header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
+
+        let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        cg_elem.val.store(&mut body_bx,
+            PlaceRef::new_sized(current, cg_elem.layout, align));
+
+        let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
+        body_bx.br(header_bx.llbb());
+        header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
+
+        next_bx
+    }
 
     fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
         if self.sess().target.target.arch == "amdgpu" {
@@ -873,20 +903,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     /* Miscellaneous instructions */
-    fn phi(&mut self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
-        self.count_insn("addincoming");
-        assert_eq!(vals.len(), bbs.len());
-        let phi = unsafe {
-            llvm::LLVMBuildPhi(self.llbuilder, ty, noname())
-        };
-        unsafe {
-            llvm::LLVMAddIncoming(phi, vals.as_ptr(),
-                                  bbs.as_ptr(),
-                                  vals.len() as c_uint);
-            phi
-        }
-    }
-
     fn inline_asm_call(&mut self, asm: &CStr, cons: &CStr,
                        inputs: &[&'ll Value], output: &'ll Type,
                        volatile: bool, alignstack: bool,
@@ -1185,13 +1201,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn add_case(&mut self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMAddCase(s, on_val, dest)
-        }
-    }
-
-    fn add_incoming_to_phi(&mut self, phi: &'ll Value, val: &'ll Value, bb: &'ll BasicBlock) {
-        self.count_insn("addincoming");
-        unsafe {
-            llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
         }
     }
 
@@ -1525,5 +1534,26 @@ impl Builder<'a, 'll, 'tcx> {
 
         let ptr = self.pointercast(ptr, self.cx.type_i8p());
         self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
+    }
+
+    fn phi(&mut self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
+        self.count_insn("addincoming");
+        assert_eq!(vals.len(), bbs.len());
+        let phi = unsafe {
+            llvm::LLVMBuildPhi(self.llbuilder, ty, noname())
+        };
+        unsafe {
+            llvm::LLVMAddIncoming(phi, vals.as_ptr(),
+                                  bbs.as_ptr(),
+                                  vals.len() as c_uint);
+            phi
+        }
+    }
+
+    fn add_incoming_to_phi(&mut self, phi: &'ll Value, val: &'ll Value, bb: &'ll BasicBlock) {
+        self.count_insn("addincoming");
+        unsafe {
+            llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
+        }
     }
 }

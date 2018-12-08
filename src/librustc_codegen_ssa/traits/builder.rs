@@ -116,6 +116,14 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
         -> OperandRef<'tcx, Self::Value>;
 
+        /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
+    fn write_operand_repeatedly(
+        self,
+        elem: OperandRef<'tcx, Self::Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, Self::Value>,
+    ) -> Self;
+
     fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
@@ -156,12 +164,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 
-    fn phi(
-        &mut self,
-        ty: Self::Type,
-        vals: &[Self::Value],
-        bbs: &[Self::BasicBlock],
-    ) -> Self::Value;
     fn inline_asm_call(
         &mut self,
         asm: &CStr,
@@ -255,7 +257,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     ) -> Self::Value;
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
     fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
-    fn add_incoming_to_phi(&mut self, phi: Self::Value, val: Self::Value, bb: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
 
     /// Called for `StorageLive`
