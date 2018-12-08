@@ -170,9 +170,16 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         v: &'ll Value,
         else_llbb: &'ll BasicBlock,
         num_cases: usize,
-    ) -> &'ll Value {
-        unsafe {
+        cases: impl Iterator<Item = (u128, &'ll BasicBlock)>,
+    ) {
+        let switch = unsafe {
             llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
+        };
+        for (on_val, dest) in cases {
+            let on_val = self.const_uint_big(self.val_ty(v), on_val);
+            unsafe {
+                llvm::LLVMAddCase(switch, on_val, dest)
+            }
         }
     }
 
@@ -1155,12 +1162,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 AtomicOrdering::from_generic(order),
                 SynchronizationScope::from_generic(scope)
             );
-        }
-    }
-
-    fn add_case(&mut self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMAddCase(s, on_val, dest)
         }
     }
 

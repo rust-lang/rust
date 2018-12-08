@@ -50,7 +50,8 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         v: Self::Value,
         else_llbb: Self::BasicBlock,
         num_cases: usize,
-    ) -> Self::Value;
+        cases: impl Iterator<Item = (u128, Self::BasicBlock)>,
+    );
     fn invoke(
         &mut self,
         llfn: Self::Value,
@@ -60,6 +61,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
     fn unreachable(&mut self);
+
     fn add(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fadd_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -242,7 +244,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         order: AtomicOrdering,
     ) -> Self::Value;
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
-    fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
 
     /// Called for `StorageLive`

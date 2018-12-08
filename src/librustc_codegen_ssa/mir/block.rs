@@ -214,17 +214,14 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         } else {
             let (otherwise, targets) = targets.split_last().unwrap();
-            let switch = bx.switch(discr.immediate(),
-                                   helper.llblock(self, *otherwise),
-                                   values.len());
-            let switch_llty = bx.immediate_backend_type(
-                bx.layout_of(switch_ty)
+            bx.switch(
+                discr.immediate(),
+                helper.llblock(self, *otherwise),
+                values.len(),
+                values.iter().zip(targets).map(|(&value, target)| {
+                    (value, helper.llblock(self, *target))
+                })
             );
-            for (&value, target) in values.iter().zip(targets) {
-                let llval = bx.const_uint_big(switch_llty, value);
-                let llbb = helper.llblock(self, *target);
-                bx.add_case(switch, llval, llbb)
-            }
         }
     }
 
