@@ -141,6 +141,23 @@ impl CodegenCx<'ll, 'tcx> {
         assert_eq!(size % unit_size, 0);
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
+
+    crate fn type_variadic_func(
+        &self,
+        args: &[&'ll Type],
+        ret: &'ll Type
+    ) -> &'ll Type {
+        unsafe {
+            llvm::LLVMFunctionType(ret, args.as_ptr(),
+                                   args.len() as c_uint, True)
+        }
+    }
+
+    crate fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe {
+            llvm::LLVMRustArrayType(ty, len)
+        }
+    }
 }
 
 impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -208,17 +225,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn type_variadic_func(
-        &self,
-        args: &[&'ll Type],
-        ret: &'ll Type
-    ) -> &'ll Type {
-        unsafe {
-            llvm::LLVMFunctionType(ret, args.as_ptr(),
-                                   args.len() as c_uint, True)
-        }
-    }
-
     fn type_struct(
         &self,
         els: &[&'ll Type],
@@ -228,13 +234,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMStructTypeInContext(self.llcx, els.as_ptr(),
                                           els.len() as c_uint,
                                           packed as Bool)
-        }
-    }
-
-
-    fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe {
-            llvm::LLVMRustArrayType(ty, len)
         }
     }
 
