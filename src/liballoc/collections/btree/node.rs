@@ -307,7 +307,7 @@ impl<K, V> Root<K, V> {
                                     .node)
         };
         self.height -= 1;
-        self.as_mut().as_leaf_mut().parent = ptr::null();
+        unsafe { (*self.as_mut().as_leaf_mut()).parent = ptr::null(); }
 
         unsafe {
             Global.dealloc(NonNull::from(top).cast(), Layout::new::<InternalNode<K, V>>());
@@ -570,9 +570,10 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         }
     }
 
-    fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {
-        // We are mutable, so we cannot be the root, so this is okay.
-        unsafe { self.node.as_mut() }
+    /// Returns a raw ptr to avoid asserting exclusive access to the entire node.
+    fn as_leaf_mut(&mut self) -> *mut LeafNode<K, V> {
+        // We are mutable, so we cannot be the root, so accessing this as a leaf is okay.
+        self.node.as_ptr()
     }
 
     fn keys_mut(&mut self) -> &mut [K] {
@@ -659,7 +660,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         } else {
             unsafe {
                 slice::from_raw_parts_mut(
-                    self.as_leaf_mut().keys.as_mut_ptr() as *mut K,
+                    (*self.as_leaf_mut()).keys.as_mut_ptr() as *mut K,
                     self.len()
                 )
             }
@@ -670,7 +671,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts_mut(
-                self.as_leaf_mut().vals.as_mut_ptr() as *mut V,
+                (*self.as_leaf_mut()).vals.as_mut_ptr() as *mut V,
                 self.len()
             )
         }
@@ -694,9 +695,9 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         unsafe {
             ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
             ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
-        }
 
-        self.as_leaf_mut().len += 1;
+            (*self.as_leaf_mut()).len += 1;
+        }
     }
 
     /// Adds a key/value pair to the beginning of the node.
@@ -708,9 +709,9 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
             slice_insert(self.vals_mut(), 0, val);
-        }
 
-        self.as_leaf_mut().len += 1;
+            (*self.as_leaf_mut()).len += 1;
+        }
     }
 }
 
@@ -729,7 +730,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
             ptr::write(self.as_internal_mut().edges.get_unchecked_mut(idx + 1), edge.node);
 
-            self.as_leaf_mut().len += 1;
+            (*self.as_leaf_mut()).len += 1;
 
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
@@ -765,7 +766,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
                 edge.node
             );
 
-            self.as_leaf_mut().len += 1;
+            (*self.as_leaf_mut()).len += 1;
 
             self.correct_all_childrens_parent_links();
         }
@@ -789,12 +790,12 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(internal) => {
                     let edge = ptr::read(internal.as_internal().edges.get_unchecked(idx + 1));
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.as_mut().as_leaf_mut().parent = ptr::null();
+                    (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
                     Some(new_root)
                 }
             };
 
-            self.as_leaf_mut().len -= 1;
+            (*self.as_leaf_mut()).len -= 1;
             (key, val, edge)
         }
     }
@@ -822,7 +823,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                     );
 
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.as_mut().as_leaf_mut().parent = ptr::null();
+                    (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
 
                     for i in 0..old_len {
                         Handle::new_edge(internal.reborrow_mut(), i).correct_parent_link();
@@ -832,7 +833,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 }
             };
 
-            self.as_leaf_mut().len -= 1;
+            (*self.as_leaf_mut()).len -= 1;
 
             (key, val, edge)
         }
@@ -1023,7 +1024,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
             slice_insert(self.node.keys_mut(), self.idx, key);
             slice_insert(self.node.vals_mut(), self.idx, val);
 
-            self.node.as_leaf_mut().len += 1;
+            (*self.node.as_leaf_mut()).len += 1;
 
             self.node.vals_mut().get_unchecked_mut(self.idx)
         }
@@ -1066,8 +1067,10 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let idx = self.idx as u16;
         let ptr = self.node.as_internal_mut() as *mut _;
         let mut child = self.descend();
-        child.as_leaf_mut().parent = ptr;
-        child.as_leaf_mut().parent_idx.set(idx);
+        unsafe {
+            (*child.as_leaf_mut()).parent = ptr;
+            (*child.as_leaf_mut()).parent_idx.set(idx);
+        }
     }
 
     /// Unsafely asserts to the compiler some static information about whether the underlying
@@ -1215,7 +1218,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
                 new_len
             );
 
-            self.node.as_leaf_mut().len = self.idx as u16;
+            (*self.node.as_leaf_mut()).len = self.idx as u16;
             new_node.len = new_len as u16;
 
             (
@@ -1237,7 +1240,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
         unsafe {
             let k = slice_remove(self.node.keys_mut(), self.idx);
             let v = slice_remove(self.node.vals_mut(), self.idx);
-            self.node.as_leaf_mut().len -= 1;
+            (*self.node.as_leaf_mut()).len -= 1;
             (self.left_edge(), k, v)
         }
     }
@@ -1278,7 +1281,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 new_len + 1
             );
 
-            self.node.as_leaf_mut().len = self.idx as u16;
+            (*self.node.as_leaf_mut()).len = self.idx as u16;
             new_node.data.len = new_len as u16;
 
             let mut new_root = Root {
@@ -1352,9 +1355,9 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             for i in self.idx+1..self.node.len() {
                 Handle::new_edge(self.node.reborrow_mut(), i).correct_parent_link();
             }
-            self.node.as_leaf_mut().len -= 1;
+            (*self.node.as_leaf_mut()).len -= 1;
 
-            left_node.as_leaf_mut().len += right_len as u16 + 1;
+            (*left_node.as_leaf_mut()).len += right_len as u16 + 1;
 
             if self.node.height > 1 {
                 ptr::copy_nonoverlapping(
@@ -1464,8 +1467,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 move_kv(left_kv, new_left_len, parent_kv, 0, 1);
             }
 
-            left_node.reborrow_mut().as_leaf_mut().len -= count as u16;
-            right_node.reborrow_mut().as_leaf_mut().len += count as u16;
+            (*left_node.reborrow_mut().as_leaf_mut()).len -= count as u16;
+            (*right_node.reborrow_mut().as_leaf_mut()).len += count as u16;
 
             match (left_node.force(), right_node.force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
@@ -1525,8 +1528,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                           new_right_len);
             }
 
-            left_node.reborrow_mut().as_leaf_mut().len += count as u16;
-            right_node.reborrow_mut().as_leaf_mut().len -= count as u16;
+            (*left_node.reborrow_mut().as_leaf_mut()).len += count as u16;
+            (*right_node.reborrow_mut().as_leaf_mut()).len -= count as u16;
 
             match (left_node.force(), right_node.force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
@@ -1617,8 +1620,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
 
             move_kv(left_kv, left_new_len, right_kv, 0, right_new_len);
 
-            left_node.reborrow_mut().as_leaf_mut().len = left_new_len as u16;
-            right_node.reborrow_mut().as_leaf_mut().len = right_new_len as u16;
+            (*left_node.reborrow_mut().as_leaf_mut()).len = left_new_len as u16;
+            (*right_node.reborrow_mut().as_leaf_mut()).len = right_new_len as u16;
 
             match (left_node.force(), right_node.force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(right)) => {
