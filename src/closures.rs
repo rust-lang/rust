@@ -20,7 +20,7 @@ use overflow::OverflowableItem;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use source_map::SpanUtils;
-use utils::{last_line_width, left_most_sub_expr, stmt_expr};
+use utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 
 // This module is pretty messy because of the rules around closures and blocks:
 // FIXME - the below is probably no longer true in full.
@@ -150,11 +150,11 @@ fn rewrite_closure_with_block(
 
     let block = ast::Block {
         stmts: vec![ast::Stmt {
-            id: ast::NodeId::new(0),
+            id: ast::NodeId::root(),
             node: ast::StmtKind::Expr(ptr::P(body.clone())),
             span: body.span,
         }],
-        id: ast::NodeId::new(0),
+        id: ast::NodeId::root(),
         rules: ast::BlockCheckMode::Default,
         span: body.span,
         recovered: false,

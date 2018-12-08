@@ -14,11 +14,12 @@ use bytecount;
 
 use rustc_target::spec::abi;
 use syntax::ast::{
-    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind, Path,
-    Visibility, VisibilityKind,
+    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
+    NodeId, Path, Visibility, VisibilityKind,
 };
 use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
+use syntax_pos::Mark;
 
 use comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
 use config::Config;
@@ -580,6 +581,16 @@ fn get_prefix_space_width(config: &Config, s: &str) -> usize {
         }
     }
     width
+}
+
+pub(crate) trait NodeIdExt {
+    fn root() -> Self;
+}
+
+impl NodeIdExt for NodeId {
+    fn root() -> NodeId {
+        NodeId::placeholder_from_mark(Mark::root())
+    }
 }
 
 #[cfg(test)]
