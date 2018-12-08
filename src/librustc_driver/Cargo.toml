@@ -39,6 +39,10 @@ smallvec = { version = "0.6.5", features = ["union"] }
 syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
 
+# Make sure rustc_codegen_ssa ends up in the sysroot, because this
+# crate is intended to be used by codegen backends, which may not be in-tree.
+rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
+
 [dependencies.jemalloc-sys]
 version = '0.1.8'
 optional = true
