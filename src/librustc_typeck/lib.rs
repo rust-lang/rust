@@ -105,7 +105,7 @@ use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
 use rustc::session;
-use rustc::session::CompileIncomplete;
+use rustc::util::common::ErrorReported;
 use rustc::session::config::{EntryFnType, nightly_options};
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::Substs;
@@ -318,7 +318,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> Result<(), CompileIncomplete>
+                             -> Result<(), ErrorReported>
 {
     tcx.sess.profiler(|p| p.start_activity(ProfileCategory::TypeChecking));
 
@@ -327,7 +327,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", ||
              collect::collect_item_types(tcx));
-
     })?;
 
     if tcx.features().rustc_attrs {
@@ -365,7 +364,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     tcx.sess.profiler(|p| p.end_activity(ProfileCategory::TypeChecking));
 
-    tcx.sess.compile_status()
+    if tcx.sess.err_count() == 0 {
+        Ok(())
+    } else {
+        Err(ErrorReported)
+    }
 }
 
 /// A quasi-deprecated helper used in rustdoc and save-analysis to get

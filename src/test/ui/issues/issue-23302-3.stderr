@@ -20,6 +20,7 @@ note: ...which requires checking which parts of `B` are promotable to static...
 LL | const B: i32 = A;
    |                ^
    = note: ...which again requires const checking if rvalue is promotable to static `A`, completing the cycle
+   = note: cycle used when running analysis passes on this crate
 
 error: aborting due to previous error
 
