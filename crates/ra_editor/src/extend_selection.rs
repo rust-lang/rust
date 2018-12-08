@@ -48,8 +48,8 @@ fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Optio
     let cursor_position: u32 = (offset - leaf.range().start()).into();
 
     let (before, after) = text.split_at(cursor_position as usize);
-    let start_idx = before.rfind(char::is_whitespace)? as u32;
-    let end_idx = after.find(char::is_whitespace)? as u32;
+    let start_idx = before.rfind(char::is_whitespace).unwrap_or(0) as u32;
+    let end_idx = after.find(char::is_whitespace).unwrap_or(after.len()) as u32;
 
     let from: TextUnit = (start_idx + 1).into();
     let to: TextUnit = (cursor_position + end_idx).into();
@@ -184,7 +184,7 @@ fn bar(){}
 
 // fn foo(){}
     "#,
-            &["// 1 + 1", "// fn foo() {\n// 1 + 1\n// }"],
+            &["1", "// 1 + 1", "// fn foo() {\n// 1 + 1\n// }"],
         );
 
         do_check(
