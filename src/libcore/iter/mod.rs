@@ -1868,18 +1868,11 @@ impl<I: Iterator> Iterator for Peekable<I> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        // FIXME(#43234): merge these when borrow-checking gets better.
-        if n == 0 {
-            match self.peeked.take() {
-                Some(v) => v,
-                None => self.iter.nth(n),
-            }
-        } else {
-            match self.peeked.take() {
-                Some(None) => None,
-                Some(Some(_)) => self.iter.nth(n - 1),
-                None => self.iter.nth(n),
-            }
+        match self.peeked.take() {
+            Some(None) => None,
+            Some(v @ Some(_)) if n == 0 => v,
+            Some(Some(_)) => self.iter.nth(n - 1),
+            None => self.iter.nth(n),
         }
     }
 
@@ -1978,14 +1971,8 @@ impl<I: Iterator> Peekable<I> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&mut self) -> Option<&I::Item> {
-        if self.peeked.is_none() {
-            self.peeked = Some(self.iter.next());
-        }
-        match self.peeked {
-            Some(Some(ref value)) => Some(value),
-            Some(None) => None,
-            _ => unreachable!(),
-        }
+        let iter = &mut self.iter;
+        self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
 }
 
