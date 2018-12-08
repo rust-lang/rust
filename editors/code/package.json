@@ -107,7 +107,7 @@
             },
             {
                 "command": "ra-lsp.extendSelection",
-                "key": "ctrl+w",
+                "key": "shift+alt+right",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
