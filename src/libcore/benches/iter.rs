@@ -282,6 +282,12 @@ bench_sums! {
     (0i64..1000000).chain(1000000..).take_while(|&x| x < 1111111)
 }
 
+bench_sums! {
+    bench_cycle_take_sum,
+    bench_cycle_take_ref_sum,
+    (0i64..10000).cycle().take(1000000)
+}
+
 // Checks whether Skip<Zip<A,B>> is as fast as Zip<Skip<A>, Skip<B>>, from
 // https://users.rust-lang.org/t/performance-difference-between-iterator-zip-and-skip-order/15743
 #[bench]
