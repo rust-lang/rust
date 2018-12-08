@@ -1,0 +1,12 @@
+error: missing `fn` for method definition
+  --> $DIR/pub-ident-fn-with-lifetime-2.rs:1:4
+   |
+LL | pub   bar<'a>(&self, _s: &'a usize) -> bool { true }
+   |    ^^^
+help: add `fn` here to parse `bar` as a public method
+   |
+LL | pub fn bar<'a>(&self, _s: &'a usize) -> bool { true }
+   |     ^^
+
+error: aborting due to previous error
+

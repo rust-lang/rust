@@ -1,0 +1,12 @@
+error: missing `struct` for struct definition
+  --> $DIR/pub-ident-struct-with-lifetime.rs:1:4
+   |
+LL | pub S<'a> {
+   |    ^
+help: add `struct` here to parse `S` as a public struct
+   |
+LL | pub struct S<'a> {
+   |     ^^^^^^
+
+error: aborting due to previous error
+
