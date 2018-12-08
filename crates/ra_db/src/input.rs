@@ -38,8 +38,8 @@ impl CrateData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
-    crate_id: CrateId,
-    name: SmolStr,
+    pub crate_id: CrateId,
+    pub name: SmolStr,
 }
 
 impl Dependency {
