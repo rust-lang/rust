@@ -1416,17 +1416,6 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     {
         self.search(hash, is_match)
     }
-
-    /// Search possible locations for an element with hash `hash` until `is_match` returns true for
-    /// one of them. There is no guarantee that all keys passed to `is_match` will have the provided
-    /// hash.
-    #[inline]
-    #[unstable(feature = "hash_raw_entry", issue = "56167")]
-    pub fn search_bucket<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
-        where for<'b> F: FnMut(&'b K) -> bool,
-    {
-        self.search(hash, is_match)
-    }
 }
 
 impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
@@ -1472,17 +1461,6 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
-        where F: FnMut(&K) -> bool
-    {
-        self.search(hash, is_match)
-    }
-
-    /// Search possible locations for an element with hash `hash` until `is_match` returns true for
-    /// one of them. There is no guarantee that all keys passed to `is_match` will have the provided
-    /// hash.
-    #[inline]
-    #[unstable(feature = "hash_raw_entry", issue = "56167")]
-    pub fn search_bucket<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
         where F: FnMut(&K) -> bool
     {
         self.search(hash, is_match)
@@ -3727,7 +3705,6 @@ mod test_map {
         assert_eq!(map.raw_entry().from_key(&1).unwrap(), (&1, &100));
         assert_eq!(map.raw_entry().from_hash(hash1, |k| *k == 1).unwrap(), (&1, &100));
         assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash1, &1).unwrap(), (&1, &100));
-        assert_eq!(map.raw_entry().search_bucket(hash1, |k| *k == 1).unwrap(), (&1, &100));
         assert_eq!(map.len(), 6);
 
         // Existing key (update)
@@ -3743,7 +3720,6 @@ mod test_map {
         assert_eq!(map.raw_entry().from_key(&2).unwrap(), (&2, &200));
         assert_eq!(map.raw_entry().from_hash(hash2, |k| *k == 2).unwrap(), (&2, &200));
         assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash2, &2).unwrap(), (&2, &200));
-        assert_eq!(map.raw_entry().search_bucket(hash2, |k| *k == 2).unwrap(), (&2, &200));
         assert_eq!(map.len(), 6);
 
         // Existing key (take)
@@ -3757,7 +3733,6 @@ mod test_map {
         assert_eq!(map.raw_entry().from_key(&3), None);
         assert_eq!(map.raw_entry().from_hash(hash3, |k| *k == 3), None);
         assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash3, &3), None);
-        assert_eq!(map.raw_entry().search_bucket(hash3, |k| *k == 3), None);
         assert_eq!(map.len(), 5);
 
 
@@ -3780,7 +3755,6 @@ mod test_map {
             assert_eq!(map.raw_entry().from_key(&k), kv);
             assert_eq!(map.raw_entry().from_hash(hash, |q| *q == k), kv);
             assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &k), kv);
-            assert_eq!(map.raw_entry().search_bucket(hash, |q| *q == k), kv);
 
             match map.raw_entry_mut().from_key(&k) {
                 Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
@@ -3791,10 +3765,6 @@ mod test_map {
                 Vacant(_) => assert_eq!(v, None),
             }
             match map.raw_entry_mut().from_hash(hash, |q| *q == k) {
-                Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
-                Vacant(_) => assert_eq!(v, None),
-            }
-            match map.raw_entry_mut().search_bucket(hash, |q| *q == k) {
                 Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
                 Vacant(_) => assert_eq!(v, None),
             }
