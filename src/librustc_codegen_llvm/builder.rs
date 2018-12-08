@@ -898,6 +898,128 @@ impl NumBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
+impl UnwindBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn invoke(
+        &mut self,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        then: &'ll BasicBlock,
+        catch: &'ll BasicBlock,
+        funclet: Option<&Funclet<'ll>>,
+    ) -> &'ll Value {
+        self.count_insn("invoke");
+
+        debug!("Invoke {:?} with args ({:?})",
+               llfn,
+               args);
+
+        let args = self.check_call("invoke", llfn, args);
+        let bundle = funclet.map(|funclet| funclet.bundle());
+        let bundle = bundle.as_ref().map(|b| &*b.raw);
+
+        unsafe {
+            llvm::LLVMRustBuildInvoke(self.llbuilder,
+                                      llfn,
+                                      args.as_ptr(),
+                                      args.len() as c_uint,
+                                      then,
+                                      catch,
+                                      bundle,
+                                      noname())
+        }
+    }
+
+    fn landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value,
+                       num_clauses: usize) -> &'ll Value {
+        self.count_insn("landingpad");
+        unsafe {
+            llvm::LLVMBuildLandingPad(self.llbuilder, ty, pers_fn,
+                                      num_clauses as c_uint, noname())
+        }
+    }
+
+    fn set_cleanup(&mut self, landing_pad: &'ll Value) {
+        self.count_insn("setcleanup");
+        unsafe {
+            llvm::LLVMSetCleanup(landing_pad, llvm::True);
+        }
+    }
+
+    fn resume(&mut self, exn: &'ll Value) -> &'ll Value {
+        self.count_insn("resume");
+        unsafe {
+            llvm::LLVMBuildResume(self.llbuilder, exn)
+        }
+    }
+
+    fn cleanup_pad(&mut self,
+                       parent: Option<&'ll Value>,
+                       args: &[&'ll Value]) -> Funclet<'ll> {
+        self.count_insn("cleanuppad");
+        let name = const_cstr!("cleanuppad");
+        let ret = unsafe {
+            llvm::LLVMRustBuildCleanupPad(self.llbuilder,
+                                          parent,
+                                          args.len() as c_uint,
+                                          args.as_ptr(),
+                                          name.as_ptr())
+        };
+        Funclet::new(ret.expect("LLVM does not have support for cleanuppad"))
+    }
+
+    fn cleanup_ret(
+        &mut self, funclet: &Funclet<'ll>,
+        unwind: Option<&'ll BasicBlock>,
+    ) -> &'ll Value {
+        self.count_insn("cleanupret");
+        let ret = unsafe {
+            llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
+        };
+        ret.expect("LLVM does not have support for cleanupret")
+    }
+
+    fn catch_pad(&mut self,
+                     parent: &'ll Value,
+                     args: &[&'ll Value]) -> Funclet<'ll> {
+        self.count_insn("catchpad");
+        let name = const_cstr!("catchpad");
+        let ret = unsafe {
+            llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
+                                        args.len() as c_uint, args.as_ptr(),
+                                        name.as_ptr())
+        };
+        Funclet::new(ret.expect("LLVM does not have support for catchpad"))
+    }
+
+    fn catch_switch(
+        &mut self,
+        parent: Option<&'ll Value>,
+        unwind: Option<&'ll BasicBlock>,
+        num_handlers: usize,
+    ) -> &'ll Value {
+        self.count_insn("catchswitch");
+        let name = const_cstr!("catchswitch");
+        let ret = unsafe {
+            llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
+                                           num_handlers as c_uint,
+                                           name.as_ptr())
+        };
+        ret.expect("LLVM does not have support for catchswitch")
+    }
+
+    fn add_handler(&mut self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
+        unsafe {
+            llvm::LLVMRustAddHandler(catch_switch, handler);
+        }
+    }
+
+    fn set_personality_fn(&mut self, personality: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
+        }
+    }
+}
+
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx>,
@@ -985,36 +1107,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         unsafe {
             llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
-        }
-    }
-
-    fn invoke(
-        &mut self,
-        llfn: &'ll Value,
-        args: &[&'ll Value],
-        then: &'ll BasicBlock,
-        catch: &'ll BasicBlock,
-        funclet: Option<&Funclet<'ll>>,
-    ) -> &'ll Value {
-        self.count_insn("invoke");
-
-        debug!("Invoke {:?} with args ({:?})",
-               llfn,
-               args);
-
-        let args = self.check_call("invoke", llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
-
-        unsafe {
-            llvm::LLVMRustBuildInvoke(self.llbuilder,
-                                      llfn,
-                                      args.as_ptr(),
-                                      args.len() as c_uint,
-                                      then,
-                                      catch,
-                                      bundle,
-                                      noname())
         }
     }
 
@@ -1116,96 +1208,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint,
                                        noname())
-        }
-    }
-
-    fn landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value,
-                       num_clauses: usize) -> &'ll Value {
-        self.count_insn("landingpad");
-        unsafe {
-            llvm::LLVMBuildLandingPad(self.llbuilder, ty, pers_fn,
-                                      num_clauses as c_uint, noname())
-        }
-    }
-
-    fn set_cleanup(&mut self, landing_pad: &'ll Value) {
-        self.count_insn("setcleanup");
-        unsafe {
-            llvm::LLVMSetCleanup(landing_pad, llvm::True);
-        }
-    }
-
-    fn resume(&mut self, exn: &'ll Value) -> &'ll Value {
-        self.count_insn("resume");
-        unsafe {
-            llvm::LLVMBuildResume(self.llbuilder, exn)
-        }
-    }
-
-    fn cleanup_pad(&mut self,
-                       parent: Option<&'ll Value>,
-                       args: &[&'ll Value]) -> Funclet<'ll> {
-        self.count_insn("cleanuppad");
-        let name = const_cstr!("cleanuppad");
-        let ret = unsafe {
-            llvm::LLVMRustBuildCleanupPad(self.llbuilder,
-                                          parent,
-                                          args.len() as c_uint,
-                                          args.as_ptr(),
-                                          name.as_ptr())
-        };
-        Funclet::new(ret.expect("LLVM does not have support for cleanuppad"))
-    }
-
-    fn cleanup_ret(
-        &mut self, funclet: &Funclet<'ll>,
-        unwind: Option<&'ll BasicBlock>,
-    ) -> &'ll Value {
-        self.count_insn("cleanupret");
-        let ret = unsafe {
-            llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
-        };
-        ret.expect("LLVM does not have support for cleanupret")
-    }
-
-    fn catch_pad(&mut self,
-                     parent: &'ll Value,
-                     args: &[&'ll Value]) -> Funclet<'ll> {
-        self.count_insn("catchpad");
-        let name = const_cstr!("catchpad");
-        let ret = unsafe {
-            llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
-                                        args.len() as c_uint, args.as_ptr(),
-                                        name.as_ptr())
-        };
-        Funclet::new(ret.expect("LLVM does not have support for catchpad"))
-    }
-
-    fn catch_switch(
-        &mut self,
-        parent: Option<&'ll Value>,
-        unwind: Option<&'ll BasicBlock>,
-        num_handlers: usize,
-    ) -> &'ll Value {
-        self.count_insn("catchswitch");
-        let name = const_cstr!("catchswitch");
-        let ret = unsafe {
-            llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
-                                           num_handlers as c_uint,
-                                           name.as_ptr())
-        };
-        ret.expect("LLVM does not have support for catchswitch")
-    }
-
-    fn add_handler(&mut self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMRustAddHandler(catch_switch, handler);
-        }
-    }
-
-    fn set_personality_fn(&mut self, personality: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }
     }
 

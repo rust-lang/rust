@@ -184,6 +184,40 @@ pub trait NumBuilderMethods<'tcx>: HasCodegen<'tcx> {
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 }
 
+pub trait UnwindBuilderMethods<'tcx>: HasCodegen<'tcx> {
+    fn invoke(
+        &mut self,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        then: Self::BasicBlock,
+        catch: Self::BasicBlock,
+        funclet: Option<&Self::Funclet>,
+    ) -> Self::Value;
+    fn landing_pad(
+        &mut self,
+        ty: Self::Type,
+        pers_fn: Self::Value,
+        num_clauses: usize,
+    ) -> Self::Value;
+    fn set_cleanup(&mut self, landing_pad: Self::Value);
+    fn resume(&mut self, exn: Self::Value) -> Self::Value;
+    fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
+    fn cleanup_ret(
+        &mut self,
+        funclet: &Self::Funclet,
+        unwind: Option<Self::BasicBlock>,
+    ) -> Self::Value;
+    fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
+    fn catch_switch(
+        &mut self,
+        parent: Option<Self::Value>,
+        unwind: Option<Self::BasicBlock>,
+        num_handlers: usize,
+    ) -> Self::Value;
+    fn add_handler(&mut self, catch_switch: Self::Value, handler: Self::BasicBlock);
+    fn set_personality_fn(&mut self, personality: Self::Value);
+}
+
 pub trait BuilderMethods<'a, 'tcx: 'a>:
     HasCodegen<'tcx>
     + DebugInfoBuilderMethods<'tcx>
@@ -194,6 +228,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + StaticBuilderMethods<'tcx>
     + MemoryBuilderMethods<'tcx>
     + NumBuilderMethods<'tcx>
+    + UnwindBuilderMethods<'tcx>
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
@@ -215,14 +250,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         v: Self::Value,
         else_llbb: Self::BasicBlock,
         num_cases: usize,
-    ) -> Self::Value;
-    fn invoke(
-        &mut self,
-        llfn: Self::Value,
-        args: &[Self::Value],
-        then: Self::BasicBlock,
-        catch: Self::BasicBlock,
-        funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
     fn unreachable(&mut self);
 
@@ -249,30 +276,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn vector_splat(&mut self, num_elts: usize, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
-
-    fn landing_pad(
-        &mut self,
-        ty: Self::Type,
-        pers_fn: Self::Value,
-        num_clauses: usize,
-    ) -> Self::Value;
-    fn set_cleanup(&mut self, landing_pad: Self::Value);
-    fn resume(&mut self, exn: Self::Value) -> Self::Value;
-    fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
-    fn cleanup_ret(
-        &mut self,
-        funclet: &Self::Funclet,
-        unwind: Option<Self::BasicBlock>,
-    ) -> Self::Value;
-    fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
-    fn catch_switch(
-        &mut self,
-        parent: Option<Self::Value>,
-        unwind: Option<Self::BasicBlock>,
-        num_handlers: usize,
-    ) -> Self::Value;
-    fn add_handler(&mut self, catch_switch: Self::Value, handler: Self::BasicBlock);
-    fn set_personality_fn(&mut self, personality: Self::Value);
 
     fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
