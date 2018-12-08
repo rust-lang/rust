@@ -29,6 +29,7 @@ use crate::syntax::attr;
 use crate::syntax::errors::DiagnosticBuilder;
 use crate::syntax::source_map::{Span, DUMMY_SP};
 use crate::syntax::symbol::{keywords, Symbol};
+use crate::syntax::symbol;
 use if_chain::if_chain;
 use matches::matches;
 use std::borrow::Cow;
@@ -74,6 +75,25 @@ pub fn in_macro(span: Span) -> bool {
     span.ctxt().outer().expn_info().is_some()
 }
 
+/// Used to store the absolute path to a type.
+///
+/// See `match_def_path` for usage.
+#[derive(Debug)]
+pub struct AbsolutePathBuffer {
+    pub names: Vec<symbol::LocalInternedString>,
+}
+
+impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
+    fn root_mode(&self) -> &ty::item_path::RootMode {
+        const ABSOLUTE: &ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
+        ABSOLUTE
+    }
+
+    fn push(&mut self, text: &str) {
+        self.names.push(symbol::Symbol::intern(text).as_str());
+    }
+}
+
 /// Check if a `DefId`'s path matches the given absolute type path usage.
 ///
 /// # Examples
@@ -83,24 +103,6 @@ pub fn in_macro(span: Span) -> bool {
 ///
 /// See also the `paths` module.
 pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> bool {
-    use crate::syntax::symbol;
-
-    #[derive(Debug)]
-    struct AbsolutePathBuffer {
-        names: Vec<symbol::LocalInternedString>,
-    }
-
-    impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
-        fn root_mode(&self) -> &ty::item_path::RootMode {
-            const ABSOLUTE: &ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
-            ABSOLUTE
-        }
-
-        fn push(&mut self, text: &str) {
-            self.names.push(symbol::Symbol::intern(text).as_str());
-        }
-    }
-
     let mut apb = AbsolutePathBuffer { names: vec![] };
 
     tcx.push_item_path(&mut apb, def_id, false);

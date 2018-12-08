@@ -28,8 +28,9 @@ use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, match_type, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
+    match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
     snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    AbsolutePathBuffer
 };
 use if_chain::if_chain;
 use std::borrow::Cow;
@@ -1023,6 +1024,21 @@ impl LintPass for CastPass {
     }
 }
 
+// Check if the given type is either `core::ffi::c_void` or
+// one of the platform specific `libc::<platform>::c_void` of libc.
+fn is_c_void(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
+    if let ty::Adt(adt, _) = ty.sty {
+        let mut apb = AbsolutePathBuffer { names: vec![] };
+        tcx.push_item_path(&mut apb, adt.did, false);
+
+        if apb.names.is_empty() { return false }
+        if apb.names[0] == "libc" || apb.names[0] == "core" && *apb.names.last().unwrap() == "c_void" {
+            return true
+        }
+    }
+    false
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Cast(ref ex, _) = expr.node {
@@ -1114,10 +1130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi);
                 if from_align < to_align;
                 // with c_void, we inherently need to trust the user
-                if ! (
-                    match_type(cx, from_ptr_ty.ty, &paths::C_VOID)
-                    || match_type(cx, from_ptr_ty.ty, &paths::C_VOID_LIBC)
-                );
+                if !is_c_void(cx.tcx, from_ptr_ty.ty);
                 then {
                     span_lint(
                         cx,
