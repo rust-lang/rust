@@ -36,13 +36,20 @@ pub trait ControlFlowBuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
         then_llbb: Self::BasicBlock,
         else_llbb: Self::BasicBlock,
     );
-    fn switch(
+    fn switch_new(
         &mut self,
         v: Self::Value,
         else_llbb: Self::BasicBlock,
         num_cases: usize,
-    ) -> Self::Value;
-    fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
+    ) -> Self::Switch;
+    fn switch_add_case(
+        &mut self,
+        s: &mut Self::Switch,
+        on_val: Self::Value,
+        dest: Self::BasicBlock,
+    );
+    fn switch_emit(&mut self, s: Self::Switch);
+
     fn unreachable(&mut self);
 }
 
@@ -116,7 +123,7 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
 
     /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
     fn write_operand_repeatedly(
-        self,
+        &mut self,
         elem: OperandRef<'tcx, Self::Value>,
         count: u64,
         dest: PlaceRef<'tcx, Self::Value>,

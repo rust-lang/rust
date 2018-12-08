@@ -46,6 +46,7 @@ fn noname() -> *const c_char {
 
 impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
+    type Switch = <CodegenCx<'ll, 'tcx> as BackendTypes>::Switch;
     type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
     type Type = <CodegenCx<'ll, 'tcx> as BackendTypes>::Type;
     type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
@@ -165,7 +166,7 @@ impl ControlFlowBuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn switch(
+    fn switch_new(
         &mut self,
         v: &'ll Value,
         else_llbb: &'ll BasicBlock,
@@ -176,11 +177,13 @@ impl ControlFlowBuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn add_case(&mut self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
+    fn switch_add_case(&mut self, s: &mut &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
         unsafe {
-            llvm::LLVMAddCase(s, on_val, dest)
+            llvm::LLVMAddCase(*s, on_val, dest)
         }
     }
+
+    fn switch_emit(&mut self, _: &'ll Value) {}
 
     fn unreachable(&mut self) {
         self.count_insn("unreachable");
@@ -506,15 +509,15 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn write_operand_repeatedly(
-        mut self,
+        &mut self,
         cg_elem: OperandRef<'tcx, &'ll Value>,
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
     ) -> Self {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let mut header_bx = self.build_sibling_block("repeat_loop_header");
         let mut body_bx = self.build_sibling_block("repeat_loop_body");

@@ -14,6 +14,7 @@ use syntax_pos::symbol::InternedString;
 
 pub trait BackendTypes {
     type Value: CodegenObject;
+    type Switch;
     type BasicBlock: Copy;
     type Type: CodegenObject;
     type Funclet;

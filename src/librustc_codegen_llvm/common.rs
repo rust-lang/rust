@@ -86,6 +86,7 @@ impl Funclet<'ll> {
 
 impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type Value = &'ll Value;
+    type Switch = &'ll Value;
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Funclet = Funclet<'ll>;
