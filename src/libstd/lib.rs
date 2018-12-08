@@ -287,7 +287,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
 #![feature(std_internals)]
-#![cfg_attr(not(stage0), feature(stdsimd))]
+#![feature(stdsimd)]
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
@@ -514,18 +514,17 @@ pub mod rt;
 #[path = "../stdsimd/stdsimd/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 mod stdsimd;
 
 // A "fake" module needed by the `stdsimd` module to compile, not actually
 // exported though.
-#[cfg(not(stage0))]
 mod coresimd {
     pub use core::arch;
 }
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 pub use stdsimd::arch;
 
 // Include a number of private modules that exist solely to provide
