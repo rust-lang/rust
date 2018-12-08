@@ -54,7 +54,12 @@ fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Optio
     let from: TextUnit = (start_idx + 1).into();
     let to: TextUnit = (cursor_position + end_idx).into();
 
-    Some(TextRange::from_to(from, to) + leaf.range().start())
+    let range = TextRange::from_to(from, to);
+    if range.is_empty() {
+        None
+    } else {
+        Some(range + leaf.range().start())
+    }
 }
 
 fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRange {
@@ -180,6 +185,20 @@ fn bar(){}
 // fn foo(){}
     "#,
             &["// 1 + 1", "// fn foo() {\n// 1 + 1\n// }"],
+        );
+
+        do_check(
+            r#"
+// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// pub enum Direction {
+//  <|>   Next,
+//     Prev
+// }
+"#,
+            &[
+                "//     Next,",
+                "// #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n// pub enum Direction {\n//     Next,\n//     Prev\n// }",
+            ],
         );
     }
 
