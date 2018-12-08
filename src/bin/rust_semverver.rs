@@ -6,30 +6,30 @@ extern crate getopts;
 #[macro_use]
 extern crate log;
 extern crate rustc;
+extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
-extern crate rustc_codegen_utils;
 extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::semcheck::run_analysis;
-
-use rustc::hir::def_id::*;
-use rustc_metadata::cstore::CStore;
-use rustc::session::{config, Session};
-use rustc::session::config::{Input, ErrorOutputType};
-use rustc::middle::cstore::ExternCrate;
-
-use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
-
+use rustc::{
+    hir::def_id::*,
+    middle::cstore::ExternCrate,
+    session::{
+        config::{self, ErrorOutputType, Input},
+        Session,
+    },
+};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-
-use std::path::PathBuf;
-use std::process::Command;
-
-use syntax::ast;
-use syntax::source_map::Pos;
+use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
+use rustc_metadata::cstore::CStore;
+use semverver::semcheck::run_analysis;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
+use syntax::{ast, source_map::Pos};
 
 /// After the typechecker has finished it's work, perform our checks.
 fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
@@ -49,8 +49,9 @@ fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
             };
 
             match *tcx.extern_crate(def_id) {
-                Some(ExternCrate { span, direct: true, ..}) if span.data().lo.to_usize() > 0 =>
-                    Some((span.data().lo.to_usize(), def_id)),
+                Some(ExternCrate {
+                    span, direct: true, ..
+                }) if span.data().lo.to_usize() > 0 => Some((span.data().lo.to_usize(), def_id)),
                 _ => None,
             }
         })
@@ -58,16 +59,13 @@ fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
 
     crates.sort_by_key(|&(span_lo, _)| span_lo);
 
-    match crates.as_slice() {
-        &[(_, old_def_id), (_, new_def_id)] => {
-            debug!("running semver analysis");
-            let changes = run_analysis(tcx, old_def_id, new_def_id);
+    if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
+        debug!("running semver analysis");
+        let changes = run_analysis(tcx, old_def_id, new_def_id);
 
-            changes.output(tcx.sess, version, verbose);
-        }
-        _ => {
-            tcx.sess.err("could not find crate old and new crates");
-        }
+        changes.output(tcx.sess, version, verbose);
+    } else {
+        tcx.sess.err("could not find crate old and new crates");
     }
 }
 
@@ -83,8 +81,8 @@ struct SemVerVerCompilerCalls {
 
 impl SemVerVerCompilerCalls {
     /// Construct a new compilation wrapper, given a version string.
-    pub fn new(version: String, verbose: bool) -> Box<SemVerVerCompilerCalls> {
-        Box::new(SemVerVerCompilerCalls {
+    pub fn new(version: String, verbose: bool) -> Box<Self> {
+        Box::new(Self {
             default: Box::new(RustcDefaultCalls),
             version,
             verbose,
@@ -101,55 +99,58 @@ impl SemVerVerCompilerCalls {
 }
 
 impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
-    fn early_callback(&mut self,
-                      matches: &getopts::Matches,
-                      sopts: &config::Options,
-                      cfg: &ast::CrateConfig,
-                      descriptions: &rustc_errors::registry::Registry,
-                      output: ErrorOutputType)
-                      -> Compilation {
+    fn early_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &rustc_errors::registry::Registry,
+        output: ErrorOutputType,
+    ) -> Compilation {
         debug!("running rust-semverver early_callback");
         self.default
             .early_callback(matches, sopts, cfg, descriptions, output)
     }
 
-    fn no_input(&mut self,
-                matches: &getopts::Matches,
-                sopts: &config::Options,
-                cfg: &ast::CrateConfig,
-                odir: &Option<PathBuf>,
-                ofile: &Option<PathBuf>,
-                descriptions: &rustc_errors::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)> {
+    fn no_input(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &rustc_errors::registry::Registry,
+    ) -> Option<(Input, Option<PathBuf>)> {
         debug!("running rust-semverver no_input");
         self.default
             .no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
 
-    fn late_callback(&mut self,
-                     trans_crate: &CodegenBackend,
-                     matches: &getopts::Matches,
-                     sess: &Session,
-                     cstore: &CStore,
-                     input: &Input,
-                     odir: &Option<PathBuf>,
-                     ofile: &Option<PathBuf>)
-                     -> Compilation {
+    fn late_callback(
+        &mut self,
+        trans_crate: &CodegenBackend,
+        matches: &getopts::Matches,
+        sess: &Session,
+        cstore: &CStore,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+    ) -> Compilation {
         debug!("running rust-semverver late_callback");
         self.default
             .late_callback(trans_crate, matches, sess, cstore, input, odir, ofile)
     }
 
-    fn build_controller(self: Box<SemVerVerCompilerCalls>,
-                        sess: &Session,
-                        matches: &getopts::Matches)
-                        -> driver::CompileController<'a> {
+    fn build_controller(
+        self: Box<Self>,
+        sess: &Session,
+        matches: &getopts::Matches,
+    ) -> driver::CompileController<'a> {
         let default = self.get_default();
         let version = self.get_version().clone();
-        let SemVerVerCompilerCalls { verbose, .. } = *self;
+        let Self { verbose, .. } = *self;
         let mut controller = CompilerCalls::build_controller(default, sess, matches);
-        let old_callback =
-            std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
+        let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
 
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");
@@ -176,8 +177,8 @@ fn main() {
 
     let home = option_env!("RUSTUP_HOME");
     let toolchain = option_env!("RUSTUP_TOOLCHAIN");
-    let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
-        format!("{}/toolchains/{}", home, toolchain)
+    let sys_root: PathBuf = if let (Some(home), Some(toolchain)) = (home, toolchain) {
+        Path::new(home).join("toolchains").join(toolchain)
     } else {
         option_env!("SYSROOT")
             .map(|s| s.to_owned())
@@ -190,15 +191,22 @@ fn main() {
                     .map(|s| s.trim().to_owned())
             })
             .expect("need to specify SYSROOT env var during compilation, or use rustup")
+            .into()
     };
 
-    let result = rustc_driver::run(|| {
+    assert!(
+        sys_root.exists(),
+        "sysroot \"{}\" does not exist",
+        sys_root.display()
+    );
+
+    let result = rustc_driver::run(move || {
         let args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
             std::env::args().collect()
         } else {
             std::env::args()
                 .chain(Some("--sysroot".to_owned()))
-                .chain(Some(sys_root))
+                .chain(Some(sys_root.to_str().unwrap().to_owned()))
                 .collect()
         };
 
@@ -214,5 +222,6 @@ fn main() {
         rustc_driver::run_compiler(&args, cc, None, None)
     });
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_possible_truncation))]
     std::process::exit(result as i32);
 }

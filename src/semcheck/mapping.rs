@@ -3,12 +3,14 @@
 //! This module provides facilities to record item correspondence of various kinds, as well as a
 //! map used to temporarily match up unsorted item sequences' elements by name.
 
-use rustc::hir::def::{Def, Export};
-use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::ty::{AssociatedKind, GenericParamDef, GenericParamDefKind};
-
+use rustc::{
+    hir::{
+        def::{Def, Export},
+        def_id::{CrateNum, DefId},
+    },
+    ty::{AssociatedKind, GenericParamDef, GenericParamDefKind},
+};
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
-
 use syntax::ast::Name;
 
 /// A description of an item found in an inherent impl.
@@ -30,6 +32,7 @@ pub type InherentImplSet = BTreeSet<(DefId, DefId)>;
 /// Definitions and simple `DefId` mappings are kept separate to record both kinds of
 /// correspondence losslessly. The *access* to the stored data happens through the same API,
 /// however. A reverse mapping is also included, but only for `DefId` lookup.
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 pub struct IdMapping {
     /// The old crate.
     old_crate: CrateNum,
@@ -58,10 +61,10 @@ pub struct IdMapping {
 
 impl IdMapping {
     /// Construct a new mapping with the given crate information.
-    pub fn new(old_crate: CrateNum, new_crate: CrateNum) -> IdMapping {
-        IdMapping {
-            old_crate: old_crate,
-            new_crate: new_crate,
+    pub fn new(old_crate: CrateNum, new_crate: CrateNum) -> Self {
+        Self {
+            old_crate,
+            new_crate,
             toplevel_mapping: HashMap::new(),
             non_mapped_items: HashSet::new(),
             trait_item_mapping: HashMap::new(),
@@ -99,7 +102,8 @@ impl IdMapping {
 
         assert!(self.in_old_crate(old_def_id));
 
-        self.trait_item_mapping.insert(old_def_id, (old, new, old_trait));
+        self.trait_item_mapping
+            .insert(old_def_id, (old, new, old_trait));
         self.reverse_mapping.insert(new.def_id(), old_def_id);
     }
 
@@ -110,11 +114,13 @@ impl IdMapping {
 
     /// Add any other item's old and new `DefId`s.
     pub fn add_internal_item(&mut self, old: DefId, new: DefId) {
-        assert!(!self.internal_mapping.contains_key(&old),
-                "bug: overwriting {:?} => {:?} with {:?}!",
-                old,
-                self.internal_mapping[&old],
-                new);
+        assert!(
+            !self.internal_mapping.contains_key(&old),
+            "bug: overwriting {:?} => {:?} with {:?}!",
+            old,
+            self.internal_mapping[&old],
+            new
+        );
         assert!(self.in_old_crate(old));
         assert!(self.in_new_crate(new));
 
@@ -148,37 +154,39 @@ impl IdMapping {
     }
 
     /// Check whether a `DefId` represents a non-mapped defaulted type parameter.
-    pub fn is_non_mapped_defaulted_type_param(&self, def_id: &DefId) -> bool {
-        self.non_mapped_items.contains(def_id) &&
-            self.type_params.get(def_id).map_or(false, |def| match def.kind {
-                GenericParamDefKind::Type { has_default, .. } => has_default,
-                _ => unreachable!(),
-            })
+    pub fn is_non_mapped_defaulted_type_param(&self, def_id: DefId) -> bool {
+        self.non_mapped_items.contains(&def_id)
+            && self
+                .type_params
+                .get(&def_id)
+                .map_or(false, |def| match def.kind {
+                    GenericParamDefKind::Type { has_default, .. } => has_default,
+                    _ => unreachable!(),
+                })
     }
 
     /// Record an item from an inherent impl.
-    pub fn add_inherent_item(&mut self,
-                             parent_def_id: DefId,
-                             kind: AssociatedKind,
-                             name: Name,
-                             impl_def_id: DefId,
-                             item_def_id: DefId) {
+    pub fn add_inherent_item(
+        &mut self,
+        parent_def_id: DefId,
+        kind: AssociatedKind,
+        name: Name,
+        impl_def_id: DefId,
+        item_def_id: DefId,
+    ) {
         self.inherent_items
             .entry(InherentEntry {
-                parent_def_id: parent_def_id,
-                kind: kind,
-                name: name,
+                parent_def_id,
+                kind,
+                name,
             })
             .or_insert_with(Default::default)
             .insert((impl_def_id, item_def_id));
     }
 
     /// Get the impl data for an inherent item.
-    pub fn get_inherent_impls(&self, inherent_entry: &InherentEntry)
-        -> Option<&InherentImplSet>
-    {
-        self.inherent_items
-            .get(inherent_entry)
+    pub fn get_inherent_impls(&self, inherent_entry: &InherentEntry) -> Option<&InherentImplSet> {
+        self.inherent_items.get(inherent_entry)
     }
 
     /// Get the new `DefId` associated with the given old one.
@@ -205,29 +213,27 @@ impl IdMapping {
         assert!(!self.in_old_crate(new));
 
         if self.in_new_crate(new) {
-            self.reverse_mapping
-                .get(&new)
-                .cloned()
+            self.reverse_mapping.get(&new).cloned()
         } else {
             Some(new)
         }
     }
 
     /// Return the `DefId` of the trait a given item belongs to.
-    pub fn get_trait_def(&self, item_def_id: &DefId) -> Option<DefId> {
-        self.trait_item_mapping.get(item_def_id).map(|t| t.2)
+    pub fn get_trait_def(&self, item_def_id: DefId) -> Option<DefId> {
+        self.trait_item_mapping.get(&item_def_id).map(|t| t.2)
     }
 
     /// Check whether the given `DefId` is a private trait.
-    pub fn is_private_trait(&self, trait_def_id: &DefId) -> bool {
-        self.private_traits.contains(trait_def_id)
+    pub fn is_private_trait(&self, trait_def_id: DefId) -> bool {
+        self.private_traits.contains(&trait_def_id)
     }
 
     /// Check whether an old `DefId` is present in the mappings.
     pub fn contains_old_id(&self, old: DefId) -> bool {
-        self.toplevel_mapping.contains_key(&old) ||
-            self.trait_item_mapping.contains_key(&old) ||
-            self.internal_mapping.contains_key(&old)
+        self.toplevel_mapping.contains_key(&old)
+            || self.trait_item_mapping.contains_key(&old)
+            || self.internal_mapping.contains_key(&old)
     }
 
     /// Check whether a new `DefId` is present in the mappings.
@@ -252,18 +258,17 @@ impl IdMapping {
     }
 
     /// Iterate over the item pairs of all children of a given item.
-    pub fn children_of<'a>(&'a self, parent: DefId)
-        -> Option<impl Iterator<Item = (DefId, DefId)> + 'a>
-    {
+    pub fn children_of<'a>(
+        &'a self,
+        parent: DefId,
+    ) -> Option<impl Iterator<Item = (DefId, DefId)> + 'a> {
         self.child_mapping
             .get(&parent)
             .map(|m| m.iter().map(move |old| (*old, self.internal_mapping[old])))
     }
 
     /// Iterate over all items in inherent impls.
-    pub fn inherent_impls<'a>(&'a self)
-        -> impl Iterator<Item = (&'a InherentEntry, &'a InherentImplSet)>
-    {
+    pub fn inherent_impls(&self) -> impl Iterator<Item = (&InherentEntry, &InherentImplSet)> {
         self.inherent_items.iter()
     }
 
@@ -292,6 +297,7 @@ impl IdMapping {
 ///
 /// Both old and new exports can be missing. Allows for reuse of the `HashMap`s used for storage.
 #[derive(Default)]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 pub struct NameMapping {
     /// The exports in the type namespace.
     type_map: HashMap<Name, (Option<Export>, Option<Export>)>,
@@ -360,9 +366,7 @@ impl NameMapping {
     }
 
     /// Drain the item pairs being stored.
-    pub fn drain<'a>(&'a mut self)
-        -> impl Iterator<Item = (Option<Export>, Option<Export>)> + 'a
-    {
+    pub fn drain<'a>(&'a mut self) -> impl Iterator<Item = (Option<Export>, Option<Export>)> + 'a {
         self.type_map
             .drain()
             .chain(self.value_map.drain())

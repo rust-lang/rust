@@ -8,24 +8,23 @@ extern crate getopts;
 #[macro_use]
 extern crate log;
 
+use cargo::{
+    core::{compiler::CompileMode, Package, PackageId, Source, SourceId, Workspace},
+    exit_with_error,
+    ops::{compile, CompileOptions},
+    util::{
+        config::Config, important_paths::find_root_manifest_for_wd, CargoError, CargoResult,
+        CliError,
+    },
+};
 use crates_io::{Crate, Registry};
-
-use cargo::exit_with_error;
-use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
-use cargo::core::compiler::CompileMode;
-use cargo::ops::{compile, CompileOptions};
-use cargo::util::{CargoError, CargoResult, CliError};
-use cargo::util::config::Config;
-use cargo::util::important_paths::find_root_manifest_for_wd;
-
 use getopts::{Matches, Options};
-
-use std::env;
-use std::error;
-use std::fmt;
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Stdio, Command};
+use std::{
+    env, error, fmt,
+    io::Write,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 /// Very simple error representation.
 #[derive(Debug)]
@@ -51,15 +50,18 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
 
     registry
         .search(query, 1)
-        .map_err(|e|
-                 Error(format!("failed to retrieve search results from the registry: {}", e))
-                     .into())
+        .map_err(|e| {
+            Error(format!(
+                "failed to retrieve search results from the registry: {}",
+                e
+            ))
+            .into()
+        })
         .and_then(|(mut crates, _)| {
             crates
                 .drain(..)
                 .find(|krate| krate.name == query)
-                .ok_or_else(|| Error(format!("failed to find a matching crate `{}`", query))
-                                .into())
+                .ok_or_else(|| Error(format!("failed to find a matching crate `{}`", query)).into())
         })
 }
 
@@ -87,9 +89,9 @@ impl<'a> SourceInfo<'a> {
 
         debug!("source id loaded: {:?}", source_id);
 
-        Ok(SourceInfo {
+        Ok(Self {
             id: source_id,
-            source: source,
+            source,
         })
     }
 }
@@ -114,17 +116,16 @@ impl<'a> WorkInfo<'a> {
         let workspace = Workspace::new(&manifest_path, config)?;
         let package = workspace.load(&manifest_path)?;
 
-        Ok(WorkInfo {
-            package,
-            workspace,
-        })
+        Ok(Self { package, workspace })
     }
 
     /// Construct a package/workspace pair by fetching the package of a specified name and
     /// version.
-    fn remote(config: &'a Config, source: &mut SourceInfo<'a>, info: &NameAndVersion)
-        -> CargoResult<WorkInfo<'a>>
-    {
+    fn remote(
+        config: &'a Config,
+        source: &mut SourceInfo<'a>,
+        info: &NameAndVersion,
+    ) -> CargoResult<WorkInfo<'a>> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
         let package_id = PackageId::new(info.name, info.version, &source.id)?;
@@ -132,16 +133,16 @@ impl<'a> WorkInfo<'a> {
         let package = source.source.download(&package_id)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
-        Ok(WorkInfo {
-            package: package,
-            workspace: workspace,
-        })
+        Ok(Self { package, workspace })
     }
 
     /// Obtain the paths to the produced rlib and the dependency output directory.
-    fn rlib_and_dep_output(&self, config: &'a Config, name: &str, current: bool)
-        -> CargoResult<(PathBuf, PathBuf)>
-    {
+    fn rlib_and_dep_output(
+        &self,
+        config: &'a Config,
+        name: &str,
+        current: bool,
+    ) -> CargoResult<(PathBuf, PathBuf)> {
         let opts = CompileOptions::new(config, CompileMode::Build).unwrap();
 
         if current {
@@ -161,7 +162,6 @@ impl<'a> WorkInfo<'a> {
 
         Ok((rlib.1.clone(), compilation.deps_output))
     }
-
 }
 
 /// Perform the heavy lifting.
@@ -170,7 +170,6 @@ impl<'a> WorkInfo<'a> {
 /// and/or defaults, and dispatch the actual analysis.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
 fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()> {
-    debug!("running cargo-semver");
     fn parse_arg(opt: &str) -> CargoResult<NameAndVersion> {
         let mut split = opt.split(':');
         let name = if let Some(n) = split.next() {
@@ -188,8 +187,10 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
             return Err(Error("spec has to be of form `name:version`".to_owned()).into());
         }
 
-        Ok(NameAndVersion { name: name, version: version })
+        Ok(NameAndVersion { name, version })
     }
+
+    debug!("running cargo-semver");
 
     let mut source = SourceInfo::new(config)?;
 
@@ -214,7 +215,10 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
         (work_info, version)
     } else {
         let stable_crate = exact_search(&name)?;
-        let info = NameAndVersion { name: &name, version: &stable_crate.max_version };
+        let info = NameAndVersion {
+            name: &name,
+            version: &stable_crate.max_version,
+        };
         let work_info = WorkInfo::remote(config, &mut source, &info)?;
 
         (work_info, stable_crate.max_version.clone())
@@ -224,11 +228,13 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
     let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name, false)?;
 
     if matches.opt_present("d") {
-        println!("--extern old={} -L{} --extern new={} -L{}",
-                 stable_rlib.display(),
-                 stable_deps_output.display(),
-                 current_rlib.display(),
-                 current_deps_output.display());
+        println!(
+            "--extern old={} -L{} --extern new={} -L{}",
+            stable_rlib.display(),
+            stable_deps_output.display(),
+            current_rlib.display(),
+            current_deps_output.display()
+        );
         return Ok(());
     }
 
@@ -250,10 +256,12 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
     if let Some(ref mut stdin) = child.stdin {
         // The order of the `extern crate` declaration is important here: it will later
         // be used to select the `old` and `new` crates.
-        stdin.write_fmt(format_args!("#[allow(unused_extern_crates)] \
-                                     extern crate old; \
-                                     #[allow(unused_extern_crates)] \
-                                     extern crate new;"))?;
+        stdin.write_fmt(format_args!(
+            "#[allow(unused_extern_crates)] \
+             extern crate old; \
+             #[allow(unused_extern_crates)] \
+             extern crate new;"
+        ))?;
     } else {
         return Err(Error("could not pipe to rustc (wtf?)".to_owned()).into());
     }
@@ -296,12 +304,30 @@ fn main() {
     opts.optflag("V", "version", "print version information and exit");
     opts.optflag("e", "explain", "print detailed error explanations");
     opts.optflag("d", "debug", "print command to debug and exit");
-    opts.optopt("s", "stable-path", "use local path as stable/old crate", "PATH");
-    opts.optopt("c", "current-path", "use local path as current/new crate", "PATH");
-    opts.optopt("S", "stable-pkg", "use a `name:version` string as stable/old crate",
-                "NAME:VERSION");
-    opts.optopt("C", "current-pkg", "use a `name:version` string as current/new crate",
-                "NAME:VERSION");
+    opts.optopt(
+        "s",
+        "stable-path",
+        "use local path as stable/old crate",
+        "PATH",
+    );
+    opts.optopt(
+        "c",
+        "current-path",
+        "use local path as current/new crate",
+        "PATH",
+    );
+    opts.optopt(
+        "S",
+        "stable-pkg",
+        "use a `name:version` string as stable/old crate",
+        "NAME:VERSION",
+    );
+    opts.optopt(
+        "C",
+        "current-pkg",
+        "use a `name:version` string as current/new crate",
+        "NAME:VERSION",
+    );
 
     let config = match Config::default() {
         Ok(cfg) => cfg,
@@ -323,15 +349,17 @@ fn main() {
         return;
     }
 
-    if (matches.opt_present("s") && matches.opt_present("S")) ||
-        matches.opt_count("s") > 1 || matches.opt_count("S") > 1
+    if (matches.opt_present("s") && matches.opt_present("S"))
+        || matches.opt_count("s") > 1
+        || matches.opt_count("S") > 1
     {
         let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed";
         err(&config, Error(msg.to_owned()).into());
     }
 
-    if (matches.opt_present("c") && matches.opt_present("C")) ||
-        matches.opt_count("c") > 1 || matches.opt_count("C") > 1
+    if (matches.opt_present("c") && matches.opt_present("C"))
+        || matches.opt_count("c") > 1
+        || matches.opt_count("C") > 1
     {
         let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed";
         err(&config, Error(msg.to_owned()).into());
