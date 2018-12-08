@@ -149,7 +149,7 @@ closure-like semantics. Namely:
 * Whenever a generator is dropped it will drop all captured environment
   variables.
 
-Note that unlike closures generators at this time cannot take any arguments.
+Note that unlike closures, generators at this time cannot take any arguments.
 That is, generators must always look like `|| { ... }`. This restriction may be
 lifted at a future date, the design is ongoing!
 
