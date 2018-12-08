@@ -18,11 +18,14 @@ pub mod db;
 #[cfg(test)]
 mod mock;
 mod query_definitions;
-mod function;
-mod module;
 mod path;
 mod arena;
 pub mod source_binder;
+
+mod krate;
+mod module;
+mod function;
+
 
 use std::ops::Index;
 
@@ -36,6 +39,7 @@ use crate::{
 
 pub use self::{
     path::{Path, PathKind},
+    krate::Crate,
     module::{Module, ModuleId, Problem, nameres::ItemMap},
     function::{Function, FnScopes},
 };
