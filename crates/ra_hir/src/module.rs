@@ -12,7 +12,7 @@ use ra_db::{SourceRootId, FileId, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
-    DefKind, DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId,
+    DefKind, DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
     arena::{Arena, Id},
 };
 
@@ -62,6 +62,15 @@ impl Module {
             module_id: parent_id,
             ..self.clone()
         })
+    }
+
+    /// Returns the crate this module is part of.
+    pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
+        let root_id = self.module_id.crate_root(&self.tree);
+        let file_id = root_id.source(&self.tree).file_id();
+        let crate_graph = db.crate_graph();
+        let crate_id = crate_graph.crate_id_for_crate_root(file_id)?;
+        Some(Crate::new(crate_id))
     }
 
     /// The root of the tree this module is part of

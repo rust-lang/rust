@@ -20,25 +20,31 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CrateData {
     file_id: FileId,
-    deps: Vec<Dependency>,
+    dependencies: Vec<Dependency>,
 }
 
 impl CrateData {
     fn new(file_id: FileId) -> CrateData {
         CrateData {
             file_id,
-            deps: Vec::new(),
+            dependencies: Vec::new(),
         }
     }
 
     fn add_dep(&mut self, dep: CrateId) {
-        self.deps.push(Dependency { crate_: dep })
+        self.dependencies.push(Dependency { crate_id: dep })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
-    crate_: CrateId,
+    crate_id: CrateId,
+}
+
+impl Dependency {
+    pub fn crate_id(&self) -> CrateId {
+        self.crate_id
+    }
 }
 
 impl CrateGraph {
@@ -63,6 +69,12 @@ impl CrateGraph {
             .iter()
             .find(|(_crate_id, data)| data.file_id == file_id)?;
         Some(crate_id)
+    }
+    pub fn dependencies<'a>(
+        &'a self,
+        crate_id: CrateId,
+    ) -> impl Iterator<Item = &'a Dependency> + 'a {
+        self.arena[&crate_id].dependencies.iter()
     }
 }
 

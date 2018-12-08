@@ -26,7 +26,6 @@ mod krate;
 mod module;
 mod function;
 
-
 use std::ops::Index;
 
 use ra_syntax::{SyntaxNodeRef, SyntaxNode};
