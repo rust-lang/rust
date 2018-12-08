@@ -27,6 +27,7 @@ use crate::{
     symbol_index::{SymbolIndex, SymbolsDatabase},
     AnalysisChange, Cancelable, CrateId, Diagnostic, FileId,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
+    ReferenceResolution,
 };
 
 #[derive(Debug, Default)]
@@ -206,10 +207,11 @@ impl AnalysisImpl {
     pub fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<(TextRange, Vec<(FileId, FileSymbol)>)>> {
+    ) -> Cancelable<Option<ReferenceResolution>> {
         let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
+            let mut rr = ReferenceResolution::new(name_ref.syntax().range());
             if let Some(fn_descr) = source_binder::function_from_child_node(
                 &*self.db,
                 position.file_id,
@@ -218,24 +220,25 @@ impl AnalysisImpl {
                 let scope = fn_descr.scope(&*self.db);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
-                    let vec = vec![(
+                    rr.add_resolution(
                         position.file_id,
                         FileSymbol {
                             name: entry.name().clone(),
                             node_range: entry.ptr().range(),
                             kind: NAME,
                         },
-                    )];
-                    return Ok(Some((name_ref.syntax().range(), vec)));
+                    );
+                    return Ok(Some(rr));
                 };
             }
             // If that fails try the index based approach.
-            return Ok(Some((
-                name_ref.syntax().range(),
-                self.index_resolve(name_ref)?,
-            )));
+            for (file_id, symbol) in self.index_resolve(name_ref)? {
+                rr.add_resolution(file_id, symbol);
+            }
+            return Ok(Some(rr));
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
+            let mut rr = ReferenceResolution::new(name.syntax().range());
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     let parent_module =
@@ -250,7 +253,8 @@ impl AnalysisImpl {
                                     node_range: TextRange::offset_len(0.into(), 0.into()),
                                     kind: MODULE,
                                 };
-                                return Ok(Some((name.syntax().range(), vec![(file_id, symbol)])));
+                                rr.add_resolution(file_id, symbol);
+                                return Ok(Some(rr));
                             }
                         }
                         _ => (),
@@ -258,10 +262,7 @@ impl AnalysisImpl {
                 }
             }
         }
-        let range =
-            ctry!(ra_syntax::algo::find_leaf_at_offset(syntax, position.offset).left_biased())
-                .range();
-        Ok(Some((range, vec![])))
+        Ok(None)
     }
 
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
