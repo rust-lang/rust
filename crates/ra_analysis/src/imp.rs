@@ -144,7 +144,7 @@ impl AnalysisImpl {
         } else {
             let files = &self.db.source_root(WORKSPACE).files;
 
-            /// Need to wrap Snapshot to provide `Clon` impl for `map_with`
+            /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
             struct Snap(salsa::Snapshot<db::RootDatabase>);
             impl Clone for Snap {
                 fn clone(&self) -> Snap {
@@ -164,7 +164,7 @@ impl AnalysisImpl {
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
-    /// This return `Vec`: a module may be included from several places. We
+    /// This returns `Vec` because a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let descr = match source_binder::module_from_position(&*self.db, position)? {
@@ -206,7 +206,7 @@ impl AnalysisImpl {
     pub fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    ) -> Cancelable<Option<(TextRange, Vec<(FileId, FileSymbol)>)>> {
         let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
@@ -218,20 +218,22 @@ impl AnalysisImpl {
                 let scope = fn_descr.scope(&*self.db);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
-                    let mut vec = vec![];
-                    vec.push((
+                    let vec = vec![(
                         position.file_id,
                         FileSymbol {
                             name: entry.name().clone(),
                             node_range: entry.ptr().range(),
                             kind: NAME,
                         },
-                    ));
-                    return Ok(vec);
+                    )];
+                    return Ok(Some((name_ref.syntax().range(), vec)));
                 };
             }
             // If that fails try the index based approach.
-            return self.index_resolve(name_ref);
+            return Ok(Some((
+                name_ref.syntax().range(),
+                self.index_resolve(name_ref)?,
+            )));
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
@@ -248,7 +250,7 @@ impl AnalysisImpl {
                                     node_range: TextRange::offset_len(0.into(), 0.into()),
                                     kind: MODULE,
                                 };
-                                return Ok(vec![(file_id, symbol)]);
+                                return Ok(Some((name.syntax().range(), vec![(file_id, symbol)])));
                             }
                         }
                         _ => (),
@@ -256,7 +258,10 @@ impl AnalysisImpl {
                 }
             }
         }
-        Ok(vec![])
+        let range =
+            ctry!(ra_syntax::algo::find_leaf_at_offset(syntax, position.offset).left_biased())
+                .range();
+        Ok(Some((range, vec![])))
     }
 
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
