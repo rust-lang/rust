@@ -114,7 +114,7 @@ where
 
     for segment in iter {
         // Indicates a global path, shouldn't be rendered.
-        if segment.ident.name == keywords::CrateRoot.name() {
+        if segment.ident.name == keywords::PathRoot.name() {
             continue;
         }
         if first {

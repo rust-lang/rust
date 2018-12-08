@@ -42,7 +42,7 @@ use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{
     format_visibility, is_empty_line, mk_sp, remove_trailing_white_spaces, rewrite_ident,
-    trim_left_preserve_layout, wrap_str,
+    trim_left_preserve_layout, wrap_str, NodeIdExt,
 };
 use visitor::FmtVisitor;
 
@@ -1102,7 +1102,6 @@ fn next_space(tok: &Token) -> SpaceState {
         | Token::DotDot
         | Token::DotDotDot
         | Token::DotDotEq
-        | Token::DotEq
         | Token::Question => SpaceState::Punctuation,
 
         Token::ModSep
@@ -1127,7 +1126,7 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
         Some(ast::Expr {
-            id: ast::NodeId::new(0), // dummy value
+            id: ast::NodeId::root(), // dummy value
             node: ast::ExprKind::Try(parser.parse_expr().ok()?),
             span: mac.span, // incorrect span, but shouldn't matter too much
             attrs: ThinVec::new(),
