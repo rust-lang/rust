@@ -128,7 +128,7 @@ fn after_analysis<'a, 'tcx>(
                         attr.name() == "test"
                     })
                     {
-                        let did = self.tcx.hir.body_owner_def_id(body_id);
+                        let did = self.tcx.hir().body_owner_def_id(body_id);
                         println!(
                             "running test: {}",
                             self.tcx.def_path_debug_str(did),
@@ -145,7 +145,7 @@ fn after_analysis<'a, 'tcx>(
             &mut Visitor { tcx, state, validate }
         );
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
-        let entry_def_id = tcx.hir.local_def_id(entry_node_id);
+        let entry_def_id = tcx.hir().local_def_id(entry_node_id);
         miri::eval_main(tcx, entry_def_id, validate);
 
         state.session.abort_if_errors();
