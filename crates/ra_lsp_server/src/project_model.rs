@@ -34,7 +34,13 @@ struct PackageData {
     manifest: PathBuf,
     targets: Vec<Target>,
     is_member: bool,
-    dependencies: Vec<Package>,
+    dependencies: Vec<PackageDependency>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PackageDependency {
+    pub pkg: Package,
+    pub name: SmolStr,
 }
 
 #[derive(Debug, Clone)]
@@ -68,8 +74,11 @@ impl Package {
     pub fn is_member(self, ws: &CargoWorkspace) -> bool {
         ws.pkg(self).is_member
     }
-    pub fn dependencies<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Package> + 'a {
-        ws.pkg(self).dependencies.iter().cloned()
+    pub fn dependencies<'a>(
+        self,
+        ws: &'a CargoWorkspace,
+    ) -> impl Iterator<Item = &'a PackageDependency> + 'a {
+        ws.pkg(self).dependencies.iter()
     }
 }
 
@@ -135,7 +144,9 @@ impl CargoWorkspace {
             let source = pkg_by_id[&node.id];
             for id in node.dependencies {
                 let target = pkg_by_id[&id];
-                packages[source.0].dependencies.push(target);
+                let name: SmolStr = packages[target.0].name.replace('-', "_").into();
+                let dep = PackageDependency { name, pkg: target };
+                packages[source.0].dependencies.push(dep);
             }
         }
 

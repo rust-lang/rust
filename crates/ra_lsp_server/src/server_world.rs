@@ -162,9 +162,9 @@ impl ServerWorldState {
             }
             for pkg in ws.packages() {
                 for dep in pkg.dependencies(ws) {
-                    if let Some(&to) = pkg_to_lib_crate.get(&dep) {
+                    if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                         for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                            crate_graph.add_dep(from, to);
+                            crate_graph.add_dep(from, dep.name.clone(), to);
                         }
                     }
                 }

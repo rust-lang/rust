@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashSet, FxHashMap};
+use ra_syntax::SmolStr;
 use salsa;
 
 use crate::file_resolver::FileResolverImp;
@@ -31,14 +31,15 @@ impl CrateData {
         }
     }
 
-    fn add_dep(&mut self, dep: CrateId) {
-        self.dependencies.push(Dependency { crate_id: dep })
+    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+        self.dependencies.push(Dependency { name, crate_id })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
     crate_id: CrateId,
+    name: SmolStr,
 }
 
 impl Dependency {
@@ -57,8 +58,8 @@ impl CrateGraph {
     //FIXME: check that we don't have cycles here.
     // Just a simple depth first search from `to` should work,
     // the graph is small.
-    pub fn add_dep(&mut self, from: CrateId, to: CrateId) {
-        self.arena.get_mut(&from).unwrap().add_dep(to)
+    pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
+        self.arena.get_mut(&from).unwrap().add_dep(name, to)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.arena[&crate_id].file_id
