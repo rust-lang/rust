@@ -11,10 +11,7 @@ use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size};
-use std::ffi::CStr;
-
 use std::ops::Range;
-use syntax::ast::AsmDialect;
 
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
@@ -163,17 +160,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
 
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-
-    fn inline_asm_call(
-        &mut self,
-        asm: &CStr,
-        cons: &CStr,
-        inputs: &[Self::Value],
-        output: Self::Type,
-        volatile: bool,
-        alignstack: bool,
-        dia: AsmDialect,
-    ) -> Option<Self::Value>;
 
     fn memcpy(
         &mut self,

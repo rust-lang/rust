@@ -1,4 +1,4 @@
-use crate::llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use crate::llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope};
 use crate::llvm::{self, False, BasicBlock};
 use crate::common::Funclet;
 use crate::context::CodegenCx;
@@ -19,7 +19,6 @@ use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::mir::operand::{OperandValue, OperandRef};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::ops::{Deref, Range};
 use std::ptr;
 
@@ -903,45 +902,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     /* Miscellaneous instructions */
-    fn inline_asm_call(&mut self, asm: &CStr, cons: &CStr,
-                       inputs: &[&'ll Value], output: &'ll Type,
-                       volatile: bool, alignstack: bool,
-                       dia: syntax::ast::AsmDialect) -> Option<&'ll Value> {
-        self.count_insn("inlineasm");
-
-        let volatile = if volatile { llvm::True }
-                       else        { llvm::False };
-        let alignstack = if alignstack { llvm::True }
-                         else          { llvm::False };
-
-        let argtys = inputs.iter().map(|v| {
-            debug!("Asm Input Type: {:?}", *v);
-            self.cx.val_ty(*v)
-        }).collect::<Vec<_>>();
-
-        debug!("Asm Output Type: {:?}", output);
-        let fty = self.type_func(&argtys[..], output);
-        unsafe {
-            // Ask LLVM to verify that the constraints are well-formed.
-            let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
-            debug!("Constraint verification result: {:?}", constraints_ok);
-            if constraints_ok {
-                let v = llvm::LLVMRustInlineAsm(
-                    fty,
-                    asm.as_ptr(),
-                    cons.as_ptr(),
-                    volatile,
-                    alignstack,
-                    AsmDialect::from_generic(dia),
-                );
-                Some(self.call(v, inputs, None))
-            } else {
-                // LLVM has detected an issue with our constraints, bail out
-                None
-            }
-        }
-    }
-
     fn memcpy(&mut self, dst: &'ll Value, dst_align: Align,
                   src: &'ll Value, src_align: Align,
                   size: &'ll Value, flags: MemFlags) {

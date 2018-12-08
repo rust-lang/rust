@@ -10,7 +10,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use libc::{c_uint, c_char};
 
 
@@ -73,7 +73,8 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
         let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
         let constraint_cstr = CString::new(all_constraints).unwrap();
-        let r = self.inline_asm_call(
+        let r = inline_asm_call(
+            self,
             &asm,
             &constraint_cstr,
             &inputs,
@@ -116,6 +117,49 @@ impl AsmMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
         unsafe {
             llvm::LLVMRustAppendModuleInlineAsm(self.llmod, asm.as_ptr());
+        }
+    }
+}
+
+fn inline_asm_call(
+    bx: &mut Builder<'a, 'll, 'tcx>,
+    asm: &CStr,
+    cons: &CStr,
+    inputs: &[&'ll Value],
+    output: &'ll llvm::Type,
+    volatile: bool,
+    alignstack: bool,
+    dia: ::syntax::ast::AsmDialect,
+) -> Option<&'ll Value> {
+    let volatile = if volatile { llvm::True }
+                    else        { llvm::False };
+    let alignstack = if alignstack { llvm::True }
+                        else          { llvm::False };
+
+    let argtys = inputs.iter().map(|v| {
+        debug!("Asm Input Type: {:?}", *v);
+        bx.cx.val_ty(*v)
+    }).collect::<Vec<_>>();
+
+    debug!("Asm Output Type: {:?}", output);
+    let fty = bx.cx.type_func(&argtys[..], output);
+    unsafe {
+        // Ask LLVM to verify that the constraints are well-formed.
+        let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
+        debug!("Constraint verification result: {:?}", constraints_ok);
+        if constraints_ok {
+            let v = llvm::LLVMRustInlineAsm(
+                fty,
+                asm.as_ptr(),
+                cons.as_ptr(),
+                volatile,
+                alignstack,
+                llvm::AsmDialect::from_generic(dia),
+            );
+            Some(bx.call(v, inputs, None))
+        } else {
+            // LLVM has detected an issue with our constraints, bail out
+            None
         }
     }
 }
