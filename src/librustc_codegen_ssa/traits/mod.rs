@@ -85,5 +85,10 @@ pub trait HasCodegen<'tcx>:
             Type = Self::Type,
             Funclet = Self::Funclet,
             DIScope = Self::DIScope,
-        >;
+        >
+        + BaseTypeMethods<'tcx>;
+
+    fn cx(&self) -> &Self::CodegenCx {
+        &**self
+    }
 }

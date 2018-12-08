@@ -356,7 +356,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn from_immediate<'a, 'tcx: 'a, Bx: NumBuilderMethods<'tcx>>(
     bx: &mut Bx,
     val: Bx::Value
 ) -> Bx::Value {
@@ -367,7 +367,7 @@ pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn to_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn to_immediate<'a, 'tcx: 'a, Bx: NumBuilderMethods<'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
     layout: layout::TyLayout<'_>,
@@ -378,7 +378,7 @@ pub fn to_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     val
 }
 
-pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: NumBuilderMethods<'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
     scalar: &layout::Scalar,
@@ -389,7 +389,7 @@ pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     val
 }
 
-pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn memcpy_ty<'a, 'tcx: 'a, Bx: MemoryBuilderMethods<'tcx>>(
     bx: &mut Bx,
     dst: Bx::Value,
     dst_align: Align,
@@ -397,7 +397,9 @@ pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     src_align: Align,
     layout: TyLayout<'tcx>,
     flags: MemFlags,
-) {
+)
+    where Bx::CodegenCx: ConstMethods<'tcx>
+{
     let size = layout.size.bytes();
     if size == 0 {
         return;
