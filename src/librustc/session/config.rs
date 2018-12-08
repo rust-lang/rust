@@ -1272,7 +1272,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     arg_align_attributes: bool = (false, parse_bool, [TRACKED],
         "emit align metadata for reference arguments"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "dump MIR state at various points in transforms"),
+        "dump MIR state to file.
+        `val` is used to select which passes and functions to dump. For example:
+        `all` matches all passes and functions,
+        `foo` matches all passes for functions whose name contains 'foo',
+        `foo & ConstProp` only the 'ConstProp' pass for function names containing 'foo',
+        `foo | bar` all passes for function names containing 'foo' or 'bar'."),
+
     dump_mir_dir: String = (String::from("mir_dump"), parse_string, [UNTRACKED],
         "the directory the MIR is dumped into"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],

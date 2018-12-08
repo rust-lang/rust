@@ -843,14 +843,16 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         self.current_module = directive.parent_scope.module;
 
         let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
+        let prev_ambiguity_errors_len = self.ambiguity_errors.len();
         let path_res = self.resolve_path(&directive.module_path, None, &directive.parent_scope,
                                          true, directive.span, directive.crate_lint());
+        let no_ambiguity = self.ambiguity_errors.len() == prev_ambiguity_errors_len;
         directive.vis.set(orig_vis);
         let module = match path_res {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
                 if let Some(initial_module) = directive.imported_module.get() {
-                    if module != initial_module && self.ambiguity_errors.is_empty() {
+                    if module != initial_module && no_ambiguity {
                         span_bug!(directive.span, "inconsistent resolution for an import");
                     }
                 } else {
@@ -864,30 +866,32 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 module
             }
             PathResult::Failed(span, msg, false) => {
-                assert!(!self.ambiguity_errors.is_empty() ||
-                        directive.imported_module.get().is_none());
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                if no_ambiguity {
+                    assert!(directive.imported_module.get().is_none());
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                }
                 return None;
             }
             PathResult::Failed(span, msg, true) => {
-                assert!(!self.ambiguity_errors.is_empty() ||
-                        directive.imported_module.get().is_none());
-                return if let Some((suggested_path, note)) = self.make_path_suggestion(
-                    span, directive.module_path.clone(), &directive.parent_scope
-                ) {
-                    Some((
-                        span,
-                        format!("did you mean `{}`?", Segment::names_to_string(&suggested_path)),
-                        note,
-                    ))
-                } else {
-                    Some((span, msg, None))
-                };
+                if no_ambiguity {
+                    assert!(directive.imported_module.get().is_none());
+                    return Some(match self.make_path_suggestion(span, directive.module_path.clone(),
+                                                                &directive.parent_scope) {
+                        Some((suggestion, note)) => (
+                            span,
+                            format!("did you mean `{}`?", Segment::names_to_string(&suggestion)),
+                            note,
+                        ),
+                        None => (span, msg, None),
+                    });
+                }
+                return None;
             }
             PathResult::NonModule(path_res) if path_res.base_def() == Def::Err => {
+                if no_ambiguity {
+                    assert!(directive.imported_module.get().is_none());
+                }
                 // The error was already reported earlier.
-                assert!(!self.ambiguity_errors.is_empty() ||
-                        directive.imported_module.get().is_none());
                 return None;
             }
             PathResult::Indeterminate | PathResult::NonModule(..) => unreachable!(),

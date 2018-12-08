@@ -5811,20 +5811,14 @@ impl<'a> Parser<'a> {
     }
 
     fn complain_if_pub_macro(&mut self, vis: &VisibilityKind, sp: Span) {
-        if let Err(mut err) = self.complain_if_pub_macro_diag(vis, sp) {
-            err.emit();
-        }
-    }
-
-    fn complain_if_pub_macro_diag(&mut self, vis: &VisibilityKind, sp: Span) -> PResult<'a, ()> {
         match *vis {
-            VisibilityKind::Inherited => Ok(()),
+            VisibilityKind::Inherited => {}
             _ => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid, _) => sid.name == Symbol::intern("macro_rules"),
                     _ => false,
                 };
-                if is_macro_rules {
+                let mut err = if is_macro_rules {
                     let mut err = self.diagnostic()
                         .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
                     err.span_suggestion_with_applicability(
@@ -5833,13 +5827,14 @@ impl<'a> Parser<'a> {
                         "#[macro_export]".to_owned(),
                         Applicability::MaybeIncorrect // speculative
                     );
-                    Err(err)
+                    err
                 } else {
                     let mut err = self.diagnostic()
                         .struct_span_err(sp, "can't qualify macro invocation with `pub`");
                     err.help("try adjusting the macro to put `pub` inside the invocation");
-                    Err(err)
-                }
+                    err
+                };
+                err.emit();
             }
         }
     }
@@ -6148,9 +6143,6 @@ impl<'a> Parser<'a> {
 
     fn consume_block(&mut self, delim: token::DelimToken) {
         let mut brace_depth = 0;
-        if !self.eat(&token::OpenDelim(delim)) {
-            return;
-        }
         loop {
             if self.eat(&token::OpenDelim(delim)) {
                 brace_depth += 1;
@@ -6161,7 +6153,7 @@ impl<'a> Parser<'a> {
                     brace_depth -= 1;
                     continue;
                 }
-            } else if self.eat(&token::Eof) || self.eat(&token::CloseDelim(token::NoDelim)) {
+            } else if self.token == token::Eof || self.eat(&token::CloseDelim(token::NoDelim)) {
                 return;
             } else {
                 self.bump();
@@ -7410,17 +7402,27 @@ impl<'a> Parser<'a> {
                 return Err(err);
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
+                self.bump();  // `(`
+                let kw_name = if let Ok(Some(_)) = self.parse_self_arg() {
+                    "method"
+                } else {
+                    "function"
+                };
                 self.consume_block(token::Paren);
-                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) ||
-                    self.check(&token::OpenDelim(token::Brace))
-                {
-                    ("fn", "method", false)
+                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
+                    self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
+                    self.bump();  // `{`
+                    ("fn", kw_name, false)
+                } else if self.check(&token::OpenDelim(token::Brace)) {
+                    self.bump();  // `{`
+                    ("fn", kw_name, false)
                 } else if self.check(&token::Colon) {
                     let kw = "struct";
                     (kw, kw, false)
                 } else {
-                    ("fn` or `struct", "method or struct", true)
+                    ("fn` or `struct", "function or struct", true)
                 };
+                self.consume_block(token::Brace);
 
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);
@@ -7445,6 +7447,32 @@ impl<'a> Parser<'a> {
                         err.help("if you meant to call a macro, remove the `pub` \
                                   and add a trailing `!` after the identifier");
                     }
+                }
+                return Err(err);
+            } else if self.look_ahead(1, |t| *t == token::Lt) {
+                let ident = self.parse_ident().unwrap();
+                self.eat_to_tokens(&[&token::Gt]);
+                self.bump();  // `>`
+                let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
+                    if let Ok(Some(_)) = self.parse_self_arg() {
+                        ("fn", "method", false)
+                    } else {
+                        ("fn", "function", false)
+                    }
+                } else if self.check(&token::OpenDelim(token::Brace)) {
+                    ("struct", "struct", false)
+                } else {
+                    ("fn` or `struct", "function or struct", true)
+                };
+                let msg = format!("missing `{}` for {} definition", kw, kw_name);
+                let mut err = self.diagnostic().struct_span_err(sp, &msg);
+                if !ambiguous {
+                    err.span_suggestion_short_with_applicability(
+                        sp,
+                        &format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name),
+                        format!(" {} ", kw),
+                        Applicability::MachineApplicable,
+                    );
                 }
                 return Err(err);
             }
