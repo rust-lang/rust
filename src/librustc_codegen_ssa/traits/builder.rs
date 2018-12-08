@@ -23,6 +23,32 @@ pub enum OverflowOp {
     Mul,
 }
 
+pub trait ControlFlowBuilderMethods<'a, 'tcx: 'a>: HasCodegen<'tcx> {
+    fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
+    fn with_cx(cx: &'a Self::CodegenCx) -> Self;
+    fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
+    fn llbb(&self) -> Self::BasicBlock;
+
+    fn position_at_end(&mut self, llbb: Self::BasicBlock);
+    fn ret_void(&mut self);
+    fn ret(&mut self, v: Self::Value);
+    fn br(&mut self, dest: Self::BasicBlock);
+    fn cond_br(
+        &mut self,
+        cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+    );
+    fn switch(
+        &mut self,
+        v: Self::Value,
+        else_llbb: Self::BasicBlock,
+        num_cases: usize,
+    ) -> Self::Value;
+    fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
+    fn unreachable(&mut self);
+}
+
 pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
     // Stack allocations
     fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
@@ -226,33 +252,12 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods<'tcx>
+
+    + ControlFlowBuilderMethods<'a, 'tcx>
     + MemoryBuilderMethods<'tcx>
     + NumBuilderMethods<'tcx>
     + UnwindBuilderMethods<'tcx>
 {
-    fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
-    fn with_cx(cx: &'a Self::CodegenCx) -> Self;
-    fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
-    fn llbb(&self) -> Self::BasicBlock;
-
-    fn position_at_end(&mut self, llbb: Self::BasicBlock);
-    fn ret_void(&mut self);
-    fn ret(&mut self, v: Self::Value);
-    fn br(&mut self, dest: Self::BasicBlock);
-    fn cond_br(
-        &mut self,
-        cond: Self::Value,
-        then_llbb: Self::BasicBlock,
-        else_llbb: Self::BasicBlock,
-    );
-    fn switch(
-        &mut self,
-        v: Self::Value,
-        else_llbb: Self::BasicBlock,
-        num_cases: usize,
-    ) -> Self::Value;
-    fn unreachable(&mut self);
-
     fn inline_asm_call(
         &mut self,
         asm: &CStr,
@@ -277,7 +282,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 
-    fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
 
     /// Called for `StorageLive`

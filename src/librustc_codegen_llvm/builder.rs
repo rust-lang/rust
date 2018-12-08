@@ -87,6 +87,110 @@ impl HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
 }
 
+impl ControlFlowBuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
+    fn new_block<'b>(
+        cx: &'a CodegenCx<'ll, 'tcx>,
+        llfn: &'ll Value,
+        name: &'b str
+    ) -> Self {
+        let mut bx = Builder::with_cx(cx);
+        let llbb = unsafe {
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(
+                cx.llcx,
+                llfn,
+                name.as_ptr()
+            )
+        };
+        bx.position_at_end(llbb);
+        bx
+    }
+
+    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe {
+            llvm::LLVMCreateBuilderInContext(cx.llcx)
+        };
+        Builder {
+            llbuilder,
+            cx,
+        }
+    }
+
+    fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
+        Builder::new_block(self.cx, self.llfn(), name)
+    }
+
+    fn llbb(&self) -> &'ll BasicBlock {
+        unsafe {
+            llvm::LLVMGetInsertBlock(self.llbuilder)
+        }
+    }
+
+    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
+        }
+    }
+
+    fn ret_void(&mut self) {
+        self.count_insn("retvoid");
+        unsafe {
+            llvm::LLVMBuildRetVoid(self.llbuilder);
+        }
+    }
+
+    fn ret(&mut self, v: &'ll Value) {
+        self.count_insn("ret");
+        unsafe {
+            llvm::LLVMBuildRet(self.llbuilder, v);
+        }
+    }
+
+    fn br(&mut self, dest: &'ll BasicBlock) {
+        self.count_insn("br");
+        unsafe {
+            llvm::LLVMBuildBr(self.llbuilder, dest);
+        }
+    }
+
+    fn cond_br(
+        &mut self,
+        cond: &'ll Value,
+        then_llbb: &'ll BasicBlock,
+        else_llbb: &'ll BasicBlock,
+    ) {
+        self.count_insn("condbr");
+        unsafe {
+            llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
+        }
+    }
+
+    fn switch(
+        &mut self,
+        v: &'ll Value,
+        else_llbb: &'ll BasicBlock,
+        num_cases: usize,
+    ) -> &'ll Value {
+        unsafe {
+            llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
+        }
+    }
+
+    fn add_case(&mut self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
+        unsafe {
+            llvm::LLVMAddCase(s, on_val, dest)
+        }
+    }
+
+    fn unreachable(&mut self) {
+        self.count_insn("unreachable");
+        unsafe {
+            llvm::LLVMBuildUnreachable(self.llbuilder);
+        }
+    }
+}
+
 impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn alloca(&mut self, ty: &'ll Type, name: &str, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
@@ -1021,102 +1125,6 @@ impl UnwindBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
-    fn new_block<'b>(
-        cx: &'a CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
-        name: &'b str
-    ) -> Self {
-        let mut bx = Builder::with_cx(cx);
-        let llbb = unsafe {
-            let name = SmallCStr::new(name);
-            llvm::LLVMAppendBasicBlockInContext(
-                cx.llcx,
-                llfn,
-                name.as_ptr()
-            )
-        };
-        bx.position_at_end(llbb);
-        bx
-    }
-
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe {
-            llvm::LLVMCreateBuilderInContext(cx.llcx)
-        };
-        Builder {
-            llbuilder,
-            cx,
-        }
-    }
-
-    fn build_sibling_block<'b>(&self, name: &'b str) -> Self {
-        Builder::new_block(self.cx, self.llfn(), name)
-    }
-
-    fn llbb(&self) -> &'ll BasicBlock {
-        unsafe {
-            llvm::LLVMGetInsertBlock(self.llbuilder)
-        }
-    }
-
-    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
-        }
-    }
-
-    fn ret_void(&mut self) {
-        self.count_insn("retvoid");
-        unsafe {
-            llvm::LLVMBuildRetVoid(self.llbuilder);
-        }
-    }
-
-    fn ret(&mut self, v: &'ll Value) {
-        self.count_insn("ret");
-        unsafe {
-            llvm::LLVMBuildRet(self.llbuilder, v);
-        }
-    }
-
-    fn br(&mut self, dest: &'ll BasicBlock) {
-        self.count_insn("br");
-        unsafe {
-            llvm::LLVMBuildBr(self.llbuilder, dest);
-        }
-    }
-
-    fn cond_br(
-        &mut self,
-        cond: &'ll Value,
-        then_llbb: &'ll BasicBlock,
-        else_llbb: &'ll BasicBlock,
-    ) {
-        self.count_insn("condbr");
-        unsafe {
-            llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
-        }
-    }
-
-    fn switch(
-        &mut self,
-        v: &'ll Value,
-        else_llbb: &'ll BasicBlock,
-        num_cases: usize,
-    ) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
-        }
-    }
-
-    fn unreachable(&mut self) {
-        self.count_insn("unreachable");
-        unsafe {
-            llvm::LLVMBuildUnreachable(self.llbuilder);
-        }
-    }
-
     /* Miscellaneous instructions */
     fn inline_asm_call(&mut self, asm: &CStr, cons: &CStr,
                        inputs: &[&'ll Value], output: &'ll Type,
@@ -1208,12 +1216,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint,
                                        noname())
-        }
-    }
-
-    fn add_case(&mut self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMAddCase(s, on_val, dest)
         }
     }
 
