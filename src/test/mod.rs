@@ -289,6 +289,18 @@ fn stdin_formatting_smoke_test() {
 }
 
 #[test]
+fn stdin_parser_panic_caught() {
+    // https://github.com/rust-lang/rustfmt/issues/3239
+    for text in ["{", "}"].iter().cloned().map(String::from) {
+        let mut buf = vec![];
+        let mut session = Session::new(Default::default(), Some(&mut buf));
+        let _ = session.format(Input::Text(text));
+
+        assert!(session.has_parsing_errors());
+    }
+}
+
+#[test]
 fn stdin_disable_all_formatting_test() {
     match option_env!("CFG_RELEASE_CHANNEL") {
         None | Some("nightly") => {}
