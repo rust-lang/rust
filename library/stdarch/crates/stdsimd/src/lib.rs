@@ -11,6 +11,7 @@
     deny(clippy::missing_inline_in_public_items,)
 )]
 #![cfg_attr(target_os = "linux", feature(linkage))]
+#![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
 #![no_std]
 #![unstable(feature = "stdsimd", issue = "27731")]
 

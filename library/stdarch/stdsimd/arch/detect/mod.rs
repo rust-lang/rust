@@ -71,6 +71,12 @@ cfg_if! {
     } else if #[cfg(target_os = "linux")] {
         #[path = "os/linux/mod.rs"]
         mod os;
+    } else if #[cfg(target_os = "freebsd")] {
+        #[cfg(target_arch = "aarch64")]
+        #[path = "os/aarch64.rs"]
+        mod aarch64;
+        #[path = "os/freebsd/mod.rs"]
+        mod os;
     } else {
         #[path = "os/other.rs"]
         mod os;
