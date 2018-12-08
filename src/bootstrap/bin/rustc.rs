@@ -107,6 +107,8 @@ fn main() {
         // actually downloaded, so we just always pass the `--sysroot` option.
         cmd.arg("--sysroot").arg(&sysroot);
 
+        cmd.arg("-Zexternal-macro-backtrace");
+
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.

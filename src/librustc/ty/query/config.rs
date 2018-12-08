@@ -611,6 +611,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::extern_crate<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "running analysis passes on this crate".into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::lint_levels<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "computing the lint levels for items in this crate".into()

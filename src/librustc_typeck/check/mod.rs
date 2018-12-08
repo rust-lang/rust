@@ -131,7 +131,7 @@ use std::ops::{self, Deref};
 use std::slice;
 
 use crate::require_c_abi_if_c_variadic;
-use crate::session::{CompileIncomplete, Session};
+use crate::session::Session;
 use crate::session::config::EntryFnType;
 use crate::TypeAndSubsts;
 use crate::lint;
@@ -711,12 +711,12 @@ fn check_mod_item_types<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId)
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
 }
 
-pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), CompileIncomplete> {
+pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.typeck_item_bodies(LOCAL_CRATE)
 }
 
 fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
-                                -> Result<(), CompileIncomplete>
+                                -> Result<(), ErrorReported>
 {
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {

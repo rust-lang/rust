@@ -2699,6 +2699,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_incremental 0.0.0",
+ "rustc_interface 0.0.0",
  "rustc_lint 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
@@ -2748,6 +2749,36 @@ dependencies = [
  "rustc_fs_util 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_interface"
+version = "0.0.0"
+dependencies = [
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc 0.0.0",
+ "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_allocator 0.0.0",
+ "rustc_borrowck 0.0.0",
+ "rustc_codegen_utils 0.0.0",
+ "rustc_data_structures 0.0.0",
+ "rustc_errors 0.0.0",
+ "rustc_incremental 0.0.0",
+ "rustc_lint 0.0.0",
+ "rustc_metadata 0.0.0",
+ "rustc_mir 0.0.0",
+ "rustc_passes 0.0.0",
+ "rustc_plugin 0.0.0",
+ "rustc_privacy 0.0.0",
+ "rustc_resolve 0.0.0",
+ "rustc_traits 0.0.0",
+ "rustc_typeck 0.0.0",
+ "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serialize 0.0.0",
+ "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syntax 0.0.0",
+ "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 

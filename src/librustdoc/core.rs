@@ -1,5 +1,5 @@
 use rustc_lint;
-use rustc_driver::{self, driver, target_features, abort_on_err};
+use rustc_driver::{driver, abort_on_err};
 use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
@@ -11,6 +11,7 @@ use rustc::hir::map as hir_map;
 use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_interface::util;
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -402,7 +403,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                              debugging_options.ui_testing);
 
         let mut sess = session::build_session_(
-            sessopts, cpath, diagnostic_handler, source_map,
+            sessopts, cpath, diagnostic_handler, source_map, Default::default(),
         );
 
         lint::builtin::HardwiredLints.get_lints()
@@ -422,12 +423,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                                       lint::Allow);
                                      });
 
-        let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+        let codegen_backend = util::get_codegen_backend(&sess);
         let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
-        target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
+        util::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
         let control = &driver::CompileController::basic();
@@ -481,23 +482,23 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
         let mut arenas = AllArenas::new();
         let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
-        let output_filenames = driver::build_output_filenames(&input,
+        let output_filenames = util::build_output_filenames(&input,
                                                             &None,
                                                             &None,
                                                             &[],
                                                             &sess);
 
         let resolver = RefCell::new(resolver);
-        abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
-                                                        control,
-                                                        &sess,
-                                                        &*cstore,
-                                                        hir_map,
-                                                        resolutions,
-                                                        &mut arenas,
-                                                        &name,
-                                                        &output_filenames,
-                                                        |tcx, _, result| {
+        driver::phase_3_run_analysis_passes(&*codegen_backend,
+                                            control,
+                                            &sess,
+                                            &*cstore,
+                                            hir_map,
+                                            resolutions,
+                                            &mut arenas,
+                                            &name,
+                                            &output_filenames,
+                                            |tcx, _, result| {
             if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
@@ -615,6 +616,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             ctxt.sess().abort_if_errors();
 
             (krate, ctxt.renderinfo.into_inner(), render_options, passes)
-        }), &sess)
+        })
     })
 }
