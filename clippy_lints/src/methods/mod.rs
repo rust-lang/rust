@@ -1332,7 +1332,8 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
     if is_copy(cx, ty) {
         let snip;
         if let Some(snippet) = sugg::Sugg::hir_opt(cx, arg) {
-            if let ty::Ref(..) = cx.tables.expr_ty(arg).sty {
+            // x.clone() might have dereferenced x, possibly through Deref impls
+            if cx.tables.expr_ty(arg) != ty {
                 let parent = cx.tcx.hir.get_parent_node(expr.id);
                 match cx.tcx.hir.get(parent) {
                     hir::Node::Expr(parent) => match parent.node {
@@ -1354,7 +1355,18 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                     },
                     _ => {},
                 }
-                snip = Some(("try dereferencing it", format!("{}", snippet.deref())));
+
+                let deref_count = cx.tables.expr_adjustments(arg).iter()
+                    .filter(|adj| {
+                        if let ty::adjustment::Adjust::Deref(_) = adj.kind {
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .count();
+                let derefs: String = iter::repeat('*').take(deref_count).collect();
+                snip = Some(("try dereferencing it", format!("{}{}", derefs, snippet)));
             } else {
                 snip = Some(("try removing the `clone` call", format!("{}", snippet)));
             }

@@ -1,84 +1,96 @@
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:28:5
+  --> $DIR/unnecessary_clone.rs:29:5
    |
-28 |     42.clone();
+29 |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
    |
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:32:5
+  --> $DIR/unnecessary_clone.rs:33:5
    |
-32 |     (&42).clone();
+33 |     (&42).clone();
    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
-error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:42:5
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:36:5
    |
-42 |     rc.clone();
+36 |     rc.borrow().clone();
+   |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
+
+error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:46:5
+   |
+46 |     rc.clone();
    |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
    |
    = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:45:5
+  --> $DIR/unnecessary_clone.rs:49:5
    |
-45 |     arc.clone();
+49 |     arc.clone();
    |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:48:5
+  --> $DIR/unnecessary_clone.rs:52:5
    |
-48 |     rcweak.clone();
+52 |     rcweak.clone();
    |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:51:5
+  --> $DIR/unnecessary_clone.rs:55:5
    |
-51 |     arc_weak.clone();
+55 |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:55:29
+  --> $DIR/unnecessary_clone.rs:59:29
    |
-55 |     let _: Arc<SomeTrait> = x.clone();
+59 |     let _: Arc<SomeTrait> = x.clone();
    |                             ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:59:5
+  --> $DIR/unnecessary_clone.rs:63:5
    |
-59 |     t.clone();
+63 |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:61:5
+  --> $DIR/unnecessary_clone.rs:65:5
    |
-61 |     Some(t).clone();
+65 |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:67:22
+  --> $DIR/unnecessary_clone.rs:71:22
    |
-67 |     let z: &Vec<_> = y.clone();
+71 |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
    |
    = note: #[deny(clippy::clone_double_ref)] on by default
 help: try dereferencing it
    |
-67 |     let z: &Vec<_> = &(*y).clone();
+71 |     let z: &Vec<_> = &(*y).clone();
    |                      ^^^^^^^^^^^^^
 help: or try being explicit about what type to clone
    |
-67 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
+71 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:74:27
+  --> $DIR/unnecessary_clone.rs:78:27
    |
-74 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+78 |     let v2 : Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
 
-error: aborting due to 11 previous errors
+error: using `clone` on a `Copy` type
+   --> $DIR/unnecessary_clone.rs:110:20
+    |
+110 |         let _: E = a.clone();
+    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
+
+error: aborting due to 13 previous errors
 
