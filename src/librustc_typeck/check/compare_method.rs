@@ -648,12 +648,19 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let trait_span = if let Some(trait_id) = trait_m_node_id {
             match tcx.hir.expect_trait_item(trait_id).node {
                 TraitItemKind::Method(ref trait_m_sig, _) => {
-                    if let Some(arg) = trait_m_sig.decl.inputs.get(if trait_number_args > 0 {
+                    let pos = if trait_number_args > 0 {
                         trait_number_args - 1
                     } else {
                         0
-                    }) {
-                        Some(arg.span)
+                    };
+                    if let Some(arg) = trait_m_sig.decl.inputs.get(pos) {
+                        Some(if pos == 0 {
+                            arg.span
+                        } else {
+                            Span::new(trait_m_sig.decl.inputs[0].span.lo(),
+                                      arg.span.hi(),
+                                      arg.span.ctxt())
+                        })
                     } else {
                         trait_item_span
                     }
@@ -666,12 +673,19 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
         let impl_span = match tcx.hir.expect_impl_item(impl_m_node_id).node {
             ImplItemKind::Method(ref impl_m_sig, _) => {
-                if let Some(arg) = impl_m_sig.decl.inputs.get(if impl_number_args > 0 {
+                let pos = if impl_number_args > 0 {
                     impl_number_args - 1
                 } else {
                     0
-                }) {
-                    arg.span
+                };
+                if let Some(arg) = impl_m_sig.decl.inputs.get(pos) {
+                    if pos == 0 {
+                        arg.span
+                    } else {
+                        Span::new(impl_m_sig.decl.inputs[0].span.lo(),
+                                  arg.span.hi(),
+                                  arg.span.ctxt())
+                    }
                 } else {
                     impl_m_span
                 }
