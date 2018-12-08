@@ -114,8 +114,6 @@ impl<'tcx> Kind<'tcx> {
     }
 }
 
-            UnpackedKind::Const(ct) => write!(f, "{:?}", ct),
-            UnpackedKind::Const(ct) => write!(f, "{}", ct),
 impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
     type Lifted = Kind<'tcx>;
 

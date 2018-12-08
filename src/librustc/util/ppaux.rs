@@ -8,7 +8,7 @@ use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use crate::ty::{self, Ty, TypeFoldable, GenericParamCount, GenericParamDefKind, ParamConst};
+use crate::ty::{self, ParamConst, Ty, TypeFoldable};
 use crate::ty::print::{PrintCx, Print};
 use crate::mir::interpret::ConstValue;
 
@@ -314,225 +314,130 @@ impl PrintCx<'a, 'gcx, 'tcx> {
     fn parameterized<F: fmt::Write>(
         &mut self,
         f: &mut F,
-        did: DefId,
+        mut def_id: DefId,
         substs: SubstsRef<'tcx>,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>> + Clone,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> fmt::Result {
-        let key = self.tcx.def_key(did);
+        let mut key = self.tcx.def_key(def_id);
+        let is_value_ns = match key.disambiguated_data.data {
+            DefPathData::ValueNs(_) |
+            DefPathData::EnumVariant(_) => true,
 
-        let verbose = self.is_verbose;
-        let mut num_supplied_defaults = 0;
-        let has_self;
-        let mut own_counts: GenericParamCount = Default::default();
-        let mut is_value_path = false;
-        let mut item_name = Some(key.disambiguated_data.data.as_interned_str());
-        let mut path_def_id = did;
-        {
-            // Unfortunately, some kinds of items (e.g., closures) don't have
-            // generics. So walk back up the find the closest parent that DOES
-            // have them.
-            let mut item_def_id = did;
-            loop {
-                let key = self.tcx.def_key(item_def_id);
-                match key.disambiguated_data.data {
-                    DefPathData::AssocTypeInTrait(_) |
-                    DefPathData::AssocTypeInImpl(_) |
-                    DefPathData::AssocExistentialInImpl(_) |
-                    DefPathData::Trait(_) |
-                    DefPathData::TraitAlias(_) |
-                    DefPathData::Impl |
-                    DefPathData::TypeNs(_) => {
-                        break;
-                    }
-                    DefPathData::ValueNs(_) |
-                    DefPathData::EnumVariant(_) => {
-                        is_value_path = true;
-                        break;
-                    }
-                    DefPathData::CrateRoot |
-                    DefPathData::Misc |
-                    DefPathData::Module(_) |
-                    DefPathData::MacroDef(_) |
-                    DefPathData::ClosureExpr |
-                    DefPathData::TypeParam(_) |
-                    DefPathData::LifetimeParam(_) |
-                    DefPathData::ConstParam(_) |
-                    DefPathData::Field(_) |
-                    DefPathData::StructCtor |
-                    DefPathData::AnonConst |
-                    DefPathData::ImplTrait |
-                    DefPathData::GlobalMetaData(_) => {
-                        // if we're making a symbol for something, there ought
-                        // to be a value or type-def or something in there
-                        // *somewhere*
-                        item_def_id.index = key.parent.unwrap_or_else(|| {
-                            bug!("finding type for {:?}, encountered def-id {:?} with no \
-                                 parent", did, item_def_id);
-                        });
-                    }
-                }
-            }
-            let mut generics = self.tcx.generics_of(item_def_id);
-            let child_own_counts = generics.own_counts();
-            has_self = generics.has_self;
-
-            let mut child_types = 0;
-            if let Some(def_id) = generics.parent {
-                // Methods.
-                assert!(is_value_path);
-                child_types = child_own_counts.types;
-                generics = self.tcx.generics_of(def_id);
-                own_counts = generics.own_counts();
-
-                if has_self {
-                    print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
-                }
-
-                path_def_id = def_id;
-            } else {
-                item_name = None;
-
-                if is_value_path {
-                    // Functions.
-                    assert_eq!(has_self, false);
-                } else {
-                    // Types and traits.
-                    own_counts = child_own_counts;
-                }
+            // Skip `StructCtor` so that `Struct::<T>` will be printed,
+            // instead of the less pretty `Struct<T>::{{constructor}}`.
+            DefPathData::StructCtor => {
+                def_id.index = key.parent.unwrap();
+                key = self.tcx.def_key(def_id);
+                true
             }
 
-            if !verbose {
-                let mut type_params =
-                    generics.params.iter().rev().filter_map(|param| match param.kind {
-                        GenericParamDefKind::Lifetime => None,
-                        GenericParamDefKind::Type { has_default, .. } => {
-                            Some((param.def_id, has_default))
-                        }
-                        GenericParamDefKind::Const => None, // FIXME(const_generics:defaults)
-                    }).peekable();
-                let has_default = {
-                    let has_default = type_params.peek().map(|(_, has_default)| has_default);
-                    *has_default.unwrap_or(&false)
-                };
-                if has_default {
-                    let types = substs.types().rev().skip(child_types);
-                    for ((def_id, has_default), actual) in type_params.zip(types) {
-                        if !has_default {
-                            break;
-                        }
-                        if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
-                            break;
-                        }
-                        num_supplied_defaults += 1;
-                    }
-                }
-            }
-        }
-        print!(f, self, write("{}", self.tcx.item_path_str(path_def_id)))?;
-        let fn_trait_kind = self.tcx.lang_items().fn_trait_kind(path_def_id);
+            _ => false,
+        };
 
-        if !verbose && fn_trait_kind.is_some() {
-            if let Tuple(ref args) = substs.type_at(1).sty {
-                let mut projections = projections.clone();
-                if let (Some(proj), None) = (projections.next(), projections.next()) {
-                    return self.fn_sig(f, args, false, proj.ty);
-                }
+        let generics = self.tcx.generics_of(def_id);
+
+        if let Some(parent_def_id) = generics.parent {
+            assert_eq!(parent_def_id, DefId { index: key.parent.unwrap(), ..def_id });
+
+            let parent_generics = self.tcx.generics_of(parent_def_id);
+            let parent_has_own_self =
+                parent_generics.has_self && parent_generics.parent_count == 0;
+            if parent_has_own_self {
+                print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
             }
+            self.parameterized(f, parent_def_id, substs, iter::empty())?;
+            if parent_has_own_self {
+                write!(f, ">")?;
+            }
+
+            write!(f, "::{}", key.disambiguated_data.data.as_interned_str())?;
+        } else {
+            print!(f, self, write("{}", self.tcx.item_path_str(def_id)))?;
         }
 
-        let empty = Cell::new(true);
-        let start_or_continue = |f: &mut F, start: &str, cont: &str| {
-            if empty.get() {
-                empty.set(false);
+        let mut empty = true;
+        let mut start_or_continue = |f: &mut F, start: &str, cont: &str| {
+            if empty {
+                empty = false;
                 write!(f, "{}", start)
             } else {
                 write!(f, "{}", cont)
             }
         };
 
-        let print_regions = |f: &mut F, start: &str, skip, count| {
-            // Don't print any regions if they're all erased.
-            let regions = || substs.regions().skip(skip).take(count);
-            if regions().all(|r: ty::Region<'_>| *r == ty::ReErased) {
-                return Ok(());
-            }
+        let start = if is_value_ns { "::<" } else { "<" };
 
-            for region in regions() {
-                let region: ty::Region<'_> = region;
-                start_or_continue(f, start, ", ")?;
-                if verbose {
-                    write!(f, "{:?}", region)?;
-                } else {
-                    let s = region.to_string();
-                    if s.is_empty() {
-                        // This happens when the value of the region
-                        // parameter is not easily serialized. This may be
-                        // because the user omitted it in the first place,
-                        // or because it refers to some block in the code,
-                        // etc. I'm not sure how best to serialize this.
-                        write!(f, "'_")?;
-                    } else {
-                        write!(f, "{}", s)?;
+        let has_own_self = generics.has_self && generics.parent_count == 0;
+        let params = &generics.params[has_own_self as usize..];
+
+        // Don't print any regions if they're all erased.
+        let print_regions = params.iter().any(|param| {
+            match substs[param.index as usize].unpack() {
+                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                _ => false,
+            }
+        });
+
+        // Don't print args that are the defaults of their respective parameters.
+        let num_supplied_defaults = if self.is_verbose {
+            0
+        } else {
+            params.iter().rev().take_while(|param| {
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => false,
+                    ty::GenericParamDefKind::Type { has_default, .. } => {
+                        has_default && substs[param.index as usize] == Kind::from(
+                            self.tcx.type_of(param.def_id).subst(self.tcx, substs)
+                        )
                     }
+                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
                 }
-            }
-
-            Ok(())
+            }).count()
         };
 
-        print_regions(f, "<", 0, own_counts.lifetimes)?;
-
-        let tps = substs.types()
-                        .take(own_counts.types - num_supplied_defaults)
-                        .skip(has_self as usize);
-
-        for ty in tps {
-            start_or_continue(f, "<", ", ")?;
-            ty.print_display(f, self)?;
+        for param in &params[..params.len() - num_supplied_defaults] {
+            match substs[param.index as usize].unpack() {
+                UnpackedKind::Lifetime(region) => {
+                    if !print_regions {
+                        continue;
+                    }
+                    start_or_continue(f, start, ", ")?;
+                    if self.is_verbose {
+                        write!(f, "{:?}", region)?;
+                    } else {
+                        let s = region.to_string();
+                        if s.is_empty() {
+                            // This happens when the value of the region
+                            // parameter is not easily serialized. This may be
+                            // because the user omitted it in the first place,
+                            // or because it refers to some block in the code,
+                            // etc. I'm not sure how best to serialize this.
+                            write!(f, "'_")?;
+                        } else {
+                            write!(f, "{}", s)?;
+                        }
+                    }
+                }
+                UnpackedKind::Type(ty) => {
+                    start_or_continue(f, start, ", ")?;
+                    ty.print_display(f, self)?;
+                }
+                UnpackedKind::Const(ct) => {
+                    start_or_continue(f, start, ", ")?;
+                    ct.print_display(f, self)?;
+                }
+            }
         }
 
         for projection in projections {
-            start_or_continue(f, "<", ", ")?;
+            start_or_continue(f, start, ", ")?;
             print!(f, self,
                     write("{}=",
                             self.tcx.associated_item(projection.item_def_id).ident),
                     print_display(projection.ty))?;
         }
 
-        // FIXME(const_generics::defaults)
-        let consts = substs.consts();
-
-        for ct in consts {
-            start_or_continue(f, "<", ", ")?;
-            ct.print_display(f, self)?;
-        }
-
-        start_or_continue(f, "", ">")?;
-
-        // For values, also print their name and type parameters.
-        if is_value_path {
-            empty.set(true);
-
-            if has_self {
-                write!(f, ">")?;
-            }
-
-            if let Some(item_name) = item_name {
-                write!(f, "::{}", item_name)?;
-            }
-
-            print_regions(f, "::<", own_counts.lifetimes, usize::MAX)?;
-
-            // FIXME: consider being smart with defaults here too
-            for ty in substs.types().skip(own_counts.types) {
-                start_or_continue(f, "::<", ", ")?;
-                ty.print_display(f, self)?;
-            }
-
-            start_or_continue(f, "", ">")?;
-        }
-
-        Ok(())
+        start_or_continue(f, "", ">")
     }
 
     fn in_binder<T, F>(&mut self, f: &mut F, value: &ty::Binder<T>) -> fmt::Result
@@ -626,19 +531,34 @@ define_print! {
     ('tcx) &'tcx ty::List<ty::ExistentialPredicate<'tcx>>, (self, f, cx) {
         display {
             // Generate the main trait ref, including associated types.
-
-            // Use a type that can't appear in defaults of type parameters.
-            let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
             let mut first = true;
 
             if let Some(principal) = self.principal() {
-                let principal = principal.with_self_ty(cx.tcx, dummy_self);
-                cx.parameterized(
-                    f,
-                    principal.def_id,
-                    principal.substs,
-                    self.projection_bounds(),
-                )?;
+                let mut resugared_principal = false;
+
+                // Special-case `Fn(...) -> ...` and resugar it.
+                if !cx.is_verbose && cx.tcx.lang_items().fn_trait_kind(principal.def_id).is_some() {
+                    if let Tuple(ref args) = principal.substs.type_at(0).sty {
+                        let mut projections = self.projection_bounds();
+                        if let (Some(proj), None) = (projections.next(), projections.next()) {
+                            print!(f, cx, write("{}", cx.tcx.item_path_str(principal.def_id)))?;
+                            cx.fn_sig(f, args, false, proj.ty)?;
+                            resugared_principal = true;
+                        }
+                    }
+                }
+
+                if !resugared_principal {
+                    // Use a type that can't appear in defaults of type parameters.
+                    let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
+                    let principal = principal.with_self_ty(cx.tcx, dummy_self);
+                    cx.parameterized(
+                        f,
+                        principal.def_id,
+                        principal.substs,
+                        self.projection_bounds(),
+                    )?;
+                }
                 first = false;
             }
 
@@ -1468,12 +1388,7 @@ define_print! {
 define_print! {
     ('tcx) ty::ProjectionTy<'tcx>, (self, f, cx) {
         display {
-            // FIXME(tschottdorf): use something like
-            //   parameterized(f, self.substs, self.item_def_id, &[])
-            // (which currently ICEs).
-            let trait_ref = self.trait_ref(cx.tcx);
-            let item_name = cx.tcx.associated_item(self.item_def_id).ident;
-            print!(f, cx, print_debug(trait_ref), write("::{}", item_name))
+            cx.parameterized(f, self.item_def_id, self.substs, iter::empty())
         }
     }
 }
@@ -1542,12 +1457,14 @@ define_print! {
             match self.unpack() {
                 UnpackedKind::Lifetime(lt) => print!(f, cx, print(lt)),
                 UnpackedKind::Type(ty) => print!(f, cx, print(ty)),
+                UnpackedKind::Const(ct) => print!(f, cx, print(ct)),
             }
         }
         debug {
             match self.unpack() {
                 UnpackedKind::Lifetime(lt) => print!(f, cx, print(lt)),
                 UnpackedKind::Type(ty) => print!(f, cx, print(ty)),
+                UnpackedKind::Const(ct) => print!(f, cx, print(ct)),
             }
         }
     }
