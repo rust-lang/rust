@@ -135,7 +135,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
     let trait_method_sig = cx.tcx.erase_late_bound_regions(&trait_method_sig);
 
-    let impl_method_def_id = cx.tcx.hir.local_def_id(impl_item.id);
+    let impl_method_def_id = cx.tcx.hir().local_def_id(impl_item.id);
     let impl_method_sig = cx.tcx.fn_sig(impl_method_def_id);
     let impl_method_sig = cx.tcx.erase_late_bound_regions(&impl_method_sig);
 
@@ -190,18 +190,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                         item_path,
                         cx,
                     };
-                    let impl_def_id = cx.tcx.hir.local_def_id(item.id);
+                    let impl_def_id = cx.tcx.hir().local_def_id(item.id);
                     let impl_trait_ref = cx.tcx.impl_trait_ref(impl_def_id);
 
                     if let Some(impl_trait_ref) = impl_trait_ref {
                         for impl_item_ref in refs {
-                            let impl_item = cx.tcx.hir.impl_item(impl_item_ref.id);
+                            let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             if let ImplItemKind::Method(MethodSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.node {
                                 let item_type = cx.tcx.type_of(impl_def_id);
                                 check_trait_method_impl_decl(cx, item_type, impl_item, impl_decl, &impl_trait_ref);
 
-                                let body = cx.tcx.hir.body(*impl_body_id);
+                                let body = cx.tcx.hir().body(*impl_body_id);
                                 visitor.visit_body(body);
                             } else {
                                 visitor.visit_impl_item(impl_item);
@@ -209,7 +209,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                         }
                     } else {
                         for impl_item_ref in refs {
-                            let impl_item = cx.tcx.hir.impl_item(impl_item_ref.id);
+                            let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             visitor.visit_impl_item(impl_item);
                         }
                     }
@@ -238,6 +238,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::All(&self.cx.tcx.hir())
     }
 }

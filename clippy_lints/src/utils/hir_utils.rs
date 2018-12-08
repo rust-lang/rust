@@ -145,9 +145,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             },
             (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
-                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id.body).value);
+                let ll = celcx.expr(&self.cx.tcx.hir().body(ll_id.body).value);
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
-                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id.body).value);
+                let rl = celcx.expr(&self.cx.tcx.hir().body(rl_id.body).value);
 
                 self.eq_expr(le, re) && ll == rl
             },
@@ -287,11 +287,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
                 self.tables = self.cx.tcx.body_tables(ll_id.body);
-                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id.body).value);
+                let ll = celcx.expr(&self.cx.tcx.hir().body(ll_id.body).value);
 
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
                 self.tables = self.cx.tcx.body_tables(rl_id.body);
-                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id.body).value);
+                let rl = celcx.expr(&self.cx.tcx.hir().body(rl_id.body).value);
 
                 let eq_ty = self.eq_ty(lt, rt);
                 self.tables = full_table;
@@ -484,7 +484,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     CaptureClause::CaptureByRef => 1,
                 }
                 .hash(&mut self.s);
-                self.hash_expr(&self.cx.tcx.hir.body(eid).value);
+                self.hash_expr(&self.cx.tcx.hir().body(eid).value);
             },
             ExprKind::Field(ref e, ref f) => {
                 let c: fn(_, _) -> _ = ExprKind::Field;
@@ -551,7 +551,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 let full_table = self.tables;
                 self.tables = self.cx.tcx.body_tables(l_id.body);
-                self.hash_expr(&self.cx.tcx.hir.body(l_id.body).value);
+                self.hash_expr(&self.cx.tcx.hir().body(l_id.body).value);
                 self.tables = full_table;
             },
             ExprKind::Ret(ref e) => {

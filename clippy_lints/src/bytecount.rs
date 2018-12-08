@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
             if filter_args.len() == 2;
             if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].node;
             then {
-                let body = cx.tcx.hir.body(body_id);
+                let body = cx.tcx.hir().body(body_id);
                 if_chain! {
                     if body.arguments.len() == 1;
                     if let Some(argname) = get_pat_name(&body.arguments[0].pat);

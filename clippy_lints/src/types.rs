@@ -28,8 +28,9 @@ use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, match_type, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
+    match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
     snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    AbsolutePathBuffer
 };
 use if_chain::if_chain;
 use std::borrow::Cow;
@@ -154,7 +155,7 @@ impl LintPass for TypePass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
-        if let Some(hir::Node::Item(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
+        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
@@ -203,7 +204,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             GenericArg::Lifetime(_) => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
-        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(ty.id)));
+        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir().node_to_hir_id(ty.id)));
         if match_def_path(cx.tcx, did, path);
         then {
             return true;
@@ -223,7 +224,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
     }
     match ast_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
-            let hir_id = cx.tcx.hir.node_to_hir_id(ast_ty.id);
+            let hir_id = cx.tcx.hir().node_to_hir_id(ast_ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
@@ -317,7 +318,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
 fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
-            let hir_id = cx.tcx.hir.node_to_hir_id(mut_ty.ty.id);
+            let hir_id = cx.tcx.hir().node_to_hir_id(mut_ty.ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
             if_chain! {
                 if let Some(def_id) = opt_def_id(def);
@@ -545,7 +546,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
             ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
                 for arg in args {
                     if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
-                        let map = &cx.tcx.hir;
+                        let map = &cx.tcx.hir();
                         // apparently stuff in the desugaring of `?` can trigger this
                         // so check for that here
                         // only the calls to `Try::from_error` is marked as desugared,
@@ -1023,6 +1024,21 @@ impl LintPass for CastPass {
     }
 }
 
+// Check if the given type is either `core::ffi::c_void` or
+// one of the platform specific `libc::<platform>::c_void` of libc.
+fn is_c_void(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
+    if let ty::Adt(adt, _) = ty.sty {
+        let mut apb = AbsolutePathBuffer { names: vec![] };
+        tcx.push_item_path(&mut apb, adt.did, false);
+
+        if apb.names.is_empty() { return false }
+        if apb.names[0] == "libc" || apb.names[0] == "core" && *apb.names.last().unwrap() == "c_void" {
+            return true
+        }
+    }
+    false
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Cast(ref ex, _) = expr.node {
@@ -1114,10 +1130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi);
                 if from_align < to_align;
                 // with c_void, we inherently need to trust the user
-                if ! (
-                    match_type(cx, from_ptr_ty.ty, &paths::C_VOID)
-                    || match_type(cx, from_ptr_ty.ty, &paths::C_VOID_LIBC)
-                );
+                if !is_c_void(cx.tcx, from_ptr_ty.ty);
                 then {
                     span_lint(
                         cx,
@@ -1930,7 +1943,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
-                    for item in items.iter().map(|item| cx.tcx.hir.impl_item(item.id)) {
+                    for item in items.iter().map(|item| cx.tcx.hir().impl_item(item.id)) {
                         ctr_vis.visit_impl_item(item);
                     }
 
@@ -1949,7 +1962,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                 }
             },
             ItemKind::Fn(ref decl, .., ref generics, body_id) => {
-                let body = cx.tcx.hir.body(body_id);
+                let body = cx.tcx.hir().body(body_id);
 
                 for ty in &decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
@@ -2157,6 +2170,6 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }

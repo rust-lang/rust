@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         _: Span,
         _: NodeId,
     ) {
-        let def_id = cx.tcx.hir.body_owner_def_id(body.id());
+        let def_id = cx.tcx.hir().body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
 
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {

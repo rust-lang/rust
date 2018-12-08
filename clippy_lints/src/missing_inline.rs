@@ -123,7 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
-                    let tit_ = cx.tcx.hir.trait_item(tit.id);
+                    let tit_ = cx.tcx.hir().trait_item(tit.id);
                     match tit_.node {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Method(..) => {
@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir.expect_trait_item(tit.id.node_id);
+                                let item = cx.tcx.hir().expect_trait_item(tit.id.node_id);
                                 check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
                             }
                         },
@@ -171,14 +171,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
         };
 
-        let def_id = cx.tcx.hir.local_def_id(impl_item.id);
+        let def_id = cx.tcx.hir().local_def_id(impl_item.id);
         let trait_def_id = match cx.tcx.associated_item(def_id).container {
             TraitContainer(cid) => Some(cid),
             ImplContainer(cid) => cx.tcx.impl_trait_ref(cid).map(|t| t.def_id),
         };
 
         if let Some(trait_def_id) = trait_def_id {
-            if let Some(n) = cx.tcx.hir.as_local_node_id(trait_def_id) {
+            if let Some(n) = cx.tcx.hir().as_local_node_id(trait_def_id) {
                 if !cx.access_levels.is_exported(n) {
                     // If a trait is being implemented for an item, and the
                     // trait is not exported, we don't need #[inline]

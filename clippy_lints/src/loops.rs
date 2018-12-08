@@ -1111,8 +1111,8 @@ fn check_for_loop_range<'a, 'tcx>(
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
-                    let parent_id = cx.tcx.hir.get_parent(expr.id);
-                    let parent_def_id = cx.tcx.hir.local_def_id(parent_id);
+                    let parent_id = cx.tcx.hir().get_parent(expr.id);
+                    let parent_def_id = cx.tcx.hir().local_def_id(parent_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
                     let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
@@ -1464,7 +1464,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    let map = &cx.tcx.hir;
+    let map = &cx.tcx.hir();
     let parent_scope = map
         .get_enclosing_scope(expr.id)
         .and_then(|id| map.get_enclosing_scope(id));
@@ -1636,7 +1636,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
         then {
             let def = cx.tables.qpath_def(qpath, bound.hir_id);
             if let Def::Local(node_id) = def {
-                let node_str = cx.tcx.hir.get(node_id);
+                let node_str = cx.tcx.hir().get(node_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
                     if let PatKind::Binding(bind_ann, _, _, _) = pat.node;
@@ -1772,10 +1772,10 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                     match def {
                         Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                            let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
+                            let hir_id = self.cx.tcx.hir().node_to_hir_id(node_id);
 
-                            let parent_id = self.cx.tcx.hir.get_parent(expr.id);
-                            let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
+                            let parent_id = self.cx.tcx.hir().get_parent(expr.id);
+                            let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                             if indexed_indirectly {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
@@ -2186,7 +2186,7 @@ fn is_conditional(expr: &Expr) -> bool {
 fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
         if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
-        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
+        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(loop_block.id));
         then {
             return is_loop_nested(cx, loop_expr, iter_expr)
         }
@@ -2202,11 +2202,11 @@ fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) 
         return true;
     };
     loop {
-        let parent = cx.tcx.hir.get_parent_node(id);
+        let parent = cx.tcx.hir().get_parent_node(id);
         if parent == id {
             return false;
         }
-        match cx.tcx.hir.find(parent) {
+        match cx.tcx.hir().find(parent) {
             Some(Node::Expr(expr)) => match expr.node {
                 ExprKind::Loop(..) | ExprKind::While(..) => {
                     return true;

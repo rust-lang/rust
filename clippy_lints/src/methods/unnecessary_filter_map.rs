@@ -26,7 +26,7 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr
     }
 
     if let hir::ExprKind::Closure(_, _, body_id, ..) = args[1].node {
-        let body = cx.tcx.hir.body(body_id);
+        let body = cx.tcx.hir().body(body_id);
         let arg_id = body.arguments[0].pat.id;
         let mutates_arg = match mutated_variables(&body.value, cx) {
             Some(used_mutably) => used_mutably.contains(&arg_id),

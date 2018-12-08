@@ -165,7 +165,7 @@ fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
             }
             if method.ident.name == "flat_map" && args.len() == 2 {
                 if let ExprKind::Closure(_, _, body_id, _, _) = args[1].node {
-                    let body = cx.tcx.hir.body(body_id);
+                    let body = cx.tcx.hir().body(body_id);
                     return is_infinite(cx, &body.value);
                 }
             }

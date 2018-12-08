@@ -119,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: Span,
         _: NodeId,
     ) {
-        let def_id = cx.tcx.hir.body_owner_def_id(body.id());
+        let def_id = cx.tcx.hir().body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types

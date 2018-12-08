@@ -122,7 +122,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, body_id) = item.node {
-            if let Some(Node::Item(it)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(item.id)) {
+            if let Some(Node::Item(it)) = cx.tcx.hir().find(cx.tcx.hir().get_parent(item.id)) {
                 if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }
@@ -157,7 +157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 }
 
 fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<BodyId>) {
-    let fn_def_id = cx.tcx.hir.local_def_id(fn_id);
+    let fn_def_id = cx.tcx.hir().local_def_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);
     let fn_ty = sig.skip_binder();
 

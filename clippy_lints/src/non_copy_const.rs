@@ -182,8 +182,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem) {
         if let ImplItemKind::Const(hir_ty, ..) = &impl_item.node {
-            let item_node_id = cx.tcx.hir.get_parent_node(impl_item.id);
-            let item = cx.tcx.hir.expect_item(item_node_id);
+            let item_node_id = cx.tcx.hir().get_parent_node(impl_item.id);
+            let item = cx.tcx.hir().expect_item(item_node_id);
             // ensure the impl is an inherent impl.
             if let ItemKind::Impl(_, _, _, _, None, _, _) = item.node {
                 let ty = hir_ty_to_ty(cx.tcx, hir_ty);
@@ -217,11 +217,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             let mut dereferenced_expr = expr;
             let mut needs_check_adjustment = true;
             loop {
-                let parent_id = cx.tcx.hir.get_parent_node(cur_expr.id);
+                let parent_id = cx.tcx.hir().get_parent_node(cur_expr.id);
                 if parent_id == cur_expr.id {
                     break;
                 }
-                if let Some(Node::Expr(parent_expr)) = cx.tcx.hir.find(parent_id) {
+                if let Some(Node::Expr(parent_expr)) = cx.tcx.hir().find(parent_id) {
                     match &parent_expr.node {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced

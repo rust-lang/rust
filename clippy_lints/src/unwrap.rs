@@ -185,7 +185,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }
 

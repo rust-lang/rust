@@ -82,7 +82,7 @@ impl LintPass for Derive {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node {
-            let ty = cx.tcx.type_of(cx.tcx.hir.local_def_id(item.id));
+            let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -129,9 +129,9 @@ fn check_hash_peq<'a, 'tcx>(
                         cx, DERIVE_HASH_XOR_EQ, span,
                         mess,
                         |db| {
-                        if let Some(node_id) = cx.tcx.hir.as_local_node_id(impl_id) {
+                        if let Some(node_id) = cx.tcx.hir().as_local_node_id(impl_id) {
                             db.span_note(
-                                cx.tcx.hir.span(node_id),
+                                cx.tcx.hir().span(node_id),
                                 "`PartialEq` implemented here"
                             );
                         }

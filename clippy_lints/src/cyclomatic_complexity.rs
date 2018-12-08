@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
         span: Span,
         node_id: NodeId,
     ) {
-        let def_id = cx.tcx.hir.local_def_id(node_id);
+        let def_id = cx.tcx.hir().local_def_id(node_id);
         if !cx.tcx.has_attr(def_id, "test") {
             self.check(cx, body, span);
         }

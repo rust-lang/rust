@@ -612,7 +612,7 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
 /// Test whether `def` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext<'_, '_>, def: &def::Def) -> bool {
     match *def {
-        def::Def::Local(id) | def::Def::Upvar(id, _, _) => !in_macro(cx.tcx.hir.span(id)),
+        def::Def::Local(id) | def::Def::Upvar(id, _, _) => !in_macro(cx.tcx.hir().span(id)),
         _ => false,
     }
 }

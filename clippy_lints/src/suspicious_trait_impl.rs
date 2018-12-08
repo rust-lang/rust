@@ -82,9 +82,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             }
             // Check if the binary expression is part of another bi/unary expression
             // as a child node
-            let mut parent_expr = cx.tcx.hir.get_parent_node(expr.id);
+            let mut parent_expr = cx.tcx.hir().get_parent_node(expr.id);
             while parent_expr != ast::CRATE_NODE_ID {
-                if let hir::Node::Expr(e) = cx.tcx.hir.get(parent_expr) {
+                if let hir::Node::Expr(e) = cx.tcx.hir().get(parent_expr) {
                     match e.node {
                         hir::ExprKind::Binary(..)
                         | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                         _ => {},
                     }
                 }
-                parent_expr = cx.tcx.hir.get_parent_node(parent_expr);
+                parent_expr = cx.tcx.hir().get_parent_node(parent_expr);
             }
             // as a parent node
             let mut visitor = BinaryExprVisitor { in_binary_expr: false };
@@ -182,12 +182,12 @@ fn check_binop<'a>(
     }
 
     // Get the actually implemented trait
-    let parent_fn = cx.tcx.hir.get_parent(expr.id);
-    let parent_impl = cx.tcx.hir.get_parent(parent_fn);
+    let parent_fn = cx.tcx.hir().get_parent(expr.id);
+    let parent_impl = cx.tcx.hir().get_parent(parent_fn);
 
     if_chain! {
         if parent_impl != ast::CRATE_NODE_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir.get(parent_impl);
+        if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
         if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
         if binop != expected_ops[idx];

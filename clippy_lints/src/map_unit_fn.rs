@@ -161,7 +161,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
 
 fn unit_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Option<(&'tcx hir::Arg, &'a hir::Expr)> {
     if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.node {
-        let body = cx.tcx.hir.body(inner_expr_id);
+        let body = cx.tcx.hir().body(inner_expr_id);
         let body_expr = &body.value;
 
         if_chain! {
