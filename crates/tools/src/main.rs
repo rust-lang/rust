@@ -79,15 +79,21 @@ fn tests_from_dir(dir: &Path) -> Result<HashMap<String, Test>> {
         if entry.path().extension().unwrap_or_default() != "rs" {
             continue;
         }
-        let text = fs::read_to_string(entry.path())?;
+        process_file(&mut res, entry.path())?;
+    }
+    let grammar_rs = dir.parent().unwrap().join("grammar.rs");
+    process_file(&mut res, &grammar_rs)?;
+    return Ok(res);
+    fn process_file(res: &mut HashMap<String, Test>, path: &Path) -> Result<()> {
+        let text = fs::read_to_string(path)?;
 
         for (_, test) in collect_tests(&text) {
             if let Some(old_test) = res.insert(test.name.clone(), test) {
                 bail!("Duplicate test: {}", old_test.name)
             }
         }
+        Ok(())
     }
-    Ok(res)
 }
 
 fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
