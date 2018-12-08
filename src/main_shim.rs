@@ -11,7 +11,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
 
     let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
         Some((id, _, entry_ty)) => (
-            tcx.hir.local_def_id(id),
+            tcx.hir().local_def_id(id),
             match entry_ty {
                 EntryFnType::Main => true,
                 EntryFnType::Start => false,
