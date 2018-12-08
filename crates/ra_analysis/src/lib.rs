@@ -178,6 +178,30 @@ impl Query {
     }
 }
 
+/// Result of "goto def" query.
+#[derive(Debug)]
+pub struct ReferenceResolution {
+    /// The range of the reference itself. Client does not know what constitutes
+    /// a reference, it handles us only the offset. It's helpful to tell the
+    /// client where the reference was.
+    pub reference_range: TextRange,
+    /// What this reference resolves to.
+    pub resolves_to: Vec<(FileId, FileSymbol)>,
+}
+
+impl ReferenceResolution {
+    fn new(reference_range: TextRange) -> ReferenceResolution {
+        ReferenceResolution {
+            reference_range,
+            resolves_to: Vec::new(),
+        }
+    }
+
+    fn add_resolution(&mut self, file_id: FileId, symbol: FileSymbol) {
+        self.resolves_to.push((file_id, symbol))
+    }
+}
+
 /// Analysis is a snapshot of a world state at a moment in time. It is the main
 /// entry point for asking semantic information about the world. When the world
 /// state is advanced using `AnalysisHost::apply_change` method, all existing
@@ -236,7 +260,7 @@ impl Analysis {
     pub fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<(TextRange, Vec<(FileId, FileSymbol)>)>> {
+    ) -> Cancelable<Option<ReferenceResolution>> {
         self.imp.approximately_resolve_symbol(position)
     }
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {

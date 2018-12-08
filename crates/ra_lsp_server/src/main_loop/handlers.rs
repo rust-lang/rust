@@ -203,11 +203,12 @@ pub fn handle_goto_definition(
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
-    let mut res = Vec::new();
-    for (file_id, symbol) in match world.analysis().approximately_resolve_symbol(position)? {
+    let rr = match world.analysis().approximately_resolve_symbol(position)? {
         None => return Ok(None),
-        Some(it) => it.1,
-    } {
+        Some(it) => it,
+    };
+    let mut res = Vec::new();
+    for (file_id, symbol) in rr.resolves_to {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
         res.push(location)
@@ -510,17 +511,17 @@ pub fn handle_hover(
     // TODO: Cut down on number of allocations
     let position = params.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(position.file_id);
-    let (range, resolved) = match world.analysis().approximately_resolve_symbol(position)? {
+    let rr = match world.analysis().approximately_resolve_symbol(position)? {
         None => return Ok(None),
         Some(it) => it,
     };
     let mut result = Vec::new();
-    for (file_id, symbol) in resolved {
+    for (file_id, symbol) in rr.resolves_to {
         if let Some(docs) = world.analysis().doc_text_for(file_id, symbol)? {
             result.push(docs);
         }
     }
-    let range = range.conv_with(&line_index);
+    let range = rr.reference_range.conv_with(&line_index);
     if result.len() > 0 {
         return Ok(Some(Hover {
             contents: HoverContents::Scalar(MarkedString::String(result.join("\n\n---\n"))),
