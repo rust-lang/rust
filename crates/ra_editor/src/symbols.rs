@@ -50,6 +50,61 @@ impl FileSymbol {
             })
             .nth(0)
     }
+    /// Get a description of this node.
+    ///
+    /// e.g. `struct Name`, `enum Name`, `fn Name`
+    pub fn description(&self, file: &SourceFileNode) -> Option<String> {
+        // TODO: After type inference is done, add type information to improve the output
+        file.syntax()
+            .descendants()
+            .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
+            .filter_map(|node: SyntaxNodeRef| {
+                // TODO: Refactor to be have less repetition
+                visitor()
+                    .visit(|node: ast::FnDef| {
+                        let mut string = "fn ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::StructDef| {
+                        let mut string = "struct ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::EnumDef| {
+                        let mut string = "enum ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::TraitDef| {
+                        let mut string = "trait ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::Module| {
+                        let mut string = "mod ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::TypeDef| {
+                        let mut string = "type ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::ConstDef| {
+                        let mut string = "const ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::StaticDef| {
+                        let mut string = "static ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .accept(node)?
+            })
+            .nth(0)
+    }
 }
 
 pub fn file_symbols(file: &SourceFileNode) -> Vec<FileSymbol> {

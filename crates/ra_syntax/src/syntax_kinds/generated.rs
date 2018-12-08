@@ -560,4 +560,3 @@ impl SyntaxKind {
         Some(tok)
     }
 }
-

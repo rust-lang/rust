@@ -204,7 +204,10 @@ pub fn handle_goto_definition(
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
     let mut res = Vec::new();
-    for (file_id, symbol) in world.analysis().approximately_resolve_symbol(position)? {
+    for (file_id, symbol) in match world.analysis().approximately_resolve_symbol(position)? {
+        None => return Ok(None),
+        Some(it) => it.1,
+    } {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
         res.push(location)
@@ -504,33 +507,31 @@ pub fn handle_hover(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<Hover>> {
+    // TODO: Cut down on number of allocations
     let position = params.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(position.file_id);
-    let file = world.analysis().file_syntax(position.file_id);
-
-    for (file_id, symbol) in world.analysis().approximately_resolve_symbol(position)? {
-        let comment = world.analysis.doc_comment_for(file_id, symbol)?;
-
-        if comment.is_some() {
-            let range = match ra_syntax::algo::find_leaf_at_offset(file.syntax(), position.offset)
-                .left_biased()
-            {
-                None => return Ok(None),
-                Some(it) => it.range(),
-            };
-            let range = range.conv_with(&line_index);
-            let contents = HoverContents::Scalar(MarkedString::String(comment.unwrap()));
-
-            return Ok(Some(Hover {
-                contents,
-                range: Some(range),
-            }));
+    let (range, resolved) = match world.analysis().approximately_resolve_symbol(position)? {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+    let mut result = Vec::new();
+    for (file_id, symbol) in resolved {
+        if let Some(docs) = world.analysis().doc_text_for(file_id, symbol)? {
+            result.push(docs);
         }
     }
-
+    let range = range.conv_with(&line_index);
+    if result.len() > 0 {
+        return Ok(Some(Hover {
+            contents: HoverContents::Scalar(MarkedString::String(result.join("\n\n---\n"))),
+            range: Some(range),
+        }));
+    }
     Ok(None)
 }
 
+
+/// Test doc comment
 pub fn handle_prepare_rename(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,

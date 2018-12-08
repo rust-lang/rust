@@ -21,9 +21,9 @@ fn approximate_resolve_works_in_items() {
     ",
     );
 
-    let symbols = analysis.approximately_resolve_symbol(pos).unwrap();
+    let symbols = analysis.approximately_resolve_symbol(pos).unwrap().unwrap();
     assert_eq_dbg(
-        r#"[(FileId(1), FileSymbol { name: "Foo", node_range: [0; 11), kind: STRUCT_DEF })]"#,
+        r#"([23; 26), [(FileId(1), FileSymbol { name: "Foo", node_range: [0; 11), kind: STRUCT_DEF })])"#,
         &symbols,
     );
 }
@@ -39,9 +39,9 @@ fn test_resolve_module() {
     ",
     );
 
-    let symbols = analysis.approximately_resolve_symbol(pos).unwrap();
+    let symbols = analysis.approximately_resolve_symbol(pos).unwrap().unwrap();
     assert_eq_dbg(
-        r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
+        r#"([4; 7), [(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })])"#,
         &symbols,
     );
 
@@ -54,9 +54,9 @@ fn test_resolve_module() {
     ",
     );
 
-    let symbols = analysis.approximately_resolve_symbol(pos).unwrap();
+    let symbols = analysis.approximately_resolve_symbol(pos).unwrap().unwrap();
     assert_eq_dbg(
-        r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
+        r#"([4; 7), [(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })])"#,
         &symbols,
     );
 }

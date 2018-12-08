@@ -236,7 +236,7 @@ impl Analysis {
     pub fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    ) -> Cancelable<Option<(TextRange, Vec<(FileId, FileSymbol)>)>> {
         self.imp.approximately_resolve_symbol(position)
     }
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
@@ -248,6 +248,9 @@ impl Analysis {
         symbol: FileSymbol,
     ) -> Cancelable<Option<String>> {
         self.imp.doc_comment_for(file_id, symbol)
+    }
+    pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
+        self.imp.doc_text_for(file_id, symbol)
     }
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         self.imp.parent_module(position)
