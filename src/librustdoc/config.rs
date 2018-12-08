@@ -68,6 +68,8 @@ pub struct Options {
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
+    /// Whether to persist the doctest executables.
+    pub persist_doctests: Option<PathBuf>,
 
     // Options that affect the documentation process
 
@@ -431,6 +433,7 @@ impl Options {
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
+        let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -456,6 +459,7 @@ impl Options {
             manual_passes,
             display_warnings,
             crate_version,
+            persist_doctests,
             render_options: RenderOptions {
                 output,
                 external_html,

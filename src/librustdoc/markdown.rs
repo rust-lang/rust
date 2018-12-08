@@ -142,7 +142,7 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> isize {
                                        options.libs, options.codegen_options, options.externs,
                                        true, opts, options.maybe_sysroot, None,
                                        Some(options.input),
-                                       options.linker, options.edition);
+                                       options.linker, options.edition, options.persist_doctests);
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let res = find_testable_code(&input_str, &mut collector, codes);
