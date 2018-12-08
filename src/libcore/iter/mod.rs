@@ -2109,8 +2109,12 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.size_hint();
-        (0, upper) // can't know a lower bound, due to the predicate
+        if self.flag {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper) // can't know a lower bound, due to the predicate
+        }
     }
 
     #[inline]
@@ -2321,6 +2325,10 @@ impl<I> Iterator for Take<I> where I: Iterator{
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.n == 0 {
+            return (0, Some(0));
+        }
+
         let (lower, upper) = self.iter.size_hint();
 
         let lower = cmp::min(lower, self.n);
