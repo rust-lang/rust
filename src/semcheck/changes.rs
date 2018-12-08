@@ -879,7 +879,7 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Format the contents of a change set for user output.
-    pub fn output(&self, session: &Session, version: &str, verbose: bool) {
+    pub fn output(&self, session: &Session, version: &str, verbose: bool, api_guidelines: bool) {
         if let Ok(mut new_version) = Version::parse(version) {
             if new_version.major == 0 {
                 new_version.increment_patch();
@@ -901,11 +901,25 @@ impl<'tcx> ChangeSet<'tcx> {
 
         for key in self.spans.values() {
             if let Some(change) = self.path_changes.get(key) {
-                change.report(session);
+                if api_guidelines {
+                    match change.to_category() {
+                        Patch | Breaking => change.report(session),
+                        _ => (),
+                    }
+                } else {
+                    change.report(session);
+                }
             }
 
             if let Some(change) = self.changes.get(key) {
-                change.report(session, verbose);
+                if api_guidelines {
+                    match change.to_category() {
+                        Patch | Breaking => change.report(session, verbose),
+                        _ => (),
+                    }
+                } else {
+                    change.report(session, verbose);
+                }
             }
         }
     }

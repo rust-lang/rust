@@ -32,7 +32,7 @@ use std::{
 use syntax::{ast, source_map::Pos};
 
 /// After the typechecker has finished it's work, perform our checks.
-fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
+fn callback(state: &driver::CompileState, version: &str, verbose: bool, api_guidelines: bool) {
     let tcx = state.tcx.unwrap();
 
     // To select the old and new crates we look at the position of the declaration in the
@@ -62,8 +62,7 @@ fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
     if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
         debug!("running semver analysis");
         let changes = run_analysis(tcx, old_def_id, new_def_id);
-
-        changes.output(tcx.sess, version, verbose);
+        changes.output(tcx.sess, version, verbose, api_guidelines);
     } else {
         tcx.sess.err("could not find crate old and new crates");
     }
@@ -77,15 +76,18 @@ struct SemVerVerCompilerCalls {
     version: String,
     /// The output mode.
     verbose: bool,
+    /// Output only changes that are breaking according to the API guidelines.
+    api_guidelines: bool,
 }
 
 impl SemVerVerCompilerCalls {
     /// Construct a new compilation wrapper, given a version string.
-    pub fn new(version: String, verbose: bool) -> Box<Self> {
+    pub fn new(version: String, verbose: bool, api_guidelines: bool) -> Box<Self> {
         Box::new(Self {
             default: Box::new(RustcDefaultCalls),
             version,
             verbose,
+            api_guidelines,
         })
     }
 
@@ -95,6 +97,10 @@ impl SemVerVerCompilerCalls {
 
     pub fn get_version(&self) -> &String {
         &self.version
+    }
+
+    pub fn get_api_guidelines(&self) -> bool {
+        self.api_guidelines
     }
 }
 
@@ -148,13 +154,14 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
     ) -> driver::CompileController<'a> {
         let default = self.get_default();
         let version = self.get_version().clone();
+        let api_guidelines = self.get_api_guidelines();
         let Self { verbose, .. } = *self;
         let mut controller = CompilerCalls::build_controller(default, sess, matches);
         let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
 
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");
-            callback(state, &version, verbose);
+            callback(state, &version, verbose, api_guidelines);
             debug!("running other after_analysis callback");
             old_callback(state);
         };
@@ -217,8 +224,9 @@ fn main() {
         };
 
         let verbose = std::env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
+        let api_guidelines = std::env::var("RUST_SEMVER_API_GUIDELINES") == Ok("true".to_string());
 
-        let cc = SemVerVerCompilerCalls::new(version, verbose);
+        let cc = SemVerVerCompilerCalls::new(version, verbose, api_guidelines);
         rustc_driver::run_compiler(&args, cc, None, None)
     });
 

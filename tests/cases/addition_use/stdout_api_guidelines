@@ -1,0 +1,15 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: breaking changes in `Def`
+ --> $REPO_PATH/tests/cases/addition_use/new.rs:5:1
+  |
+5 | / pub struct Def<'a> {
+6 | |     pub field1: Abc,
+7 | |     pub field2: &'a Bcd,
+8 | | }
+  | |_^
+  |
+  = warning: type error: expected (), found struct `new::Abc` (breaking)
+  = warning: type error: expected (), found trait new::Bcd (breaking)
+
+error: aborting due to previous error
+

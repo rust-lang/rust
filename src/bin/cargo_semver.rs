@@ -252,11 +252,21 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
         child.args(&["--target", &target]);
     }
 
-    let mut child = child
+    let child = child
         .arg("-")
         .stdin(Stdio::piped())
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
         .env("RUST_SEMVER_VERBOSE", format!("{}", explain))
+        .env(
+            "RUST_SEMVER_API_GUIDELINES",
+            if matches.opt_present("a") {
+                "true"
+            } else {
+                "false"
+            },
+        );
+
+    let mut child = child
         .spawn()
         .map_err(|e| Error(format!("could not spawn rustc: {}", e)))?;
 
@@ -311,6 +321,11 @@ fn main() {
     opts.optflag("V", "version", "print version information and exit");
     opts.optflag("e", "explain", "print detailed error explanations");
     opts.optflag("d", "debug", "print command to debug and exit");
+    opts.optflag(
+        "a",
+        "api-guidelines",
+        "report only changes that are breaking according to the API-guidelines",
+    );
     opts.optopt(
         "s",
         "stable-path",
