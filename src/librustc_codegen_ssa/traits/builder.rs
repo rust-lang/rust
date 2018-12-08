@@ -262,7 +262,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         else_val: Self::Value,
     ) -> Self::Value;
 
-    fn va_arg(&mut self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
     fn vector_splat(&mut self, num_elts: usize, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
