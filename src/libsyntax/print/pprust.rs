@@ -16,7 +16,6 @@ use util::parser::{self, AssocOp, Fixity};
 use attr;
 use source_map::{self, SourceMap, Spanned};
 use syntax_pos::{self, BytePos};
-use syntax_pos::hygiene::{Mark, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse::{self, ParseSess};
@@ -724,12 +723,8 @@ pub trait PrintState<'a> {
             if i > 0 {
                 self.writer().word("::")?
             }
-            if segment.ident.name != keywords::PathRoot.name() &&
-               segment.ident.name != keywords::DollarCrate.name()
-            {
+            if segment.ident.name != keywords::PathRoot.name() {
                 self.writer().word(segment.ident.as_str().get())?;
-            } else if segment.ident.name == keywords::DollarCrate.name() {
-                self.print_dollar_crate(segment.ident.span.ctxt())?;
             }
         }
         Ok(())
@@ -842,19 +837,6 @@ pub trait PrintState<'a> {
     }
 
     fn nbsp(&mut self) -> io::Result<()> { self.writer().word(" ") }
-
-    fn print_dollar_crate(&mut self, mut ctxt: SyntaxContext) -> io::Result<()> {
-        if let Some(mark) = ctxt.adjust(Mark::root()) {
-            // Make a best effort to print something that complies
-            if mark.is_builtin() {
-                if let Some(name) = std_inject::injected_crate_name() {
-                    self.writer().word("::")?;
-                    self.writer().word(name)?;
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -2463,14 +2445,11 @@ impl<'a> State<'a> {
                           colons_before_params: bool)
                           -> io::Result<()>
     {
-        if segment.ident.name != keywords::PathRoot.name() &&
-           segment.ident.name != keywords::DollarCrate.name() {
+        if segment.ident.name != keywords::PathRoot.name() {
             self.print_ident(segment.ident)?;
             if let Some(ref args) = segment.args {
                 self.print_generic_args(args, colons_before_params)?;
             }
-        } else if segment.ident.name == keywords::DollarCrate.name() {
-            self.print_dollar_crate(segment.ident.span.ctxt())?;
         }
         Ok(())
     }

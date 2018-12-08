@@ -47,7 +47,6 @@ pub struct Mark(u32);
 struct MarkData {
     parent: Mark,
     default_transparency: Transparency,
-    is_builtin: bool,
     expn_info: Option<ExpnInfo>,
 }
 
@@ -77,7 +76,6 @@ impl Mark {
                 parent,
                 // By default expansions behave like `macro_rules`.
                 default_transparency: Transparency::SemiTransparent,
-                is_builtin: false,
                 expn_info: None,
             });
             Mark(data.marks.len() as u32 - 1)
@@ -119,18 +117,6 @@ impl Mark {
     pub fn set_default_transparency(self, transparency: Transparency) {
         assert_ne!(self, Mark::root());
         HygieneData::with(|data| data.marks[self.0 as usize].default_transparency = transparency)
-    }
-
-    #[inline]
-    pub fn is_builtin(self) -> bool {
-        assert_ne!(self, Mark::root());
-        HygieneData::with(|data| data.marks[self.0 as usize].is_builtin)
-    }
-
-    #[inline]
-    pub fn set_is_builtin(self, is_builtin: bool) {
-        assert_ne!(self, Mark::root());
-        HygieneData::with(|data| data.marks[self.0 as usize].is_builtin = is_builtin)
     }
 
     pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
@@ -206,7 +192,6 @@ impl HygieneData {
                 // If the root is opaque, then loops searching for an opaque mark
                 // will automatically stop after reaching it.
                 default_transparency: Transparency::Opaque,
-                is_builtin: true,
                 expn_info: None,
             }],
             syntax_contexts: vec![SyntaxContextData {
@@ -262,7 +247,6 @@ impl SyntaxContext {
             data.marks.push(MarkData {
                 parent: Mark::root(),
                 default_transparency: Transparency::SemiTransparent,
-                is_builtin: false,
                 expn_info: Some(expansion_info),
             });
 
