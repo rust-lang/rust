@@ -28,6 +28,7 @@ struct PackageData {
     manifest: PathBuf,
     targets: Vec<Target>,
     is_member: bool,
+    dependencies: Vec<Package>,
 }
 
 #[derive(Debug, Clone)]
@@ -106,6 +107,7 @@ impl CargoWorkspace {
                 manifest: PathBuf::from(meta_pkg.manifest_path),
                 targets: Vec::new(),
                 is_member,
+                dependencies: Vec::new(),
             };
             for meta_tgt in meta_pkg.targets {
                 let tgt = Target(targets.len());
@@ -118,6 +120,14 @@ impl CargoWorkspace {
                 pkg_data.targets.push(tgt);
             }
             packages.push(pkg_data)
+        }
+        let resolve = meta.resolve.expect("metadata executed with deps");
+        for node in resolve.nodes {
+            let source = pkg_by_id[&node.id];
+            for id in node.dependencies {
+                let target = pkg_by_id[&id];
+                packages[source.0].dependencies.push(target);
+            }
         }
 
         Ok(CargoWorkspace { packages, targets })
