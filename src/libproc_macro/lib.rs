@@ -729,11 +729,6 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^',
-                                       '&', '|', '@', '.', ',', ';', ':', '#', '$', '?', '\''];
-        if !LEGAL_CHARS.contains(&ch) {
-            panic!("unsupported character `{:?}`", ch)
-        }
         Punct(bridge::client::Punct::new(ch, spacing))
     }
 
@@ -800,16 +795,6 @@ impl fmt::Debug for Punct {
 pub struct Ident(bridge::client::Ident);
 
 impl Ident {
-    fn is_valid(string: &str) -> bool {
-        let mut chars = string.chars();
-        if let Some(start) = chars.next() {
-            (start == '_' || start.is_xid_start())
-                && chars.all(|cont| cont == '_' || cont.is_xid_continue())
-        } else {
-            false
-        }
-    }
-
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
     /// The `string` argument must be a valid identifier permitted by the
@@ -831,18 +816,12 @@ impl Ident {
     /// tokens, requires a `Span` to be specified at construction.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
-        if !Ident::is_valid(string) {
-            panic!("`{:?}` is not a valid identifier", string)
-        }
         Ident(bridge::client::Ident::new(string, span.0, false))
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
     #[unstable(feature = "proc_macro_raw_ident", issue = "54723")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
-        if !Ident::is_valid(string) {
-            panic!("`{:?}` is not a valid identifier", string)
-        }
         Ident(bridge::client::Ident::new(string, span.0, true))
     }
 
