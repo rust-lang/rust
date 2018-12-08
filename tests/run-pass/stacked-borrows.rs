@@ -9,6 +9,7 @@ fn main() {
     mut_raw_mut();
     partially_invalidate_mut();
     drop_after_sharing();
+    direct_mut_to_const_raw();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -111,4 +112,14 @@ fn partially_invalidate_mut() {
 fn drop_after_sharing() {
     let x = String::from("hello!");
     let _len = x.len();
+}
+
+// Make sure that coercing &mut T to *const T produces a writeable pointer.
+fn direct_mut_to_const_raw() {
+    // FIXME: This is currently disabled, waiting on a fix for <https://github.com/rust-lang/rust/issues/56604>
+    /*let x = &mut 0;
+    let y: *const i32 = x;
+    unsafe { *(y as *mut i32) = 1; }
+    assert_eq!(*x, 1);
+    */
 }
