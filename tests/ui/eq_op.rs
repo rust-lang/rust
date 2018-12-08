@@ -7,10 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
+#[rustfmt::skip]
 #[warn(clippy::eq_op)]
 #[allow(clippy::identity_op, clippy::double_parens, clippy::many_single_char_names)]
 #[allow(clippy::no_effect, unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
@@ -107,6 +104,7 @@ fn main() {
     const D: u32 = A / A;
 }
 
+#[rustfmt::skip]
 macro_rules! check_if_named_foo {
     ($expression:expr) => (
         if stringify!($expression) == "foo" {

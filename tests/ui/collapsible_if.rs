@@ -8,9 +8,7 @@
 // except according to those terms.
 
 
-
-
-
+#[rustfmt::skip]
 #[warn(clippy::collapsible_if)]
 fn main() {
     let x = "hello";

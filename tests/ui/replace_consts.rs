@@ -8,8 +8,6 @@
 // except according to those terms.
 
 
-
-
 #![feature(integer_atomics)]
 #![allow(clippy::blacklisted_name)]
 #![deny(clippy::replace_consts)]
@@ -17,6 +15,7 @@
 use std::sync::atomic::*;
 use std::sync::{ONCE_INIT, Once};
 
+#[rustfmt::skip]
 fn bad() {
     // Once
     { let foo = ONCE_INIT; };
@@ -60,6 +59,7 @@ fn bad() {
     { let foo = std::u128::MAX; };
 }
 
+#[rustfmt::skip]
 fn good() {
     // Once
     { let foo = Once::new(); };

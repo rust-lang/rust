@@ -8,12 +8,11 @@
 // except according to those terms.
 
 
-
-
 #![allow(clippy::all)]
 #![warn(clippy::cyclomatic_complexity)]
 #![allow(unused)]
 
+#[rustfmt::skip]
 fn main() {
     if true {
         println!("a");
@@ -362,6 +361,7 @@ fn early() -> Result<i32, &'static str> {
     return Ok(5);
 }
 
+#[rustfmt::skip]
 #[clippy::cyclomatic_complexity = "0"]
 fn early_ret() -> i32 {
     let a = if true { 42 } else { return 0; };

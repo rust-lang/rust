@@ -7,14 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
-#![allow(clippy::blacklisted_name, unused, clippy::print_stdout, clippy::non_ascii_literal, clippy::new_without_default,
-    clippy::new_without_default_derive, clippy::missing_docs_in_private_items, clippy::needless_pass_by_value,
-    clippy::default_trait_access, clippy::use_self, clippy::new_ret_no_self, clippy::useless_format)]
+#![allow(
+    clippy::blacklisted_name,
+    unused,
+    clippy::print_stdout,
+    clippy::non_ascii_literal,
+    clippy::new_without_default,
+    clippy::new_without_default_derive,
+    clippy::missing_docs_in_private_items,
+    clippy::needless_pass_by_value,
+    clippy::default_trait_access,
+    clippy::use_self,
+    clippy::new_ret_no_self,
+    clippy::useless_format
+)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;

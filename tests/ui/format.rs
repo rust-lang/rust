@@ -8,7 +8,6 @@
 // except according to those terms.
 
 
-
 #![allow(clippy::print_literal)]
 #![warn(clippy::useless_format)]
 

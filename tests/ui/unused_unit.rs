@@ -16,12 +16,10 @@
 // stripping away any starting or ending parenthesis characters—hence this
 // test of the JSON error format.
 
-
 #![deny(clippy::unused_unit)]
 #![allow(clippy::needless_return)]
 
 struct Unitter;
-
 impl Unitter {
     // try to disorient the lint with multiple unit returns and newlines
     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) ->
@@ -33,6 +31,7 @@ impl Unitter {
 }
 
 impl Into<()> for Unitter {
+    #[rustfmt::skip]
     fn into(self) -> () {
         ()
     }
