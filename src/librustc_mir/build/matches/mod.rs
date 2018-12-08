@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
         // highest priority candidate comes first in the list.
-        // (i.e. same order as in source)
+        // (i.e., same order as in source)
 
         let candidates: Vec<_> = arms.iter()
             .enumerate()
@@ -1384,7 +1384,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // Tricky business: For `ref id` and `ref mut id`
                     // patterns, we want `id` within the guard to
                     // correspond to a temp of type `& &T` or `& &mut
-                    // T` (i.e. a "borrow of a borrow") that is
+                    // T` (i.e., a "borrow of a borrow") that is
                     // implicitly dereferenced.
                     //
                     // To borrow a borrow, we need that inner borrow

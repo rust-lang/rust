@@ -670,7 +670,7 @@ pub enum SyntaxExtension {
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
 
-    /// A declarative macro, e.g. `macro m() {}`.
+    /// A declarative macro, e.g., `macro m() {}`.
     DeclMacro {
         expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
         def_info: Option<(ast::NodeId, Span)>,
@@ -908,7 +908,7 @@ impl<'a> ExtCtxt<'a> {
     /// `span_err` should be strongly preferred where-ever possible:
     /// this should *only* be used when:
     ///
-    /// - continuing has a high risk of flow-on errors (e.g. errors in
+    /// - continuing has a high risk of flow-on errors (e.g., errors in
     ///   declaring a macro would cause all uses of that macro to
     ///   complain about "undefined macro"), or
     /// - there is literally nothing else that can be done (however,
@@ -995,7 +995,7 @@ pub fn expr_to_spanned_string<'a>(
         expr
     });
 
-    // we want to be able to handle e.g. `concat!("foo", "bar")`
+    // we want to be able to handle e.g., `concat!("foo", "bar")`
     let expr = cx.expander().fold_expr(expr);
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {

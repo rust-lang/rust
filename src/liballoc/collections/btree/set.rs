@@ -258,7 +258,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the difference,
-    /// i.e. the values that are in `self` but not in `other`,
+    /// i.e., the values that are in `self` but not in `other`,
     /// in ascending order.
     ///
     /// # Examples
@@ -286,7 +286,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the symmetric difference,
-    /// i.e. the values that are in `self` or in `other` but not in both,
+    /// i.e., the values that are in `self` or in `other` but not in both,
     /// in ascending order.
     ///
     /// # Examples
@@ -316,7 +316,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the intersection,
-    /// i.e. the values that are both in `self` and `other`,
+    /// i.e., the values that are both in `self` and `other`,
     /// in ascending order.
     ///
     /// # Examples
@@ -344,7 +344,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the union,
-    /// i.e. all the values in `self` or `other`, without duplicates,
+    /// i.e., all the values in `self` or `other`, without duplicates,
     /// in ascending order.
     ///
     /// # Examples
@@ -455,7 +455,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Returns `true` if the set is a subset of another,
-    /// i.e. `other` contains at least all the values in `self`.
+    /// i.e., `other` contains at least all the values in `self`.
     ///
     /// # Examples
     ///
@@ -498,7 +498,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Returns `true` if the set is a superset of another,
-    /// i.e. `self` contains at least all the values in `other`.
+    /// i.e., `self` contains at least all the values in `other`.
     ///
     /// # Examples
     ///

@@ -126,7 +126,7 @@ impl fmt::Debug for dyn Any {
     }
 }
 
-// Ensure that the result of e.g. joining a thread can be printed and
+// Ensure that the result of e.g., joining a thread can be printed and
 // hence used with `unwrap`. May eventually no longer be needed if
 // dispatch works with upcasting.
 #[stable(feature = "rust1", since = "1.0.0")]

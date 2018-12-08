@@ -17,6 +17,8 @@
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::ConstValue;
@@ -28,13 +30,12 @@ use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
-use rustc_target::spec::abi::Abi;
+use rustc::session::config::nightly_options;
 use syntax::ast::LitKind;
 use syntax::feature_gate::{UnstableFeatures, feature_err, emit_feature_err, GateIssue};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
-use rustc_data_structures::sync::Lrc;
 use std::usize;
 
 use transform::{MirPass, MirSource};
@@ -639,7 +640,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         self.add(qualif);
 
                         // Just in case the type is more specific than
-                        // the definition, e.g. impl associated const
+                        // the definition, e.g., impl associated const
                         // with type parameters, take it into account.
                         self.qualif.restrict(constant.literal.ty, self.tcx, self.param_env);
                     }
@@ -952,10 +953,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             }
                         }
                         _ => {
-                            // in normal functions we only care about promotion
+                            // In normal functions we only care about promotion.
                             if self.mode == Mode::Fn {
-                                // never promote const fn calls of
-                                // functions without #[rustc_promotable]
+                                // Never promote const fn calls of
+                                // functions without `#[rustc_promotable]`.
                                 if self.tcx.is_promotable_const_fn(def_id) {
                                     is_const_fn = true;
                                     is_promotable_const_fn = true;
@@ -963,19 +964,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     is_const_fn = true;
                                 }
                             } else {
-                                // stable const fn or unstable const fns with their feature gate
+                                // stable const fns or unstable const fns with their feature gate
                                 // active
                                 if self.tcx.is_const_fn(def_id) {
                                     is_const_fn = true;
                                 } else if self.is_const_panic_fn(def_id) {
-                                    // check the const_panic feature gate
+                                    // Check the const_panic feature gate.
                                     // FIXME: cannot allow this inside `allow_internal_unstable`
                                     // because that would make `panic!` insta stable in constants,
-                                    // since the macro is marked with the attr
+                                    // since the macro is marked with the attribute.
                                     if self.tcx.features().const_panic {
                                         is_const_fn = true;
                                     } else {
-                                        // don't allow panics in constants without the feature gate
+                                        // Don't allow panics in constants without the feature gate.
                                         emit_feature_err(
                                             &self.tcx.sess.parse_sess,
                                             "const_panic",
@@ -984,25 +985,28 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                             &format!("panicking in {}s is unstable", self.mode),
                                         );
                                     }
-                                } else if let Some(feat) = self.tcx.is_unstable_const_fn(def_id) {
-                                    // check `#[unstable]` const fns or `#[rustc_const_unstable]`
-                                    // functions without the feature gate active in this crate to
-                                    // report a better error message than the one below
+                                } else if let Some(feature)
+                                              = self.tcx.is_unstable_const_fn(def_id) {
+                                    // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
+                                    // functions without the feature gate active in this crate in
+                                    // order to report a better error message than the one below.
                                     if self.span.allows_unstable() {
-                                        // `allow_internal_unstable` can make such calls stable
+                                        // `allow_internal_unstable` can make such calls stable.
                                         is_const_fn = true;
                                     } else {
                                         let mut err = self.tcx.sess.struct_span_err(self.span,
                                             &format!("`{}` is not yet stable as a const fn",
                                                     self.tcx.item_path_str(def_id)));
-                                        help!(&mut err,
-                                            "in Nightly builds, add `#![feature({})]` \
-                                            to the crate attributes to enable",
-                                            feat);
+                                        if nightly_options::is_nightly_build() {
+                                            help!(&mut err,
+                                                  "add `#![feature({})]` to the \
+                                                   crate attributes to enable",
+                                                  feature);
+                                        }
                                         err.emit();
                                     }
                                 } else {
-                                    // FIXME(#24111) Remove this check when const fn stabilizes
+                                    // FIXME(#24111): remove this check when const fn stabilizes.
                                     let (msg, note) = if let UnstableFeatures::Disallow =
                                             self.tcx.sess.opts.unstable_features {
                                         (format!("calls in {}s are limited to \
@@ -1081,7 +1085,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // we care about constness, not promotability.
                     // If we checked for promotability, we'd miss out on
                     // the results of function calls (which are never promoted
-                    // in runtime code)
+                    // in runtime code).
                     // This is not a problem, because the argument explicitly
                     // requests constness, in contrast to regular promotion
                     // which happens even without the user requesting it.
@@ -1098,7 +1102,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 });
             }
 
-            // non-const fn calls.
+            // non-const fn calls
             if !is_const_fn {
                 self.qualif = Qualif::NOT_CONST;
                 if self.mode != Mode::Fn {
@@ -1131,7 +1135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             // Deny *any* live drops anywhere other than functions.
             if self.mode != Mode::Fn {
-                // HACK(eddyb) Emulate a bit of dataflow analysis,
+                // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
                     if self.local_qualif[local].map_or(true, |q| q.contains(Qualif::NEEDS_DROP)) {
@@ -1259,7 +1263,7 @@ pub fn provide(providers: &mut Providers) {
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
                               -> (u8, Lrc<BitSet<Local>>) {
-    // NB: This `borrow()` is guaranteed to be valid (i.e., the value
+    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
     // performing the steal.

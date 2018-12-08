@@ -12,7 +12,7 @@
 //! more canonical form.
 //!
 //! Currently all cross-crate-inlined function use `rustc::ty` to reconstruct
-//! the AST (e.g. see all of `clean::inline`), but this is not always a
+//! the AST (e.g., see all of `clean::inline`), but this is not always a
 //! non-lossy transformation. The current format of storage for where clauses
 //! for functions and such is simply a list of predicates. One example of this
 //! is that the AST predicate of: `where T: Trait<Foo=Bar>` is encoded as:

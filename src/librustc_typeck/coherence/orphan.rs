@@ -60,7 +60,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                      sp,
                                      E0210,
                                      "type parameter `{}` must be used as the type parameter \
-                                      for some local type (e.g. `MyStruct<{}>`)",
+                                      for some local type (e.g., `MyStruct<{}>`)",
                                      param_ty,
                                      param_ty)
                         .span_label(sp,

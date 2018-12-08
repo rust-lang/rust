@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Detecting lib features (i.e. features that are not lang features).
+// Detecting lib features (i.e., features that are not lang features).
 //
-// These are declared using stability attributes (e.g. `#[stable (..)]`
+// These are declared using stability attributes (e.g., `#[stable (..)]`
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
@@ -61,7 +61,7 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
         let stab_attrs = vec!["stable", "unstable", "rustc_const_unstable"];
 
-        // Find a stability attribute (i.e. `#[stable (..)]`, `#[unstable (..)]`,
+        // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
         if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
             attr.check_name(stab_attr)

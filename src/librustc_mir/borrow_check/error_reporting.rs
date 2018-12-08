@@ -1249,7 +1249,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// (part of) a non-`mut` local that occurs potentially after that
     /// local has already been initialized. `place` is the path being
     /// assigned; `err_place` is a place providing a reason why
-    /// `place` is not mutable (e.g. the non-`mut` local `x` in an
+    /// `place` is not mutable (e.g., the non-`mut` local `x` in an
     /// assignment to `x.f`).
     pub(super) fn report_illegal_reassignment(
         &mut self,

@@ -41,7 +41,7 @@ use std::io;
 mod bar {
     // Also test the unqualified external crate import in a nested module,
     // to show that the above import doesn't resolve through a local `std`
-    // item, e.g. the automatically injected `extern crate std;`, which in
+    // item, e.g., the automatically injected `extern crate std;`, which in
     // the Rust 2018 should no longer be visible through `crate::std`.
     pub use std::io;
 

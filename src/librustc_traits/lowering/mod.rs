@@ -43,7 +43,7 @@ crate fn provide(p: &mut Providers) {
 }
 
 crate trait Lower<T> {
-    /// Lower a rustc construct (e.g. `ty::TraitPredicate`) to a chalk-like type.
+    /// Lower a rustc construct (e.g., `ty::TraitPredicate`) to a chalk-like type.
     fn lower(&self) -> T;
 }
 
@@ -90,9 +90,9 @@ where
 }
 
 /// `ty::Binder` is used for wrapping a rustc construction possibly containing generic
-/// lifetimes, e.g. `for<'a> T: Fn(&'a i32)`. Instead of representing higher-ranked things
-/// in that leaf-form (i.e. `Holds(Implemented(Binder<TraitPredicate>))` in the previous
-/// example), we model them with quantified domain goals, e.g. as for the previous example:
+/// lifetimes, e.g., `for<'a> T: Fn(&'a i32)`. Instead of representing higher-ranked things
+/// in that leaf-form (i.e., `Holds(Implemented(Binder<TraitPredicate>))` in the previous
+/// example), we model them with quantified domain goals, e.g., as for the previous example:
 /// `forall<'a> { T: Fn(&'a i32) }` which corresponds to something like
 /// `Binder<Holds(Implemented(TraitPredicate))>`.
 impl<'tcx, T> Lower<PolyDomainGoal<'tcx>> for ty::Binder<T>
@@ -248,7 +248,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
                 // and that named bound regions have a def-id, it is safe
                 // to just inject `hypotheses` (which contains named vars bound at index `0`)
                 // into this binding level. This may change if we ever allow where clauses
-                // to bind types (e.g. for GATs things), because bound types only use a `BoundVar`
+                // to bind types (e.g., for GATs things), because bound types only use a `BoundVar`
                 // index (no def-id).
                 hypotheses,
 
@@ -560,7 +560,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // ```
     //
     // FIXME: For the moment, we don't account for where clauses written on the associated
-    // ty definition (i.e. in the trait def, as in `type AssocType<T> where T: Sized`).
+    // ty definition (i.e., in the trait def, as in `type AssocType<T> where T: Sized`).
     // ```
     // forall<P0..Pm> {
     //   forall<Pn+1..Pm> {

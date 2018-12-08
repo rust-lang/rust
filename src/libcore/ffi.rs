@@ -18,7 +18,7 @@ use ::fmt;
 ///
 /// [`!`]: ../../std/primitive.never.html
 /// [pointer]: ../../std/primitive.pointer.html
-// NB: For LLVM to recognize the void pointer type and by extension
+// N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
 //     of the "raw" type by only having private variants.. We need two

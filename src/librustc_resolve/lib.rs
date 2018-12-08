@@ -84,7 +84,7 @@ use rustc_data_structures::sync::Lrc;
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, ParentScope};
 
-// NB: This module needs to be declared first so diagnostics are
+// N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
 mod error_reporting;
@@ -638,7 +638,7 @@ impl<'a> PathSource<'a> {
 
 // A minimal representation of a path segment. We use this in resolve because
 // we synthesize 'path segments' which don't have the rest of an AST or HIR
-// PathSegment.
+// `PathSegment`.
 #[derive(Clone, Copy, Debug)]
 pub struct Segment {
     ident: Ident,
@@ -2608,7 +2608,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         result
     }
 
-    /// This is called to resolve a trait reference from an `impl` (i.e. `impl Trait for Foo`)
+    /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`)
     fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
         where F: FnOnce(&mut Resolver, Option<DefId>) -> T
     {
@@ -2890,7 +2890,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             self.resolve_pattern(&pattern, PatternSource::Match, &mut bindings_list);
         }
 
-        // This has to happen *after* we determine which pat_idents are variants
+        // This has to happen *after* we determine which pat_idents are variants.
         self.check_consistent_bindings(&arm.pats);
 
         if let Some(ast::Guard::If(ref expr)) = arm.guard {
@@ -3032,8 +3032,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             Def::StructCtor(..) | Def::VariantCtor(..) |
                             Def::Const(..) | Def::Static(..) => {
                                 // This is unambiguously a fresh binding, either syntactically
-                                // (e.g. `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
-                                // to something unusable as a pattern (e.g. constructor function),
+                                // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
+                                // to something unusable as a pattern (e.g., constructor function),
                                 // but we still conservatively report an error, see
                                 // issues/33118#issuecomment-233962221 for one reason why.
                                 resolve_error(
@@ -3209,9 +3209,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 for (sp, variant_path, enum_path) in enum_candidates {
                     if sp.is_dummy() {
                         let msg = format!("there is an enum variant `{}`, \
-                                        try using `{}`?",
-                                        variant_path,
-                                        enum_path);
+                                           try using `{}`?",
+                                          variant_path,
+                                          enum_path);
                         err.help(&msg);
                     } else {
                         err.span_suggestion_with_applicability(
@@ -3263,7 +3263,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             let mut levenshtein_worked = false;
 
-            // Try Levenshtein.
+            // Try Levenshtein algorithm.
             if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected, span) {
                 err.span_label(ident_span, format!("did you mean `{}`?", candidate));
                 levenshtein_worked = true;
@@ -4325,7 +4325,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     for pat in pats {
                         this.resolve_pattern(pat, PatternSource::WhileLet, &mut bindings_list);
                     }
-                    // This has to happen *after* we determine which pat_idents are variants
+                    // This has to happen *after* we determine which pat_idents are variants.
                     this.check_consistent_bindings(pats);
                     this.visit_block(block);
                     this.ribs[ValueNS].pop();
@@ -4611,7 +4611,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     /// When name resolution fails, this method can be used to look up candidate
     /// entities with the expected name. It allows filtering them using the
     /// supplied predicate (which should be used to only accept the types of
-    /// definitions expected e.g. traits). The lookup spans across all crates.
+    /// definitions expected e.g., traits). The lookup spans across all crates.
     ///
     /// NOTE: The method does not look into imports, but this is not a problem,
     /// since we report the definitions (thus, the de-aliased imports).

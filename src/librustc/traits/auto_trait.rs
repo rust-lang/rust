@@ -138,7 +138,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             // the first evaluate_predicates call.
             //
             // The problem is this: most of rustc, including SelectionContext and traits::project,
-            // are designed to work with a concrete usage of a type (e.g. Vec<u8>
+            // are designed to work with a concrete usage of a type (e.g., Vec<u8>
             // fn<T>() { Vec<T> }. This information will generally never change - given
             // the 'T' in fn<T>() { ... }, we'll never know anything else about 'T'.
             // If we're unable to prove that 'T' implements a particular trait, we're done -
@@ -289,7 +289,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     //
     // One additional consideration is supertrait bounds. Normally, a ParamEnv is only ever
     // constructed once for a given type. As part of the construction process, the ParamEnv will
-    // have any supertrait bounds normalized - e.g. if we have a type 'struct Foo<T: Copy>', the
+    // have any supertrait bounds normalized - e.g., if we have a type 'struct Foo<T: Copy>', the
     // ParamEnv will contain 'T: Copy' and 'T: Clone', since 'Copy: Clone'. When we construct our
     // own ParamEnv, we need to do this ourselves, through traits::elaborate_predicates, or else
     // SelectionContext will choke on the missing predicates. However, this should never show up in
@@ -343,7 +343,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             match &result {
                 &Ok(Some(ref vtable)) => {
-                    // If we see an explicit negative impl (e.g. 'impl !Send for MyStruct'),
+                    // If we see an explicit negative impl (e.g., 'impl !Send for MyStruct'),
                     // we immediately bail out, since it's impossible for us to continue.
                     match vtable {
                         Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
@@ -432,11 +432,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // If we put both of these predicates in our computed ParamEnv, we'll
     // confuse SelectionContext, since it will (correctly) view both as being applicable.
     //
-    // To solve this, we pick the 'more strict' lifetime bound - i.e. the HRTB
+    // To solve this, we pick the 'more strict' lifetime bound - i.e., the HRTB
     // Our end goal is to generate a user-visible description of the conditions
     // under which a type implements an auto trait. A trait predicate involving
     // a HRTB means that the type needs to work with any choice of lifetime,
-    // not just one specific lifetime (e.g. 'static).
+    // not just one specific lifetime (e.g., 'static).
     fn add_user_pred<'c>(
         &self,
         user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>,

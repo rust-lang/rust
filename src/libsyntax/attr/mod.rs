@@ -96,7 +96,7 @@ impl NestedMetaItem {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
 
-    /// Returns the name of the meta item, e.g. `foo` in `#[foo]`,
+    /// Returns the name of the meta item, e.g., `foo` in `#[foo]`,
     /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
     pub fn name(&self) -> Option<Name> {
         self.meta_item().and_then(|meta_item| Some(meta_item.name()))
@@ -180,7 +180,7 @@ impl Attribute {
     }
 
     /// Returns the **last** segment of the name of this attribute.
-    /// E.g. `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
+    /// e.g., `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
     pub fn name(&self) -> Name {
         name_from_path(&self.path)
     }

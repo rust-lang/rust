@@ -40,7 +40,7 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 #[derive(Debug)]
 enum GroupedMoveError<'tcx> {
     // Place expression can't be moved from,
-    // e.g. match x[0] { s => (), } where x: &[String]
+    // e.g., match x[0] { s => (), } where x: &[String]
     MovesFromPlace {
         original_path: Place<'tcx>,
         span: Span,
@@ -49,7 +49,7 @@ enum GroupedMoveError<'tcx> {
         binds_to: Vec<Local>,
     },
     // Part of a value expression can't be moved from,
-    // e.g. match &String::new() { &x => (), }
+    // e.g., match &String::new() { &x => (), }
     MovesFromValue {
         original_path: Place<'tcx>,
         span: Span,

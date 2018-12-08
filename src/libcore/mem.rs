@@ -305,7 +305,7 @@ pub const fn size_of<T>() -> usize {
 /// Returns the size of the pointed-to value in bytes.
 ///
 /// This is usually the same as `size_of::<T>()`. However, when `T` *has* no
-/// statically known size, e.g. a slice [`[T]`][slice] or a [trait object],
+/// statically known size, e.g., a slice [`[T]`][slice] or a [trait object],
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
 /// [slice]: ../../std/primitive.slice.html
@@ -1119,7 +1119,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
-    // to uninitialized data (e.g. in `libcore/fmt/float.rs`).  We should make
+    // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]

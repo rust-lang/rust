@@ -646,7 +646,7 @@ impl<'a> Builder<'a> {
             self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
         ];
 
-        // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
+        // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do
         // so here.
         if compiler.host.contains("msvc") {

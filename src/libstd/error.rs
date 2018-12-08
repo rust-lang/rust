@@ -36,12 +36,12 @@ use str;
 use string;
 
 /// `Error` is a trait representing the basic expectations for error values,
-/// i.e. values of type `E` in [`Result<T, E>`]. Errors must describe
+/// i.e., values of type `E` in [`Result<T, E>`]. Errors must describe
 /// themselves through the [`Display`] and [`Debug`] traits, and may provide
 /// cause chain information:
 ///
 /// The [`cause`] method is generally used when errors cross "abstraction
-/// boundaries", i.e.  when a one module must report an error that is "caused"
+/// boundaries", i.e.,  when a one module must report an error that is "caused"
 /// by an error from a lower-level module. This setup makes it possible for the
 /// high-level module to provide its own errors that do not commit to any
 /// particular implementation, but also reveal some of its implementation for

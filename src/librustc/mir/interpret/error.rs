@@ -378,7 +378,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "tried to read from foreign (extern) static",
             InvalidPointerMath =>
                 "attempted to do invalid arithmetic on pointers that would leak base addresses, \
-                e.g. comparing pointers into different allocations",
+                e.g., comparing pointers into different allocations",
             ReadUndefBytes(_) =>
                 "attempted to read undefined bytes",
             DeadLocal =>

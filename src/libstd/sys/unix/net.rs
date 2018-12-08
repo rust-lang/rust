@@ -26,7 +26,7 @@ pub extern crate libc as netc;
 pub type wrlen_t = size_t;
 
 // See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
-// Linux currently (e.g. support doesn't exist on other platforms). In order to
+// Linux currently (e.g., support doesn't exist on other platforms). In order to
 // get name resolution to work and things to compile we just define a dummy
 // SOCK_CLOEXEC here for other platforms. Note that the dummy constant isn't
 // actually ever used (the blocks below are wrapped in `if cfg!` as well.

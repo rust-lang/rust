@@ -11,7 +11,7 @@
 #![allow(unused_imports)]
 
 // Note: the relevant lint pass here runs before some of the constant
-// evaluation below (e.g. that performed by codegen and llvm), so if you
+// evaluation below (e.g., that performed by codegen and llvm), so if you
 // change this warn to a deny, then the compiler will exit before
 // those errors are detected.
 

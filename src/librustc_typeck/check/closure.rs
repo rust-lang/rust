@@ -266,7 +266,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::ObjectSafe(..) => None,
                     ty::Predicate::ConstEvaluatable(..) => None,
 
-                    // NB: This predicate is created by breaking down a
+                    // N.B., this predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where
                     // `ClosureType` represents some `Closure`. It can't
                     // possibly be referring to the current closure,

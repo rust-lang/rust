@@ -125,7 +125,7 @@ mod sty;
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to codegen and later passes.
 ///
-/// NB: These contents are being migrated into queries using the
+/// N.B., these contents are being migrated into queries using the
 /// *on-demand* infrastructure.
 #[derive(Clone)]
 pub struct CrateAnalysis {
@@ -505,15 +505,15 @@ pub struct TyS<'tcx> {
     ///     by some sub-binder.
     ///
     /// So, for a type without any late-bound things, like `u32`, this
-    /// will be INNERMOST, because that is the innermost binder that
+    /// will be *innermost*, because that is the innermost binder that
     /// captures nothing. But for a type `&'D u32`, where `'D` is a
-    /// late-bound region with debruijn index D, this would be D+1 --
-    /// the binder itself does not capture D, but D is captured by an
-    /// inner binder.
+    /// late-bound region with debruijn index `D`, this would be `D + 1`
+    /// -- the binder itself does not capture `D`, but `D` is captured
+    /// by an inner binder.
     ///
-    /// We call this concept an "exclusive" binder D (because all
+    /// We call this concept an "exclusive" binder `D` because all
     /// debruijn indices within the type are contained within `0..D`
-    /// (exclusive)).
+    /// (exclusive).
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
@@ -900,10 +900,10 @@ pub struct GenericParamCount {
 }
 
 /// Information about the formal type/lifetime parameters associated
-/// with an item or method. Analogous to hir::Generics.
+/// with an item or method. Analogous to `hir::Generics`.
 ///
-/// The ordering of parameters is the same as in Subst (excluding child generics):
-/// Self (optionally), Lifetime params..., Type params...
+/// The ordering of parameters is the same as in `Subst` (excluding child generics):
+/// `Self` (optionally), `Lifetime` params..., `Type` params...
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Generics {
     pub parent: Option<DefId>,
@@ -1681,7 +1681,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// pair it with the empty environment. This improves caching and is generally
     /// invisible.
     ///
-    /// NB: We preserve the environment when type-checking because it
+    /// N.B., we preserve the environment when type-checking because it
     /// is possible for the user to have wacky where-clauses like
     /// `where Box<u32>: Copy`, which are clearly never
     /// satisfiable. We generally want to behave as if they were true,
@@ -1778,8 +1778,8 @@ bitflags! {
 
 #[derive(Debug)]
 pub struct VariantDef {
-    /// The variant's DefId. If this is a tuple-like struct,
-    /// this is the DefId of the struct's ctor.
+    /// The variant's `DefId`. If this is a tuple-like struct,
+    /// this is the `DefId` of the struct's ctor.
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
     pub discr: VariantDiscr,
@@ -1798,7 +1798,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     ///
     /// Note that we *could* use the constructor DefId, because the constructor attributes
     /// redirect to the base attributes, but compiling a small crate requires
-    /// loading the AdtDefs for all the structs in the universe (e.g. coherence for any
+    /// loading the AdtDefs for all the structs in the universe (e.g., coherence for any
     /// built-in trait), and we do not want to load attributes twice.
     ///
     /// If someone speeds up attribute loading to not be a performance concern, they can
@@ -1847,7 +1847,7 @@ impl_stable_hash_for!(struct VariantDef {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum VariantDiscr {
-    /// Explicit value for this variant, i.e. `X = 123`.
+    /// Explicit value for this variant, i.e., `X = 123`.
     /// The `DefId` corresponds to the embedded constant.
     Explicit(DefId),
 
@@ -1865,9 +1865,9 @@ pub struct FieldDef {
     pub vis: Visibility,
 }
 
-/// The definition of an abstract data type - a struct or enum.
+/// The definition of an abstract data type -- a struct or enum.
 ///
-/// These are all interned (by intern_adt_def) into the adt_defs
+/// These are all interned (by `intern_adt_def`) into the `adt_defs`
 /// table.
 pub struct AdtDef {
     pub did: DefId,
@@ -2367,7 +2367,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Self would prevent its containing ADT from being Sized.
     ///
     /// Due to normalization being eager, this applies even if
-    /// the associated type is behind a pointer, e.g. issue #31299.
+    /// the associated type is behind a pointer, e.g., issue #31299.
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
         match tcx.try_adt_sized_constraint(DUMMY_SP, self.did) {
             Ok(tys) => tys,

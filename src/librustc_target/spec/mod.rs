@@ -605,7 +605,7 @@ pub struct TargetOptions {
     /// `eh_unwind_resume` lang item.
     pub custom_unwind_resume: bool,
 
-    /// Flag indicating whether ELF TLS (e.g. #[thread_local]) is available for
+    /// Flag indicating whether ELF TLS (e.g., #[thread_local]) is available for
     /// this target.
     pub has_elf_tls: bool,
     // This is mainly for easy compatibility with emscripten.

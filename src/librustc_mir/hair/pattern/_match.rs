@@ -29,9 +29,9 @@
 ///
 /// If we have this predicate, then we can easily compute both exhaustiveness of an
 /// entire set of patterns and the individual usefulness of each one.
-/// (a) the set of patterns is exhaustive iff `U(P, _)` is false (i.e. adding a wildcard
+/// (a) the set of patterns is exhaustive iff `U(P, _)` is false (i.e., adding a wildcard
 /// match doesn't increase the number of values we're matching)
-/// (b) a pattern `p_i` is not useful if `U(P[0..=(i-1), p_i)` is false (i.e. adding a
+/// (b) a pattern `p_i` is not useful if `U(P[0..=(i-1), p_i)` is false (i.e., adding a
 /// pattern to those that have come before it doesn't increase the number of values
 /// we're matching).
 ///
@@ -90,17 +90,17 @@
 ///
 /// The algorithm for computing `U`
 /// -------------------------------
-/// The algorithm is inductive (on the number of columns: i.e. components of tuple patterns).
+/// The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
 /// That means we're going to check the components from left-to-right, so the algorithm
 /// operates principally on the first component of the matrix and new pattern `p_{m + 1}`.
 /// This algorithm is realised in the `is_useful` function.
 ///
-/// Base case. (`n = 0`, i.e. an empty tuple pattern)
-///     - If `P` already contains an empty pattern (i.e. if the number of patterns `m > 0`),
+/// Base case. (`n = 0`, i.e., an empty tuple pattern)
+///     - If `P` already contains an empty pattern (i.e., if the number of patterns `m > 0`),
 ///       then `U(P, p_{m + 1})` is false.
 ///     - Otherwise, `P` must be empty, so `U(P, p_{m + 1})` is true.
 ///
-/// Inductive step. (`n > 0`, i.e. whether there's at least one column
+/// Inductive step. (`n > 0`, i.e., whether there's at least one column
 ///                  [which may then be expanded into further columns later])
 ///     We're going to match on the new pattern, `p_{m + 1}`.
 ///         - If `p_{m + 1} == c(r_1, .., r_a)`, then we have a constructor pattern.
@@ -113,7 +113,7 @@
 ///             + All the constructors of the first component of the type exist within
 ///               all the rows (after having expanded OR-patterns). In this case:
 ///               `U(P, p_{m + 1}) := ∨(k ϵ constructors) U(S(k, P), S(k, p_{m + 1}))`
-///               I.e. the pattern `p_{m + 1}` is only useful when all the constructors are
+///               I.e., the pattern `p_{m + 1}` is only useful when all the constructors are
 ///               present *if* its later components are useful for the respective constructors
 ///               covered by `p_{m + 1}` (usually a single constructor, but all in the case of `_`).
 ///             + Some constructors are not present in the existing rows (after having expanded
@@ -156,14 +156,14 @@
 /// - When we're testing for usefulness of a pattern and the pattern's first component is a
 ///   wildcard.
 ///     + If all the constructors appear in the matrix, we have a slight complication. By default,
-///       the behaviour (i.e. a disjunction over specialised matrices for each constructor) is
+///       the behaviour (i.e., a disjunction over specialised matrices for each constructor) is
 ///       invalid, because we want a disjunction over every *integer* in each range, not just a
 ///       disjunction over every range. This is a bit more tricky to deal with: essentially we need
 ///       to form equivalence classes of subranges of the constructor range for which the behaviour
 ///       of the matrix `P` and new pattern `p_{m + 1}` are the same. This is described in more
 ///       detail in `split_grouped_constructors`.
 ///     + If some constructors are missing from the matrix, it turns out we don't need to do
-///       anything special (because we know none of the integers are actually wildcards: i.e. we
+///       anything special (because we know none of the integers are actually wildcards: i.e., we
 ///       can't span wildcards using ranges).
 
 use self::Constructor::*;
@@ -371,7 +371,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Constructor<'tcx> {
     /// The constructor of all patterns that don't vary by constructor,
-    /// e.g. struct patterns and fixed-length arrays.
+    /// e.g., struct patterns and fixed-length arrays.
     Single,
     /// Enum variants.
     Variant(DefId),
@@ -488,7 +488,7 @@ impl<'tcx> Witness<'tcx> {
     /// patterns expanded by the specialization step.
     ///
     /// When a pattern P is discovered to be useful, this function is used bottom-up
-    /// to reconstruct a complete witness, e.g. a pattern P' that covers a subset
+    /// to reconstruct a complete witness, e.g., a pattern P' that covers a subset
     /// of values, V, where each value in that set is not covered by any previously
     /// used patterns and is covered by the pattern P'. Examples:
     ///
@@ -763,7 +763,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 /// straightforward. See `signed_bias` for details.
 ///
 /// `IntRange` is never used to encode an empty range or a "range" that wraps
-/// around the (offset) space: i.e. `range.lo <= range.hi`.
+/// around the (offset) space: i.e., `range.lo <= range.hi`.
 #[derive(Clone)]
 struct IntRange<'tcx> {
     pub range: RangeInclusive<u128>,
@@ -854,7 +854,7 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     /// Return a collection of ranges that spans the values covered by `ranges`, subtracted
-    /// by the values covered by `self`: i.e. `ranges \ self` (in set notation).
+    /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
     fn subtract_from(self,
                      tcx: TyCtxt<'_, 'tcx, 'tcx>,
                      ranges: Vec<Constructor<'tcx>>)
@@ -1122,7 +1122,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     //
                     // There are 2 ways we can report a witness here.
                     // Commonly, we can report all the "free"
-                    // constructors as witnesses, e.g. if we have:
+                    // constructors as witnesses, e.g., if we have:
                     //
                     // ```
                     //     enum Direction { N, S, E, W }
@@ -1137,7 +1137,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // 1) If the user is matching against a non-exhaustive
                     // enum, there is no point in enumerating all possible
                     // variants, because the user can't actually match
-                    // against them himself, e.g. in an example like:
+                    // against them himself, e.g., in an example like:
                     // ```
                     //     let err: io::ErrorKind = ...;
                     //     match err {
@@ -1151,7 +1151,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // case).
                     //
                     // 2) If the user didn't actually specify a constructor
-                    // in this arm, e.g. in
+                    // in this arm, e.g., in
                     // ```
                     //     let x: (Direction, Direction, bool) = ...;
                     //     let (_, _, false) = x;
@@ -1197,7 +1197,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-/// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e. `is_useful` applied
+/// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
@@ -1413,7 +1413,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Construct
 /// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
 /// mean creating a separate constructor for every single value in the range, which is clearly
 /// impractical. However, observe that for some ranges of integers, the specialisation will be
-/// identical across all values in that range (i.e. there are equivalence classes of ranges of
+/// identical across all values in that range (i.e., there are equivalence classes of ranges of
 /// constructors based on their `is_useful_specialized` outcome). These classes are grouped by
 /// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
 /// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
@@ -1422,7 +1422,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Construct
 /// the group of intersecting patterns changes (using the method described below).
 /// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
 /// on actual integers. The nice thing about this is that the number of subranges is linear in the
-/// number of rows in the matrix (i.e. the number of cases in the `match` statement), so we don't
+/// number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
 /// need to be worried about matching over gargantuan ranges.
 ///
 /// Essentially, given the first column of a matrix representing ranges, looking like the following:

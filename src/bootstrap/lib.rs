@@ -38,7 +38,7 @@
 //! However, compiletest itself tries to avoid running tests when the artifacts
 //! that are involved (mainly the compiler) haven't changed.
 //!
-//! When you execute `x.py build`, the steps which are executed are:
+//! When you execute `x.py build`, the steps executed are:
 //!
 //! * First, the python script is run. This will automatically download the
 //!   stage0 rustc and cargo according to `src/stage0.txt`, or use the cached

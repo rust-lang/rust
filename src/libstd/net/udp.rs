@@ -752,7 +752,7 @@ impl UdpSocket {
     /// Moves this UDP socket into or out of nonblocking mode.
     ///
     /// This will result in `recv`, `recv_from`, `send`, and `send_to`
-    /// operations becoming nonblocking, i.e. immediately returning from their
+    /// operations becoming nonblocking, i.e., immediately returning from their
     /// calls. If the IO operation is successful, `Ok` is returned and no
     /// further action is required. If the IO operation could not be completed
     /// and needs to be retried, an error with kind

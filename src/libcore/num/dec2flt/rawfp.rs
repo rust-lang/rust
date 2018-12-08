@@ -349,7 +349,7 @@ pub fn prev_float<T: RawFloat>(x: T) -> T {
 }
 
 // Find the smallest floating point number strictly larger than the argument.
-// This operation is saturating, i.e. next_float(inf) == inf.
+// This operation is saturating, i.e., next_float(inf) == inf.
 // Unlike most code in this module, this function does handle zero, subnormals, and infinities.
 // However, like all other code here, it does not deal with NaN and negative numbers.
 pub fn next_float<T: RawFloat>(x: T) -> T {

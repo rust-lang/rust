@@ -313,7 +313,7 @@ impl<N: Idx> RegionValues<N> {
         self.points.insert_all_into_row(r);
     }
 
-    /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
+    /// Add all elements in `r_from` to `r_to` (because e.g., `r_to:
     /// r_from`).
     crate fn add_region(&mut self, r_to: N, r_from: N) -> bool {
         self.points.union_rows(r_from, r_to)

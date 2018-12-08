@@ -311,7 +311,7 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
     let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
     // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
-    // forcefully, e.g. for placing it in a specific section.
+    // forcefully, e.g., for placing it in a specific section.
     if cg_attrs.contains_extern_indicator() ||
         cg_attrs.flags.contains(CodegenFnAttrFlags::USED) {
         return true;

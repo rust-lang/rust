@@ -46,8 +46,8 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
     (metadata, "")
 }
 
-/// Render `input` (e.g. "foo.md") into an HTML file in `output`
-/// (e.g. output = "bar" => "bar/foo.html").
+/// Render `input` (e.g., "foo.md") into an HTML file in `output`
+/// (e.g., output = "bar" => "bar/foo.html").
 pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) -> isize {
     let mut output = options.output;
     output.push(input.file_stem().unwrap());

@@ -286,9 +286,7 @@ impl<'hir> Map<'hir> {
 
         match node {
             Node::Item(item) => {
-                let def_id = || {
-                    self.local_def_id(item.id)
-                };
+                let def_id = || self.local_def_id(item.id);
 
                 match item.node {
                     ItemKind::Static(_, m, _) => Some(Def::Static(def_id(), m == MutMutable)),
@@ -383,7 +381,7 @@ impl<'hir> Map<'hir> {
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
         self.read(id.node_id);
 
-        // NB: intentionally bypass `self.forest.krate()` so that we
+        // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.trait_item(id)
     }
@@ -391,7 +389,7 @@ impl<'hir> Map<'hir> {
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
         self.read(id.node_id);
 
-        // NB: intentionally bypass `self.forest.krate()` so that we
+        // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.impl_item(id)
     }
@@ -399,7 +397,7 @@ impl<'hir> Map<'hir> {
     pub fn body(&self, id: BodyId) -> &'hir Body {
         self.read(id.node_id);
 
-        // NB: intentionally bypass `self.forest.krate()` so that we
+        // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.body(id)
     }
@@ -413,7 +411,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the `NodeId` that corresponds to the definition of
-    /// which this is the body of, i.e. a `fn`, `const` or `static`
+    /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
         let parent = self.get_parent_node(node_id);
@@ -484,7 +482,7 @@ impl<'hir> Map<'hir> {
     pub fn trait_impls(&self, trait_did: DefId) -> &'hir [NodeId] {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
-        // NB: intentionally bypass `self.forest.krate()` so that we
+        // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.trait_impls.get(&trait_did).map_or(&[], |xs| &xs[..])
     }
@@ -492,7 +490,7 @@ impl<'hir> Map<'hir> {
     pub fn trait_auto_impl(&self, trait_did: DefId) -> Option<NodeId> {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
-        // NB: intentionally bypass `self.forest.krate()` so that we
+        // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.trait_auto_impl.get(&trait_did).cloned()
     }
@@ -565,14 +563,14 @@ impl<'hir> Map<'hir> {
         result
     }
 
-    /// Similar to get_parent, returns the parent node id or id if there is no
-    /// parent. Note that the parent may be CRATE_NODE_ID, which is not itself
+    /// Similar to `get_parent`; returns the parent node-id, or own `id` if there is
+    /// no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
     /// present in the map -- so passing the return value of get_parent_node to
     /// get may actually panic.
     /// This function returns the immediate parent in the AST, whereas get_parent
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
-    /// never appear as the parent_node. So you can always walk the parent_nodes
+    /// never appear as the parent_node. So you can always walk the `parent_nodes`
     /// from a node to the root of the ast (unless you get the same id back here
     /// that can happen if the id is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
@@ -608,7 +606,7 @@ impl<'hir> Map<'hir> {
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
-    /// last good node id we found. Note that reaching the crate root (id == 0),
+    /// last good node id we found. Note that reaching the crate root (`id == 0`),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
     fn walk_parent_nodes<F, F2>(&self,
@@ -644,7 +642,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieve the NodeId for `id`'s enclosing method, unless there's a
+    /// Retrieve the `NodeId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
@@ -691,7 +689,7 @@ impl<'hir> Map<'hir> {
         self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
     }
 
-    /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
+    /// Retrieve the `NodeId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
@@ -708,13 +706,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Returns the DefId of `id`'s nearest module parent, or `id` itself if no
+    /// Returns the `DefId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
     pub fn get_module_parent(&self, id: NodeId) -> DefId {
         self.local_def_id(self.get_module_parent_node(id))
     }
 
-    /// Returns the NodeId of `id`'s nearest module parent, or `id` itself if no
+    /// Returns the `NodeId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
     pub fn get_module_parent_node(&self, id: NodeId) -> NodeId {
         match self.walk_parent_nodes(id, |node| match *node {
@@ -727,7 +725,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the nearest enclosing scope. A scope is an item or block.
-    /// FIXME it is not clear to me that all items qualify as scopes - statics
+    /// FIXME: it is not clear to me that all items qualify as scopes -- statics
     /// and associated types probably shouldn't, for example. Behavior in this
     /// regard should be expected to be highly unstable.
     pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {

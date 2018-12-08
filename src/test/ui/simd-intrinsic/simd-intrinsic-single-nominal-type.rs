@@ -16,7 +16,7 @@ struct A(i16, i16, i16, i16, i16, i16, i16, i16);
 struct B(i16, i16, i16, i16, i16, i16, i16, i16);
 
 // each intrinsic definition has to use the same nominal type for any
-// vector structure throughout that declaration (i.e. every instance
+// vector structure throughout that declaration (i.e., every instance
 // of i16x8 in each `fn ...;` needs to be either A or B)
 
 extern "platform-intrinsic" {

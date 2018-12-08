@@ -2071,7 +2071,7 @@ impl Context {
     fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F) -> Result<(), Error>
         where F: FnMut(&mut Context, clean::Item),
     {
-        // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
+        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
         //

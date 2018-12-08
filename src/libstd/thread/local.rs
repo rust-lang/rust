@@ -269,7 +269,7 @@ impl<T: 'static> LocalKey<T> {
         //      ptr::write(ptr, Some(value))
         //
         // Due to this pattern it's possible for the destructor of the value in
-        // `ptr` (e.g. if this is being recursively initialized) to re-access
+        // `ptr` (e.g., if this is being recursively initialized) to re-access
         // TLS, in which case there will be a `&` and `&mut` pointer to the same
         // value (an aliasing violation). To avoid setting the "I'm running a
         // destructor" flag we just use `mem::replace` which should sequence the

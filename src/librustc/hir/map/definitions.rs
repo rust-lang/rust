@@ -150,10 +150,9 @@ impl Decodable for DefPathTable {
     }
 }
 
-
 /// The definition table containing node definitions.
-/// It holds the DefPathTable for local DefIds/DefPaths and it also stores a
-/// mapping from NodeIds to local DefIds.
+/// It holds the `DefPathTable` for local `DefId`s/`DefPath`s and it also stores a
+/// mapping from `NodeId`s to local `DefId`s.
 #[derive(Clone, Default)]
 pub struct Definitions {
     table: DefPathTable,

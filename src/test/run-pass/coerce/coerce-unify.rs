@@ -47,7 +47,7 @@ macro_rules! check3 {
         check2!($b, $c);
         check2!($a, $c);
 
-        // Check the remaining cases, i.e. permutations of ($a, $b, $c).
+        // Check the remaining cases, i.e., permutations of ($a, $b, $c).
         check!($a, $b, $c);
         check!($a, $c, $b);
         check!($b, $a, $c);

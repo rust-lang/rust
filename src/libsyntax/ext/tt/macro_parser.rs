@@ -214,10 +214,10 @@ struct MatcherPos<'root, 'tt: 'root> {
     up: Option<MatcherPosHandle<'root, 'tt>>,
 
     /// Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
-    /// a delimited token tree (e.g. something wrapped in `(` `)`) or to get the contents of a doc
+    /// a delimited token tree (e.g., something wrapped in `(` `)`) or to get the contents of a doc
     /// comment...
     ///
-    /// When matching against matchers with nested delimited submatchers (e.g. `pat ( pat ( .. )
+    /// When matching against matchers with nested delimited submatchers (e.g., `pat ( pat ( .. )
     /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
     /// that where the bottom of the stack is the outermost matcher.
     /// Also, throughout the comments, this "descent" is often referred to as "unzipping"...
@@ -373,7 +373,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     ms: &[TokenTree],
     mut res: I,
 ) -> NamedParseResult {
-    // Recursively descend into each type of matcher (e.g. sequences, delimited, metavars) and make
+    // Recursively descend into each type of matcher (e.g., sequences, delimited, metavars) and make
     // sure that each metavar has _exactly one_ binding. If a metavar does not have exactly one
     // binding, then there is an error. If it does, then we insert the binding into the
     // `NamedParseResult`.
@@ -895,7 +895,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
 ///
 /// - `p`: the "black-box" parser to use
 /// - `sp`: the `Span` we want to parse
-/// - `name`: the name of the metavar _matcher_ we want to match (e.g. `tt`, `ident`, `block`,
+/// - `name`: the name of the metavar _matcher_ we want to match (e.g., `tt`, `ident`, `block`,
 ///   etc...)
 ///
 /// # Returns

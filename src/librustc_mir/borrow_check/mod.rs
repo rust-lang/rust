@@ -1526,7 +1526,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
               // ancestors; dataflow recurs on children when parents
               // move (to support partial (re)inits).
               //
-              // (I.e. querying parents breaks scenario 7; but may want
+              // (I.e., querying parents breaks scenario 7; but may want
               // to do such a query based on partial-init feature-gate.)
         }
     }
@@ -1562,7 +1562,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // (Distinct from handling of scenarios 1+2+4 above because
         // `place` does not interfere with suffixes of its prefixes,
-        // e.g. `a.b.c` does not interfere with `a.b.d`)
+        // e.g., `a.b.c` does not interfere with `a.b.d`)
         //
         // This code covers scenario 1.
 
@@ -1735,7 +1735,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             //
             // This does not use check_if_path_or_subpath_is_moved,
             // because we want to *allow* reinitializations of fields:
-            // e.g. want to allow
+            // e.g., want to allow
             //
             // `let mut s = ...; drop(s.x); s.x=Val;`
             //
@@ -2166,7 +2166,7 @@ enum Overlap {
     /// `u.a.x` and `a.b.y` are.
     Arbitrary,
     /// The places have the same type, and are either completely disjoint
-    /// or equal - i.e. they can't "partially" overlap as can occur with
+    /// or equal - i.e., they can't "partially" overlap as can occur with
     /// unions. This is the "base case" on which we recur for extensions
     /// of the place.
     EqualOrDisjoint,

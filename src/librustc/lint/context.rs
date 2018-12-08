@@ -1270,7 +1270,7 @@ pub fn check_ast_crate(
     //
     // Rustdoc runs everybody-loops before the early lints and removes
     // function bodies, so it's totally possible for linted
-    // node ids to not exist (e.g. macros defined within functions for the
+    // node ids to not exist (e.g., macros defined within functions for the
     // unused_macro lint) anymore. So we only run this check
     // when we're not in rustdoc mode. (see issue #47639)
     if !sess.opts.actually_rustdoc {

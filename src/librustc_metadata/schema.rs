@@ -40,7 +40,7 @@ pub fn rustc_version() -> String {
 }
 
 /// Metadata encoding version.
-/// NB: increment this if you change the format of metadata such that
+/// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
 pub const METADATA_VERSION: u8 = 4;
 

@@ -229,7 +229,7 @@ pub trait Folder : Sized {
 
     fn fold_mac(&mut self, _mac: Mac) -> Mac {
         panic!("fold_mac disabled by default");
-        // NB: see note about macros above.
+        // N.B., see note about macros above.
         // if you really want a folder that
         // works on macros, use this
         // definition in your trait impl:
@@ -637,7 +637,7 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
 
 /// apply folder to elements of interpolated nodes
 //
-// NB: this can occur only when applying a fold to partially expanded code, where
+// N.B., this can occur only when applying a fold to partially expanded code, where
 // parsed pieces have gotten implanted ito *other* macro invocations. This is relevant
 // for macro hygiene, but possibly not elsewhere.
 //

@@ -59,7 +59,7 @@ pub enum DepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g. the injected allocator.
+    /// doesn't need to be linked to an rlib, e.g., the injected allocator.
     Implicit,
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.

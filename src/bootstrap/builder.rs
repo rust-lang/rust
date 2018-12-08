@@ -793,7 +793,7 @@ impl<'a> Builder<'a> {
         }
 
         // Set a flag for `check` so that certain build scripts can do less work
-        // (e.g. not building/requiring LLVM).
+        // (e.g., not building/requiring LLVM).
         if cmd == "check" {
             cargo.env("RUST_CHECK", "1");
         }
@@ -923,12 +923,12 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and
-            // then other crates can depend on the compiler (e.g. proc-macro
+            // then other crates can depend on the compiler (e.g., proc-macro
             // crates). Let's say, for example that rustc itself depends on the
             // bitflags crate. If an external crate then depends on the
             // bitflags crate as well, we need to make sure they don't
             // conflict, even if they pick the same version of bitflags. We'll
-            // want to make sure that e.g. a plugin and rustc each get their
+            // want to make sure that e.g., a plugin and rustc each get their
             // own copy of bitflags.
 
             // Cargo ensures that this works in general through the -C metadata

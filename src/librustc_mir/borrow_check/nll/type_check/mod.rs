@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! This pass type-checks the MIR to ensure it is not broken.
+
 #![allow(unreachable_code)]
 
 use borrow_check::borrow_set::BorrowSet;

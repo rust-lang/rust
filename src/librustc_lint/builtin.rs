@@ -1573,7 +1573,7 @@ impl EarlyLintPass for KeywordIdents {
                 }
             }
 
-            // no new keywords yet for 2018 edition and beyond
+            // There are no new keywords yet for the 2018 edition and beyond.
             // However, `await` is a "false" keyword in the 2018 edition,
             // and can only be used if the `async_await` feature is enabled.
             // Otherwise, we emit an error.

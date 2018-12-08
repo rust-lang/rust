@@ -286,7 +286,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                                 lp);
             }
             None => {
-                // This can occur with e.g. `*foo() = 5`.  In such
+                // This can occur with e.g., `*foo() = 5`.  In such
                 // cases, there is no need to check for conflicts
                 // with moves etc, just ignore.
             }

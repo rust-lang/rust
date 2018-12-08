@@ -586,7 +586,7 @@ impl Session {
         // either return `No` or `ThinLocal`.
 
         // If processing command line options determined that we're incompatible
-        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        // with ThinLTO (e.g., `-C lto --emit llvm-ir`) then return that option.
         if self.opts.cli_forced_thinlto_off {
             return config::Lto::No;
         }

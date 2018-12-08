@@ -344,7 +344,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// themselves. This should really be a unique type; `FreshTy(0)` is a
     /// popular choice.
     ///
-    /// NB: in some cases, particularly around higher-ranked bounds,
+    /// N.B., in some cases, particularly around higher-ranked bounds,
     /// this function returns a kind of conservative approximation.
     /// That is, all regions returned by this function are definitely
     /// required, but there may be other region bounds that are not
@@ -451,9 +451,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // destructor will not access borrowed data,
         // even if such data is otherwise reachable.
         //
-        // Such access can be in plain sight (e.g. dereferencing
+        // Such access can be in plain sight (e.g., dereferencing
         // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
-        // (e.g. calling `foo.0.clone()` of `Foo<T:Clone>`).
+        // (e.g., calling `foo.0.clone()` of `Foo<T:Clone>`).
         if self.has_attr(dtor, "unsafe_destructor_blind_to_params") {
             debug!("destructor_constraint({:?}) - blind", def.did);
             return vec![];
@@ -656,7 +656,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
     /// non-copy and *might* have a destructor attached; if it returns
-    /// `false`, then `ty` definitely has no destructor (i.e. no drop glue).
+    /// `false`, then `ty` definitely has no destructor (i.e., no drop glue).
     ///
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `needs_drop` will definitely return `true` for `ty`.)

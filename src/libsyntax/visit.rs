@@ -43,7 +43,7 @@ pub enum FnKind<'a> {
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden.  Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
-/// e.g. the `visit_mod` method by default calls `visit::walk_mod`.
+/// e.g., the `visit_mod` method by default calls `visit::walk_mod`.
 ///
 /// If you want to ensure that your code handles every variant
 /// explicitly, you need to override each method.  (And you also need
@@ -110,7 +110,7 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_mac(&mut self, _mac: &'ast Mac) {
         panic!("visit_mac disabled by default");
-        // NB: see note about macros above.
+        // N.B., see note about macros above.
         // if you really want a visitor that
         // works on macros, use this
         // definition in your trait impl:

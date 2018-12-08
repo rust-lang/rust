@@ -67,7 +67,7 @@ pub trait FlowsAtLocation {
 /// effects at any point in the control-flow graph by starting with
 /// the state at the start of the basic block (`reset_to_entry_of`)
 /// and then replaying the effects of statements and terminators
-/// (e.g. via `reconstruct_statement_effect` and
+/// (e.g., via `reconstruct_statement_effect` and
 /// `reconstruct_terminator_effect`; don't forget to call
 /// `apply_local_effect`).
 pub struct FlowAtLocation<BD>

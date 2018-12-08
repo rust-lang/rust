@@ -505,7 +505,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 // walk the expected type and the actual type in lock step, checking they're
-// the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
+// the same, in a kinda-structural way, i.e., `Vector`s have to be simd structs with
 // exactly the right element type
 fn match_intrinsic_type_to_type<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,

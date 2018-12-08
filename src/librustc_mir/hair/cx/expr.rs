@@ -181,7 +181,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
             // To ensure that both implicit and explicit coercions are
             // handled the same way, we insert an extra layer of indirection here.
-            // For explicit casts (e.g. 'foo as *const T'), the source of the 'Use'
+            // For explicit casts (e.g., 'foo as *const T'), the source of the 'Use'
             // will be an ExprKind::Hair with the appropriate cast expression. Here,
             // we make our Use source the generated Cast from the original coercion.
             //
@@ -1212,7 +1212,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-/// Converts a list of named fields (i.e. for struct-like struct/enum ADTs) into FieldExprRef.
+/// Converts a list of named fields (i.e., for struct-like struct/enum ADTs) into FieldExprRef.
 fn field_refs<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                               fields: &'tcx [hir::Field])
                               -> Vec<FieldExprRef<'tcx>> {

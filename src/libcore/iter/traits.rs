@@ -770,7 +770,7 @@ pub trait Product<A = Self>: Sized {
     fn product<I: Iterator<Item=A>>(iter: I) -> Self;
 }
 
-// NB: explicitly use Add and Mul here to inherit overflow checks
+// N.B., explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
     (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
         #[$attr]

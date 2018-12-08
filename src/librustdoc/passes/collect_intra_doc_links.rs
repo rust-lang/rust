@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use clean::*;
-
 use rustc::lint as lint;
 use rustc::hir;
 use rustc::hir::def::Def;
@@ -26,6 +24,7 @@ use core::DocContext;
 use fold::DocFolder;
 use html::markdown::markdown_links;
 
+use clean::*;
 use passes::{look_for_tests, Pass};
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass =
@@ -44,13 +43,13 @@ pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext) -> Crate {
 
 #[derive(Debug)]
 enum PathKind {
-    /// can be either value or type, not a macro
+    /// Either a value or type, but not a macro
     Unknown,
-    /// macro
+    /// Macro
     Macro,
-    /// values, functions, consts, statics, everything in the value namespace
+    /// Values, functions, consts, statics (everything in the value namespace)
     Value,
-    /// types, traits, everything in the type namespace
+    /// Types, traits (everything in the type namespace)
     Type,
 }
 
@@ -71,7 +70,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
 
     /// Resolve a given string as a path, along with whether or not it is
     /// in the value namespace. Also returns an optional URL fragment in the case
-    /// of variants and methods
+    /// of variants and methods.
     fn resolve(&self,
                path_str: &str,
                is_val: bool,
@@ -82,9 +81,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
         let cx = self.cx;
 
         // In case we're in a module, try to resolve the relative
-        // path
+        // path.
         if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
-            // FIXME: `with_scope` requires the NodeId of a module
+            // FIXME: `with_scope` requires the `NodeId` of a module.
             let result = cx.resolver.borrow_mut()
                                     .with_scope(id,
                 |resolver| {
@@ -94,12 +93,12 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
 
             if let Ok(result) = result {
                 // In case this is a trait item, skip the
-                // early return and try looking for the trait
+                // early return and try looking for the trait.
                 let value = match result.def {
                     Def::Method(_) | Def::AssociatedConst(_) => true,
                     Def::AssociatedTy(_) => false,
                     Def::Variant(_) => return handle_variant(cx, result.def),
-                    // not a trait item, just return what we found
+                    // Not a trait item; just return what we found.
                     _ => return Ok((result.def, None))
                 };
 
@@ -111,13 +110,13 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
             } else {
                 // If resolution failed, it may still be a method
                 // because methods are not handled by the resolver
-                // If so, bail when we're not looking for a value
+                // If so, bail when we're not looking for a value.
                 if !is_val {
                     return Err(())
                 }
             }
 
-            // Try looking for methods and associated items
+            // Try looking for methods and associated items.
             let mut split = path_str.rsplitn(2, "::");
             let item_name = if let Some(first) = split.next() {
                 first
@@ -137,7 +136,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
                 }
             }
 
-            // FIXME: `with_scope` requires the NodeId of a module
+            // FIXME: `with_scope` requires the `NodeId` of a module.
             let ty = cx.resolver.borrow_mut()
                                 .with_scope(id,
                 |resolver| {
@@ -227,10 +226,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
             None
         };
 
-        // FIXME: get the resolver to work with non-local resolve scopes
+        // FIXME: get the resolver to work with non-local resolve scopes.
         let parent_node = self.cx.as_local_node_id(item.def_id).and_then(|node_id| {
             // FIXME: this fails hard for impls in non-module scope, but is necessary for the
-            // current resolve() implementation
+            // current `resolve()` implementation.
             match self.cx.tcx.hir().get_module_parent_node(node_id) {
                 id if id != node_id => Some(id),
                 _ => None,
@@ -252,7 +251,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                 } else {
                     match parent_node.or(self.mod_ids.last().cloned()) {
                         Some(parent) if parent != NodeId::from_u32(0) => {
-                            //FIXME: can we pull the parent module's name from elsewhere?
+                            // FIXME: can we pull the parent module's name from elsewhere?
                             Some(self.cx.tcx.hir().name(parent).to_string())
                         }
                         _ => None,
@@ -262,7 +261,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
             ImplItem(Impl { ref for_, .. }) => {
                 for_.def_id().map(|did| self.cx.tcx.item_name(did).to_string())
             }
-            // we don't display docs on `extern crate` items anyway, so don't process them
+            // we don't display docs on `extern crate` items anyway, so don't process them.
             ExternCrateItem(..) => return self.fold_item_recur(item),
             ImportItem(Import::Simple(ref name, ..)) => Some(name.clone()),
             MacroItem(..) => None,
@@ -283,7 +282,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
         }
 
         for (ori_link, link_range) in markdown_links(&dox) {
-            // bail early for real links
+            // Bail early for real links.
             if ori_link.contains('/') {
                 continue;
             }
@@ -327,9 +326,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                             def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
-                            // this could just be a normal link or a broken link
+                            // This could just be a normal link or a broken link
                             // we could potentially check if something is
-                            // "intra-doc-link-like" and warn in that case
+                            // "intra-doc-link-like" and warn in that case.
                             continue;
                         }
                     }
@@ -338,12 +337,12 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                             def
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
-                            // this could just be a normal link
+                            // This could just be a normal link.
                             continue;
                         }
                     }
                     PathKind::Unknown => {
-                        // try everything!
+                        // Try everything!
                         if let Some(macro_def) = macro_resolve(cx, path_str) {
                             if let Ok(type_def) =
                                 self.resolve(path_str, false, &current_item, parent_node)
@@ -371,8 +370,8 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                         {
                             // It is imperative we search for not-a-value first
                             // Otherwise we will find struct ctors for when we are looking
-                            // for structs, and the link won't work.
-                            // if there is something in both namespaces
+                            // for structs, and the link won't work if there is something in
+                            // both namespaces.
                             if let Ok(value_def) =
                                 self.resolve(path_str, true, &current_item, parent_node)
                             {
@@ -432,7 +431,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
     }
 }
 
-/// Resolve a string as a macro
+/// Resolve a string as a macro.
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
@@ -482,19 +481,19 @@ fn resolution_failure(
         let mut diag;
         if dox.lines().count() == code_dox.lines().count() {
             let line_offset = dox[..link_range.start].lines().count();
-            // The span starts in the `///`, so we don't have to account for the leading whitespace
+            // The span starts in the `///`, so we don't have to account for the leading whitespace.
             let code_dox_len = if line_offset <= 1 {
                 doc_comment_padding
             } else {
-                // The first `///`
+                // The first `///`.
                 doc_comment_padding +
-                    // Each subsequent leading whitespace and `///`
+                    // Each subsequent leading whitespace and `///`.
                     code_dox.lines().skip(1).take(line_offset - 1).fold(0, |sum, line| {
                         sum + doc_comment_padding + line.len() - line.trim_start().len()
                     })
             };
 
-            // Extract the specific span
+            // Extract the specific span.
             let sp = sp.from_inner_byte_pos(
                 link_range.start + code_dox_len,
                 link_range.end + code_dox_len,
@@ -514,7 +513,7 @@ fn resolution_failure(
             let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-            // Print the line containing the `link_range` and manually mark it with '^'s
+            // Print the line containing the `link_range` and manually mark it with '^'s.
             diag.note(&format!(
                 "the link appears in this line:\n\n{line}\n\
                  {indicator: <before$}{indicator:^<found$}",
@@ -555,13 +554,13 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
 }
 
 /// Given a def, returns its name and disambiguator
-/// for a value namespace
+/// for a value namespace.
 ///
-/// Returns None for things which cannot be ambiguous since
-/// they exist in both namespaces (structs and modules)
+/// Returns `None` for things which cannot be ambiguous since
+/// they exist in both namespaces (structs and modules).
 fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
     match def {
-        // structs, variants, and mods exist in both namespaces. skip them
+        // Structs, variants, and mods exist in both namespaces; skip them.
         Def::StructCtor(..) | Def::Mod(..) | Def::Variant(..) |
         Def::VariantCtor(..) | Def::SelfCtor(..)
             => None,
@@ -578,10 +577,10 @@ fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
 }
 
 /// Given a def, returns its name, the article to be used, and a disambiguator
-/// for the type namespace
+/// for the type namespace.
 fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String) {
     let (kind, article) = match def {
-        // we can still have non-tuple structs
+        // We can still have non-tuple structs.
         Def::Struct(..) => ("struct", "a"),
         Def::Enum(..) => ("enum", "an"),
         Def::Trait(..) => ("trait", "a"),
@@ -591,7 +590,7 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
     (kind, article, format!("{}@{}", kind, path_str))
 }
 
-/// Given an enum variant's def, return the def of its enum and the associated fragment
+/// Given an enum variant's def, return the def of its enum and the associated fragment.
 fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 

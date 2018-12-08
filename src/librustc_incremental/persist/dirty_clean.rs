@@ -78,7 +78,7 @@ const BASE_IMPL: &[&str] = &[
 ];
 
 /// DepNodes for MirValidated/Optimized, which is relevant in "executable"
-/// code, i.e. functions+methods
+/// code, i.e., functions+methods
 const BASE_MIR: &[&str] = &[
     label_strs::MirOptimized,
     label_strs::MirValidated,
@@ -364,16 +364,16 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // Module-level inline assembly (from global_asm!)
                     HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
-                    // A type alias, e.g. `type Foo = Bar<u8>`
+                    // A type alias, e.g., `type Foo = Bar<u8>`
                     HirItem::Ty(..) => ("ItemTy", LABELS_HIR_ONLY),
 
-                    // An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
+                    // An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
                     HirItem::Enum(..) => ("ItemEnum", LABELS_ADT),
 
-                    // A struct definition, e.g. `struct Foo<A> {x: A}`
+                    // A struct definition, e.g., `struct Foo<A> {x: A}`
                     HirItem::Struct(..) => ("ItemStruct", LABELS_ADT),
 
-                    // A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
+                    // A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration

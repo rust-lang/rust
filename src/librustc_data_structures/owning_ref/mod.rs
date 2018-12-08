@@ -215,7 +215,7 @@ fn main() {
 ## Mutable reference
 
 When the owned container implements `DerefMut`, it is also possible to make
-a _mutable owning reference_. (E.g. with `Box`, `RefMut`, `MutexGuard`)
+a _mutable owning reference_. (e.g., with `Box`, `RefMut`, `MutexGuard`)
 
 ```
 extern crate owning_ref;
@@ -452,7 +452,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// use owning_ref::{OwningRef, Erased};
     ///
     /// fn main() {
-    ///     // NB: Using the concrete types here for explicitness.
+    ///     // N.B., using the concrete types here for explicitness.
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
     ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, [i32; 4]>
@@ -722,7 +722,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::{OwningRefMut, Erased};
     ///
     /// fn main() {
-    ///     // NB: Using the concrete types here for explicitness.
+    ///     // N.B., using the concrete types here for explicitness.
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
     ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, [i32; 4]>
@@ -1124,8 +1124,8 @@ impl<T: 'static> ToHandleMut for RefCell<T> {
     unsafe fn to_handle_mut(x: *const Self) -> Self::HandleMut { (*x).borrow_mut() }
 }
 
-// NB: Implementing ToHandle{,Mut} for Mutex and RwLock requires a decision
-// about which handle creation to use (i.e. read() vs try_read()) as well as
+// N.B., implementing ToHandle{,Mut} for Mutex and RwLock requires a decision
+// about which handle creation to use (i.e., read() vs try_read()) as well as
 // what to do with error results.
 
 /// Typedef of a owning reference that uses a `Box` as the owner.

@@ -33,7 +33,7 @@ use syntax_pos::Span;
 // in that circumstance.
 //
 // For the most part, we do not destructure things external to the
-// MIR, e.g. types, spans, etc, but simply visit them and stop. This
+// MIR, e.g., types, spans, etc, but simply visit them and stop. This
 // avoids duplication with other visitors like `TypeFoldable`.
 //
 // ## Updating
@@ -997,7 +997,7 @@ pub enum NonMutatingUseContext<'tcx> {
     ShallowBorrow(Region<'tcx>),
     /// Unique borrow.
     UniqueBorrow(Region<'tcx>),
-    /// Used as base for another place, e.g. `x` in `x.y`. Will not mutate the place.
+    /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     ///
     ///     z = x.y;
@@ -1020,7 +1020,7 @@ pub enum MutatingUseContext<'tcx> {
     Drop,
     /// Mutable borrow.
     Borrow(Region<'tcx>),
-    /// Used as base for another place, e.g. `x` in `x.y`. Could potentially mutate the place.
+    /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     ///
     ///     x.y = ...;

@@ -15,7 +15,7 @@ error[E0120]: the Drop trait may only be implemented on structures
 LL | impl<T> Drop for T where T: A { //~ ERROR E0119
    |                  ^ implementing Drop requires a struct
 
-error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g. `MyStruct<T>`)
+error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/issue-41974.rs:17:1
    |
 LL | impl<T> Drop for T where T: A { //~ ERROR E0119

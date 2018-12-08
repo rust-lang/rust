@@ -71,7 +71,7 @@
 //! order to also avoid inter-crate conflicts two more measures are taken:
 //!
 //! - The name of the crate containing the symbol is prepended to the symbol
-//!   name, i.e. symbols are "crate qualified". For example, a function `foo` in
+//!   name, i.e., symbols are "crate qualified". For example, a function `foo` in
 //!   module `bar` in crate `baz` would get a symbol name like
 //!   `baz::bar::foo::{hash}` instead of just `bar::foo::{hash}`. This avoids
 //!   simple conflicts between functions from different crates.

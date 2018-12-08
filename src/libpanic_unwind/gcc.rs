@@ -25,7 +25,7 @@
 //!
 //! In both phases the unwinder walks stack frames from top to bottom using
 //! information from the stack frame unwind sections of the current process's
-//! modules ("module" here refers to an OS module, i.e. an executable or a
+//! modules ("module" here refers to an OS module, i.e., an executable or a
 //! dynamic library).
 //!
 //! For each stack frame, it invokes the associated "personality routine", whose
@@ -296,7 +296,7 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
 // Each module's image contains a frame unwind info section (usually
 // ".eh_frame").  When a module is loaded/unloaded into the process, the
 // unwinder must be informed about the location of this section in memory. The
-// methods of achieving that vary by the platform.  On some (e.g. Linux), the
+// methods of achieving that vary by the platform.  On some (e.g., Linux), the
 // unwinder can discover unwind info sections on its own (by dynamically
 // enumerating currently loaded modules via the dl_iterate_phdr() API and
 // finding their ".eh_frame" sections); Others, like Windows, require modules

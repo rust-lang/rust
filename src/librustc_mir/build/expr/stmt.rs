@@ -16,7 +16,7 @@ use rustc::mir::*;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Builds a block of MIR statements to evaluate the HAIR `expr`.
     /// If the original expression was an AST statement,
-    /// (e.g. `some().code(&here());`) then `opt_stmt_span` is the
+    /// (e.g., `some().code(&here());`) then `opt_stmt_span` is the
     /// span of that statement (including its semicolon, if any).
     /// Diagnostics use this span (which may be larger than that of
     /// `expr`) to identify when statement temporaries are dropped.

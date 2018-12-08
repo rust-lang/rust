@@ -395,7 +395,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
         //
-        // NB: Instantiate late-bound regions first so that
+        // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
         let method_sig = self.replace_bound_vars_with_fresh_vars(&sig);

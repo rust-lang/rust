@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
+/*!
 
 # check.rs
 
 Within the check phase of type check, we check each item one at a time
 (bodies of function expressions are checked as part of the containing
-function).  Inference is used to supply types wherever they are
-unknown.
+function). Inference is used to supply types wherever they are unknown.
 
 By far the most complex case is checking the body of a function. This
 can be broken down into several distinct phases:
@@ -65,7 +64,7 @@ nodes within the function.
 The types of top-level items, which never contain unbound type
 variables, are stored directly into the `tcx` tables.
 
-N.B.: A type variable is not the same thing as a type parameter.  A
+N.B., a type variable is not the same thing as a type parameter.  A
 type variable is rather an "instance" of a type parameter: that is,
 given a generic function `fn foo<T>(t: T)`: while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
@@ -75,69 +74,6 @@ eventually be resolved to some concrete type (which might itself be
 type parameter).
 
 */
-
-pub use self::Expectation::*;
-use self::autoderef::Autoderef;
-use self::callee::DeferredCallResolution;
-use self::coercion::{CoerceMany, DynamicCoerceMany};
-pub use self::compare_method::{compare_impl_method, compare_const_impl};
-use self::method::MethodCallee;
-use self::TupleArgumentsFlag::*;
-
-use astconv::AstConv;
-use hir::GenericArg;
-use hir::def::Def;
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use std::slice;
-use namespace::Namespace;
-use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
-use rustc::infer::opaque_types::OpaqueTypeDecl;
-use rustc::infer::type_variable::{TypeVariableOrigin};
-use rustc::middle::region;
-use rustc::mir::interpret::{ConstValue, GlobalId};
-use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
-                       UserSelfTy, UserSubsts};
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::query::Providers;
-use rustc::ty::util::{Representability, IntTypeExt, Discr};
-use rustc::ty::layout::VariantIdx;
-use rustc_data_structures::indexed_vec::Idx;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-
-use require_c_abi_if_variadic;
-use session::{CompileIncomplete, config, Session};
-use TypeAndSubsts;
-use lint;
-use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
-
-use std::cell::{Cell, RefCell, Ref, RefMut};
-use rustc_data_structures::sync::Lrc;
-use std::collections::hash_map::Entry;
-use std::cmp;
-use std::fmt::Display;
-use std::iter;
-use std::mem::replace;
-use std::ops::{self, Deref};
-use rustc_target::spec::abi::Abi;
-use syntax::ast;
-use syntax::attr;
-use syntax::source_map::DUMMY_SP;
-use syntax::source_map::original_sp;
-use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::ptr::P;
-use syntax::symbol::{Symbol, LocalInternedString, keywords};
-use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, BytePos, Span, MultiSpan};
-
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::Node;
-use rustc::hir::{self, PatKind, ItemKind};
-use rustc::middle::lang_items;
 
 mod autoderef;
 pub mod dropck;
@@ -156,6 +92,65 @@ mod compare_method;
 mod generator_interior;
 mod intrinsic;
 mod op;
+
+use astconv::AstConv;
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc::hir::{self, GenericArg, Node, ItemKind, PatKind};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use middle::lang_items;
+use namespace::Namespace;
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::abi::Abi;
+use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
+use rustc::infer::opaque_types::OpaqueTypeDecl;
+use rustc::infer::type_variable::{TypeVariableOrigin};
+use rustc::middle::region;
+use rustc::mir::interpret::{ConstValue, GlobalId};
+use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
+                       UserSelfTy, UserSubsts};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
+use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
+use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::query::Providers;
+use rustc::ty::util::{Representability, IntTypeExt, Discr};
+use rustc::ty::layout::VariantIdx;
+use syntax_pos::{self, BytePos, Span, MultiSpan};
+use syntax::ast;
+use syntax::attr;
+use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::ptr::P;
+use syntax::source_map::{DUMMY_SP, original_sp};
+use syntax::symbol::{Symbol, LocalInternedString, keywords};
+use syntax::util::lev_distance::find_best_match_for_name;
+
+use std::cell::{Cell, RefCell, Ref, RefMut};
+use std::collections::hash_map::Entry;
+use std::cmp;
+use std::fmt::Display;
+use std::iter;
+use std::mem::replace;
+use std::ops::{self, Deref};
+use std::slice;
+
+use require_c_abi_if_variadic;
+use session::{CompileIncomplete, config, Session};
+use TypeAndSubsts;
+use lint;
+use util::common::{ErrorReported, indenter};
+use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
+
+pub use self::Expectation::*;
+use self::autoderef::Autoderef;
+use self::callee::DeferredCallResolution;
+use self::coercion::{CoerceMany, DynamicCoerceMany};
+pub use self::compare_method::{compare_impl_method, compare_const_impl};
+use self::method::MethodCallee;
+use self::TupleArgumentsFlag::*;
 
 /// The type of a local binding, including the revealed type for anon types.
 #[derive(Copy, Clone)]
@@ -2858,10 +2853,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                formal_tys.iter().map(|t| self.ty_to_string(*t)).collect::<Vec<String>>());
 
         // Check the arguments.
-        // We do this in a pretty awful way: first we typecheck any arguments
-        // that are not closures, then we typecheck the closures. This is so
+        // We do this in a pretty awful way: first we type-check any arguments
+        // that are not closures, then we type-check the closures. This is so
         // that we have more information about the types of arguments when we
-        // typecheck the functions. This isn't really the right way to do this.
+        // type-check the functions. This isn't really the right way to do this.
         for &check_closures in &[false, true] {
             debug!("check_closures={}", check_closures);
 
@@ -2885,7 +2880,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for (i, arg) in args.iter().take(t).enumerate() {
                 // Warn only for the first loop (the "no closures" one).
                 // Closure arguments themselves can't be diverging, but
-                // a previous argument can, e.g. `foo(panic!(), || {})`.
+                // a previous argument can, e.g., `foo(panic!(), || {})`.
                 if !check_closures {
                     self.warn_if_unreachable(arg.id, arg.span, "expression");
                 }
@@ -3092,9 +3087,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
     }
 
-    // determine the `self` type, using fresh variables for all variables
+    // Determine the `Self` type, using fresh variables for all variables
     // declared on the impl declaration e.g., `impl<A,B> for Vec<(A,B)>`
-    // would return ($0, $1) where $0 and $1 are freshly instantiated type
+    // would return `($0, $1)` where `$0` and `$1` are freshly instantiated type
     // variables.
     pub fn impl_self_ty(&self,
                         span: Span, // (potential) receiver for this impl
@@ -3539,16 +3534,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mut error_happened = false;
 
-        // Typecheck each field.
+        // Type-check each field.
         for field in ast_fields {
             let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
                 self.write_field_index(field.id, i);
 
-                // we don't look at stability attributes on
+                // We don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
-                // a bug to have construct one.
+                // a bug to have constructed one.
                 if adt_kind != ty::AdtKind::Enum {
                     tcx.check_stability(v_field.did, Some(expr_id), field.span);
                 }
@@ -3575,7 +3570,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             // Make sure to give a type to the field even if there's
-            // an error, so we can continue typechecking
+            // an error, so we can continue type-checking.
             self.check_expr_coercable_to_type(&field.expr, field_type);
         }
 
@@ -3707,7 +3702,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, _) => qself.span
         };
 
-        // Prohibit struct expressions when non exhaustive flag is set.
+        // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
         if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
             span_err!(self.tcx.sess, expr.span, E0639,
@@ -3760,7 +3755,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              expr: &'gcx hir::Expr,
                                              expected: Expectation<'tcx>,
                                              needs: Needs) -> Ty<'tcx> {
-        debug!(">> typechecking: expr={:?} expected={:?}",
+        debug!(">> type-checking: expr={:?} expected={:?}",
                expr, expected);
 
         // Warn for expressions after diverging siblings.
@@ -3962,7 +3957,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if !tcx.features().unsized_locals {
                         // We want to remove some Sized bounds from std functions,
                         // but don't want to expose the removal to stable Rust.
-                        // i.e. we don't want to allow
+                        // i.e., we don't want to allow
                         //
                         // ```rust
                         // drop as fn(str);
@@ -4086,7 +4081,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                         }
                     }
-                    // There was an error, make typecheck fail
+                    // There was an error; make type-check fail.
                     tcx.types.err
                 }
 
@@ -4095,7 +4090,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if destination.target_id.is_ok() {
                     tcx.types.never
                 } else {
-                    // There was an error, make typecheck fail
+                    // There was an error; make type-check fail.
                     tcx.types.err
                 }
             }
@@ -4413,7 +4408,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }
                                 if needs_note {
                                     err.help("to access tuple elements, use tuple indexing \
-                                              syntax (e.g. `tuple.0`)");
+                                              syntax (e.g., `tuple.0`)");
                                 }
                             }
                             err.emit();
@@ -5249,7 +5244,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(!substs.has_escaping_bound_vars());
         assert!(!ty.has_escaping_bound_vars());
 
-        // Write the "user substs" down first thing for later.
+        // First, store the "user substs" for later.
         let hir_id = self.tcx.hir().node_to_hir_id(node_id);
         self.write_user_substs_from_substs(hir_id, substs, user_self_ty);
 

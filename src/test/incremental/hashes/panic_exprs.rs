@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This test case tests the incremental compilation hash (ICH) implementation
-// for exprs that can panic at runtime (e.g. because of bounds checking). For
+// for exprs that can panic at runtime (e.g., because of bounds checking). For
 // these expressions an error message containing their source location is
 // generated, so their hash must always depend on their location in the source
 // code, not just when debuginfo is enabled.

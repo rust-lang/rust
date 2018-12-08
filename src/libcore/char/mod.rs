@@ -131,7 +131,7 @@ pub struct EscapeUnicode {
     state: EscapeUnicodeState,
 
     // The index of the next hex digit to be printed (0 if none),
-    // i.e. the number of remaining hex digits to be printed;
+    // i.e., the number of remaining hex digits to be printed;
     // increasing from the least significant digit: 0x543210
     hex_digit_idx: usize,
 }

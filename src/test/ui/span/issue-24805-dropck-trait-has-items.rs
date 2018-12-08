@@ -25,7 +25,7 @@ impl<'a,T> HasSelfMethod for &'a T { }
 impl<'a,T> HasMethodWithSelfArg for &'a T { }
 impl<'a,T> HasType for &'a T { type Something = (); }
 
-// e.g. `impl_drop!(Send, D_Send)` expands to:
+// e.g., `impl_drop!(Send, D_Send)` expands to:
 //   ```rust
 //   struct D_Send<T:Send>(T);
 //   impl<T:Send> Drop for D_Send<T> { fn drop(&mut self) { } }

@@ -71,7 +71,7 @@ pub fn set_optimize_for_size(val: &'ll Value, optimize: bool) {
     Attribute::OptimizeForSize.toggle_llfn(Function, val, optimize);
 }
 
-/// Tell LLVM if this function should be 'naked', i.e. skip the epilogue and prologue.
+/// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
 #[inline]
 pub fn naked(val: &'ll Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
@@ -147,7 +147,7 @@ pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
     }
 }
 
-/// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
+/// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, '_>,

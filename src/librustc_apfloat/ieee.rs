@@ -926,7 +926,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
 
         // In case MSB resides at the left-hand side of radix point, shift the
         // mantissa right by some amount to make sure the MSB reside right before
-        // the radix point (i.e. "MSB . rest-significant-bits").
+        // the radix point (i.e., "MSB . rest-significant-bits").
         if omsb > S::PRECISION {
             let bits = omsb - S::PRECISION;
             loss = sig::shift_right(&mut wide_sig, &mut self.exp, bits).combine(loss);
@@ -2674,7 +2674,7 @@ mod sig {
 
         // In case MSB resides at the left-hand side of radix point, shift the
         // mantissa right by some amount to make sure the MSB reside right before
-        // the radix point (i.e. "MSB . rest-significant-bits").
+        // the radix point (i.e., "MSB . rest-significant-bits").
         //
         // Note that the result is not normalized when "omsb < precision". So, the
         // caller needs to call IeeeFloat::normalize() if normalized value is

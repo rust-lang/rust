@@ -248,7 +248,7 @@ impl Step for Llvm {
         configure_cmake(builder, target, &mut cfg, false);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
-        //        libraries here, e.g. we just want a few components and a few
+        //        libraries here, e.g., we just want a few components and a few
         //        tools. Figure out how to filter them down and only build the right
         //        tools and libs on all platforms.
 

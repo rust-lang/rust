@@ -655,7 +655,7 @@ For example, a function like:
 fn f(a: u16, b: &str) {}
 ```
 
-Must always be called with exactly two arguments, e.g. `f(2, "test")`.
+Must always be called with exactly two arguments, e.g., `f(2, "test")`.
 
 Note that Rust does not have a notion of optional function arguments or
 variadic functions (except for its C-FFI).
@@ -1610,7 +1610,7 @@ it has been disabled for now.
 
 E0185: r##"
 An associated function for a trait was defined to be static, but an
-implementation of the trait declared the same function to be a method (i.e. to
+implementation of the trait declared the same function to be a method (i.e., to
 take a `self` parameter).
 
 Here's an example of this error:
@@ -1631,7 +1631,7 @@ impl Foo for Bar {
 "##,
 
 E0186: r##"
-An associated function for a trait was defined to be a method (i.e. to take a
+An associated function for a trait was defined to be a method (i.e., to take a
 `self` parameter), but an implementation of the trait declared the same function
 to be static.
 

@@ -87,7 +87,7 @@ pub fn find_entry_point(session: &Session,
     configure_main(&mut ctxt, crate_name);
 }
 
-// Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
+// Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
 // them in sync.
 fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
     match item.node {
@@ -98,7 +98,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 EntryPointType::MainAttr
             } else if item.name == "main" {
                 if at_root {
-                    // This is a top-level function so can be 'main'
+                    // This is a top-level function so can be 'main'.
                     EntryPointType::MainNamed
                 } else {
                     EntryPointType::OtherMain

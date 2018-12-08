@@ -554,7 +554,7 @@ struct RWUTable {
     /// 65 bits of data into 32; in the uncommon cases, it expands the 65 bits
     /// in 96.
     ///
-    /// More compact representations are possible -- e.g. use only 2 bits per
+    /// More compact representations are possible -- e.g., use only 2 bits per
     /// packed `RWU` and make the secondary table a HashMap that maps from
     /// indices to `RWU`s -- but this one strikes a good balance between size
     /// and speed.

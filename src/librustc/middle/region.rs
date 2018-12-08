@@ -84,7 +84,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 ///  (D9.): DestructionScope for temporaries created during M8.
 /// (R10.): Remainder scope for block `'b:`, stmt 1 (let y = ...).
 /// (D11.): DestructionScope for temporaries and bindings from block `'b:`.
-/// (D12.): DestructionScope for temporaries created during M1 (e.g. f()).
+/// (D12.): DestructionScope for temporaries created during M1 (e.g., f()).
 /// ```
 ///
 /// Note that while the above picture shows the destruction scopes
@@ -155,7 +155,7 @@ pub enum ScopeData {
 ///   everything after that first `let`. (If you want a scope that
 ///   includes EXPR_1 as well, then do not use `Scope::Remainder`,
 ///   but instead another `Scope` that encompasses the whole block,
-///   e.g. `Scope::Node`.
+///   e.g., `Scope::Node`.
 ///
 /// * the subscope with `first_statement_index == 1` is scope of `c`,
 ///   and thus does not include EXPR_2, but covers the `...`.
@@ -172,7 +172,7 @@ static_assert!(ASSERT_SCOPE_DATA: mem::size_of::<ScopeData>() == 4);
 impl Scope {
     /// Returns a item-local id associated with this scope.
     ///
-    /// NB: likely to be replaced as API is refined; e.g. pnkfelix
+    /// N.B., likely to be replaced as API is refined; e.g., pnkfelix
     /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.
     pub fn item_local_id(&self) -> hir::ItemLocalId {
         self.id
@@ -770,10 +770,10 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
     //    }, other_argument());
     //
     // Each of the statements within the block is a terminating
-    // scope, and thus a temporary (e.g. the result of calling
+    // scope, and thus a temporary (e.g., the result of calling
     // `bar()` in the initializer expression for `let inner = ...;`)
     // will be cleaned up immediately after its corresponding
-    // statement (i.e. `let inner = ...;`) executes.
+    // statement (i.e., `let inner = ...;`) executes.
     //
     // On the other hand, temporaries associated with evaluating the
     // tail expression for the block are assigned lifetimes so that
@@ -984,7 +984,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
 
     // As an exception to the normal rules governing temporary
     // lifetimes, initializers in a let have a temporary lifetime
-    // of the enclosing block. This means that e.g. a program
+    // of the enclosing block. This means that e.g., a program
     // like the following is legal:
     //
     //     let ref x = HashMap::new();
@@ -1183,7 +1183,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         loop {
             // Note: give all the expressions matching `ET` with the
             // extended temporary lifetime, not just the innermost rvalue,
-            // because in codegen if we must compile e.g. `*rvalue()`
+            // because in codegen if we must compile e.g., `*rvalue()`
             // into a temporary, we request the temporary scope of the
             // outer expression.
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
             // according to rvalue lifetime semantics, using the same
             // syntactical rules used for let initializers.
             //
-            // E.g. in `let x = &f();`, the temporary holding the result from
+            // e.g., in `let x = &f();`, the temporary holding the result from
             // the `f()` call lives for the entirety of the surrounding block.
             //
             // Similarly, `const X: ... = &f();` would have the result of `f()`
@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
             //
             // However, `const Y: ... = g(&f());`, like `let y = g(&f());`,
             // would *not* let the `f()` temporary escape into an outer scope
-            // (i.e. `'static`), which means that after `g` returns, it drops,
+            // (i.e., `'static`), which means that after `g` returns, it drops,
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
             resolve_local(self, None, Some(&body.value));

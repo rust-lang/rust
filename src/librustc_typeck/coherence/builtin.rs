@@ -469,7 +469,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                         // variance where possible. (This is because
                         // we may have to evaluate constraint
                         // expressions in the course of execution.)
-                        // See e.g. #41936.
+                        // See e.g., #41936.
                         if let Ok(ok) = infcx.at(&cause, param_env).eq(a, b) {
                             if ok.obligations.is_empty() {
                                 return None;
@@ -477,7 +477,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                         }
 
                         // Collect up all fields that were significantly changed
-                        // i.e. those that contain T in coerce_unsized T -> U
+                        // i.e., those that contain T in coerce_unsized T -> U
                         Some((i, a, b))
                     })
                     .collect::<Vec<_>>();

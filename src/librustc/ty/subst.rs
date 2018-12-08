@@ -316,10 +316,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     /// Transform from substitutions for a child of `source_ancestor`
-    /// (e.g. a trait or impl) to substitutions for the same child
+    /// (e.g., a trait or impl) to substitutions for the same child
     /// in a different item, with `target_substs` as the base for
     /// the target impl/trait, with the source child-specific
-    /// parameters (e.g. method parameters) on top of that base.
+    /// parameters (e.g., method parameters) on top of that base.
     pub fn rebase_onto(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                        source_ancestor: DefId,
                        target_substs: &Substs<'tcx>)

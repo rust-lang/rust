@@ -274,10 +274,10 @@ pub trait Unsize<T: ?Sized> {
 /// In addition to the [implementors listed below][impls],
 /// the following types also implement `Copy`:
 ///
-/// * Function item types (i.e. the distinct types defined for each function)
-/// * Function pointer types (e.g. `fn() -> i32`)
-/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
-/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
+/// * Function item types (i.e., the distinct types defined for each function)
+/// * Function pointer types (e.g., `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g., `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
 ///   Note that variables captured by shared reference always implement `Copy`

@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// The Rust HIR.
+// HIR datatypes. See the [rustc guide] for more info.
+//!
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
@@ -71,7 +73,7 @@ pub mod print;
 
 /// A HirId uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the DefIndex of the directly enclosing
-/// hir::Item, hir::TraitItem, or hir::ImplItem (i.e. the closest "item-like"),
+/// hir::Item, hir::TraitItem, or hir::ImplItem (i.e., the closest "item-like"),
 /// and the `local_id` which is unique within the given owner.
 ///
 /// This two-level structure makes for more stable values: One can move an item
@@ -181,7 +183,7 @@ pub enum ParamName {
     Plain(Ident),
 
     /// Synthetic name generated when user elided a lifetime in an impl header,
-    /// e.g. the lifetimes in cases like these:
+    /// e.g., the lifetimes in cases like these:
     ///
     ///     impl Foo for &u32
     ///     impl Foo<'_> for u32
@@ -197,7 +199,7 @@ pub enum ParamName {
 
     /// Indicates an illegal name was given and an error has been
     /// repored (so we should squelch other derived errors). Occurs
-    /// when e.g. `'_` is used in the wrong place.
+    /// when e.g., `'_` is used in the wrong place.
     Error,
 }
 
@@ -222,7 +224,7 @@ pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
     Param(ParamName),
 
-    /// User typed nothing. e.g. the lifetime in `&u32`.
+    /// User typed nothing. e.g., the lifetime in `&u32`.
     Implicit,
 
     /// Indicates an error during lowering (usually `'_` in wrong place)
@@ -351,7 +353,7 @@ pub struct PathSegment {
     /// Whether to infer remaining type parameters, if any.
     /// This only applies to expression and pattern paths, and
     /// out of those only the segments with no type parameters
-    /// to begin with, e.g. `Vec::new` is `<Vec<..>>::new::<..>`.
+    /// to begin with, e.g., `Vec::new` is `<Vec<..>>::new::<..>`.
     pub infer_types: bool,
 }
 
@@ -388,7 +390,7 @@ impl PathSegment {
     }
 
     // FIXME: hack required because you can't create a static
-    // GenericArgs, so you can't just return a &GenericArgs.
+    // `GenericArgs`, so you can't just return a `&GenericArgs`.
     pub fn with_generic_args<F, R>(&self, f: F) -> R
         where F: FnOnce(&GenericArgs) -> R
     {
@@ -514,17 +516,17 @@ pub type GenericBounds = HirVec<GenericBound>;
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub enum LifetimeParamKind {
-    // Indicates that the lifetime definition was explicitly declared, like:
-    // `fn foo<'a>(x: &'a u8) -> &'a u8 { x }`
+    // Indicates that the lifetime definition was explicitly declared (e.g., in
+    // `fn foo<'a>(x: &'a u8) -> &'a u8 { x }`).
     Explicit,
 
     // Indicates that the lifetime definition was synthetically added
-    // as a result of an in-band lifetime usage like:
-    // `fn foo(x: &'a u8) -> &'a u8 { x }`
+    // as a result of an in-band lifetime usage (e.g., in
+    // `fn foo(x: &'a u8) -> &'a u8 { x }`).
     InBand,
 
-    // Indication that the lifetime was elided like both cases here:
-    // `fn foo(x: &u8) -> &'_ u8 { x }`
+    // Indication that the lifetime was elided (e.g., in both cases in
+    // `fn foo(x: &u8) -> &'_ u8 { x }`).
     Elided,
 
     // Indication that the lifetime name was somehow in error.
@@ -533,7 +535,7 @@ pub enum LifetimeParamKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericParamKind {
-    /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
+    /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime {
         kind: LifetimeParamKind,
     },
@@ -637,11 +639,11 @@ impl WhereClause {
 /// A single predicate in a `where` clause
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum WherePredicate {
-    /// A type binding, eg `for<'c> Foo: Send+Clone+'c`
+    /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
     BoundPredicate(WhereBoundPredicate),
-    /// A lifetime predicate, e.g. `'a: 'b+'c`
+    /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
-    /// An equality predicate (unsupported)
+    /// An equality predicate (unsupported).
     EqPredicate(WhereEqPredicate),
 }
 
@@ -667,7 +669,7 @@ pub struct WhereBoundPredicate {
     pub bounds: GenericBounds,
 }
 
-/// A lifetime predicate, e.g. `'a: 'b+'c`
+/// A lifetime predicate, e.g., `'a: 'b+'c`
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereRegionPredicate {
     pub span: Span,
@@ -675,7 +677,7 @@ pub struct WhereRegionPredicate {
     pub bounds: GenericBounds,
 }
 
-/// An equality predicate (unsupported), e.g. `T=int`
+/// An equality predicate (unsupported), e.g., `T=int`
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereEqPredicate {
     pub id: NodeId,
@@ -697,7 +699,7 @@ pub struct Crate {
     pub span: Span,
     pub exported_macros: HirVec<MacroDef>,
 
-    // NB: We use a BTreeMap here so that `visit_all_items` iterates
+    // N.B., we use a BTreeMap here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
     // matter what order we visit things in, but in *practice* it
     // does, because it can affect the order in which errors are
@@ -932,11 +934,11 @@ pub enum PatKind {
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
     /// The `NodeId` is the canonical ID for the variable being bound,
-    /// e.g. in `Ok(x) | Err(x)`, both `x` use the same canonical ID,
+    /// e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID,
     /// which is the pattern ID of the first `x`.
     Binding(BindingAnnotation, NodeId, Ident, Option<P<Pat>>),
 
-    /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
+    /// A struct or struct variant pattern, e.g., `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
     Struct(QPath, HirVec<Spanned<FieldPat>>, bool),
 
@@ -954,11 +956,11 @@ pub enum PatKind {
     Tuple(HirVec<P<Pat>>, Option<usize>),
     /// A `box` pattern
     Box(P<Pat>),
-    /// A reference pattern, e.g. `&mut (a, b)`
+    /// A reference pattern, e.g., `&mut (a, b)`
     Ref(P<Pat>, Mutability),
     /// A literal
     Lit(P<Expr>),
-    /// A range pattern, e.g. `1...2` or `1..2`
+    /// A range pattern, e.g., `1...2` or `1..2`
     Range(P<Expr>, P<Expr>, RangeEnd),
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
@@ -1319,8 +1321,8 @@ pub enum BodyOwnerKind {
 
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
-/// These are usually found nested inside types (e.g. array lengths)
-/// or expressions (e.g. repeat counts), and also used to define
+/// These are usually found nested inside types (e.g., array lengths)
+/// or expressions (e.g., repeat counts), and also used to define
 /// explicit discriminant values for enum variants.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
@@ -1541,12 +1543,12 @@ pub enum QPath {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
     /// type, if the path points to an associated item in a trait.
     ///
-    /// E.g. an unqualified path like `Clone::clone` has `None` for `Self`,
+    /// e.g., an unqualified path like `Clone::clone` has `None` for `Self`,
     /// while `<Vec<T> as Clone>::clone` has `Some(Vec<T>)` for `Self`,
     /// even though they both have the same two-segment `Clone::clone` `Path`.
     Resolved(Option<P<Ty>>, P<Path>),
 
-    /// Type-related paths, e.g. `<T>::default` or `<T>::Output`.
+    /// Type-related paths, e.g., `<T>::default` or `<T>::Output`.
     /// Will be resolved by type-checking to an associated item.
     ///
     /// UFCS source paths can desugar into this, with `Vec::new` turning into
@@ -1633,7 +1635,7 @@ pub enum CaptureClause {
     CaptureByRef,
 }
 
-// NB: If you change this, you'll probably want to change the corresponding
+// N.B., if you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MutTy {
@@ -1792,14 +1794,14 @@ pub enum TyKind {
     Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
     Rptr(Lifetime, MutTy),
-    /// A bare function (e.g. `fn(usize) -> bool`)
+    /// A bare function (e.g., `fn(usize) -> bool`)
     BareFn(P<BareFnTy>),
     /// The never type (`!`)
     Never,
     /// A tuple (`(A, B, C, D,...)`)
     Tup(HirVec<Ty>),
     /// A path to a type definition (`module::module::...::Type`), or an
-    /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
+    /// associated type, e.g., `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
     /// Type parameters may be stored in each `PathSegment`.
     Path(QPath),
@@ -1814,7 +1816,7 @@ pub enum TyKind {
     TraitObject(HirVec<PolyTraitRef>, Lifetime),
     /// Unused for now
     Typeof(AnonConst),
-    /// TyKind::Infer means the type should be inferred instead of it having been
+    /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
     /// Placeholder for a type that has failed to be defined.
@@ -2017,7 +2019,7 @@ pub struct VariantKind {
     pub name: Name,
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
-    /// Explicit discriminant, eg `Foo = 1`
+    /// Explicit discriminant, e.g., `Foo = 1`
     pub disr_expr: Option<AnonConst>,
 }
 
@@ -2025,15 +2027,15 @@ pub type Variant = Spanned<VariantKind>;
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum UseKind {
-    /// One import, e.g. `use foo::bar` or `use foo::bar as baz`.
+    /// One import, e.g., `use foo::bar` or `use foo::bar as baz`.
     /// Also produced for each element of a list `use`, e.g.
     // `use foo::{a, b}` lowers to `use foo::a; use foo::b;`.
     Single,
 
-    /// Glob import, e.g. `use foo::*`.
+    /// Glob import, e.g., `use foo::*`.
     Glob,
 
-    /// Degenerate list import, e.g. `use foo::{a, b}` produces
+    /// Degenerate list import, e.g., `use foo::{a, b}` produces
     /// an additional `use foo::{}` for performing checks such as
     /// unstable feature gating. May be removed in the future.
     ListStem,
@@ -2196,7 +2198,7 @@ pub struct FnHeader {
 pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
-    /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
+    /// e.g., `extern crate foo` or `extern crate foo_bar as foo`
     ExternCrate(Option<Name>),
 
     /// `use foo::bar::*;` or `use foo::bar::baz as quux;`
@@ -2218,15 +2220,15 @@ pub enum ItemKind {
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from global_asm!)
     GlobalAsm(P<GlobalAsm>),
-    /// A type alias, e.g. `type Foo = Bar<u8>`
+    /// A type alias, e.g., `type Foo = Bar<u8>`
     Ty(P<Ty>, Generics),
-    /// An existential type definition, e.g. `existential type Foo: Bar;`
+    /// An existential type definition, e.g., `existential type Foo: Bar;`
     Existential(ExistTy),
-    /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
+    /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
     Enum(EnumDef, Generics),
-    /// A struct definition, e.g. `struct Foo<A> {x: A}`
+    /// A struct definition, e.g., `struct Foo<A> {x: A}`
     Struct(VariantData, Generics),
-    /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
+    /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
     Union(VariantData, Generics),
     /// Represents a Trait Declaration
     Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),

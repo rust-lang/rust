@@ -70,7 +70,7 @@ pub enum Reveal {
     /// be observable directly by the user, `Reveal::All`
     /// should not be used by checks which may expose
     /// type equality or type contents to the user.
-    /// There are some exceptions, e.g. around OIBITS and
+    /// There are some exceptions, e.g., around OIBITS and
     /// transmute-checking, which expose some details, but
     /// not the whole concrete type of the `impl Trait`.
     All,
@@ -608,7 +608,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // created (and hence the new ones will quickly be
             // discarded as duplicated). But when doing trait
             // evaluation this is not the case, and dropping the trait
-            // evaluations can causes ICEs (e.g. #43132).
+            // evaluations can causes ICEs (e.g., #43132).
             debug!("opt_normalize_projection_type: \
                     found normalized ty `{:?}`",
                    ty);
@@ -1589,7 +1589,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 /// When working with a fulfillment context, the derived obligations of each
 /// projection cache entry will be registered on the fulfillcx, so any users
 /// that can wait for a fulfillcx fixed point need not care about this. However,
-/// users that don't wait for a fixed point (e.g. trait evaluation) have to
+/// users that don't wait for a fixed point (e.g., trait evaluation) have to
 /// resolve the obligations themselves to make sure the projected result is
 /// ok and avoid issues like #43132.
 ///
@@ -1637,7 +1637,7 @@ enum ProjectionCacheEntry<'tcx> {
     NormalizedTy(NormalizedTy<'tcx>),
 }
 
-// NB: intentionally not Clone
+// N.B., intentionally not Clone
 pub struct ProjectionCacheSnapshot {
     snapshot: Snapshot,
 }

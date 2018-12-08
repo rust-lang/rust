@@ -289,7 +289,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     })?;
                     Some((res, span))
                 },
-                // We could get more projections by using e.g. `operand_projection`,
+                // We could get more projections by using e.g., `operand_projection`,
                 // but we do not even have the stack frame set up properly so
                 // an `Index` projection would throw us off-track.
                 _ => None,

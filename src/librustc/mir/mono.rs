@@ -272,7 +272,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
     ///
     /// The '.' before `<special-suffix>` makes sure that names with a special
     /// suffix can never collide with a name built out of regular Rust
-    /// identifiers (e.g. module paths).
+    /// identifiers (e.g., module paths).
     pub fn build_cgu_name<I, C, S>(&mut self,
                                    cnum: CrateNum,
                                    components: I,

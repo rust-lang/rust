@@ -90,7 +90,7 @@ pub struct Cursor<T> {
 impl<T> Cursor<T> {
     /// Creates a new cursor wrapping the provided underlying in-memory buffer.
     ///
-    /// Cursor initial position is `0` even if underlying buffer (e.g. `Vec`)
+    /// Cursor initial position is `0` even if underlying buffer (e.g., `Vec`)
     /// is not empty. So writing to cursor starts with overwriting `Vec`
     /// content, not with appending to it.
     ///

@@ -703,7 +703,7 @@ impl hash::Hash for SocketAddrV6 {
 /// the other: for simple uses a string like `"localhost:12345"` is much nicer
 /// than manual construction of the corresponding [`SocketAddr`], but sometimes
 /// [`SocketAddr`] value is *the* main source of the address, and converting it to
-/// some other type (e.g. a string) just for it to be converted back to
+/// some other type (e.g., a string) just for it to be converted back to
 /// [`SocketAddr`] in constructor methods is pointless.
 ///
 /// Addresses returned by the operating system that are not IP addresses are

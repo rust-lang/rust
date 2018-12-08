@@ -128,10 +128,10 @@ fn place_components_conflict<'gcx, 'tcx>(
                         //
                         // There is no *easy* way of comparing the fields
                         // further on, because they might have different types
-                        // (e.g. borrows of `u.a.0` and `u.b.y` where `.0` and
+                        // (e.g., borrows of `u.a.0` and `u.b.y` where `.0` and
                         // `.y` come from different structs).
                         //
-                        // We could try to do some things here - e.g. count
+                        // We could try to do some things here - e.g., count
                         // dereferences - but that's probably not a good
                         // idea, at least for now, so just give up and
                         // report a conflict. This is unsafe code anyway so
@@ -175,14 +175,14 @@ fn place_components_conflict<'gcx, 'tcx>(
                         // borrowed place (at least in MIR as it is
                         // currently.)
                         //
-                        // e.g. a (mutable) borrow of `a[5]` while we read the
+                        // e.g., a (mutable) borrow of `a[5]` while we read the
                         // array length of `a`.
                         debug!("borrow_conflicts_with_place: implicit field");
                         return false;
                     }
 
                     (ProjectionElem::Deref, _, Shallow(None)) => {
-                        // e.g. a borrow of `*x.y` while we shallowly access `x.y` or some
+                        // e.g., a borrow of `*x.y` while we shallowly access `x.y` or some
                         // prefix thereof - the shallow access can't touch anything behind
                         // the pointer.
                         debug!("borrow_conflicts_with_place: shallow access behind ptr");
@@ -216,7 +216,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                     | (ProjectionElem::Downcast { .. }, _, _) => {
                         // Recursive case. This can still be disjoint on a
                         // further iteration if this a shallow access and
-                        // there's a deref later on, e.g. a borrow
+                        // there's a deref later on, e.g., a borrow
                         // of `*x.y` while accessing `x`.
                     }
                 }
@@ -251,7 +251,7 @@ fn place_components_conflict<'gcx, 'tcx>(
 /// the place `a` with a "next" pointer to `a.b`).  Created by
 /// `unroll_place`.
 ///
-/// NB: This particular impl strategy is not the most obvious.  It was
+/// N.B., this particular impl strategy is not the most obvious.  It was
 /// chosen because it makes a measurable difference to NLL
 /// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
 struct PlaceComponents<'p, 'tcx: 'p> {
@@ -277,7 +277,7 @@ impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
 /// Iterator over components; see `PlaceComponents::iter` for more
 /// information.
 ///
-/// NB: This is not a *true* Rust iterator -- the code above just
+/// N.B., this is not a *true* Rust iterator -- the code above just
 /// manually invokes `next`. This is because we (sometimes) want to
 /// keep executing even after `None` has been returned.
 struct PlaceComponentsIter<'p, 'tcx: 'p> {
@@ -384,13 +384,13 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
         (Place::Projection(pi1), Place::Projection(pi2)) => {
             match (&pi1.elem, &pi2.elem) {
                 (ProjectionElem::Deref, ProjectionElem::Deref) => {
-                    // derefs (e.g. `*x` vs. `*x`) - recur.
+                    // derefs (e.g., `*x` vs. `*x`) - recur.
                     debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
                     Overlap::EqualOrDisjoint
                 }
                 (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
                     if f1 == f2 {
-                        // same field (e.g. `a.y` vs. `a.y`) - recur.
+                        // same field (e.g., `a.y` vs. `a.y`) - recur.
                         debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
                         Overlap::EqualOrDisjoint
                     } else {

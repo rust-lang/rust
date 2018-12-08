@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Generalized type relating mechanism. A type relation R relates a
-//! pair of values (A, B). A and B are usually types or regions but
-//! can be other things. Examples of type relations are subtyping,
-//! type equality, etc.
+//! Generalized type relating mechanism.
+//!
+//! A type relation `R` relates a pair of values `(A, B)`. `A and B` are usually
+//! types or regions but can be other things. Examples of type relations are
+//! subtyping, type equality, etc.
 
 use hir::def_id::DefId;
 use mir::interpret::ConstValue;

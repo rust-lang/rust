@@ -359,7 +359,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 } else {
                     // Not only attributes, but anything in macro namespace can result in
-                    // `Def::NonMacroAttr` definition (e.g. `inline!()`), so we must report
+                    // `Def::NonMacroAttr` definition (e.g., `inline!()`), so we must report
                     // an error for those cases.
                     let msg = format!("expected a macro, found {}", def.kind_name());
                     self.session.span_err(path.span, &msg);
@@ -436,7 +436,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     // Resolve an identifier in lexical scope.
     // This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
     // expansion and import resolution (perhaps they can be merged in the future).
-    // The function is used for resolving initial segments of macro paths (e.g. `foo` in
+    // The function is used for resolving initial segments of macro paths (e.g., `foo` in
     // `foo::bar!(); or `foo!();`) and also for import paths on 2018 edition.
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,

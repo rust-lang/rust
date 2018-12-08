@@ -18,7 +18,7 @@
 //! - Methods taking any number of parameters of any type, and returning
 //!   any type, other than vectors, bottom and closures.
 //! - Generating `impl`s for types with type parameters and lifetimes
-//!   (e.g. `Option<T>`), the parameters are automatically given the
+//!   (e.g., `Option<T>`), the parameters are automatically given the
 //!   current trait as a bound. (This includes separate type parameters
 //!   and lifetimes for methods.)
 //! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
@@ -30,9 +30,9 @@
 //! - `Struct`, when `Self` is a struct (including tuple structs, e.g
 //!   `struct T(i32, char)`).
 //! - `EnumMatching`, when `Self` is an enum and all the arguments are the
-//!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
+//!   same variant of the enum (e.g., `Some(1)`, `Some(3)` and `Some(4)`)
 //! - `EnumNonMatchingCollapsed` when `Self` is an enum and the arguments
-//!   are not the same variant (e.g. `None`, `Some(1)` and `None`).
+//!   are not the same variant (e.g., `None`, `Some(1)` and `None`).
 //! - `StaticEnum` and `StaticStruct` for static methods, where the type
 //!   being derived upon is either an enum or struct respectively. (Any
 //!   argument with type Self is just grouped among the non-self
@@ -224,7 +224,7 @@ pub struct TraitDef<'a> {
     /// other than the current trait
     pub additional_bounds: Vec<Ty<'a>>,
 
-    /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
+    /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
     pub generics: LifetimeBounds<'a>,
 
     /// Is it an `unsafe` trait?
@@ -242,10 +242,10 @@ pub struct TraitDef<'a> {
 pub struct MethodDef<'a> {
     /// name of the method
     pub name: &'a str,
-    /// List of generics, e.g. `R: rand::Rng`
+    /// List of generics, e.g., `R: rand::Rng`
     pub generics: LifetimeBounds<'a>,
 
-    /// Whether there is a self argument (outer Option) i.e. whether
+    /// Whether there is a self argument (outer Option) i.e., whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
     pub explicit_self: Option<Option<PtrTy<'a>>>,
@@ -1371,7 +1371,7 @@ impl<'a> MethodDef<'a> {
             // that type.  Otherwise casts to `i32` (the default repr
             // type).
             //
-            // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
+            // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
@@ -1489,8 +1489,8 @@ impl<'a> MethodDef<'a> {
             //
             // (See also #4499 and #12609; note that some of the
             // discussions there influence what choice we make here;
-            // e.g. if we feature-gate `match x { ... }` when x refers
-            // to an uninhabited type (e.g. a zero-variant enum or a
+            // e.g., if we feature-gate `match x { ... }` when x refers
+            // to an uninhabited type (e.g., a zero-variant enum or a
             // type holding such an enum), but do not feature-gate
             // zero-variant enums themselves, then attempting to
             // derive Debug on such a type could here generate code

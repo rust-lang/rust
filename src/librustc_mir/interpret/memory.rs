@@ -55,7 +55,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
 }
 
 // `Memory` has to depend on the `Machine` because some of its operations
-// (e.g. `get`) call a `Machine` hook.
+// (e.g., `get`) call a `Machine` hook.
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and

@@ -77,7 +77,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         let obligations =
             wf::obligations(infcx, param_env, DUMMY_NODE_ID, ty, DUMMY_SP).unwrap_or(vec![]);
 
-        // NB: All of these predicates *ought* to be easily proven
+        // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by
         // other parts of the program. However, in #42552, we had
         // an annoying scenario where:

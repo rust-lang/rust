@@ -101,7 +101,7 @@ impl hir::Pat {
     }
 
     /// Checks if the pattern contains any patterns that bind something to
-    /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
+    /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
     pub fn contains_bindings(&self) -> bool {
         let mut contains_bindings = false;
         self.walk(|p| {
@@ -116,7 +116,7 @@ impl hir::Pat {
     }
 
     /// Checks if the pattern contains any patterns that bind something to
-    /// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
+    /// an ident or wildcard, e.g., `foo`, or `Foo(_)`, `foo @ Bar(..)`,
     pub fn contains_bindings_or_wild(&self) -> bool {
         let mut contains_bindings = false;
         self.walk(|p| {

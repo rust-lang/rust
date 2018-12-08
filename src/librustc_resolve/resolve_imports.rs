@@ -430,7 +430,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     crate fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
                     -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
-                     // c.f. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
+                     // cf. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
                      !directive.is_glob() && binding.is_extern_crate() {
             directive.vis.get()
         } else {
@@ -1011,7 +1011,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                                 NameBindingKind::Import { binding, .. } => {
                                     match binding.kind {
                                         // Never suggest the name that has binding error
-                                        // i.e. the name that cannot be previously resolved
+                                        // i.e., the name that cannot be previously resolved
                                         NameBindingKind::Def(Def::Err, _) => return None,
                                         _ => Some(&i.name),
                                     }

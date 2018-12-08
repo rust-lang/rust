@@ -330,7 +330,7 @@ impl SystemTime {
     /// Returns the amount of time elapsed since this system time was created.
     ///
     /// This function may fail as the underlying system clock is susceptible to
-    /// drift and updates (e.g. the system clock could go backwards), so this
+    /// drift and updates (e.g., the system clock could go backwards), so this
     /// function may not always succeed. If successful, [`Ok`]`(`[`Duration`]`)` is
     /// returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
