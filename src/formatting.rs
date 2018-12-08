@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use syntax::ast;
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
-use syntax::errors::Handler;
+use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 use syntax::source_map::{FilePathMapping, SourceMap, Span};
 
@@ -604,22 +604,33 @@ fn parse_crate(
 ) -> Result<ast::Crate, ErrorKind> {
     let input_is_stdin = input.is_text();
 
-    let mut parser = match input {
-        Input::File(file) => parse::new_parser_from_file(parse_session, &file),
-        Input::Text(text) => parse::new_parser_from_source_str(
+    let parser = match input {
+        Input::File(file) => Ok(parse::new_parser_from_file(parse_session, &file)),
+        Input::Text(text) => parse::maybe_new_parser_from_source_str(
             parse_session,
             syntax::source_map::FileName::Custom("stdin".to_owned()),
             text,
-        ),
+        )
+        .map_err(|diags| {
+            diags
+                .into_iter()
+                .map(|d| DiagnosticBuilder::new_diagnostic(&parse_session.span_diagnostic, d))
+                .collect::<Vec<_>>()
+        }),
     };
 
-    parser.cfg_mods = false;
-    if config.skip_children() {
-        parser.recurse_into_file_modules = false;
-    }
+    let result = match parser {
+        Ok(mut parser) => {
+            parser.cfg_mods = false;
+            if config.skip_children() {
+                parser.recurse_into_file_modules = false;
+            }
 
-    let mut parser = AssertUnwindSafe(parser);
-    let result = catch_unwind(move || parser.0.parse_crate_mod());
+            let mut parser = AssertUnwindSafe(parser);
+            catch_unwind(move || parser.0.parse_crate_mod().map_err(|d| vec![d]))
+        }
+        Err(db) => Ok(Err(db)),
+    };
 
     match result {
         Ok(Ok(c)) => {
@@ -627,7 +638,7 @@ fn parse_crate(
                 return Ok(c);
             }
         }
-        Ok(Err(mut e)) => e.emit(),
+        Ok(Err(mut diagnostics)) => diagnostics.iter_mut().for_each(|d| d.emit()),
         Err(_) => {
             // Note that if you see this message and want more information,
             // then run the `parse_crate_mod` function above without
