@@ -122,7 +122,7 @@ fn install_code_extension() -> Result<()> {
         run(r"npm install", "./editors/code")?;
     }
     run(
-        r"node ./node_modules/vsce/out/vsce package",
+        r"npm run package",
         "./editors/code",
     )?;
     if cfg!(windows) {
