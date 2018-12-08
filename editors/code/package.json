@@ -1,7 +1,9 @@
 {
     "name": "ra-lsp",
     "displayName": "ra-lsp",
-    "description": "",
+    "description": "An alternative rust language server to the RLS",
+    "preview": true,
+    "private": true,
     "version": "0.0.1",
     "publisher": "matklad",
     "repository": {
@@ -28,18 +30,18 @@
         "singleQuote": true
     },
     "dependencies": {
-        "event-stream": "^3.3.4",
+        "event-stream": "^3.3.5",
         "vscode-languageclient": "^5.1.1"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
-        "@types/node": "^8.10.34",
-        "prettier": "^1.14.3",
+        "@types/node": "^8.10.38",
+        "prettier": "^1.15.3",
         "tslint": "^5.11.0",
-        "tslint-config-prettier": "^1.15.0",
+        "tslint-config-prettier": "^1.17.0",
         "typescript": "^2.6.1",
-        "vsce": "^1.52.0",
-        "vscode": "^1.1.21"
+        "vsce": "^1.53.2",
+        "vscode": "^1.1.26"
     },
     "activationEvents": [
         "onLanguage:rust"
