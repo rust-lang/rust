@@ -89,6 +89,14 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
         flags: MemFlags,
     );
 
+    /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
+    fn write_operand_repeatedly(
+        self,
+        elem: OperandRef<'tcx, Self::Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, Self::Value>,
+    ) -> Self;
+
     // Atomics
     fn atomic_load(&mut self, ptr: Self::Value, order: AtomicOrdering, size: Size) -> Self::Value;
     fn atomic_store(
@@ -218,12 +226,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     ) -> Self::Value;
     fn unreachable(&mut self);
 
-    fn phi(
-        &mut self,
-        ty: Self::Type,
-        vals: &[Self::Value],
-        bbs: &[Self::BasicBlock],
-    ) -> Self::Value;
     fn inline_asm_call(
         &mut self,
         asm: &CStr,
@@ -273,7 +275,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn set_personality_fn(&mut self, personality: Self::Value);
 
     fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
-    fn add_incoming_to_phi(&mut self, phi: Self::Value, val: Self::Value, bb: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
 
     /// Called for `StorageLive`

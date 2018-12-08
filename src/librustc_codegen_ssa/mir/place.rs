@@ -335,7 +335,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
-    pub fn project_index<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn project_index<Bx: MemoryBuilderMethods<'tcx, Value = V>>(
         &self,
         bx: &mut Bx,
         llindex: V
