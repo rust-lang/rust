@@ -18,7 +18,7 @@ impl<'a, 'tcx: 'a> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+    pub fn get_fn<Bx: MemoryBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
@@ -40,7 +40,7 @@ impl<'a, 'tcx: 'a> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
+    pub fn get_usize<Bx: MemoryBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         llvtable: Bx::Value

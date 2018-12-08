@@ -7,10 +7,14 @@ use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
 
-pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn size_and_align_of_dst<
+    'a,
+    'tcx: 'a,
+    Bx: MemoryBuilderMethods<'tcx> + NumBuilderMethods<'tcx>,
+>(
     bx: &mut Bx,
     t: Ty<'tcx>,
-    info: Option<Bx::Value>
+    info: Option<Bx::Value>,
 ) -> (Bx::Value, Bx::Value) {
     let layout = bx.layout_of(t);
     debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}",

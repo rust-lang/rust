@@ -441,6 +441,13 @@ impl MemoryBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn set_invariant_load(&mut self, load: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(load, llvm::MD_invariant_load as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
+        }
+    }
+
     fn memcpy(&mut self, dst: &'ll Value, dst_align: Align,
                   src: &'ll Value, src_align: Align,
                   size: &'ll Value, flags: MemFlags) {
@@ -999,6 +1006,17 @@ impl NumBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
         }
     }
+
+    fn select(
+        &mut self, cond: &'ll Value,
+        then_val: &'ll Value,
+        else_val: &'ll Value,
+    ) -> &'ll Value {
+        self.count_insn("select");
+        unsafe {
+            llvm::LLVMBuildSelect(self.llbuilder, cond, then_val, else_val, noname())
+        }
+    }
 }
 
 impl UnwindBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
@@ -1125,17 +1143,6 @@ impl UnwindBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     /* Miscellaneous instructions */
-    fn select(
-        &mut self, cond: &'ll Value,
-        then_val: &'ll Value,
-        else_val: &'ll Value,
-    ) -> &'ll Value {
-        self.count_insn("select");
-        unsafe {
-            llvm::LLVMBuildSelect(self.llbuilder, cond, then_val, else_val, noname())
-        }
-    }
-
     fn extract_element(&mut self, vec: &'ll Value, idx: &'ll Value) -> &'ll Value {
         self.count_insn("extractelement");
         unsafe {
@@ -1168,13 +1175,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint,
                                        noname())
-        }
-    }
-
-    fn set_invariant_load(&mut self, load: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetMetadata(load, llvm::MD_invariant_load as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
         }
     }
 

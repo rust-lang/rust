@@ -261,7 +261,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 }
 
 impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
-    pub fn store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn store<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>
@@ -269,7 +269,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
 
-    pub fn volatile_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn volatile_store<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>
@@ -277,7 +277,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
-    pub fn unaligned_volatile_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn unaligned_volatile_store<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
@@ -285,7 +285,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
     }
 
-    pub fn nontemporal_store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn nontemporal_store<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>
@@ -293,7 +293,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    fn store_with_flags<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,

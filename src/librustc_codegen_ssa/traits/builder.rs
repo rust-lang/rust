@@ -81,8 +81,10 @@ pub trait MemoryBuilderMethods<'tcx>: HasCodegen<'tcx> {
     fn ptrtoint(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn inttoptr(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
+    // Optimization metadata
     fn range_metadata(&mut self, load: Self::Value, range: Range<u128>);
     fn nonnull_metadata(&mut self, load: Self::Value);
+    fn set_invariant_load(&mut self, load: Self::Value);
 
     // Bulk memory operations
     fn memcpy(
@@ -205,6 +207,14 @@ pub trait NumBuilderMethods<'tcx>: HasCodegen<'tcx> {
     fn fptrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fpext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+
+    /// This is not really only for numbers, but often used functions which also use numbers
+    fn select(
+        &mut self,
+        cond: Self::Value,
+        then_val: Self::Value,
+        else_val: Self::Value,
+    ) -> Self::Value;
 }
 
 pub trait UnwindBuilderMethods<'tcx>: HasCodegen<'tcx> {
@@ -255,19 +265,10 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + NumBuilderMethods<'tcx>
     + UnwindBuilderMethods<'tcx>
 {
-    fn select(
-        &mut self,
-        cond: Self::Value,
-        then_val: Self::Value,
-        else_val: Self::Value,
-    ) -> Self::Value;
-
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
     fn vector_splat(&mut self, num_elts: usize, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
-
-    fn set_invariant_load(&mut self, load: Self::Value);
 
     /// Called for `StorageLive`
     fn lifetime_start(&mut self, ptr: Self::Value, size: Size);

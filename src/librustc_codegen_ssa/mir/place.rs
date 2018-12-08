@@ -100,7 +100,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
 impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
-    pub fn project_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+    pub fn project_field<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
         self, bx: &mut Bx,
         ix: usize,
     ) -> Self {
