@@ -12,7 +12,14 @@
 #![no_std]
 #![cfg_attr(
     feature = "nightly",
-    feature(alloc, alloc_layout_extra, allocator_api, ptr_offset_from, test, core_intrinsics)
+    feature(
+        alloc,
+        alloc_layout_extra,
+        allocator_api,
+        ptr_offset_from,
+        test,
+        core_intrinsics
+    )
 )]
 #![warn(missing_docs)]
 
@@ -38,6 +45,7 @@ mod set;
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
     pub use map::*;
+
     #[cfg(feature = "rayon")]
     /// [rayon]-based parallel iterator types for hash maps.
     /// You will rarely need to interact with it directly unless you have need
@@ -51,6 +59,7 @@ pub mod hash_map {
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
     pub use set::*;
+
     #[cfg(feature = "rayon")]
     /// [rayon]-based parallel iterator types for hash sets.
     /// You will rarely need to interact with it directly unless you have need

@@ -3,14 +3,13 @@
 use core::hash::{BuildHasher, Hash};
 
 use rayon::iter::{
-    plumbing::UnindexedConsumer,
-    FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator,
+    plumbing::UnindexedConsumer, FromParallelIterator, IntoParallelIterator, ParallelExtend,
+    ParallelIterator,
 };
 
 use hash_set::HashSet;
 
 use super::map;
-
 
 /// Parallel iterator over elements of a consumed set.
 ///
@@ -349,7 +348,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test_par_set {
     use alloc::vec::Vec;
@@ -450,7 +448,8 @@ mod test_par_set {
             .map(|x| {
                 assert!(expected.contains(x));
                 1
-            }).sum::<usize>();
+            })
+            .sum::<usize>();
         assert_eq!(i, expected.len());
     }
 
@@ -474,7 +473,8 @@ mod test_par_set {
             .map(|x| {
                 assert!(expected.contains(x));
                 1
-            }).sum::<usize>();
+            })
+            .sum::<usize>();
         assert_eq!(i, expected.len());
     }
 
@@ -501,7 +501,8 @@ mod test_par_set {
             .map(|x| {
                 assert!(expected.contains(x));
                 1
-            }).sum::<usize>();
+            })
+            .sum::<usize>();
         assert_eq!(i, expected.len());
     }
 
@@ -532,7 +533,8 @@ mod test_par_set {
             .map(|x| {
                 assert!(expected.contains(x));
                 1
-            }).sum::<usize>();
+            })
+            .sum::<usize>();
         assert_eq!(i, expected.len());
     }
 

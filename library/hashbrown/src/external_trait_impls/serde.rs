@@ -80,7 +80,9 @@ mod map {
                 }
             }
 
-            let visitor = MapVisitor { marker: PhantomData };
+            let visitor = MapVisitor {
+                marker: PhantomData,
+            };
             deserializer.deserialize_map(visitor)
         }
     }
@@ -153,7 +155,9 @@ mod set {
                 }
             }
 
-            let visitor = SeqVisitor { marker: PhantomData };
+            let visitor = SeqVisitor {
+                marker: PhantomData,
+            };
             deserializer.deserialize_seq(visitor)
         }
 

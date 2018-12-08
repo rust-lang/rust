@@ -12,7 +12,6 @@ use rayon::iter::{
 
 use raw::{RawIterRange, RawTable};
 
-
 #[inline]
 unsafe fn raw_iter_range_split_and_convert<T, P>(iter_range: RawIterRange<T>) -> (P, Option<P>)
 where
@@ -21,7 +20,6 @@ where
     let (left, right) = iter_range.split();
     (P::from(left), right.map(P::from))
 }
-
 
 /// Parallel iterator over shared references to entries in a map.
 ///
@@ -52,7 +50,8 @@ impl<'a, K: Sync, V: Sync> ParallelIterator for ParIter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
-        where C: UnindexedConsumer<Self::Item>
+    where
+        C: UnindexedConsumer<Self::Item>,
     {
         let buckets = unsafe { self.table.iter().iter };
         let producer = ParIterProducer::from(buckets);
@@ -62,7 +61,9 @@ impl<'a, K: Sync, V: Sync> ParallelIterator for ParIter<'a, K, V> {
 
 impl<'a, K, V> Clone for ParIter<'a, K, V> {
     fn clone(&self) -> Self {
-        ParIter { table: &*self.table }
+        ParIter {
+            table: &*self.table,
+        }
     }
 }
 
@@ -86,7 +87,10 @@ struct ParIterProducer<'a, K: 'a, V: 'a> {
 impl<'a, K, V> From<RawIterRange<(K, V)>> for ParIterProducer<'a, K, V> {
     #[inline]
     fn from(iter: RawIterRange<(K, V)>) -> Self {
-        Self { iter, marker: PhantomData }
+        Self {
+            iter,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -100,7 +104,8 @@ impl<'a, K: Sync, V: Sync> UnindexedProducer for ParIterProducer<'a, K, V> {
     }
 
     fn fold_with<F>(self, folder: F) -> F
-        where F: Folder<Self::Item>
+    where
+        F: Folder<Self::Item>,
     {
         let iter = self.iter.map(|bucket| unsafe {
             let (ref k, ref v) = *bucket.as_ref();
@@ -109,7 +114,6 @@ impl<'a, K: Sync, V: Sync> UnindexedProducer for ParIterProducer<'a, K, V> {
         folder.consume_iter(iter)
     }
 }
-
 
 /// Parallel iterator over shared references to keys in a map.
 ///
@@ -146,16 +150,16 @@ impl<'a, K: Sync, V> ParallelIterator for ParKeys<'a, K, V> {
 
 impl<'a, K, V> Clone for ParKeys<'a, K, V> {
     fn clone(&self) -> Self {
-        ParKeys { table: &*self.table }
+        ParKeys {
+            table: &*self.table,
+        }
     }
 }
 
 impl<'a, K: fmt::Debug, V> fmt::Debug for ParKeys<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let iter = unsafe { self.table.iter() };
-        let entries = iter.map(|bucket| unsafe {
-            &bucket.as_ref().0
-        });
+        let entries = iter.map(|bucket| unsafe { &bucket.as_ref().0 });
 
         f.debug_list().entries(entries).finish()
     }
@@ -169,7 +173,10 @@ struct ParKeysProducer<'a, K: 'a, V: 'a> {
 impl<'a, K, V> From<RawIterRange<(K, V)>> for ParKeysProducer<'a, K, V> {
     #[inline]
     fn from(iter: RawIterRange<(K, V)>) -> Self {
-        Self { iter, marker: PhantomData }
+        Self {
+            iter,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -186,13 +193,10 @@ impl<'a, K: Sync, V> UnindexedProducer for ParKeysProducer<'a, K, V> {
     where
         F: Folder<Self::Item>,
     {
-        let iter = self.iter.map(|bucket| unsafe {
-            &bucket.as_ref().0
-        });
+        let iter = self.iter.map(|bucket| unsafe { &bucket.as_ref().0 });
         folder.consume_iter(iter)
     }
 }
-
 
 /// Parallel iterator over shared references to values in a map.
 ///
@@ -229,16 +233,16 @@ impl<'a, K, V: Sync> ParallelIterator for ParValues<'a, K, V> {
 
 impl<'a, K, V> Clone for ParValues<'a, K, V> {
     fn clone(&self) -> Self {
-        ParValues { table: &*self.table }
+        ParValues {
+            table: &*self.table,
+        }
     }
 }
 
 impl<'a, K, V: fmt::Debug> fmt::Debug for ParValues<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let iter = unsafe { self.table.iter() };
-        let entries = iter.map(|bucket| unsafe {
-            &bucket.as_ref().1
-        });
+        let entries = iter.map(|bucket| unsafe { &bucket.as_ref().1 });
 
         f.debug_list().entries(entries).finish()
     }
@@ -252,7 +256,10 @@ struct ParValuesProducer<'a, K: 'a, V: 'a> {
 impl<'a, K, V> From<RawIterRange<(K, V)>> for ParValuesProducer<'a, K, V> {
     #[inline]
     fn from(iter: RawIterRange<(K, V)>) -> Self {
-        Self { iter, marker: PhantomData }
+        Self {
+            iter,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -269,13 +276,10 @@ impl<'a, K, V: Sync> UnindexedProducer for ParValuesProducer<'a, K, V> {
     where
         F: Folder<Self::Item>,
     {
-        let iter = self.iter.map(|bucket| unsafe {
-            &bucket.as_ref().1
-        });
+        let iter = self.iter.map(|bucket| unsafe { &bucket.as_ref().1 });
         folder.consume_iter(iter)
     }
 }
-
 
 /// Parallel iterator over mutable references to entries in a map.
 ///
@@ -336,7 +340,10 @@ struct ParIterMutProducer<'a, K: 'a, V: 'a> {
 impl<'a, K, V> From<RawIterRange<(K, V)>> for ParIterMutProducer<'a, K, V> {
     #[inline]
     fn from(iter: RawIterRange<(K, V)>) -> Self {
-        Self { iter, marker: PhantomData }
+        Self {
+            iter,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -360,7 +367,6 @@ impl<'a, K: Sync, V: Send> UnindexedProducer for ParIterMutProducer<'a, K, V> {
         folder.consume_iter(iter)
     }
 }
-
 
 /// Parallel iterator over mutable references to values in a map.
 ///
@@ -398,9 +404,7 @@ impl<'a, K, V: Send> ParallelIterator for ParValuesMut<'a, K, V> {
 impl<'a, K, V: fmt::Debug> fmt::Debug for ParValuesMut<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let iter = unsafe { self.table.iter() };
-        let entries = iter.map(|bucket| unsafe {
-            &bucket.as_ref().1
-        });
+        let entries = iter.map(|bucket| unsafe { &bucket.as_ref().1 });
 
         f.debug_list().entries(entries).finish()
     }
@@ -415,7 +419,10 @@ struct ParValuesMutProducer<'a, K: 'a, V: 'a> {
 impl<'a, K, V> From<RawIterRange<(K, V)>> for ParValuesMutProducer<'a, K, V> {
     #[inline]
     fn from(iter: RawIterRange<(K, V)>) -> Self {
-        Self { iter, marker: PhantomData }
+        Self {
+            iter,
+            marker: PhantomData,
+        }
     }
 }
 
@@ -432,13 +439,10 @@ impl<'a, K, V: Send> UnindexedProducer for ParValuesMutProducer<'a, K, V> {
     where
         F: Folder<Self::Item>,
     {
-        let iter = self.iter.map(|bucket| unsafe {
-            &mut bucket.as_mut().1
-        });
+        let iter = self.iter.map(|bucket| unsafe { &mut bucket.as_mut().1 });
         folder.consume_iter(iter)
     }
 }
-
 
 /// Parallel iterator over entries of a consumed map.
 ///
@@ -512,9 +516,7 @@ impl<K: Send, V: Send> UnindexedProducer for IntoParIterProducer<K, V> {
     where
         F: Folder<Self::Item>,
     {
-        let iter = self.iter.by_ref().map(|bucket| unsafe {
-            bucket.read()
-        });
+        let iter = self.iter.by_ref().map(|bucket| unsafe { bucket.read() });
         folder.consume_iter(iter)
     }
 }

@@ -11,7 +11,6 @@ use super::raw;
 pub use super::raw::{IntoParIter, ParIter, ParIterMut};
 pub use super::raw::{ParKeys, ParValues, ParValuesMut};
 
-
 impl<K: Sync, V, S> HashMap<K, V, S> {
     /// Visits (potentially in parallel) immutably borrowed keys in an arbitrary order.
     #[inline]
@@ -47,12 +46,12 @@ where
     ///
     /// This method runs in a potentially parallel fashion.
     pub fn par_eq(&self, other: &Self) -> bool {
-        self.len() == other.len() && self
-            .into_par_iter()
-            .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
+        self.len() == other.len()
+            && self
+                .into_par_iter()
+                .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
     }
 }
-
 
 impl<K: Send, V: Send, S> IntoParallelIterator for HashMap<K, V, S> {
     type Item = (K, V);
@@ -80,7 +79,6 @@ impl<'a, K: Sync, V: Send, S> IntoParallelIterator for &'a mut HashMap<K, V, S> 
         self.table.into_par_iter()
     }
 }
-
 
 /// Collect (key, value) pairs from a parallel iterator into a
 /// hashmap. If multiple pairs correspond to the same key, then the
@@ -152,7 +150,6 @@ where
         map.extend(vec);
     }
 }
-
 
 #[cfg(test)]
 mod test_par_map {
