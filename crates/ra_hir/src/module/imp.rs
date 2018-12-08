@@ -164,26 +164,26 @@ fn resolve_submodule(
 
     let file_mod = RelativePathBuf::from(format!("../{}.rs", name));
     let dir_mod = RelativePathBuf::from(format!("../{}/mod.rs", name));
-    let points_to: Vec<FileId>;
-    let problem: Option<Problem>;
-    if is_dir_owner {
-        points_to = [&file_mod, &dir_mod]
-            .iter()
-            .filter_map(|path| file_resolver.resolve(file_id, path))
-            .collect();
-        problem = if points_to.is_empty() {
-            Some(Problem::UnresolvedModule {
-                candidate: file_mod,
-            })
-        } else {
-            None
-        }
+    let file_dir_mod = RelativePathBuf::from(format!("../{}/{}.rs", mod_name, name));
+    let tmp1;
+    let tmp2;
+    let candidates = if is_dir_owner {
+        tmp1 = [&file_mod, &dir_mod];
+        tmp1.iter()
     } else {
-        points_to = Vec::new();
-        problem = Some(Problem::NotDirOwner {
-            move_to: RelativePathBuf::from(format!("../{}/mod.rs", mod_name)),
-            candidate: file_mod,
-        });
-    }
+        tmp2 = [&file_dir_mod];
+        tmp2.iter()
+    };
+
+    let points_to = candidates
+        .filter_map(|path| file_resolver.resolve(file_id, path))
+        .collect::<Vec<_>>();
+    let problem = if points_to.is_empty() {
+        Some(Problem::UnresolvedModule {
+            candidate: if is_dir_owner { file_mod } else { file_dir_mod },
+        })
+    } else {
+        None
+    };
     (points_to, problem)
 }
