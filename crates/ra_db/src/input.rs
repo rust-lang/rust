@@ -48,6 +48,9 @@ impl CrateGraph {
         assert!(prev.is_none());
         crate_id
     }
+    //FIXME: check that we don't have cycles here.
+    // Just a simple depth first search from `to` should work,
+    // the graph is small.
     pub fn add_dep(&mut self, from: CrateId, to: CrateId) {
         self.arena.get_mut(&from).unwrap().add_dep(to)
     }

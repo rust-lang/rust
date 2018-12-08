@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use serde_derive::Serialize;
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -11,15 +10,22 @@ use crate::{
     thread_watcher::{ThreadWatcher, Worker},
 };
 
+/// `CargoWorksapce` represents the logical structure of, well, a Cargo
+/// workspace. It pretty closely mirrors `cargo metadata` output.
+///
+/// Note that internally, rust analyzer uses a differnet structure:
+/// `CrateGraph`. `CrateGraph` is lower-level: it knows only about the crates,
+/// while this knows about `Pacakges` & `Targets`: purely cargo-related
+/// concepts.
 #[derive(Debug, Clone)]
 pub struct CargoWorkspace {
     packages: Vec<PackageData>,
     targets: Vec<TargetData>,
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Package(usize);
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Target(usize);
 
 #[derive(Debug, Clone)]
@@ -61,6 +67,9 @@ impl Package {
     }
     pub fn is_member(self, ws: &CargoWorkspace) -> bool {
         ws.pkg(self).is_member
+    }
+    pub fn dependencies<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Package> + 'a {
+        ws.pkg(self).dependencies.iter().cloned()
     }
 }
 
