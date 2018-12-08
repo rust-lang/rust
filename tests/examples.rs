@@ -18,37 +18,44 @@ mod features {
                 .try_clone()
                 .expect("could not create `stderr` file by cloning `stdout`");
 
-            success &= Command::new("rustc")
-                .args(&["--crate-type=lib", "-o", &old_rlib])
+            let target_args = std::env::var("TEST_TARGET").map(|t| ["--target".to_string(), t]);
+
+            let mut cmd = Command::new("rustc");
+            cmd.args(&["--crate-type=lib", "-o", &old_rlib])
                 .arg(path.join("old.rs"))
                 .env("RUST_BACKTRACE", "full")
-                .stdin(Stdio::null())
-                .status()
-                .expect("could not run rustc")
-                .success();
+                .stdin(Stdio::null());
 
+            if let Ok(target_args) = &target_args {
+                cmd.args(target_args);
+            }
+
+            success &= cmd.status().expect("could not run rustc").success();
             assert!(success, "couldn't compile old");
 
-            success &= Command::new("rustc")
-                .args(&["--crate-type=lib", "-o", &new_rlib])
+            let mut cmd = Command::new("rustc");
+            cmd.args(&["--crate-type=lib", "-o", &new_rlib])
                 .arg(path.join("new.rs"))
                 .env("RUST_BACKTRACE", "full")
-                .stdin(Stdio::null())
-                .status()
-                .expect("could not run rustc")
-                .success();
+                .stdin(Stdio::null());
+
+            if let Ok(target_args) = &target_args {
+                cmd.args(target_args);
+            }
+
+            success &= cmd.status().expect("could not run rustc").success();
 
             assert!(success, "couldn't compile new");
 
-            success &= Command::new(
+            let mut cmd = Command::new(
                 Path::new(".")
                     .join("target")
                     .join("debug")
                     .join("rust-semverver")
                     .to_str()
                     .unwrap(),
-            )
-            .args(&[
+            );
+            cmd.args(&[
                 "--crate-type=lib",
                 "-Zverbose",
                 "--extern",
@@ -65,10 +72,16 @@ mod features {
             .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
             .stdin(Stdio::null())
             .stdout(Stdio::from(stdout))
-            .stderr(Stdio::from(stderr))
-            .status()
-            .expect("could not run rust-semverver")
-            .success();
+            .stderr(Stdio::from(stderr));
+
+            if let Ok(target_args) = &target_args {
+                cmd.args(target_args);
+            }
+
+            success &= cmd
+                .status()
+                .expect("could not run rust-semverver")
+                .success();
 
             assert!(success, "rust-semverver");
 

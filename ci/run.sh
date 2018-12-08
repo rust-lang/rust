@@ -9,6 +9,18 @@ export RUST_BACKTRACE=full
 cargo build
 cargo test --verbose -- --nocapture
 
+case "${TRAVIS_OS_NAME}" in
+    *"linux"*)
+        TEST_TARGET=x86_64-unknown-linux-gnu cargo test --verbose -- --nocapture
+        ;;
+    *"windows"*)
+        TEST_TARGET=x86_64-pc-windows-msvc cargo test --verbose -- --nocapture
+        ;;
+    *"macos"*)
+        TEST_TARGET=x86_64-apple-darwin cargo test --verbose -- --nocapture
+        ;;
+esac
+
 # install
 mkdir -p ~/rust/cargo/bin
 cp target/debug/cargo-semver ~/rust/cargo/bin
