@@ -530,7 +530,6 @@ pub fn handle_hover(
     Ok(None)
 }
 
-
 /// Test doc comment
 pub fn handle_prepare_rename(
     world: ServerWorld,

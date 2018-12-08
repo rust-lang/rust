@@ -326,7 +326,9 @@ impl AnalysisImpl {
     pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
         let file = self.db.source_file(file_id);
         let result = match (symbol.description(&file), symbol.docs(&file)) {
-            (Some(desc), Some(docs)) => Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs),
+            (Some(desc), Some(docs)) => {
+                Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
+            }
             (Some(desc), None) => Some("```rust\n".to_string() + &*desc + "\n```"),
             (None, Some(docs)) => Some(docs),
             _ => None,
