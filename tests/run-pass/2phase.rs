@@ -1,0 +1,70 @@
+#![feature(nll)]
+
+trait S: Sized {
+    fn tpb(&mut self, _s: Self) {}
+}
+
+impl S for i32 {}
+
+fn two_phase1() {
+    let mut x = 3;
+    x.tpb(x);
+}
+
+fn two_phase2() {
+    let mut v = vec![];
+    v.push(v.len());
+}
+
+/*
+fn two_phase_overlapping1() {
+    let mut x = vec![];
+    let p = &x;
+    x.push(p.len());
+}
+
+fn two_phase_overlapping2() {
+    use std::ops::AddAssign;
+    let mut x = 1;
+    let l = &x;
+    x.add_assign(x + *l);
+}
+*/
+
+fn match_two_phase() {
+    let mut x = 3;
+    match x {
+        ref mut y if { let _val = x; let _val = *y; true } => {},
+        _ => (),
+    }
+}
+
+fn with_interior_mutability() {
+    use std::cell::Cell;
+
+    trait Thing: Sized {
+        fn do_the_thing(&mut self, _s: i32) {}
+    }
+
+    impl<T> Thing for Cell<T> {}
+
+    let mut x = Cell::new(1);
+    let l = &x;
+    x
+        .do_the_thing({
+            x.set(3);
+            l.set(4);
+            x.get() + l.get()
+        })
+    ;
+}
+
+fn main() {
+    two_phase1();
+    two_phase2();
+    match_two_phase();
+    with_interior_mutability();
+    //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
+    //two_phase_overlapping1();
+    //two_phase_overlapping2();
+}

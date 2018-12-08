@@ -8,7 +8,7 @@ use rustc::hir::{Mutability, MutMutable, MutImmutable};
 use crate::{
     EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
-    Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
+    Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
 pub type Timestamp = u64;
@@ -539,7 +539,7 @@ pub trait EvalContextExt<'tcx> {
         size: Size,
         fn_barrier: bool,
         new_bor: Borrow
-    ) -> EvalResult<'tcx, Pointer<Borrow>>;
+    ) -> EvalResult<'tcx>;
 
     /// Retag an indidual pointer, returning the retagged version.
     fn retag_reference(
@@ -547,11 +547,13 @@ pub trait EvalContextExt<'tcx> {
         ptr: ImmTy<'tcx, Borrow>,
         mutbl: Mutability,
         fn_barrier: bool,
+        two_phase: bool,
     ) -> EvalResult<'tcx, Immediate<Borrow>>;
 
     fn retag(
         &mut self,
         fn_entry: bool,
+        two_phase: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx>;
 
@@ -649,9 +651,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         size: Size,
         fn_barrier: bool,
         new_bor: Borrow
-    ) -> EvalResult<'tcx, Pointer<Borrow>> {
+    ) -> EvalResult<'tcx> {
         let ptr = place.ptr.to_ptr()?;
-        let new_ptr = Pointer::new_with_tag(ptr.alloc_id, ptr.offset, new_bor);
         let barrier = if fn_barrier { Some(self.frame().extra) } else { None };
         trace!("reborrow: Creating new reference for {:?} (pointee {}): {:?}",
             ptr, place.layout.ty, new_bor);
@@ -671,7 +672,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             let kind = if new_bor.is_unique() { RefKind::Unique } else { RefKind::Raw };
             alloc.extra.reborrow(ptr, size, barrier, new_bor, kind)?;
         }
-        Ok(new_ptr)
+        Ok(())
     }
 
     fn retag_reference(
@@ -679,6 +680,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         val: ImmTy<'tcx, Borrow>,
         mutbl: Mutability,
         fn_barrier: bool,
+        two_phase: bool,
     ) -> EvalResult<'tcx, Immediate<Borrow>> {
         // We want a place for where the ptr *points to*, so we get one.
         let place = self.ref_to_mplace(val)?;
@@ -698,16 +700,25 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         };
 
         // Reborrow.
-        let new_ptr = self.reborrow(place, size, fn_barrier, new_bor)?;
+        self.reborrow(place, size, fn_barrier, new_bor)?;
+        let new_place = place.with_tag(new_bor);
+        // Handle two-phase borrows.
+        if two_phase {
+            assert!(mutbl == MutMutable, "two-phase shared borrows make no sense");
+            // We immediately share it, to allow read accesses
+            let two_phase_time = self.machine.stacked_borrows.increment_clock();
+            let two_phase_bor = Borrow::Shr(Some(two_phase_time));
+            self.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
+        }
 
-        // Return new ptr
-        let new_place = MemPlace { ptr: Scalar::Ptr(new_ptr), ..*place };
+        // Return new ptr.
         Ok(new_place.to_ref())
     }
 
     fn retag(
         &mut self,
         fn_entry: bool,
+        two_phase: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
         // Determine mutability and whether to add a barrier.
@@ -730,19 +741,20 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         if let Some((mutbl, barrier)) = qualify(place.layout.ty, fn_entry) {
             // fast path
             let val = self.read_immediate(self.place_to_op(place)?)?;
-            let val = self.retag_reference(val, mutbl, barrier)?;
+            let val = self.retag_reference(val, mutbl, barrier, two_phase)?;
             self.write_immediate(val, place)?;
             return Ok(());
         }
         let place = self.force_allocation(place)?;
 
-        let mut visitor = RetagVisitor { ecx: self, fn_entry };
+        let mut visitor = RetagVisitor { ecx: self, fn_entry, two_phase };
         visitor.visit_value(place)?;
 
         // The actual visitor
         struct RetagVisitor<'ecx, 'a, 'mir, 'tcx> {
             ecx: &'ecx mut MiriEvalContext<'a, 'mir, 'tcx>,
             fn_entry: bool,
+            two_phase: bool,
         }
         impl<'ecx, 'a, 'mir, 'tcx>
             MutValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
@@ -763,7 +775,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
                 // making it useless.
                 if let Some((mutbl, barrier)) = qualify(place.layout.ty, self.fn_entry) {
                     let val = self.ecx.read_immediate(place.into())?;
-                    let val = self.ecx.retag_reference(val, mutbl, barrier)?;
+                    let val = self.ecx.retag_reference(val, mutbl, barrier, self.two_phase)?;
                     self.ecx.write_immediate(val, place.into())?;
                 }
                 Ok(())

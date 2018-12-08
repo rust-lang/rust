@@ -47,7 +47,7 @@ pub fn run(filename: &str, bencher: &mut Bencher) {
         let (entry_node_id, _, _) = state.session.entry_fn.borrow().expect(
             "no main or start function found",
         );
-        let entry_def_id = tcx.hir.local_def_id(entry_node_id);
+        let entry_def_id = tcx.hir().local_def_id(entry_node_id);
 
         bencher.borrow_mut().iter(|| {
             eval_main(tcx, entry_def_id, false);
