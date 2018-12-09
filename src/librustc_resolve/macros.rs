@@ -828,7 +828,7 @@ impl<'a> Resolver<'a> {
             // but its `Def` should coincide with a crate passed with `--extern`
             // (otherwise there would be ambiguity) and we can skip feature error in this case.
             'ok: {
-                if !is_import || self.session.features_untracked().uniform_paths {
+                if !is_import || (!rust_2015 && self.session.features_untracked().uniform_paths) {
                     break 'ok;
                 }
                 if ns == TypeNS && use_prelude && self.extern_prelude_get(ident, true).is_some() {
@@ -844,10 +844,15 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                let msg = "imports can only refer to extern crate names \
-                           passed with `--extern` on stable channel";
+                let reason = if rust_2015 {
+                    "in macros originating from 2015 edition"
+                } else {
+                    "on stable channel"
+                };
+                let msg = format!("imports can only refer to extern crate names \
+                                   passed with `--extern` {}", reason);
                 let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
-                                          ident.span, GateIssue::Language, msg);
+                                          ident.span, GateIssue::Language, &msg);
 
                 let what = self.binding_description(binding, ident,
                                                     flags.contains(Flags::MISC_FROM_PRELUDE));

@@ -1,4 +1,4 @@
-error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
+error[E0658]: imports can only refer to extern crate names passed with `--extern` in macros originating from 2015 edition (see issue #53130)
   --> <::edition_imports_2015::gen_gated macros>:1:50
    |
 LL | (  ) => { fn check_gated (  ) { enum E { A } use E :: * ; } }
