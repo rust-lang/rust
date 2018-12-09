@@ -112,10 +112,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
 fn install_rustfmt() -> Result<()> {
     run(&format!("rustup install {}", TOOLCHAIN), ".")?;
     run(
-        &format!(
-            "rustup component add rustfmt-preview --toolchain {}",
-            TOOLCHAIN
-        ),
+        &format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN),
         ".",
     )
 }
