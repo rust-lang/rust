@@ -20,7 +20,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
                 return LocalEdit {
                     edit: EditBuilder::new().finish(),
                     cursor_position: None,
-                }
+                };
             }
             Some(pos) => pos,
         };

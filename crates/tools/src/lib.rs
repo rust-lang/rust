@@ -1,7 +1,11 @@
 use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    fs::OpenOptions,
+    io::{Write, Error, ErrorKind}
 };
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 use failure::bail;
 use itertools::Itertools;
@@ -39,7 +43,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
         let (start_line, name) = loop {
             match block.next() {
                 Some((idx, line)) if line.starts_with("test ") => {
-                    break (idx, line["test ".len()..].to_string())
+                    break (idx, line["test ".len()..].to_string());
                 }
                 Some(_) => (),
                 None => continue 'outer,
@@ -115,4 +119,27 @@ fn install_rustfmt() -> Result<()> {
         &format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN),
         ".",
     )
+}
+
+pub fn install_format_hook() -> Result<()> {
+    let path = Path::new("./.git/hooks/pre-commit");
+    if !path.exists() {
+        let mut open_options = OpenOptions::new();
+        #[cfg(unix)]
+        {
+            // Set as executable
+            open_options.mode(0o770);
+        }
+        let mut file = open_options.write(true).create(true).open(path)?;
+        write!(
+            file,
+            r#"#!/bin/sh
+
+cargo format
+git update-index --add ."#
+        )?;
+    } else {
+        return Err(Error::new(ErrorKind::AlreadyExists, "Git hook already created").into());
+    }
+    Ok(())
 }
