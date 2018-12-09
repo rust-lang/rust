@@ -1001,6 +1001,8 @@ fn test_cycle() {
     let mut it = (0..).step_by(1).take(0).cycle();
     assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
+
+    assert_eq!(empty::<i32>().cycle().fold(0, |acc, x| acc + x), 0);
 }
 
 #[test]

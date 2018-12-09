@@ -649,6 +649,19 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
             _ => (usize::MAX, None)
         }
     }
+
+    #[inline]
+    fn try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R where
+        Self: Sized, F: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+    {
+        let mut accum = init;
+        while let Some(x) = self.iter.next() {
+            accum = f(accum, x)?;
+            accum = self.iter.try_fold(accum, &mut f)?;
+            self.iter = self.orig.clone();
+        }
+        Try::from_ok(accum)
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1855,18 +1868,11 @@ impl<I: Iterator> Iterator for Peekable<I> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        // FIXME(#43234): merge these when borrow-checking gets better.
-        if n == 0 {
-            match self.peeked.take() {
-                Some(v) => v,
-                None => self.iter.nth(n),
-            }
-        } else {
-            match self.peeked.take() {
-                Some(None) => None,
-                Some(Some(_)) => self.iter.nth(n - 1),
-                None => self.iter.nth(n),
-            }
+        match self.peeked.take() {
+            Some(None) => None,
+            Some(v @ Some(_)) if n == 0 => v,
+            Some(Some(_)) => self.iter.nth(n - 1),
+            None => self.iter.nth(n),
         }
     }
 
@@ -1965,14 +1971,8 @@ impl<I: Iterator> Peekable<I> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&mut self) -> Option<&I::Item> {
-        if self.peeked.is_none() {
-            self.peeked = Some(self.iter.next());
-        }
-        match self.peeked {
-            Some(Some(ref value)) => Some(value),
-            Some(None) => None,
-            _ => unreachable!(),
-        }
+        let iter = &mut self.iter;
+        self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
 }
 
@@ -2109,8 +2109,12 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.size_hint();
-        (0, upper) // can't know a lower bound, due to the predicate
+        if self.flag {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper) // can't know a lower bound, due to the predicate
+        }
     }
 
     #[inline]
@@ -2321,6 +2325,10 @@ impl<I> Iterator for Take<I> where I: Iterator{
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.n == 0 {
+            return (0, Some(0));
+        }
+
         let (lower, upper) = self.iter.size_hint();
 
         let lower = cmp::min(lower, self.n);
