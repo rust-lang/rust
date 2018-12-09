@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use check::{FnCtxt, Expectation, Diverges, Needs};
+use check::coercion::CoerceMany;
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -15,17 +17,15 @@ use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable};
-use check::{FnCtxt, Expectation, Diverges, Needs};
-use check::coercion::CoerceMany;
-use util::nodemap::FxHashMap;
-
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::cmp;
 use syntax::ast;
 use syntax::source_map::Spanned;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
+use util::nodemap::FxHashMap;
+
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::cmp;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// The `is_arg` argument indicates whether this pattern is the
@@ -545,7 +545,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         // the "discriminant type" (issue #23116).
         //
         // arielb1 [writes here in this comment thread][c] that there
-        // is certainly *some* potential danger, e.g. for an example
+        // is certainly *some* potential danger, e.g., for an example
         // like:
         //
         // [c]: https://github.com/rust-lang/rust/pull/43399#discussion_r130223956
@@ -729,10 +729,10 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             return self.tcx.types.err;
         };
 
-        // Type check the path.
+        // Type-check the path.
         self.demand_eqtype(pat.span, expected, pat_ty);
 
-        // Type check subpatterns.
+        // Type-check subpatterns.
         if self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc, def_bm) {
             pat_ty
         } else {
@@ -750,7 +750,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             span_err!(tcx.sess, pat.span, E0533,
                       "expected unit struct/variant or constant, found {} `{}`",
                       def.kind_name(),
-                      hir::print::to_string(&tcx.hir, |s| s.print_qpath(qpath, false)));
+                      hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
         };
 
         // Resolve the path and check the definition for errors.
@@ -771,7 +771,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             _ => bug!("unexpected pattern definition: {:?}", def)
         }
 
-        // Type check the path.
+        // Type-check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id).0;
         self.demand_suptype(pat.span, expected, pat_ty);
         pat_ty
@@ -794,7 +794,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let report_unexpected_def = |def: Def| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
                               def.kind_name(),
-                              hir::print::to_string(&tcx.hir, |s| s.print_qpath(qpath, false)));
+                              hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
                 .span_label(pat.span, "not a tuple variant or struct").emit();
             on_error();
@@ -808,7 +808,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             return self.tcx.types.err;
         }
 
-        // Type check the path.
+        // Type-check the path.
         let (pat_ty, def) = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
         if !pat_ty.is_fn() {
             report_unexpected_def(def);
@@ -838,7 +838,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         self.demand_eqtype(pat.span, expected, pat_ty);
 
-        // Type check subpatterns.
+        // Type-check subpatterns.
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
             let substs = match pat_ty.sty {

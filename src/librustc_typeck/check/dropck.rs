@@ -32,7 +32,7 @@ use syntax_pos::Span;
 ///    coherence),
 ///
 /// 2. The generic region/type parameters of the impl's self-type must
-///    all be parameters of the Drop impl itself (i.e. no
+///    all be parameters of the Drop impl itself (i.e., no
 ///    specialization like `impl Drop for Foo<i32>`), and,
 ///
 /// 3. Any bounds on the generic parameters must be reflected in the
@@ -80,7 +80,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
 ) -> Result<(), ErrorReported> {
-    let drop_impl_node_id = tcx.hir.as_local_node_id(drop_impl_did).unwrap();
+    let drop_impl_node_id = tcx.hir().as_local_node_id(drop_impl_did).unwrap();
 
     // check that the impl type can be made to match the trait type.
 
@@ -180,7 +180,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     //
     //     self_to_impl_substs = {'c => 'z, 'b => 'y, 'a => 'x}
     //
-    // Applying this to the predicates (i.e. assumptions) provided by the item
+    // Applying this to the predicates (i.e., assumptions) provided by the item
     // definition yields the instantiated assumptions:
     //
     //     ['y : 'z]
@@ -194,7 +194,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    let self_type_node_id = tcx.hir.as_local_node_id(self_type_did).unwrap();
+    let self_type_node_id = tcx.hir().as_local_node_id(self_type_did).unwrap();
 
     let drop_impl_span = tcx.def_span(drop_impl_did);
 
@@ -226,7 +226,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.hir.span(self_type_node_id);
+            let item_span = tcx.hir().span(self_type_node_id);
             struct_span_err!(
                 tcx.sess,
                 drop_impl_span,

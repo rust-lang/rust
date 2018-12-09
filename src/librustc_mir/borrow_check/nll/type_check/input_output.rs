@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // If the user explicitly annotated the input types, extract
         // those.
         //
-        // e.g. `|x: FxHashMap<_, &'static u32>| ...`
+        // e.g., `|x: FxHashMap<_, &'static u32>| ...`
         let user_provided_sig;
         if !self.tcx().is_closure(self.mir_def_id) {
             user_provided_sig = None;
@@ -50,7 +50,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 None => None,
                 Some(user_provided_poly_sig) => {
                     // Instantiate the canonicalized variables from
-                    // user-provided signature (e.g. the `_` in the code
+                    // user-provided signature (e.g., the `_` in the code
                     // above) with fresh variables.
                     let (poly_sig, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
                         mir.span,

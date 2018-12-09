@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/trait-alias-wf.rs:15:1
    |
-LL | trait B<T> = A<T>; // T cannot be unbounded
+LL | trait B<T> = A<T>; //~ ERROR `T: Foo` is not satisfied
    | ^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
    |
    = help: consider adding a `where T: Foo` bound

@@ -215,7 +215,7 @@ pub const FDIO_SPAWN_ACTION_TRANSFER_FD: u32 = 0x0002;
 // and has a closed remote end will return ERR_REMOTE_CLOSED.
 #[allow(unused)] pub const ERR_SHOULD_WAIT: zx_status_t = -22;
 
-// ERR_CANCELED: The in-progress operation (e.g. a wait) has been
+// ERR_CANCELED: The in-progress operation (e.g., a wait) has been
 // // canceled.
 #[allow(unused)] pub const ERR_CANCELED: zx_status_t = -23;
 

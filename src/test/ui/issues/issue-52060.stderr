@@ -10,7 +10,7 @@ error: `core::slice::<impl [T]>::len` is not yet stable as a const fn
 LL | static B: [u32; 1] = [0; A.len()];
    |                          ^^^^^^^
    |
-   = help: in Nightly builds, add `#![feature(const_slice_len)]` to the crate attributes to enable
+   = help: add `#![feature(const_slice_len)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

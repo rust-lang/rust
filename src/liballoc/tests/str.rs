@@ -1005,7 +1005,7 @@ fn test_escape_debug() {
     // Note that there are subtleties with the number of backslashes
     // on the left- and right-hand sides. In particular, Unicode code points
     // are usually escaped with two backslashes on the right-hand side, as
-    // they are escaped. However, when the character is unescaped (e.g. for
+    // they are escaped. However, when the character is unescaped (e.g., for
     // printable characters), only a single backslash appears (as the character
     // itself appears in the debug string).
     assert_eq!("abc".escape_debug(), "abc");
@@ -1378,7 +1378,7 @@ fn test_bool_from_str() {
 fn check_contains_all_substrings(s: &str) {
     assert!(s.contains(""));
     for i in 0..s.len() {
-        for j in i+1..s.len() + 1 {
+        for j in i+1..=s.len() {
             assert!(s.contains(&s[i..j]));
         }
     }

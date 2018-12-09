@@ -780,43 +780,42 @@ macro_rules! options {
     }
 
     pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
-    pub const $stat: &'static [(&'static str, $setter_name,
-                                Option<&'static str>, &'static str)] =
+    pub const $stat: &[(&str, $setter_name, Option<&str>, &str)] =
         &[ $( (stringify!($opt), $mod_set::$opt, $mod_desc::$parse, $desc) ),* ];
 
     #[allow(non_upper_case_globals, dead_code)]
     mod $mod_desc {
-        pub const parse_bool: Option<&'static str> = None;
-        pub const parse_opt_bool: Option<&'static str> =
+        pub const parse_bool: Option<&str> = None;
+        pub const parse_opt_bool: Option<&str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
-        pub const parse_string: Option<&'static str> = Some("a string");
-        pub const parse_string_push: Option<&'static str> = Some("a string");
-        pub const parse_pathbuf_push: Option<&'static str> = Some("a path");
-        pub const parse_opt_string: Option<&'static str> = Some("a string");
-        pub const parse_opt_pathbuf: Option<&'static str> = Some("a path");
-        pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
-        pub const parse_opt_list: Option<&'static str> = Some("a space-separated list of strings");
-        pub const parse_uint: Option<&'static str> = Some("a number");
-        pub const parse_passes: Option<&'static str> =
+        pub const parse_string: Option<&str> = Some("a string");
+        pub const parse_string_push: Option<&str> = Some("a string");
+        pub const parse_pathbuf_push: Option<&str> = Some("a path");
+        pub const parse_opt_string: Option<&str> = Some("a string");
+        pub const parse_opt_pathbuf: Option<&str> = Some("a path");
+        pub const parse_list: Option<&str> = Some("a space-separated list of strings");
+        pub const parse_opt_list: Option<&str> = Some("a space-separated list of strings");
+        pub const parse_uint: Option<&str> = Some("a number");
+        pub const parse_passes: Option<&str> =
             Some("a space-separated list of passes, or `all`");
-        pub const parse_opt_uint: Option<&'static str> =
+        pub const parse_opt_uint: Option<&str> =
             Some("a number");
-        pub const parse_panic_strategy: Option<&'static str> =
+        pub const parse_panic_strategy: Option<&str> =
             Some("either `unwind` or `abort`");
-        pub const parse_relro_level: Option<&'static str> =
+        pub const parse_relro_level: Option<&str> =
             Some("one of: `full`, `partial`, or `off`");
-        pub const parse_sanitizer: Option<&'static str> =
+        pub const parse_sanitizer: Option<&str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
-        pub const parse_linker_flavor: Option<&'static str> =
+        pub const parse_linker_flavor: Option<&str> =
             Some(::rustc_target::spec::LinkerFlavor::one_of());
-        pub const parse_optimization_fuel: Option<&'static str> =
+        pub const parse_optimization_fuel: Option<&str> =
             Some("crate=integer");
-        pub const parse_unpretty: Option<&'static str> =
+        pub const parse_unpretty: Option<&str> =
             Some("`string` or `string=string`");
-        pub const parse_lto: Option<&'static str> =
+        pub const parse_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
                   `fat`, or omitted");
-        pub const parse_cross_lang_lto: Option<&'static str> =
+        pub const parse_cross_lang_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
     }
@@ -1273,7 +1272,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     arg_align_attributes: bool = (false, parse_bool, [TRACKED],
         "emit align metadata for reference arguments"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "dump MIR state at various points in transforms"),
+        "dump MIR state to file.
+        `val` is used to select which passes and functions to dump. For example:
+        `all` matches all passes and functions,
+        `foo` matches all passes for functions whose name contains 'foo',
+        `foo & ConstProp` only the 'ConstProp' pass for function names containing 'foo',
+        `foo | bar` all passes for function names containing 'foo' or 'bar'."),
+
     dump_mir_dir: String = (String::from("mir_dump"), parse_string, [UNTRACKED],
         "the directory the MIR is dumped into"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
@@ -1281,7 +1286,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
         "if set, exclude the pass number when dumping MIR (used in tests)"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
-        "emit Retagging MIR statements, interpreted e.g. by miri; implies -Zmir-opt-level=0"),
+        "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -1533,7 +1538,7 @@ impl RustcOptGroup {
 // adds extra rustc-specific metadata to each option; such metadata
 // is exposed by .  The public
 // functions below ending with `_u` are the functions that return
-// *unstable* options, i.e. options that are only enabled when the
+// *unstable* options, i.e., options that are only enabled when the
 // user also passes the `-Z unstable-options` debugging flag.
 mod opt {
     // The `fn opt_u` etc below are written so that we can use them
@@ -1756,8 +1761,8 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
         .into_iter()
         .map(|s| {
             let sess = parse::ParseSess::new(FilePathMapping::empty());
-            let mut parser =
-                parse::new_parser_from_source_str(&sess, FileName::CfgSpec, s.to_string());
+            let filename = FileName::cfg_spec_source_code(&s);
+            let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
 
             macro_rules! error {($reason: expr) => {
                 early_error(ErrorOutputType::default(),
@@ -2381,7 +2386,7 @@ impl fmt::Display for CrateType {
 /// tracking are hashed into a single value that determines whether the
 /// incremental compilation cache can be re-used or not. This hashing is done
 /// via the DepTrackingHash trait defined below, since the standard Hash
-/// implementation might not be suitable (e.g. arguments are stored in a Vec,
+/// implementation might not be suitable (e.g., arguments are stored in a Vec,
 /// the hash of which is order dependent, but we might not want the order of
 /// arguments to make a difference for the hash).
 ///

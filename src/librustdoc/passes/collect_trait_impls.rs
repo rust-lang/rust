@@ -127,8 +127,8 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
     // `tcx.crates()` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
     for &trait_did in cx.all_traits.iter() {
-        for &impl_node in cx.tcx.hir.trait_impls(trait_did) {
-            let impl_did = cx.tcx.hir.local_def_id(impl_node);
+        for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
+            let impl_did = cx.tcx.hir().local_def_id(impl_node);
             inline::build_impl(cx, impl_did, &mut new_items);
         }
     }
@@ -165,7 +165,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rc
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             if let (Some(node_id), Some(name)) =
-                (self.cx.tcx.hir.as_local_node_id(i.def_id), i.name.clone())
+                (self.cx.tcx.hir().as_local_node_id(i.def_id), i.name.clone())
             {
                 self.impls.extend(get_auto_traits_with_node_id(self.cx, node_id, name.clone()));
                 self.impls.extend(get_blanket_impls_with_node_id(self.cx, node_id, name));

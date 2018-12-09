@@ -182,9 +182,15 @@ a.test-arrow {
 	color: #999;
 }
 
+#crate-search {
+	color: #111;
+	background-color: #f0f0f0;
+	border-color: #000;
+}
+
 .search-input {
 	color: #111;
-	box-shadow: 0 0 0 1px #000, 0 0 0 2px transparent;
+	box-shadow: 1px 0 0 1px #000, 0 0 0 2px transparent;
 	background-color: #f0f0f0;
 }
 
@@ -285,7 +291,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: rgba(255,142,0,1);
 }
 
-.search-failed > a {
+.search-failed a {
 	color: #0089ff;
 }
 
@@ -415,4 +421,23 @@ kbd {
 
 .impl-items code {
 	background-color: rgba(0, 0, 0, 0);
+}
+
+#sidebar-toggle {
+	background-color: #565656;
+}
+#sidebar-toggle:hover {
+	background-color: #676767;
+}
+#source-sidebar {
+	background-color: #565656;
+}
+#source-sidebar > .title {
+	border-bottom-color: #ccc;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #444;
+}
+div.files > .selected {
+	background-color: #333;
 }

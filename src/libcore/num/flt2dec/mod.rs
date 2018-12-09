@@ -23,7 +23,7 @@ representation `V = 0.d[0..n-1] * 10^k` such that:
 - `d[0]` is non-zero.
 
 - It's correctly rounded when parsed back: `v - minus < V < v + plus`.
-  Furthermore it is shortest such one, i.e. there is no representation
+  Furthermore it is shortest such one, i.e., there is no representation
   with less than `n` digits that is correctly rounded.
 
 - It's closest to the original value: `abs(V - v) <= 10^(k-n) / 2`. Note that
@@ -398,7 +398,7 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 /// given number of fractional digits. The result is stored to the supplied parts
 /// array while utilizing given byte buffer as a scratch. `upper` is currently
 /// unused but left for the future decision to change the case of non-finite values,
-/// i.e. `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
+/// i.e., `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
 /// (which can be an empty string if no sign is rendered).
 ///
 /// `format_shortest` should be the underlying digit-generation function.
@@ -591,7 +591,7 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 /// given number of fractional digits. The result is stored to the supplied parts
 /// array while utilizing given byte buffer as a scratch. `upper` is currently
 /// unused but left for the future decision to change the case of non-finite values,
-/// i.e. `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
+/// i.e., `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
 /// (which can be an empty string if no sign is rendered).
 ///
 /// `format_exact` should be the underlying digit-generation function.

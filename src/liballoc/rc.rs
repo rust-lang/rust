@@ -276,7 +276,7 @@ struct RcBox<T: ?Sized> {
 /// See the [module-level documentation](./index.html) for more details.
 ///
 /// The inherent methods of `Rc` are all associated functions, which means
-/// that you have to call them as e.g. [`Rc::get_mut(&mut value)`][get_mut] instead of
+/// that you have to call them as e.g., [`Rc::get_mut(&mut value)`][get_mut] instead of
 /// `value.get_mut()`. This avoids conflicts with methods of the inner
 /// type `T`.
 ///
@@ -1187,8 +1187,9 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
-    /// Calling [`upgrade`][Weak::upgrade] on the return value always gives [`None`].
+    /// Calling [`upgrade`] on the return value always gives [`None`].
     ///
+    /// [`upgrade`]: #method.upgrade
     /// [`None`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
@@ -1251,7 +1252,7 @@ impl<T: ?Sized> Weak<T> {
     }
 
     /// Return `None` when the pointer is dangling and there is no allocated `RcBox`,
-    /// i.e. this `Weak` was created by `Weak::new`
+    /// i.e., this `Weak` was created by `Weak::new`
     #[inline]
     fn inner(&self) -> Option<&RcBox<T>> {
         if is_dangling(self.ptr) {
@@ -1259,6 +1260,52 @@ impl<T: ?Sized> Weak<T> {
         } else {
             Some(unsafe { self.ptr.as_ref() })
         }
+    }
+
+    /// Returns true if the two `Weak`s point to the same value (not just values
+    /// that compare as equal).
+    ///
+    /// # Notes
+    ///
+    /// Since this compares pointers it means that `Weak::new()` will equal each
+    /// other, even though they don't point to any value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_ptr_eq)]
+    /// use std::rc::{Rc, Weak};
+    ///
+    /// let first_rc = Rc::new(5);
+    /// let first = Rc::downgrade(&first_rc);
+    /// let second = Rc::downgrade(&first_rc);
+    ///
+    /// assert!(Weak::ptr_eq(&first, &second));
+    ///
+    /// let third_rc = Rc::new(5);
+    /// let third = Rc::downgrade(&third_rc);
+    ///
+    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// ```
+    ///
+    /// Comparing `Weak::new`.
+    ///
+    /// ```
+    /// #![feature(weak_ptr_eq)]
+    /// use std::rc::{Rc, Weak};
+    ///
+    /// let first = Weak::new();
+    /// let second = Weak::new();
+    /// assert!(Weak::ptr_eq(&first, &second));
+    ///
+    /// let third_rc = Rc::new(());
+    /// let third = Rc::downgrade(&third_rc);
+    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// ```
+    #[inline]
+    #[unstable(feature = "weak_ptr_eq", issue = "55981")]
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+        this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 

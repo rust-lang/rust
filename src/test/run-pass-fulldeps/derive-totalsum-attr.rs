@@ -11,7 +11,7 @@
 // aux-build:custom_derive_plugin_attr.rs
 // ignore-stage1
 
-#![feature(plugin, custom_derive, rustc_attrs)]
+#![feature(plugin, rustc_attrs)]
 #![plugin(custom_derive_plugin_attr)]
 
 trait TotalSum {

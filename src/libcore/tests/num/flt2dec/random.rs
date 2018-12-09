@@ -99,7 +99,7 @@ pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
     // this is of course very stressful (and thus should be behind an `#[ignore]` attribute),
     // but with `-C opt-level=3 -C lto` this only takes about an hour or so.
 
-    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e. all finite ranges
+    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e., all finite ranges
     let (npassed, nignored) = iterate("f32_exhaustive_equivalence_test",
                                       k, 0x7f7f_ffff, f, g, |i: usize| {
 

@@ -31,7 +31,7 @@
 // - D means "I implement Drop"
 //
 // - P means "I implement Drop but guarantee my (first) parameter is
-//     pure, i.e. not accessed from the destructor"; no other parameters
+//     pure, i.e., not accessed from the destructor"; no other parameters
 //     are pure.
 //
 // - S means "I do not implement Drop"

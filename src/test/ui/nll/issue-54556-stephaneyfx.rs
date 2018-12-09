@@ -24,7 +24,7 @@ impl<'stmt> Iterator for Rows<'stmt> {
 
 fn get_names() -> Option<String> {
     let stmt = Statement;
-    let rows = Rows(&stmt);
+    let rows = Rows(&stmt); //~ ERROR does not live long enough
     rows.map(|row| row).next()
     // let x = rows.map(|row| row).next();
     // x

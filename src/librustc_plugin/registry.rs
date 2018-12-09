@@ -60,8 +60,6 @@ pub struct Registry<'a> {
 
     #[doc(hidden)]
     pub attributes: Vec<(String, AttributeType)>,
-
-    whitelisted_custom_derives: Vec<ast::Name>,
 }
 
 impl<'a> Registry<'a> {
@@ -77,7 +75,6 @@ impl<'a> Registry<'a> {
             lint_groups: FxHashMap::default(),
             llvm_passes: vec![],
             attributes: vec![],
-            whitelisted_custom_derives: Vec::new(),
         }
     }
 
@@ -128,19 +125,6 @@ impl<'a> Registry<'a> {
             }
             _ => extension,
         }));
-    }
-
-    /// This can be used in place of `register_syntax_extension` to register legacy custom derives
-    /// (i.e. attribute syntax extensions whose name begins with `derive_`). Legacy custom
-    /// derives defined by this function do not trigger deprecation warnings when used.
-    pub fn register_custom_derive(&mut self, name: ast::Name, extension: SyntaxExtension) {
-        assert!(name.as_str().starts_with("derive_"));
-        self.whitelisted_custom_derives.push(name);
-        self.register_syntax_extension(name, extension);
-    }
-
-    pub fn take_whitelisted_custom_derives(&mut self) -> Vec<ast::Name> {
-        ::std::mem::replace(&mut self.whitelisted_custom_derives, Vec::new())
     }
 
     /// Register a macro of the usual kind.

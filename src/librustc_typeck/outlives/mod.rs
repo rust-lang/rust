@@ -35,11 +35,11 @@ fn inferred_outlives_of<'a, 'tcx>(
     item_def_id: DefId,
 ) -> Lrc<Vec<ty::Predicate<'tcx>>> {
     let id = tcx
-        .hir
+        .hir()
         .as_local_node_id(item_def_id)
         .expect("expected local def-id");
 
-    match tcx.hir.get(id) {
+    match tcx.hir().get(id) {
         Node::Item(item) => match item.node {
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
                 let crate_map = tcx.inferred_outlives_crate(LOCAL_CRATE);

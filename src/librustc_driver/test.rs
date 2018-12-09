@@ -10,13 +10,11 @@
 
 //! # Standalone Tests for the Inference Module
 
-use std::path::PathBuf;
-use std::sync::mpsc;
-
 use driver;
 use errors;
 use errors::emitter::Emitter;
 use errors::{DiagnosticBuilder, Level};
+use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -40,7 +38,8 @@ use syntax::source_map::{FileName, FilePathMapping, SourceMap};
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
 
-use rustc::hir;
+use std::path::PathBuf;
+use std::sync::mpsc;
 
 struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
@@ -98,7 +97,7 @@ fn errors(msgs: &[&str]) -> (Box<dyn Emitter + sync::Send>, usize) {
 
 fn test_env<F>(source_string: &str, args: (Box<dyn Emitter + sync::Send>, usize), body: F)
 where
-    F: FnOnce(Env),
+    F: FnOnce(Env) + sync::Send,
 {
     syntax::with_globals(|| {
         let mut options = config::Options::default();
@@ -129,7 +128,7 @@ fn test_env_with_pool<F>(
     let cstore = CStore::new(::get_codegen_backend(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
-        name: FileName::Anon,
+        name: FileName::anon_source_code(&source_string),
         input: source_string.to_string(),
     };
     let krate =
@@ -155,7 +154,7 @@ fn test_env_with_pool<F>(
     let arenas = ty::AllArenas::new();
     let hir_map = hir_map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
 
-    // run just enough stuff to build a tcx:
+    // Run just enough stuff to build a tcx.
     let (tx, _rx) = mpsc::channel();
     let outputs = OutputFilenames {
         out_directory: PathBuf::new(),
@@ -186,7 +185,7 @@ fn test_env_with_pool<F>(
                     param_env: param_env,
                 });
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
+                let def_id = tcx.hir().local_def_id(ast::CRATE_NODE_ID);
                 infcx.resolve_regions_and_report_errors(
                     def_id,
                     &region_scope_tree,
@@ -228,8 +227,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn create_simple_region_hierarchy(&mut self) {
-        // creates a region hierarchy where 1 is root, 10 and 11 are
-        // children of 1, etc
+        // Creates a region hierarchy where 1 is root, 10 and 11 are
+        // children of 1, etc.
 
         let dscope = region::Scope {
             id: hir::ItemLocalId::from_u32(1),
@@ -256,7 +255,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
     pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
-        return match search_mod(self, &self.infcx.tcx.hir.krate().module, 0, names) {
+        return match search_mod(self, &self.infcx.tcx.hir().krate().module, 0, names) {
             Some(id) => id,
             None => {
                 panic!("no item found: `{}`", names.join("::"));
@@ -271,7 +270,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         ) -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.item_ids {
-                let item = this.infcx.tcx.hir.expect_item(item.id);
+                let item = this.infcx.tcx.hir().expect_item(item.id);
                 if item.name.to_string() == names[idx] {
                     return search(this, item, idx + 1, names);
                 }
@@ -364,7 +363,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx
             .tcx
             .mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                def_id: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
+                def_id: self.infcx.tcx.hir().local_def_id(ast::CRATE_NODE_ID),
                 index,
                 name,
             }))
@@ -410,7 +409,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn re_free(&self, id: u32) -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReFree(ty::FreeRegion {
-            scope: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
+            scope: self.infcx.tcx.hir().local_def_id(ast::CRATE_NODE_ID),
             bound_region: ty::BrAnon(id),
         }))
     }
@@ -434,7 +433,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 obligations,
                 value: (),
             }) => {
-                // None of these tests should require nested obligations:
+                // None of these tests should require nested obligations.
                 assert!(obligations.is_empty());
             }
             Err(ref e) => {
@@ -476,7 +475,7 @@ fn contravariant_region_ptr_err() {
         env.assert_eq(t_rptr1, t_rptr1);
         env.assert_eq(t_rptr10, t_rptr10);
 
-        // will cause an error when regions are resolved
+        // This will cause an error when regions are resolved.
         env.make_subtype(t_rptr10, t_rptr1);
     })
 }
@@ -487,7 +486,7 @@ fn sub_free_bound_false() {
     //!
     //!     fn(&'a isize) <: for<'b> fn(&'b isize)
     //!
-    //! does NOT hold.
+    //! *does not* hold.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
         env.create_simple_region_hierarchy();
@@ -506,7 +505,7 @@ fn sub_bound_free_true() {
     //!
     //!     for<'a> fn(&'a isize) <: fn(&'b isize)
     //!
-    //! DOES hold.
+    //! *does* hold.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
         env.create_simple_region_hierarchy();
@@ -578,11 +577,11 @@ fn subst_ty_renumber_bound() {
 fn subst_ty_renumber_some_bounds() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
-        // Theta = [A -> &'a foo]
+        // `Theta = [A -> &'a foo]`
 
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
 
-        // t_source = (A, fn(A))
+        // `t_source = (A, fn(A))`
         let t_source = {
             let t_param = env.t_param(0);
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
@@ -591,9 +590,9 @@ fn subst_ty_renumber_some_bounds() {
         let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
-        // t_expected = (&'a isize, fn(&'a isize))
+        // `t_expected = (&'a isize, fn(&'a isize))`
         //
-        // but not that the Debruijn index is different in the different cases.
+        // However, note that the Debruijn index is different in the different cases.
         let t_expected = {
             let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
             env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
@@ -613,7 +612,7 @@ fn subst_ty_renumber_some_bounds() {
 fn escaping() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
         // Situation:
-        // Theta = [A -> &'a foo]
+        // `Theta = [A -> &'a foo]`
         env.create_simple_region_hierarchy();
 
         assert!(!env.t_nil().has_escaping_bound_vars());
@@ -627,7 +626,7 @@ fn escaping() {
         let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
         assert!(t_rptr_bound2.has_escaping_bound_vars());
 
-        // t_fn = fn(A)
+        // `t_fn = fn(A)`
         let t_param = env.t_param(0);
         assert!(!t_param.has_escaping_bound_vars());
         let t_fn = env.t_fn(&[t_param], env.t_nil());
@@ -642,7 +641,7 @@ fn subst_region_renumber_region() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let re_bound1 = env.re_late_bound_with_debruijn(1, d1());
 
-        // type t_source<'a> = fn(&'a isize)
+        // `type t_source<'a> = fn(&'a isize)`
         let t_source = {
             let re_early = env.re_early_bound(0, "'a");
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
@@ -651,7 +650,7 @@ fn subst_region_renumber_region() {
         let substs = env.infcx.tcx.intern_substs(&[re_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
-        // t_expected = fn(&'a isize)
+        // `t_expected = fn(&'a isize)`
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {

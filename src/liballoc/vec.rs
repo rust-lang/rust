@@ -213,7 +213,7 @@ use raw_vec::RawVec;
 /// about its design. This ensures that it's as low-overhead as possible in
 /// the general case, and can be correctly manipulated in primitive ways
 /// by unsafe code. Note that these guarantees refer to an unqualified `Vec<T>`.
-/// If additional type parameters are added (e.g. to support custom allocators),
+/// If additional type parameters are added (e.g., to support custom allocators),
 /// overriding their defaults may change the behavior.
 ///
 /// Most fundamentally, `Vec` is and always will be a (pointer, capacity, length)
@@ -613,7 +613,7 @@ impl<T> Vec<T> {
     /// vec.shrink_to(0);
     /// assert!(vec.capacity() >= 3);
     /// ```
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
     }

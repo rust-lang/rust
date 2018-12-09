@@ -1,7 +1,7 @@
 error[E0161]: cannot move a value of type [i32]: the size of [i32] cannot be statically determined
   --> $DIR/E0161.rs:32:9
    |
-LL |     box *x; //~ ERROR E0161
+LL |     box *x;
    |         ^^
 
 error: aborting due to previous error

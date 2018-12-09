@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // All lifetime parameters in struct constructors are currently considered early bound,
-// i.e. `S::<ARGS>` is interpreted kinda like an associated item `S::<ARGS>::ctor`.
+// i.e., `S::<ARGS>` is interpreted kinda like an associated item `S::<ARGS>::ctor`.
 // This behavior is a bit weird, because if equivalent constructor were written manually
 // it would get late bound lifetime parameters.
 // Variant constructors behave in the same way, lifetime parameters are considered

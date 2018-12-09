@@ -185,7 +185,7 @@ pub trait ArgTypeExt<'ll, 'tcx> {
 
 impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// Get the LLVM type for a place of the original Rust type of
-    /// this argument/return, i.e. the result of `type_of::type_of`.
+    /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         self.layout.llvm_type(cx)
     }

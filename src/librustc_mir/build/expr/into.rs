@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // must be handled above or else we get an
                     // infinite loop in the builder; see
-                    // e.g. `ExprKind::VarRef` above
+                    // e.g., `ExprKind::VarRef` above
                     Category::Place => false,
 
                     _ => true,

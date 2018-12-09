@@ -1,0 +1,14 @@
+error: item is named 'lintme'
+  --> $DIR/lint-plugin-deny-attr.rs:18:1
+   |
+LL | fn lintme() { } //~ ERROR item is named 'lintme'
+   | ^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-plugin-deny-attr.rs:16:9
+   |
+LL | #![deny(test_lint)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

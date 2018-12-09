@@ -16,8 +16,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fmt;
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -833,12 +832,6 @@ host_test!(RunFailFullDeps {
     suite: "run-fail-fulldeps"
 });
 
-host_test!(CompileFailFullDeps {
-    path: "src/test/compile-fail-fulldeps",
-    mode: "compile-fail",
-    suite: "compile-fail-fulldeps"
-});
-
 host_test!(Rustdoc {
     path: "src/test/rustdoc",
     mode: "rustdoc",
@@ -971,7 +964,7 @@ impl Step for Compiletest {
         }
 
         if builder.no_std(target) == Some(true) {
-            // for no_std run-make (e.g. thumb*),
+            // for no_std run-make (e.g., thumb*),
             // we need a host compiler which is called by cargo.
             builder.ensure(compile::Std { compiler, target: compiler.host });
         }
@@ -1277,7 +1270,7 @@ impl Step for DocTest {
 
     /// Run `rustdoc --test` for all documentation in `src/doc`.
     ///
-    /// This will run all tests in our markdown documentation (e.g. the book)
+    /// This will run all tests in our markdown documentation (e.g., the book)
     /// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
     /// `compiler`.
     fn run(self, builder: &Builder) {
@@ -1427,10 +1420,8 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool {
-    match File::open(markdown) {
-        Ok(mut file) => {
-            let mut contents = String::new();
-            t!(file.read_to_string(&mut contents));
+    match fs::read_to_string(markdown) {
+        Ok(contents) => {
             if !contents.contains("```") {
                 return true;
             }

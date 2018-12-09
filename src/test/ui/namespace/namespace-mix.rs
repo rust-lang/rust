@@ -26,7 +26,7 @@ mod c {
     pub struct Item;
 }
 
-// Use something emitting the type argument name, e.g. unsatisfied bound.
+// Use something emitting the type argument name, e.g., unsatisfied bound.
 trait Impossible {}
 fn check<T: Impossible>(_: T) {}
 

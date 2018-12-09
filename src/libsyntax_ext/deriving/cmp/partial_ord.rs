@@ -227,7 +227,7 @@ fn cs_op(less: bool,
     let fold = cs_fold1(false, // need foldr
         |cx, span, subexpr, self_f, other_fs| {
             // build up a series of `partial_cmp`s from the inside
-            // out (hence foldr) to get lexical ordering, i.e. for op ==
+            // out (hence foldr) to get lexical ordering, i.e., for op ==
             // `ast::lt`
             //
             // ```

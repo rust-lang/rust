@@ -13,7 +13,7 @@
 
 macro_rules! foo (
     () => (
-        #[derive_Clone] //~ ERROR attributes of the form
+        #[derive_Clone] //~ ERROR attribute `derive_Clone` is currently unknown
         struct T;
     );
 );
@@ -25,7 +25,7 @@ macro_rules! bar (
 foo!();
 
 bar!(
-    #[derive_Clone] //~ ERROR attributes of the form
+    #[derive_Clone] //~ ERROR attribute `derive_Clone` is currently unknown
     struct S;
 );
 

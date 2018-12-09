@@ -336,7 +336,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             //   the decision to region inference (and regionck, which will add
             //   some more edges to this variable). However, this can wind up
             //   creating a crippling number of variables in some cases --
-            //   e.g. #32278 -- so we optimize one particular case [3].
+            //   e.g., #32278 -- so we optimize one particular case [3].
             //   Let me try to explain with some examples:
             //   - The "running example" above represents the simple case,
             //     where we have one `&` reference at the outer level and
@@ -696,7 +696,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let b = self.shallow_resolve(b);
 
-        let node_id_a = self.tcx.hir.as_local_node_id(def_id_a).unwrap();
+        let node_id_a = self.tcx.hir().as_local_node_id(def_id_a).unwrap();
         match b.sty {
             ty::FnPtr(_) if self.tcx.with_freevars(node_id_a, |v| v.is_empty()) => {
                 // We coerce the closure, which has fn type
@@ -809,7 +809,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Special-case that coercion alone cannot handle:
         // Two function item types of differing IDs or Substs.
         if let (&ty::FnDef(..), &ty::FnDef(..)) = (&prev_ty.sty, &new_ty.sty) {
-            // Don't reify if the function types have a LUB, i.e. they
+            // Don't reify if the function types have a LUB, i.e., they
             // are the same function and their parameters have a LUB.
             let lub_ty = self.commit_if_ok(|_| {
                 self.at(cause, self.param_env)

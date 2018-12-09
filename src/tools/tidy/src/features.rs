@@ -20,7 +20,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
 
@@ -61,12 +61,9 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
     let mut contents = String::new();
 
-    super::walk_many(&[&path.join("test/ui-fulldeps"),
-                       &path.join("test/ui"),
-                       &path.join("test/compile-fail"),
-                       &path.join("test/compile-fail-fulldeps"),
-                       &path.join("test/parse-fail"),
-                       &path.join("test/ui"),],
+    super::walk_many(&[&path.join("test/ui"),
+                       &path.join("test/ui-fulldeps"),
+                       &path.join("test/compile-fail")],
                      &mut |path| super::filter_dirs(path),
                      &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
@@ -183,9 +180,7 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
 }
 
 pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
-    let mut contents = String::new();
-    let path = base_src_path.join("libsyntax/feature_gate.rs");
-    t!(t!(File::open(path)).read_to_string(&mut contents));
+    let contents = t!(fs::read_to_string(base_src_path.join("libsyntax/feature_gate.rs")));
 
     // we allow rustc-internal features to omit a tracking issue.
     // these features must be marked with `// rustc internal` in its own group.

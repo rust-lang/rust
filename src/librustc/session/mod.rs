@@ -586,7 +586,7 @@ impl Session {
         // either return `No` or `ThinLocal`.
 
         // If processing command line options determined that we're incompatible
-        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        // with ThinLTO (e.g., `-C lto --emit llvm-ir`) then return that option.
         if self.opts.cli_forced_thinlto_off {
             return config::Lto::No;
         }
@@ -826,7 +826,7 @@ impl Session {
     }
 
     pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        if self.opts.debugging_opts.self_profile {
+        if self.opts.debugging_opts.self_profile || self.opts.debugging_opts.profile_json {
             let mut profiler = self.self_profiling.borrow_mut();
             f(&mut profiler);
         }

@@ -128,10 +128,10 @@ use std::time::{UNIX_EPOCH, SystemTime, Duration};
 
 use rand::{RngCore, thread_rng};
 
-const LOCK_FILE_EXT: &'static str = ".lock";
-const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
-const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
-const QUERY_CACHE_FILENAME: &'static str = "query-cache.bin";
+const LOCK_FILE_EXT: &str = ".lock";
+const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
+const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
+const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 
 // We encode integers using the following base, so they are shorter than decimal
 // or hexadecimal numbers (we want short file and directory names). Since these
@@ -354,7 +354,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     }
 
     // State: "s-{timestamp}-{random-number}-"
-    let mut new_sub_dir_name = String::from(&old_sub_dir_name[.. dash_indices[2] + 1]);
+    let mut new_sub_dir_name = String::from(&old_sub_dir_name[..= dash_indices[2]]);
 
     // Append the svh
     base_n::push_str(svh.as_u64() as u128, INT_ENCODE_BASE, &mut new_sub_dir_name);
@@ -659,7 +659,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let mut session_directories = FxHashSet::default();
     let mut lock_files = FxHashSet::default();
 
-    for dir_entry in try!(crate_directory.read_dir()) {
+    for dir_entry in crate_directory.read_dir()? {
         let dir_entry = match dir_entry {
             Ok(dir_entry) => dir_entry,
             _ => {
@@ -887,7 +887,7 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
 /// into the '\\?\' format, which supports much longer paths.
 fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
     if p.exists() {
-        let canonicalized = try!(p.canonicalize());
+        let canonicalized = p.canonicalize()?;
         std_fs::remove_dir_all(canonicalized)
     } else {
         Ok(())
@@ -896,7 +896,7 @@ fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
     if p.exists() {
-        let canonicalized = try!(p.canonicalize());
+        let canonicalized = p.canonicalize()?;
         std_fs::remove_file(canonicalized)
     } else {
         Ok(())

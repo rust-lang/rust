@@ -12,6 +12,6 @@
 
 trait Foo {}
 trait A<T: Foo> {}
-trait B<T> = A<T>; // T cannot be unbounded
+trait B<T> = A<T>; //~ ERROR `T: Foo` is not satisfied
 
 fn main() {}

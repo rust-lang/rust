@@ -76,7 +76,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>)
 
 pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx) -> bool {
     let omit_gdb_pretty_printer_section =
-        attr::contains_name(&cx.tcx.hir.krate_attrs(),
+        attr::contains_name(&cx.tcx.hir().krate_attrs(),
                             "omit_gdb_pretty_printer_section");
 
     !omit_gdb_pretty_printer_section &&

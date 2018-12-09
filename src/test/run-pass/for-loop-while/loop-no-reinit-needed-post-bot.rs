@@ -15,7 +15,7 @@ struct S;
 // Ensure S is moved, not copied, on assignment.
 impl Drop for S { fn drop(&mut self) { } }
 
-// user-defined function "returning" bottom (i.e. no return at all).
+// user-defined function "returning" bottom (i.e., no return at all).
 fn my_panic() -> ! { loop {} }
 
 pub fn step(f: bool) {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// A vector type optimized for cases where this size is usually 0 (c.f. `SmallVector`).
+/// A vector type optimized for cases where this size is usually 0 (cf. `SmallVector`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
 /// which uses only a single (null) pointer.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // create binding start block for link them by false edges
         let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
-        let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
+        let pre_binding_blocks: Vec<_> = (0..=candidate_count)
             .map(|_| self.cfg.start_new_block())
             .collect();
 
@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
         // highest priority candidate comes first in the list.
-        // (i.e. same order as in source)
+        // (i.e., same order as in source)
 
         let candidates: Vec<_> = arms.iter()
             .enumerate()
@@ -470,7 +470,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
         let place = Place::Local(local_id);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
         place
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(
             span,
@@ -1384,7 +1384,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // Tricky business: For `ref id` and `ref mut id`
                     // patterns, we want `id` within the guard to
                     // correspond to a temp of type `& &T` or `& &mut
-                    // T` (i.e. a "borrow of a borrow") that is
+                    // T` (i.e., a "borrow of a borrow") that is
                     // implicitly dereferenced.
                     //
                     // To borrow a borrow, we need that inner borrow

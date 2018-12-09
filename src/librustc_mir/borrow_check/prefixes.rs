@@ -87,14 +87,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
     type Item = &'cx Place<'tcx>;
     fn next(&mut self) -> Option<Self::Item> {
-        let mut cursor = match self.next {
-            None => return None,
-            Some(place) => place,
-        };
+        let mut cursor = self.next?;
 
         // Post-processing `place`: Enqueue any remaining
         // work. Also, `place` may not be a prefix itself, but
-        // may hold one further down (e.g. we never return
+        // may hold one further down (e.g., we never return
         // downcasts here, but may return a base of a downcast).
 
         'cursor: loop {

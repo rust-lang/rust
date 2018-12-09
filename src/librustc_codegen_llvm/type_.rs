@@ -255,7 +255,7 @@ impl Type {
         }
     }
 
-    // Creates an integer type with the given number of bits, e.g. i24
+    // Creates an integer type with the given number of bits, e.g., i24
     pub fn ix_llcx(
         llcx: &llvm::Context,
         num_bits: u64

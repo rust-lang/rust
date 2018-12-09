@@ -64,7 +64,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
             p.pop();
 
             // on some installations the dir is named after the hex of the char
-            // (e.g. macOS)
+            // (e.g., macOS)
             p.push(&format!("{:x}", first_char as usize));
             p.push(term);
             if fs::metadata(&p).is_ok() {
@@ -79,7 +79,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
 #[ignore(reason = "buildbots don't have ncurses installed and I can't mock everything I need")]
 fn test_get_dbpath_for_term() {
     // woefully inadequate test coverage
-    // note: current tests won't work with non-standard terminfo hierarchies (e.g. macOS's)
+    // note: current tests won't work with non-standard terminfo hierarchies (e.g., macOS's)
     use std::env;
     // FIXME (#9639): This needs to handle non-utf8 paths
     fn x(t: &str) -> String {

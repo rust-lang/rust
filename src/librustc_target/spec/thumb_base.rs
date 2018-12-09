@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// These 4 `thumbv*` targets cover the ARM Cortex-M family of processors which are widely used in
+// These `thumbv*` targets cover the ARM Cortex-M family of processors which are widely used in
 // microcontrollers. Namely, all these processors:
 //
 // - Cortex-M0
@@ -17,8 +17,10 @@
 // - Cortex-M3
 // - Cortex-M4(F)
 // - Cortex-M7(F)
+// - Cortex-M23
+// - Cortex-M33
 //
-// We have opted for 4 targets instead of one target per processor (e.g. `cortex-m0`, `cortex-m3`,
+// We have opted for these instead of one target per processor (e.g., `cortex-m0`, `cortex-m3`,
 // etc) because the differences between some processors like the cortex-m0 and cortex-m1 are almost
 // non-existent from the POV of codegen so it doesn't make sense to have separate targets for them.
 // And if differences exist between two processors under the same target, rustc flags can be used to

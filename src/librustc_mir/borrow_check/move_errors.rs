@@ -40,7 +40,7 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 #[derive(Debug)]
 enum GroupedMoveError<'tcx> {
     // Place expression can't be moved from,
-    // e.g. match x[0] { s => (), } where x: &[String]
+    // e.g., match x[0] { s => (), } where x: &[String]
     MovesFromPlace {
         original_path: Place<'tcx>,
         span: Span,
@@ -49,7 +49,7 @@ enum GroupedMoveError<'tcx> {
         binds_to: Vec<Local>,
     },
     // Part of a value expression can't be moved from,
-    // e.g. match &String::new() { &x => (), }
+    // e.g., match &String::new() { &x => (), }
     MovesFromValue {
         original_path: Place<'tcx>,
         span: Span,
@@ -319,8 +319,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                         let upvar_hir_id =
                                             upvar_decl.var_hir_id.assert_crate_local();
                                         let upvar_node_id =
-                                            self.infcx.tcx.hir.hir_to_node_id(upvar_hir_id);
-                                        let upvar_span = self.infcx.tcx.hir.span(upvar_node_id);
+                                            self.infcx.tcx.hir().hir_to_node_id(upvar_hir_id);
+                                        let upvar_span = self.infcx.tcx.hir().span(upvar_node_id);
                                         diag.span_label(upvar_span, "captured outer variable");
                                         break;
                                     }

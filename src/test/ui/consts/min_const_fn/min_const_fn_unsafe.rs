@@ -8,23 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-min_const_unsafe_fn
+
 // ok
-const unsafe fn foo4() -> i32 { 42 }
-const unsafe fn foo5<T>() -> *const T { 0 as *const T }
-const unsafe fn foo6<T>() -> *mut T { 0 as *mut T }
+const unsafe fn ret_i32_no_unsafe() -> i32 { 42 }
+const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { 0 as *const T }
+const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { 0 as *mut T }
 const fn no_unsafe() { unsafe {} }
 
 // not ok
-const fn foo8() -> i32 {
-    unsafe { foo4() } //~ ERROR unsafe operations are not allowed in const fn
+const fn call_unsafe_const_fn() -> i32 {
+    unsafe { ret_i32_no_unsafe() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
 }
-const fn foo9() -> *const String {
-    unsafe { foo5::<String>() } //~ ERROR unsafe operations are not allowed in const fn
+const fn call_unsafe_generic_const_fn() -> *const String {
+    unsafe { ret_null_ptr_no_unsafe::<String>() }
+    //~^ ERROR calls to `const unsafe fn` in const fns are unstable
 }
-const fn foo10() -> *const Vec<std::cell::Cell<u32>> {
-    unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR not allowed in const fn
+const fn call_unsafe_generic_cell_const_fn() -> *const Vec<std::cell::Cell<u32>> {
+    unsafe { ret_null_mut_ptr_no_unsafe::<Vec<std::cell::Cell<u32>>>() }
+    //~^ ERROR calls to `const unsafe fn` in const fns
 }
-const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
 //~^ dereferencing raw pointers in constant functions
 
 fn main() {}

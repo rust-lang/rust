@@ -16,7 +16,7 @@ use super::*;
 use super::client::HandleStore;
 
 /// Declare an associated item of one of the traits below, optionally
-/// adjusting it (i.e. adding bounds to types and default bodies to methods).
+/// adjusting it (i.e., adding bounds to types and default bodies to methods).
 macro_rules! associated_item {
     (type TokenStream) =>
         (type TokenStream: 'static + Clone;);

@@ -61,9 +61,9 @@ mod fpu_precision {
     ///
     /// The only field which is relevant for the following code is PC, Precision Control. This
     /// field determines the precision of the operations performed by the  FPU. It can be set to:
-    ///  - 0b00, single precision i.e. 32-bits
-    ///  - 0b10, double precision i.e. 64-bits
-    ///  - 0b11, double extended precision i.e. 80-bits (default state)
+    ///  - 0b00, single precision i.e., 32-bits
+    ///  - 0b10, double precision i.e., 64-bits
+    ///  - 0b11, double extended precision i.e., 80-bits (default state)
     /// The 0b01 value is reserved and should not be used.
     pub struct FPUControlWord(u16);
 

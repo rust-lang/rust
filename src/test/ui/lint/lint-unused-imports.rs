@@ -81,7 +81,7 @@ fn g() {
     }
 }
 
-// c.f. issue #35135
+// cf. issue #35135.
 #[allow(unused_variables)]
 fn h() {
     use test2::foo; //~ ERROR unused import: `test2::foo`

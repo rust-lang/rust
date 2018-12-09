@@ -117,7 +117,7 @@ impl OsStringExt for OsString {
 /// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStrExt {
-    /// Re-encodes an `OsStr` as a wide character sequence, i.e. potentially
+    /// Re-encodes an `OsStr` as a wide character sequence, i.e., potentially
     /// ill-formed UTF-16.
     ///
     /// This is lossless: calling [`OsString::from_wide`] and then

@@ -137,7 +137,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
     let id = tcx
-        .hir
+        .hir()
         .as_local_node_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
@@ -173,7 +173,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
 
-    let locals_are_invalidated_at_exit = match tcx.hir.body_owner_kind(id) {
+    let locals_are_invalidated_at_exit = match tcx.hir().body_owner_kind(id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
             hir::BodyOwnerKind::Fn => true,
     };
@@ -229,7 +229,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
-    let movable_generator = match tcx.hir.get(id) {
+    let movable_generator = match tcx.hir().get(id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
@@ -1526,7 +1526,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
               // ancestors; dataflow recurs on children when parents
               // move (to support partial (re)inits).
               //
-              // (I.e. querying parents breaks scenario 7; but may want
+              // (I.e., querying parents breaks scenario 7; but may want
               // to do such a query based on partial-init feature-gate.)
         }
     }
@@ -1562,7 +1562,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // (Distinct from handling of scenarios 1+2+4 above because
         // `place` does not interfere with suffixes of its prefixes,
-        // e.g. `a.b.c` does not interfere with `a.b.d`)
+        // e.g., `a.b.c` does not interfere with `a.b.d`)
         //
         // This code covers scenario 1.
 
@@ -1735,7 +1735,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             //
             // This does not use check_if_path_or_subpath_is_moved,
             // because we want to *allow* reinitializations of fields:
-            // e.g. want to allow
+            // e.g., want to allow
             //
             // `let mut s = ...; drop(s.x); s.x=Val;`
             //
@@ -2166,7 +2166,7 @@ enum Overlap {
     /// `u.a.x` and `a.b.y` are.
     Arbitrary,
     /// The places have the same type, and are either completely disjoint
-    /// or equal - i.e. they can't "partially" overlap as can occur with
+    /// or equal - i.e., they can't "partially" overlap as can occur with
     /// unions. This is the "base case" on which we recur for extensions
     /// of the place.
     EqualOrDisjoint,

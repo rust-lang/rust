@@ -29,6 +29,7 @@ fn main() {
     // This will compile, but then hard-abort at runtime.
     // FIXME(oli-obk): this should instead panic (not hard-abort) at runtime.
     let x: &'static u8 = &(bar() + 1);
+    //~^ ERROR does not live long enough
     let y = *x;
     unreachable!();
 }

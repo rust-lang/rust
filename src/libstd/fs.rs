@@ -1406,7 +1406,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// Removes a file from the filesystem.
 ///
 /// Note that there is no
-/// guarantee that the file is immediately deleted (e.g. depending on
+/// guarantee that the file is immediately deleted (e.g., depending on
 /// platform, other open file descriptors may prevent immediate removal).
 ///
 /// # Platform-specific behavior
@@ -2065,7 +2065,7 @@ impl DirBuilder {
             Err(e) => return Err(e),
         }
         match path.parent() {
-            Some(p) => try!(self.create_dir_all(p)),
+            Some(p) => self.create_dir_all(p)?,
             None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
         }
         match self.inner.mkdir(path) {

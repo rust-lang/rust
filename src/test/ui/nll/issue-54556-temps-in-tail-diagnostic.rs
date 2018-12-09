@@ -2,7 +2,7 @@ fn main() {
     {
         let mut _thing1 = D(Box::new("thing1"));
         // D("other").next(&_thing1).end()
-        D(&_thing1).end()
+        D(&_thing1).end() //~ ERROR does not live long enough
     }
 
     ;

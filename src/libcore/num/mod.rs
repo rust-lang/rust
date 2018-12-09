@@ -70,7 +70,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    $Ty(NonZero(n))
+                    $Ty(unsafe { NonZero(n) })
                 }
 
                 /// Create a non-zero if the given value is not zero.
@@ -78,7 +78,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
-                        Some($Ty(NonZero(n)))
+                        Some($Ty(unsafe { NonZero(n) }))
                     } else {
                         None
                     }
@@ -1544,7 +1544,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_mod_euc(-1), (0, true));
             concat!("Negates self, overflowing if this is equal to the minimum value.
 
 Returns a tuple of the negated version of self along with a boolean indicating whether an overflow
-happened. If `self` is the minimum value (e.g. `i32::MIN` for values of type `i32`), then the
+happened. If `self` is the minimum value (e.g., `i32::MIN` for values of type `i32`), then the
 minimum value will be returned again and `true` will be returned for an overflow happening.
 
 # Examples
@@ -1621,7 +1621,7 @@ $EndFeature, "
             concat!("Computes the absolute value of `self`.
 
 Returns a tuple of the absolute version of self along with a boolean indicating whether an overflow
-happened. If self is the minimum value (e.g. ", stringify!($SelfT), "::MIN for values of type
+happened. If self is the minimum value (e.g., ", stringify!($SelfT), "::MIN for values of type
  ", stringify!($SelfT), "), then the minimum value will be returned again and true will be returned
 for an overflow happening.
 
@@ -3617,7 +3617,7 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
         doc_comment! {
             concat!("Returns the smallest power of two greater than or equal to `self`.
 
-When return value overflows (i.e. `self > (1 << (N-1))` for type
+When return value overflows (i.e., `self > (1 << (N-1))` for type
 `uN`), it panics in debug mode and return value is wrapped to 0 in
 release mode (the only situation in which method can return 0).
 
@@ -4827,7 +4827,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 /// # Potential causes
 ///
 /// Among other causes, `ParseIntError` can be thrown because of leading or trailing whitespace
-/// in the string e.g. when it is obtained from the standard input.
+/// in the string e.g., when it is obtained from the standard input.
 /// Using the [`str.trim()`] method ensures that no whitespace remains before parsing.
 ///
 /// [`str.trim()`]: ../../std/primitive.str.html#method.trim

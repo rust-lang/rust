@@ -6,7 +6,7 @@ LL |             D("other").next(&_thing1)
    |             |               |
    |             |               borrowed value does not live long enough
    |             a temporary with access to the borrow is created here ...
-LL |         }
+...
 LL |     }
    |     - `_thing1` dropped here while still borrowed
 LL | 

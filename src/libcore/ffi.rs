@@ -18,7 +18,7 @@ use ::fmt;
 ///
 /// [`!`]: ../../std/primitive.never.html
 /// [pointer]: ../../std/primitive.pointer.html
-// NB: For LLVM to recognize the void pointer type and by extension
+// N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
 //     of the "raw" type by only having private variants.. We need two
@@ -45,6 +45,7 @@ impl fmt::Debug for c_void {
 /// Basic implementation of a `va_list`.
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
               not(target_arch = "x86_64")),
+          all(target_arch = "aarch4", target_os = "ios"),
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -192,6 +193,7 @@ impl<'a> VaList<'a> {
             where F: for<'copy> FnOnce(VaList<'copy>) -> R {
         #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                       not(target_arch = "x86_64")),
+                  all(target_arch = "aarch4", target_os = "ios"),
                   windows))]
         let mut ap = va_copy(self);
         #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),

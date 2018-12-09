@@ -163,7 +163,6 @@ pub enum Token {
     DotDot,
     DotDotDot,
     DotDotEq,
-    DotEq, // HACK(durka42) never produced by the parser, only used for libproc_macro
     Comma,
     Semi,
     Colon,
@@ -454,7 +453,6 @@ impl Token {
             Dot => match joint {
                 Dot => DotDot,
                 DotDot => DotDotDot,
-                DotEq => DotDotEq,
                 _ => return None,
             },
             DotDot => match joint {
@@ -477,7 +475,7 @@ impl Token {
                 _ => return None,
             },
 
-            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | DotEq |
+            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot |
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
             Question | OpenDelim(..) | CloseDelim(..) => return None,
 
@@ -547,11 +545,12 @@ impl Token {
         let tokens_for_real = nt.1.force(|| {
             // FIXME(#43081): Avoid this pretty-print + reparse hack
             let source = pprust::token_to_string(self);
-            parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
+            let filename = FileName::macro_expansion_source_code(&source);
+            parse_stream_from_source_str(filename, source, sess, Some(span))
         });
 
         // During early phases of the compiler the AST could get modified
-        // directly (e.g. attributes added or removed) and the internal cache
+        // directly (e.g., attributes added or removed) and the internal cache
         // of tokens my not be invalidated or updated. Consequently if the
         // "lossless" token stream disagrees with our actual stringification
         // (which has historically been much more battle-tested) then we go
@@ -606,7 +605,6 @@ impl Token {
             (&DotDot, &DotDot) |
             (&DotDotDot, &DotDotDot) |
             (&DotDotEq, &DotDotEq) |
-            (&DotEq, &DotEq) |
             (&Comma, &Comma) |
             (&Semi, &Semi) |
             (&Colon, &Colon) |
@@ -784,10 +782,12 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
 
+        let source = pprust::attr_to_string(attr);
+        let macro_filename = FileName::macro_expansion_source_code(&source);
         if attr.is_sugared_doc {
             let stream = parse_stream_from_source_str(
-                FileName::MacroExpansion,
-                pprust::attr_to_string(attr),
+                macro_filename,
+                source,
                 sess,
                 Some(span),
             );
@@ -808,8 +808,8 @@ fn prepend_attrs(sess: &ParseSess,
         // should eventually be removed.
         } else {
             let stream = parse_stream_from_source_str(
-                FileName::MacroExpansion,
-                pprust::path_to_string(&attr.path),
+                macro_filename,
+                source,
                 sess,
                 Some(span),
             );

@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.node {
-            let body = self.fcx.tcx.hir.body(body_id);
+            let body = self.fcx.tcx.hir().body(body_id);
             self.visit_body(body);
             self.fcx
                 .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc);
@@ -135,7 +135,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for freevar in freevars {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
-                        hir_id : self.tcx.hir.node_to_hir_id(freevar.var_id()),
+                        hir_id : self.tcx.hir().node_to_hir_id(freevar.var_id()),
                     },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
@@ -161,7 +161,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        let body_owner_def_id = self.tcx.hir.body_owner_def_id(body.id());
+        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
         let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
         let mut delegate = InferBorrowKind {
             fcx: self,
@@ -240,14 +240,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // This may change if abstract return types of some sort are
         // implemented.
         let tcx = self.tcx;
-        let closure_def_index = tcx.hir.local_def_id(closure_id);
+        let closure_def_index = tcx.hir().local_def_id(closure_id);
 
         tcx.with_freevars(closure_id, |freevars| {
             freevars
                 .iter()
                 .map(|freevar| {
                     let var_node_id = freevar.var_id();
-                    let var_hir_id = tcx.hir.node_to_hir_id(var_node_id);
+                    let var_hir_id = tcx.hir().node_to_hir_id(var_node_id);
                     let freevar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath {
@@ -647,6 +647,6 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
 }
 
 fn var_name(tcx: TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
-    let var_node_id = tcx.hir.hir_to_node_id(var_hir_id);
-    tcx.hir.name(var_node_id)
+    let var_node_id = tcx.hir().hir_to_node_id(var_hir_id);
+    tcx.hir().name(var_node_id)
 }

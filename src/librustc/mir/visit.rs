@@ -33,7 +33,7 @@ use syntax_pos::Span;
 // in that circumstance.
 //
 // For the most part, we do not destructure things external to the
-// MIR, e.g. types, spans, etc, but simply visit them and stop. This
+// MIR, e.g., types, spans, etc, but simply visit them and stop. This
 // avoids duplication with other visitors like `TypeFoldable`.
 //
 // ## Updating
@@ -154,9 +154,10 @@ macro_rules! make_mir_visitor {
 
             fn visit_retag(&mut self,
                            fn_entry: & $($mutability)* bool,
+                           two_phase: & $($mutability)* bool,
                            place: & $($mutability)* Place<'tcx>,
                            location: Location) {
-                self.super_retag(fn_entry, place, location);
+                self.super_retag(fn_entry, two_phase, place, location);
             }
 
             fn visit_place(&mut self,
@@ -417,8 +418,9 @@ macro_rules! make_mir_visitor {
                         }
                     }
                     StatementKind::Retag { ref $($mutability)* fn_entry,
+                                           ref $($mutability)* two_phase,
                                            ref $($mutability)* place } => {
-                        self.visit_retag(fn_entry, place, location);
+                        self.visit_retag(fn_entry, two_phase, place, location);
                     }
                     StatementKind::AscribeUserType(
                         ref $($mutability)* place,
@@ -724,6 +726,7 @@ macro_rules! make_mir_visitor {
 
             fn super_retag(&mut self,
                            _fn_entry: & $($mutability)* bool,
+                           _two_phase: & $($mutability)* bool,
                            place: & $($mutability)* Place<'tcx>,
                            location: Location) {
                 self.visit_place(
@@ -994,7 +997,7 @@ pub enum NonMutatingUseContext<'tcx> {
     ShallowBorrow(Region<'tcx>),
     /// Unique borrow.
     UniqueBorrow(Region<'tcx>),
-    /// Used as base for another place, e.g. `x` in `x.y`. Will not mutate the place.
+    /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     ///
     ///     z = x.y;
@@ -1017,7 +1020,7 @@ pub enum MutatingUseContext<'tcx> {
     Drop,
     /// Mutable borrow.
     Borrow(Region<'tcx>),
-    /// Used as base for another place, e.g. `x` in `x.y`. Could potentially mutate the place.
+    /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     ///
     ///     x.y = ...;

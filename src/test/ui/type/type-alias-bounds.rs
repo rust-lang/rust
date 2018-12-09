@@ -48,7 +48,7 @@ fn foo<'a>(y: &'a i32) {
     x.1.push(y); // &'a i32: 'static does not hold
 }
 
-// Bounds are not checked either, i.e. the definition is not necessarily well-formed
+// Bounds are not checked either, i.e., the definition is not necessarily well-formed
 struct Sendable<T: Send>(T);
 type MySendable<T> = Sendable<T>; // no error here!
 

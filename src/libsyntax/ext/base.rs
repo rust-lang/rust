@@ -670,7 +670,7 @@ pub enum SyntaxExtension {
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
 
-    /// A declarative macro, e.g. `macro m() {}`.
+    /// A declarative macro, e.g., `macro m() {}`.
     DeclMacro {
         expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
         def_info: Option<(ast::NodeId, Span)>,
@@ -733,16 +733,12 @@ pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
-    fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
-    // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
-    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>, allow_derive: bool)
-                              -> Option<Attribute>;
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: Mark, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
@@ -771,15 +767,12 @@ impl Resolver for DummyResolver {
     fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
     fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
-    fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
     fn visit_ast_fragment_with_placeholders(&mut self, _invoc: Mark, _fragment: &AstFragment,
                                             _derives: &[Mark]) {}
     fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
-    fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>, _allow_derive: bool)
-                              -> Option<Attribute> { None }
     fn resolve_macro_invocation(&mut self, _invoc: &Invocation, _invoc_id: Mark, _force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
@@ -915,7 +908,7 @@ impl<'a> ExtCtxt<'a> {
     /// `span_err` should be strongly preferred where-ever possible:
     /// this should *only* be used when:
     ///
-    /// - continuing has a high risk of flow-on errors (e.g. errors in
+    /// - continuing has a high risk of flow-on errors (e.g., errors in
     ///   declaring a macro would cause all uses of that macro to
     ///   complain about "undefined macro"), or
     /// - there is literally nothing else that can be done (however,
@@ -1002,7 +995,7 @@ pub fn expr_to_spanned_string<'a>(
         expr
     });
 
-    // we want to be able to handle e.g. `concat!("foo", "bar")`
+    // we want to be able to handle e.g., `concat!("foo", "bar")`
     let expr = cx.expander().fold_expr(expr);
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {

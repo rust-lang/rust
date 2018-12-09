@@ -17,5 +17,6 @@ mod foo {
 }
 
 use foo::{A, bar::B    as    A};
+//~^ ERROR is defined multiple times
 
 fn main() {}

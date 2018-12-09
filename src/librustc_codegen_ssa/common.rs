@@ -158,7 +158,7 @@ pub fn langcall(tcx: TyCtxt,
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an
-// appropriate mask unconditionally (i.e. the fallback behavior for
+// appropriate mask unconditionally (i.e., the fallback behavior for
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 

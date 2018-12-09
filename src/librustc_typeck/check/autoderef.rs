@@ -203,7 +203,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     }
 
     /// also dereference through raw pointer types
-    /// e.g. assuming ptr_to_Foo is the type `*const Foo`
+    /// e.g., assuming ptr_to_Foo is the type `*const Foo`
     /// fcx.autoderef(span, ptr_to_Foo)  => [*const Foo]
     /// fcx.autoderef(span, ptr_to_Foo).include_raw_ptrs() => [*const Foo, Foo]
     pub fn include_raw_pointers(mut self) -> Self {

@@ -1,0 +1,132 @@
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:31:63
+   |
+LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
+   |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:40:5
+   |
+LL |     r.a_unstable_undeclared_pub; //~ ERROR use of unstable library feature
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0616]: field `b_crate` of struct `pub_and_stability::Record` is private
+  --> $DIR/explore-issue-38412.rs:41:5
+   |
+LL |     r.b_crate;                   //~ ERROR is private
+   |     ^^^^^^^^^
+
+error[E0616]: field `c_mod` of struct `pub_and_stability::Record` is private
+  --> $DIR/explore-issue-38412.rs:42:5
+   |
+LL |     r.c_mod;                     //~ ERROR is private
+   |     ^^^^^^^
+
+error[E0616]: field `d_priv` of struct `pub_and_stability::Record` is private
+  --> $DIR/explore-issue-38412.rs:43:5
+   |
+LL |     r.d_priv;                    //~ ERROR is private
+   |     ^^^^^^^^
+
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:47:5
+   |
+LL |     t.2;                         //~ ERROR use of unstable library feature
+   |     ^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
+  --> $DIR/explore-issue-38412.rs:48:5
+   |
+LL |     t.3;                         //~ ERROR is private
+   |     ^^^
+
+error[E0616]: field `4` of struct `pub_and_stability::Tuple` is private
+  --> $DIR/explore-issue-38412.rs:49:5
+   |
+LL |     t.4;                         //~ ERROR is private
+   |     ^^^
+
+error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
+  --> $DIR/explore-issue-38412.rs:50:5
+   |
+LL |     t.5;                         //~ ERROR is private
+   |     ^^^
+
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:54:7
+   |
+LL |     r.unstable_undeclared_trait_method(); //~ ERROR use of unstable library feature
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:58:7
+   |
+LL |     r.unstable_undeclared();              //~ ERROR use of unstable library feature
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0624]: method `pub_crate` is private
+  --> $DIR/explore-issue-38412.rs:60:7
+   |
+LL |     r.pub_crate();                        //~ ERROR `pub_crate` is private
+   |       ^^^^^^^^^
+
+error[E0624]: method `pub_mod` is private
+  --> $DIR/explore-issue-38412.rs:61:7
+   |
+LL |     r.pub_mod();                          //~ ERROR `pub_mod` is private
+   |       ^^^^^^^
+
+error[E0624]: method `private` is private
+  --> $DIR/explore-issue-38412.rs:62:7
+   |
+LL |     r.private();                          //~ ERROR `private` is private
+   |       ^^^^^^^
+
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:67:7
+   |
+LL |     t.unstable_undeclared_trait_method(); //~ ERROR use of unstable library feature
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
+  --> $DIR/explore-issue-38412.rs:71:7
+   |
+LL |     t.unstable_undeclared();              //~ ERROR use of unstable library feature
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
+
+error[E0624]: method `pub_crate` is private
+  --> $DIR/explore-issue-38412.rs:73:7
+   |
+LL |     t.pub_crate();                        //~ ERROR `pub_crate` is private
+   |       ^^^^^^^^^
+
+error[E0624]: method `pub_mod` is private
+  --> $DIR/explore-issue-38412.rs:74:7
+   |
+LL |     t.pub_mod();                          //~ ERROR `pub_mod` is private
+   |       ^^^^^^^
+
+error[E0624]: method `private` is private
+  --> $DIR/explore-issue-38412.rs:75:7
+   |
+LL |     t.private();                          //~ ERROR `private` is private
+   |       ^^^^^^^
+
+error: aborting due to 19 previous errors
+
+Some errors occurred: E0616, E0624, E0658.
+For more information about an error, try `rustc --explain E0616`.

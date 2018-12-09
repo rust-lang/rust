@@ -17,8 +17,9 @@
 // https://github.com/rust-lang/rust/issues/55723
 
 /// ## For example:
-///  
+///
 /// （arr[i]）
+//~^ ERROR `[i]` cannot be resolved, ignoring it...
 pub fn test_ice() {
     unimplemented!();
 }

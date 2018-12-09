@@ -68,7 +68,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
             MonoItem::GlobalAsm(node_id) => {
-                let def_id = tcx.hir.local_def_id(node_id);
+                let def_id = tcx.hir().local_def_id(node_id);
                 ty::SymbolName {
                     name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_interned_str()
                 }
@@ -86,7 +86,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id =
-                    tcx.sess.entry_fn.borrow().map(|(id, _, _)| tcx.hir.local_def_id(id));
+                    tcx.sess.entry_fn.borrow().map(|(id, _, _)| tcx.hir().local_def_id(id));
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
@@ -199,15 +199,15 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
         match *self.as_mono_item() {
             MonoItem::Fn(Instance { def, .. }) => {
-                tcx.hir.as_local_node_id(def.def_id())
+                tcx.hir().as_local_node_id(def.def_id())
             }
             MonoItem::Static(def_id) => {
-                tcx.hir.as_local_node_id(def_id)
+                tcx.hir().as_local_node_id(def_id)
             }
             MonoItem::GlobalAsm(node_id) => {
                 Some(node_id)
             }
-        }.map(|node_id| tcx.hir.span(node_id))
+        }.map(|node_id| tcx.hir().span(node_id))
     }
 }
 

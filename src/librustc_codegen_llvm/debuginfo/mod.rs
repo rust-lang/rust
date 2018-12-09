@@ -300,7 +300,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        let local_id = self.tcx().hir.as_local_node_id(def_id);
+        let local_id = self.tcx().hir().as_local_node_id(def_id);
         if let Some((id, _, _)) = *self.sess().entry_fn.borrow() {
             if local_id == Some(id) {
                 flags |= DIFlags::FlagMainSubprogram;
@@ -488,7 +488,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     );
 
                     // Only "class" methods are generally understood by LLVM,
-                    // so avoid methods on other types (e.g. `<*mut T>::null`).
+                    // so avoid methods on other types (e.g., `<*mut T>::null`).
                     match impl_self_ty.sty {
                         ty::Adt(def, ..) if !def.is_box() => {
                             Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))

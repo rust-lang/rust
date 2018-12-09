@@ -202,8 +202,8 @@ impl Impl {
 
 #[derive(Debug)]
 pub struct Error {
-    file: PathBuf,
-    error: io::Error,
+    pub file: PathBuf,
+    pub error: io::Error,
 }
 
 impl error::Error for Error {
@@ -778,10 +778,7 @@ fn write_shared(
     let mut themes: FxHashSet<String> = FxHashSet::default();
 
     for entry in &cx.shared.themes {
-        let mut content = Vec::with_capacity(100000);
-
-        let mut f = try_err!(File::open(&entry), &entry);
-        try_err!(f.read_to_end(&mut content), &entry);
+        let content = try_err!(fs::read(&entry), &entry);
         let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
         let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
         write(cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
@@ -793,6 +790,8 @@ fn write_shared(
           static_files::BRUSH_SVG)?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
           static_files::WHEEL_SVG)?;
+    write(cx.dst.join(&format!("down-arrow{}.svg", cx.shared.resource_suffix)),
+          static_files::DOWN_ARROW_SVG)?;
     write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
                  static_files::themes::LIGHT,
                  options.enable_minification)?;
@@ -859,6 +858,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
                  static_files::SETTINGS_JS,
                  options.enable_minification)?;
+    if cx.shared.include_sources {
+        write_minify(cx.dst.join(&format!("source-script{}.js", cx.shared.resource_suffix)),
+                     static_files::sidebar::SOURCE_SCRIPT,
+                     options.enable_minification)?;
+    }
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
@@ -874,10 +878,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         if !options.enable_minification {
             try_err!(fs::copy(css, out), css);
         } else {
-            let mut f = try_err!(File::open(css), css);
-            let mut buffer = String::with_capacity(1000);
-
-            try_err!(f.read_to_string(&mut buffer), css);
+            let buffer = try_err!(fs::read_to_string(css), css);
             write_minify(out, &buffer, options.enable_minification)?;
         }
     }
@@ -969,10 +970,88 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
     }
 
+    use std::ffi::OsString;
+
+    #[derive(Debug)]
+    struct Hierarchy {
+        elem: OsString,
+        children: FxHashMap<OsString, Hierarchy>,
+        elems: FxHashSet<OsString>,
+    }
+
+    impl Hierarchy {
+        fn new(elem: OsString) -> Hierarchy {
+            Hierarchy {
+                elem,
+                children: FxHashMap::default(),
+                elems: FxHashSet::default(),
+            }
+        }
+
+        fn to_json_string(&self) -> String {
+            let mut subs: Vec<&Hierarchy> = self.children.values().collect();
+            subs.sort_unstable_by(|a, b| a.elem.cmp(&b.elem));
+            let mut files = self.elems.iter()
+                                      .map(|s| format!("\"{}\"",
+                                                       s.to_str()
+                                                        .expect("invalid osstring conversion")))
+                                      .collect::<Vec<_>>();
+            files.sort_unstable_by(|a, b| a.cmp(b));
+            // FIXME(imperio): we could avoid to generate "dirs" and "files" if they're empty.
+            format!("{{\"name\":\"{name}\",\"dirs\":[{subs}],\"files\":[{files}]}}",
+                    name=self.elem.to_str().expect("invalid osstring conversion"),
+                    subs=subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(","),
+                    files=files.join(","))
+        }
+    }
+
+    if cx.shared.include_sources {
+        use std::path::Component;
+
+        let mut hierarchy = Hierarchy::new(OsString::new());
+        for source in cx.shared.local_sources.iter()
+                                             .filter_map(|p| p.0.strip_prefix(&cx.shared.src_root)
+                                                                .ok()) {
+            let mut h = &mut hierarchy;
+            let mut elems = source.components()
+                                  .filter_map(|s| {
+                                      match s {
+                                          Component::Normal(s) => Some(s.to_owned()),
+                                          _ => None,
+                                      }
+                                  })
+                                  .peekable();
+            loop {
+                let cur_elem = elems.next().expect("empty file path");
+                if elems.peek().is_none() {
+                    h.elems.insert(cur_elem);
+                    break;
+                } else {
+                    let e = cur_elem.clone();
+                    h.children.entry(cur_elem.clone()).or_insert_with(|| Hierarchy::new(e));
+                    h = h.children.get_mut(&cur_elem).expect("not found child");
+                }
+            }
+        }
+
+        let dst = cx.dst.join("source-files.js");
+        let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
+        all_sources.push(format!("sourcesIndex['{}'] = {};",
+                                 &krate.name,
+                                 hierarchy.to_json_string()));
+        all_sources.sort();
+        let mut w = try_err!(File::create(&dst), &dst);
+        try_err!(writeln!(&mut w,
+                          "var N = null;var sourcesIndex = {{}};\n{}",
+                          all_sources.join("\n")),
+                 &dst);
+    }
+
     // Update the search index
     let dst = cx.dst.join("search-index.js");
     let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
     all_indexes.push(search_index);
+
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
@@ -983,7 +1062,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                        &[(minifier::js::Keyword::Null, "N")]),
                  &dst);
     }
-    try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
+    try_err!(writeln!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
 
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
@@ -1020,7 +1099,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             try_err!(layout::render(&mut w, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes), &dst);
+                                    &cx.shared.themes, &[]), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1292,7 +1371,8 @@ impl<'a> SourceCollector<'a> {
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes)?;
+                       &self.scx.themes, &["source-files",
+                                           &format!("source-script{}", page.resource_suffix)])?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1890,7 +1970,7 @@ impl Context {
         try_err!(layout::render(&mut w, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
-                                &self.shared.themes),
+                                &self.shared.themes, &[]),
                  &final_file);
 
         // Generating settings page.
@@ -1910,7 +1990,7 @@ impl Context {
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
-                                &themes),
+                                &themes, &[]),
                  &settings_file);
 
         Ok(())
@@ -1968,7 +2048,7 @@ impl Context {
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
-                           &self.shared.themes)?;
+                           &self.shared.themes, &[])?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
@@ -1991,7 +2071,7 @@ impl Context {
     fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F) -> Result<(), Error>
         where F: FnMut(&mut Context, clean::Item),
     {
-        // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
+        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
         //
@@ -2016,8 +2096,7 @@ impl Context {
                 if !buf.is_empty() {
                     try_err!(this.shared.ensure_dir(&this.dst), &this.dst);
                     let joint_dst = this.dst.join("index.html");
-                    let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
-                    try_err!(dst.write_all(&buf), &joint_dst);
+                    try_err!(fs::write(&joint_dst, buf), &joint_dst);
                 }
 
                 let m = match item.inner {
@@ -2051,8 +2130,7 @@ impl Context {
                 let file_name = &item_path(item_type, name);
                 try_err!(self.shared.ensure_dir(&self.dst), &self.dst);
                 let joint_dst = self.dst.join(file_name);
-                let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
-                try_err!(dst.write_all(&buf), &joint_dst);
+                try_err!(fs::write(&joint_dst, buf), &joint_dst);
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
@@ -2136,13 +2214,13 @@ impl<'a> Item<'a> {
                 return None;
             }
         } else {
-            let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
-                Some(&(ref name, ref src, Local)) => (name, src),
-                Some(&(ref name, ref src, Remote(ref s))) => {
+            let (krate, src_root) = match *cache.extern_locations.get(&self.item.def_id.krate)? {
+                (ref name, ref src, Local) => (name, src),
+                (ref name, ref src, Remote(ref s)) => {
                     root = s.to_string();
                     (name, src)
                 }
-                Some(&(_, _, Unknown)) | None => return None,
+                (_, _, Unknown) => return None,
             };
 
             clean_srcpath(&src_root, file, false, |component| {
@@ -4249,13 +4327,30 @@ impl<'a> fmt::Display for Sidebar<'a> {
     }
 }
 
-fn get_methods(i: &clean::Impl, for_deref: bool) -> Vec<String> {
+fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
+    if used_links.insert(url.clone()) {
+        return url;
+    }
+    let mut add = 1;
+    while used_links.insert(format!("{}-{}", url, add)) == false {
+        add += 1;
+    }
+    format!("{}-{}", url, add)
+}
+
+fn get_methods(
+    i: &clean::Impl,
+    for_deref: bool,
+    used_links: &mut FxHashSet<String>,
+) -> Vec<String> {
     i.items.iter().filter_map(|item| {
         match item.name {
             // Maybe check with clean::Visibility::Public as well?
             Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
                 if !for_deref || should_render_item(item, false) {
-                    Some(format!("<a href=\"#method.{name}\">{name}</a>", name = name))
+                    Some(format!("<a href=\"#{}\">{}</a>",
+                                 get_next_url(used_links, format!("method.{}", name)),
+                                 name))
                 } else {
                     None
                 }
@@ -4285,13 +4380,20 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
     let mut out = String::new();
     let c = cache();
     if let Some(v) = c.impls.get(&it.def_id) {
-        let ret = v.iter()
-                   .filter(|i| i.inner_impl().trait_.is_none())
-                   .flat_map(|i| get_methods(i.inner_impl(), false))
-                   .collect::<String>();
-        if !ret.is_empty() {
-            out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                   </a><div class=\"sidebar-links\">{}</div>", ret));
+        let mut used_links = FxHashSet::default();
+
+        {
+            let used_links_bor = Rc::new(RefCell::new(&mut used_links));
+            let ret = v.iter()
+                       .filter(|i| i.inner_impl().trait_.is_none())
+                       .flat_map(move |i| get_methods(i.inner_impl(),
+                                                      false,
+                                                      &mut used_links_bor.borrow_mut()))
+                       .collect::<String>();
+            if !ret.is_empty() {
+                out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
+                                       </a><div class=\"sidebar-links\">{}</div>", ret));
+            }
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
@@ -4316,7 +4418,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         out.push_str("</a>");
                         let ret = impls.iter()
                                        .filter(|i| i.inner_impl().trait_.is_none())
-                                       .flat_map(|i| get_methods(i.inner_impl(), true))
+                                       .flat_map(|i| get_methods(i.inner_impl(),
+                                                                 true,
+                                                                 &mut used_links))
                                        .collect::<String>();
                         out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
                     }
@@ -4324,27 +4428,28 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
+
                 impls.iter()
-                           .filter_map(|i| {
-                               let is_negative_impl = is_negative_impl(i.inner_impl());
-                               if let Some(ref i) = i.inner_impl().trait_ {
-                                   let i_display = format!("{:#}", i);
-                                   let out = Escape(&i_display);
-                                   let encoded = small_url_encode(&format!("{:#}", i));
-                                   let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
-                                                           encoded,
-                                                           if is_negative_impl { "!" } else { "" },
-                                                           out);
-                                   if links.insert(generated.clone()) {
-                                       Some(generated)
-                                   } else {
-                                       None
-                                   }
-                               } else {
-                                   None
-                               }
-                           })
-                           .collect::<String>()
+                     .filter_map(|i| {
+                         let is_negative_impl = is_negative_impl(i.inner_impl());
+                         if let Some(ref i) = i.inner_impl().trait_ {
+                             let i_display = format!("{:#}", i);
+                             let out = Escape(&i_display);
+                             let encoded = small_url_encode(&format!("{:#}", i));
+                             let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
+                                                     encoded,
+                                                     if is_negative_impl { "!" } else { "" },
+                                                     out);
+                             if links.insert(generated.clone()) {
+                                 Some(generated)
+                             } else {
+                                 None
+                             }
+                         } else {
+                             None
+                         }
+                     })
+                     .collect::<String>()
             };
 
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) = v
@@ -4685,7 +4790,7 @@ impl<'a> fmt::Display for Source<'a> {
             tmp /= 10;
         }
         write!(fmt, "<pre class=\"line-numbers\">")?;
-        for i in 1..lines + 1 {
+        for i in 1..=lines {
             write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
         }
         write!(fmt, "</pre>")?;

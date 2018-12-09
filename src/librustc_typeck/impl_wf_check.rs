@@ -62,7 +62,7 @@ pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    tcx.hir.krate().visit_all_item_likes(&mut ImplWfCheck { tcx });
+    tcx.hir().krate().visit_all_item_likes(&mut ImplWfCheck { tcx });
 }
 
 struct ImplWfCheck<'a, 'tcx: 'a> {
@@ -72,7 +72,7 @@ struct ImplWfCheck<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.node {
-            let impl_def_id = self.tcx.hir.local_def_id(item.id);
+            let impl_def_id = self.tcx.hir().local_def_id(item.id);
             enforce_impl_params_are_constrained(self.tcx,
                                                 impl_def_id,
                                                 impl_item_refs);
@@ -101,7 +101,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
-        .map(|item_ref| tcx.hir.local_def_id(item_ref.id.node_id))
+        .map(|item_ref| tcx.hir().local_def_id(item_ref.id.node_id))
         .filter(|&def_id| {
             let item = tcx.associated_item(def_id);
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
@@ -176,7 +176,7 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut seen_type_items = FxHashMap::default();
     let mut seen_value_items = FxHashMap::default();
     for impl_item_ref in impl_item_refs {
-        let impl_item = tcx.hir.impl_item(impl_item_ref.id);
+        let impl_item = tcx.hir().impl_item(impl_item_ref.id);
         let seen_items = match impl_item.node {
             hir::ImplItemKind::Type(_) => &mut seen_type_items,
             _                          => &mut seen_value_items,

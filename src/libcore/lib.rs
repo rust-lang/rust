@@ -92,6 +92,7 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(bind_by_move_pattern_guards)]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]

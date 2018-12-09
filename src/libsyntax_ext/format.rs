@@ -209,7 +209,7 @@ fn parse_args(ecx: &mut ExtCtxt,
 impl<'a, 'b> Context<'a, 'b> {
     fn resolve_name_inplace(&self, p: &mut parse::Piece) {
         // NOTE: the `unwrap_or` branch is needed in case of invalid format
-        // arguments, e.g. `format_args!("{foo}")`.
+        // arguments, e.g., `format_args!("{foo}")`.
         let lookup = |s| *self.names.get(s).unwrap_or(&0);
 
         match *p {

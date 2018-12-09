@@ -13,7 +13,7 @@ impl Value {
 fn foo(val: Value) {
     let _reviewers_original: Vec<Value> = match val.as_array() {
         Some(array) => {
-            *array
+            *array //~ ERROR cannot move out of borrowed content
         }
         None => vec![]
     };

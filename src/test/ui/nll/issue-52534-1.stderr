@@ -5,13 +5,13 @@ LL |         &x
    |         ^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to local variable `x`
-  --> $DIR/issue-52534-1.rs:25:5
+  --> $DIR/issue-52534-1.rs:26:5
    |
 LL |     &x
    |     ^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return value referencing local variable `x`
-  --> $DIR/issue-52534-1.rs:30:5
+  --> $DIR/issue-52534-1.rs:32:5
    |
 LL |     &&x
    |     ^--
@@ -20,7 +20,7 @@ LL |     &&x
    |     returns a value referencing data owned by the current function
 
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/issue-52534-1.rs:30:5
+  --> $DIR/issue-52534-1.rs:32:5
    |
 LL |     &&x
    |     ^--
@@ -29,13 +29,7 @@ LL |     &&x
    |     returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to local variable `x`
-  --> $DIR/issue-52534-1.rs:35:5
-   |
-LL |     &x
-   |     ^^ returns a reference to data owned by the current function
-
-error[E0515]: cannot return reference to local variable `x`
-  --> $DIR/issue-52534-1.rs:40:5
+  --> $DIR/issue-52534-1.rs:39:5
    |
 LL |     &x
    |     ^^ returns a reference to data owned by the current function
@@ -47,7 +41,13 @@ LL |     &x
    |     ^^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to local variable `x`
-  --> $DIR/issue-52534-1.rs:50:5
+  --> $DIR/issue-52534-1.rs:51:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-52534-1.rs:57:5
    |
 LL |     &x
    |     ^^ returns a reference to data owned by the current function

@@ -12,6 +12,6 @@
 
 trait DefaultAlias = Default;
 
-impl DefaultAlias for () {}
+impl DefaultAlias for () {} //~ ERROR expected trait, found trait alias
 
 fn main() {}

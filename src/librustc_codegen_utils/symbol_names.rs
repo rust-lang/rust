@@ -71,7 +71,7 @@
 //! order to also avoid inter-crate conflicts two more measures are taken:
 //!
 //! - The name of the crate containing the symbol is prepended to the symbol
-//!   name, i.e. symbols are "crate qualified". For example, a function `foo` in
+//!   name, i.e., symbols are "crate qualified". For example, a function `foo` in
 //!   module `bar` in crate `baz` would get a symbol name like
 //!   `baz::bar::foo::{hash}` instead of just `bar::foo::{hash}`. This avoids
 //!   simple conflicts between functions from different crates.
@@ -250,7 +250,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    let node_id = tcx.hir.as_local_node_id(def_id);
+    let node_id = tcx.hir().as_local_node_id(def_id);
 
     if let Some(id) = node_id {
         if *tcx.sess.plugin_registrar_fn.get() == Some(id) {
@@ -265,7 +265,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let is_foreign = if let Some(id) = node_id {
-        match tcx.hir.get(id) {
+        match tcx.hir().get(id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }
@@ -389,7 +389,7 @@ impl SymbolPathBuffer {
 
 impl ItemPathBuffer for SymbolPathBuffer {
     fn root_mode(&self) -> &RootMode {
-        const ABSOLUTE: &'static RootMode = &RootMode::Absolute;
+        const ABSOLUTE: &RootMode = &RootMode::Absolute;
         ABSOLUTE
     }
 

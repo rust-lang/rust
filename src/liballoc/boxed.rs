@@ -801,7 +801,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
  *        safe.)
  *      - It is in practice very useful to have Box<T> be unconditionally
  *        Unpin because of trait objects, for which the structural auto
- *        trait functionality does not apply (e.g. Box<dyn Foo> would
+ *        trait functionality does not apply (e.g., Box<dyn Foo> would
  *        otherwise not be Unpin).
  *
  *  Another type with the same semantics as Box but only a conditional

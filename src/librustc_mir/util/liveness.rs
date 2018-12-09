@@ -29,7 +29,7 @@
 //! ```
 //!
 //! This means that users of this analysis still have to check whether
-//! pre-existing references can be used to access the value (e.g. at movable
+//! pre-existing references can be used to access the value (e.g., at movable
 //! generator yield points, all pre-existing references are invalidated, so this
 //! doesn't matter).
 
@@ -343,7 +343,7 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
 ) {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
-    let item_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
+    let item_id = tcx.hir().as_local_node_id(source.def_id).unwrap();
     let file_name = format!("rustc.node{}{}-liveness.mir", item_id, pass_name);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {

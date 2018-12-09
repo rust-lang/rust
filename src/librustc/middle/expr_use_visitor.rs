@@ -622,7 +622,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match local.init {
             None => {
                 local.pat.each_binding(|_, hir_id, span, _| {
-                    let node_id = self.mc.tcx.hir.hir_to_node_id(hir_id);
+                    let node_id = self.mc.tcx.hir().hir_to_node_id(hir_id);
                     self.delegate.decl_without_init(node_id, span);
                 })
             }
@@ -813,7 +813,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.consume_expr(&arm.body);
     }
 
-    /// Walks a pat that occurs in isolation (i.e. top-level of fn
+    /// Walks a pat that occurs in isolation (i.e., top-level of fn
     /// arg or let binding.  *Not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
         let mut mode = Unknown;
@@ -851,7 +851,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     /// The core driver for walking a pattern; `match_mode` must be
-    /// established up front, e.g. via `determine_pat_move_mode` (see
+    /// established up front, e.g., via `determine_pat_move_mode` (see
     /// also `walk_irrefutable_pat` for patterns that stand alone).
     fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat, match_mode: MatchMode) {
         debug!("walk_pat(cmt_discr={:?}, pat={:?})", cmt_discr, pat);
@@ -935,8 +935,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let var_hir_id = self.tcx().hir.node_to_hir_id(freevar.var_id());
-                let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
+                let var_hir_id = self.tcx().hir().node_to_hir_id(freevar.var_id());
+                let closure_def_id = self.tcx().hir().local_def_id(closure_expr.id);
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
                     closure_expr_id: closure_def_id.to_local(),
@@ -973,7 +973,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_hir_id = self.tcx().hir.node_to_hir_id(upvar.var_id());
+        let var_hir_id = self.tcx().hir().node_to_hir_id(upvar.var_id());
         let var_ty = self.mc.node_ty(var_hir_id)?;
         self.mc.cat_def(closure_hir_id, closure_span, var_ty, upvar.def)
     }

@@ -248,7 +248,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             AlwaysSized,
             /// A univariant, the last field of which may be coerced to unsized.
             MaybeUnsized,
-            /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
+            /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
             Prefixed(Size, Align),
         }
 
@@ -748,7 +748,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 // A variant is absent if it's uninhabited and only has ZST fields.
                 // Present uninhabited variants only require space for their fields,
-                // but *not* an encoding of the discriminant (e.g. a tag value).
+                // but *not* an encoding of the discriminant (e.g., a tag value).
                 // See issue #49298 for more details on the need to leave space
                 // for non-ZST uninhabited data (mostly partial initialization).
                 let absent = |fields: &[TyLayout<'_>]| {
@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }).collect();
 
             session::VariantInfo {
-                name: n.map(|n|n.to_string()),
+                name: n.map(|n| n.to_string()),
                 kind: if layout.is_unsized() {
                     session::SizeKind::Min
                 } else {
@@ -1311,7 +1311,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     }
 }
 
-/// Type size "skeleton", i.e. the only information determining a type's size.
+/// Type size "skeleton", i.e., the only information determining a type's size.
 /// While this is conservative, (aside from constant sizes, only pointers,
 /// newtypes thereof and null pointer optimized enums are allowed), it is
 /// enough to statically check common use cases of transmute.
@@ -1522,7 +1522,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             details
         };
 
-        // NB: This recording is normally disabled; when enabled, it
+        // N.B., this recording is normally disabled; when enabled, it
         // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
@@ -1549,7 +1549,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'a, 'tcx, 'tcx>> 
             details
         };
 
-        // NB: This recording is normally disabled; when enabled, it
+        // N.B., this recording is normally disabled; when enabled, it
         // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
@@ -1660,7 +1660,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 assert!(i < this.fields.count());
 
                 // Reuse the fat *T type as its own thin pointer data field.
-                // This provides information about e.g. DST struct pointees
+                // This provides information about e.g., DST struct pointees
                 // (which may have no non-DST form), and will work as long
                 // as the `Abi` or `FieldPlacement` is checked by users.
                 if i == 0 {

@@ -319,9 +319,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let layout::Abi::Scalar(ref scalar) = operand.layout.abi {
                             if let layout::Int(_, s) = scalar.value {
                                 // We use `i1` for bytes that are always `0` or `1`,
-                                // e.g. `#[repr(i8)] enum E { A, B }`, but we can't
+                                // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                                 // let LLVM interpret the `i1` as signed, because
-                                // then `i1 1` (i.e. E::B) is effectively `i8 -1`.
+                                // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
                                 signed = !scalar.is_bool() && s;
 
                                 let er = scalar.valid_range_exclusive(bx.cx());

@@ -229,9 +229,9 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
             layout::Variants::Tagged { ref tag, .. } => {
                 let signed = match tag.value {
                     // We use `i1` for bytes that are always `0` or `1`,
-                    // e.g. `#[repr(i8)] enum E { A, B }`, but we can't
+                    // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
-                    // then `i1 1` (i.e. E::B) is effectively `i8 -1`.
+                    // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
                     layout::Int(_, signed) => !tag.is_bool() && signed,
                     _ => false
                 };

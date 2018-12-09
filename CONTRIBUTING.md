@@ -39,7 +39,7 @@ don't know about, so please report liberally. If you're not sure if something
 is a bug or not, feel free to file a bug anyway.
 
 **If you believe reporting your bug publicly represents a security risk to Rust users,
-please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/security.html)**.
+please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/policies/security)**.
 
 If you have the chance, before reporting a bug, please [search existing
 issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),

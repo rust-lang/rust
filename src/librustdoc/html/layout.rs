@@ -33,7 +33,7 @@ pub struct Page<'a> {
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut dyn io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
-    css_file_extension: bool, themes: &[PathBuf])
+    css_file_extension: bool, themes: &[PathBuf], extra_scripts: &[&str])
     -> io::Result<()>
 {
     write!(dst,
@@ -57,6 +57,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     {css_extension}\
     {favicon}\
     {in_header}\
+    <style type=\"text/css\">\
+    #crate-search{{background-image:url(\"{root_path}down-arrow{suffix}.svg\");}}\
+    </style>\
 </head>\
 <body class=\"rustdoc {css_class}\">\
     <!--[if lte IE 8]>\
@@ -81,11 +84,16 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <nav class=\"sub\">\
         <form class=\"search-form js-only\">\
             <div class=\"search-container\">\
-                <input class=\"search-input\" name=\"search\" \
-                       autocomplete=\"off\" \
-                       spellcheck=\"false\" \
-                       placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
-                       type=\"search\">\
+                <div>\
+                    <select id=\"crate-search\">\
+                        <option value=\"All crates\">All crates</option>\
+                    </select>\
+                    <input class=\"search-input\" name=\"search\" \
+                           autocomplete=\"off\" \
+                           spellcheck=\"false\" \
+                           placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
+                           type=\"search\">\
+                </div>\
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{root_path}wheel{suffix}.svg\" width=\"18\" alt=\"Change settings\">\
                 </a>\
@@ -122,7 +130,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
             <div class=\"infos\">\
                 <h2>Search Tricks</h2>\
                 <p>\
-                    Prefix searches with a type followed by a colon (e.g. \
+                    Prefix searches with a type followed by a colon (e.g., \
                     <code>fn:</code>) to restrict the search to a given type.\
                 </p>\
                 <p>\
@@ -132,11 +140,11 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                     and <code>const</code>.\
                 </p>\
                 <p>\
-                    Search functions by type signature (e.g. \
+                    Search functions by type signature (e.g., \
                     <code>vec -> usize</code> or <code>* -> vec</code>)\
                 </p>\
                 <p>\
-                    Search multiple things at once by splitting your query with comma (e.g. \
+                    Search multiple things at once by splitting your query with comma (e.g., \
                     <code>str,u8</code> or <code>String,struct:Vec,test</code>)\
                 </p>\
             </div>\
@@ -149,6 +157,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     </script>\
     <script src=\"{root_path}aliases.js\"></script>\
     <script src=\"{root_path}main{suffix}.js\"></script>\
+    {extra_scripts}\
     <script defer src=\"{root_path}search-index.js\"></script>\
 </body>\
 </html>",
@@ -192,6 +201,11 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                                     page.resource_suffix))
                    .collect::<String>(),
     suffix=page.resource_suffix,
+    extra_scripts=extra_scripts.iter().map(|e| {
+        format!("<script src=\"{root_path}{extra_script}.js\"></script>",
+                root_path=page.root_path,
+                extra_script=e)
+    }).collect::<String>(),
     )
 }
 

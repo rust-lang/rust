@@ -529,7 +529,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.data.shrink_to(min_capacity)
     }
@@ -858,7 +858,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 }
 
-/// Hole represents a hole in a slice i.e. an index without valid value
+/// Hole represents a hole in a slice i.e., an index without valid value
 /// (because it was moved from or duplicated).
 /// In drop, `Hole` will restore the slice by filling the hole
 /// position with the value that was originally removed.

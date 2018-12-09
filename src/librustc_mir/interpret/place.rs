@@ -35,7 +35,7 @@ pub struct MemPlace<Tag=(), Id=AllocId> {
     pub align: Align,
     /// Metadata for unsized places.  Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
-    /// (e.g. `extern type`).
+    /// (e.g., `extern type`).
     pub meta: Option<Scalar<Tag, Id>>,
 }
 
@@ -115,6 +115,16 @@ impl<Tag> MemPlace<Tag> {
         }
     }
 
+    #[inline]
+    pub fn with_tag(self, new_tag: Tag) -> Self
+    {
+        MemPlace {
+            ptr: self.ptr.with_tag(new_tag),
+            align: self.align,
+            meta: self.meta,
+        }
+    }
+
     #[inline(always)]
     pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
         MemPlace {
@@ -187,6 +197,16 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
         }
     }
 
+    #[inline]
+    pub fn with_tag(self, new_tag: Tag) -> Self
+    {
+        MPlaceTy {
+            mplace: self.mplace.with_tag(new_tag),
+            layout: self.layout,
+        }
+    }
+
+    #[inline]
     pub fn offset(
         self,
         offset: Size,
@@ -216,7 +236,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             }
         } else {
             // Go through the layout.  There are lots of types that support a length,
-            // e.g. SIMD types.
+            // e.g., SIMD types.
             match self.layout.fields {
                 layout::FieldPlacement::Array { count, .. } => Ok(count),
                 _ => bug!("len not supported on sized type {:?}", self.layout.ty),
@@ -888,7 +908,7 @@ where
                         // a fake pointer?  Are we even called for ZST?
 
                         // We need the layout of the local.  We can NOT use the layout we got,
-                        // that might e.g. be an inner field of a struct with `Scalar` layout,
+                        // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
                         let local_layout = self.layout_of_local(&self.stack[frame], local)?;
                         let ptr = self.allocate(local_layout, MemoryKind::Stack)?;

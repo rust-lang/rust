@@ -176,15 +176,15 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // of the directory where librustc is located, rather than where the rustc
     // binary is.
     // If --libdir is set during configuration to the value other than
-    // "lib" (i.e. non-default), this value is used (see issue #16552).
+    // "lib" (i.e., non-default), this value is used (see issue #16552).
 
     #[cfg(target_pointer_width = "64")]
-    const PRIMARY_LIB_DIR: &'static str = "lib64";
+    const PRIMARY_LIB_DIR: &str = "lib64";
 
     #[cfg(target_pointer_width = "32")]
-    const PRIMARY_LIB_DIR: &'static str = "lib32";
+    const PRIMARY_LIB_DIR: &str = "lib32";
 
-    const SECONDARY_LIB_DIR: &'static str = "lib";
+    const SECONDARY_LIB_DIR: &str = "lib";
 
     match option_env!("CFG_LIBDIR_RELATIVE") {
         Some(libdir) if libdir != "lib" => libdir.into(),
@@ -198,4 +198,4 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
 
 // The name of rustc's own place to organize libraries.
 // Used to be "rustc", now the default is "rustlib"
-const RUST_LIB_DIR: &'static str = "rustlib";
+const RUST_LIB_DIR: &str = "rustlib";

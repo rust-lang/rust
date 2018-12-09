@@ -24,7 +24,7 @@ use intrinsics;
 /// therefore will eliminate all branches that reach to a call to
 /// `unreachable_unchecked()`.
 ///
-/// Like all instances of UB, if this assumption turns out to be wrong, i.e. the
+/// Like all instances of UB, if this assumption turns out to be wrong, i.e., the
 /// `unreachable_unchecked()` call is actually reachable among all possible
 /// control flow, the compiler will apply the wrong optimization strategy, and
 /// may sometimes even corrupt seemingly unrelated code, causing

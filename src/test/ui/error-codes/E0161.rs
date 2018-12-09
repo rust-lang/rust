@@ -29,7 +29,15 @@
 #![feature(box_syntax)]
 
 fn foo(x: Box<[i32]>) {
-    box *x; //~ ERROR E0161
+    box *x;
+    //[ast]~^ ERROR E0161
+    //[nll]~^^ ERROR E0161
+    //[zflags]~^^^ ERROR E0161
+    //[edition]~^^^^ ERROR E0161
+    //[astul]~^^^^^ ERROR E0161
+    //[nllul]~^^^^^^ ERROR E0161
+    //[zflagsul]~^^^^^^^ ERROR E0161
+    //[editionul]~^^^^^^^^ ERROR E0161
 }
 
 fn main() {}

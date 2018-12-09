@@ -36,11 +36,18 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// and platform-native string values, and in particular allowing a Rust string
 /// to be converted into an "OS" string with no cost if possible.  A consequence
 /// of this is that `OsString` instances are *not* `NUL` terminated; in order
-/// to pass to e.g. Unix system call, you should create a [`CStr`].
+/// to pass to e.g., Unix system call, you should create a [`CStr`].
 ///
 /// `OsString` is to [`&OsStr`] as [`String`] is to [`&str`]: the former
 /// in each pair are owned strings; the latter are borrowed
 /// references.
+///
+/// Note, `OsString` and `OsStr` internally do not necessarily hold strings in
+/// the form native to the platform; While on Unix, strings are stored as a
+/// sequence of 8-bit values, on Windows, where strings are 16-bit value based
+/// as just discussed, strings are also actually stored as a sequence of 8-bit
+/// values, encoded in a less-strict variant of UTF-8. This is useful to
+/// understand when handling capacity and length values.
 ///
 /// # Creating an `OsString`
 ///
@@ -324,7 +331,7 @@ impl OsString {
     /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
@@ -583,14 +590,19 @@ impl OsStr {
 
     /// Returns the length of this `OsStr`.
     ///
-    /// Note that this does **not** return the number of bytes in this string
-    /// as, for example, OS strings on Windows are encoded as a list of [`u16`]
-    /// rather than a list of bytes. This number is simply useful for passing to
-    /// other methods like [`OsString::with_capacity`] to avoid reallocations.
+    /// Note that this does **not** return the number of bytes in the string in
+    /// OS string form.
     ///
-    /// See `OsStr` introduction for more information about encoding.
+    /// The length returned is that of the underlying storage used by `OsStr`;
+    /// As discussed in the [`OsString`] introduction, [`OsString`] and `OsStr`
+    /// store strings in a form best suited for cheap inter-conversion between
+    /// native-platform and Rust string forms, which may differ significantly
+    /// from both of them, including in storage size and encoding.
     ///
-    /// [`u16`]: ../primitive.u16.html
+    /// This number is simply useful for passing to other methods, like
+    /// [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// [`OsString`]: struct.OsString.html
     /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
     ///
     /// # Examples

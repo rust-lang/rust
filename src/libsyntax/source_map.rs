@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 
 use std::env;
 use std::fs;
-use std::io::{self, Read};
+use std::io;
 use errors::SourceMapper;
 
 /// Return the span itself if it doesn't come from a macro expansion,
@@ -96,9 +96,7 @@ impl FileLoader for RealFileLoader {
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
-        let mut src = String::new();
-        fs::File::open(path)?.read_to_string(&mut src)?;
-        Ok(src)
+        fs::read_to_string(path)
     }
 }
 
@@ -110,11 +108,19 @@ pub struct StableSourceFileId(u128);
 
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
+        StableSourceFileId::new_from_pieces(&source_file.name,
+                                         source_file.name_was_remapped,
+                                         source_file.unmapped_path.as_ref())
+    }
+
+    pub fn new_from_pieces(name: &FileName,
+                           name_was_remapped: bool,
+                           unmapped_path: Option<&FileName>) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
 
-        source_file.name.hash(&mut hasher);
-        source_file.name_was_remapped.hash(&mut hasher);
-        source_file.unmapped_path.hash(&mut hasher);
+        name.hash(&mut hasher);
+        name_was_remapped.hash(&mut hasher);
+        unmapped_path.hash(&mut hasher);
 
         StableSourceFileId(hasher.finish())
     }
@@ -136,9 +142,6 @@ pub struct SourceMap {
     // This is used to apply the file path remapping as specified via
     // --remap-path-prefix to all SourceFiles allocated within this SourceMap.
     path_mapping: FilePathMapping,
-    /// In case we are in a doctest, replace all file names with the PathBuf,
-    /// and add the given offsets to the line info
-    doctest_offset: Option<(FileName, isize)>,
 }
 
 impl SourceMap {
@@ -147,17 +150,7 @@ impl SourceMap {
             files: Default::default(),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
-            doctest_offset: None,
         }
-    }
-
-    pub fn new_doctest(path_mapping: FilePathMapping,
-                       file: FileName, line: isize) -> SourceMap {
-        SourceMap {
-            doctest_offset: Some((file, line)),
-            ..SourceMap::new(path_mapping)
-        }
-
     }
 
     pub fn with_file_loader(file_loader: Box<dyn FileLoader + Sync + Send>,
@@ -167,7 +160,6 @@ impl SourceMap {
             files: Default::default(),
             file_loader: file_loader,
             path_mapping,
-            doctest_offset: None,
         }
     }
 
@@ -181,11 +173,7 @@ impl SourceMap {
 
     pub fn load_file(&self, path: &Path) -> io::Result<Lrc<SourceFile>> {
         let src = self.file_loader.read_file(path)?;
-        let filename = if let Some((ref name, _)) = self.doctest_offset {
-            name.clone()
-        } else {
-            path.to_owned().into()
-        };
+        let filename = path.to_owned().into();
         Ok(self.new_source_file(filename, src))
     }
 
@@ -208,7 +196,8 @@ impl SourceMap {
     }
 
     /// Creates a new source_file.
-    /// This does not ensure that only one SourceFile exists per file name.
+    /// If a file already exists in the source_map with the same id, that file is returned
+    /// unmodified
     pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
@@ -226,21 +215,30 @@ impl SourceMap {
             },
             other => (other, false),
         };
-        let source_file = Lrc::new(SourceFile::new(
-            filename,
-            was_remapped,
-            unmapped_path,
-            src,
-            Pos::from_usize(start_pos),
-        ));
 
-        let mut files = self.files.borrow_mut();
+        let file_id = StableSourceFileId::new_from_pieces(&filename,
+                                                       was_remapped,
+                                                       Some(&unmapped_path));
 
-        files.source_files.push(source_file.clone());
-        files.stable_id_to_source_file.insert(StableSourceFileId::new(&source_file),
-                                              source_file.clone());
+        return match self.source_file_by_stable_id(file_id) {
+            Some(lrc_sf) => lrc_sf,
+            None => {
+                let source_file = Lrc::new(SourceFile::new(
+                    filename,
+                    was_remapped,
+                    unmapped_path,
+                    src,
+                    Pos::from_usize(start_pos),
+                ));
 
-        source_file
+                let mut files = self.files.borrow_mut();
+
+                files.source_files.push(source_file.clone());
+                files.stable_id_to_source_file.insert(file_id, source_file.clone());
+
+                source_file
+            }
+        }
     }
 
     /// Allocates a new SourceFile representing a source file from an external
@@ -310,15 +308,17 @@ impl SourceMap {
     }
 
     // If there is a doctest_offset, apply it to the line
-    pub fn doctest_offset_line(&self, mut orig: usize) -> usize {
-        if let Some((_, line)) = self.doctest_offset {
-            if line >= 0 {
-                orig = orig + line as usize;
-            } else {
-                orig = orig - (-line) as usize;
-            }
+    pub fn doctest_offset_line(&self, file: &FileName, orig: usize) -> usize {
+        return match file {
+            FileName::DocTest(_, offset) => {
+                return if *offset >= 0 {
+                    orig + *offset as usize
+                } else {
+                    orig - (-(*offset)) as usize
+                }
+            },
+            _ => orig
         }
-        orig
     }
 
     /// Lookup source information about a BytePos
@@ -983,8 +983,8 @@ impl SourceMapper for SourceMap {
             }
         )
     }
-    fn doctest_offset_line(&self, line: usize) -> usize {
-        self.doctest_offset_line(line)
+    fn doctest_offset_line(&self, file: &FileName, line: usize) -> usize {
+        self.doctest_offset_line(file, line)
     }
 }
 

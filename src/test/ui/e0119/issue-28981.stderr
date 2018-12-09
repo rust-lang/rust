@@ -8,7 +8,7 @@ LL | impl<Foo> Deref for Foo { } //~ ERROR must be used
            - impl<T> std::ops::Deref for &T
              where T: ?Sized;
 
-error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g. `MyStruct<Foo>`)
+error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g., `MyStruct<Foo>`)
   --> $DIR/issue-28981.rs:15:1
    |
 LL | impl<Foo> Deref for Foo { } //~ ERROR must be used

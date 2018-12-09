@@ -13,6 +13,8 @@ fn dangle(x: &mut i32) -> &'static mut i32 {
     loop {
         match unsafe { g.resume() } {
             GeneratorState::Complete(c) => return c,
+//[nll]~^ ERROR explicit lifetime required
+//[ast]~^^ ERROR explicit lifetime required
             GeneratorState::Yielded(_) => (),
         }
     }

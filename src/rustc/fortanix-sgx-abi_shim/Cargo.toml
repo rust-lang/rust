@@ -1,0 +1,14 @@
+[package]
+name = "fortanix-sgx-abi"
+version = "0.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+path = "../../rust-sgx/fortanix-sgx-abi/src/lib.rs"
+test = false
+bench = false
+doc = false
+
+[dependencies]
+core = { path = "../../libcore" }
+compiler_builtins = { path = "../../rustc/compiler_builtins_shim" }

@@ -18,7 +18,7 @@ use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 
 use super::{EvalContext, Machine};
 
-/// Classify whether an operator is "left-homogeneous", i.e. the LHS has the
+/// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
 #[inline]
 fn binop_left_homogeneous(op: mir::BinOp) -> bool {
@@ -31,7 +31,7 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
             false,
     }
 }
-/// Classify whether an operator is "right-homogeneous", i.e. the RHS has the
+/// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
 /// same type as the LHS.
 #[inline]
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
@@ -85,7 +85,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
         use rustc::mir::StatementKind::*;
 
-        // Some statements (e.g. box) push new stack frames.
+        // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
         let frame_idx = self.cur_frame();
         self.tcx.span = stmt.source_info.span;
@@ -119,9 +119,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             FakeRead(..) => {}
 
             // Stacked Borrows.
-            Retag { fn_entry, ref place } => {
+            Retag { fn_entry, two_phase, ref place } => {
                 let dest = self.eval_place(place)?;
-                M::retag(self, fn_entry, dest)?;
+                M::retag(self, fn_entry, two_phase, dest)?;
             }
             EscapeToRaw(ref op) => {
                 let op = self.eval_operand(op, None)?;

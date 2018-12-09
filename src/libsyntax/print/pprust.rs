@@ -210,7 +210,6 @@ pub fn token_to_string(tok: &Token) -> String {
         token::DotDot               => "..".to_string(),
         token::DotDotDot            => "...".to_string(),
         token::DotDotEq             => "..=".to_string(),
-        token::DotEq                => ".=".to_string(),
         token::Comma                => ",".to_string(),
         token::Semi                 => ";".to_string(),
         token::Colon                => ":".to_string(),
@@ -725,7 +724,7 @@ pub trait PrintState<'a> {
             if i > 0 {
                 self.writer().word("::")?
             }
-            if segment.ident.name != keywords::CrateRoot.name() &&
+            if segment.ident.name != keywords::PathRoot.name() &&
                segment.ident.name != keywords::DollarCrate.name()
             {
                 self.writer().word(segment.ident.as_str().get())?;
@@ -1527,7 +1526,7 @@ impl<'a> State<'a> {
 
     pub fn print_defaultness(&mut self, defaultness: ast::Defaultness) -> io::Result<()> {
         if let ast::Defaultness::Default = defaultness {
-            try!(self.word_nbsp("default"));
+            self.word_nbsp("default")?;
         }
         Ok(())
     }
@@ -2464,7 +2463,7 @@ impl<'a> State<'a> {
                           colons_before_params: bool)
                           -> io::Result<()>
     {
-        if segment.ident.name != keywords::CrateRoot.name() &&
+        if segment.ident.name != keywords::PathRoot.name() &&
            segment.ident.name != keywords::DollarCrate.name() {
             self.print_ident(segment.ident)?;
             if let Some(ref args) = segment.args {

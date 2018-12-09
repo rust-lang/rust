@@ -4,5 +4,5 @@
 // #54902
 
 trait Foo<'a> {}
-impl<'b: '_> Foo<'b> for i32 {}
+impl<'b: '_> Foo<'b> for i32 {} //~ ERROR `'_` cannot be used here
 fn main() { }

@@ -25,7 +25,6 @@ use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::str::char_at;
 use syntax::parse::attr::*;
 use syntax::print::pprust;
 use std::fmt;
@@ -33,7 +32,7 @@ use std::fmt;
 // Copied out of syntax::util::parser_testing
 
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
-    new_parser_from_source_str(ps, FileName::Custom("bogofile".to_owned()), source_str)
+    new_parser_from_source_str(ps, FileName::Custom(source_str.clone()), source_str)
 }
 
 fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> PResult<'a, T> where

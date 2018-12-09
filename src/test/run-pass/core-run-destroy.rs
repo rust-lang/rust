@@ -16,7 +16,7 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
-// NB: These tests kill child processes. Valgrind sees these children as leaking
+// N.B., these tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 

@@ -22,4 +22,5 @@ use std::process::Command;
 
 fn main() {
     Command::new("echo").arg("hello").exec();
+//~^ ERROR no method named `exec`
 }

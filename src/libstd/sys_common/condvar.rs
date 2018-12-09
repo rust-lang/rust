@@ -25,6 +25,7 @@ impl Condvar {
     ///
     /// Behavior is undefined if the condition variable is moved after it is
     /// first used with any of the functions below.
+    #[unstable(feature = "sys_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Condvar { Condvar(imp::Condvar::new()) }
 
     /// Prepares the condition variable for use.

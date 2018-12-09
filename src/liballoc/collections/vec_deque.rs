@@ -19,7 +19,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
-use core::iter::{repeat, repeat_with, FromIterator, FusedIterator};
+use core::iter::{repeat_with, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds};
@@ -701,7 +701,7 @@ impl<T> VecDeque<T> {
     /// buf.shrink_to(0);
     /// assert!(buf.capacity() >= 4);
     /// ```
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
 
@@ -1886,40 +1886,6 @@ impl<T> VecDeque<T> {
             debug_assert!(!self.is_full());
         }
     }
-}
-
-impl<T: Clone> VecDeque<T> {
-    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
-    /// either by removing excess elements from the back or by appending clones of `value`
-    /// to the back.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut buf = VecDeque::new();
-    /// buf.push_back(5);
-    /// buf.push_back(10);
-    /// buf.push_back(15);
-    /// assert_eq!(buf, [5, 10, 15]);
-    ///
-    /// buf.resize(2, 0);
-    /// assert_eq!(buf, [5, 10]);
-    ///
-    /// buf.resize(5, 20);
-    /// assert_eq!(buf, [5, 10, 20, 20, 20]);
-    /// ```
-    #[stable(feature = "deque_extras", since = "1.16.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend(repeat(value).take(new_len - len))
-        } else {
-            self.truncate(new_len);
-        }
-    }
 
     /// Modifies the `VecDeque` in-place so that `len()` is equal to `new_len`,
     /// either by removing excess elements from the back or by appending
@@ -1957,6 +1923,34 @@ impl<T: Clone> VecDeque<T> {
         } else {
             self.truncate(new_len);
         }
+    }
+}
+
+impl<T: Clone> VecDeque<T> {
+    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
+    /// either by removing excess elements from the back or by appending clones of `value`
+    /// to the back.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.push_back(5);
+    /// buf.push_back(10);
+    /// buf.push_back(15);
+    /// assert_eq!(buf, [5, 10, 15]);
+    ///
+    /// buf.resize(2, 0);
+    /// assert_eq!(buf, [5, 10]);
+    ///
+    /// buf.resize(5, 20);
+    /// assert_eq!(buf, [5, 10, 20, 20, 20]);
+    /// ```
+    #[stable(feature = "deque_extras", since = "1.16.0")]
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.resize_with(new_len, || value.clone());
     }
 }
 
@@ -2801,7 +2795,7 @@ mod tests {
             // 0, 1, 2, .., len - 1
             let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
-                for to_remove in 0..len + 1 {
+                for to_remove in 0..=len {
                     tester.tail = tail_pos;
                     tester.head = tail_pos;
                     for i in 0..len {
@@ -2827,10 +2821,10 @@ mod tests {
         let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
 
         let cap = tester.capacity();
-        for len in 0..cap + 1 {
-            for tail in 0..cap + 1 {
-                for drain_start in 0..len + 1 {
-                    for drain_end in drain_start..len + 1 {
+        for len in 0..=cap {
+            for tail in 0..=cap {
+                for drain_start in 0..=len {
+                    for drain_end in drain_start..=len {
                         tester.tail = tail;
                         tester.head = tail;
                         for i in 0..len {
@@ -2872,10 +2866,10 @@ mod tests {
         tester.reserve(63);
         let max_cap = tester.capacity();
 
-        for len in 0..cap + 1 {
+        for len in 0..=cap {
             // 0, 1, 2, .., len - 1
             let expected = (0..).take(len).collect::<VecDeque<_>>();
-            for tail_pos in 0..max_cap + 1 {
+            for tail_pos in 0..=max_cap {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
                 tester.reserve(63);
@@ -2905,7 +2899,7 @@ mod tests {
         // len is the length *before* splitting
         for len in 0..cap {
             // index to split at
-            for at in 0..len + 1 {
+            for at in 0..=len {
                 // 0, 1, 2, .., at - 1 (may be empty)
                 let expected_self = (0..).take(at).collect::<VecDeque<_>>();
                 // at, at + 1, .., len - 1 (may be empty)
@@ -2933,7 +2927,7 @@ mod tests {
     fn test_from_vec() {
         use vec::Vec;
         for cap in 0..35 {
-            for len in 0..cap + 1 {
+            for len in 0..=cap {
                 let mut vec = Vec::with_capacity(cap);
                 vec.extend(0..len);
 

@@ -182,9 +182,16 @@ a.test-arrow {
 	color: #999;
 }
 
+#crate-search {
+	color: #555;
+	background-color: white;
+	border-color: #e0e0e0;
+	box-shadow: 0px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+}
+
 .search-input {
 	color: #555;
-	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 	background-color: white;
 }
 
@@ -279,7 +286,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: rgba(255,142,0,1);
 }
 
-.search-failed > a {
+.search-failed a {
 	color: #0089ff;
 }
 
@@ -409,4 +416,23 @@ kbd {
 
 .impl-items code {
 	background-color: rgba(0, 0, 0, 0);
+}
+
+#sidebar-toggle {
+	background-color: #F1F1F1;
+}
+#sidebar-toggle:hover {
+	background-color: #E0E0E0;
+}
+#source-sidebar {
+	background-color: #F1F1F1;
+}
+#source-sidebar > .title {
+	border-bottom-color: #ccc;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #E0E0E0;
+}
+div.files > .selected {
+	background-color: #fff;
 }

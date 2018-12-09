@@ -1001,6 +1001,8 @@ fn test_cycle() {
     let mut it = (0..).step_by(1).take(0).cycle();
     assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
+
+    assert_eq!(empty::<i32>().cycle().fold(0, |acc, x| acc + x), 0);
 }
 
 #[test]
@@ -1247,6 +1249,23 @@ fn test_cloned() {
     assert_eq!(it.next_back(), Some(6));
     assert_eq!(it.len(), 0);
     assert_eq!(it.next_back(), None);
+}
+
+#[test]
+fn test_cloned_side_effects() {
+    let mut count = 0;
+    {
+        let iter = [1, 2, 3]
+            .iter()
+            .map(|x| {
+                count += 1;
+                x
+            })
+            .cloned()
+            .zip(&[1]);
+        for _ in iter {}
+    }
+    assert_eq!(count, 2);
 }
 
 #[test]

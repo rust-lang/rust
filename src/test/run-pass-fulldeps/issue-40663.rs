@@ -12,10 +12,12 @@
 // aux-build:custom_derive_plugin.rs
 // ignore-stage1
 
-#![feature(plugin, custom_derive)]
+#![feature(plugin)]
 #![plugin(custom_derive_plugin)]
 
-#[derive(Nothing, Nothing, Nothing)]
+#[derive_Nothing]
+#[derive_Nothing]
+#[derive_Nothing]
 struct S;
 
 fn main() {}

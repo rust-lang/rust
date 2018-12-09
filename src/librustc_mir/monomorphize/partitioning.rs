@@ -51,7 +51,7 @@
 //!
 //! - There are two codegen units for every source-level module:
 //! - One for "stable", that is non-generic, code
-//! - One for more "volatile" code, i.e. monomorphized instances of functions
+//! - One for more "volatile" code, i.e., monomorphized instances of functions
 //!   defined in that module
 //!
 //! In order to see why this heuristic makes sense, let's take a look at when a
@@ -184,7 +184,7 @@ pub trait CodegenUnitExt<'tcx> {
                         // the codegen tests and can even make item order
                         // unstable.
                         InstanceDef::Item(def_id) => {
-                            tcx.hir.as_local_node_id(def_id)
+                            tcx.hir().as_local_node_id(def_id)
                         }
                         InstanceDef::VtableShim(..) |
                         InstanceDef::Intrinsic(..) |
@@ -198,7 +198,7 @@ pub trait CodegenUnitExt<'tcx> {
                     }
                 }
                 MonoItem::Static(def_id) => {
-                    tcx.hir.as_local_node_id(def_id)
+                    tcx.hir().as_local_node_id(def_id)
                 }
                 MonoItem::GlobalAsm(node_id) => {
                     Some(node_id)
@@ -415,7 +415,7 @@ fn mono_item_visibility(
             };
         }
         MonoItem::GlobalAsm(node_id) => {
-            let def_id = tcx.hir.local_def_id(*node_id);
+            let def_id = tcx.hir().local_def_id(*node_id);
             return if tcx.is_reachable_non_generic(def_id) {
                 *can_be_internalized = false;
                 default_visibility(tcx, def_id, false)
@@ -585,7 +585,7 @@ fn merge_codegen_units<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
     // smallest into each other) we're sure to start off with a deterministic
     // order (sorted by name). This'll mean that if two cgus have the same size
     // the stable sort below will keep everything nice and deterministic.
-    codegen_units.sort_by_key(|cgu| cgu.name().clone());
+    codegen_units.sort_by_key(|cgu| *cgu.name());
 
     // Merge the two smallest codegen units until the target size is reached.
     while codegen_units.len() > target_cgu_count {
@@ -799,7 +799,7 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
+        MonoItem::GlobalAsm(node_id) => Some(tcx.hir().local_def_id(node_id)),
     }
 }
 
@@ -985,7 +985,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
-                cgus.as_mut_slice().sort_by_cached_key(|&(ref name, _)| name.clone());
+                cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push_str(" ");

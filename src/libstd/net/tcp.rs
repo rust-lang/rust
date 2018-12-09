@@ -530,7 +530,7 @@ impl TcpStream {
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
     /// This will result in `read`, `write`, `recv` and `send` operations
-    /// becoming nonblocking, i.e. immediately returning from their calls.
+    /// becoming nonblocking, i.e., immediately returning from their calls.
     /// If the IO operation is successful, `Ok` is returned and no further
     /// action is required. If the IO operation could not be completed and needs
     /// to be retried, an error with kind [`io::ErrorKind::WouldBlock`] is
@@ -840,7 +840,7 @@ impl TcpListener {
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
     /// This will result in the `accept` operation becoming nonblocking,
-    /// i.e. immediately returning from their calls. If the IO operation is
+    /// i.e., immediately returning from their calls. If the IO operation is
     /// successful, `Ok` is returned and no further action is required. If the
     /// IO operation could not be completed and needs to be retried, an error
     /// with kind [`io::ErrorKind::WouldBlock`] is returned.

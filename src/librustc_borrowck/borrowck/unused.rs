@@ -100,7 +100,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UnusedMutCx<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.hir())
     }
 
     fn visit_arm(&mut self, arm: &hir::Arm) {
@@ -114,12 +114,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnusedMutCx<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UsedMutFinder<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.bccx.tcx.hir())
     }
 
     fn visit_nested_body(&mut self, id: hir::BodyId) {
-        let def_id = self.bccx.tcx.hir.body_owner_def_id(id);
+        let def_id = self.bccx.tcx.hir().body_owner_def_id(id);
         self.set.extend(self.bccx.tcx.borrowck(def_id).used_mut_nodes.iter().cloned());
-        self.visit_body(self.bccx.tcx.hir.body(id));
+        self.visit_body(self.bccx.tcx.hir().body(id));
     }
 }

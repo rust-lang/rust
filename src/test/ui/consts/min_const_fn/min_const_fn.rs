@@ -78,9 +78,9 @@ const fn i32_ops2(c: i32, d: i32) -> bool { c < d }
 const fn i32_ops3(c: i32, d: i32) -> bool { c != d }
 const fn i32_ops4(c: i32, d: i32) -> i32 { c + d }
 const fn char_cast(u: u8) -> char { u as char }
-const unsafe fn foo4() -> i32 { 42 }
-const unsafe fn foo5<T>() -> *const T { 0 as *const T }
-const unsafe fn foo6<T>() -> *mut T { 0 as *mut T }
+const unsafe fn ret_i32_no_unsafe() -> i32 { 42 }
+const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { 0 as *const T }
+const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { 0 as *mut T }
 
 // not ok
 const fn foo11<T: std::fmt::Display>(t: T) -> T { t }

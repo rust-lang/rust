@@ -23,7 +23,7 @@ mod foo {
     }
 
     mod m3 {
-        pub(super) use super::f; // Check that this is counted as used (c.f. #36249).
+        pub(super) use super::f; // Check that this is counted as used (cf. issue #36249).
     }
 
     pub mod m4 {

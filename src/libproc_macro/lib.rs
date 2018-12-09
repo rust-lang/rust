@@ -110,7 +110,7 @@ impl FromStr for TokenStream {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
@@ -196,7 +196,7 @@ pub mod token_stream {
     use {bridge, Group, Ident, Literal, Punct, TokenTree, TokenStream};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
-    /// The iteration is "shallow", e.g. the iterator doesn't recurse into delimited groups,
+    /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
     /// and returns whole groups as token trees.
     #[derive(Clone)]
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -426,7 +426,7 @@ impl PartialEq for SourceFile {
 #[unstable(feature = "proc_macro_span", issue = "54725")]
 impl Eq for SourceFile {}
 
-/// A single token or a delimited sequence of token trees (e.g. `[1, (), ..]`).
+/// A single token or a delimited sequence of token trees (e.g., `[1, (), ..]`).
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Clone)]
 pub enum TokenTree {
@@ -533,7 +533,7 @@ impl From<Literal> for TokenTree {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenTree {
@@ -663,7 +663,7 @@ impl Group {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Group {
@@ -711,10 +711,10 @@ impl !Sync for Punct {}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
-    /// E.g. `+` is `Alone` in `+ =`, `+ident` or `+()`.
+    /// e.g., `+` is `Alone` in `+ =`, `+ident` or `+()`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Alone,
-    /// E.g. `+` is `Joint` in `+=` or `'#`.
+    /// e.g., `+` is `Joint` in `+=` or `'#`.
     /// Additionally, single quote `'` can join with identifiers to form lifetimes `'ident`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
@@ -765,7 +765,7 @@ impl Punct {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Punct {
@@ -860,7 +860,7 @@ impl Ident {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Ident {
@@ -1110,7 +1110,7 @@ impl Literal {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Literal {

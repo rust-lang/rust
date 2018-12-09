@@ -228,7 +228,7 @@ pub enum PatternKind<'tcx> {
 
     /// matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
-    /// e.g. `&[ref xs..]`.
+    /// e.g., `&[ref xs..]`.
     Slice {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
@@ -954,7 +954,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
         let kind = match cv.ty.sty {
             ty::Float(_) => {
-                let id = self.tcx.hir.hir_to_node_id(id);
+                let id = self.tcx.hir().hir_to_node_id(id);
                 self.tcx.lint_node(
                     ::rustc::lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,

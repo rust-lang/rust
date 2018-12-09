@@ -48,7 +48,7 @@ pub fn infer_predicates<'tcx>(
         };
 
         // Visit all the crates and infer predicates
-        tcx.hir.krate().visit_all_item_likes(&mut visitor);
+        tcx.hir().krate().visit_all_item_likes(&mut visitor);
     }
 
     global_inferred_outlives
@@ -63,16 +63,16 @@ pub struct InferVisitor<'cx, 'tcx: 'cx> {
 
 impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let item_did = self.tcx.hir.local_def_id(item.id);
+        let item_did = self.tcx.hir().local_def_id(item.id);
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
         let node_id = self
             .tcx
-            .hir
+            .hir()
             .as_local_node_id(item_did)
             .expect("expected local def-id");
-        let item = match self.tcx.hir.get(node_id) {
+        let item = match self.tcx.hir().get(node_id) {
             Node::Item(item) => item,
             _ => bug!(),
         };
@@ -314,7 +314,7 @@ pub fn check_explicit_predicates<'tcx>(
         // case that `substs` come from a `dyn Trait` type, our caller will have
         // included `Self = usize` as the value for `Self`. If we were
         // to apply the substs, and not filter this predicate, we might then falsely
-        // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
+        // conclude that e.g., `X: 'x` was a reasonable inferred requirement.
         //
         // Another similar case is where we have a inferred
         // requirement like `<Self as Trait>::Foo: 'b`. We presently

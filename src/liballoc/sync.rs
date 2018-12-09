@@ -1121,7 +1121,7 @@ impl<T: ?Sized> Weak<T> {
     }
 
     /// Return `None` when the pointer is dangling and there is no allocated `ArcInner`,
-    /// i.e. this `Weak` was created by `Weak::new`
+    /// i.e., this `Weak` was created by `Weak::new`
     #[inline]
     fn inner(&self) -> Option<&ArcInner<T>> {
         if is_dangling(self.ptr) {
@@ -1129,6 +1129,53 @@ impl<T: ?Sized> Weak<T> {
         } else {
             Some(unsafe { self.ptr.as_ref() })
         }
+    }
+
+    /// Returns true if the two `Weak`s point to the same value (not just values
+    /// that compare as equal).
+    ///
+    /// # Notes
+    ///
+    /// Since this compares pointers it means that `Weak::new()` will equal each
+    /// other, even though they don't point to any value.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_ptr_eq)]
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let first_rc = Arc::new(5);
+    /// let first = Arc::downgrade(&first_rc);
+    /// let second = Arc::downgrade(&first_rc);
+    ///
+    /// assert!(Weak::ptr_eq(&first, &second));
+    ///
+    /// let third_rc = Arc::new(5);
+    /// let third = Arc::downgrade(&third_rc);
+    ///
+    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// ```
+    ///
+    /// Comparing `Weak::new`.
+    ///
+    /// ```
+    /// #![feature(weak_ptr_eq)]
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let first = Weak::new();
+    /// let second = Weak::new();
+    /// assert!(Weak::ptr_eq(&first, &second));
+    ///
+    /// let third_rc = Arc::new(());
+    /// let third = Arc::downgrade(&third_rc);
+    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// ```
+    #[inline]
+    #[unstable(feature = "weak_ptr_eq", issue = "55981")]
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+        this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 

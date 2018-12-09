@@ -234,7 +234,7 @@ macro_rules! supported_targets {
         $(mod $module;)*
 
         /// List of supported targets
-        const TARGETS: &'static [&'static str] = &[$($triple),*];
+        const TARGETS: &[&str] = &[$($triple),*];
 
         fn load_specific(target: &str) -> TargetResult {
             match target {
@@ -399,6 +399,9 @@ supported_targets! {
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),
     ("thumbv7em-none-eabi", thumbv7em_none_eabi),
     ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
+    ("thumbv8m.base-none-eabi", thumbv8m_base_none_eabi),
+    ("thumbv8m.main-none-eabi", thumbv8m_main_none_eabi),
+    ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -602,7 +605,7 @@ pub struct TargetOptions {
     /// `eh_unwind_resume` lang item.
     pub custom_unwind_resume: bool,
 
-    /// Flag indicating whether ELF TLS (e.g. #[thread_local]) is available for
+    /// Flag indicating whether ELF TLS (e.g., #[thread_local]) is available for
     /// this target.
     pub has_elf_tls: bool,
     // This is mainly for easy compatibility with emscripten.
@@ -995,7 +998,7 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(linker, optional);
-        try!(key!(lld_flavor, LldFlavor));
+        key!(lld_flavor, LldFlavor)?;
         key!(pre_link_args, link_args);
         key!(pre_link_args_crt, link_args);
         key!(pre_link_objects_exe, list);
@@ -1038,7 +1041,7 @@ impl Target {
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
         key!(needs_plt, bool);
-        try!(key!(relro_level, RelroLevel));
+        key!(relro_level, RelroLevel)?;
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
@@ -1048,7 +1051,7 @@ impl Target {
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
         key!(atomic_cas, bool);
-        try!(key!(panic_strategy, PanicStrategy));
+        key!(panic_strategy, PanicStrategy)?;
         key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);

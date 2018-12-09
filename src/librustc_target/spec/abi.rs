@@ -12,7 +12,7 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
 pub enum Abi {
-    // NB: This ordering MUST match the AbiDatas array below.
+    // N.B., this ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
 
     // Single platform ABIs

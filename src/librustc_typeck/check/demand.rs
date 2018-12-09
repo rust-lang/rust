@@ -91,7 +91,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Checks that the type of `expr` can be coerced to `expected`.
     //
-    // NB: This code relies on `self.diverges` to be accurate. In
+    // N.B., this code relies on `self.diverges` to be accurate. In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
     pub fn demand_coerce_diag(&self,
@@ -203,17 +203,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn can_use_as_ref(&self, expr: &hir::Expr) -> Option<(Span, &'static str, String)> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
             if let hir::def::Def::Local(id) = path.def {
-                let parent = self.tcx.hir.get_parent_node(id);
+                let parent = self.tcx.hir().get_parent_node(id);
                 if let Some(Node::Expr(hir::Expr {
                     id,
                     node: hir::ExprKind::Closure(_, decl, ..),
                     ..
-                })) = self.tcx.hir.find(parent) {
-                    let parent = self.tcx.hir.get_parent_node(*id);
+                })) = self.tcx.hir().find(parent) {
+                    let parent = self.tcx.hir().get_parent_node(*id);
                     if let (Some(Node::Expr(hir::Expr {
                         node: hir::ExprKind::MethodCall(path, span, expr),
                         ..
-                    })), 1) = (self.tcx.hir.find(parent), decl.inputs.len()) {
+                    })), 1) = (self.tcx.hir().find(parent), decl.inputs.len()) {
                         let self_ty = self.tables.borrow().node_id_to_type(expr[0].hir_id);
                         let self_ty = format!("{:?}", self_ty);
                         let name = path.ident.as_str();
@@ -450,8 +450,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       checked_ty: Ty<'tcx>,
                       expected_ty: Ty<'tcx>)
                       -> bool {
-        let parent_id = self.tcx.hir.get_parent_node(expr.id);
-        if let Some(parent) = self.tcx.hir.find(parent_id) {
+        let parent_id = self.tcx.hir().get_parent_node(expr.id);
+        if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Shouldn't suggest `.into()` on `const`s.
             if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
                 // FIXME(estebank): modify once we decide to suggest `as` casts

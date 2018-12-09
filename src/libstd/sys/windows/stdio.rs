@@ -48,7 +48,7 @@ pub fn get(handle: c::DWORD) -> io::Result<Output> {
 }
 
 fn write(handle: c::DWORD, data: &[u8]) -> io::Result<usize> {
-    let handle = match try!(get(handle)) {
+    let handle = match get(handle)? {
         Output::Console(c) => c,
         Output::Pipe(p) => {
             let handle = Handle::new(p);
@@ -99,7 +99,7 @@ impl Stdin {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let handle = match try!(get(c::STD_INPUT_HANDLE)) {
+        let handle = match get(c::STD_INPUT_HANDLE)? {
             Output::Console(c) => c,
             Output::Pipe(p) => {
                 let handle = Handle::new(p);
@@ -228,6 +228,6 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 // been seen to be acceptable.
 pub const STDIN_BUF_SIZE: usize = 8 * 1024;
 
-pub fn stderr_prints_nothing() -> bool {
-    false
+pub fn panic_output() -> Option<impl io::Write> {
+    Stderr::new().ok()
 }

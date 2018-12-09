@@ -26,6 +26,7 @@ const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
 unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T> Lazy<T> {
+    #[unstable(feature = "sys_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Lazy<T> {
         Lazy {
             lock: Mutex::new(),

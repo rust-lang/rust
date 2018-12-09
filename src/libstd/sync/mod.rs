@@ -89,7 +89,7 @@
 //!
 //! - A **single processor** executing instructions [out-of-order]:
 //!   Modern CPUs are capable of [superscalar] execution,
-//!   i.e. multiple instructions might be executing at the same time,
+//!   i.e., multiple instructions might be executing at the same time,
 //!   even though the machine code describes a sequential process.
 //!
 //!   This kind of reordering is handled transparently by the CPU.

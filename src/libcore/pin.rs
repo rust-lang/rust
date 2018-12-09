@@ -9,7 +9,7 @@
 //!
 //! In order to prevent objects from moving, they must be pinned
 //! by wrapping a pointer to the data in the [`Pin`] type. A pointer wrapped
-//! in a `Pin` is otherwise equivalent to its normal version, e.g. `Pin<Box<T>>`
+//! in a `Pin` is otherwise equivalent to its normal version, e.g., `Pin<Box<T>>`
 //! and `Box<T>` work the same way except that the first is pinning the value
 //! of `T` in place.
 //!

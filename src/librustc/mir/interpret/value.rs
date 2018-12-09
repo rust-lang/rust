@@ -139,6 +139,14 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn with_tag(self, new_tag: Tag) -> Self {
+        match self {
+            Scalar::Ptr(ptr) => Scalar::Ptr(Pointer { tag: new_tag, ..ptr }),
+            Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
+        }
+    }
+
+    #[inline]
     pub fn ptr_null(cx: &impl HasDataLayout) -> Self {
         Scalar::Bits {
             bits: 0,

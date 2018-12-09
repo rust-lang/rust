@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! This pass type-checks the MIR to ensure it is not broken.
+
 #![allow(unreachable_code)]
 
 use borrow_check::borrow_set::BorrowSet;
@@ -1467,7 +1468,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             value_ty,
                             ty,
                             term_location.to_locations(),
-                            ConstraintCategory::Return,
+                            ConstraintCategory::Yield,
                         ) {
                             span_mirbug!(
                                 self,

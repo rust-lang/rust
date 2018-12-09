@@ -138,7 +138,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             // the first evaluate_predicates call.
             //
             // The problem is this: most of rustc, including SelectionContext and traits::project,
-            // are designed to work with a concrete usage of a type (e.g. Vec<u8>
+            // are designed to work with a concrete usage of a type (e.g., Vec<u8>
             // fn<T>() { Vec<T> }. This information will generally never change - given
             // the 'T' in fn<T>() { ... }, we'll never know anything else about 'T'.
             // If we're unable to prove that 'T' implements a particular trait, we're done -
@@ -289,7 +289,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     //
     // One additional consideration is supertrait bounds. Normally, a ParamEnv is only ever
     // constructed once for a given type. As part of the construction process, the ParamEnv will
-    // have any supertrait bounds normalized - e.g. if we have a type 'struct Foo<T: Copy>', the
+    // have any supertrait bounds normalized - e.g., if we have a type 'struct Foo<T: Copy>', the
     // ParamEnv will contain 'T: Copy' and 'T: Clone', since 'Copy: Clone'. When we construct our
     // own ParamEnv, we need to do this ourselves, through traits::elaborate_predicates, or else
     // SelectionContext will choke on the missing predicates. However, this should never show up in
@@ -334,11 +334,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 continue;
             }
 
-            let result = select.select(&Obligation::new(dummy_cause.clone(), new_env, pred));
+            // Call infcx.resolve_type_vars_if_possible to see if we can
+            // get rid of any inference variables.
+            let obligation = infcx.resolve_type_vars_if_possible(
+                &Obligation::new(dummy_cause.clone(), new_env, pred)
+            );
+            let result = select.select(&obligation);
 
             match &result {
                 &Ok(Some(ref vtable)) => {
-                    // If we see an explicit negative impl (e.g. 'impl !Send for MyStruct'),
+                    // If we see an explicit negative impl (e.g., 'impl !Send for MyStruct'),
                     // we immediately bail out, since it's impossible for us to continue.
                     match vtable {
                         Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
@@ -369,7 +374,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 &Ok(None) => {}
                 &Err(SelectionError::Unimplemented) => {
-                    if self.is_of_param(pred.skip_binder().trait_ref.substs) {
+                    if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
@@ -427,11 +432,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // If we put both of these predicates in our computed ParamEnv, we'll
     // confuse SelectionContext, since it will (correctly) view both as being applicable.
     //
-    // To solve this, we pick the 'more strict' lifetime bound - i.e. the HRTB
+    // To solve this, we pick the 'more strict' lifetime bound - i.e., the HRTB
     // Our end goal is to generate a user-visible description of the conditions
     // under which a type implements an auto trait. A trait predicate involving
     // a HRTB means that the type needs to work with any choice of lifetime,
-    // not just one specific lifetime (e.g. 'static).
+    // not just one specific lifetime (e.g., 'static).
     fn add_user_pred<'c>(
         &self,
         user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>,
@@ -631,16 +636,26 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
-    pub fn is_of_param(&self, substs: &Substs<'_>) -> bool {
-        if substs.is_noop() {
-            return false;
-        }
+    fn is_param_no_infer(&self, substs: &Substs<'_>) -> bool {
+        return self.is_of_param(substs.type_at(0)) &&
+            !substs.types().any(|t| t.has_infer_types());
+    }
 
-        return match substs.type_at(0).sty {
+    pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
+        return match ty.sty {
             ty::Param(_) => true,
-            ty::Projection(p) => self.is_of_param(p.substs),
+            ty::Projection(p) => self.is_of_param(p.self_ty()),
             _ => false,
         };
+    }
+
+    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
+        match p.ty().skip_binder().sty {
+            ty::Projection(proj) if proj == p.skip_binder().projection_ty => {
+                true
+            },
+            _ => false
+        }
     }
 
     pub fn evaluate_nested_obligations<
@@ -661,28 +676,77 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     ) -> bool {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
-        for (obligation, predicate) in nested
-            .filter(|o| o.recursion_depth == 1)
+        for (obligation, mut predicate) in nested
             .map(|o| (o.clone(), o.predicate.clone()))
         {
             let is_new_pred =
                 fresh_preds.insert(self.clean_pred(select.infcx(), predicate.clone()));
 
+            // Resolve any inference variables that we can, to help selection succeed
+            predicate = select.infcx().resolve_type_vars_if_possible(&predicate);
+
+            // We only add a predicate as a user-displayable bound if
+            // it involves a generic parameter, and doesn't contain
+            // any inference variables.
+            //
+            // Displaying a bound involving a concrete type (instead of a generic
+            // parameter) would be pointless, since it's always true
+            // (e.g. u8: Copy)
+            // Displaying an inference variable is impossible, since they're
+            // an internal compiler detail without a defined visual representation
+            //
+            // We check this by calling is_of_param on the relevant types
+            // from the various possible predicates
             match &predicate {
                 &ty::Predicate::Trait(ref p) => {
-                    let substs = &p.skip_binder().trait_ref.substs;
+                    if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
+                        && !only_projections
+                        && is_new_pred {
 
-                    if self.is_of_param(substs) && !only_projections && is_new_pred {
                         self.add_user_pred(computed_preds, predicate);
                     }
                     predicates.push_back(p.clone());
                 }
                 &ty::Predicate::Projection(p) => {
-                    // If the projection isn't all type vars, then
-                    // we don't want to add it as a bound
-                    if self.is_of_param(p.skip_binder().projection_ty.substs) && is_new_pred {
-                        self.add_user_pred(computed_preds, predicate);
-                    } else {
+                    debug!("evaluate_nested_obligations: examining projection predicate {:?}",
+                           predicate);
+
+                    // As described above, we only want to display
+                    // bounds which include a generic parameter but don't include
+                    // an inference variable.
+                    // Additionally, we check if we've seen this predicate before,
+                    // to avoid rendering duplicate bounds to the user.
+                    if self.is_param_no_infer(p.skip_binder().projection_ty.substs)
+                        && !p.ty().skip_binder().is_ty_infer()
+                        && is_new_pred {
+                            debug!("evaluate_nested_obligations: adding projection predicate\
+                            to computed_preds: {:?}", predicate);
+
+                            // Under unusual circumstances, we can end up with a self-refeential
+                            // projection predicate. For example:
+                            // <T as MyType>::Value == <T as MyType>::Value
+                            // Not only is displaying this to the user pointless,
+                            // having it in the ParamEnv will cause an issue if we try to call
+                            // poly_project_and_unify_type on the predicate, since this kind of
+                            // predicate will normally never end up in a ParamEnv.
+                            //
+                            // For these reasons, we ignore these weird predicates,
+                            // ensuring that we're able to properly synthesize an auto trait impl
+                            if self.is_self_referential_projection(p) {
+                                debug!("evaluate_nested_obligations: encountered a projection
+                                 predicate equating a type with itself! Skipping");
+
+                            } else {
+                                self.add_user_pred(computed_preds, predicate);
+                            }
+                    }
+
+                    // We can only call poly_project_and_unify_type when our predicate's
+                    // Ty is an inference variable - otherwise, there won't be anything to
+                    // unify
+                    if p.ty().skip_binder().is_ty_infer() {
+                        debug!("Projecting and unifying projection predicate {:?}",
+                               predicate);
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
                             Err(e) => {
                                 debug!(

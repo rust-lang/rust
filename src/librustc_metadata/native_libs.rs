@@ -25,7 +25,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
         tcx,
         libs: Vec::new(),
     };
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
+    tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
     return collector.libs
 }
@@ -65,7 +65,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                 name: None,
                 kind: cstore::NativeUnknown,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir.local_def_id(it.id)),
+                foreign_module: Some(self.tcx.hir().local_def_id(it.id)),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;

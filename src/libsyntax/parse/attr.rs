@@ -22,8 +22,8 @@ enum InnerAttributeParsePolicy<'a> {
     NotPermitted { reason: &'a str },
 }
 
-const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &'static str = "an inner attribute is not \
-                                                             permitted in this context";
+const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
+                                                     permitted in this context";
 
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item

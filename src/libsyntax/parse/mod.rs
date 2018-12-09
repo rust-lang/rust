@@ -19,7 +19,6 @@ use errors::{Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use ptr::P;
-use str::char_at;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
@@ -436,9 +435,7 @@ fn raw_str_lit(lit: &str) -> String {
 
 // check if `s` looks like i32 or u1234 etc.
 fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-    s.len() > 1 &&
-        first_chars.contains(&char_at(s, 0)) &&
-        s[1..].chars().all(|c| '0' <= c && c <= '9')
+    s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
 }
 
 macro_rules! err {
@@ -645,11 +642,11 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     let orig = s;
     let mut ty = ast::LitIntType::Unsuffixed;
 
-    if char_at(s, 0) == '0' && s.len() > 1 {
-        match char_at(s, 1) {
-            'x' => base = 16,
-            'o' => base = 8,
-            'b' => base = 2,
+    if s.starts_with('0') && s.len() > 1 {
+        match s.as_bytes()[1] {
+            b'x' => base = 16,
+            b'o' => base = 8,
+            b'b' => base = 2,
             _ => { }
         }
     }
@@ -977,23 +974,25 @@ mod tests {
         with_globals(|| {
             let sess = ParseSess::new(FilePathMapping::empty());
 
-            let name = FileName::Custom("source".to_string());
+            let name_1 = FileName::Custom("crlf_source_1".to_string());
             let source = "/// doc comment\r\nfn foo() {}".to_string();
-            let item = parse_item_from_source_str(name.clone(), source, &sess)
+            let item = parse_item_from_source_str(name_1, source, &sess)
                 .unwrap().unwrap();
             let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
             assert_eq!(doc, "/// doc comment");
 
+            let name_2 = FileName::Custom("crlf_source_2".to_string());
             let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
-            let item = parse_item_from_source_str(name.clone(), source, &sess)
+            let item = parse_item_from_source_str(name_2, source, &sess)
                 .unwrap().unwrap();
             let docs = item.attrs.iter().filter(|a| a.path == "doc")
                         .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
             let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
             assert_eq!(&docs[..], b);
 
+            let name_3 = FileName::Custom("clrf_source_3".to_string());
             let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
-            let item = parse_item_from_source_str(name, source, &sess).unwrap().unwrap();
+            let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
             let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
             assert_eq!(doc, "/** doc comment\n *  with CRLF */");
         });

@@ -250,11 +250,11 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
         if let Some(local_id_root) = local_id_root {
             if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
-                    let node_id = tcx.hir.hir_to_node_id(hir_id);
+                    let node_id = tcx.hir().hir_to_node_id(hir_id);
 
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
-                         tcx.hir.node_to_string(node_id),
+                         tcx.hir().node_to_string(node_id),
                          DefId::local(hir_id.owner),
                          local_id_root)
                 });
@@ -530,8 +530,8 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_id_to_type_opt(id).unwrap_or_else(||
             bug!("node_id_to_type: no type for node `{}`",
                  tls::with(|tcx| {
-                     let id = tcx.hir.hir_to_node_id(id);
-                     tcx.hir.node_to_string(id)
+                     let id = tcx.hir().hir_to_node_id(id);
+                     tcx.hir().node_to_string(id)
                  }))
         )
     }
@@ -587,7 +587,7 @@ impl<'tcx> TypeckTables<'tcx> {
     // auto-ref.  The type returned by this function does not consider such
     // adjustments.  See `expr_ty_adjusted()` instead.
     //
-    // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
+    // NB (2): This type doesn't provide type parameter substitutions; e.g., if you
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
     pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
@@ -903,7 +903,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Lrc<Vec<Export>>>,
 
-    pub hir: hir_map::Map<'tcx>,
+    hir_map: hir_map::Map<'tcx>,
 
     /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
@@ -969,6 +969,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             gcx: self.gcx,
             interners: &self.gcx.global_interners,
         }
+    }
+
+    #[inline(always)]
+    pub fn hir(self) -> &'a hir_map::Map<'gcx> {
+        &self.hir_map
     }
 
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
@@ -1186,7 +1191,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .map(|(id, sp)| (hir.local_def_id(id), sp))
                     .collect(),
             extern_prelude: resolutions.extern_prelude,
-            hir,
+            hir_map: hir,
             def_path_hash_to_def_id,
             queries: query::Queries::new(
                 providers,
@@ -1272,7 +1277,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn def_key(self, id: DefId) -> hir_map::DefKey {
         if id.is_local() {
-            self.hir.def_key(id)
+            self.hir().def_key(id)
         } else {
             self.cstore.def_key(id)
         }
@@ -1285,7 +1290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> hir_map::DefPath {
         if id.is_local() {
-            self.hir.def_path(id)
+            self.hir().def_path(id)
         } else {
             self.cstore.def_path(id)
         }
@@ -1294,7 +1299,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if def_id.is_local() {
-            self.hir.definitions().def_path_hash(def_id.index)
+            self.hir().definitions().def_path_hash(def_id.index)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -1332,11 +1337,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'a> {
-        let krate = self.dep_graph.with_ignore(|| self.gcx.hir.krate());
+        let krate = self.dep_graph.with_ignore(|| self.hir().krate());
 
         StableHashingContext::new(self.sess,
                                   krate,
-                                  self.hir.definitions(),
+                                  self.hir().definitions(),
                                   self.cstore)
     }
 
@@ -1493,12 +1498,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             BorrowckMode::Ast => match self.sess.edition() {
                 Edition::Edition2015 => BorrowckMode::Ast,
                 Edition::Edition2018 => BorrowckMode::Migrate,
-
-                // For now, future editions mean Migrate. (But it
-                // would make a lot of sense for it to be changed to
-                // `BorrowckMode::Mir`, depending on how we plan to
-                // time the forcing of full migration to NLL.)
-                _ => BorrowckMode::Migrate,
             },
         }
     }
@@ -1530,10 +1529,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             _ => return None, // not a free region
         };
 
-        let node_id = self.hir
+        let node_id = self.hir()
             .as_local_node_id(suitable_region_binding_scope)
             .unwrap();
-        let is_impl_item = match self.hir.find(node_id) {
+        let is_impl_item = match self.hir().find(node_id) {
             Some(Node::Item(..)) | Some(Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
@@ -1553,8 +1552,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         scope_def_id: DefId,
     ) -> Option<Ty<'tcx>> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return None
-        let node_id = self.hir.as_local_node_id(scope_def_id).unwrap();
-        match self.hir.get(node_id) {
+        let node_id = self.hir().as_local_node_id(scope_def_id).unwrap();
+        match self.hir().get(node_id) {
             Node::Item(item) => {
                 match item.node {
                     ItemKind::Fn(..) => { /* type_of_def_id() will work */ }
@@ -1655,7 +1654,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 /// For Ty, None can be returned if either the type interner doesn't
 /// contain the TyKind key or if the address of the interned
 /// pointer differs. The latter case is possible if a primitive type,
-/// e.g. `()` or `u8`, was interned in a different context.
+/// e.g., `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx>: fmt::Debug {
     type Lifted: fmt::Debug + 'tcx;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
@@ -1948,8 +1947,12 @@ pub mod tls {
     /// This is a callback from libsyntax as it cannot access the implicit state
     /// in librustc otherwise
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with(|tcx| {
-            write!(f, "{}", tcx.sess.source_map().span_to_string(span))
+        with_opt(|tcx| {
+            if let Some(tcx) = tcx {
+                write!(f, "{}", tcx.sess.source_map().span_to_string(span))
+            } else {
+                syntax_pos::default_span_debug(span, f)
+            }
         })
     }
 
@@ -2229,7 +2232,7 @@ impl<'tcx, T: 'tcx+?Sized> Clone for Interned<'tcx, T> {
 }
 impl<'tcx, T: 'tcx+?Sized> Copy for Interned<'tcx, T> {}
 
-// NB: An Interned<Ty> compares and hashes as a sty.
+// N.B., an `Interned<Ty>` compares and hashes as a sty.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
         self.0.sty == other.0.sty
@@ -2250,7 +2253,7 @@ impl<'tcx: 'lcx, 'lcx> Borrow<TyKind<'lcx>> for Interned<'tcx, TyS<'tcx>> {
     }
 }
 
-// NB: An Interned<List<T>> compares and hashes as its elements.
+// N.B., an `Interned<List<T>>` compares and hashes as its elements.
 impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, List<T>> {
     fn eq(&self, other: &Interned<'tcx, List<T>>) -> bool {
         self.0[..] == other.0[..]
@@ -2461,7 +2464,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Given a closure signature `sig`, returns an equivalent `fn`
     /// type with the same signature. Detuples and so forth -- so
-    /// e.g. if we have a sig with `Fn<(u32, i32)>` then you would get
+    /// e.g., if we have a sig with `Fn<(u32, i32)>` then you would get
     /// a `fn(u32, i32)`.
     pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         let converted_sig = sig.map_bound(|s| {
@@ -2710,7 +2713,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_ty_param(0, keywords::SelfType.name().as_interned_str())
+        self.mk_ty_param(0, keywords::SelfUpper.name().as_interned_str())
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
@@ -2866,11 +2869,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn lint_hir_note<S: Into<MultiSpan>>(self,
-                                              lint: &'static Lint,
-                                              hir_id: HirId,
-                                              span: S,
-                                              msg: &str,
-                                              note: &str) {
+                                             lint: &'static Lint,
+                                             hir_id: HirId,
+                                             span: S,
+                                             msg: &str,
+                                             note: &str) {
         let mut err = self.struct_span_lint_hir(lint, hir_id, span.into(), msg);
         err.note(note);
         err.emit()
@@ -2901,11 +2904,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.dep_graph.with_ignore(|| {
             let sets = self.lint_levels(LOCAL_CRATE);
             loop {
-                let hir_id = self.hir.definitions().node_to_hir_id(id);
+                let hir_id = self.hir().definitions().node_to_hir_id(id);
                 if let Some(pair) = sets.level_and_source(lint, hir_id, self.sess) {
                     return pair
                 }
-                let next = self.hir.get_parent_node(id);
+                let next = self.hir().get_parent_node(id);
                 if next == id {
                     bug!("lint traversal reached the root of the crate");
                 }
@@ -2921,7 +2924,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
-        let node_id = self.hir.hir_to_node_id(hir_id);
+        let node_id = self.hir().hir_to_node_id(hir_id);
         let (level, src) = self.lint_level_at_node(lint, node_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
@@ -3013,9 +3016,9 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
-    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // FIXME(#44234): almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
-    // resolve! Does this work? Unsure! That's what the issue is about
+    // resolve! Does this work? Unsure! That's what the issue is about.
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id).cloned();
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
     providers.crate_name = |tcx, id| {
@@ -3045,16 +3048,16 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.lookup_stability = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_stability(id)
     };
     providers.lookup_deprecation_entry = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_deprecation_entry(id)
     };
     providers.extern_mod_stmt_cnum = |tcx, id| {
-        let id = tcx.hir.as_local_node_id(id).unwrap();
+        let id = tcx.hir().as_local_node_id(id).unwrap();
         tcx.cstore.extern_mod_stmt_cnum_untracked(id)
     };
     providers.all_crate_nums = |tcx, cnum| {
@@ -3075,10 +3078,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        attr::contains_name(tcx.hir.krate_attrs(), "panic_runtime")
+        attr::contains_name(tcx.hir().krate_attrs(), "panic_runtime")
     };
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        attr::contains_name(tcx.hir.krate_attrs(), "compiler_builtins")
+        attr::contains_name(tcx.hir().krate_attrs(), "compiler_builtins")
     };
 }
