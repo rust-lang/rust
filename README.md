@@ -18,7 +18,7 @@ You can run `rustfmt` with Rust 1.24 and above.
 To install:
 
 ```
-rustup component add rustfmt-preview
+rustup component add rustfmt
 ```
 
 to run on a cargo project in the current working directory:
@@ -29,7 +29,7 @@ cargo fmt
 
 For the latest and greatest `rustfmt` (nightly required):
 ```
-rustup component add rustfmt-preview --toolchain nightly
+rustup component add rustfmt --toolchain nightly
 ```
 To run:
 ```
@@ -68,7 +68,7 @@ because in the future Rustfmt might work on code where it currently does not):
 ## Installation
 
 ```
-rustup component add rustfmt-preview
+rustup component add rustfmt
 ```
 
 ## Installing from source
@@ -125,7 +125,7 @@ A minimal Travis setup could look like this (requires Rust 1.24.0 or greater):
 ```yaml
 language: rust
 before_script:
-- rustup component add rustfmt-preview
+- rustup component add rustfmt
 script:
 - cargo fmt --all -- --check
 - cargo build
