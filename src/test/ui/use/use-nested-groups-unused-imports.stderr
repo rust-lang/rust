@@ -2,7 +2,7 @@ error: unused imports: `*`, `Foo`, `baz::{}`, `foobar::*`
   --> $DIR/use-nested-groups-unused-imports.rs:16:11
    |
 LL | use foo::{Foo, bar::{baz::{}, foobar::*}, *};
-   |           ^^^        ^^^^^^^  ^^^^^^^^^   ^
+   | ----------^^^--------^^^^^^^--^^^^^^^^^---^-- help: remove the whole `use` item
    |
 note: lint level defined here
   --> $DIR/use-nested-groups-unused-imports.rs:3:9
@@ -14,13 +14,15 @@ error: unused import: `*`
   --> $DIR/use-nested-groups-unused-imports.rs:18:24
    |
 LL | use foo::bar::baz::{*, *};
-   |                        ^
+   |                      --^
+   |                      |
+   |                      help: remove the unused import
 
-error: unused import: `use foo::{};`
-  --> $DIR/use-nested-groups-unused-imports.rs:20:1
+error: unused import: `foo::{}`
+  --> $DIR/use-nested-groups-unused-imports.rs:20:5
    |
 LL | use foo::{};
-   | ^^^^^^^^^^^^
+   | ----^^^^^^^- help: remove the whole `use` item
 
 error: aborting due to 3 previous errors
 

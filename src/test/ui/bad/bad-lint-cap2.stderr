@@ -2,7 +2,7 @@ error: unused import: `std::option`
   --> $DIR/bad-lint-cap2.rs:6:5
    |
 LL | use std::option; //~ ERROR
-   |     ^^^^^^^^^^^
+   | ----^^^^^^^^^^^- help: remove the whole `use` item
    |
 note: lint level defined here
   --> $DIR/bad-lint-cap2.rs:4:9

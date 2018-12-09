@@ -6,7 +6,7 @@ use bar::c::cc as cal;
 use std::mem::*;            // shouldn't get errors for not using
                             // everything imported
 use std::fmt::{};
-//~^ ERROR unused import: `use std::fmt::{};`
+//~^ ERROR unused import: `std::fmt::{}`
 
 // Should get errors for both 'Some' and 'None'
 use std::option::Option::{Some, None};
