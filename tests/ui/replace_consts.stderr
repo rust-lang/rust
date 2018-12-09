@@ -1,217 +1,217 @@
 error: using `ATOMIC_BOOL_INIT`
-  --> $DIR/replace_consts.rs:24:17
+  --> $DIR/replace_consts.rs:23:17
    |
-24 |     { let foo = ATOMIC_BOOL_INIT; };
+23 |     { let foo = ATOMIC_BOOL_INIT; };
    |                 ^^^^^^^^^^^^^^^^ help: try this: `AtomicBool::new(false)`
    |
 note: lint level defined here
-  --> $DIR/replace_consts.rs:15:9
+  --> $DIR/replace_consts.rs:13:9
    |
-15 | #![deny(clippy::replace_consts)]
+13 | #![deny(clippy::replace_consts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `ATOMIC_ISIZE_INIT`
-  --> $DIR/replace_consts.rs:25:17
+  --> $DIR/replace_consts.rs:24:17
    |
-25 |     { let foo = ATOMIC_ISIZE_INIT; };
+24 |     { let foo = ATOMIC_ISIZE_INIT; };
    |                 ^^^^^^^^^^^^^^^^^ help: try this: `AtomicIsize::new(0)`
 
 error: using `ATOMIC_I8_INIT`
-  --> $DIR/replace_consts.rs:26:17
+  --> $DIR/replace_consts.rs:25:17
    |
-26 |     { let foo = ATOMIC_I8_INIT; };
+25 |     { let foo = ATOMIC_I8_INIT; };
    |                 ^^^^^^^^^^^^^^ help: try this: `AtomicI8::new(0)`
 
 error: using `ATOMIC_I16_INIT`
-  --> $DIR/replace_consts.rs:27:17
+  --> $DIR/replace_consts.rs:26:17
    |
-27 |     { let foo = ATOMIC_I16_INIT; };
+26 |     { let foo = ATOMIC_I16_INIT; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `AtomicI16::new(0)`
 
 error: using `ATOMIC_I32_INIT`
-  --> $DIR/replace_consts.rs:28:17
+  --> $DIR/replace_consts.rs:27:17
    |
-28 |     { let foo = ATOMIC_I32_INIT; };
+27 |     { let foo = ATOMIC_I32_INIT; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `AtomicI32::new(0)`
 
 error: using `ATOMIC_I64_INIT`
-  --> $DIR/replace_consts.rs:29:17
+  --> $DIR/replace_consts.rs:28:17
    |
-29 |     { let foo = ATOMIC_I64_INIT; };
+28 |     { let foo = ATOMIC_I64_INIT; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `AtomicI64::new(0)`
 
 error: using `ATOMIC_USIZE_INIT`
-  --> $DIR/replace_consts.rs:30:17
+  --> $DIR/replace_consts.rs:29:17
    |
-30 |     { let foo = ATOMIC_USIZE_INIT; };
+29 |     { let foo = ATOMIC_USIZE_INIT; };
    |                 ^^^^^^^^^^^^^^^^^ help: try this: `AtomicUsize::new(0)`
 
 error: using `ATOMIC_U8_INIT`
-  --> $DIR/replace_consts.rs:31:17
+  --> $DIR/replace_consts.rs:30:17
    |
-31 |     { let foo = ATOMIC_U8_INIT; };
+30 |     { let foo = ATOMIC_U8_INIT; };
    |                 ^^^^^^^^^^^^^^ help: try this: `AtomicU8::new(0)`
 
 error: using `ATOMIC_U16_INIT`
-  --> $DIR/replace_consts.rs:32:17
+  --> $DIR/replace_consts.rs:31:17
    |
-32 |     { let foo = ATOMIC_U16_INIT; };
+31 |     { let foo = ATOMIC_U16_INIT; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `AtomicU16::new(0)`
 
 error: using `ATOMIC_U32_INIT`
-  --> $DIR/replace_consts.rs:33:17
+  --> $DIR/replace_consts.rs:32:17
    |
-33 |     { let foo = ATOMIC_U32_INIT; };
+32 |     { let foo = ATOMIC_U32_INIT; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `AtomicU32::new(0)`
 
 error: using `ATOMIC_U64_INIT`
-  --> $DIR/replace_consts.rs:34:17
+  --> $DIR/replace_consts.rs:33:17
    |
-34 |     { let foo = ATOMIC_U64_INIT; };
+33 |     { let foo = ATOMIC_U64_INIT; };
    |                 ^^^^^^^^^^^^^^^ help: try this: `AtomicU64::new(0)`
+
+error: using `MIN`
+  --> $DIR/replace_consts.rs:35:17
+   |
+35 |     { let foo = std::isize::MIN; };
+   |                 ^^^^^^^^^^^^^^^ help: try this: `isize::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:36:17
    |
-36 |     { let foo = std::isize::MIN; };
-   |                 ^^^^^^^^^^^^^^^ help: try this: `isize::min_value()`
+36 |     { let foo = std::i8::MIN; };
+   |                 ^^^^^^^^^^^^ help: try this: `i8::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:37:17
    |
-37 |     { let foo = std::i8::MIN; };
-   |                 ^^^^^^^^^^^^ help: try this: `i8::min_value()`
+37 |     { let foo = std::i16::MIN; };
+   |                 ^^^^^^^^^^^^^ help: try this: `i16::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:38:17
    |
-38 |     { let foo = std::i16::MIN; };
-   |                 ^^^^^^^^^^^^^ help: try this: `i16::min_value()`
+38 |     { let foo = std::i32::MIN; };
+   |                 ^^^^^^^^^^^^^ help: try this: `i32::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:39:17
    |
-39 |     { let foo = std::i32::MIN; };
-   |                 ^^^^^^^^^^^^^ help: try this: `i32::min_value()`
+39 |     { let foo = std::i64::MIN; };
+   |                 ^^^^^^^^^^^^^ help: try this: `i64::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:40:17
    |
-40 |     { let foo = std::i64::MIN; };
-   |                 ^^^^^^^^^^^^^ help: try this: `i64::min_value()`
+40 |     { let foo = std::i128::MIN; };
+   |                 ^^^^^^^^^^^^^^ help: try this: `i128::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:41:17
    |
-41 |     { let foo = std::i128::MIN; };
-   |                 ^^^^^^^^^^^^^^ help: try this: `i128::min_value()`
+41 |     { let foo = std::usize::MIN; };
+   |                 ^^^^^^^^^^^^^^^ help: try this: `usize::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:42:17
    |
-42 |     { let foo = std::usize::MIN; };
-   |                 ^^^^^^^^^^^^^^^ help: try this: `usize::min_value()`
+42 |     { let foo = std::u8::MIN; };
+   |                 ^^^^^^^^^^^^ help: try this: `u8::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:43:17
    |
-43 |     { let foo = std::u8::MIN; };
-   |                 ^^^^^^^^^^^^ help: try this: `u8::min_value()`
+43 |     { let foo = std::u16::MIN; };
+   |                 ^^^^^^^^^^^^^ help: try this: `u16::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:44:17
    |
-44 |     { let foo = std::u16::MIN; };
-   |                 ^^^^^^^^^^^^^ help: try this: `u16::min_value()`
+44 |     { let foo = std::u32::MIN; };
+   |                 ^^^^^^^^^^^^^ help: try this: `u32::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:45:17
    |
-45 |     { let foo = std::u32::MIN; };
-   |                 ^^^^^^^^^^^^^ help: try this: `u32::min_value()`
+45 |     { let foo = std::u64::MIN; };
+   |                 ^^^^^^^^^^^^^ help: try this: `u64::min_value()`
 
 error: using `MIN`
   --> $DIR/replace_consts.rs:46:17
    |
-46 |     { let foo = std::u64::MIN; };
-   |                 ^^^^^^^^^^^^^ help: try this: `u64::min_value()`
-
-error: using `MIN`
-  --> $DIR/replace_consts.rs:47:17
-   |
-47 |     { let foo = std::u128::MIN; };
+46 |     { let foo = std::u128::MIN; };
    |                 ^^^^^^^^^^^^^^ help: try this: `u128::min_value()`
+
+error: using `MAX`
+  --> $DIR/replace_consts.rs:48:17
+   |
+48 |     { let foo = std::isize::MAX; };
+   |                 ^^^^^^^^^^^^^^^ help: try this: `isize::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:49:17
    |
-49 |     { let foo = std::isize::MAX; };
-   |                 ^^^^^^^^^^^^^^^ help: try this: `isize::max_value()`
+49 |     { let foo = std::i8::MAX; };
+   |                 ^^^^^^^^^^^^ help: try this: `i8::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:50:17
    |
-50 |     { let foo = std::i8::MAX; };
-   |                 ^^^^^^^^^^^^ help: try this: `i8::max_value()`
+50 |     { let foo = std::i16::MAX; };
+   |                 ^^^^^^^^^^^^^ help: try this: `i16::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:51:17
    |
-51 |     { let foo = std::i16::MAX; };
-   |                 ^^^^^^^^^^^^^ help: try this: `i16::max_value()`
+51 |     { let foo = std::i32::MAX; };
+   |                 ^^^^^^^^^^^^^ help: try this: `i32::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:52:17
    |
-52 |     { let foo = std::i32::MAX; };
-   |                 ^^^^^^^^^^^^^ help: try this: `i32::max_value()`
+52 |     { let foo = std::i64::MAX; };
+   |                 ^^^^^^^^^^^^^ help: try this: `i64::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:53:17
    |
-53 |     { let foo = std::i64::MAX; };
-   |                 ^^^^^^^^^^^^^ help: try this: `i64::max_value()`
+53 |     { let foo = std::i128::MAX; };
+   |                 ^^^^^^^^^^^^^^ help: try this: `i128::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:54:17
    |
-54 |     { let foo = std::i128::MAX; };
-   |                 ^^^^^^^^^^^^^^ help: try this: `i128::max_value()`
+54 |     { let foo = std::usize::MAX; };
+   |                 ^^^^^^^^^^^^^^^ help: try this: `usize::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:55:17
    |
-55 |     { let foo = std::usize::MAX; };
-   |                 ^^^^^^^^^^^^^^^ help: try this: `usize::max_value()`
+55 |     { let foo = std::u8::MAX; };
+   |                 ^^^^^^^^^^^^ help: try this: `u8::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:56:17
    |
-56 |     { let foo = std::u8::MAX; };
-   |                 ^^^^^^^^^^^^ help: try this: `u8::max_value()`
+56 |     { let foo = std::u16::MAX; };
+   |                 ^^^^^^^^^^^^^ help: try this: `u16::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:57:17
    |
-57 |     { let foo = std::u16::MAX; };
-   |                 ^^^^^^^^^^^^^ help: try this: `u16::max_value()`
+57 |     { let foo = std::u32::MAX; };
+   |                 ^^^^^^^^^^^^^ help: try this: `u32::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:58:17
    |
-58 |     { let foo = std::u32::MAX; };
-   |                 ^^^^^^^^^^^^^ help: try this: `u32::max_value()`
+58 |     { let foo = std::u64::MAX; };
+   |                 ^^^^^^^^^^^^^ help: try this: `u64::max_value()`
 
 error: using `MAX`
   --> $DIR/replace_consts.rs:59:17
    |
-59 |     { let foo = std::u64::MAX; };
-   |                 ^^^^^^^^^^^^^ help: try this: `u64::max_value()`
-
-error: using `MAX`
-  --> $DIR/replace_consts.rs:60:17
-   |
-60 |     { let foo = std::u128::MAX; };
+59 |     { let foo = std::u128::MAX; };
    |                 ^^^^^^^^^^^^^^ help: try this: `u128::max_value()`
 
 error: aborting due to 35 previous errors
