@@ -70,7 +70,7 @@ pub fn change_mutability_of_reference_type() {
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2",
-    except="HirBody,TypeckTables,MirValidated")]
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_reference_type() {
     let _x: &mut u64;
