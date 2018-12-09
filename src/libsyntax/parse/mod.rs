@@ -15,7 +15,7 @@ use ast::{self, CrateConfig, NodeId};
 use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
-use errors::{Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
+use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use ptr::P;
@@ -192,6 +192,14 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> 
     source_file_to_parser(sess, file_to_source_file(sess, path, None))
 }
 
+/// Create a new parser, returning buffered diagnostics if the file doesn't
+/// exist or from lexing the initial token stream.
+pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
+    -> Result<Parser<'a>, Vec<Diagnostic>> {
+    let file = try_file_to_source_file(sess, path, None).map_err(|db| vec![db])?;
+    maybe_source_file_to_parser(sess, file)
+}
+
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the source_map, and return a parser.
 /// On an error, use the given span as the source of the problem.
@@ -237,17 +245,30 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 // base abstractions
 
 /// Given a session and a path and an optional span (for error reporting),
+/// add the path to the session's source_map and return the new source_file or
+/// error when a file can't be read.
+fn try_file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
+                   -> Result<Lrc<SourceFile>, Diagnostic> {
+    sess.source_map().load_file(path)
+    .map_err(|e| {
+        let msg = format!("couldn't read {}: {}", path.display(), e);
+        let mut diag = Diagnostic::new(Level::Fatal, &msg);
+        if let Some(sp) = spanopt {
+            diag.set_span(sp);
+        }
+        diag
+    })
+}
+
+/// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's source_map and return the new source_file.
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                    -> Lrc<SourceFile> {
-    match sess.source_map().load_file(path) {
+    match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
-        Err(e) => {
-            let msg = format!("couldn't read {}: {}", path.display(), e);
-            match spanopt {
-                Some(sp) => sess.span_diagnostic.span_fatal(sp, &msg).raise(),
-                None => sess.span_diagnostic.fatal(&msg).raise()
-            }
+        Err(d) => {
+            DiagnosticBuilder::new_diagnostic(&sess.span_diagnostic, d).emit();
+            FatalError.raise();
         }
     }
 }
