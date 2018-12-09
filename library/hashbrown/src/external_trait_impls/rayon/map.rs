@@ -1,37 +1,301 @@
 //! Rayon extensions for `HashMap`.
 
+use core::fmt;
 use core::hash::{BuildHasher, Hash};
-
+use hash_map::HashMap;
+use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};
 
-use hash_map::HashMap;
+/// Parallel iterator over shared references to entries in a map.
+///
+/// This iterator is created by the [`par_iter`] method on [`HashMap`]
+/// (provided by the [`IntoParallelRefIterator`] trait).
+/// See its documentation for more.
+///
+/// [`par_iter`]: /hashbrown/struct.HashMap.html#method.par_iter
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+/// [`IntoParallelRefIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefIterator.html
+pub struct ParIter<'a, K: 'a, V: 'a, S: 'a> {
+    map: &'a HashMap<K, V, S>,
+}
 
-use super::raw;
+impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParIter<'a, K, V, S> {
+    type Item = (&'a K, &'a V);
 
-pub use super::raw::{IntoParIter, ParIter, ParIterMut};
-pub use super::raw::{ParKeys, ParValues, ParValuesMut};
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map
+            .table
+            .par_iter()
+            .map(|x| unsafe {
+                let r = x.as_ref();
+                (&r.0, &r.1)
+            })
+            .drive_unindexed(consumer)
+    }
+}
 
-impl<K: Sync, V, S> HashMap<K, V, S> {
+impl<'a, K, V, S> Clone for ParIter<'a, K, V, S> {
+    #[inline]
+    fn clone(&self) -> Self {
+        ParIter { map: self.map }
+    }
+}
+
+impl<'a, K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug
+    for ParIter<'a, K, V, S>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.iter().fmt(f)
+    }
+}
+
+/// Parallel iterator over shared references to keys in a map.
+///
+/// This iterator is created by the [`par_keys`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`par_keys`]: /hashbrown/struct.HashMap.html#method.par_keys
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+pub struct ParKeys<'a, K: 'a, V: 'a, S: 'a> {
+    map: &'a HashMap<K, V, S>,
+}
+
+impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParKeys<'a, K, V, S> {
+    type Item = &'a K;
+
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map
+            .table
+            .par_iter()
+            .map(|x| unsafe { &x.as_ref().0 })
+            .drive_unindexed(consumer)
+    }
+}
+
+impl<'a, K, V, S> Clone for ParKeys<'a, K, V, S> {
+    #[inline]
+    fn clone(&self) -> Self {
+        ParKeys { map: self.map }
+    }
+}
+
+impl<'a, K: fmt::Debug + Eq + Hash, V, S: BuildHasher> fmt::Debug for ParKeys<'a, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.keys().fmt(f)
+    }
+}
+
+/// Parallel iterator over shared references to values in a map.
+///
+/// This iterator is created by the [`par_values`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`par_values`]: /hashbrown/struct.HashMap.html#method.par_values
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+pub struct ParValues<'a, K: 'a, V: 'a, S: 'a> {
+    map: &'a HashMap<K, V, S>,
+}
+
+impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParValues<'a, K, V, S> {
+    type Item = &'a V;
+
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map
+            .table
+            .par_iter()
+            .map(|x| unsafe { &x.as_ref().1 })
+            .drive_unindexed(consumer)
+    }
+}
+
+impl<'a, K, V, S> Clone for ParValues<'a, K, V, S> {
+    #[inline]
+    fn clone(&self) -> Self {
+        ParValues { map: self.map }
+    }
+}
+
+impl<'a, K: Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug for ParValues<'a, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.values().fmt(f)
+    }
+}
+
+/// Parallel iterator over mutable references to entries in a map.
+///
+/// This iterator is created by the [`par_iter_mut`] method on [`HashMap`]
+/// (provided by the [`IntoParallelRefMutIterator`] trait).
+/// See its documentation for more.
+///
+/// [`par_iter_mut`]: /hashbrown/struct.HashMap.html#method.par_iter_mut
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+/// [`IntoParallelRefMutIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefMutIterator.html
+pub struct ParIterMut<'a, K: 'a, V: 'a, S: 'a> {
+    map: &'a mut HashMap<K, V, S>,
+}
+
+impl<'a, K: Send + Sync, V: Send, S: Send> ParallelIterator for ParIterMut<'a, K, V, S> {
+    type Item = (&'a K, &'a mut V);
+
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map
+            .table
+            .par_iter()
+            .map(|x| unsafe {
+                let r = x.as_mut();
+                (&r.0, &mut r.1)
+            })
+            .drive_unindexed(consumer)
+    }
+}
+
+impl<'a, K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug
+    for ParIterMut<'a, K, V, S>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.iter().fmt(f)
+    }
+}
+
+/// Parallel iterator over mutable references to values in a map.
+///
+/// This iterator is created by the [`par_values_mut`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`par_values_mut`]: /hashbrown/struct.HashMap.html#method.par_values_mut
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+pub struct ParValuesMut<'a, K: 'a, V: 'a, S: 'a> {
+    map: &'a mut HashMap<K, V, S>,
+}
+
+impl<'a, K: Send, V: Send, S: Send> ParallelIterator for ParValuesMut<'a, K, V, S> {
+    type Item = &'a mut V;
+
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map
+            .table
+            .par_iter()
+            .map(|x| unsafe { &mut x.as_mut().1 })
+            .drive_unindexed(consumer)
+    }
+}
+
+impl<'a, K: Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug for ParValuesMut<'a, K, V, S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.values().fmt(f)
+    }
+}
+
+/// Parallel iterator over entries of a consumed map.
+///
+/// This iterator is created by the [`into_par_iter`] method on [`HashMap`]
+/// (provided by the [`IntoParallelIterator`] trait).
+/// See its documentation for more.
+///
+/// [`into_par_iter`]: /hashbrown/struct.HashMap.html#method.into_par_iter
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+/// [`IntoParallelIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelIterator.html
+pub struct IntoParIter<K, V, S> {
+    map: HashMap<K, V, S>,
+}
+
+impl<K: Send, V: Send, S: Send> ParallelIterator for IntoParIter<K, V, S> {
+    type Item = (K, V);
+
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map.table.into_par_iter().drive_unindexed(consumer)
+    }
+}
+
+impl<'a, K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug
+    for IntoParIter<K, V, S>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.iter().fmt(f)
+    }
+}
+
+/// Parallel draining iterator over entries of a map.
+///
+/// This iterator is created by the [`par_drain`] method on [`HashMap`].
+/// See its documentation for more.
+///
+/// [`par_drain`]: /hashbrown/struct.HashMap.html#method.par_drain
+/// [`HashMap`]: /hashbrown/struct.HashMap.html
+pub struct ParDrain<'a, K: 'a, V: 'a, S: 'a> {
+    map: &'a mut HashMap<K, V, S>,
+}
+
+impl<'a, K: Send, V: Send, S: Send> ParallelIterator for ParDrain<'a, K, V, S> {
+    type Item = (K, V);
+
+    #[inline]
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        self.map.table.par_drain().drive_unindexed(consumer)
+    }
+}
+
+impl<'a, K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug
+    for ParDrain<'a, K, V, S>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.map.iter().fmt(f)
+    }
+}
+
+impl<K: Sync, V: Sync, S: Sync> HashMap<K, V, S> {
     /// Visits (potentially in parallel) immutably borrowed keys in an arbitrary order.
     #[inline]
-    pub fn par_keys(&self) -> raw::ParKeys<K, V> {
-        self.table.par_keys()
+    pub fn par_keys(&self) -> ParKeys<K, V, S> {
+        ParKeys { map: self }
     }
-}
 
-impl<K, V: Sync, S> HashMap<K, V, S> {
     /// Visits (potentially in parallel) immutably borrowed values in an arbitrary order.
     #[inline]
-    pub fn par_values(&self) -> raw::ParValues<K, V> {
-        self.table.par_values()
+    pub fn par_values(&self) -> ParValues<K, V, S> {
+        ParValues { map: self }
     }
 }
 
-impl<K, V: Send, S> HashMap<K, V, S> {
+impl<K: Send, V: Send, S: Send> HashMap<K, V, S> {
     /// Visits (potentially in parallel) mutably borrowed values in an arbitrary order.
     #[inline]
-    pub fn par_values_mut(&mut self) -> raw::ParValuesMut<K, V> {
-        self.table.par_values_mut()
+    pub fn par_values_mut(&mut self) -> ParValuesMut<K, V, S> {
+        ParValuesMut { map: self }
+    }
+
+    /// Consumes (potentially in parallel) all values in an arbitrary order,
+    /// while preserving the map's allocated memory for reuse.
+    #[inline]
+    pub fn par_drain(&mut self) -> ParDrain<K, V, S> {
+        ParDrain { map: self }
     }
 }
 
@@ -53,30 +317,33 @@ where
     }
 }
 
-impl<K: Send, V: Send, S> IntoParallelIterator for HashMap<K, V, S> {
+impl<K: Send, V: Send, S: Send> IntoParallelIterator for HashMap<K, V, S> {
     type Item = (K, V);
-    type Iter = raw::IntoParIter<K, V>;
+    type Iter = IntoParIter<K, V, S>;
 
+    #[inline]
     fn into_par_iter(self) -> Self::Iter {
-        self.table.into_par_iter()
+        IntoParIter { map: self }
     }
 }
 
-impl<'a, K: Sync, V: Sync, S> IntoParallelIterator for &'a HashMap<K, V, S> {
+impl<'a, K: Sync, V: Sync, S: Sync> IntoParallelIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
-    type Iter = raw::ParIter<'a, K, V>;
+    type Iter = ParIter<'a, K, V, S>;
 
+    #[inline]
     fn into_par_iter(self) -> Self::Iter {
-        self.table.into_par_iter()
+        ParIter { map: self }
     }
 }
 
-impl<'a, K: Sync, V: Send, S> IntoParallelIterator for &'a mut HashMap<K, V, S> {
+impl<'a, K: Send + Sync, V: Send, S: Send> IntoParallelIterator for &'a mut HashMap<K, V, S> {
     type Item = (&'a K, &'a mut V);
-    type Iter = raw::ParIterMut<'a, K, V>;
+    type Iter = ParIterMut<'a, K, V, S>;
 
+    #[inline]
     fn into_par_iter(self) -> Self::Iter {
-        self.table.into_par_iter()
+        ParIterMut { map: self }
     }
 }
 
@@ -88,7 +355,7 @@ impl<K, V, S> FromParallelIterator<(K, V)> for HashMap<K, V, S>
 where
     K: Eq + Hash + Send,
     V: Send,
-    S: BuildHasher + Default + Send,
+    S: BuildHasher + Default,
 {
     fn from_par_iter<P>(par_iter: P) -> Self
     where
@@ -105,7 +372,7 @@ impl<K, V, S> ParallelExtend<(K, V)> for HashMap<K, V, S>
 where
     K: Eq + Hash + Send,
     V: Send,
-    S: BuildHasher + Send,
+    S: BuildHasher,
 {
     fn par_extend<I>(&mut self, par_iter: I)
     where
@@ -118,9 +385,9 @@ where
 /// Extend a hash map with copied items from a parallel iterator.
 impl<'a, K, V, S> ParallelExtend<(&'a K, &'a V)> for HashMap<K, V, S>
 where
-    K: Copy + Eq + Hash + Send + Sync,
-    V: Copy + Send + Sync,
-    S: BuildHasher + Send,
+    K: Copy + Eq + Hash + Sync,
+    V: Copy + Sync,
+    S: BuildHasher,
 {
     fn par_extend<I>(&mut self, par_iter: I)
     where
@@ -170,10 +437,7 @@ mod test_par_map {
         fn new(k: usize, counter: &AtomicUsize) -> Dropable {
             counter.fetch_add(1, Ordering::Relaxed);
 
-            Dropable {
-                k: k,
-                counter: counter,
-            }
+            Dropable { k, counter }
         }
     }
 
@@ -251,9 +515,51 @@ mod test_par_map {
     }
 
     #[test]
+    fn test_drain_drops() {
+        let key = AtomicUsize::new(0);
+        let value = AtomicUsize::new(0);
+
+        let mut hm = {
+            let mut hm = HashMap::new();
+
+            assert_eq!(key.load(Ordering::Relaxed), 0);
+            assert_eq!(value.load(Ordering::Relaxed), 0);
+
+            for i in 0..100 {
+                let d1 = Dropable::new(i, &key);
+                let d2 = Dropable::new(i + 100, &value);
+                hm.insert(d1, d2);
+            }
+
+            assert_eq!(key.load(Ordering::Relaxed), 100);
+            assert_eq!(value.load(Ordering::Relaxed), 100);
+
+            hm
+        };
+
+        // By the way, ensure that cloning doesn't screw up the dropping.
+        drop(hm.clone());
+
+        {
+            assert_eq!(key.load(Ordering::Relaxed), 100);
+            assert_eq!(value.load(Ordering::Relaxed), 100);
+
+            // retain only half
+            let _v: Vec<_> = hm.drain().filter(|&(ref key, _)| key.k < 50).collect();
+            assert!(hm.is_empty());
+
+            assert_eq!(key.load(Ordering::Relaxed), 50);
+            assert_eq!(value.load(Ordering::Relaxed), 50);
+        };
+
+        assert_eq!(key.load(Ordering::Relaxed), 0);
+        assert_eq!(value.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
     fn test_empty_iter() {
         let mut m: HashMap<isize, bool> = HashMap::new();
-        //assert_eq!(m.par_drain().count(), 0);
+        assert_eq!(m.par_drain().count(), 0);
         assert_eq!(m.par_keys().count(), 0);
         assert_eq!(m.par_values().count(), 0);
         assert_eq!(m.par_values_mut().count(), 0);

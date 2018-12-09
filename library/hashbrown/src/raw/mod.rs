@@ -195,6 +195,10 @@ pub struct Bucket<T> {
     ptr: NonNull<T>,
 }
 
+// This Send impl is needed for rayon support. This is safe since Bucket is
+// never exposed in a public API.
+unsafe impl<T> Send for Bucket<T> {}
+
 impl<T> Clone for Bucket<T> {
     #[inline]
     fn clone(&self) -> Self {
@@ -433,7 +437,7 @@ impl<T> RawTable<T> {
 
     /// Marks all table buckets as empty without dropping their contents.
     #[inline]
-    fn clear_no_drop(&mut self) {
+    pub fn clear_no_drop(&mut self) {
         if self.bucket_mask != 0 {
             unsafe {
                 self.ctrl(0)
@@ -864,20 +868,22 @@ impl<T> RawIterRange<T> {
     /// This will fail if the total range is smaller than the group width.
     #[inline]
     #[cfg(feature = "rayon")]
-    pub unsafe fn split(mut self) -> (RawIterRange<T>, Option<RawIterRange<T>>) {
-        let len = offset_from(self.end, self.ctrl);
-        debug_assert!(len.is_power_of_two());
-        if len <= Group::WIDTH {
-            (self, None)
-        } else {
-            debug_assert_eq!(len % (Group::WIDTH * 2), 0);
-            let mid = len / 2;
-            let tail = RawIterRange::new(self.ctrl, self.data, mid..len);
-            debug_assert_eq!(self.data.add(mid), tail.data);
-            debug_assert_eq!(self.end, tail.end);
-            self.end = self.ctrl.add(mid);
-            debug_assert_eq!(self.end, tail.ctrl);
-            (self, Some(tail))
+    pub fn split(mut self) -> (RawIterRange<T>, Option<RawIterRange<T>>) {
+        unsafe {
+            let len = offset_from(self.end, self.ctrl);
+            debug_assert!(len.is_power_of_two());
+            if len <= Group::WIDTH {
+                (self, None)
+            } else {
+                debug_assert_eq!(len % (Group::WIDTH * 2), 0);
+                let mid = len / 2;
+                let tail = RawIterRange::new(self.ctrl, self.data, mid..len);
+                debug_assert_eq!(self.data.add(mid), tail.data);
+                debug_assert_eq!(self.end, tail.end);
+                self.end = self.ctrl.add(mid);
+                debug_assert_eq!(self.end, tail.ctrl);
+                (self, Some(tail))
+            }
         }
     }
 }
