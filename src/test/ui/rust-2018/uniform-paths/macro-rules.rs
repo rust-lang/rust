@@ -1,15 +1,14 @@
 // edition:2018
 
-// For the time being `macro_rules` items are treated as *very* private...
-
 #![feature(decl_macro, uniform_paths)]
-#![allow(non_camel_case_types)]
 
 mod m1 {
+    // Non-exported legacy macros are treated as `pub(crate)`.
     macro_rules! legacy_macro { () => () }
 
-    // ... so they can't be imported by themselves, ...
-    use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+    use legacy_macro as _; // OK
+    pub(crate) use legacy_macro as _; // OK
+    pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
 }
 
 mod m2 {
@@ -17,7 +16,7 @@ mod m2 {
 
     type legacy_macro = u8;
 
-    // ... but don't prevent names from other namespaces from being imported, ...
+    // Legacy macro imports don't prevent names from other namespaces from being imported.
     use legacy_macro as _; // OK
 }
 
@@ -27,19 +26,17 @@ mod m3 {
     fn f() {
         macro_rules! legacy_macro { () => () }
 
-        // ... but still create ambiguities with other names in the same namespace.
+        // Legacy macro imports create ambiguities with other names in the same namespace.
         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
-                               //~| ERROR `legacy_macro` is private, and cannot be re-exported
     }
 }
 
 mod exported {
-    // Exported macros are treated as private as well,
-    // some better rules need to be figured out later.
+    // Exported legacy macros are treated as `pub`.
     #[macro_export]
     macro_rules! legacy_macro { () => () }
 
-    use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+    pub use legacy_macro as _; // OK
 }
 
 fn main() {}

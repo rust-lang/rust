@@ -1073,7 +1073,12 @@ impl<'a> Resolver<'a> {
             let ident = ident.modern();
             self.macro_names.insert(ident);
             let def = Def::Macro(def_id, MacroKind::Bang);
-            let vis = ty::Visibility::Invisible; // Doesn't matter for legacy bindings
+            let is_macro_export = attr::contains_name(&item.attrs, "macro_export");
+            let vis = if is_macro_export {
+                ty::Visibility::Public
+            } else {
+                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            };
             let binding = (def, vis, item.span, expansion).to_name_binding(self.arenas);
             self.set_binding_parent_module(binding, self.current_module);
             let legacy_binding = self.arenas.alloc_legacy_binding(LegacyBinding {
@@ -1081,9 +1086,8 @@ impl<'a> Resolver<'a> {
             });
             *current_legacy_scope = LegacyScope::Binding(legacy_binding);
             self.all_macros.insert(ident.name, def);
-            if attr::contains_name(&item.attrs, "macro_export") {
+            if is_macro_export {
                 let module = self.graph_root;
-                let vis = ty::Visibility::Public;
                 self.define(module, ident, MacroNS,
                             (def, vis, item.span, expansion, IsMacroExport));
             } else {
