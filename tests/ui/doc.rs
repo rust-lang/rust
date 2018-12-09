@@ -7,12 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 //! This file tests for the DOC_MARKDOWN lint
-
-
 
 #![allow(dead_code)]
 #![warn(clippy::doc_markdown)]

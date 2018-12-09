@@ -7,13 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::double_parens)]
 #![allow(dead_code)]
-
 fn dummy_fn<T>(_: T) {}
 
 struct DummyStruct;

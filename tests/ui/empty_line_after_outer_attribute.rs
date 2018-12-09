@@ -7,8 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 #![warn(clippy::empty_line_after_outer_attr)]
 
 // This should produce a warning
