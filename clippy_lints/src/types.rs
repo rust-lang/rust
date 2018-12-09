@@ -30,7 +30,7 @@ use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
     match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
     snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
-    AbsolutePathBuffer
+    AbsolutePathBuffer,
 };
 use if_chain::if_chain;
 use std::borrow::Cow;
@@ -1031,9 +1031,11 @@ fn is_c_void(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
         let mut apb = AbsolutePathBuffer { names: vec![] };
         tcx.push_item_path(&mut apb, adt.did, false);
 
-        if apb.names.is_empty() { return false }
+        if apb.names.is_empty() {
+            return false;
+        }
         if apb.names[0] == "libc" || apb.names[0] == "core" && *apb.names.last().unwrap() == "c_void" {
-            return true
+            return true;
         }
     }
     false

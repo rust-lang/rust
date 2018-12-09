@@ -1358,7 +1358,10 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
                     _ => {},
                 }
 
-                let deref_count = cx.tables.expr_adjustments(arg).iter()
+                let deref_count = cx
+                    .tables
+                    .expr_adjustments(arg)
+                    .iter()
                     .filter(|adj| {
                         if let ty::adjustment::Adjust::Deref(_) = adj.kind {
                             true
