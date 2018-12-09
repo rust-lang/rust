@@ -352,6 +352,22 @@ impl PrintCx<'a, 'gcx, 'tcx> {
 
             write!(f, "::{}", key.disambiguated_data.data.as_interned_str())?;
         } else {
+            // Try to print `impl`s more like how you'd refer to their associated items.
+            if let DefPathData::Impl = key.disambiguated_data.data {
+                if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
+                    // HACK(eddyb) this is in lieu of more specific disambiguation.
+                    print!(f, self, write("{}", self.tcx.item_path_str(def_id)))?;
+
+                    let trait_ref = trait_ref.subst(self.tcx, substs);
+                    print!(f, self, print_debug(trait_ref))?;
+                } else {
+                    let self_ty = self.tcx.type_of(def_id).subst(self.tcx, substs);
+                    // FIXME(eddyb) omit the <> where possible.
+                    print!(f, self, write("<"), print(self_ty), write(">"))?;
+                }
+                return Ok(());
+            }
+
             print!(f, self, write("{}", self.tcx.item_path_str(def_id)))?;
         }
 

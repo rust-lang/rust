@@ -1,4 +1,4 @@
-error[E0599]: no method named `x` found for type `fn() -> Ret {Obj::func}` in the current scope
+error[E0599]: no method named `x` found for type `fn() -> Ret {<Obj>::func}` in the current scope
   --> $DIR/issue-29124.rs:15:15
    |
 LL |     Obj::func.x();
