@@ -1,11 +1,9 @@
 use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    fs::OpenOptions,
-    io::{Write, Error, ErrorKind}
+    fs::copy,
+    io::{Error, ErrorKind}
 };
-#[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
 
 use failure::bail;
 use itertools::Itertools;
@@ -69,7 +67,7 @@ pub fn generate(mode: Mode) -> Result<()> {
 }
 
 pub fn project_root() -> PathBuf {
-    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+    Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
         .unwrap()
@@ -122,24 +120,14 @@ fn install_rustfmt() -> Result<()> {
 }
 
 pub fn install_format_hook() -> Result<()> {
-    let path = Path::new("./.git/hooks/pre-commit");
-    if !path.exists() {
-        let mut open_options = OpenOptions::new();
-        #[cfg(unix)]
-        {
-            // Set as executable
-            open_options.mode(0o770);
+    let result_path = Path::new("./.git/hooks/pre-commit");
+    if !result_path.exists() {
+        run("cargo build --package tools --bin pre-commit", ".")?;
+        if cfg!(windows) {
+            copy("./target/debug/pre-commit.exe", result_path)?;
+        } else {
+            copy("./target/debug/pre-commit", result_path)?;
         }
-        let mut file = open_options.write(true).create(true).open(path)?;
-        write!(
-            file,
-            r#"#!/bin/sh
-
-cargo format
-for path in $( git diff --name-only --cached ); do
-    git update-index --add $path
-done"#
-        )?;
     } else {
         return Err(Error::new(ErrorKind::AlreadyExists, "Git hook already created").into());
     }
