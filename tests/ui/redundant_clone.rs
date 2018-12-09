@@ -34,6 +34,12 @@ fn main() {
 
     // Check that lint level works
     #[allow(clippy::redundant_clone)] let _ = String::new().to_string();
+
+    let tup = (String::from("foo"),);
+    let _ = tup.0.clone();
+
+    let tup_ref = &(String::from("foo"),);
+    let _s = tup_ref.0.clone(); // this `.clone()` cannot be removed
 }
 
 #[derive(Clone)]
@@ -44,4 +50,19 @@ fn with_branch(a: Alpha, b: bool) -> (Alpha, Alpha) {
     } else {
         (Alpha, a)
     }
+}
+
+struct TypeWithDrop {
+    x: String,
+}
+
+impl Drop for TypeWithDrop {
+    fn drop(&mut self) {}
+}
+
+fn cannot_move_from_type_with_drop() -> String {
+    let s = TypeWithDrop {
+        x: String::new()
+    };
+    s.x.clone() // removing this `clone()` summons E0509
 }

@@ -57,7 +57,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     }
     match expr.node {
         ExprKind::Lit(..) | ExprKind::Closure(.., _) => true,
-        ExprKind::Path(..) => !has_drop(cx, expr),
+        ExprKind::Path(..) => !has_drop(cx, cx.tables.expr_ty(expr)),
         ExprKind::Index(ref a, ref b) | ExprKind::Binary(_, ref a, ref b) => {
             has_no_effect(cx, a) && has_no_effect(cx, b)
         },
@@ -70,7 +70,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         | ExprKind::AddrOf(_, ref inner)
         | ExprKind::Box(ref inner) => has_no_effect(cx, inner),
         ExprKind::Struct(_, ref fields, ref base) => {
-            !has_drop(cx, expr)
+            !has_drop(cx, cx.tables.expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, &field.expr))
                 && match *base {
                     Some(ref base) => has_no_effect(cx, base),
@@ -82,7 +82,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
                 let def = cx.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) => {
-                        !has_drop(cx, expr) && args.iter().all(|arg| has_no_effect(cx, arg))
+                        !has_drop(cx, cx.tables.expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
                     },
                     _ => false,
                 }
@@ -161,7 +161,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
         | ExprKind::AddrOf(_, ref inner)
         | ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         ExprKind::Struct(_, ref fields, ref base) => {
-            if has_drop(cx, expr) {
+            if has_drop(cx, cx.tables.expr_ty(expr)) {
                 None
             } else {
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
@@ -172,7 +172,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
                 let def = cx.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..)
-                        if !has_drop(cx, expr) =>
+                        if !has_drop(cx, cx.tables.expr_ty(expr)) =>
                     {
                         Some(args.iter().collect())
                     },

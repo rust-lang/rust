@@ -96,16 +96,28 @@ note: this value is dropped without further use
    |             ^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> $DIR/redundant_clone.rs:43:22
+  --> $DIR/redundant_clone.rs:39:18
    |
-43 |         (a.clone(), a.clone())
+39 |     let _ = tup.0.clone();
+   |                  ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:39:13
+   |
+39 |     let _ = tup.0.clone();
+   |             ^^^^^
+
+error: redundant clone
+  --> $DIR/redundant_clone.rs:49:22
+   |
+49 |         (a.clone(), a.clone())
    |                      ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> $DIR/redundant_clone.rs:43:21
+  --> $DIR/redundant_clone.rs:49:21
    |
-43 |         (a.clone(), a.clone())
+49 |         (a.clone(), a.clone())
    |                     ^
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

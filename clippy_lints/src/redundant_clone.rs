@@ -23,10 +23,11 @@ use crate::syntax::{
     source_map::{BytePos, Span},
 };
 use crate::utils::{
-    in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_node, span_lint_node_and_then,
-    walk_ptrs_ty_depth,
+    has_drop, in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_node,
+    span_lint_node_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
+use matches::matches;
 use std::convert::TryFrom;
 
 macro_rules! unwrap_or_continue {
@@ -126,7 +127,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             // _1 in MIR `{ _2 = &_1; clone(move _2); }` or `{ _2 = _1; to_path_buf(_2); } (from_deref)
             // In case of `from_deref`, `arg` is already a reference since it is `deref`ed in the previous
             // block.
-            let cloned = unwrap_or_continue!(find_stmt_assigns_to(arg, from_borrow, bbdata.statements.iter().rev()));
+            let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(
+                cx,
+                mir,
+                arg,
+                from_borrow,
+                bbdata.statements.iter().rev()
+            ));
+
+            if from_borrow && cannot_move_out {
+                continue;
+            }
 
             // _1 in MIR `{ _2 = &_1; _3 = deref(move _2); } -> { _4 = _3; to_path_buf(move _4); }`
             let referent = if from_deref {
@@ -150,7 +161,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     }
                 };
 
-                unwrap_or_continue!(find_stmt_assigns_to(pred_arg, true, mir[ps[0]].statements.iter().rev()))
+                let (local, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(
+                    cx,
+                    mir,
+                    pred_arg,
+                    true,
+                    mir[ps[0]].statements.iter().rev()
+                ));
+                if cannot_move_out {
+                    continue;
+                }
+                local
             } else {
                 cloned
             };
@@ -227,27 +248,57 @@ fn is_call_with_ref_arg<'tcx>(
     }
 }
 
+type CannotMoveOut = bool;
+
 /// Finds the first `to = (&)from`, and returns `Some(from)`.
 fn find_stmt_assigns_to<'a, 'tcx: 'a>(
+    cx: &LateContext<'_, 'tcx>,
+    mir: &mir::Mir<'tcx>,
     to: mir::Local,
     by_ref: bool,
     mut stmts: impl Iterator<Item = &'a mir::Statement<'tcx>>,
-) -> Option<mir::Local> {
+) -> Option<(mir::Local, CannotMoveOut)> {
     stmts.find_map(|stmt| {
         if let mir::StatementKind::Assign(mir::Place::Local(local), v) = &stmt.kind {
             if *local == to {
                 if by_ref {
-                    if let mir::Rvalue::Ref(_, _, mir::Place::Local(r)) = **v {
-                        return Some(r);
+                    if let mir::Rvalue::Ref(_, _, ref place) = **v {
+                        return base_local(cx, mir, place);
                     }
-                } else if let mir::Rvalue::Use(mir::Operand::Copy(mir::Place::Local(r))) = **v {
-                    return Some(r);
+                } else if let mir::Rvalue::Use(mir::Operand::Copy(ref place)) = **v {
+                    return base_local(cx, mir, place);
                 }
             }
         }
 
         None
     })
+}
+
+fn base_local<'tcx>(
+    cx: &LateContext<'_, 'tcx>,
+    mir: &mir::Mir<'tcx>,
+    mut place: &mir::Place<'tcx>,
+) -> Option<(mir::Local, CannotMoveOut)> {
+    use rustc::mir::Place::*;
+
+    let mut deref = false;
+    // Accessing a field of an ADT that has `Drop`
+    let mut field = false;
+
+    loop {
+        match place {
+            Local(local) => return Some((*local, deref || field)),
+            Projection(proj) => {
+                place = &proj.base;
+                deref = deref || matches!(proj.elem, mir::ProjectionElem::Deref);
+                if !field && matches!(proj.elem, mir::ProjectionElem::Field(..)) {
+                    field = has_drop(cx, place.ty(&mir.local_decls, cx.tcx).to_ty(cx.tcx));
+                }
+            },
+            _ => return None,
+        }
+    }
 }
 
 struct LocalUseVisitor {
@@ -280,7 +331,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
     fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext<'tcx>, _: mir::Location) {
         match ctx {
             PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_) => return,
-            _ => {}
+            _ => {},
         }
 
         if *local == self.local {

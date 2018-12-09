@@ -266,9 +266,8 @@ pub fn implements_trait<'a, 'tcx>(
 }
 
 /// Check whether this type implements Drop.
-pub fn has_drop(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    let struct_ty = cx.tables.expr_ty(expr);
-    match struct_ty.ty_adt_def() {
+pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.ty_adt_def() {
         Some(def) => def.has_dtor(cx.tcx),
         _ => false,
     }
