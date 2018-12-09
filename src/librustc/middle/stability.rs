@@ -13,7 +13,7 @@
 
 pub use self::StabilityLevel::*;
 
-use lint;
+use lint::{self, Lint};
 use hir::{self, Item, Generics, StructField, Variant, HirId};
 use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
@@ -562,18 +562,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return EvalResult::Allow;
         }
 
-        let lint_deprecated = |def_id: DefId, id: NodeId, note: Option<Symbol>| {
-            let path = self.item_path_str(def_id);
-
+        let lint_deprecated = |def_id: DefId,
+                               id: NodeId,
+                               note: Option<Symbol>,
+                               message: &str,
+                               lint: &'static Lint| {
             let msg = if let Some(note) = note {
-                format!("use of deprecated item '{}': {}", path, note)
+                format!("{}: {}", message, note)
             } else {
-                format!("use of deprecated item '{}'", path)
+                format!("{}", message)
             };
 
-            self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
+            self.lint_node(lint, id, span, &msg);
             if id == ast::DUMMY_NODE_ID {
-                span_bug!(span, "emitted a deprecated lint with dummy node id: {:?}", def_id);
+                span_bug!(span, "emitted a {} lint with dummy node id: {:?}", lint.name, def_id);
             }
         };
 
@@ -584,17 +586,40 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // version, then we should display no warning message.
                 let deprecated_in_future_version = if let Some(sym) = depr_entry.attr.since {
                     let since = sym.as_str();
-                    !deprecation_in_effect(&since)
+                    if !deprecation_in_effect(&since) {
+                        Some(since)
+                    } else {
+                        None
+                    }
                 } else {
-                    false
+                    None
                 };
 
                 let parent_def_id = self.hir().local_def_id(self.hir().get_parent(id));
-                let skip = deprecated_in_future_version ||
-                           self.lookup_deprecation_entry(parent_def_id)
+                let skip = self.lookup_deprecation_entry(parent_def_id)
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
-                if !skip {
-                    lint_deprecated(def_id, id, depr_entry.attr.note);
+
+
+                if let Some(since) = deprecated_in_future_version {
+                    let path = self.item_path_str(def_id);
+                    let message = format!("use of item '{}' \
+                                           that will be deprecated in future version {}",
+                                          path,
+                                          since);
+
+                    lint_deprecated(def_id,
+                                    id,
+                                    depr_entry.attr.note,
+                                    &message,
+                                    lint::builtin::DEPRECATED_IN_FUTURE);
+                } else if !skip {
+                    let path = self.item_path_str(def_id);
+                    let message = format!("use of deprecated item '{}'", path);
+                    lint_deprecated(def_id,
+                                    id,
+                                    depr_entry.attr.note,
+                                    &message,
+                                    lint::builtin::DEPRECATED);
                 }
             };
         }
@@ -614,8 +639,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, since }), ..})
                 = stability {
             if let Some(id) = id {
+                let path = self.item_path_str(def_id);
+                let message = format!("use of deprecated item '{}'", path);
                 if deprecation_in_effect(&since.as_str()) {
-                    lint_deprecated(def_id, id, Some(reason));
+                    lint_deprecated(def_id,
+                                    id,
+                                    Some(reason),
+                                    &message,
+                                    lint::builtin::DEPRECATED);
                 }
             }
         }
