@@ -139,12 +139,21 @@ impl SourceFileItems {
         self.id_of_unchecked(item)
     }
     fn id_of_unchecked(&self, item: SyntaxNodeRef) -> SourceFileItemId {
-        let (id, _item) = self
-            .arena
-            .iter()
-            .find(|(_id, i)| i.borrowed() == item)
-            .unwrap();
-        id
+        if let Some((id, _)) = self.arena.iter().find(|(_id, i)| i.borrowed() == item) {
+            return id;
+        }
+        // This should not happen. Let's try to give a sensible diagnostics.
+        if let Some((_, i)) = self.arena.iter().find(|(_id, i)| i.range() == item.range()) {
+            panic!(
+                "unequal syntax nodes with the same range:\n{:?}\n{:?}",
+                item, i
+            )
+        }
+        panic!(
+            "Can't find {:?} in SourceFileItems:\n{:?}",
+            item,
+            self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
+        );
     }
     pub fn id_of_source_file(&self) -> SourceFileItemId {
         let (id, _syntax) = self.arena.iter().next().unwrap();
