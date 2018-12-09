@@ -10,6 +10,7 @@
 // run-rustfix
 
 #![feature(stmt_expr_attributes)]
+#![allow(unused_variables)]
 
 struct Outer {
     inner: u32,
