@@ -7,11 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(unused)]
-
 #![warn(clippy::let_and_return)]
 
 fn test() -> i32 {
@@ -52,5 +48,4 @@ fn test_nowarn_4() -> i32 {
     x
 }
 
-fn main() {
-}
+fn main() {}

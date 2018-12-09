@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(unused_must_use)]
 #![warn(clippy::writeln_empty_string)]
 use std::io::Write;
@@ -27,5 +24,4 @@ fn main() {
     writeln!(&mut v);
     writeln!(&mut v, " ");
     write!(&mut v, "");
-
 }

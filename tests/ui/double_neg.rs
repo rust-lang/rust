@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[warn(clippy::double_neg)]
 fn main() {
     let x = 1;

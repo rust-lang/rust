@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn match_bool() {
     let test: bool = true;
 
@@ -24,31 +23,40 @@ fn match_bool() {
 
     match test {
         true => (),
-        false => { println!("Noooo!"); }
+        false => {
+            println!("Noooo!");
+        },
     };
 
     match test {
-        false => { println!("Noooo!"); }
+        false => {
+            println!("Noooo!");
+        },
         _ => (),
     };
 
     match test && test {
-        false => { println!("Noooo!"); }
+        false => {
+            println!("Noooo!");
+        },
         _ => (),
     };
 
     match test {
-        false => { println!("Noooo!"); }
-        true => { println!("Yes!"); }
+        false => {
+            println!("Noooo!");
+        },
+        true => {
+            println!("Yes!");
+        },
     };
 
     // Not linted
     match option {
-        1 ... 10 => 1,
-        11 ... 20 => 2,
+        1...10 => 1,
+        11...20 => 2,
         _ => 3,
     };
 }
 
-fn main() {
-}
+fn main() {}

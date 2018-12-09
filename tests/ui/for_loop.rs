@@ -25,10 +25,22 @@ impl Unrelated {
     }
 }
 
-#[warn(clippy::needless_range_loop, clippy::explicit_iter_loop, clippy::explicit_into_iter_loop, clippy::iter_next_loop, clippy::reverse_range_loop,
-       clippy::for_kv_map)]
+#[warn(
+    clippy::needless_range_loop,
+    clippy::explicit_iter_loop,
+    clippy::explicit_into_iter_loop,
+    clippy::iter_next_loop,
+    clippy::reverse_range_loop,
+    clippy::for_kv_map
+)]
 #[warn(clippy::unused_collect)]
-#[allow(clippy::linkedlist, clippy::shadow_unrelated, clippy::unnecessary_mut_passed, clippy::cyclomatic_complexity, clippy::similar_names)]
+#[allow(
+    clippy::linkedlist,
+    clippy::shadow_unrelated,
+    clippy::unnecessary_mut_passed,
+    clippy::cyclomatic_complexity,
+    clippy::similar_names
+)]
 #[allow(clippy::many_single_char_names, unused_variables, clippy::into_iter_on_array)]
 fn main() {
     const MAX_LEN: usize = 42;

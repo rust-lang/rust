@@ -7,13 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // only-64bit
-
 
 #![warn(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
 
-fn foo() -> String { String::new() }
+fn foo() -> String {
+    String::new()
+}
 
 fn test_function_to_numeric_cast() {
     let _ = foo as i8;

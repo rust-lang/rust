@@ -13,14 +13,14 @@
 
 struct Tuple(i32);
 struct Struct {
-    field: i32
+    field: i32,
 }
 enum Enum {
     Tuple(i32),
     Struct { field: i32 },
 }
 struct DropStruct {
-    field: i32
+    field: i32,
 }
 impl Drop for DropStruct {
     fn drop(&mut self) {}
@@ -40,9 +40,15 @@ struct FooString {
     s: String,
 }
 
-fn get_number() -> i32 { 0 }
-fn get_struct() -> Struct { Struct { field: 0 } }
-fn get_drop_struct() -> DropStruct { DropStruct { field: 0 } }
+fn get_number() -> i32 {
+    0
+}
+fn get_struct() -> Struct {
+    Struct { field: 0 }
+}
+fn get_drop_struct() -> DropStruct {
+    DropStruct { field: 0 }
+}
 
 fn main() {
     Tuple(get_number());
@@ -63,8 +69,12 @@ fn main() {
     (42, get_number()).1;
     [get_number(); 55];
     [42; 55][get_number() as usize];
-    {get_number()};
-    FooString { s: String::from("blah"), };
+    {
+        get_number()
+    };
+    FooString {
+        s: String::from("blah"),
+    };
 
     // Do not warn
     DropTuple(get_number());

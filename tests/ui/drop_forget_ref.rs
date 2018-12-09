@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::drop_ref, clippy::forget_ref)]
 #![allow(clippy::toplevel_ref_arg, clippy::similar_names, clippy::needless_pass_by_value)]
 

@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(dead_code)]
 #![allow(clippy::single_match)]
 #![allow(unused_variables)]

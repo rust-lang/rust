@@ -7,15 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::useless_attribute)]
 
 #[allow(dead_code)]
 #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
-#[cfg_attr(feature = "cargo-clippy",
-           allow(dead_code))]
+#[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
 #[macro_use]
@@ -26,7 +22,10 @@ extern crate clippy_lints;
 use std::collections;
 
 // don't lint on deprecated for `use` items
-mod foo { #[deprecated] pub struct Bar; }
+mod foo {
+    #[deprecated]
+    pub struct Bar;
+}
 #[allow(deprecated)]
 pub use foo::Bar;
 

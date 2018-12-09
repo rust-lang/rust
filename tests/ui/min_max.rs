@@ -7,17 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::all)]
 
-use std::cmp::{min, max};
-use std::cmp::min as my_min;
 use std::cmp::max as my_max;
+use std::cmp::min as my_min;
+use std::cmp::{max, min};
 
-const LARGE : usize = 3;
+const LARGE: usize = 3;
 
 fn main() {
     let x;

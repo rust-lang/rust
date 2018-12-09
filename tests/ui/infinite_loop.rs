@@ -7,17 +7,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(clippy::trivially_copy_pass_by_ref)]
 
-
-fn fn_val(i: i32) -> i32 { unimplemented!() }
-fn fn_constref(i: &i32) -> i32 { unimplemented!() }
-fn fn_mutref(i: &mut i32) { unimplemented!() }
-fn fooi() -> i32 { unimplemented!() }
-fn foob() -> bool { unimplemented!() }
+fn fn_val(i: i32) -> i32 {
+    unimplemented!()
+}
+fn fn_constref(i: &i32) -> i32 {
+    unimplemented!()
+}
+fn fn_mutref(i: &mut i32) {
+    unimplemented!()
+}
+fn fooi() -> i32 {
+    unimplemented!()
+}
+fn foob() -> bool {
+    unimplemented!()
+}
 
 #[allow(clippy::many_single_char_names)]
 fn immutable_condition() {
@@ -143,12 +149,15 @@ fn consts() {
 
 use std::cell::Cell;
 
-fn maybe_i_mutate(i: &Cell<bool>) { unimplemented!() }
+fn maybe_i_mutate(i: &Cell<bool>) {
+    unimplemented!()
+}
 
 fn internally_mutable() {
     let b = Cell::new(true);
 
-    while b.get() {       // b cannot be silently coerced to `bool`
+    while b.get() {
+        // b cannot be silently coerced to `bool`
         maybe_i_mutate(&b);
         println!("OK - Method call within condition");
     }

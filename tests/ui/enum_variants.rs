@@ -7,19 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![feature(non_ascii_idents)]
-
 #![warn(clippy::all, clippy::pub_enum_variant_names)]
 
 enum FakeCallType {
-    CALL, CREATE
+    CALL,
+    CREATE,
 }
 
 enum FakeCallType2 {
-    CALL, CREATELL
+    CALL,
+    CREATELL,
 }
 
 enum Foo {
@@ -49,7 +47,8 @@ enum BadCallType {
     CallTypeDestroy,
 }
 
-enum TwoCallType { // no error
+enum TwoCallType {
+    // no error
     CallTypeCall,
     CallTypeCreate,
 }
@@ -60,7 +59,8 @@ enum Consts {
     ConstantLie,
 }
 
-enum Two { // no error here
+enum Two {
+    // no error here
     ConstantInt,
     ConstantInfer,
 }

@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[macro_use]
 extern crate clippy_mini_macro_test;
 
@@ -16,7 +15,6 @@ fn main() {
     let x = Foo;
     println!("{:?}", x);
 }
-
 
 #[derive(ClippyMiniMacroTest, Debug)]
 struct Foo;

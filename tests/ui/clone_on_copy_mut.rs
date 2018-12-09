@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 pub fn dec_read_dec(i: &mut i32) -> i32 {
     *i -= 1;
     let ret = *i;

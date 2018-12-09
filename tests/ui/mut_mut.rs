@@ -7,26 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
 #![warn(clippy::mut_mut)]
 
-
-
-
-fn fun(x : &mut &mut u32) -> bool {
+fn fun(x: &mut &mut u32) -> bool {
     **x > 0
 }
 
-fn less_fun(x : *mut *mut u32) {
-  let y = x;
+fn less_fun(x: *mut *mut u32) {
+    let y = x;
 }
 
 macro_rules! mut_ptr {
-    ($p:expr) => { &mut $p }
+    ($p:expr) => {
+        &mut $p
+    };
 }
 
 #[allow(unused_mut, unused_variables)]
@@ -37,12 +32,12 @@ fn main() {
     }
 
     if fun(x) {
-        let y : &mut &mut u32 = &mut &mut 2;
+        let y: &mut &mut u32 = &mut &mut 2;
         **y + **x;
     }
 
     if fun(x) {
-        let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+        let y: &mut &mut &mut u32 = &mut &mut &mut 2;
         ***y + **x;
     }
 

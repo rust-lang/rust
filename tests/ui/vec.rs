@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::useless_vec)]
 
 #[derive(Debug)]
@@ -37,10 +33,10 @@ fn main() {
     on_slice(&vec![1, 2]);
     on_slice(&[1, 2]);
 
-    on_slice(&vec ![1, 2]);
+    on_slice(&vec![1, 2]);
     on_slice(&[1, 2]);
 
-    on_slice(&vec!(1, 2));
+    on_slice(&vec![1, 2]);
     on_slice(&[1, 2]);
 
     on_slice(&vec![1; 2]);

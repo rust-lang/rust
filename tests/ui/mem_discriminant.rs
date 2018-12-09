@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![deny(clippy::mem_discriminant_non_enum)]
 
 use std::mem;
@@ -35,7 +34,9 @@ fn main() {
     mem::discriminant(&rro);
 
     macro_rules! mem_discriminant_but_in_a_macro {
-        ($param:expr) => (mem::discriminant($param))
+        ($param:expr) => {
+            mem::discriminant($param)
+        };
     }
 
     mem_discriminant_but_in_a_macro!(&rro);

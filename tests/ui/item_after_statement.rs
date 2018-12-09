@@ -7,24 +7,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::items_after_statements)]
 
 fn ok() {
-    fn foo() { println!("foo"); }
+    fn foo() {
+        println!("foo");
+    }
     foo();
 }
 
 fn last() {
     foo();
-    fn foo() { println!("foo"); }
+    fn foo() {
+        println!("foo");
+    }
 }
 
 fn main() {
     foo();
-    fn foo() { println!("foo"); }
+    fn foo() {
+        println!("foo");
+    }
     foo();
 }
 
@@ -33,7 +36,9 @@ fn mac() {
     println!("{}", a);
     // do not lint this, because it needs to be after `a`
     macro_rules! b {
-        () => {{ a = 6 }}
+        () => {{
+            a = 6
+        }};
     }
     b!();
     println!("{}", a);

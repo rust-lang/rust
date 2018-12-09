@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![deny(clippy::identity_conversion)]
 
 fn test_generic<T: Copy>(val: T) -> T {

@@ -7,8 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 #[warn(clippy::cast_lossless)]
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {

@@ -62,13 +62,11 @@ fn resize_vector() {
     vec1.resize(10, 0);
 }
 
-fn do_stuff(vec: &mut Vec<u8>) {
-
-}
+fn do_stuff(vec: &mut Vec<u8>) {}
 
 fn extend_vector_with_manipulations_between() {
     let len = 300;
-    let mut vec1:Vec<u8> = Vec::with_capacity(len);
+    let mut vec1: Vec<u8> = Vec::with_capacity(len);
     do_stuff(&mut vec1);
     vec1.extend(repeat(0).take(len));
 }

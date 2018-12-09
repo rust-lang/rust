@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[allow(dead_code)]
 enum Baz {
     One,
@@ -19,7 +18,7 @@ struct Test {
     b: Baz,
 }
 
-fn main() { }
+fn main() {}
 
 pub fn foo() {
     use Baz::*;
@@ -27,10 +26,7 @@ pub fn foo() {
 
     match x {
         Test { t: Some(_), b: One } => unreachable!(),
-        Test {
-            t: Some(42),
-            b: Two,
-        } => unreachable!(),
+        Test { t: Some(42), b: Two } => unreachable!(),
         Test { t: None, .. } => unreachable!(),
         Test { .. } => unreachable!(),
     }

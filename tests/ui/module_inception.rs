@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::module_inception)]
 
 mod foo {
@@ -27,8 +24,7 @@ mod foo {
 // No warning. See <https://github.com/rust-lang/rust-clippy/issues/1220>.
 mod bar {
     #[allow(clippy::module_inception)]
-    mod bar {
-    }
+    mod bar {}
 }
 
 fn main() {}

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::option_map_unit_fn)]
 #![allow(unused)]
 
@@ -39,7 +36,7 @@ fn option_map_unit_fn() {
     let x = HasOption { field: Some(10) };
 
     x.field.map(plus_one);
-    let _ : Option<()> = x.field.map(do_nothing);
+    let _: Option<()> = x.field.map(do_nothing);
 
     x.field.map(do_nothing);
 
@@ -48,47 +45,68 @@ fn option_map_unit_fn() {
     x.field.map(diverge);
 
     let captured = 10;
-    if let Some(value) = x.field { do_nothing(value + captured) };
-    let _ : Option<()> = x.field.map(|value| do_nothing(value + captured));
+    if let Some(value) = x.field {
+        do_nothing(value + captured)
+    };
+    let _: Option<()> = x.field.map(|value| do_nothing(value + captured));
 
     x.field.map(|value| x.do_option_nothing(value + captured));
 
-    x.field.map(|value| { x.do_option_plus_one(value + captured); });
-
+    x.field.map(|value| {
+        x.do_option_plus_one(value + captured);
+    });
 
     x.field.map(|value| do_nothing(value + captured));
 
-    x.field.map(|value| { do_nothing(value + captured) });
+    x.field.map(|value| do_nothing(value + captured));
 
-    x.field.map(|value| { do_nothing(value + captured); });
+    x.field.map(|value| {
+        do_nothing(value + captured);
+    });
 
-    x.field.map(|value| { { do_nothing(value + captured); } });
-
+    x.field.map(|value| {
+        do_nothing(value + captured);
+    });
 
     x.field.map(|value| diverge(value + captured));
 
-    x.field.map(|value| { diverge(value + captured) });
+    x.field.map(|value| diverge(value + captured));
 
-    x.field.map(|value| { diverge(value + captured); });
+    x.field.map(|value| {
+        diverge(value + captured);
+    });
 
-    x.field.map(|value| { { diverge(value + captured); } });
-
+    x.field.map(|value| {
+        diverge(value + captured);
+    });
 
     x.field.map(|value| plus_one(value + captured));
-    x.field.map(|value| { plus_one(value + captured) });
-    x.field.map(|value| { let y = plus_one(value + captured); });
+    x.field.map(|value| plus_one(value + captured));
+    x.field.map(|value| {
+        let y = plus_one(value + captured);
+    });
 
-    x.field.map(|value| { plus_one(value + captured); });
+    x.field.map(|value| {
+        plus_one(value + captured);
+    });
 
-    x.field.map(|value| { { plus_one(value + captured); } });
+    x.field.map(|value| {
+        plus_one(value + captured);
+    });
 
+    x.field.map(|ref value| do_nothing(value + captured));
 
-    x.field.map(|ref value| { do_nothing(value + captured) });
+    x.field.map(|value| {
+        do_nothing(value);
+        do_nothing(value)
+    });
 
-
-    x.field.map(|value| { do_nothing(value); do_nothing(value) });
-
-    x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+    x.field.map(|value| {
+        if value > 0 {
+            do_nothing(value);
+            do_nothing(value)
+        }
+    });
 
     // Suggestion for the let block should be `{ ... }` as it's too difficult to build a
     // proper suggestion for these cases
@@ -96,9 +114,13 @@ fn option_map_unit_fn() {
         do_nothing(value);
         do_nothing(value)
     });
-    x.field.map(|value| { do_nothing(value); do_nothing(value); });
+    x.field.map(|value| {
+        do_nothing(value);
+        do_nothing(value);
+    });
 
-    // The following should suggest `if let Some(_X) ...` as it's difficult to generate a proper let variable name for them
+    // The following should suggest `if let Some(_X) ...` as it's difficult to generate a proper let
+    // variable name for them
     Some(42).map(diverge);
     "12".parse::<i32>().ok().map(diverge);
     Some(plus_one(1)).map(do_nothing);
@@ -108,5 +130,4 @@ fn option_map_unit_fn() {
     y.map(do_nothing);
 }
 
-fn main() {
-}
+fn main() {}

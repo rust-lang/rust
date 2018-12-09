@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(clippy::print_literal)]
 #![warn(clippy::print_with_newline)]
 

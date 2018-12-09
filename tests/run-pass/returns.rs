@@ -7,11 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[deny(warnings)]
 fn cfg_return() -> i32 {
-    #[cfg(unix)] return 1;
-    #[cfg(not(unix))] return 2;
+    #[cfg(unix)]
+    return 1;
+    #[cfg(not(unix))]
+    return 2;
 }
 
 #[deny(warnings)]

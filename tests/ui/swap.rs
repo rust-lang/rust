@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::all)]
 #![allow(clippy::blacklisted_name, unused_assignments)]
 
@@ -54,7 +50,7 @@ fn main() {
     a = b;
     b = a;
 
-    ; let t = a;
+;    let t = a;
     a = b;
     b = t;
 
@@ -63,7 +59,7 @@ fn main() {
     c.0 = a;
     a = c.0;
 
-    ; let t = c.0;
+;    let t = c.0;
     c.0 = a;
     a = t;
 }

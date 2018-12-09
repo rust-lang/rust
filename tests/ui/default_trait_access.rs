@@ -7,14 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::default_trait_access)]
 
+use std::default;
 use std::default::Default as D2;
 use std::string;
-use std::default;
 
 fn main() {
     let s1: String = Default::default();

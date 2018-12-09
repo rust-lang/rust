@@ -7,15 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::all)]
 #![warn(clippy::else_if_without_else)]
 
-fn bla1() -> bool { unimplemented!() }
-fn bla2() -> bool { unimplemented!() }
-fn bla3() -> bool { unimplemented!() }
+fn bla1() -> bool {
+    unimplemented!()
+}
+fn bla2() -> bool {
+    unimplemented!()
+}
+fn bla3() -> bool {
+    unimplemented!()
+}
 
 fn main() {
     if bla1() {
@@ -48,7 +51,8 @@ fn main() {
 
     if bla1() {
         println!("if");
-    } else if bla2() { //~ ERROR else if without else
+    } else if bla2() {
+        //~ ERROR else if without else
         println!("else if");
     }
 
@@ -56,7 +60,8 @@ fn main() {
         println!("if");
     } else if bla2() {
         println!("else if 1");
-    } else if bla3() { //~ ERROR else if without else
+    } else if bla3() {
+        //~ ERROR else if without else
         println!("else if 2");
     }
 }

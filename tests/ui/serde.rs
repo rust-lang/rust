@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::serde_api_misuse)]
 #![allow(dead_code)]
 
@@ -25,13 +22,15 @@ impl<'de> serde::de::Visitor<'de> for A {
     }
 
     fn visit_str<E>(self, _v: &str) -> Result<Self::Value, E>
-        where E: serde::de::Error,
+    where
+        E: serde::de::Error,
     {
         unimplemented!()
     }
 
     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-        where E: serde::de::Error,
+    where
+        E: serde::de::Error,
     {
         unimplemented!()
     }
@@ -47,11 +46,11 @@ impl<'de> serde::de::Visitor<'de> for B {
     }
 
     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-        where E: serde::de::Error,
+    where
+        E: serde::de::Error,
     {
         unimplemented!()
     }
 }
 
-fn main() {
-}
+fn main() {}

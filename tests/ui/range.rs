@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 struct NotARange;
 impl NotARange {
     fn step_by(&self, _: u32) {}
@@ -31,13 +28,13 @@ fn main() {
     let y = NotARange;
     y.step_by(0);
 
-    let v1 = vec![1,2,3];
-    let v2 = vec![4,5];
+    let v1 = vec![1, 2, 3];
+    let v2 = vec![4, 5];
     let _x = v1.iter().zip(0..v1.len());
     let _y = v1.iter().zip(0..v2.len()); // No error
 
     // check const eval
-    let _ = v1.iter().step_by(2/3);
+    let _ = v1.iter().step_by(2 / 3);
 }
 
 #[allow(unused)]

@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::unit_cmp)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
@@ -19,13 +15,18 @@ pub struct ContainsUnit(()); // should be fine
 
 fn main() {
     // this is fine
-    if true == false {
-    }
+    if true == false {}
 
     // this warns
-    if { true; } == { false; } {
-    }
+    if {
+        true;
+    } == {
+        false;
+    } {}
 
-    if { true; } > { false; } {
-    }
+    if {
+        true;
+    } > {
+        false;
+    } {}
 }

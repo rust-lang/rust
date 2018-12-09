@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[allow(unused_variables)]
 fn main() {
     let x = 0 as *const usize;

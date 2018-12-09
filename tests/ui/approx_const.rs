@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[warn(clippy::approx_constant)]
 #[allow(unused, clippy::shadow_unrelated, clippy::similar_names, clippy::unreadable_literal)]
 fn main() {

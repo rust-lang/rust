@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(dead_code)]
 
 fn main() {}
@@ -22,22 +19,28 @@ fn starts_with() {
 
 fn chars_cmp_with_unwrap() {
     let s = String::from("foo");
-    if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
+    if s.chars().next().unwrap() == 'f' {
+        // s.starts_with('f')
         // Nothing here
     }
-    if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
+    if s.chars().next_back().unwrap() == 'o' {
+        // s.ends_with('o')
         // Nothing here
     }
-    if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
+    if s.chars().last().unwrap() == 'o' {
+        // s.ends_with('o')
         // Nothing here
     }
-    if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
+    if s.chars().next().unwrap() != 'f' {
+        // !s.starts_with('f')
         // Nothing here
     }
-    if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
+    if s.chars().next_back().unwrap() != 'o' {
+        // !s.ends_with('o')
         // Nothing here
     }
-    if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
+    if s.chars().last().unwrap() != 'o' {
+        // !s.ends_with('o')
         // Nothing here
     }
 }

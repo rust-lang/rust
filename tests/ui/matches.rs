@@ -7,18 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 #![feature(exclusive_range_pattern)]
-
-
 #![warn(clippy::all)]
 #![allow(unused, clippy::redundant_pattern_matching)]
 #![warn(clippy::match_same_arms)]
 
-
-fn dummy() {
-}
+fn dummy() {}
 
 fn ref_pats() {
     {
@@ -27,12 +21,13 @@ fn ref_pats() {
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
         }
-        match v {  // this doesn't trigger, we have a different pattern
+        match v {
+            // this doesn't trigger, we have a different pattern
             &Some(v) => println!("some"),
             other => println!("other"),
         }
     }
-    let tup =& (1, 2);
+    let tup = &(1, 2);
     match tup {
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
@@ -66,73 +61,77 @@ fn match_wild_err_arm() {
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => panic!("err")
+        Err(_) => panic!("err"),
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => {panic!()}
+        Err(_) => panic!(),
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => {panic!();}
+        Err(_) => {
+            panic!();
+        },
     }
 
     // allowed when not with `panic!` block
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => println!("err")
+        Err(_) => println!("err"),
     }
 
     // allowed when used with `unreachable!`
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => {unreachable!()}
+        Err(_) => unreachable!(),
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => unreachable!()
+        Err(_) => unreachable!(),
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => {unreachable!();}
+        Err(_) => {
+            unreachable!();
+        },
     }
 
     // no warning because of the guard
     match x {
-        Ok(x) if x*x == 64 => println!("ok"),
+        Ok(x) if x * x == 64 => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => println!("err")
+        Err(_) => println!("err"),
     }
 
     // this used to be a false positive, see #1996
     match x {
         Ok(3) => println!("ok"),
-        Ok(x) if x*x == 64 => println!("ok 64"),
+        Ok(x) if x * x == 64 => println!("ok 64"),
         Ok(_) => println!("ok"),
-        Err(_) => println!("err")
+        Err(_) => println!("err"),
     }
 
     match (x, Some(1i32)) {
         (Ok(x), Some(_)) => println!("ok {}", x),
         (Ok(_), Some(x)) => println!("ok {}", x),
-        _ => println!("err")
+        _ => println!("err"),
     }
 
     // no warning because of the different types for x
     match (x, Some(1.0f64)) {
         (Ok(x), Some(_)) => println!("ok {}", x),
         (Ok(_), Some(x)) => println!("ok {}", x),
-        _ => println!("err")
+        _ => println!("err"),
     }
 
     // because of a bug, no warning was generated for this case before #2251
@@ -140,7 +139,9 @@ fn match_wild_err_arm() {
         Ok(_tmp) => println!("ok"),
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
-        Err(_) => {unreachable!();}
+        Err(_) => {
+            unreachable!();
+        },
     }
 }
 
@@ -156,8 +157,6 @@ fn match_as_ref() {
         None => None,
         Some(ref mut v) => Some(v),
     };
-
 }
 
-fn main() {
-}
+fn main() {}

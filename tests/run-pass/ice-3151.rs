@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[derive(Clone)]
 pub struct HashMap<V, S> {
     hash_builder: S,
@@ -17,7 +16,7 @@ pub struct HashMap<V, S> {
 #[derive(Clone)]
 pub struct RawTable<V> {
     size: usize,
-    val: V
+    val: V,
 }
 
 fn main() {}

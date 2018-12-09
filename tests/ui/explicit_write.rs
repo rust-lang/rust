@@ -7,11 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::explicit_write)]
-
 
 fn stdout() -> String {
     String::new()

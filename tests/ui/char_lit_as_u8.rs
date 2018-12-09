@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::char_lit_as_u8)]
 #![allow(unused_variables)]
 fn main() {

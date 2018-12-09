@@ -7,15 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 fn get_number() -> usize {
     10
 }
 
-fn get_reference(n : &usize) -> &usize {
+fn get_reference(n: &usize) -> &usize {
     n
 }
 
@@ -32,7 +28,7 @@ fn main() {
 
     let b = *get_reference(&a);
 
-    let bytes : Vec<usize> = vec![1, 2, 3, 4];
+    let bytes: Vec<usize> = vec![1, 2, 3, 4];
     let b = *&bytes[1..2][0];
 
     //This produces a suggestion of 'let b = (a);' which
@@ -41,7 +37,7 @@ fn main() {
 
     let b = *(&a);
 
-    let b = *((&a));
+    let b = *(&a);
 
     let b = *&&a;
 

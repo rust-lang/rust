@@ -8,7 +8,13 @@
 // except according to those terms.
 
 #![warn(clippy::absurd_extreme_comparisons)]
-#![allow(unused, clippy::eq_op, clippy::no_effect, clippy::unnecessary_operation, clippy::needless_pass_by_value)]
+#![allow(
+    unused,
+    clippy::eq_op,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::needless_pass_by_value
+)]
 
 #[rustfmt::skip]
 fn main() {

@@ -7,16 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 macro_rules! zero {
-    ($x:expr) => ($x == 0);
+    ($x:expr) => {
+        $x == 0
+    };
 }
 
 macro_rules! nonzero {
-    ($x:expr) => (!zero!($x));
+    ($x:expr) => {
+        !zero!($x)
+    };
 }
 
 #[warn(clippy::needless_continue)]
@@ -27,9 +27,9 @@ fn main() {
 
         if i % 2 == 0 && i % 3 == 0 {
             println!("{}", i);
-            println!("{}", i+1);
+            println!("{}", i + 1);
             if i % 5 == 0 {
-                println!("{}", i+2);
+                println!("{}", i + 2);
             }
             let i = 0;
             println!("bar {} ", i);

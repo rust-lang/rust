@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::implicit_return)]
 
 fn test_end_of_fn() -> bool {
@@ -34,9 +30,7 @@ fn test_if_block() -> bool {
 fn test_match(x: bool) -> bool {
     match x {
         true => false,
-        false => {
-            true
-        }
+        false => true,
     }
 }
 
@@ -48,9 +42,7 @@ fn test_loop() -> bool {
 }
 
 fn test_closure() {
-    let _ = || {
-        true
-    };
+    let _ = || true;
     let _ = || true;
 }
 
