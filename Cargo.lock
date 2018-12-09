@@ -602,7 +602,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "assert_cli 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
