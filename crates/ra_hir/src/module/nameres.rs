@@ -200,17 +200,32 @@ impl ModuleItem {
 }
 
 pub(crate) struct Resolver<'a, DB> {
-    pub(crate) db: &'a DB,
-    pub(crate) input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
-    pub(crate) source_root: SourceRootId,
-    pub(crate) module_tree: Arc<ModuleTree>,
-    pub(crate) result: ItemMap,
+    db: &'a DB,
+    input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+    source_root: SourceRootId,
+    module_tree: Arc<ModuleTree>,
+    result: ItemMap,
 }
 
 impl<'a, DB> Resolver<'a, DB>
 where
     DB: HirDatabase,
 {
+    pub(crate) fn new(
+        db: &'a DB,
+        input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+        source_root: SourceRootId,
+        module_tree: Arc<ModuleTree>,
+    ) -> Resolver<'a, DB> {
+        Resolver {
+            db: db,
+            input: &input,
+            source_root,
+            module_tree,
+            result: ItemMap::default(),
+        }
+    }
+
     pub(crate) fn resolve(mut self) -> Cancelable<ItemMap> {
         for (&module_id, items) in self.input.iter() {
             self.populate_module(module_id, items)
