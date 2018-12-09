@@ -38,8 +38,8 @@ fn main() {
 
 #[derive(Clone)]
 struct Alpha;
-fn double(a: Alpha) -> (Alpha, Alpha) {
-    if true {
+fn with_branch(a: Alpha, b: bool) -> (Alpha, Alpha) {
+    if b {
         (a.clone(), a.clone())
     } else {
         (Alpha, a)
