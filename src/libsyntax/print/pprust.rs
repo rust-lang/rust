@@ -724,7 +724,11 @@ pub trait PrintState<'a> {
                 self.writer().word("::")?
             }
             if segment.ident.name != keywords::PathRoot.name() {
-                self.writer().word(segment.ident.as_str().get())?;
+                if segment.ident.name == keywords::DollarCrate.name() {
+                    self.print_dollar_crate(segment.ident)?;
+                } else {
+                    self.writer().word(segment.ident.as_str().get())?;
+                }
             }
         }
         Ok(())
@@ -837,6 +841,21 @@ pub trait PrintState<'a> {
     }
 
     fn nbsp(&mut self) -> io::Result<()> { self.writer().word(" ") }
+
+    // AST pretty-printer is used as a fallback for turning AST structures into token streams for
+    // proc macros. Additionally, proc macros may stringify their input and expect it survive the
+    // stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
+    // So we need to somehow pretty-print `$crate` in paths in a way preserving at least some of
+    // its hygiene data, most importantly name of the crate it refers to.
+    // As a result we print `$crate` as `crate` if it refers to the local crate
+    // and as `::other_crate_name` if it refers to some other crate.
+    fn print_dollar_crate(&mut self, ident: ast::Ident) -> io::Result<()> {
+        let name = ident.span.ctxt().dollar_crate_name();
+        if !ast::Ident::with_empty_ctxt(name).is_path_segment_keyword() {
+            self.writer().word("::")?;
+        }
+        self.writer().word(name.as_str().get())
+    }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -2446,7 +2465,11 @@ impl<'a> State<'a> {
                           -> io::Result<()>
     {
         if segment.ident.name != keywords::PathRoot.name() {
-            self.print_ident(segment.ident)?;
+            if segment.ident.name == keywords::DollarCrate.name() {
+                self.print_dollar_crate(segment.ident)?;
+            } else {
+                self.print_ident(segment.ident)?;
+            }
             if let Some(ref args) = segment.args {
                 self.print_generic_args(args, colons_before_params)?;
             }

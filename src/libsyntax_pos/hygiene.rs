@@ -18,11 +18,11 @@
 use GLOBALS;
 use Span;
 use edition::{Edition, DEFAULT_EDITION};
-use symbol::Symbol;
+use symbol::{keywords, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use std::fmt;
+use std::{fmt, mem};
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
@@ -37,6 +37,8 @@ struct SyntaxContextData {
     opaque: SyntaxContext,
     // This context, but with all transparent marks filtered away.
     opaque_and_semitransparent: SyntaxContext,
+    // Name of the crate to which `$crate` with this context would resolve.
+    dollar_crate_name: Symbol,
 }
 
 /// A mark is a unique id associated with a macro expansion.
@@ -200,6 +202,7 @@ impl HygieneData {
                 prev_ctxt: SyntaxContext(0),
                 opaque: SyntaxContext(0),
                 opaque_and_semitransparent: SyntaxContext(0),
+                dollar_crate_name: keywords::DollarCrate.name(),
             }],
             markings: FxHashMap::default(),
             default_edition: DEFAULT_EDITION,
@@ -258,6 +261,7 @@ impl SyntaxContext {
                 prev_ctxt: SyntaxContext::empty(),
                 opaque: SyntaxContext::empty(),
                 opaque_and_semitransparent: SyntaxContext::empty(),
+                dollar_crate_name: keywords::DollarCrate.name(),
             });
             SyntaxContext(data.syntax_contexts.len() as u32 - 1)
         })
@@ -324,6 +328,7 @@ impl SyntaxContext {
                         prev_ctxt,
                         opaque: new_opaque,
                         opaque_and_semitransparent: new_opaque,
+                        dollar_crate_name: keywords::DollarCrate.name(),
                     });
                     new_opaque
                 });
@@ -341,6 +346,7 @@ impl SyntaxContext {
                         prev_ctxt,
                         opaque,
                         opaque_and_semitransparent: new_opaque_and_semitransparent,
+                        dollar_crate_name: keywords::DollarCrate.name(),
                     });
                     new_opaque_and_semitransparent
                 });
@@ -356,6 +362,7 @@ impl SyntaxContext {
                     prev_ctxt,
                     opaque,
                     opaque_and_semitransparent,
+                    dollar_crate_name: keywords::DollarCrate.name(),
                 });
                 new_opaque_and_semitransparent_and_transparent
             })
@@ -509,6 +516,21 @@ impl SyntaxContext {
     #[inline]
     pub fn outer(self) -> Mark {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].outer_mark)
+    }
+
+    pub fn dollar_crate_name(self) -> Symbol {
+        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].dollar_crate_name)
+    }
+
+    pub fn set_dollar_crate_name(self, dollar_crate_name: Symbol) {
+        HygieneData::with(|data| {
+            let prev_dollar_crate_name = mem::replace(
+                &mut data.syntax_contexts[self.0 as usize].dollar_crate_name, dollar_crate_name
+            );
+            assert!(dollar_crate_name == prev_dollar_crate_name ||
+                    prev_dollar_crate_name == keywords::DollarCrate.name(),
+                    "$crate name is reset for a syntax context");
+        })
     }
 }
 
