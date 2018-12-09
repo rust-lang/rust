@@ -318,7 +318,14 @@ fn on_notification(
                     panic!("string id's not supported: {:?}", id);
                 }
             };
-            pending_requests.remove(&id);
+            if pending_requests.remove(&id) {
+                let response = RawResponse::err(
+                    id,
+                    ErrorCode::RequestCancelled as i32,
+                    "canceled by client".to_string(),
+                );
+                msg_sender.send(RawMessage::Response(response))
+            }
             return Ok(());
         }
         Err(not) => not,
