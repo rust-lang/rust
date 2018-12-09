@@ -1024,17 +1024,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("minnum");
-        unsafe {
-            let instr = llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs);
-            instr.expect("LLVMRustBuildMinNum is not available in LLVM version < 6.0")
-        }
+        unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
     }
     fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("maxnum");
-        unsafe {
-            let instr = llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs);
-            instr.expect("LLVMRustBuildMaxNum is not available in LLVM version < 6.0")
-        }
+        unsafe { llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs) }
     }
 
     fn select(
