@@ -31,7 +31,7 @@ use crate::{
     DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
-    HirDatabase,
+    HirDatabase, Crate,
     module::{ModuleId, ModuleTree},
 };
 
@@ -218,8 +218,8 @@ where
         module_tree: Arc<ModuleTree>,
     ) -> Resolver<'a, DB> {
         Resolver {
-            db: db,
-            input: &input,
+            db,
+            input,
             source_root,
             module_tree,
             result: ItemMap::default(),
@@ -233,7 +233,7 @@ where
 
         for &module_id in self.input.keys() {
             self.db.check_canceled()?;
-            self.resolve_imports(module_id);
+            self.resolve_imports(module_id)?;
         }
         Ok(self.result)
     }
@@ -297,40 +297,66 @@ where
         self.result.per_module.insert(module_id, module_items);
     }
 
-    fn resolve_imports(&mut self, module_id: ModuleId) {
+    fn resolve_imports(&mut self, module_id: ModuleId) -> Cancelable<()> {
         for import in self.input[&module_id].imports.iter() {
-            self.resolve_import(module_id, import);
+            self.resolve_import(module_id, import)?;
         }
+        Ok(())
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) {
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> Cancelable<()> {
         let ptr = match import.kind {
-            ImportKind::Glob => return,
+            ImportKind::Glob => return Ok(()),
             ImportKind::Named(ptr) => ptr,
         };
+        let mut segments = import.path.segments.iter().enumerate();
 
         let mut curr = match import.path.kind {
             // TODO: handle extern crates
-            PathKind::Plain => return,
+            PathKind::Plain => {
+                let root_id = module_id.crate_root(&self.module_tree);
+                let file_id = root_id.source(&self.module_tree).file_id();
+                let crate_graph = self.db.crate_graph();
+                let crate_id = match crate_graph.crate_id_for_crate_root(file_id) {
+                    None => return Ok(()),
+                    Some(it) => it,
+                };
+                let krate = Crate::new(crate_id);
+                let crate_name = match segments.next() {
+                    None => return Ok(()),
+                    Some((_, it)) => it,
+                };
+                match krate
+                    .dependencies(self.db)
+                    .into_iter()
+                    .find(|it| &it.name == crate_name)
+                {
+                    None => return Ok(()),
+                    Some(dep) => match dep.krate.root_module(self.db)? {
+                        None => return Ok(()),
+                        Some(it) => it.module_id,
+                    },
+                }
+            }
             PathKind::Self_ => module_id,
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {
                     Some(it) => it,
                     // TODO: error
-                    None => return,
+                    None => return Ok(()),
                 }
             }
             PathKind::Crate => module_id.crate_root(&self.module_tree),
         };
 
-        for (i, name) in import.path.segments.iter().enumerate() {
+        for (i, name) in segments {
             let is_last = i == import.path.segments.len() - 1;
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
-                None => return,
+                None => return Ok(()),
                 Some(res) => match res.def_id {
                     Some(it) => it,
-                    None => return,
+                    None => return Ok(()),
                 },
             };
 
@@ -341,7 +367,7 @@ where
                         module_id,
                         ..
                     } => module_id,
-                    _ => return,
+                    _ => return Ok(()),
                 }
             } else {
                 self.update(module_id, |items| {
@@ -353,6 +379,7 @@ where
                 })
             }
         }
+        Ok(())
     }
 
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
