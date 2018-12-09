@@ -48,8 +48,13 @@ fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Optio
     let cursor_position: u32 = (offset - leaf.range().start()).into();
 
     let (before, after) = text.split_at(cursor_position as usize);
-    let start_idx = before.rfind(char::is_whitespace).unwrap_or(0) as u32;
-    let end_idx = after.find(char::is_whitespace).unwrap_or(after.len()) as u32;
+
+    fn non_word_char(c: char) -> bool {
+        !(c.is_alphanumeric() || c == '_')
+    }
+
+    let start_idx = before.rfind(non_word_char)? as u32;
+    let end_idx = after.find(non_word_char).unwrap_or(after.len()) as u32;
 
     let from: TextUnit = (start_idx + 1).into();
     let to: TextUnit = (cursor_position + end_idx).into();
@@ -199,6 +204,29 @@ fn bar(){}
                 "//     Next,",
                 "// #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n// pub enum Direction {\n//     Next,\n//     Prev\n// }",
             ],
+        );
+
+        do_check(
+            r#"
+/*
+foo
+_bar1<|>*/
+    "#,
+            &["_bar1", "/*\nfoo\n_bar1*/"],
+        );
+
+        do_check(
+            r#"
+//!<|>foo_2 bar
+    "#,
+            &["foo_2", "//!foo_2 bar"],
+        );
+
+        do_check(
+            r#"
+/<|>/foo bar
+    "#,
+            &["//foo bar"],
         );
     }
 
