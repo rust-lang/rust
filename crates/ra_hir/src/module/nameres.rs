@@ -228,7 +228,7 @@ where
 
     pub(crate) fn resolve(mut self) -> Cancelable<ItemMap> {
         for (&module_id, items) in self.input.iter() {
-            self.populate_module(module_id, items)
+            self.populate_module(module_id, items)?;
         }
 
         for &module_id in self.input.keys() {
@@ -238,11 +238,25 @@ where
         Ok(self.result)
     }
 
-    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) {
+    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) -> Cancelable<()> {
         let file_id = module_id.source(&self.module_tree).file_id();
 
         let mut module_items = ModuleScope::default();
 
+        // Populate extern crates prelude
+        {
+            let root_id = module_id.crate_root(&self.module_tree);
+            let file_id = root_id.source(&self.module_tree).file_id();
+            let crate_graph = self.db.crate_graph();
+            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id) {
+                let krate = Crate::new(crate_id);
+                for dep in krate.dependencies(self.db) {
+                    if let Some(module) = dep.krate.root_module(self.db)? {
+                        self.add_module_item(&mut module_items, dep.name, module.module_id);
+                    }
+                }
+            };
+        }
         for import in input.imports.iter() {
             if let Some(name) = import.path.segments.iter().last() {
                 if let ImportKind::Named(import) = import.kind {
@@ -256,10 +270,9 @@ where
                 }
             }
         }
-
+        // Populate explicitelly declared items, except modules
         for item in input.items.iter() {
             if item.kind == MODULE {
-                // handle submodules separatelly
                 continue;
             }
             let def_loc = DefLoc {
@@ -279,22 +292,28 @@ where
             module_items.items.insert(item.name.clone(), resolution);
         }
 
+        // Populate modules
         for (name, module_id) in module_id.children(&self.module_tree) {
-            let def_loc = DefLoc {
-                kind: DefKind::Module,
-                source_root_id: self.source_root,
-                module_id,
-                source_item_id: module_id.source(&self.module_tree).0,
-            };
-            let def_id = def_loc.id(self.db);
-            let resolution = Resolution {
-                def_id: Some(def_id),
-                import: None,
-            };
-            module_items.items.insert(name, resolution);
+            self.add_module_item(&mut module_items, name, module_id);
         }
 
         self.result.per_module.insert(module_id, module_items);
+        Ok(())
+    }
+
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, module_id: ModuleId) {
+        let def_loc = DefLoc {
+            kind: DefKind::Module,
+            source_root_id: self.source_root,
+            module_id,
+            source_item_id: module_id.source(&self.module_tree).0,
+        };
+        let def_id = def_loc.id(self.db);
+        let resolution = Resolution {
+            def_id: Some(def_id),
+            import: None,
+        };
+        module_items.items.insert(name, resolution);
     }
 
     fn resolve_imports(&mut self, module_id: ModuleId) -> Cancelable<()> {
@@ -309,35 +328,9 @@ where
             ImportKind::Glob => return Ok(()),
             ImportKind::Named(ptr) => ptr,
         };
-        let mut segments = import.path.segments.iter().enumerate();
 
         let mut curr = match import.path.kind {
-            PathKind::Plain => {
-                let root_id = module_id.crate_root(&self.module_tree);
-                let file_id = root_id.source(&self.module_tree).file_id();
-                let crate_graph = self.db.crate_graph();
-                let crate_id = match crate_graph.crate_id_for_crate_root(file_id) {
-                    None => return Ok(()),
-                    Some(it) => it,
-                };
-                let krate = Crate::new(crate_id);
-                let crate_name = match segments.next() {
-                    None => return Ok(()),
-                    Some((_, it)) => it,
-                };
-                match krate
-                    .dependencies(self.db)
-                    .into_iter()
-                    .find(|it| &it.name == crate_name)
-                {
-                    None => return Ok(()),
-                    Some(dep) => match dep.krate.root_module(self.db)? {
-                        None => return Ok(()),
-                        Some(it) => it.module_id,
-                    },
-                }
-            }
-            PathKind::Self_ => module_id,
+            PathKind::Plain | PathKind::Self_ => module_id,
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {
                     Some(it) => it,
@@ -348,7 +341,7 @@ where
             PathKind::Crate => module_id.crate_root(&self.module_tree),
         };
 
-        for (i, name) in segments {
+        for (i, name) in import.path.segments.iter().enumerate() {
             let is_last = i == import.path.segments.len() - 1;
 
             let def_id = match self.result.per_module[&curr].items.get(name) {

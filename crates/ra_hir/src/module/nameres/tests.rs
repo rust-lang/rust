@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use salsa::Database;
-use ra_db::FilesDatabase;
+use ra_db::{FilesDatabase, CrateGraph};
 use ra_syntax::SmolStr;
 
 use crate::{
@@ -21,7 +21,7 @@ fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
 }
 
 #[test]
-fn test_item_map() {
+fn item_map_smoke_test() {
     let (item_map, module_id) = item_map(
         "
         //- /lib.rs
@@ -37,6 +37,39 @@ fn test_item_map() {
         pub struct Baz;
     ",
     );
+    let name = SmolStr::from("Baz");
+    let resolution = &item_map.per_module[&module_id].items[&name];
+    assert!(resolution.def_id.is_some());
+}
+
+#[test]
+fn item_map_across_crates() {
+    let (mut db, files) = MockDatabase::with_files(
+        "
+        //- /main.rs
+        use test_crate::Baz;
+
+        //- /lib.rs
+        pub struct Baz;
+    ",
+    );
+    let main_id = files.file_id("/main.rs");
+    let lib_id = files.file_id("/lib.rs");
+
+    let mut crate_graph = CrateGraph::default();
+    let main_crate = crate_graph.add_crate_root(main_id);
+    let lib_crate = crate_graph.add_crate_root(lib_id);
+    crate_graph.add_dep(main_crate, "test_crate".into(), lib_crate);
+
+    db.set_crate_graph(crate_graph);
+
+    let source_root = db.file_source_root(main_id);
+    let module = hir::source_binder::module_from_file_id(&db, main_id)
+        .unwrap()
+        .unwrap();
+    let module_id = module.module_id;
+    let item_map = db.item_map(source_root).unwrap();
+
     let name = SmolStr::from("Baz");
     let resolution = &item_map.per_module[&module_id].items[&name];
     assert!(resolution.def_id.is_some());

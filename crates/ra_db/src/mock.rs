@@ -5,7 +5,7 @@ use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{FileId, FileResolver, SourceRoot, FileResolverImp};
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct FileMap(Vec<(FileId, RelativePathBuf)>);
 
 impl FileMap {
@@ -26,6 +26,11 @@ impl FileMap {
 
     pub fn files(&self) -> FxHashSet<FileId> {
         self.iter().map(|(id, _)| id).collect()
+    }
+
+    pub fn file_id(&self, path: &str) -> FileId {
+        assert!(path.starts_with('/'));
+        self.iter().find(|(_, p)| p == &path[1..]).unwrap().0
     }
 
     fn iter<'a>(&'a self) -> impl Iterator<Item = (FileId, &'a RelativePath)> + 'a {

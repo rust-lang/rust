@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase, FilePosition, mock::FileMap, FileId, WORKSPACE};
+use ra_db::{LocationIntener, BaseDatabase, FilePosition, mock::FileMap, FileId, WORKSPACE, CrateGraph};
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
@@ -16,7 +16,24 @@ pub(crate) struct MockDatabase {
 }
 
 impl MockDatabase {
+    pub(crate) fn with_files(fixture: &str) -> (MockDatabase, FileMap) {
+        let (db, file_map, position) = MockDatabase::from_fixture(fixture);
+        assert!(position.is_none());
+        (db, file_map)
+    }
+
     pub(crate) fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
+        let (db, _, position) = MockDatabase::from_fixture(fixture);
+        let position = position.expect("expected a marker ( <|> )");
+        (db, position)
+    }
+
+    pub(crate) fn set_crate_graph(&mut self, crate_graph: CrateGraph) {
+        self.query_mut(ra_db::CrateGraphQuery)
+            .set((), Arc::new(crate_graph));
+    }
+
+    fn from_fixture(fixture: &str) -> (MockDatabase, FileMap, Option<FilePosition>) {
         let mut db = MockDatabase::default();
 
         let mut position = None;
@@ -32,11 +49,10 @@ impl MockDatabase {
                 db.add_file(&mut file_map, &entry.meta, &entry.text);
             }
         }
-        let position = position.expect("expected a marker (<|>)");
-        let source_root = file_map.into_source_root();
+        let source_root = file_map.clone().into_source_root();
         db.query_mut(ra_db::SourceRootQuery)
             .set(WORKSPACE, Arc::new(source_root));
-        (db, position)
+        (db, file_map, position)
     }
 
     fn add_file(&mut self, file_map: &mut FileMap, path: &str, text: &str) -> FileId {
