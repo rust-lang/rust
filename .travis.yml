@@ -46,6 +46,7 @@ install:
 # if: fork = false
 # but this is currently buggy travis-ci/travis-ci#9118
 matrix:
+  fast_finish: true
   include:
     - os: osx # run base tests on both platforms
       env: BASE_TESTS=true
