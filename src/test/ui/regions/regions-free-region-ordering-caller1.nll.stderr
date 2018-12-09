@@ -21,7 +21,7 @@ LL | fn call1<'a>(x: &'a usize) {
 LL |     let z: &'a & usize = &(&y);
    |            -----------    ^^^^ borrowed value does not live long enough
    |            |
-   |            assignment requires that `y` is borrowed for `'a`
+   |            type annotation requires that `y` is borrowed for `'a`
 ...
 LL | }
    | - `y` dropped here while still borrowed

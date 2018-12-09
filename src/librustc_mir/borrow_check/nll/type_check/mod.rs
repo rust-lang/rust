@@ -933,19 +933,28 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         for index in self.mir.user_type_annotations.indices() {
             let (span, _) = &self.mir.user_type_annotations[index];
             let type_annotation = self.instantiated_type_annotations[&index];
-            if let Err(terr) = self.fully_perform_op(
-                Locations::All(*span),
-                ConstraintCategory::Assignment,
-                self.param_env.and(type_op::ascribe_user_type::AscribeUserTypeWellFormed::new(
-                    type_annotation,
-                )),
-            ) {
-                span_mirbug!(
-                    self,
-                    type_annotation,
-                    "bad user type annotation: {:?}",
-                    terr,
-                );
+            match type_annotation {
+                // We can't check the well-formedness of a `UserTypeAnnotation::Ty` here, it will
+                // cause ICEs (see comment in `relate_type_and_user_type`).
+                UserTypeAnnotation::TypeOf(..) => {
+                    if let Err(terr) = self.fully_perform_op(
+                        Locations::All(*span),
+                        ConstraintCategory::Assignment,
+                        self.param_env.and(
+                            type_op::ascribe_user_type::AscribeUserTypeWellFormed::new(
+                                type_annotation,
+                            )
+                        ),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            type_annotation,
+                            "bad user type annotation: {:?}",
+                            terr,
+                        );
+                    }
+                },
+                _ => {},
             }
         }
     }
@@ -1079,7 +1088,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        match self.instantiated_type_annotations[&user_ty.base] {
+        let type_annotation = self.instantiated_type_annotations[&user_ty.base];
+        match type_annotation {
             UserTypeAnnotation::Ty(ty) => {
                 // The `TypeRelating` code assumes that "unresolved inference
                 // variables" appear in the "a" side, so flip `Contravariant`
@@ -1117,7 +1127,27 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Ok(projected_ty) = curr_projected_ty {
                     let ty = projected_ty.to_ty(tcx);
                     self.relate_types(ty, v1, a, locations, category)?;
+
+                    // We'll get an ICE if we check for well-formedness of a
+                    // `UserTypeAnnotation::Ty` that hasn't had types related.
+                    //
+                    // Doing this without the types having been related will result in
+                    // `probe_ty_var` failing in the canonicalizer - in practice, this
+                    // results in three run-pass tests failing. You can work around that
+                    // by keeping an vec of projections instead of annotations and performing
+                    // the projections before storing into `instantiated_type_annotations`
+                    // but that still fails in dead code.
+                    self.fully_perform_op(
+                        locations,
+                        category,
+                        self.param_env.and(
+                            type_op::ascribe_user_type::AscribeUserTypeWellFormed::new(
+                                UserTypeAnnotation::Ty(ty),
+                            )
+                        ),
+                    )?;
                 }
+
             }
             UserTypeAnnotation::TypeOf(def_id, user_substs) => {
                 let projs = self.infcx.tcx.intern_projs(&user_ty.projs);
