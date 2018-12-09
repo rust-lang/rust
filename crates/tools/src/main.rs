@@ -127,10 +127,7 @@ fn install_code_extension() -> Result<()> {
     } else {
         run(r"npm install", "./editors/code")?;
     }
-    run(
-        r"node ./node_modules/vsce/out/vsce package",
-        "./editors/code",
-    )?;
+    run(r"npm run package", "./editors/code")?;
     if cfg!(windows) {
         run(
             r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix",

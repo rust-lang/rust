@@ -18,9 +18,9 @@ export async function handle() {
         return;
     }
     const request: ExtendSelectionParams = {
-        selections: editor.selections.map(s => {
-            return Server.client.code2ProtocolConverter.asRange(s);
-        }),
+        selections: editor.selections.map(s =>
+            Server.client.code2ProtocolConverter.asRange(s)
+        ),
         textDocument: { uri: editor.document.uri.toString() }
     };
     const response = await Server.client.sendRequest<ExtendSelectionResult>(
