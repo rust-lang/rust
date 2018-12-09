@@ -280,7 +280,7 @@ impl ModuleSource {
     ) -> ModuleSource {
         assert!(!m.has_semi());
         let file_items = db.file_items(file_id);
-        let item_id = file_items.id_of(m.syntax());
+        let item_id = file_items.id_of(file_id, m.syntax());
         ModuleSource::new(file_id, item_id)
     }
 

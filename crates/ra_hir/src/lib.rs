@@ -110,16 +110,32 @@ pub struct SourceItemId {
 }
 
 /// Maps item's `SyntaxNode`s to `SourceFileItemId` and back.
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
+    file_id: FileId,
     arena: Arena<SyntaxNode>,
 }
 
 impl SourceFileItems {
+    fn new(file_id: FileId) -> SourceFileItems {
+        SourceFileItems {
+            file_id,
+            arena: Arena::default(),
+        }
+    }
+
     fn alloc(&mut self, item: SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(item)
     }
-    pub fn id_of(&self, item: SyntaxNodeRef) -> SourceFileItemId {
+    pub fn id_of(&self, file_id: FileId, item: SyntaxNodeRef) -> SourceFileItemId {
+        assert_eq!(
+            self.file_id, file_id,
+            "SourceFileItems: wrong file, expected {:?}, got {:?}",
+            self.file_id, file_id
+        );
+        self.id_of_unchecked(item)
+    }
+    fn id_of_unchecked(&self, item: SyntaxNodeRef) -> SourceFileItemId {
         let (id, _item) = self
             .arena
             .iter()

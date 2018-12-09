@@ -75,7 +75,7 @@ pub fn function_from_source(
 ) -> Cancelable<Option<Function>> {
     let module = ctry!(module_from_child_node(db, file_id, fn_def.syntax())?);
     let file_items = db.file_items(file_id);
-    let item_id = file_items.id_of(fn_def.syntax());
+    let item_id = file_items.id_of(file_id, fn_def.syntax());
     let source_item_id = SourceItemId { file_id, item_id };
     let def_loc = DefLoc {
         kind: DefKind::Function,

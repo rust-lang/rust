@@ -168,7 +168,7 @@ impl InputModuleItems {
     }
 
     fn add_use_item(&mut self, file_items: &SourceFileItems, item: ast::UseItem) {
-        let file_item_id = file_items.id_of(item.syntax());
+        let file_item_id = file_items.id_of_unchecked(item.syntax());
         let start_offset = item.syntax().range().start();
         Path::expand_use_item(item, |path, range| {
             let kind = match range {
@@ -188,7 +188,7 @@ impl ModuleItem {
         let name = item.name()?.text();
         let kind = item.syntax().kind();
         let vis = Vis::Other;
-        let id = file_items.id_of(item.syntax());
+        let id = file_items.id_of_unchecked(item.syntax());
         let res = ModuleItem {
             id,
             name,
