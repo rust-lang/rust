@@ -1,9 +1,10 @@
 [alias]
 # Automatically generates the ast and syntax kinds files
-gen-syntax =    "run --package tools -- gen-syntax"
-gen-tests =    "run --package tools -- gen-tests"
-install-code = "run --package tools -- install-code"
-format =    "run --package tools -- format"
+gen-syntax =   "run --package tools --bin tools -- gen-syntax"
+gen-tests =    "run --package tools --bin tools -- gen-tests"
+install-code = "run --package tools --bin tools -- install-code"
+format =       "run --package tools --bin tools -- format"
+format-hook =  "run --package tools --bin tools -- format-hook"
 
-render-test = "run --package ra_cli -- render-test"
-parse =       "run --package ra_cli -- parse"
+render-test =  "run --package ra_cli -- render-test"
+parse =        "run --package ra_cli -- parse"

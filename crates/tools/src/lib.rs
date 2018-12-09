@@ -1,6 +1,8 @@
 use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    fs::copy,
+    io::{Error, ErrorKind}
 };
 
 use failure::bail;
@@ -39,7 +41,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
         let (start_line, name) = loop {
             match block.next() {
                 Some((idx, line)) if line.starts_with("test ") => {
-                    break (idx, line["test ".len()..].to_string())
+                    break (idx, line["test ".len()..].to_string());
                 }
                 Some(_) => (),
                 None => continue 'outer,
@@ -65,7 +67,7 @@ pub fn generate(mode: Mode) -> Result<()> {
 }
 
 pub fn project_root() -> PathBuf {
-    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+    Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
         .unwrap()
@@ -115,4 +117,19 @@ fn install_rustfmt() -> Result<()> {
         &format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN),
         ".",
     )
+}
+
+pub fn install_format_hook() -> Result<()> {
+    let result_path = Path::new("./.git/hooks/pre-commit");
+    if !result_path.exists() {
+        run("cargo build --package tools --bin pre-commit", ".")?;
+        if cfg!(windows) {
+            copy("./target/debug/pre-commit.exe", result_path)?;
+        } else {
+            copy("./target/debug/pre-commit", result_path)?;
+        }
+    } else {
+        return Err(Error::new(ErrorKind::AlreadyExists, "Git hook already created").into());
+    }
+    Ok(())
 }

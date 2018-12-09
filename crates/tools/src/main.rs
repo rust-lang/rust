@@ -7,7 +7,7 @@ use std::{
 use clap::{App, Arg, SubCommand};
 use failure::bail;
 
-use tools::{collect_tests, generate, run, run_rustfmt, Mode, Overwrite, Result, Test, Verify};
+use tools::{collect_tests, generate, install_format_hook, run, run_rustfmt, Mode, Overwrite, Result, Test, Verify};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
@@ -25,17 +25,22 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("gen-tests"))
         .subcommand(SubCommand::with_name("install-code"))
         .subcommand(SubCommand::with_name("format"))
+        .subcommand(SubCommand::with_name("format-hook"))
         .get_matches();
     let mode = if matches.is_present("verify") {
         Verify
     } else {
         Overwrite
     };
-    match matches.subcommand() {
-        ("install-code", _) => install_code_extension()?,
-        ("gen-tests", _) => gen_tests(mode)?,
-        ("gen-syntax", _) => generate(Overwrite)?,
-        ("format", _) => run_rustfmt(Overwrite)?,
+    match matches
+        .subcommand_name()
+        .expect("Subcommand must be specified")
+    {
+        "install-code" => install_code_extension()?,
+        "gen-tests" => gen_tests(mode)?,
+        "gen-syntax" => generate(Overwrite)?,
+        "format" => run_rustfmt(mode)?,
+        "format-hook" => install_format_hook()?,
         _ => unreachable!(),
     }
     Ok(())
