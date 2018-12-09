@@ -277,7 +277,9 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
-    pub fn unaligned_volatile_store<Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>>(
+    pub fn unaligned_volatile_store<
+        Bx: MemoryBuilderMethods<'tcx, Value = V> + NumBuilderMethods<'tcx>
+    >(
         self,
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,

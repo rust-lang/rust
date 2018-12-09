@@ -1309,7 +1309,12 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn shuffle_vector(&mut self, v1: &'ll Value, v2: &'ll Value, mask: &'ll Value) -> &'ll Value {
+    pub fn shuffle_vector(
+        &mut self,
+        v1: &'ll Value,
+        v2: &'ll Value,
+        mask: &'ll Value,
+    ) -> &'ll Value {
         self.count_insn("shufflevector");
         unsafe {
             llvm::LLVMBuildShuffleVector(self.llbuilder, v1, v2, mask, noname())
