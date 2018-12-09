@@ -136,7 +136,9 @@ pub fn install_format_hook() -> Result<()> {
             r#"#!/bin/sh
 
 cargo format
-git update-index --add ."#
+for path in $( git diff --name-only --cached ); do
+    git update-index --add $path
+done"#
         )?;
     } else {
         return Err(Error::new(ErrorKind::AlreadyExists, "Git hook already created").into());
