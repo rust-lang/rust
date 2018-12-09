@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
 // compile-pass
 
 // The output for humans should just highlight the whole span without showing
