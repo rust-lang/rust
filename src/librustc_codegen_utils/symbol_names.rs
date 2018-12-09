@@ -225,7 +225,7 @@ fn get_symbol_hash<'a, 'tcx>(
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     let mut buffer = SymbolPathBuffer::new(tcx);
     item_path::with_forced_absolute_paths(|| {
-        tcx.push_item_path(&mut buffer, def_id, false);
+        tcx.push_item_path(&mut buffer, def_id);
     });
     buffer.into_interned()
 }
