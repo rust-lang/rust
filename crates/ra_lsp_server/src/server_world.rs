@@ -13,7 +13,7 @@ use failure::{bail, format_err};
 
 use crate::{
     path_map::{PathMap, Root},
-    project_model::CargoWorkspace,
+    project_model::{CargoWorkspace, TargetKind},
     vfs::{FileEvent, FileEventKind},
     Result,
 };
@@ -142,17 +142,34 @@ impl ServerWorldState {
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
         let mut crate_graph = CrateGraph::default();
-        ws.iter()
-            .flat_map(|ws| {
-                ws.packages()
-                    .flat_map(move |pkg| pkg.targets(ws))
-                    .map(move |tgt| tgt.root(ws))
-            })
-            .for_each(|root| {
-                if let Some(file_id) = self.path_map.get_id(root) {
-                    crate_graph.add_crate_root(file_id);
+        let mut pkg_to_lib_crate = FxHashMap::default();
+        let mut pkg_crates = FxHashMap::default();
+        for ws in ws.iter() {
+            for pkg in ws.packages() {
+                for tgt in pkg.targets(ws) {
+                    let root = tgt.root(ws);
+                    if let Some(file_id) = self.path_map.get_id(root) {
+                        let crate_id = crate_graph.add_crate_root(file_id);
+                        if tgt.kind(ws) == TargetKind::Lib {
+                            pkg_to_lib_crate.insert(pkg, crate_id);
+                        }
+                        pkg_crates
+                            .entry(pkg)
+                            .or_insert_with(Vec::new)
+                            .push(crate_id);
+                    }
                 }
-            });
+            }
+            for pkg in ws.packages() {
+                for dep in pkg.dependencies(ws) {
+                    if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
+                        for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                            crate_graph.add_dep(from, dep.name.clone(), to);
+                        }
+                    }
+                }
+            }
+        }
         self.workspaces = Arc::new(ws);
         let mut change = AnalysisChange::new();
         change.set_crate_graph(crate_graph);

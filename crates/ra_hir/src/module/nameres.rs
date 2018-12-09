@@ -31,7 +31,7 @@ use crate::{
     DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
-    HirDatabase,
+    HirDatabase, Crate,
     module::{ModuleId, ModuleTree},
 };
 
@@ -200,34 +200,63 @@ impl ModuleItem {
 }
 
 pub(crate) struct Resolver<'a, DB> {
-    pub(crate) db: &'a DB,
-    pub(crate) input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
-    pub(crate) source_root: SourceRootId,
-    pub(crate) module_tree: Arc<ModuleTree>,
-    pub(crate) result: ItemMap,
+    db: &'a DB,
+    input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+    source_root: SourceRootId,
+    module_tree: Arc<ModuleTree>,
+    result: ItemMap,
 }
 
 impl<'a, DB> Resolver<'a, DB>
 where
     DB: HirDatabase,
 {
+    pub(crate) fn new(
+        db: &'a DB,
+        input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+        source_root: SourceRootId,
+        module_tree: Arc<ModuleTree>,
+    ) -> Resolver<'a, DB> {
+        Resolver {
+            db,
+            input,
+            source_root,
+            module_tree,
+            result: ItemMap::default(),
+        }
+    }
+
     pub(crate) fn resolve(mut self) -> Cancelable<ItemMap> {
         for (&module_id, items) in self.input.iter() {
-            self.populate_module(module_id, items)
+            self.populate_module(module_id, items)?;
         }
 
         for &module_id in self.input.keys() {
             self.db.check_canceled()?;
-            self.resolve_imports(module_id);
+            self.resolve_imports(module_id)?;
         }
         Ok(self.result)
     }
 
-    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) {
+    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) -> Cancelable<()> {
         let file_id = module_id.source(&self.module_tree).file_id();
 
         let mut module_items = ModuleScope::default();
 
+        // Populate extern crates prelude
+        {
+            let root_id = module_id.crate_root(&self.module_tree);
+            let file_id = root_id.source(&self.module_tree).file_id();
+            let crate_graph = self.db.crate_graph();
+            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id) {
+                let krate = Crate::new(crate_id);
+                for dep in krate.dependencies(self.db) {
+                    if let Some(module) = dep.krate.root_module(self.db)? {
+                        self.add_module_item(&mut module_items, dep.name, module.module_id);
+                    }
+                }
+            };
+        }
         for import in input.imports.iter() {
             if let Some(name) = import.path.segments.iter().last() {
                 if let ImportKind::Named(import) = import.kind {
@@ -241,10 +270,9 @@ where
                 }
             }
         }
-
+        // Populate explicitelly declared items, except modules
         for item in input.items.iter() {
             if item.kind == MODULE {
-                // handle submodules separatelly
                 continue;
             }
             let def_loc = DefLoc {
@@ -264,45 +292,50 @@ where
             module_items.items.insert(item.name.clone(), resolution);
         }
 
+        // Populate modules
         for (name, module_id) in module_id.children(&self.module_tree) {
-            let def_loc = DefLoc {
-                kind: DefKind::Module,
-                source_root_id: self.source_root,
-                module_id,
-                source_item_id: module_id.source(&self.module_tree).0,
-            };
-            let def_id = def_loc.id(self.db);
-            let resolution = Resolution {
-                def_id: Some(def_id),
-                import: None,
-            };
-            module_items.items.insert(name, resolution);
+            self.add_module_item(&mut module_items, name, module_id);
         }
 
         self.result.per_module.insert(module_id, module_items);
+        Ok(())
     }
 
-    fn resolve_imports(&mut self, module_id: ModuleId) {
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, module_id: ModuleId) {
+        let def_loc = DefLoc {
+            kind: DefKind::Module,
+            source_root_id: self.source_root,
+            module_id,
+            source_item_id: module_id.source(&self.module_tree).0,
+        };
+        let def_id = def_loc.id(self.db);
+        let resolution = Resolution {
+            def_id: Some(def_id),
+            import: None,
+        };
+        module_items.items.insert(name, resolution);
+    }
+
+    fn resolve_imports(&mut self, module_id: ModuleId) -> Cancelable<()> {
         for import in self.input[&module_id].imports.iter() {
-            self.resolve_import(module_id, import);
+            self.resolve_import(module_id, import)?;
         }
+        Ok(())
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) {
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) -> Cancelable<()> {
         let ptr = match import.kind {
-            ImportKind::Glob => return,
+            ImportKind::Glob => return Ok(()),
             ImportKind::Named(ptr) => ptr,
         };
 
         let mut curr = match import.path.kind {
-            // TODO: handle extern crates
-            PathKind::Plain => return,
-            PathKind::Self_ => module_id,
+            PathKind::Plain | PathKind::Self_ => module_id,
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {
                     Some(it) => it,
                     // TODO: error
-                    None => return,
+                    None => return Ok(()),
                 }
             }
             PathKind::Crate => module_id.crate_root(&self.module_tree),
@@ -312,10 +345,10 @@ where
             let is_last = i == import.path.segments.len() - 1;
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
-                None => return,
+                None => return Ok(()),
                 Some(res) => match res.def_id {
                     Some(it) => it,
-                    None => return,
+                    None => return Ok(()),
                 },
             };
 
@@ -326,7 +359,7 @@ where
                         module_id,
                         ..
                     } => module_id,
-                    _ => return,
+                    _ => return Ok(()),
                 }
             } else {
                 self.update(module_id, |items| {
@@ -338,6 +371,7 @@ where
                 })
             }
         }
+        Ok(())
     }
 
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
@@ -347,99 +381,4 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use salsa::Database;
-    use ra_db::FilesDatabase;
-    use ra_syntax::SmolStr;
-
-    use crate::{
-        self as hir,
-        db::HirDatabase,
-        mock::MockDatabase,
-};
-
-    fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
-        let (db, pos) = MockDatabase::with_position(fixture);
-        let source_root = db.file_source_root(pos.file_id);
-        let module = hir::source_binder::module_from_position(&db, pos)
-            .unwrap()
-            .unwrap();
-        let module_id = module.module_id;
-        (db.item_map(source_root).unwrap(), module_id)
-    }
-
-    #[test]
-    fn test_item_map() {
-        let (item_map, module_id) = item_map(
-            "
-            //- /lib.rs
-            mod foo;
-
-            use crate::foo::bar::Baz;
-            <|>
-
-            //- /foo/mod.rs
-            pub mod bar;
-
-            //- /foo/bar.rs
-            pub struct Baz;
-        ",
-        );
-        let name = SmolStr::from("Baz");
-        let resolution = &item_map.per_module[&module_id].items[&name];
-        assert!(resolution.def_id.is_some());
-    }
-
-    #[test]
-    fn typing_inside_a_function_should_not_invalidate_item_map() {
-        let (mut db, pos) = MockDatabase::with_position(
-            "
-            //- /lib.rs
-            mod foo;<|>
-
-            use crate::foo::bar::Baz;
-
-            fn foo() -> i32 {
-                1 + 1
-            }
-            //- /foo/mod.rs
-            pub mod bar;
-
-            //- /foo/bar.rs
-            pub struct Baz;
-        ",
-        );
-        let source_root = db.file_source_root(pos.file_id);
-        {
-            let events = db.log_executed(|| {
-                db.item_map(source_root).unwrap();
-            });
-            assert!(format!("{:?}", events).contains("item_map"))
-        }
-
-        let new_text = "
-            mod foo;
-
-            use crate::foo::bar::Baz;
-
-            fn foo() -> i32 { 92 }
-        "
-        .to_string();
-
-        db.query_mut(ra_db::FileTextQuery)
-            .set(pos.file_id, Arc::new(new_text));
-
-        {
-            let events = db.log_executed(|| {
-                db.item_map(source_root).unwrap();
-            });
-            assert!(
-                !format!("{:?}", events).contains("_item_map"),
-                "{:#?}",
-                events
-            )
-        }
-    }
-}
+mod tests;

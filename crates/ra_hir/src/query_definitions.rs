@@ -141,13 +141,8 @@ pub(super) fn item_map(
             Ok((id, items))
         })
         .collect::<Cancelable<FxHashMap<_, _>>>()?;
-    let resolver = Resolver {
-        db: db,
-        input: &input,
-        source_root,
-        module_tree,
-        result: ItemMap::default(),
-    };
+
+    let resolver = Resolver::new(db, &input, source_root, module_tree);
     let res = resolver.resolve()?;
     let elapsed = start.elapsed();
     log::info!("item_map: {:?}", elapsed);

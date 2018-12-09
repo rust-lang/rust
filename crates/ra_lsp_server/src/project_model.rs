@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use serde_derive::Serialize;
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -11,15 +10,22 @@ use crate::{
     thread_watcher::{ThreadWatcher, Worker},
 };
 
+/// `CargoWorksapce` represents the logical structure of, well, a Cargo
+/// workspace. It pretty closely mirrors `cargo metadata` output.
+///
+/// Note that internally, rust analyzer uses a differnet structure:
+/// `CrateGraph`. `CrateGraph` is lower-level: it knows only about the crates,
+/// while this knows about `Pacakges` & `Targets`: purely cargo-related
+/// concepts.
 #[derive(Debug, Clone)]
 pub struct CargoWorkspace {
     packages: Vec<PackageData>,
     targets: Vec<TargetData>,
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Package(usize);
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Target(usize);
 
 #[derive(Debug, Clone)]
@@ -28,6 +34,13 @@ struct PackageData {
     manifest: PathBuf,
     targets: Vec<Target>,
     is_member: bool,
+    dependencies: Vec<PackageDependency>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PackageDependency {
+    pub pkg: Package,
+    pub name: SmolStr,
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +73,12 @@ impl Package {
     }
     pub fn is_member(self, ws: &CargoWorkspace) -> bool {
         ws.pkg(self).is_member
+    }
+    pub fn dependencies<'a>(
+        self,
+        ws: &'a CargoWorkspace,
+    ) -> impl Iterator<Item = &'a PackageDependency> + 'a {
+        ws.pkg(self).dependencies.iter()
     }
 }
 
@@ -106,6 +125,7 @@ impl CargoWorkspace {
                 manifest: PathBuf::from(meta_pkg.manifest_path),
                 targets: Vec::new(),
                 is_member,
+                dependencies: Vec::new(),
             };
             for meta_tgt in meta_pkg.targets {
                 let tgt = Target(targets.len());
@@ -118,6 +138,16 @@ impl CargoWorkspace {
                 pkg_data.targets.push(tgt);
             }
             packages.push(pkg_data)
+        }
+        let resolve = meta.resolve.expect("metadata executed with deps");
+        for node in resolve.nodes {
+            let source = pkg_by_id[&node.id];
+            for id in node.dependencies {
+                let target = pkg_by_id[&id];
+                let name: SmolStr = packages[target.0].name.replace('-', "_").into();
+                let dep = PackageDependency { name, pkg: target };
+                packages[source.0].dependencies.push(dep);
+            }
         }
 
         Ok(CargoWorkspace { packages, targets })

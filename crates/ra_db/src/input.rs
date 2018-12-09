@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashSet, FxHashMap};
+use ra_syntax::SmolStr;
 use salsa;
 
 use crate::file_resolver::FileResolverImp;
@@ -20,25 +20,32 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CrateData {
     file_id: FileId,
-    deps: Vec<Dependency>,
+    dependencies: Vec<Dependency>,
 }
 
 impl CrateData {
     fn new(file_id: FileId) -> CrateData {
         CrateData {
             file_id,
-            deps: Vec::new(),
+            dependencies: Vec::new(),
         }
     }
 
-    fn add_dep(&mut self, dep: CrateId) {
-        self.deps.push(Dependency { crate_: dep })
+    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+        self.dependencies.push(Dependency { name, crate_id })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
-    crate_: CrateId,
+    pub crate_id: CrateId,
+    pub name: SmolStr,
+}
+
+impl Dependency {
+    pub fn crate_id(&self) -> CrateId {
+        self.crate_id
+    }
 }
 
 impl CrateGraph {
@@ -48,8 +55,11 @@ impl CrateGraph {
         assert!(prev.is_none());
         crate_id
     }
-    pub fn add_dep(&mut self, from: CrateId, to: CrateId) {
-        self.arena.get_mut(&from).unwrap().add_dep(to)
+    //FIXME: check that we don't have cycles here.
+    // Just a simple depth first search from `to` should work,
+    // the graph is small.
+    pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
+        self.arena.get_mut(&from).unwrap().add_dep(name, to)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.arena[&crate_id].file_id
@@ -60,6 +70,12 @@ impl CrateGraph {
             .iter()
             .find(|(_crate_id, data)| data.file_id == file_id)?;
         Some(crate_id)
+    }
+    pub fn dependencies<'a>(
+        &'a self,
+        crate_id: CrateId,
+    ) -> impl Iterator<Item = &'a Dependency> + 'a {
+        self.arena[&crate_id].dependencies.iter()
     }
 }
 
