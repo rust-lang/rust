@@ -9,7 +9,8 @@ use gen_lsp_server::{
 };
 use languageserver_types::NumberOrString;
 use ra_analysis::{Canceled, FileId, LibraryData};
-use rayon::{self, ThreadPool};
+use rayon;
+use threadpool::ThreadPool;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use failure::{format_err, bail};
@@ -54,11 +55,7 @@ pub fn main_loop(
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(4)
-        .panic_handler(|_| log::error!("thread panicked :("))
-        .build()
-        .unwrap();
+    let pool = ThreadPool::new(8);
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (fs_worker, fs_watcher) = vfs::roots_loader();
     let (ws_worker, ws_watcher) = workspace_loader();
@@ -155,7 +152,7 @@ fn main_loop_inner(
                 } else {
                     let (files, resolver) = state.events_to_files(events);
                     let sender = libdata_sender.clone();
-                    pool.spawn(move || {
+                    pool.execute(move || {
                         let start = ::std::time::Instant::now();
                         log::info!("indexing {} ... ", root.display());
                         let data = LibraryData::prepare(files, resolver);
@@ -402,7 +399,7 @@ impl<'a> PoolDispatcher<'a> {
             Ok((id, params)) => {
                 let world = self.world.snapshot();
                 let sender = self.sender.clone();
-                self.pool.spawn(move || {
+                self.pool.execute(move || {
                     let resp = match f(world, params) {
                         Ok(resp) => RawResponse::ok::<R>(id, &resp),
                         Err(e) => match e.downcast::<LspError>() {
@@ -452,7 +449,7 @@ fn update_file_notifications_on_threadpool(
     sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
-    pool.spawn(move || {
+    pool.execute(move || {
         for file_id in subscriptions {
             match handlers::publish_diagnostics(&world, file_id) {
                 Err(e) => {
