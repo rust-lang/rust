@@ -150,6 +150,8 @@ impl FromInternal<(TokenStream, &'_ ParseSess, &'_ mut Vec<Self>)>
             Question => op!('?'),
             SingleQuote => op!('\''),
 
+            Ident(ident, false) if ident.name == keywords::DollarCrate.name() =>
+                tt!(Ident::dollar_crate()),
             Ident(ident, is_raw) => tt!(Ident::new(ident.name, is_raw)),
             Lifetime(ident) => {
                 let ident = ident.without_first_quote();
@@ -358,6 +360,10 @@ impl Ident {
             }
         }
         Ident { sym, is_raw, span }
+    }
+    fn dollar_crate(span: Span) -> Ident {
+        // `$crate` is accepted as an ident only if it comes from the compiler.
+        Ident { sym: keywords::DollarCrate.name(), is_raw: false, span }
     }
 }
 
