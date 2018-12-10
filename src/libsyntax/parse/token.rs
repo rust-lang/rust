@@ -633,7 +633,9 @@ impl Token {
             (&Shebang(a), &Shebang(b)) => a == b,
 
             (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
-            (&Ident(a, b), &Ident(c, d)) => a.name == c.name && b == d,
+            (&Ident(a, b), &Ident(c, d)) => b == d && (a.name == c.name ||
+                                                       a.name == keywords::DollarCrate.name() ||
+                                                       c.name == keywords::DollarCrate.name()),
 
             (&Literal(ref a, b), &Literal(ref c, d)) => {
                 b == d && a.probably_equal_for_proc_macro(c)

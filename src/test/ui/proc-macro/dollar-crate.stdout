@@ -42,80 +42,80 @@ ATTRIBUTE INPUT (PRETTY-PRINTED): struct A(crate::S);
 ATTRIBUTE INPUT: TokenStream [
     Ident {
         ident: "struct",
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     },
     Ident {
         ident: "A",
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
-                ident: "crate",
-                span: #0 bytes(0..0)
+                ident: "$crate",
+                span: #2 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #0 bytes(0..0)
+                span: #2 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #0 bytes(0..0)
+                span: #2 bytes(LO..HI)
             },
             Ident {
                 ident: "S",
-                span: #0 bytes(0..0)
+                span: #2 bytes(LO..HI)
             }
         ],
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     }
 ]
 DERIVE INPUT (PRETTY-PRINTED): struct D(crate::S);
 DERIVE INPUT: TokenStream [
     Ident {
         ident: "struct",
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     },
     Ident {
         ident: "D",
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
-                ident: "crate",
-                span: #0 bytes(0..0)
+                ident: "$crate",
+                span: #2 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #0 bytes(0..0)
+                span: #2 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #0 bytes(0..0)
+                span: #2 bytes(LO..HI)
             },
             Ident {
                 ident: "S",
-                span: #0 bytes(0..0)
+                span: #2 bytes(LO..HI)
             }
         ],
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(0..0)
+        span: #2 bytes(LO..HI)
     }
 ]
 PROC MACRO INPUT (PRETTY-PRINTED): struct M ( $crate :: S ) ;
@@ -162,99 +162,79 @@ ATTRIBUTE INPUT (PRETTY-PRINTED): struct A(::dollar_crate_external::S);
 ATTRIBUTE INPUT: TokenStream [
     Ident {
         ident: "struct",
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     },
     Ident {
         ident: "A",
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
-            Punct {
-                ch: ':',
-                spacing: Joint,
-                span: #0 bytes(0..0)
-            },
-            Punct {
-                ch: ':',
-                spacing: Alone,
-                span: #0 bytes(0..0)
-            },
             Ident {
-                ident: "dollar_crate_external",
-                span: #0 bytes(0..0)
+                ident: "$crate",
+                span: #10 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #0 bytes(0..0)
+                span: #10 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #0 bytes(0..0)
+                span: #10 bytes(LO..HI)
             },
             Ident {
                 ident: "S",
-                span: #0 bytes(0..0)
+                span: #10 bytes(LO..HI)
             }
         ],
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     }
 ]
 DERIVE INPUT (PRETTY-PRINTED): struct D(::dollar_crate_external::S);
 DERIVE INPUT: TokenStream [
     Ident {
         ident: "struct",
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     },
     Ident {
         ident: "D",
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
-            Punct {
-                ch: ':',
-                spacing: Joint,
-                span: #0 bytes(0..0)
-            },
-            Punct {
-                ch: ':',
-                spacing: Alone,
-                span: #0 bytes(0..0)
-            },
             Ident {
-                ident: "dollar_crate_external",
-                span: #0 bytes(0..0)
+                ident: "$crate",
+                span: #10 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #0 bytes(0..0)
+                span: #10 bytes(LO..HI)
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #0 bytes(0..0)
+                span: #10 bytes(LO..HI)
             },
             Ident {
                 ident: "S",
-                span: #0 bytes(0..0)
+                span: #10 bytes(LO..HI)
             }
         ],
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(0..0)
+        span: #10 bytes(LO..HI)
     }
 ]
