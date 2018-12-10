@@ -216,6 +216,14 @@ impl Instant {
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
         self.0.checked_add_duration(&duration).map(|t| Instant(t))
     }
+
+    /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
+    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
+        self.0.checked_sub_duration(&duration).map(|t| Instant(t))
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -240,7 +248,8 @@ impl Sub<Duration> for Instant {
     type Output = Instant;
 
     fn sub(self, other: Duration) -> Instant {
-        Instant(self.0.sub_duration(&other))
+        self.checked_sub(other)
+            .expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -374,6 +383,14 @@ impl SystemTime {
     pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_add_duration(&duration).map(|t| SystemTime(t))
     }
+
+    /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
+    /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
+        self.0.checked_sub_duration(&duration).map(|t| SystemTime(t))
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -398,7 +415,8 @@ impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
-        SystemTime(self.0.sub_duration(&dur))
+        self.checked_sub(dur)
+            .expect("overflow when subtracting duration from instant")
     }
 }
 
@@ -531,6 +549,7 @@ mod tests {
 
         let second = Duration::new(1, 0);
         assert_almost_eq!(a - second + second, a);
+        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(Instant::now());
@@ -580,6 +599,7 @@ mod tests {
                            .duration(), second);
 
         assert_almost_eq!(a - second + second, a);
+        assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
         // A difference of 80 and 800 years cannot fit inside a 32-bit time_t
         if !(cfg!(unix) && ::mem::size_of::<::libc::time_t>() <= 4) {

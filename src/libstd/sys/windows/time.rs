@@ -79,16 +79,16 @@ impl Instant {
         })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> Instant {
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         let freq = frequency() as u64;
         let t = other.as_secs().checked_mul(freq).and_then(|i| {
             (self.t as u64).checked_sub(i)
         }).and_then(|i| {
             i.checked_sub(mul_div_u64(other.subsec_nanos() as u64, freq, NANOS_PER_SEC))
-        }).expect("overflow when subtracting duration from time");
-        Instant {
+        })?;
+        Some(Instant {
             t: t as c::LARGE_INTEGER,
-        }
+        })
     }
 }
 
@@ -125,15 +125,13 @@ impl SystemTime {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        checked_dur2intervals(other)
-            .and_then(|d| self.intervals().checked_add(d))
-            .map(|i| SystemTime::from_intervals(i))
+        let intervals = self.intervals().checked_add(checked_dur2intervals(other)?)?;
+        Some(SystemTime::from_intervals(intervals))
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-        let intervals = self.intervals().checked_sub(dur2intervals(other))
-                            .expect("overflow when subtracting from time");
-        SystemTime::from_intervals(intervals)
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+        let intervals = self.intervals().checked_sub(checked_dur2intervals(other)?)?;
+        Some(SystemTime::from_intervals(intervals))
     }
 }
 
@@ -183,11 +181,6 @@ fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
         .checked_add(dur.subsec_nanos() as u64 / 100)?
         .try_into()
         .ok()
-}
-
-fn dur2intervals(d: &Duration) -> i64 {
-    checked_dur2intervals(d)
-        .expect("overflow when converting duration to intervals")
 }
 
 fn intervals2dur(intervals: u64) -> Duration {
