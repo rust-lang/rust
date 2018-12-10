@@ -190,17 +190,28 @@ path = "lib.rs"
         "#).unwrap();
     File::create(dir.join("lib.rs")).unwrap();
     // Run xargo
-    if !Command::new("xargo").arg("build").arg("-q")
+    let target = get_arg_flag_value("--target");
+    let mut command = Command::new("xargo");
+    command.arg("build").arg("-q")
         .current_dir(&dir)
         .env("RUSTFLAGS", miri::miri_default_args().join(" "))
-        .env("XARGO_HOME", dir.to_str().unwrap())
-        .status().unwrap().success()
+        .env("XARGO_HOME", dir.to_str().unwrap());
+    if let Some(ref target) = target {
+        command.arg("--target").arg(&target);
+    }
+    if !command.status().unwrap().success()
     {
         show_error(format!("Failed to run xargo"));
     }
 
-    // That should be it!
-    let sysroot = dir.join("HOST");
+    // That should be it!  But we need to figure out where xargo built stuff.
+    // Unfortunately, it puts things into a different directory when the
+    // architecture matches the host.
+    let is_host = match target {
+        None => true,
+        Some(target) => target == rustc_version::version_meta().unwrap().host,
+    };
+    let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot);
     if !ask_user {
         println!("A libstd for miri is now available in `{}`", sysroot.display());
