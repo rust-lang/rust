@@ -25,11 +25,6 @@ fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
         .checked_add(dur.subsec_nanos() as abi::timestamp)
 }
 
-pub fn dur2intervals(dur: &Duration) -> abi::timestamp {
-    checked_dur2intervals(dur)
-        .expect("overflow converting duration to nanoseconds")
-}
-
 impl Instant {
     pub fn now() -> Instant {
         unsafe {
@@ -48,17 +43,15 @@ impl Instant {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        checked_dur2intervals(other)?
-            .checked_add(self.t)
-            .map(|t| Instant {t})
+        Some(Instant {
+            t: self.t.checked_add(checked_dur2intervals(other)?)?,
+        })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> Instant {
-        Instant {
-            t: self.t
-                .checked_sub(dur2intervals(other))
-                .expect("overflow when subtracting duration from instant"),
-        }
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+        Some(Instant {
+            t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+        })
     }
 }
 
@@ -94,17 +87,15 @@ impl SystemTime {
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        checked_dur2intervals(other)
-            .and_then(|d| self.t.checked_add(d))
-            .map(|t| SystemTime {t})
+        Some(SystemTime {
+            t: self.t.checked_add(checked_dur2intervals(other)?)?,
+        })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime {
-            t: self.t
-                .checked_sub(dur2intervals(other))
-                .expect("overflow when subtracting duration from instant"),
-        }
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+        Some(SystemTime {
+            t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+        })
     }
 }
 
