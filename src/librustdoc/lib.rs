@@ -5,6 +5,7 @@
 
 #![feature(bind_by_move_pattern_guards)]
 #![feature(rustc_private)]
+#![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]

@@ -2369,7 +2369,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
 
                 // When printing regions, add trailing space if necessary.
-                ty::print::PrintCx::with(|cx| {
+                ty::print::PrintCx::with(ty::print::FmtPrinter { fmt }, |cx| {
                     let region = if cx.is_verbose || cx.identify_regions {
                         let mut region = region.to_string();
                         if region.len() > 0 {
@@ -2380,7 +2380,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         // Do not even print 'static
                         String::new()
                     };
-                    write!(fmt, "&{}{}{:?}", region, kind_str, place)
+                    write!(cx.printer.fmt, "&{}{}{:?}", region, kind_str, place)
                 })
             }
 

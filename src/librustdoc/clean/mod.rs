@@ -4233,20 +4233,23 @@ where F: Fn(DefId) -> Def {
     impl ItemPathPrinter for AbsolutePathPrinter {
         type Path = Vec<String>;
 
-        fn path_crate(cx: &mut PrintCx<'_, '_, '_>, cnum: CrateNum) -> Self::Path {
-            vec![cx.tcx.original_crate_name(cnum).to_string()]
+        fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
+            vec![self.tcx.original_crate_name(cnum).to_string()]
         }
-        fn path_impl(_: &mut PrintCx<'_, '_, '_>, text: &str) -> Self::Path {
+        fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
             vec![text.to_string()]
         }
-        fn path_append(mut path: Self::Path, text: &str) -> Self::Path {
+        fn path_append(
+            self: &mut PrintCx<'_, '_, '_, Self>,
+            mut path: Self::Path,
+            text: &str,
+        ) -> Self::Path {
             path.push(text.to_string());
             path
         }
     }
 
-    let mut cx = PrintCx::new(tcx);
-    let names = AbsolutePathPrinter::print_item_path(&mut cx, def_id);
+    let names = PrintCx::new(tcx, AbsolutePathPrinter).print_item_path(def_id);
 
     hir::Path {
         span: DUMMY_SP,

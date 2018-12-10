@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use syntax::symbol::InternedString;
 
 use std::fmt;
+use std::ops::Deref;
 
 // FIXME(eddyb) this module uses `pub(crate)` for things used only
 // from `ppaux` - when that is removed, they can be re-privatized.
@@ -21,8 +22,9 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     }
 }
 
-pub struct PrintCx<'a, 'gcx, 'tcx> {
+pub struct PrintCx<'a, 'gcx, 'tcx, P> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub printer: P,
     pub(crate) is_debug: bool,
     pub(crate) is_verbose: bool,
     pub(crate) identify_regions: bool,
@@ -31,10 +33,20 @@ pub struct PrintCx<'a, 'gcx, 'tcx> {
     pub(crate) binder_depth: usize,
 }
 
-impl PrintCx<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+// HACK(eddyb) this is solely for `self: &mut PrintCx<Self>`, e.g. to
+// implement traits on the printer and call the methods on the context.
+impl<P> Deref for PrintCx<'_, '_, '_, P> {
+    type Target = P;
+    fn deref(&self) -> &P {
+        &self.printer
+    }
+}
+
+impl<P> PrintCx<'a, 'gcx, 'tcx, P> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, printer: P) -> Self {
         PrintCx {
             tcx,
+            printer,
             is_debug: false,
             is_verbose: tcx.sess.verbose(),
             identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
@@ -44,8 +56,8 @@ impl PrintCx<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub(crate) fn with<R>(f: impl FnOnce(PrintCx<'_, '_, '_>) -> R) -> R {
-        ty::tls::with(|tcx| f(PrintCx::new(tcx)))
+    pub(crate) fn with<R>(printer: P, f: impl FnOnce(PrintCx<'_, '_, '_, P>) -> R) -> R {
+        ty::tls::with(|tcx| f(PrintCx::new(tcx, printer)))
     }
     pub(crate) fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
     where T: TypeFoldable<'tcx>
@@ -57,24 +69,26 @@ impl PrintCx<'a, 'gcx, 'tcx> {
     }
 }
 
-pub trait Print<'tcx> {
-    fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, 'tcx>) -> fmt::Result;
-    fn print_display<F: fmt::Write>(
-        &self,
-        f: &mut F,
-        cx: &mut PrintCx<'_, '_, 'tcx>,
-    ) -> fmt::Result {
+pub trait Print<'tcx, P> {
+    type Output;
+
+    fn print(&self, cx: &mut PrintCx<'_, '_, 'tcx, P>) -> Self::Output;
+    fn print_display(&self, cx: &mut PrintCx<'_, '_, 'tcx, P>) -> Self::Output {
         let old_debug = cx.is_debug;
         cx.is_debug = false;
-        let result = self.print(f, cx);
+        let result = self.print(cx);
         cx.is_debug = old_debug;
         result
     }
-    fn print_debug<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, 'tcx>) -> fmt::Result {
+    fn print_debug(&self, cx: &mut PrintCx<'_, '_, 'tcx, P>) -> Self::Output {
         let old_debug = cx.is_debug;
         cx.is_debug = true;
-        let result = self.print(f, cx);
+        let result = self.print(cx);
         cx.is_debug = old_debug;
         result
     }
+}
+
+pub struct FmtPrinter<F: fmt::Write> {
+    pub fmt: F,
 }
