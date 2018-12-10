@@ -147,13 +147,13 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext) -> Crate {
     krate
 }
 
-struct SyntheticImplCollector<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
+struct SyntheticImplCollector<'a, 'tcx: 'a, 'rcx: 'a> {
+    cx: &'a DocContext<'a, 'tcx, 'rcx>,
     impls: Vec<Item>,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> SyntheticImplCollector<'a, 'tcx, 'rcx, 'cstore> {
-    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>) -> Self {
+impl<'a, 'tcx, 'rcx> SyntheticImplCollector<'a, 'tcx, 'rcx> {
+    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
         SyntheticImplCollector {
             cx,
             impls: Vec::new(),
@@ -161,7 +161,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> SyntheticImplCollector<'a, 'tcx, 'rcx, 'cstore> {
     }
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rcx, 'cstore> {
+impl<'a, 'tcx, 'rcx> DocFolder for SyntheticImplCollector<'a, 'tcx, 'rcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             if let (Some(node_id), Some(name)) =

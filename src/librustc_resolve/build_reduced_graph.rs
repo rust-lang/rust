@@ -83,7 +83,7 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark, IsMacroExport) 
     }
 }
 
-impl<'a, 'cl> Resolver<'a, 'cl> {
+impl<'a> Resolver<'a> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     pub fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
@@ -888,13 +888,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b: 'a, 'c: 'b> {
-    pub resolver: &'a mut Resolver<'b, 'c>,
+pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
+    pub resolver: &'a mut Resolver<'b>,
     pub current_legacy_scope: LegacyScope<'b>,
     pub expansion: Mark,
 }
 
-impl<'a, 'b, 'cl> BuildReducedGraphVisitor<'a, 'b, 'cl> {
+impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
         let mark = id.placeholder_to_mark();
         self.resolver.current_module.unresolved_invocations.borrow_mut().insert(mark);
@@ -917,7 +917,7 @@ macro_rules! method {
     }
 }
 
-impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
+impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
     method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);

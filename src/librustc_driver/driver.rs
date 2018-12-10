@@ -730,9 +730,9 @@ pub struct ExpansionResult {
     pub hir_forest: hir_map::Forest,
 }
 
-pub struct InnerExpansionResult<'a, 'b: 'a> {
+pub struct InnerExpansionResult<'a> {
     pub expanded_crate: ast::Crate,
-    pub resolver: Resolver<'a, 'b>,
+    pub resolver: Resolver<'a>,
     pub hir_forest: hir_map::Forest,
 }
 
@@ -811,7 +811,7 @@ where
 
 /// Same as phase_2_configure_and_expand, but doesn't let you keep the resolver
 /// around
-pub fn phase_2_configure_and_expand_inner<'a, 'b: 'a, F>(
+pub fn phase_2_configure_and_expand_inner<'a, F>(
     sess: &'a Session,
     cstore: &'a CStore,
     mut krate: ast::Crate,
@@ -820,9 +820,9 @@ pub fn phase_2_configure_and_expand_inner<'a, 'b: 'a, F>(
     addl_plugins: Option<Vec<String>>,
     make_glob_map: MakeGlobMap,
     resolver_arenas: &'a ResolverArenas<'a>,
-    crate_loader: &'a mut CrateLoader<'b>,
+    crate_loader: &'a mut CrateLoader<'a>,
     after_expand: F,
-) -> Result<InnerExpansionResult<'a, 'b>, CompileIncomplete>
+) -> Result<InnerExpansionResult<'a>, CompileIncomplete>
 where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {

@@ -149,7 +149,7 @@ pub struct Crate {
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
+impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use ::visit_lib::LibEmbargoVisitor;
 

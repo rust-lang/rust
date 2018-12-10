@@ -134,7 +134,7 @@ impl<'a> NameResolution<'a> {
     }
 }
 
-impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
+impl<'a> Resolver<'a> {
     fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
                   -> &'a RefCell<NameResolution<'a>> {
         *module.resolutions.borrow_mut().entry((ident.modern(), ns))
@@ -541,7 +541,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     // If the resolution becomes a success, define it in the module's glob importers.
     fn update_resolution<T, F>(&mut self, module: Module<'a>, ident: Ident, ns: Namespace, f: F)
                                -> T
-        where F: FnOnce(&mut Resolver<'a, 'crateloader>, &mut NameResolution<'a>) -> T
+        where F: FnOnce(&mut Resolver<'a>, &mut NameResolution<'a>) -> T
     {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
@@ -592,30 +592,30 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     }
 }
 
-pub struct ImportResolver<'a, 'b: 'a, 'c: 'a + 'b> {
-    pub resolver: &'a mut Resolver<'b, 'c>,
+pub struct ImportResolver<'a, 'b: 'a> {
+    pub resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a, 'b: 'a, 'c: 'a + 'b> ::std::ops::Deref for ImportResolver<'a, 'b, 'c> {
-    type Target = Resolver<'b, 'c>;
-    fn deref(&self) -> &Resolver<'b, 'c> {
+impl<'a, 'b: 'a> ::std::ops::Deref for ImportResolver<'a, 'b> {
+    type Target = Resolver<'b>;
+    fn deref(&self) -> &Resolver<'b> {
         self.resolver
     }
 }
 
-impl<'a, 'b: 'a, 'c: 'a + 'b> ::std::ops::DerefMut for ImportResolver<'a, 'b, 'c> {
-    fn deref_mut(&mut self) -> &mut Resolver<'b, 'c> {
+impl<'a, 'b: 'a> ::std::ops::DerefMut for ImportResolver<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Resolver<'b> {
         self.resolver
     }
 }
 
-impl<'a, 'b: 'a, 'c: 'a + 'b> ty::DefIdTree for &'a ImportResolver<'a, 'b, 'c> {
+impl<'a, 'b: 'a> ty::DefIdTree for &'a ImportResolver<'a, 'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         self.resolver.parent(id)
     }
 }
 
-impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
+impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts
