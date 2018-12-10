@@ -8,16 +8,28 @@ If it hasn't been reported, please create a new issue.
   Here you add a short summary of the bug.
 
 
+## Steps to reproduce
 I tried this code:
 
-"code sample that causes the bug"
+```
+code sample that causes the bug
+```
 
-I expected to see this happen: <explanation>
+I expected to see this happen:
 
-Instead, this happened: <explanation>
+```
+explanation
+```
+
+Instead, this happened:
+
+```
+explanation
+```
 
 ## Meta
 
 `rustc --version --verbose`:
 
-Backtrace:
+## Backtrace:
+Include additional detailed logs here if any.
