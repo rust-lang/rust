@@ -17,18 +17,6 @@ pub trait EvalContextExt<'tcx, 'mir> {
         ret: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
-    /// Emulate a function that should have MIR but does not.
-    /// This is solely to support execution without full MIR.
-    /// Fail if emulating this function is not supported.
-    /// This function will handle `goto_block` if needed.
-    fn emulate_missing_fn(
-        &mut self,
-        path: String,
-        args: &[OpTy<'tcx, Borrow>],
-        dest: Option<PlaceTy<'tcx, Borrow>>,
-        ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx>;
-
     fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -81,24 +69,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
             return Ok(None);
         }
 
-        // Otherwise we really want to see the MIR -- but if we do not have it, maybe we can
-        // emulate something. This is a HACK to support running without a full-MIR libstd.
-        let mir = match self.load_mir(instance.def) {
-            Ok(mir) => mir,
-            Err(EvalError { kind: EvalErrorKind::NoMirFor(path), .. }) => {
-                self.emulate_missing_fn(
-                    path,
-                    args,
-                    dest,
-                    ret,
-                )?;
-                // `goto_block` already handled
-                return Ok(None);
-            }
-            Err(other) => return Err(other),
-        };
-
-        Ok(Some(mir))
+        // Otherwise, load the MIR
+        Ok(Some(self.load_mir(instance.def)?))
     }
 
     fn emulate_foreign_item(
@@ -653,58 +625,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
         }
 
         self.goto_block(Some(ret))?;
-        self.dump_place(*dest);
-        Ok(())
-    }
-
-    fn emulate_missing_fn(
-        &mut self,
-        path: String,
-        _args: &[OpTy<'tcx, Borrow>],
-        dest: Option<PlaceTy<'tcx, Borrow>>,
-        ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx> {
-        // In some cases in non-MIR libstd-mode, not having a destination is legit.  Handle these early.
-        match &path[..] {
-            "std::panicking::rust_panic_with_hook" |
-            "core::panicking::panic_fmt::::panic_impl" |
-            "std::rt::begin_panic_fmt" =>
-                return err!(MachineError("the evaluated program panicked".to_string())),
-            _ => {}
-        }
-
-        let dest = dest.ok_or_else(
-            // Must be some function we do not support
-            || EvalErrorKind::NoMirFor(path.clone()),
-        )?;
-
-        match &path[..] {
-            // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
-            // Still, we can make many things mostly work by "emulating" or ignoring some functions.
-            "std::io::_print" |
-            "std::io::_eprint" => {
-                warn!(
-                    "Ignoring output.  To run programs that prints, make sure you have a libstd with full MIR."
-                );
-            }
-            "std::thread::Builder::new" => {
-                return err!(Unimplemented("miri does not support threading".to_owned()))
-            }
-            "std::env::args" => {
-                return err!(Unimplemented(
-                    "miri does not support program arguments".to_owned(),
-                ))
-            }
-            "std::panicking::panicking" |
-            "std::rt::panicking" => {
-                // we abort on panic -> `std::rt::panicking` always returns false
-                self.write_scalar(Scalar::from_bool(false), dest)?;
-            }
-
-            _ => return err!(NoMirFor(path)),
-        }
-
-        self.goto_block(ret)?;
         self.dump_place(*dest);
         Ok(())
     }
