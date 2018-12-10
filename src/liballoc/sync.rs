@@ -1117,6 +1117,25 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
+    /// Gets the number of strong (`Arc`) pointers pointing to this value.
+    ///
+    /// If `self` was created using [`Weak::new`], this will return 0.
+    ///
+    /// [`Weak::new`]: #method.new
+    #[unstable(feature = "weak_counts", issue = "0")]
+    pub fn strong_count(&self) -> usize {
+        if let Some(inner) = self.inner() {
+            inner.strong.load(SeqCst)
+        } else {
+            0
+        }
+    }
+
+    // Due to the implicit weak pointer added when any strong pointers are
+    // around, we cannot implement `weak_count` correctly since it necessarily
+    // requires accessing the strong count and weak count in an unsynchronized
+    // fashion.
+
     /// Return `None` when the pointer is dangling and there is no allocated `ArcInner`,
     /// i.e., this `Weak` was created by `Weak::new`
     #[inline]
