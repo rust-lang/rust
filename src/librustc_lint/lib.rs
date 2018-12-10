@@ -53,6 +53,9 @@ use rustc::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
     ELIDED_LIFETIMES_IN_PATHS,
     EXPLICIT_OUTLIVES_REQUIREMENTS,
+    INTRA_DOC_LINK_RESOLUTION_FAILURE,
+    MISSING_DOC_CODE_EXAMPLES,
+    PRIVATE_DOC_TESTS,
     parser::QUESTION_MARK_MACRO_SEP
 };
 use rustc::session;
@@ -203,6 +206,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     // breakage is seen if we try to encourage this lint.
                     // MACRO_USE_EXTERN_CRATE,
                     );
+
+    add_lint_group!(sess,
+                    "rustdoc",
+                    INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                    MISSING_DOC_CODE_EXAMPLES,
+                    PRIVATE_DOC_TESTS);
 
     // Guidelines for creating a future incompatibility lint:
     //
