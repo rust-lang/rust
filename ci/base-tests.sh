@@ -35,7 +35,7 @@ set +ex
 
 # some lints are sensitive to formatting, exclude some files
 needs_formatting=false
-for file in `find tests -not -path "tests/ui/methods.rs" -not -path "tests/ui/format.rs" -not -path "tests/ui/empty_line_after_outer_attribute.rs" -not -path "tests/ui/double_parens.rs" -not -path "tests/ui/doc.rs" -not -path "tests/ui/unused_unit.rs" | grep "\.rs$"` ; do
+for file in `find tests -not -path "tests/ui/methods.rs" -not -path "tests/ui/format.rs" -not -path "tests/ui/formatting.rs" -not -path "tests/ui/empty_line_after_outer_attribute.rs" -not -path "tests/ui/double_parens.rs" -not -path "tests/ui/doc.rs" -not -path "tests/ui/unused_unit.rs" | grep "\.rs$"` ; do
 rustfmt ${file} --check  || echo "${file} needs reformatting!" ; needs_formatting=true
 done
 
