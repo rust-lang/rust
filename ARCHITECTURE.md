@@ -58,6 +58,14 @@ all `//test test_name` comments into files inside `tests/data` directory.
 See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which
 fixes a bug in the grammar.
 
+### `crates/ra_hir`
+
+HIR (previsouly known as descriptors) provides a high-level OO acess to Rust
+code.
+
+The principal difference between HIR and syntax trees is that HIR is bound
+to a particular crate instance. That is, it has cfg flags and features
+applied. So, there relation between syntax and HIR is many-to-one.
 
 ### `crates/ra_editor`
 
@@ -72,13 +80,6 @@ syntax tree as an input.
 The tests for `ra_editor` are `#[cfg(test)] mod tests` unit-tests spread
 throughout its modules.
 
-### `crates/salsa`
-
-An implementation of red-green incremental compilation algorithm from
-rust compiler. It makes all rust-analyzer features on-demand. To be replaced
-with `salsa-rs/salsa` soon.
-
-
 ### `crates/ra_analysis`
 
 A stateful library for analyzing many Rust files as they change.
@@ -87,6 +88,8 @@ current state, incorporates changes and handles out `Analysis` --- an
 immutable consistent snapshot of world state at a point in time, which
 actually powers analysis.
 
+### `crates/ra_db`
+This defines basic database traits. Concrete DB is defined by ra_analysis.
 
 ### `crates/ra_lsp_server`
 
@@ -97,8 +100,15 @@ See [#79](https://github.com/rust-analyzer/rust-analyzer/pull/79/) as an
 example of PR which adds a new feature to `ra_editor` and exposes it
 to `ra_lsp_server`.
 
+### `crates/gen_lsp_server`
 
-### `crates/cli`
+A language server scaffold, exposing a synchronous crossbeam-channel based API.
+This crate handles protocol handshaking and parsing messages, while you
+control the message dispatch loop yourself.
+
+Run with `RUST_LOG=sync_lsp_server=debug` to see all the messages.
+
+### `crates/ra_cli`
 
 A CLI interface to rust-analyzer.
 
