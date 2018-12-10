@@ -15,7 +15,7 @@ use sys::windows::os::current_exe;
 use sys::c;
 use ffi::OsString;
 use fmt;
-use collections::VecDeque;
+use vec;
 use core::iter;
 use slice;
 use path::PathBuf;
@@ -43,7 +43,7 @@ pub fn args() -> Args {
 /// GUI applications add a bunch of overhead, even if no windows are drawn. See
 /// <https://randomascii.wordpress.com/2018/12/03/a-not-called-function-can-cause-a-5x-slowdown/>.
 unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_name: F)
-                                                 -> VecDeque<OsString> {
+                                                 -> vec::IntoIter<OsString> {
     const BACKSLASH: u16 = '\\' as u16;
     const QUOTE: u16 = '"' as u16;
     const TAB: u16 = '\t' as u16;
@@ -51,11 +51,11 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
     let mut in_quotes = false;
     let mut was_in_quotes = false;
     let mut backslash_count: usize = 0;
-    let mut ret_val = VecDeque::new();
+    let mut ret_val = Vec::new();
     let mut cur = Vec::new();
     if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
-        ret_val.push_back(exe_name());
-        return ret_val;
+        ret_val.push(exe_name());
+        return ret_val.into_iter();
     }
     let mut i = 0;
     // The executable name at the beginning is special.
@@ -66,16 +66,16 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
             loop {
                 i += 1;
                 if *lp_cmd_line.offset(i) == 0 {
-                    ret_val.push_back(OsString::from_wide(
+                    ret_val.push(OsString::from_wide(
                         slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
                     ));
-                    return ret_val;
+                    return ret_val.into_iter();
                 }
                 if *lp_cmd_line.offset(i) == QUOTE {
                     break;
                 }
             }
-            ret_val.push_back(OsString::from_wide(
+            ret_val.push(OsString::from_wide(
                 slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
             ));
             i += 1;
@@ -86,25 +86,25 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         // will consider the first argument to be an empty string. Excess whitespace at the
         // end of lpCmdLine is ignored."
         0...SPACE => {
-            ret_val.push_back(OsString::new());
+            ret_val.push(OsString::new());
             i += 1;
         },
-        // The executable name ends at the next quote mark,
+        // The executable name ends at the next whitespace,
         // no matter what.
         _ => {
             loop {
                 i += 1;
                 if *lp_cmd_line.offset(i) == 0 {
-                    ret_val.push_back(OsString::from_wide(
+                    ret_val.push(OsString::from_wide(
                         slice::from_raw_parts(lp_cmd_line, i as usize)
                     ));
-                    return ret_val;
+                    return ret_val.into_iter();
                 }
                 if let 0...SPACE = *lp_cmd_line.offset(i) {
                     break;
                 }
             }
-            ret_val.push_back(OsString::from_wide(
+            ret_val.push(OsString::from_wide(
                 slice::from_raw_parts(lp_cmd_line, i as usize)
             ));
             i += 1;
@@ -138,7 +138,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
             SPACE | TAB if !in_quotes => {
                 cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
                 if !cur.is_empty() || was_in_quotes {
-                    ret_val.push_back(OsString::from_wide(&cur[..]));
+                    ret_val.push(OsString::from_wide(&cur[..]));
                     cur.truncate(0);
                 }
                 backslash_count = 0;
@@ -148,7 +148,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
                 cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
                 // include empty quoted strings at the end of the arguments list
                 if !cur.is_empty() || was_in_quotes || in_quotes {
-                    ret_val.push_back(OsString::from_wide(&cur[..]));
+                    ret_val.push(OsString::from_wide(&cur[..]));
                 }
                 break;
             }
@@ -161,11 +161,11 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         }
         i += 1;
     }
-    ret_val
+    ret_val.into_iter()
 }
 
 pub struct Args {
-    parsed_args_list: VecDeque<OsString>,
+    parsed_args_list: vec::IntoIter<OsString>,
 }
 
 pub struct ArgsInnerDebug<'a> {
@@ -176,7 +176,7 @@ impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("[")?;
         let mut first = true;
-        for i in &self.args.parsed_args_list {
+        for i in self.args.parsed_args_list.clone() {
             if !first {
                 f.write_str(", ")?;
             }
@@ -199,14 +199,12 @@ impl Args {
 
 impl Iterator for Args {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> { self.parsed_args_list.pop_front() }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.parsed_args_list.len(), Some(self.parsed_args_list.len()))
-    }
+    fn next(&mut self) -> Option<OsString> { self.parsed_args_list.next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.parsed_args_list.size_hint() }
 }
 
 impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> { self.parsed_args_list.pop_back() }
+    fn next_back(&mut self) -> Option<OsString> { self.parsed_args_list.next_back() }
 }
 
 impl ExactSizeIterator for Args {
