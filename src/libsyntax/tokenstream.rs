@@ -34,52 +34,6 @@ use util::RcVec;
 use std::borrow::Cow;
 use std::{fmt, iter, mem};
 
-/// A delimited sequence of token trees
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
-pub struct Delimited {
-    /// The type of delimiter
-    pub delim: DelimToken,
-    /// The delimited sequence of token trees
-    pub tts: ThinTokenStream,
-}
-
-impl Delimited {
-    /// Returns the opening delimiter as a token.
-    pub fn open_token(&self) -> token::Token {
-        token::OpenDelim(self.delim)
-    }
-
-    /// Returns the closing delimiter as a token.
-    pub fn close_token(&self) -> token::Token {
-        token::CloseDelim(self.delim)
-    }
-
-    /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
-        };
-        TokenTree::Token(open_span, self.open_token())
-    }
-
-    /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
-        };
-        TokenTree::Token(close_span, self.close_token())
-    }
-
-    /// Returns the token trees inside the delimiters.
-    pub fn stream(&self) -> TokenStream {
-        self.tts.clone().into()
-    }
-}
-
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
 /// loose structure, such that all sorts of different AST-fragments can
@@ -97,7 +51,7 @@ pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
     /// A delimited sequence of token trees
-    Delimited(DelimSpan, Delimited),
+    Delimited(DelimSpan, DelimToken, ThinTokenStream),
 }
 
 impl TokenTree {
@@ -116,9 +70,10 @@ impl TokenTree {
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
-            (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
-                dl.delim == dl2.delim &&
-                dl.stream().eq_unspanned(&dl2.stream())
+            (&TokenTree::Delimited(_, delim, ref tts),
+             &TokenTree::Delimited(_, delim2, ref tts2)) => {
+                delim == delim2 &&
+                tts.stream().eq_unspanned(&tts2.stream())
             }
             (_, _) => false,
         }
@@ -134,9 +89,10 @@ impl TokenTree {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => {
                 tk.probably_equal_for_proc_macro(tk2)
             }
-            (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
-                dl.delim == dl2.delim &&
-                dl.stream().probably_equal_for_proc_macro(&dl2.stream())
+            (&TokenTree::Delimited(_, delim, ref tts),
+             &TokenTree::Delimited(_, delim2, ref tts2)) => {
+                delim == delim2 &&
+                tts.stream().probably_equal_for_proc_macro(&tts2.stream())
             }
             (_, _) => false,
         }
@@ -146,7 +102,7 @@ impl TokenTree {
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) => sp,
-            TokenTree::Delimited(sp, _) => sp.entire(),
+            TokenTree::Delimited(sp, ..) => sp.entire(),
         }
     }
 
@@ -154,7 +110,7 @@ impl TokenTree {
     pub fn set_span(&mut self, span: Span) {
         match *self {
             TokenTree::Token(ref mut sp, _) => *sp = span,
-            TokenTree::Delimited(ref mut sp, _) => *sp = DelimSpan::from_single(span),
+            TokenTree::Delimited(ref mut sp, ..) => *sp = DelimSpan::from_single(span),
         }
     }
 
@@ -169,6 +125,26 @@ impl TokenTree {
     pub fn joint(self) -> TokenStream {
         TokenStream { kind: TokenStreamKind::JointTree(self) }
     }
+
+    /// Returns the opening delimiter as a token tree.
+    pub fn open_tt(span: Span, delim: DelimToken) -> TokenTree {
+        let open_span = if span.is_dummy() {
+            span
+        } else {
+            span.with_hi(span.lo() + BytePos(delim.len() as u32))
+        };
+        TokenTree::Token(open_span, token::OpenDelim(delim))
+    }
+
+    /// Returns the closing delimiter as a token tree.
+    pub fn close_tt(span: Span, delim: DelimToken) -> TokenTree {
+        let close_span = if span.is_dummy() {
+            span
+        } else {
+            span.with_lo(span.hi() - BytePos(delim.len() as u32))
+        };
+        TokenTree::Token(close_span, token::CloseDelim(delim))
+    }
 }
 
 /// # Token Streams
@@ -181,6 +157,10 @@ impl TokenTree {
 pub struct TokenStream {
     kind: TokenStreamKind,
 }
+
+// `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 40);
 
 impl TokenStream {
     /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
@@ -198,7 +178,7 @@ impl TokenStream {
                             continue;
                         }
                         (TokenStreamKind::Tree(TokenTree::Token(sp, _)), _) => *sp,
-                        (TokenStreamKind::Tree(TokenTree::Delimited(sp, _)), _) => sp.entire(),
+                        (TokenStreamKind::Tree(TokenTree::Delimited(sp, ..)), _) => sp.entire(),
                         _ => continue,
                     };
                     let sp = sp.shrink_to_hi();
@@ -677,6 +657,12 @@ impl Cursor {
 /// We must use `ThinTokenStream` in `TokenTree::Delimited` to avoid infinite size due to recursion.
 #[derive(Debug, Clone)]
 pub struct ThinTokenStream(Option<RcVec<TokenStream>>);
+
+impl ThinTokenStream {
+    pub fn stream(&self) -> TokenStream {
+        self.clone().into()
+    }
+}
 
 impl From<TokenStream> for ThinTokenStream {
     fn from(stream: TokenStream) -> ThinTokenStream {

@@ -11,7 +11,7 @@
 use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
-use tokenstream::{Delimited, DelimSpan, TokenStream, TokenTree};
+use tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
@@ -155,10 +155,11 @@ impl<'a> StringReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(delim_span, Delimited {
+                Ok(TokenTree::Delimited(
+                    delim_span,
                     delim,
-                    tts: tts.into(),
-                }).into())
+                    tts.into(),
+                ).into())
             },
             token::CloseDelim(_) => {
                 // An unexpected closing delimiter (i.e., there is no

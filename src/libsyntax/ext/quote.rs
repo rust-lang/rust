@@ -36,7 +36,7 @@ pub mod rt {
     use symbol::Symbol;
     use ThinVec;
 
-    use tokenstream::{self, DelimSpan, TokenTree, TokenStream};
+    use tokenstream::{DelimSpan, TokenTree, TokenStream};
 
     pub use parse::new_parser_from_tts;
     pub use syntax_pos::{BytePos, Span, DUMMY_SP, FileName};
@@ -246,9 +246,9 @@ pub mod rt {
             inner.push(self.tokens.clone());
 
             let delim_span = DelimSpan::from_single(self.span);
-            r.push(TokenTree::Delimited(delim_span, tokenstream::Delimited {
-                delim: token::Bracket, tts: TokenStream::concat(inner).into()
-            }));
+            r.push(TokenTree::Delimited(
+                delim_span, token::Bracket, TokenStream::concat(inner).into()
+            ));
             r
         }
     }
@@ -262,10 +262,9 @@ pub mod rt {
 
     impl ToTokens for () {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Delimited(DelimSpan::dummy(), tokenstream::Delimited {
-                delim: token::Paren,
-                tts: TokenStream::empty().into(),
-            })]
+            vec![
+                TokenTree::Delimited(DelimSpan::dummy(), token::Paren, TokenStream::empty().into())
+            ]
         }
     }
 
@@ -382,8 +381,6 @@ pub mod rt {
 
 // Replaces `Token::OpenDelim .. Token::CloseDelim` with `TokenTree::Delimited(..)`.
 pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
-    use tokenstream::Delimited;
-
     let mut results = Vec::new();
     let mut result = Vec::new();
     let mut open_span = DUMMY_SP;
@@ -395,10 +392,11 @@ pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
             }
             TokenTree::Token(span, token::CloseDelim(delim)) => {
                 let delim_span = DelimSpan::from_pair(open_span, span);
-                let tree = TokenTree::Delimited(delim_span, Delimited {
+                let tree = TokenTree::Delimited(
+                    delim_span,
                     delim,
-                    tts: result.into_iter().map(TokenStream::from).collect::<TokenStream>().into(),
-                });
+                    result.into_iter().map(TokenStream::from).collect::<TokenStream>().into(),
+                );
                 result = results.pop().unwrap();
                 result.push(tree);
             }
@@ -758,10 +756,10 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, quoted: bool) -> Vec<ast::Stmt
                                     vec![e_tok]);
             vec![cx.stmt_expr(e_push)]
         },
-        TokenTree::Delimited(span, ref delimed) => {
-            let mut stmts = statements_mk_tt(cx, &delimed.open_tt(span.open), false);
-            stmts.extend(statements_mk_tts(cx, delimed.stream()));
-            stmts.extend(statements_mk_tt(cx, &delimed.close_tt(span.close), false));
+        TokenTree::Delimited(span, delim, ref tts) => {
+            let mut stmts = statements_mk_tt(cx, &TokenTree::open_tt(span.open, delim), false);
+            stmts.extend(statements_mk_tts(cx, tts.stream()));
+            stmts.extend(statements_mk_tt(cx, &TokenTree::close_tt(span.close, delim), false));
             stmts
         }
     }

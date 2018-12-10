@@ -622,9 +622,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn extract_proc_macro_attr_input(&self, tokens: TokenStream, span: Span) -> TokenStream {
         let mut trees = tokens.trees();
         match trees.next() {
-            Some(TokenTree::Delimited(_, delim)) => {
+            Some(TokenTree::Delimited(_, _, tts)) => {
                 if trees.next().is_none() {
-                    return delim.tts.into()
+                    return tts.into()
                 }
             }
             Some(TokenTree::Token(..)) => {}

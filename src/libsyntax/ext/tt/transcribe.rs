@@ -17,7 +17,7 @@ use fold::noop_fold_tt;
 use parse::token::{self, Token, NtTT};
 use smallvec::SmallVec;
 use syntax_pos::DUMMY_SP;
-use tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
+use tokenstream::{TokenStream, TokenTree, DelimSpan};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -105,10 +105,11 @@ pub fn transcribe(cx: &ExtCtxt,
                     if result_stack.is_empty() {
                         return TokenStream::concat(result);
                     }
-                    let tree = TokenTree::Delimited(span, Delimited {
-                        delim: forest.delim,
-                        tts: TokenStream::concat(result).into(),
-                    });
+                    let tree = TokenTree::Delimited(
+                        span,
+                        forest.delim,
+                        TokenStream::concat(result).into(),
+                    );
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());
                 }

@@ -34,7 +34,7 @@ use parse::token::{self, Token};
 use ptr::P;
 use symbol::Symbol;
 use ThinVec;
-use tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
+use tokenstream::{TokenStream, TokenTree, DelimSpan};
 use GLOBALS;
 
 use std::iter;
@@ -549,10 +549,11 @@ impl MetaItemKind {
                     }
                     tokens.push(item.node.tokens());
                 }
-                TokenTree::Delimited(DelimSpan::from_single(span), Delimited {
-                    delim: token::Paren,
-                    tts: TokenStream::concat(tokens).into(),
-                }).into()
+                TokenTree::Delimited(
+                    DelimSpan::from_single(span),
+                    token::Paren,
+                    TokenStream::concat(tokens).into(),
+                ).into()
             }
         }
     }
@@ -570,9 +571,9 @@ impl MetaItemKind {
                     None
                 };
             }
-            Some(TokenTree::Delimited(_, ref delimited)) if delimited.delim == token::Paren => {
+            Some(TokenTree::Delimited(_, delim, ref tts)) if delim == token::Paren => {
                 tokens.next();
-                delimited.stream()
+                tts.stream()
             }
             _ => return Some(MetaItemKind::Word),
         };

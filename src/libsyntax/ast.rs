@@ -1235,7 +1235,7 @@ pub enum MacDelimiter {
 
 impl Mac_ {
     pub fn stream(&self) -> TokenStream {
-        self.tts.clone().into()
+        self.tts.stream()
     }
 }
 

@@ -72,7 +72,7 @@ use syntax::ptr::P;
 use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
 use syntax::std_inject;
 use syntax::symbol::{keywords, Symbol};
-use syntax::tokenstream::{Delimited, TokenStream, TokenTree};
+use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, MultiSpan};
@@ -1088,12 +1088,10 @@ impl<'a> LoweringContext<'a> {
     fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
         match tree {
             TokenTree::Token(span, token) => self.lower_token(token, span),
-            TokenTree::Delimited(span, delimited) => TokenTree::Delimited(
+            TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
                 span,
-                Delimited {
-                    delim: delimited.delim,
-                    tts: self.lower_token_stream(delimited.tts.into()).into(),
-                },
+                delim,
+                self.lower_token_stream(tts.into()).into(),
             ).into(),
         }
     }
