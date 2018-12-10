@@ -22,16 +22,18 @@ use ::fmt;
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
-//     of the "raw" type by only having private variants.. We need two
+//     of the "raw" type by only having private variants. We need two
 //     variants, because the compiler complains about the repr attribute
-//     otherwise.
+//     otherwise and we need at least one variant as otherwise the enum
+//     would be uninhabited and at least dereferencing such pointers would
+//     be UB.
 #[repr(u8)]
 #[stable(feature = "raw_os", since = "1.1.0")]
 pub enum c_void {
-    #[unstable(feature = "c_void_variant", reason = "should not have to exist",
+    #[unstable(feature = "c_void_variant", reason = "temporary implementation detail",
                issue = "0")]
     #[doc(hidden)] __variant1,
-    #[unstable(feature = "c_void_variant", reason = "should not have to exist",
+    #[unstable(feature = "c_void_variant", reason = "temporary implementation detail",
                issue = "0")]
     #[doc(hidden)] __variant2,
 }
