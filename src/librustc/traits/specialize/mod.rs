@@ -411,7 +411,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
         w.push('<');
         w.push_str(&substs.iter()
             .map(|k| k.to_string())
-            .filter(|k| &k[..] != "'_")
+            .filter(|k| !k.is_empty())
             .collect::<Vec<_>>().join(", "));
         w.push('>');
     }

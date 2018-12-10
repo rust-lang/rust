@@ -120,17 +120,6 @@ impl RegionHighlightMode {
         Self::highlighting_region(&ty::ReVar(vid), number, op)
     }
 
-    /// Returns `true` if any placeholders are highlighted, and `false` otherwise.
-    fn any_region_vids_highlighted(&self) -> bool {
-        Self::get()
-            .highlight_regions
-            .iter()
-            .any(|h| match h {
-                Some((ty::ReVar(_), _)) => true,
-                _ => false,
-            })
-    }
-
     /// Returns `Some(n)` with the number to use for the given region, if any.
     fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
         Self::get()
@@ -161,17 +150,6 @@ impl RegionHighlightMode {
             },
             op,
         )
-    }
-
-    /// Returns `true` if any placeholders are highlighted, and `false` otherwise.
-    pub fn any_placeholders_highlighted(&self) -> bool {
-        Self::get()
-            .highlight_regions
-            .iter()
-            .any(|h| match h {
-                Some((ty::RePlaceholder(_), _)) => true,
-                _ => false,
-            })
     }
 
     /// Returns `Some(N)` if the placeholder `p` is highlighted to print as "`'N`".
@@ -421,7 +399,7 @@ impl PrintCx<'a, 'gcx, 'tcx> {
                     if self.is_verbose {
                         write!(f, "{:?}", region)?;
                     } else {
-                        let s = region.to_string();
+                        let s = region.print_display_to_string(self);
                         if s.is_empty() {
                             // This happens when the value of the region
                             // parameter is not easily serialized. This may be
@@ -720,19 +698,20 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
-            if let Some((region, counter)) = RegionHighlightMode::get().highlight_bound_region {
-                if *self == region {
-                    return match *self {
-                        BrNamed(_, name) => write!(f, "{}", name),
-                        BrAnon(_) | BrFresh(_) | BrEnv => write!(f, "'{}", counter)
-                    };
+            if let BrNamed(_, name) = *self {
+                if name != "" && name != "'_" {
+                    return write!(f, "{}", name);
                 }
             }
 
-            match *self {
-                BrNamed(_, name) => write!(f, "{}", name),
-                BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
+            let highlight = RegionHighlightMode::get();
+            if let Some((region, counter)) = highlight.highlight_bound_region {
+                if *self == region {
+                    return write!(f, "'{}", counter);
+                }
             }
+
+            Ok(())
         }
         debug {
             return match *self {
@@ -757,12 +736,10 @@ define_print! {
 
             let highlight = RegionHighlightMode::get();
             if let Some(counter) = highlight.placeholder_highlight(*self) {
-                write!(f, "'{}", counter)
-            } else if highlight.any_placeholders_highlighted() {
-                write!(f, "'_")
-            } else {
-                write!(f, "{}", self.name)
+                return write!(f, "'{}", counter);
             }
+
+            write!(f, "{}", self.name)
         }
     }
 }
@@ -785,7 +762,11 @@ define_print! {
             // `explain_region()` or `note_and_explain_region()`.
             match *self {
                 ty::ReEarlyBound(ref data) => {
-                    write!(f, "{}", data.name)
+                    if data.name != "'_" {
+                        write!(f, "{}", data.name)
+                    } else {
+                        Ok(())
+                    }
                 }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) => {
@@ -812,14 +793,11 @@ define_print! {
                         ),
                     }
                 }
+                ty::ReVar(region_vid) if cx.identify_regions => {
+                    write!(f, "{:?}", region_vid)
+                }
                 ty::ReVar(region_vid) => {
-                    if RegionHighlightMode::get().any_region_vids_highlighted() {
-                        write!(f, "{:?}", region_vid)
-                    } else if cx.identify_regions {
-                        write!(f, "'{}rv", region_vid.index())
-                    } else {
-                        Ok(())
-                    }
+                    write!(f, "{}", region_vid)
                 }
                 ty::ReScope(_) |
                 ty::ReErased => Ok(()),
@@ -938,15 +916,30 @@ impl fmt::Debug for ty::FloatVid {
     }
 }
 
-impl fmt::Debug for ty::RegionVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(counter) = RegionHighlightMode::get().region_highlighted(&ty::ReVar(*self)) {
-            return write!(f, "'{:?}", counter);
-        } else if RegionHighlightMode::get().any_region_vids_highlighted() {
-            return write!(f, "'_");
-        }
+define_print! {
+    () ty::RegionVid, (self, f, cx) {
+        display {
+            if cx.is_verbose {
+                return self.print_debug(f, cx);
+            }
 
-        write!(f, "'_#{}r", self.index())
+            let highlight = RegionHighlightMode::get();
+            if let Some(counter) = highlight.region_highlighted(&ty::ReVar(*self)) {
+                return write!(f, "'{:?}", counter);
+            }
+
+            Ok(())
+        }
+        debug {
+            // HACK(eddyb) this is duplicated from `display` printing,
+            // to keep NLL borrowck working even with `-Zverbose`.
+            let highlight = RegionHighlightMode::get();
+            if let Some(counter) = highlight.region_highlighted(&ty::ReVar(*self)) {
+                return write!(f, "'{:?}", counter);
+            }
+
+            write!(f, "'_#{}r", self.index())
+        }
     }
 }
 
@@ -954,16 +947,15 @@ define_print! {
     () ty::InferTy, (self, f, cx) {
         display {
             if cx.is_verbose {
-                print!(f, cx, print_debug(self))
-            } else {
-                match *self {
-                    ty::TyVar(_) => write!(f, "_"),
-                    ty::IntVar(_) => write!(f, "{}", "{integer}"),
-                    ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                    ty::FreshTy(v) => write!(f, "FreshTy({})", v),
-                    ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-                    ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
-                }
+                return self.print_debug(f, cx);
+            }
+            match *self {
+                ty::TyVar(_) => write!(f, "_"),
+                ty::IntVar(_) => write!(f, "{}", "{integer}"),
+                ty::FloatVar(_) => write!(f, "{}", "{float}"),
+                ty::FreshTy(v) => write!(f, "FreshTy({})", v),
+                ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
+                ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
             }
         }
         debug {
@@ -1061,12 +1053,9 @@ define_print! {
                 }
                 Ref(r, ty, mutbl) => {
                     write!(f, "&")?;
-                    let s = r.print_to_string(cx);
-                    if s != "'_" {
-                        write!(f, "{}", s)?;
-                        if !s.is_empty() {
-                            write!(f, " ")?;
-                        }
+                    let s = r.print_display_to_string(cx);
+                    if !s.is_empty() {
+                        write!(f, "{} ", s)?;
                     }
                     ty::TypeAndMut { ty, mutbl }.print(f, cx)
                 }
@@ -1112,7 +1101,7 @@ define_print! {
                 }
                 Adt(def, substs) => cx.parameterized(f, def.did, substs, iter::empty()),
                 Dynamic(data, r) => {
-                    let r = r.print_to_string(cx);
+                    let r = r.print_display_to_string(cx);
                     if !r.is_empty() {
                         write!(f, "(")?;
                     }

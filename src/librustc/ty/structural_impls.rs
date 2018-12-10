@@ -55,6 +55,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::ty::IntVarValue,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::RegionVid,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::syntax_pos::Span,
