@@ -35,13 +35,20 @@ pub fn args() -> Args {
     }
 }
 
-/// Implements the Windows command-line argument parsing algorithm, described at
+/// Implements the Windows command-line argument parsing algorithm.
+///
+/// Microsoft's documentation for the Windows CLI argument format can be found at
 /// <https://docs.microsoft.com/en-us/previous-versions//17w5ykft(v=vs.85)>.
 ///
 /// Windows includes a function to do this in shell32.dll,
 /// but linking with that DLL causes the process to be registered as a GUI application.
 /// GUI applications add a bunch of overhead, even if no windows are drawn. See
 /// <https://randomascii.wordpress.com/2018/12/03/a-not-called-function-can-cause-a-5x-slowdown/>.
+///
+/// This function was tested for equivalence to the shell32.dll implementation in
+/// Windows 10 Pro v1803, using an exhaustive test suite available at
+/// <https://gist.github.com/notriddle/dde431930c392e428055b2dc22e638f5> or
+/// <https://paste.gg/p/anonymous/47d6ed5f5bd549168b1c69c799825223>.
 unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_name: F)
                                                  -> vec::IntoIter<OsString> {
     const BACKSLASH: u16 = '\\' as u16;
@@ -176,13 +183,13 @@ impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("[")?;
         let mut first = true;
-        for i in self.args.parsed_args_list.clone() {
+        for i in self.args.parsed_args_list.as_slice() {
             if !first {
                 f.write_str(", ")?;
             }
             first = false;
 
-            fmt::Debug::fmt(&i, f)?;
+            fmt::Debug::fmt(i, f)?;
         }
         f.write_str("]")?;
         Ok(())
