@@ -142,17 +142,15 @@ fn get_sysroot() -> PathBuf {
 
 fn get_host() -> String {
     let rustc = rustc_test_suite().unwrap_or(PathBuf::from("rustc"));
-    let host = std::process::Command::new(rustc)
+    let rustc_version = std::process::Command::new(rustc)
         .arg("-vV")
         .output()
         .expect("rustc not found for -vV")
         .stdout;
-    let host = std::str::from_utf8(&host).expect("sysroot is not utf8");
-    let host = host.split("\nhost: ").nth(1).expect(
-        "no host: part in rustc -vV",
-    );
-    let host = host.split('\n').next().expect("no \n after host");
-    String::from(host)
+    let rustc_version = std::str::from_utf8(&rustc_version).expect("rustc -vV is not utf8");
+    let version_meta = rustc_version::version_meta_for(&rustc_version)
+        .expect("failed to parse rustc version info");
+    version_meta.host
 }
 
 fn run_pass_miri(opt: bool) {
