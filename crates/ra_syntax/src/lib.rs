@@ -41,13 +41,13 @@ pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use crate::{
     ast::AstNode,
     lexer::{tokenize, Token},
-    reparsing::AtomEdit,
     syntax_kinds::SyntaxKind,
     yellow::{
         Direction, OwnedRoot, RefRoot, SyntaxError, SyntaxNode, SyntaxNodeRef, TreeRoot, WalkEvent, Location,
     },
 };
 
+use ra_text_edit::AtomEdit;
 use crate::yellow::GreenNode;
 
 /// `SourceFileNode` represents a parse tree for a single Rust file.

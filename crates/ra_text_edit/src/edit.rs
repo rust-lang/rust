@@ -1,5 +1,6 @@
-use crate::{TextRange, TextUnit};
-use ra_syntax::{text_utils::contains_offset_nonstrict, AtomEdit};
+use crate::AtomEdit;
+use crate::text_utils::contains_offset_nonstrict;
+use text_unit::{TextRange, TextUnit};
 
 #[derive(Debug, Clone)]
 pub struct Edit {

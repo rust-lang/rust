@@ -3,11 +3,12 @@ use std::mem;
 use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
-    text_utils::{contains_offset_nonstrict, intersect},
+    text_utils::intersect,
     AstNode, SourceFileNode, SyntaxKind,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
+use ra_text_edit::text_utils::contains_offset_nonstrict;
 
 use crate::{find_node_at_offset, EditBuilder, LocalEdit};
 

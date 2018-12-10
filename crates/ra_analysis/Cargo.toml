@@ -14,6 +14,7 @@ rustc-hash = "1.0"
 parking_lot = "0.6.4"
 ra_syntax = { path = "../ra_syntax" }
 ra_editor = { path = "../ra_editor" }
+ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 test_utils = { path = "../test_utils" }

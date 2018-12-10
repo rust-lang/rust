@@ -1,5 +1,4 @@
 mod code_actions;
-mod edit;
 mod extend_selection;
 mod folding_ranges;
 mod line_index;
@@ -10,14 +9,13 @@ mod typing;
 
 pub use self::{
     code_actions::{add_derive, add_impl, flip_comma, introduce_variable, LocalEdit},
-    edit::{Edit, EditBuilder},
     extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},
     symbols::{file_structure, file_symbols, FileSymbol, StructureNode},
     typing::{join_lines, on_enter, on_eq_typed},
 };
-pub use ra_syntax::AtomEdit;
+use ra_text_edit::{Edit, EditBuilder};
 use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode, NameOwner},

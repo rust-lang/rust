@@ -18,7 +18,8 @@ pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
 
-use ra_syntax::{AtomEdit, SourceFileNode, TextRange, TextUnit};
+use ra_syntax::{SourceFileNode, TextRange, TextUnit};
+use ra_text_edit::AtomEdit;
 use ra_db::FileResolverImp;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;

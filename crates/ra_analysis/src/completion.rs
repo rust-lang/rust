@@ -1,10 +1,11 @@
 mod reference_completion;
 
 use ra_editor::find_node_at_offset;
+use ra_text_edit::AtomEdit;
 use ra_syntax::{
     algo::visit::{visitor_ctx, VisitorCtx},
     ast,
-    AstNode, AtomEdit,
+    AstNode,
     SyntaxNodeRef,
 };
 use ra_db::SyntaxDatabase;

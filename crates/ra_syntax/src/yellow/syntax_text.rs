@@ -1,7 +1,8 @@
 use std::{fmt, ops};
 
+use ra_text_edit::text_utils::contains_offset_nonstrict;
 use crate::{
-    text_utils::{contains_offset_nonstrict, intersect},
+    text_utils::intersect,
     SyntaxNodeRef, TextRange, TextUnit,
 };
 

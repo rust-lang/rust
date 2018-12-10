@@ -6,29 +6,7 @@ use crate::parser_impl;
 use crate::text_utils::replace_range;
 use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNodeRef};
 use crate::{SyntaxKind::*, TextRange, TextUnit};
-
-#[derive(Debug, Clone)]
-pub struct AtomEdit {
-    pub delete: TextRange,
-    pub insert: String,
-}
-
-impl AtomEdit {
-    pub fn replace(range: TextRange, replace_with: String) -> AtomEdit {
-        AtomEdit {
-            delete: range,
-            insert: replace_with,
-        }
-    }
-
-    pub fn delete(range: TextRange) -> AtomEdit {
-        AtomEdit::replace(range, String::new())
-    }
-
-    pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
-        AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
-    }
-}
+use ra_text_edit::AtomEdit;
 
 pub(crate) fn incremental_reparse(
     node: SyntaxNodeRef,

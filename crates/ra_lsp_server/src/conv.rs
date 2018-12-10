@@ -3,7 +3,8 @@ use languageserver_types::{
     TextDocumentItem, TextDocumentPositionParams, TextEdit, Url, VersionedTextDocumentIdentifier,
 };
 use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileNodeEdit, FilePosition};
-use ra_editor::{AtomEdit, Edit, LineCol, LineIndex};
+use ra_editor::{LineCol, LineIndex};
+use ra_text_edit::{AtomEdit, Edit};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 
 use crate::{req, server_world::ServerWorld, Result};

@@ -1,18 +1,12 @@
 [package]
 edition = "2018"
-name = "ra_editor"
+name = "ra_text_edit"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 publish = false
 
 [dependencies]
-itertools = "0.7.8"
-superslice = "0.1.0"
-join_to_string = "0.1.1"
-rustc-hash = "1.0"
-
-ra_syntax = { path = "../ra_syntax" }
-ra_text_edit = { path = "../ra_text_edit" }
+text_unit = "0.1.5"
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
