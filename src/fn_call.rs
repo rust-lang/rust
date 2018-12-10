@@ -113,6 +113,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
             Some(name) => name.as_str(),
             None => self.tcx.item_name(def_id).as_str(),
         };
+        // Strip linker suffixes (seen on 32bit macOS)
+        let link_name = link_name.trim_end_matches("$UNIX2003");
 
         let tcx = &{self.tcx.tcx};
 

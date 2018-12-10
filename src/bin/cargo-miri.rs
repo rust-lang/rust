@@ -342,11 +342,11 @@ fn main() {
                 .collect()
         };
         args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
+        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
 
         // this check ensures that dependencies are built but not interpreted and the final crate is
         // interpreted but not built
         let miri_enabled = std::env::args().any(|s| s == "--emit=dep-info,metadata");
-
         let mut command = if miri_enabled {
             let mut path = std::env::current_exe().expect("current executable path invalid");
             path.set_file_name("miri");
@@ -354,10 +354,9 @@ fn main() {
         } else {
             Command::new("rustc")
         };
+        command.args(&args);
 
-        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
-
-        match command.args(&args).status() {
+        match command.status() {
             Ok(exit) => {
                 if !exit.success() {
                     std::process::exit(exit.code().unwrap_or(42));
@@ -388,7 +387,7 @@ where
     args.push(r#"feature="cargo-miri""#.to_owned());
 
     let path = std::env::current_exe().expect("current executable path invalid");
-    let exit_status = std::process::Command::new("cargo")
+    let exit_status = Command::new("cargo")
         .args(&args)
         .env("RUSTC", path)
         .spawn()

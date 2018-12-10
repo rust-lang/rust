@@ -27,13 +27,12 @@ build: false
 test_script:
     - set RUSTFLAGS=-g
     - set RUST_BACKTRACE=1
-    # Test plain miri
+    # Build miri
     - cargo build --release --all-features --all-targets
-    - cargo test --release --all-features
     # Get ourselves a MIR-full libstd, and use it henceforth
     - cargo run --release --all-features --bin cargo-miri -- miri setup
     - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\miri\miri\cache\HOST
-    # Test miri with full MIR
+    # Test miri
     - cargo test --release --all-features
 
 notifications:
