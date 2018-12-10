@@ -1,15 +1,15 @@
 error: `0 as *const _` detected. Consider using `ptr::null()`
-  --> $DIR/zero_ptr.rs:16:13
+  --> $DIR/zero_ptr.rs:12:13
    |
-16 |     let x = 0 as *const usize;
+12 |     let x = 0 as *const usize;
    |             ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::zero-ptr` implied by `-D warnings`
 
 error: `0 as *mut _` detected. Consider using `ptr::null_mut()`
-  --> $DIR/zero_ptr.rs:17:13
+  --> $DIR/zero_ptr.rs:13:13
    |
-17 |     let y = 0 as *mut f64;
+13 |     let y = 0 as *mut f64;
    |             ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

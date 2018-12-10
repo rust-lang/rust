@@ -1,90 +1,19 @@
-error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:25:6
-   |
-25 |     } if foo() {
-   |      ^
-   |
-   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
-   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
-
-error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:32:10
-   |
-32 |         } if foo() {
-   |          ^
-   |
-   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
-
-error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:40:10
-   |
-40 |         } if foo() {
-   |          ^
-   |
-   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
-
-error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:49:6
-   |
-49 |       } else
-   |  ______^
-50 | |     if foo() { // the span of the above error should continue here
-   | |____^
-   |
-   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
-
-error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:54:6
-   |
-54 |       }
-   |  ______^
-55 | |     else
-56 | |     if foo() { // the span of the above error should continue here
-   | |____^
-   |
-   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
-
-error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-  --> $DIR/formatting.rs:81:6
-   |
-81 |     a =- 35;
-   |      ^^^^
-   |
-   = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
-   = note: to remove this lint, use either `-=` or `= -`
-
-error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-  --> $DIR/formatting.rs:82:6
-   |
-82 |     a =* &191;
-   |      ^^^^
-   |
-   = note: to remove this lint, use either `*=` or `= *`
-
-error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-  --> $DIR/formatting.rs:85:6
-   |
-85 |     b =! false;
-   |      ^^^^
-   |
-   = note: to remove this lint, use either `!=` or `= !`
-
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:94:19
+  --> $DIR/formatting.rs:88:11
    |
-94 |         -1, -2, -3 // <= no comma here
-   |                   ^
+88 |         -3 // <= no comma here
+   |           ^
    |
    = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:98:19
+  --> $DIR/formatting.rs:96:11
    |
-98 |         -1, -2, -3 // <= no comma here
-   |                   ^
+96 |         -3 // <= no comma here
+   |           ^
    |
    = note: to remove this lint, add a comma or write the expr in a single line
 
-error: aborting due to 10 previous errors
+error: aborting due to 2 previous errors
 

@@ -1,95 +1,139 @@
 error: this if-then-else expression will always return true
-  --> $DIR/needless_bool.rs:41:5
+  --> $DIR/needless_bool.rs:40:5
    |
-41 |     if x { true } else { true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+40 | /     if x {
+41 | |         true
+42 | |     } else {
+43 | |         true
+44 | |     };
+   | |_____^
    |
    = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:42:5
-   |
-42 |     if x { false } else { false };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:43:5
-   |
-43 |     if x { true } else { false };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `x`
-
-error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:44:5
-   |
-44 |     if x { false } else { true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `!x`
-
-error: this if-then-else expression returns a bool literal
   --> $DIR/needless_bool.rs:45:5
    |
-45 |     if x && y { false } else { true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `!(x && y)`
+45 | /     if x {
+46 | |         false
+47 | |     } else {
+48 | |         false
+49 | |     };
+   | |_____^
 
-error: this if-then-else expression will always return true
+error: this if-then-else expression returns a bool literal
+  --> $DIR/needless_bool.rs:50:5
+   |
+50 | /     if x {
+51 | |         true
+52 | |     } else {
+53 | |         false
+54 | |     };
+   | |_____^ help: you can reduce it to: `x`
+
+error: this if-then-else expression returns a bool literal
+  --> $DIR/needless_bool.rs:55:5
+   |
+55 | /     if x {
+56 | |         false
+57 | |     } else {
+58 | |         true
+59 | |     };
+   | |_____^ help: you can reduce it to: `!x`
+
+error: this if-then-else expression returns a bool literal
   --> $DIR/needless_bool.rs:60:5
    |
-60 |     if x { return true } else { return true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+60 | /     if x && y {
+61 | |         false
+62 | |     } else {
+63 | |         true
+64 | |     };
+   | |_____^ help: you can reduce it to: `!(x && y)`
+
+error: this if-then-else expression will always return true
+  --> $DIR/needless_bool.rs:83:5
+   |
+83 | /     if x {
+84 | |         return true;
+85 | |     } else {
+86 | |         return true;
+87 | |     };
+   | |_____^
 
 error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:65:5
+  --> $DIR/needless_bool.rs:92:5
    |
-65 |     if x { return false } else { return false };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+92 | /     if x {
+93 | |         return false;
+94 | |     } else {
+95 | |         return false;
+96 | |     };
+   | |_____^
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:70:5
-   |
-70 |     if x { return true } else { return false };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return x`
+   --> $DIR/needless_bool.rs:101:5
+    |
+101 | /     if x {
+102 | |         return true;
+103 | |     } else {
+104 | |         return false;
+105 | |     };
+    | |_____^ help: you can reduce it to: `return x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:75:5
-   |
-75 |     if x && y { return true } else { return false };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return x && y`
+   --> $DIR/needless_bool.rs:110:5
+    |
+110 | /     if x && y {
+111 | |         return true;
+112 | |     } else {
+113 | |         return false;
+114 | |     };
+    | |_____^ help: you can reduce it to: `return x && y`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:80:5
-   |
-80 |     if x { return false } else { return true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return !x`
+   --> $DIR/needless_bool.rs:119:5
+    |
+119 | /     if x {
+120 | |         return false;
+121 | |     } else {
+122 | |         return true;
+123 | |     };
+    | |_____^ help: you can reduce it to: `return !x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:85:5
-   |
-85 |     if x && y { return false } else { return true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return !(x && y)`
+   --> $DIR/needless_bool.rs:128:5
+    |
+128 | /     if x && y {
+129 | |         return false;
+130 | |     } else {
+131 | |         return true;
+132 | |     };
+    | |_____^ help: you can reduce it to: `return !(x && y)`
 
 error: equality checks against true are unnecessary
-  --> $DIR/needless_bool.rs:89:7
-   |
-89 |    if x  == true { };
-   |       ^^^^^^^^^^ help: try simplifying it as shown: `x`
-   |
-   = note: `-D clippy::bool-comparison` implied by `-D warnings`
+   --> $DIR/needless_bool.rs:136:8
+    |
+136 |     if x == true {};
+    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+    |
+    = note: `-D clippy::bool-comparison` implied by `-D warnings`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/needless_bool.rs:93:7
-   |
-93 |    if x  == false { };
-   |       ^^^^^^^^^^^ help: try simplifying it as shown: `!x`
+   --> $DIR/needless_bool.rs:140:8
+    |
+140 |     if x == false {};
+    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: equality checks against true are unnecessary
-   --> $DIR/needless_bool.rs:104:8
+   --> $DIR/needless_bool.rs:150:8
     |
-104 |     if x == true { };
+150 |     if x == true {};
     |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: equality checks against false can be replaced by a negation
-   --> $DIR/needless_bool.rs:105:8
+   --> $DIR/needless_bool.rs:151:8
     |
-105 |     if x == false { };
+151 |     if x == false {};
     |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: aborting due to 15 previous errors

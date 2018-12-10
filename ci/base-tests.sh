@@ -28,6 +28,9 @@ cd clippy_dev && cargo test && cd ..
 ./util/dev update_lints --check
 cargo +nightly fmt --all -- --check
 
+
+#avoid loop spam
+set +ex
 # make sure tests are formatted
 
 # some lints are sensitive to formatting, exclude some files
@@ -36,7 +39,9 @@ for file in `find tests -not -path "tests/ui/methods.rs" -not -path "tests/ui/fo
 rustfmt ${file} --check  || echo "${file} needs reformatting!" ; needs_formatting=true
 done
 
-if $needs_reformatting
-    "Tests need reformatting!"
+if [ "${needs_reformatting}" = true] ; then
+    echo "Tests need reformatting!"
     exit 2
 fi
+
+set -ex

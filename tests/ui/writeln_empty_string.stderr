@@ -1,15 +1,15 @@
 error: using `writeln!(&mut v, "")`
-  --> $DIR/writeln_empty_string.rs:21:5
+  --> $DIR/writeln_empty_string.rs:18:5
    |
-21 |     writeln!(&mut v, "");
+18 |     writeln!(&mut v, "");
    |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(&mut v)`
    |
    = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
 
 error: using `writeln!(&mut suggestion, "")`
-  --> $DIR/writeln_empty_string.rs:24:5
+  --> $DIR/writeln_empty_string.rs:21:5
    |
-24 |     writeln!(&mut suggestion, "");
+21 |     writeln!(&mut suggestion, "");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(&mut suggestion)`
 
 error: aborting due to 2 previous errors

@@ -1,117 +1,117 @@
 error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
-  --> $DIR/approx_const.rs:17:16
+  --> $DIR/approx_const.rs:13:16
    |
-17 |     let my_e = 2.7182;
+13 |     let my_e = 2.7182;
    |                ^^^^^^
    |
    = note: `-D clippy::approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
-  --> $DIR/approx_const.rs:18:20
+  --> $DIR/approx_const.rs:14:20
    |
-18 |     let almost_e = 2.718;
+14 |     let almost_e = 2.718;
    |                    ^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:21:24
+  --> $DIR/approx_const.rs:17:24
    |
-21 |     let my_1_frac_pi = 0.3183;
+17 |     let my_1_frac_pi = 0.3183;
    |                        ^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider using it directly
-  --> $DIR/approx_const.rs:24:28
+  --> $DIR/approx_const.rs:20:28
    |
-24 |     let my_frac_1_sqrt_2 = 0.70710678;
+20 |     let my_frac_1_sqrt_2 = 0.70710678;
    |                            ^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider using it directly
-  --> $DIR/approx_const.rs:25:32
+  --> $DIR/approx_const.rs:21:32
    |
-25 |     let almost_frac_1_sqrt_2 = 0.70711;
+21 |     let almost_frac_1_sqrt_2 = 0.70711;
    |                                ^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_2_PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:28:24
+  --> $DIR/approx_const.rs:24:24
    |
-28 |     let my_frac_2_pi = 0.63661977;
+24 |     let my_frac_2_pi = 0.63661977;
    |                        ^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_2_SQRT_PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:31:27
+  --> $DIR/approx_const.rs:27:27
    |
-31 |     let my_frac_2_sq_pi = 1.128379;
+27 |     let my_frac_2_sq_pi = 1.128379;
    |                           ^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_2` found. Consider using it directly
-  --> $DIR/approx_const.rs:34:24
+  --> $DIR/approx_const.rs:30:24
    |
-34 |     let my_frac_pi_2 = 1.57079632679;
+30 |     let my_frac_pi_2 = 1.57079632679;
    |                        ^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_3` found. Consider using it directly
-  --> $DIR/approx_const.rs:37:24
+  --> $DIR/approx_const.rs:33:24
    |
-37 |     let my_frac_pi_3 = 1.04719755119;
+33 |     let my_frac_pi_3 = 1.04719755119;
    |                        ^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_4` found. Consider using it directly
-  --> $DIR/approx_const.rs:40:24
+  --> $DIR/approx_const.rs:36:24
    |
-40 |     let my_frac_pi_4 = 0.785398163397;
+36 |     let my_frac_pi_4 = 0.785398163397;
    |                        ^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_6` found. Consider using it directly
-  --> $DIR/approx_const.rs:43:24
+  --> $DIR/approx_const.rs:39:24
    |
-43 |     let my_frac_pi_6 = 0.523598775598;
+39 |     let my_frac_pi_6 = 0.523598775598;
    |                        ^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_8` found. Consider using it directly
-  --> $DIR/approx_const.rs:46:24
+  --> $DIR/approx_const.rs:42:24
    |
-46 |     let my_frac_pi_8 = 0.3926990816987;
+42 |     let my_frac_pi_8 = 0.3926990816987;
    |                        ^^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::LN_10` found. Consider using it directly
-  --> $DIR/approx_const.rs:49:20
+  --> $DIR/approx_const.rs:45:20
    |
-49 |     let my_ln_10 = 2.302585092994046;
+45 |     let my_ln_10 = 2.302585092994046;
    |                    ^^^^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::LN_2` found. Consider using it directly
-  --> $DIR/approx_const.rs:52:19
+  --> $DIR/approx_const.rs:48:19
    |
-52 |     let my_ln_2 = 0.6931471805599453;
+48 |     let my_ln_2 = 0.6931471805599453;
    |                   ^^^^^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::LOG10_E` found. Consider using it directly
-  --> $DIR/approx_const.rs:55:22
+  --> $DIR/approx_const.rs:51:22
    |
-55 |     let my_log10_e = 0.4342944819032518;
+51 |     let my_log10_e = 0.4342944819032518;
    |                      ^^^^^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::LOG2_E` found. Consider using it directly
-  --> $DIR/approx_const.rs:58:21
+  --> $DIR/approx_const.rs:54:21
    |
-58 |     let my_log2_e = 1.4426950408889634;
+54 |     let my_log2_e = 1.4426950408889634;
    |                     ^^^^^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:61:17
+  --> $DIR/approx_const.rs:57:17
    |
-61 |     let my_pi = 3.1415;
+57 |     let my_pi = 3.1415;
    |                 ^^^^^^
 
 error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
-  --> $DIR/approx_const.rs:62:21
+  --> $DIR/approx_const.rs:58:21
    |
-62 |     let almost_pi = 3.14;
+58 |     let almost_pi = 3.14;
    |                     ^^^^
 
 error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it directly
-  --> $DIR/approx_const.rs:65:18
+  --> $DIR/approx_const.rs:61:18
    |
-65 |     let my_sq2 = 1.4142;
+61 |     let my_sq2 = 1.4142;
    |                  ^^^^^^
 
 error: aborting due to 19 previous errors

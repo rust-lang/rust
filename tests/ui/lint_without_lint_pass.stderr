@@ -1,11 +1,11 @@
 error: the lint `TEST_LINT` is not added to any `LintPass`
-  --> $DIR/lint_without_lint_pass.rs:12:1
+  --> $DIR/lint_without_lint_pass.rs:11:1
    |
-12 | / declare_clippy_lint! {
-13 | |     pub TEST_LINT,
-14 | |     correctness,
-15 | |     ""
-16 | | }
+11 | / declare_clippy_lint! {
+12 | |     pub TEST_LINT,
+13 | |     correctness,
+14 | |     ""
+15 | | }
    | |_^
    |
 note: lint level defined here

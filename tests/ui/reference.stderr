@@ -1,69 +1,69 @@
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:29:13
+  --> $DIR/reference.rs:25:13
    |
-29 |     let b = *&a;
+25 |     let b = *&a;
    |             ^^^ help: try this: `a`
    |
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:31:13
+  --> $DIR/reference.rs:27:13
    |
-31 |     let b = *&get_number();
+27 |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try this: `get_number()`
+
+error: immediately dereferencing a reference
+  --> $DIR/reference.rs:32:13
+   |
+32 |     let b = *&bytes[1..2][0];
+   |             ^^^^^^^^^^^^^^^^ help: try this: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
   --> $DIR/reference.rs:36:13
    |
-36 |     let b = *&bytes[1..2][0];
-   |             ^^^^^^^^^^^^^^^^ help: try this: `bytes[1..2][0]`
+36 |     let b = *&(a);
+   |             ^^^^^ help: try this: `(a)`
+
+error: immediately dereferencing a reference
+  --> $DIR/reference.rs:38:13
+   |
+38 |     let b = *(&a);
+   |             ^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
   --> $DIR/reference.rs:40:13
    |
-40 |     let b = *&(a);
-   |             ^^^^^ help: try this: `(a)`
+40 |     let b = *(&a);
+   |             ^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
   --> $DIR/reference.rs:42:13
    |
-42 |     let b = *(&a);
-   |             ^^^^^ help: try this: `a`
-
-error: immediately dereferencing a reference
-  --> $DIR/reference.rs:44:13
-   |
-44 |     let b = *((&a));
-   |             ^^^^^^^ help: try this: `a`
-
-error: immediately dereferencing a reference
-  --> $DIR/reference.rs:46:13
-   |
-46 |     let b = *&&a;
+42 |     let b = *&&a;
    |             ^^^^ help: try this: `&a`
+
+error: immediately dereferencing a reference
+  --> $DIR/reference.rs:44:14
+   |
+44 |     let b = **&aref;
+   |              ^^^^^^ help: try this: `aref`
 
 error: immediately dereferencing a reference
   --> $DIR/reference.rs:48:14
    |
-48 |     let b = **&aref;
-   |              ^^^^^^ help: try this: `aref`
-
-error: immediately dereferencing a reference
-  --> $DIR/reference.rs:52:14
-   |
-52 |     let b = **&&a;
+48 |     let b = **&&a;
    |              ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:56:17
+  --> $DIR/reference.rs:52:17
    |
-56 |         let y = *&mut x;
+52 |         let y = *&mut x;
    |                 ^^^^^^^ help: try this: `x`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:63:18
+  --> $DIR/reference.rs:59:18
    |
-63 |         let y = **&mut &mut x;
+59 |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try this: `&mut x`
 
 error: aborting due to 11 previous errors

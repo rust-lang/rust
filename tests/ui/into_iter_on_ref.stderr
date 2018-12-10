@@ -1,8 +1,8 @@
 error: this .into_iter() call is equivalent to .iter() and will not move the array
-  --> $DIR/into_iter_on_ref.rs:11:22
+  --> $DIR/into_iter_on_ref.rs:11:24
    |
-11 |     for _ in [1,2,3].into_iter() {} //~ ERROR equivalent to .iter()
-   |                      ^^^^^^^^^ help: call directly: `iter`
+11 |     for _ in [1, 2, 3].into_iter() {} //~ ERROR equivalent to .iter()
+   |                        ^^^^^^^^^ help: call directly: `iter`
    |
 note: lint level defined here
   --> $DIR/into_iter_on_ref.rs:2:9
@@ -11,24 +11,24 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this .into_iter() call is equivalent to .iter() and will not move the array
-  --> $DIR/into_iter_on_ref.rs:13:21
+  --> $DIR/into_iter_on_ref.rs:13:23
    |
-13 |     let _ = [1,2,3].into_iter(); //~ ERROR equivalent to .iter()
-   |                     ^^^^^^^^^ help: call directly: `iter`
+13 |     let _ = [1, 2, 3].into_iter(); //~ ERROR equivalent to .iter()
+   |                       ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Vec
-  --> $DIR/into_iter_on_ref.rs:15:28
+  --> $DIR/into_iter_on_ref.rs:15:30
    |
-15 |     let _ = (&vec![1,2,3]).into_iter(); //~ WARN equivalent to .iter()
-   |                            ^^^^^^^^^ help: call directly: `iter`
+15 |     let _ = (&vec![1, 2, 3]).into_iter(); //~ WARN equivalent to .iter()
+   |                              ^^^^^^^^^ help: call directly: `iter`
    |
    = note: `-D clippy::into-iter-on-ref` implied by `-D warnings`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the slice
-  --> $DIR/into_iter_on_ref.rs:16:44
+  --> $DIR/into_iter_on_ref.rs:16:46
    |
-16 |     let _ = vec![1,2,3].into_boxed_slice().into_iter(); //~ WARN equivalent to .iter()
-   |                                            ^^^^^^^^^ help: call directly: `iter`
+16 |     let _ = vec![1, 2, 3].into_boxed_slice().into_iter(); //~ WARN equivalent to .iter()
+   |                                              ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the slice
   --> $DIR/into_iter_on_ref.rs:17:41
@@ -43,22 +43,22 @@ error: this .into_iter() call is equivalent to .iter() and will not move the sli
    |                                            ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the array
-  --> $DIR/into_iter_on_ref.rs:20:30
+  --> $DIR/into_iter_on_ref.rs:20:32
    |
-20 |     let _ = (&&&&&&&[1,2,3]).into_iter(); //~ ERROR equivalent to .iter()
-   |                              ^^^^^^^^^ help: call directly: `iter`
+20 |     let _ = (&&&&&&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
+   |                                ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the array
-  --> $DIR/into_iter_on_ref.rs:21:34
+  --> $DIR/into_iter_on_ref.rs:21:36
    |
-21 |     let _ = (&&&&mut &&&[1,2,3]).into_iter(); //~ ERROR equivalent to .iter()
-   |                                  ^^^^^^^^^ help: call directly: `iter`
+21 |     let _ = (&&&&mut &&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
+   |                                    ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the array
-  --> $DIR/into_iter_on_ref.rs:22:38
+  --> $DIR/into_iter_on_ref.rs:22:40
    |
-22 |     let _ = (&mut &mut &mut [1,2,3]).into_iter(); //~ ERROR equivalent to .iter_mut()
-   |                                      ^^^^^^^^^ help: call directly: `iter_mut`
+22 |     let _ = (&mut &mut &mut [1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter_mut()
+   |                                        ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Option
   --> $DIR/into_iter_on_ref.rs:24:24

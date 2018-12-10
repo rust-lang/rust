@@ -1,245 +1,245 @@
 error: transmute from a type (`&'a T`) to itself
-  --> $DIR/transmute.rs:32:20
+  --> $DIR/transmute.rs:28:20
    |
-32 |     let _: &'a T = core::intrinsics::transmute(t);
+28 |     let _: &'a T = core::intrinsics::transmute(t);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::useless-transmute` implied by `-D warnings`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmute.rs:36:23
+  --> $DIR/transmute.rs:32:23
    |
-36 |     let _: *const T = core::intrinsics::transmute(t);
+32 |     let _: *const T = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmute.rs:38:21
+  --> $DIR/transmute.rs:34:21
    |
-38 |     let _: *mut T = core::intrinsics::transmute(t);
+34 |     let _: *mut T = core::intrinsics::transmute(t);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *mut T`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmute.rs:40:23
+  --> $DIR/transmute.rs:36:23
    |
-40 |     let _: *const U = core::intrinsics::transmute(t);
+36 |     let _: *const U = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
 
 error: transmute from a pointer type (`*const T`) to a reference type (`&T`)
-  --> $DIR/transmute.rs:45:17
+  --> $DIR/transmute.rs:41:17
    |
-45 |     let _: &T = std::mem::transmute(p);
+41 |     let _: &T = std::mem::transmute(p);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*p`
    |
    = note: `-D clippy::transmute-ptr-to-ref` implied by `-D warnings`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
-  --> $DIR/transmute.rs:48:21
+  --> $DIR/transmute.rs:44:21
    |
-48 |     let _: &mut T = std::mem::transmute(m);
+44 |     let _: &mut T = std::mem::transmute(m);
    |                     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *m`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&T`)
-  --> $DIR/transmute.rs:51:17
+  --> $DIR/transmute.rs:47:17
    |
-51 |     let _: &T = std::mem::transmute(m);
+47 |     let _: &T = std::mem::transmute(m);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*m`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
-  --> $DIR/transmute.rs:54:21
+  --> $DIR/transmute.rs:50:21
    |
-54 |     let _: &mut T = std::mem::transmute(p as *mut T);
+50 |     let _: &mut T = std::mem::transmute(p as *mut T);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(p as *mut T)`
 
 error: transmute from a pointer type (`*const U`) to a reference type (`&T`)
-  --> $DIR/transmute.rs:57:17
+  --> $DIR/transmute.rs:53:17
    |
-57 |     let _: &T = std::mem::transmute(o);
+53 |     let _: &T = std::mem::transmute(o);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(o as *const T)`
 
 error: transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
-  --> $DIR/transmute.rs:60:21
+  --> $DIR/transmute.rs:56:21
    |
-60 |     let _: &mut T = std::mem::transmute(om);
+56 |     let _: &mut T = std::mem::transmute(om);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(om as *mut T)`
 
 error: transmute from a pointer type (`*mut U`) to a reference type (`&T`)
-  --> $DIR/transmute.rs:63:17
+  --> $DIR/transmute.rs:59:17
    |
-63 |     let _: &T = std::mem::transmute(om);
+59 |     let _: &T = std::mem::transmute(om);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(om as *const T)`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, u8>`)
-  --> $DIR/transmute.rs:74:32
+  --> $DIR/transmute.rs:70:32
    |
-74 |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
+70 |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<_>)`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, &u8>`)
-  --> $DIR/transmute.rs:76:33
+  --> $DIR/transmute.rs:72:33
    |
-76 |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
+72 |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<&_>)`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
-  --> $DIR/transmute.rs:80:14
+  --> $DIR/transmute.rs:76:14
    |
-80 |     unsafe { std::mem::transmute::<_, Bar>(raw) };
+76 |     unsafe { std::mem::transmute::<_, Bar>(raw) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const u8)`
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+  --> $DIR/transmute.rs:82:27
+   |
+82 |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
+  --> $DIR/transmute.rs:84:27
+   |
+84 |         let _: Vec<i32> = core::mem::transmute(my_vec());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:86:27
    |
-86 |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+86 |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:88:27
    |
-88 |         let _: Vec<i32> = core::mem::transmute(my_vec());
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+88 |         let _: Vec<i32> = std::mem::transmute(my_vec());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:90:27
    |
-90 |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:92:27
-   |
-92 |         let _: Vec<i32> = std::mem::transmute(my_vec());
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> $DIR/transmute.rs:94:27
-   |
-94 |         let _: Vec<i32> = my_transmute(my_vec());
+90 |         let _: Vec<i32> = my_transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from an integer to a pointer
+  --> $DIR/transmute.rs:98:31
+   |
+98 |         let _: *const usize = std::mem::transmute(5_isize);
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `5_isize as *const usize`
 
 error: transmute from an integer to a pointer
    --> $DIR/transmute.rs:102:31
     |
-102 |         let _: *const usize = std::mem::transmute(5_isize);
-    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `5_isize as *const usize`
-
-error: transmute from an integer to a pointer
-   --> $DIR/transmute.rs:106:31
-    |
-106 |         let _: *const usize = std::mem::transmute(1+1usize);
-    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(1+1usize) as *const usize`
+102 |         let _: *const usize = std::mem::transmute(1 + 1usize);
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(1 + 1usize) as *const usize`
 
 error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
-   --> $DIR/transmute.rs:121:24
+   --> $DIR/transmute.rs:117:24
     |
-121 |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
+117 |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
 
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
-   --> $DIR/transmute.rs:123:24
+   --> $DIR/transmute.rs:119:24
     |
-123 |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
+119 |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
-   --> $DIR/transmute.rs:125:31
+   --> $DIR/transmute.rs:121:31
     |
-125 |         let _: *const Usize = core::intrinsics::transmute(my_int());
+121 |         let _: *const Usize = core::intrinsics::transmute(my_int());
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
-   --> $DIR/transmute.rs:127:29
+   --> $DIR/transmute.rs:123:29
     |
-127 |         let _: *mut Usize = core::intrinsics::transmute(my_int());
+123 |         let _: *mut Usize = core::intrinsics::transmute(my_int());
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a `u32` to a `char`
-   --> $DIR/transmute.rs:133:28
+   --> $DIR/transmute.rs:129:28
     |
-133 |     let _: char = unsafe { std::mem::transmute(0_u32) };
+129 |     let _: char = unsafe { std::mem::transmute(0_u32) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_u32).unwrap()`
     |
     = note: `-D clippy::transmute-int-to-char` implied by `-D warnings`
 
 error: transmute from a `i32` to a `char`
-   --> $DIR/transmute.rs:134:28
+   --> $DIR/transmute.rs:130:28
     |
-134 |     let _: char = unsafe { std::mem::transmute(0_i32) };
+130 |     let _: char = unsafe { std::mem::transmute(0_i32) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_i32 as u32).unwrap()`
 
 error: transmute from a `u8` to a `bool`
-   --> $DIR/transmute.rs:139:28
+   --> $DIR/transmute.rs:135:28
     |
-139 |     let _: bool = unsafe { std::mem::transmute(0_u8) };
+135 |     let _: bool = unsafe { std::mem::transmute(0_u8) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `0_u8 != 0`
     |
     = note: `-D clippy::transmute-int-to-bool` implied by `-D warnings`
 
 error: transmute from a `u32` to a `f32`
-   --> $DIR/transmute.rs:144:27
+   --> $DIR/transmute.rs:140:27
     |
-144 |     let _: f32 = unsafe { std::mem::transmute(0_u32) };
+140 |     let _: f32 = unsafe { std::mem::transmute(0_u32) };
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_u32)`
     |
     = note: `-D clippy::transmute-int-to-float` implied by `-D warnings`
 
 error: transmute from a `i32` to a `f32`
-   --> $DIR/transmute.rs:145:27
+   --> $DIR/transmute.rs:141:27
     |
-145 |     let _: f32 = unsafe { std::mem::transmute(0_i32) };
+141 |     let _: f32 = unsafe { std::mem::transmute(0_i32) };
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `f32::from_bits(0_i32 as u32)`
 
 error: transmute from a `&[u8]` to a `&str`
-   --> $DIR/transmute.rs:149:28
+   --> $DIR/transmute.rs:145:28
     |
-149 |     let _: &str = unsafe { std::mem::transmute(b) };
+145 |     let _: &str = unsafe { std::mem::transmute(b) };
     |                            ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(b).unwrap()`
     |
     = note: `-D clippy::transmute-bytes-to-str` implied by `-D warnings`
 
 error: transmute from a `&mut [u8]` to a `&mut str`
-   --> $DIR/transmute.rs:150:32
+   --> $DIR/transmute.rs:146:32
     |
-150 |     let _: &mut str = unsafe { std::mem::transmute(mb) };
+146 |     let _: &mut str = unsafe { std::mem::transmute(mb) };
     |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
 error: transmute from a pointer to a pointer
-   --> $DIR/transmute.rs:182:29
+   --> $DIR/transmute.rs:178:29
     |
-182 |         let _: *const f32 = std::mem::transmute(ptr);
+178 |         let _: *const f32 = std::mem::transmute(ptr);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr as *const f32`
     |
     = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
-   --> $DIR/transmute.rs:183:27
+   --> $DIR/transmute.rs:179:27
     |
-183 |         let _: *mut f32 = std::mem::transmute(mut_ptr);
+179 |         let _: *mut f32 = std::mem::transmute(mut_ptr);
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `mut_ptr as *mut f32`
 
 error: transmute from a reference to a reference
-   --> $DIR/transmute.rs:185:23
+   --> $DIR/transmute.rs:181:23
     |
-185 |         let _: &f32 = std::mem::transmute(&1u32);
+181 |         let _: &f32 = std::mem::transmute(&1u32);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1u32 as *const u32 as *const f32)`
 
 error: transmute from a reference to a reference
-   --> $DIR/transmute.rs:186:23
+   --> $DIR/transmute.rs:182:23
     |
-186 |         let _: &f64 = std::mem::transmute(&1f32);
+182 |         let _: &f64 = std::mem::transmute(&1f32);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1f32 as *const f32 as *const f64)`
 
 error: transmute from a reference to a reference
-   --> $DIR/transmute.rs:189:27
+   --> $DIR/transmute.rs:185:27
     |
-189 |         let _: &mut f32 = std::mem::transmute(&mut 1u32);
+185 |         let _: &mut f32 = std::mem::transmute(&mut 1u32);
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(&mut 1u32 as *mut u32 as *mut f32)`
 
 error: transmute from a reference to a reference
-   --> $DIR/transmute.rs:190:37
+   --> $DIR/transmute.rs:186:37
     |
-190 |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
+186 |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
     |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`
 
 error: aborting due to 38 previous errors

@@ -1,33 +1,33 @@
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:28:21
+  --> $DIR/mut_range_bound.rs:25:9
    |
-28 |     for i in 0..m { m = 5; } // warning
-   |                     ^^^^^
+25 |         m = 5;
+   |         ^^^^^
    |
    = note: `-D clippy::mut-range-bound` implied by `-D warnings`
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:33:22
+  --> $DIR/mut_range_bound.rs:32:9
    |
-33 |     for i in m..10 { m *= 2; } // warning
-   |                      ^^^^^^
+32 |         m *= 2;
+   |         ^^^^^^
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:39:21
+  --> $DIR/mut_range_bound.rs:40:9
    |
-39 |     for i in m..n { m = 5; n = 7; } // warning (1 for each mutated bound)
-   |                     ^^^^^
+40 |         m = 5;
+   |         ^^^^^
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:39:28
+  --> $DIR/mut_range_bound.rs:41:9
    |
-39 |     for i in m..n { m = 5; n = 7; } // warning (1 for each mutated bound)
-   |                            ^^^^^
+41 |         n = 7;
+   |         ^^^^^
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
-  --> $DIR/mut_range_bound.rs:50:22
+  --> $DIR/mut_range_bound.rs:55:22
    |
-50 |         let n = &mut m;  // warning
+55 |         let n = &mut m; // warning
    |                      ^
 
 error: aborting due to 5 previous errors

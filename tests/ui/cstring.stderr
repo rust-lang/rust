@@ -1,15 +1,15 @@
 error: you are getting the inner pointer of a temporary `CString`
-  --> $DIR/cstring.rs:19:5
+  --> $DIR/cstring.rs:16:5
    |
-19 |     CString::new("foo").unwrap().as_ptr();
+16 |     CString::new("foo").unwrap().as_ptr();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(clippy::temporary_cstring_as_ptr)] on by default
    = note: that pointer will be invalid outside this expression
 help: assign the `CString` to a variable to extend its lifetime
-  --> $DIR/cstring.rs:19:5
+  --> $DIR/cstring.rs:16:5
    |
-19 |     CString::new("foo").unwrap().as_ptr();
+16 |     CString::new("foo").unwrap().as_ptr();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

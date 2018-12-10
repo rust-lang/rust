@@ -1,14 +1,14 @@
 error: returning the result of a let binding from a block. Consider returning the expression directly.
-  --> $DIR/matches.rs:19:13
+  --> $DIR/matches.rs:18:13
    |
-19 |             x
+18 |             x
    |             ^
    |
    = note: `-D clippy::let-and-return` implied by `-D warnings`
 note: this expression can be directly returned
-  --> $DIR/matches.rs:18:21
+  --> $DIR/matches.rs:17:21
    |
-18 |             let x = 3;
+17 |             let x = 3;
    |                     ^
 
 error: aborting due to previous error

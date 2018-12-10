@@ -1,33 +1,33 @@
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-  --> $DIR/ok_expect.rs:24:5
+  --> $DIR/ok_expect.rs:23:5
    |
-24 |     res.ok().expect("disaster!");
+23 |     res.ok().expect("disaster!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::ok-expect` implied by `-D warnings`
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-  --> $DIR/ok_expect.rs:30:5
+  --> $DIR/ok_expect.rs:29:5
    |
-30 |     res3.ok().expect("whoof");
+29 |     res3.ok().expect("whoof");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-  --> $DIR/ok_expect.rs:32:5
+  --> $DIR/ok_expect.rs:31:5
    |
-32 |     res4.ok().expect("argh");
+31 |     res4.ok().expect("argh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-  --> $DIR/ok_expect.rs:34:5
+  --> $DIR/ok_expect.rs:33:5
    |
-34 |     res5.ok().expect("oops");
+33 |     res5.ok().expect("oops");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-  --> $DIR/ok_expect.rs:36:5
+  --> $DIR/ok_expect.rs:35:5
    |
-36 |     res6.ok().expect("meh");
+35 |     res6.ok().expect("meh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

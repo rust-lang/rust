@@ -1,270 +1,269 @@
 error: the function has a cyclomatic complexity of 28
-  --> $DIR/cyclomatic_complexity.rs:16:1
+  --> $DIR/cyclomatic_complexity.rs:15:1
    |
-16 | / fn main() {
-17 | |     if true {
-18 | |         println!("a");
-19 | |     }
+15 | / fn main() {
+16 | |     if true {
+17 | |         println!("a");
+18 | |     }
 ...  |
-97 | |     }
-98 | | }
+96 | |     }
+97 | | }
    | |_^
    |
    = note: `-D clippy::cyclomatic-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 7
-   --> $DIR/cyclomatic_complexity.rs:101:1
+   --> $DIR/cyclomatic_complexity.rs:100:1
     |
-101 | / fn kaboom() {
-102 | |     let n = 0;
-103 | |     'a: for i in 0..20 {
-104 | |         'b: for j in i..20 {
+100 | / fn kaboom() {
+101 | |     let n = 0;
+102 | |     'a: for i in 0..20 {
+103 | |         'b: for j in i..20 {
 ...   |
-119 | |     }
-120 | | }
+118 | |     }
+119 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> $DIR/cyclomatic_complexity.rs:147:1
+   --> $DIR/cyclomatic_complexity.rs:146:1
     |
-147 | / fn lots_of_short_circuits() -> bool {
-148 | |     true && false && true && false && true && false && true
-149 | | }
+146 | / fn lots_of_short_circuits() -> bool {
+147 | |     true && false && true && false && true && false && true
+148 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> $DIR/cyclomatic_complexity.rs:152:1
+   --> $DIR/cyclomatic_complexity.rs:151:1
     |
-152 | / fn lots_of_short_circuits2() -> bool {
-153 | |     true || false || true || false || true || false || true
-154 | | }
+151 | / fn lots_of_short_circuits2() -> bool {
+152 | |     true || false || true || false || true || false || true
+153 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:157:1
+   --> $DIR/cyclomatic_complexity.rs:156:1
     |
-157 | / fn baa() {
-158 | |     let x = || match 99 {
-159 | |         0 => 0,
-160 | |         1 => 1,
+156 | / fn baa() {
+157 | |     let x = || match 99 {
+158 | |         0 => 0,
+159 | |         1 => 1,
 ...   |
-171 | |     }
-172 | | }
+170 | |     }
+171 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:158:13
+   --> $DIR/cyclomatic_complexity.rs:157:13
     |
-158 |       let x = || match 99 {
+157 |       let x = || match 99 {
     |  _____________^
-159 | |         0 => 0,
-160 | |         1 => 1,
-161 | |         2 => 2,
+158 | |         0 => 0,
+159 | |         1 => 1,
+160 | |         2 => 2,
 ...   |
-165 | |         _ => 42,
-166 | |     };
+164 | |         _ => 42,
+165 | |     };
     | |_____^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:175:1
+   --> $DIR/cyclomatic_complexity.rs:174:1
     |
-175 | / fn bar() {
-176 | |     match 99 {
-177 | |         0 => println!("hi"),
-178 | |         _ => println!("bye"),
-179 | |     }
-180 | | }
+174 | / fn bar() {
+175 | |     match 99 {
+176 | |         0 => println!("hi"),
+177 | |         _ => println!("bye"),
+178 | |     }
+179 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:194:1
+   --> $DIR/cyclomatic_complexity.rs:193:1
     |
-194 | / fn barr() {
-195 | |     match 99 {
-196 | |         0 => println!("hi"),
-197 | |         1 => println!("bla"),
+193 | / fn barr() {
+194 | |     match 99 {
+195 | |         0 => println!("hi"),
+196 | |         1 => println!("bla"),
 ...   |
-200 | |     }
-201 | | }
+199 | |     }
+200 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
-   --> $DIR/cyclomatic_complexity.rs:204:1
+   --> $DIR/cyclomatic_complexity.rs:203:1
     |
-204 | / fn barr2() {
-205 | |     match 99 {
-206 | |         0 => println!("hi"),
-207 | |         1 => println!("bla"),
+203 | / fn barr2() {
+204 | |     match 99 {
+205 | |         0 => println!("hi"),
+206 | |         1 => println!("bla"),
 ...   |
-216 | |     }
-217 | | }
+215 | |     }
+216 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:220:1
+   --> $DIR/cyclomatic_complexity.rs:219:1
     |
-220 | / fn barrr() {
-221 | |     match 99 {
-222 | |         0 => println!("hi"),
-223 | |         1 => panic!("bla"),
+219 | / fn barrr() {
+220 | |     match 99 {
+221 | |         0 => println!("hi"),
+222 | |         1 => panic!("bla"),
 ...   |
-226 | |     }
-227 | | }
+225 | |     }
+226 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
-   --> $DIR/cyclomatic_complexity.rs:230:1
+   --> $DIR/cyclomatic_complexity.rs:229:1
     |
-230 | / fn barrr2() {
-231 | |     match 99 {
-232 | |         0 => println!("hi"),
-233 | |         1 => panic!("bla"),
+229 | / fn barrr2() {
+230 | |     match 99 {
+231 | |         0 => println!("hi"),
+232 | |         1 => panic!("bla"),
 ...   |
-242 | |     }
-243 | | }
+241 | |     }
+242 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:246:1
+   --> $DIR/cyclomatic_complexity.rs:245:1
     |
-246 | / fn barrrr() {
-247 | |     match 99 {
-248 | |         0 => println!("hi"),
-249 | |         1 => println!("bla"),
+245 | / fn barrrr() {
+246 | |     match 99 {
+247 | |         0 => println!("hi"),
+248 | |         1 => println!("bla"),
 ...   |
-252 | |     }
-253 | | }
+251 | |     }
+252 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
-   --> $DIR/cyclomatic_complexity.rs:256:1
+   --> $DIR/cyclomatic_complexity.rs:255:1
     |
-256 | / fn barrrr2() {
-257 | |     match 99 {
-258 | |         0 => println!("hi"),
-259 | |         1 => println!("bla"),
+255 | / fn barrrr2() {
+256 | |     match 99 {
+257 | |         0 => println!("hi"),
+258 | |         1 => println!("bla"),
 ...   |
-268 | |     }
-269 | | }
+267 | |     }
+268 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> $DIR/cyclomatic_complexity.rs:272:1
+   --> $DIR/cyclomatic_complexity.rs:271:1
     |
-272 | / fn cake() {
-273 | |     if 4 == 5 {
-274 | |         println!("yea");
-275 | |     } else {
+271 | / fn cake() {
+272 | |     if 4 == 5 {
+273 | |         println!("yea");
+274 | |     } else {
 ...   |
-278 | |     println!("whee");
-279 | | }
+277 | |     println!("whee");
+278 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 4
-   --> $DIR/cyclomatic_complexity.rs:283:1
+   --> $DIR/cyclomatic_complexity.rs:281:1
     |
-283 | / pub fn read_file(input_path: &str) -> String {
-284 | |     use std::fs::File;
-285 | |     use std::io::{Read, Write};
-286 | |     use std::path::Path;
+281 | / pub fn read_file(input_path: &str) -> String {
+282 | |     use std::fs::File;
+283 | |     use std::io::{Read, Write};
+284 | |     use std::path::Path;
 ...   |
-308 | |     }
-309 | | }
+306 | |     }
+307 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> $DIR/cyclomatic_complexity.rs:314:1
+   --> $DIR/cyclomatic_complexity.rs:312:1
     |
-314 | / fn void(void: Void) {
-315 | |     if true {
-316 | |         match void {
-317 | |         }
-318 | |     }
-319 | | }
+312 | / fn void(void: Void) {
+313 | |     if true {
+314 | |         match void {}
+315 | |     }
+316 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> $DIR/cyclomatic_complexity.rs:328:1
+   --> $DIR/cyclomatic_complexity.rs:325:1
     |
-328 | / fn try() -> Result<i32, &'static str> {
-329 | |     match 5 {
-330 | |         5 => Ok(5),
-331 | |         _ => return Err("bla"),
-332 | |     }
-333 | | }
+325 | / fn try() -> Result<i32, &'static str> {
+326 | |     match 5 {
+327 | |         5 => Ok(5),
+328 | |         _ => return Err("bla"),
+329 | |     }
+330 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> $DIR/cyclomatic_complexity.rs:336:1
+   --> $DIR/cyclomatic_complexity.rs:333:1
     |
-336 | / fn try_again() -> Result<i32, &'static str> {
-337 | |     let _ = try!(Ok(42));
-338 | |     let _ = try!(Ok(43));
-339 | |     let _ = try!(Ok(44));
+333 | / fn try_again() -> Result<i32, &'static str> {
+334 | |     let _ = try!(Ok(42));
+335 | |     let _ = try!(Ok(43));
+336 | |     let _ = try!(Ok(44));
 ...   |
-348 | |     }
-349 | | }
+345 | |     }
+346 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> $DIR/cyclomatic_complexity.rs:352:1
+   --> $DIR/cyclomatic_complexity.rs:349:1
     |
-352 | / fn early() -> Result<i32, &'static str> {
-353 | |     return Ok(5);
-354 | |     return Ok(5);
-355 | |     return Ok(5);
+349 | / fn early() -> Result<i32, &'static str> {
+350 | |     return Ok(5);
+351 | |     return Ok(5);
+352 | |     return Ok(5);
 ...   |
-361 | |     return Ok(5);
-362 | | }
+358 | |     return Ok(5);
+359 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 8
-   --> $DIR/cyclomatic_complexity.rs:366:1
+   --> $DIR/cyclomatic_complexity.rs:363:1
     |
-366 | / fn early_ret() -> i32 {
-367 | |     let a = if true { 42 } else { return 0; };
-368 | |     let a = if a < 99 { 42 } else { return 0; };
-369 | |     let a = if a < 99 { 42 } else { return 0; };
+363 | / fn early_ret() -> i32 {
+364 | |     let a = if true { 42 } else { return 0; };
+365 | |     let a = if a < 99 { 42 } else { return 0; };
+366 | |     let a = if a < 99 { 42 } else { return 0; };
 ...   |
-382 | |     }
-383 | | }
+379 | |     }
+380 | | }
     | |_^
     |
     = help: you could split it up into multiple smaller functions

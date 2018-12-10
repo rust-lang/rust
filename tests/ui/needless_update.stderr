@@ -1,7 +1,7 @@
 error: struct update has no effect, all the fields in the struct have already been specified
-  --> $DIR/needless_update.rs:26:23
+  --> $DIR/needless_update.rs:22:23
    |
-26 |     S { a: 1, b: 1, ..base };
+22 |     S { a: 1, b: 1, ..base };
    |                       ^^^^
    |
    = note: `-D clippy::needless-update` implied by `-D warnings`

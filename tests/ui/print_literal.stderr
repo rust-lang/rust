@@ -1,88 +1,88 @@
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:34:71
+  --> $DIR/print_literal.rs:31:71
    |
-34 |     println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
+31 |     println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
    |                                                                       ^
    |
    = note: `-D clippy::print-literal` implied by `-D warnings`
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:35:24
+  --> $DIR/print_literal.rs:32:24
    |
-35 |     print!("Hello {}", "world");
+32 |     print!("Hello {}", "world");
    |                        ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:36:36
+  --> $DIR/print_literal.rs:33:36
    |
-36 |     println!("Hello {} {}", world, "world");
+33 |     println!("Hello {} {}", world, "world");
    |                                    ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:37:26
+  --> $DIR/print_literal.rs:34:26
    |
-37 |     println!("Hello {}", "world");
+34 |     println!("Hello {}", "world");
    |                          ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:38:30
+  --> $DIR/print_literal.rs:35:30
    |
-38 |     println!("10 / 4 is {}", 2.5);
+35 |     println!("10 / 4 is {}", 2.5);
    |                              ^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:39:28
+  --> $DIR/print_literal.rs:36:28
    |
-39 |     println!("2 + 1 = {}", 3);
+36 |     println!("2 + 1 = {}", 3);
    |                            ^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:44:25
+  --> $DIR/print_literal.rs:41:25
    |
-44 |     println!("{0} {1}", "hello", "world");
+41 |     println!("{0} {1}", "hello", "world");
    |                         ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:44:34
+  --> $DIR/print_literal.rs:41:34
    |
-44 |     println!("{0} {1}", "hello", "world");
+41 |     println!("{0} {1}", "hello", "world");
    |                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:45:25
+  --> $DIR/print_literal.rs:42:25
    |
-45 |     println!("{1} {0}", "hello", "world");
+42 |     println!("{1} {0}", "hello", "world");
    |                         ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:45:34
+  --> $DIR/print_literal.rs:42:34
    |
-45 |     println!("{1} {0}", "hello", "world");
+42 |     println!("{1} {0}", "hello", "world");
    |                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:48:33
+  --> $DIR/print_literal.rs:45:35
    |
-48 |     println!("{foo} {bar}", foo="hello", bar="world");
-   |                                 ^^^^^^^
+45 |     println!("{foo} {bar}", foo = "hello", bar = "world");
+   |                                   ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:48:46
+  --> $DIR/print_literal.rs:45:50
    |
-48 |     println!("{foo} {bar}", foo="hello", bar="world");
-   |                                              ^^^^^^^
+45 |     println!("{foo} {bar}", foo = "hello", bar = "world");
+   |                                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:49:33
+  --> $DIR/print_literal.rs:46:35
    |
-49 |     println!("{bar} {foo}", foo="hello", bar="world");
-   |                                 ^^^^^^^
+46 |     println!("{bar} {foo}", foo = "hello", bar = "world");
+   |                                   ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:49:46
+  --> $DIR/print_literal.rs:46:50
    |
-49 |     println!("{bar} {foo}", foo="hello", bar="world");
-   |                                              ^^^^^^^
+46 |     println!("{bar} {foo}", foo = "hello", bar = "world");
+   |                                                  ^^^^^^^
 
 error: aborting due to 14 previous errors
 

@@ -1,48 +1,48 @@
 error: reference to zeroed memory
-  --> $DIR/invalid_ref.rs:37:24
+  --> $DIR/invalid_ref.rs:33:24
    |
-37 |     let ref_zero: &T = std::mem::zeroed();     // warning
+33 |     let ref_zero: &T = std::mem::zeroed(); // warning
    |                        ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(clippy::invalid_ref)] on by default
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 
 error: reference to zeroed memory
-  --> $DIR/invalid_ref.rs:41:24
+  --> $DIR/invalid_ref.rs:37:24
    |
-41 |     let ref_zero: &T = core::mem::zeroed();   // warning
+37 |     let ref_zero: &T = core::mem::zeroed(); // warning
    |                        ^^^^^^^^^^^^^^^^^^^
    |
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 
 error: reference to zeroed memory
-  --> $DIR/invalid_ref.rs:45:24
+  --> $DIR/invalid_ref.rs:41:24
    |
-45 |     let ref_zero: &T = std::intrinsics::init();   // warning
+41 |     let ref_zero: &T = std::intrinsics::init(); // warning
    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: reference to uninitialized memory
+  --> $DIR/invalid_ref.rs:45:26
+   |
+45 |     let ref_uninit: &T = std::mem::uninitialized(); // warning
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 
 error: reference to uninitialized memory
   --> $DIR/invalid_ref.rs:49:26
    |
-49 |     let ref_uninit: &T = std::mem::uninitialized();   // warning
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+49 |     let ref_uninit: &T = core::mem::uninitialized(); // warning
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 
 error: reference to uninitialized memory
   --> $DIR/invalid_ref.rs:53:26
    |
-53 |     let ref_uninit: &T = core::mem::uninitialized();   // warning
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-
-error: reference to uninitialized memory
-  --> $DIR/invalid_ref.rs:57:26
-   |
-57 |     let ref_uninit: &T = std::intrinsics::uninit();   // warning
+53 |     let ref_uninit: &T = std::intrinsics::uninit(); // warning
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html

@@ -1,21 +1,21 @@
 error: this lifetime isn't used in the function definition
-  --> $DIR/unused_lt.rs:26:14
+  --> $DIR/unused_lt.rs:23:14
    |
-26 | fn unused_lt<'a>(x: u8) {
+23 | fn unused_lt<'a>(x: u8) {}
    |              ^^
    |
    = note: `-D clippy::extra-unused-lifetimes` implied by `-D warnings`
 
 error: this lifetime isn't used in the function definition
-  --> $DIR/unused_lt.rs:30:25
+  --> $DIR/unused_lt.rs:25:25
    |
-30 | fn unused_lt_transitive<'a, 'b: 'a>(x: &'b u8) {
+25 | fn unused_lt_transitive<'a, 'b: 'a>(x: &'b u8) {
    |                         ^^
 
 error: this lifetime isn't used in the function definition
-  --> $DIR/unused_lt.rs:60:10
+  --> $DIR/unused_lt.rs:50:10
    |
-60 |     fn x<'a>(&self) {}
+50 |     fn x<'a>(&self) {}
    |          ^^
 
 error: aborting due to 3 previous errors

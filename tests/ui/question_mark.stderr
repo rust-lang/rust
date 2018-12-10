@@ -1,21 +1,19 @@
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:12:2
+  --> $DIR/question_mark.rs:11:5
    |
-12 |       if a.is_none() {
-   |  _____^
-13 | |         return None
-14 | |     }
+11 | /     if a.is_none() {
+12 | |         return None;
+13 | |     }
    | |_____^ help: replace_it_with: `a?;`
    |
    = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:47:3
+  --> $DIR/question_mark.rs:46:9
    |
-47 |           if (self.opt).is_none() {
-   |  _________^
-48 | |             return None;
-49 | |         }
+46 | /         if (self.opt).is_none() {
+47 | |             return None;
+48 | |         }
    | |_________^ help: replace_it_with: `(self.opt)?;`
 
 error: aborting due to 2 previous errors

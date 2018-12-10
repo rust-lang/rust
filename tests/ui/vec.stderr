@@ -1,39 +1,39 @@
 error: useless use of `vec!`
-  --> $DIR/vec.rs:34:14
+  --> $DIR/vec.rs:30:14
    |
-34 |     on_slice(&vec![]);
+30 |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly: `&[]`
    |
    = note: `-D clippy::useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:37:14
+  --> $DIR/vec.rs:33:14
    |
-37 |     on_slice(&vec![1, 2]);
+33 |     on_slice(&vec![1, 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:40:14
+  --> $DIR/vec.rs:36:14
    |
-40 |     on_slice(&vec ![1, 2]);
-   |              ^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
-
-error: useless use of `vec!`
-  --> $DIR/vec.rs:43:14
-   |
-43 |     on_slice(&vec!(1, 2));
+36 |     on_slice(&vec![1, 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:46:14
+  --> $DIR/vec.rs:39:14
    |
-46 |     on_slice(&vec![1; 2]);
+39 |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:42:14
+   |
+42 |     on_slice(&vec![1; 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1; 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:59:14
+  --> $DIR/vec.rs:55:14
    |
-59 |     for a in vec![1, 2, 3] {
+55 |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
 
 error: aborting due to 6 previous errors

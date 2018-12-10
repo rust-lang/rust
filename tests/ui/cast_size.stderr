@@ -1,123 +1,123 @@
 error: casting isize to i8 may truncate the value
-  --> $DIR/cast_size.rs:17:5
+  --> $DIR/cast_size.rs:20:5
    |
-17 |     1isize as i8;
+20 |     1isize as i8;
    |     ^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
 
 error: casting isize to f64 causes a loss of precision on targets with 64-bit wide pointers (isize is 64 bits wide, but f64's mantissa is only 52 bits wide)
-  --> $DIR/cast_size.rs:18:5
+  --> $DIR/cast_size.rs:21:5
    |
-18 |     1isize as f64;
+21 |     1isize as f64;
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
 error: casting usize to f64 causes a loss of precision on targets with 64-bit wide pointers (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
-  --> $DIR/cast_size.rs:19:5
+  --> $DIR/cast_size.rs:22:5
    |
-19 |     1usize as f64;
+22 |     1usize as f64;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to f32 causes a loss of precision (isize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
-  --> $DIR/cast_size.rs:20:5
+  --> $DIR/cast_size.rs:23:5
    |
-20 |     1isize as f32;
+23 |     1isize as f32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to f32 causes a loss of precision (usize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
-  --> $DIR/cast_size.rs:21:5
+  --> $DIR/cast_size.rs:24:5
    |
-21 |     1usize as f32;
+24 |     1usize as f32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to i32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast_size.rs:22:5
+  --> $DIR/cast_size.rs:25:5
    |
-22 |     1isize as i32;
+25 |     1isize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to u32 may lose the sign of the value
-  --> $DIR/cast_size.rs:23:5
+  --> $DIR/cast_size.rs:26:5
    |
-23 |     1isize as u32;
+26 |     1isize as u32;
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-sign-loss` implied by `-D warnings`
 
 error: casting isize to u32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast_size.rs:23:5
+  --> $DIR/cast_size.rs:26:5
    |
-23 |     1isize as u32;
+26 |     1isize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to u32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast_size.rs:24:5
+  --> $DIR/cast_size.rs:27:5
    |
-24 |     1usize as u32;
+27 |     1usize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to i32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast_size.rs:25:5
+  --> $DIR/cast_size.rs:28:5
    |
-25 |     1usize as i32;
+28 |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to i32 may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast_size.rs:25:5
+  --> $DIR/cast_size.rs:28:5
    |
-25 |     1usize as i32;
+28 |     1usize as i32;
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
 
 error: casting i64 to isize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast_size.rs:27:5
+  --> $DIR/cast_size.rs:30:5
    |
-27 |     1i64 as isize;
+30 |     1i64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to usize may lose the sign of the value
-  --> $DIR/cast_size.rs:28:5
+  --> $DIR/cast_size.rs:31:5
    |
-28 |     1i64 as usize;
+31 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to usize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast_size.rs:28:5
+  --> $DIR/cast_size.rs:31:5
    |
-28 |     1i64 as usize;
+31 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to isize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast_size.rs:29:5
+  --> $DIR/cast_size.rs:32:5
    |
-29 |     1u64 as isize;
+32 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to isize may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast_size.rs:29:5
+  --> $DIR/cast_size.rs:32:5
    |
-29 |     1u64 as isize;
+32 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to usize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast_size.rs:30:5
+  --> $DIR/cast_size.rs:33:5
    |
-30 |     1u64 as usize;
+33 |     1u64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u32 to isize may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast_size.rs:31:5
+  --> $DIR/cast_size.rs:34:5
    |
-31 |     1u32 as isize;
+34 |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting i32 to usize may lose the sign of the value
-  --> $DIR/cast_size.rs:34:5
+  --> $DIR/cast_size.rs:37:5
    |
-34 |     1i32 as usize;
+37 |     1i32 as usize;
    |     ^^^^^^^^^^^^^
 
 error: aborting due to 19 previous errors

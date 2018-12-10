@@ -1,33 +1,33 @@
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:20:9
    |
-20 |         0 ... 10 => println!("0 ... 10"),
-   |         ^^^^^^^^
+20 |         0...10 => println!("0 ... 10"),
+   |         ^^^^^^
    |
    = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:21:9
    |
-21 |         0 ... 11 => println!("0 ... 11"),
-   |         ^^^^^^^^
+21 |         0...11 => println!("0 ... 11"),
+   |         ^^^^^^
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:26:9
    |
-26 |         0 ... 5 => println!("0 ... 5"),
-   |         ^^^^^^^
+26 |         0...5 => println!("0 ... 5"),
+   |         ^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:28:9
    |
-28 |         FOO ... 11 => println!("0 ... 11"),
-   |         ^^^^^^^^^^
+28 |         FOO...11 => println!("0 ... 11"),
+   |         ^^^^^^^^
 
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:34:9
    |
-34 |         0 ... 5 => println!("0 ... 5"),
-   |         ^^^^^^^
+34 |         0...5 => println!("0 ... 5"),
+   |         ^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:33:9
@@ -38,8 +38,8 @@ note: overlaps with this
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:40:9
    |
-40 |         0 ... 2 => println!("0 ... 2"),
-   |         ^^^^^^^
+40 |         0...2 => println!("0 ... 2"),
+   |         ^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:39:9
@@ -50,14 +50,14 @@ note: overlaps with this
 error: some ranges overlap
   --> $DIR/match_overlapping_arm.rs:63:9
    |
-63 |         0 .. 11 => println!("0 .. 11"),
-   |         ^^^^^^^
+63 |         0..11 => println!("0 .. 11"),
+   |         ^^^^^
    |
 note: overlaps with this
   --> $DIR/match_overlapping_arm.rs:64:9
    |
-64 |         0 ... 11 => println!("0 ... 11"),
-   |         ^^^^^^^^
+64 |         0...11 => println!("0 ... 11"),
+   |         ^^^^^^
 
 error: aborting due to 5 previous errors
 
