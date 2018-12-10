@@ -1,4 +1,5 @@
 #![feature(slice_concat_ext, custom_test_frameworks)]
+// Custom test runner, to avoid libtest being wrapped around compiletest which wraps libtest.
 #![test_runner(test_runner)]
 
 use std::slice::SliceConcatExt;
@@ -24,11 +25,6 @@ fn rustc_lib_path() -> PathBuf {
     option_env!("RUSTC_LIB_PATH").unwrap().into()
 }
 
-fn have_fullmir() -> bool {
-    // We assume we have full MIR when MIRI_SYSROOT is set or when we are in rustc
-    std::env::var("MIRI_SYSROOT").is_ok() || rustc_test_suite().is_some()
-}
-
 fn mk_config(mode: &str) -> compiletest::common::ConfigWithTemp {
     let mut config = compiletest::Config::default().tempdir();
     config.mode = mode.parse().expect("Invalid mode");
@@ -41,16 +37,7 @@ fn mk_config(mode: &str) -> compiletest::common::ConfigWithTemp {
     config
 }
 
-fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
-    if need_fullmir && !have_fullmir() {
-        eprintln!("{}\n", format!(
-            "## Skipping compile-fail tests in {} against miri for target {} due to missing mir",
-            path,
-            target
-        ).yellow().bold());
-        return;
-    }
-
+fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, opt: bool) {
     let opt_str = if opt { " with optimizations" } else { "" };
     eprintln!("{}", format!(
         "## Running compile-fail tests in {} against miri for target {}{}",
@@ -78,16 +65,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
     compiletest::run_tests(&config);
 }
 
-fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
-    if need_fullmir && !have_fullmir() {
-        eprintln!("{}\n", format!(
-            "## Skipping run-pass tests in {} against miri for target {} due to missing mir",
-            path,
-            target
-        ).yellow().bold());
-        return;
-    }
-
+fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, opt: bool) {
     let opt_str = if opt { " with optimizations" } else { "" };
     eprintln!("{}", format!(
         "## Running run-pass tests in {} against miri for target {}{}",
@@ -104,10 +82,6 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
         // FIXME: We use opt level 1 because MIR inlining defeats the validation
         // whitelist.
         flags.push("-Zmir-opt-level=1".to_owned());
-    }
-    if !have_fullmir() {
-        // FIXME: Validation relies on the EscapeToRaw statements being emitted
-        flags.push("-Zmiri-disable-validation".to_owned());
     }
 
     let mut config = mk_config("ui");
@@ -132,7 +106,7 @@ fn target_has_std<P: Into<PathBuf>>(path: P) -> bool {
         .map(|entry| entry.unwrap())
         .filter(|entry| entry.file_type().unwrap().is_file())
         .filter_map(|entry| entry.file_name().into_string().ok())
-        .any(|file_name| file_name.starts_with("libstd") && file_name.ends_with(".rlib"))
+        .any(|file_name| file_name == "libstd.rlib")
 }
 
 
@@ -186,18 +160,17 @@ fn run_pass_miri(opt: bool) {
     let host = get_host();
 
     for_all_targets(&sysroot, |target| {
-        miri_pass(&sysroot, "tests/run-pass", &target, &host, false, opt);
+        miri_pass(&sysroot, "tests/run-pass", &target, &host, opt);
     });
-    miri_pass(&sysroot, "tests/run-pass-fullmir", &host, &host, true, opt);
 }
 
 fn compile_fail_miri(opt: bool) {
     let sysroot = get_sysroot();
     let host = get_host();
 
-    // FIXME: run tests for other targets, too
-    compile_fail(&sysroot, "tests/compile-fail", &host, &host, false, opt);
-    compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true, opt);
+    for_all_targets(&sysroot, |target| {
+        compile_fail(&sysroot, "tests/compile-fail", &target, &host, opt);
+    });
 }
 
 fn test_runner(_tests: &[&()]) {
