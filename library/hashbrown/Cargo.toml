@@ -10,14 +10,19 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 
 [dependencies]
-scopeguard = { version = "0.3", default-features = false }
 byteorder = { version = "1.0", default-features = false }
+scopeguard = { version = "0.3", default-features = false }
+
+# For external trait impls
+rayon = { version = "1.0", optional = true }
 serde = { version = "1.0", default-features = false, optional = true }
 
 [dev-dependencies]
+lazy_static = "~1.2"
+rand = "0.5.1"
+rayon = "1.0"
 rustc-hash = "1.0"
 serde_test = "1.0"
-rand = "0.5.1"
 
 [features]
 nightly = []

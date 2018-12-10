@@ -5,6 +5,7 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::mem::ManuallyDrop;
+use core::ops::Range;
 use core::ptr::NonNull;
 use scopeguard::guard;
 
@@ -21,6 +22,17 @@ fn likely(b: bool) -> bool {
 #[inline]
 fn unlikely(b: bool) -> bool {
     b
+}
+
+#[cfg(feature = "nightly")]
+#[inline]
+unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
+    to.offset_from(from) as usize
+}
+#[cfg(not(feature = "nightly"))]
+#[inline]
+unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
+    (to as usize - from as usize) / mem::size_of::<T>()
 }
 
 // Use the SSE2 implementation if possible: it allows us to scan 16 buckets at
@@ -183,6 +195,10 @@ pub struct Bucket<T> {
     ptr: NonNull<T>,
 }
 
+// This Send impl is needed for rayon support. This is safe since Bucket is
+// never exposed in a public API.
+unsafe impl<T> Send for Bucket<T> {}
+
 impl<T> Clone for Bucket<T> {
     #[inline]
     fn clone(&self) -> Self {
@@ -299,16 +315,8 @@ impl<T> RawTable<T> {
 
     /// Returns the index of a bucket from a `Bucket`.
     #[inline]
-    #[cfg(feature = "nightly")]
     unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
-        bucket.ptr.as_ptr().offset_from(self.data.as_ptr()) as usize
-    }
-
-    /// Returns the index of a bucket from a `Bucket`.
-    #[inline]
-    #[cfg(not(feature = "nightly"))]
-    unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
-        (bucket.ptr.as_ptr() as usize - self.data.as_ptr() as usize) / mem::size_of::<T>()
+        offset_from(bucket.ptr.as_ptr(), self.data.as_ptr())
     }
 
     /// Returns a pointer to a control byte.
@@ -429,7 +437,7 @@ impl<T> RawTable<T> {
 
     /// Marks all table buckets as empty without dropping their contents.
     #[inline]
-    fn clear_no_drop(&mut self) {
+    pub fn clear_no_drop(&mut self) {
         if self.bucket_mask != 0 {
             unsafe {
                 self.ctrl(0)
@@ -704,14 +712,8 @@ impl<T> RawTable<T> {
     /// struct, we have to make the `iter` method unsafe.
     #[inline]
     pub unsafe fn iter(&self) -> RawIter<T> {
-        let current_group = Group::load_aligned(self.ctrl.as_ptr())
-            .match_empty_or_deleted()
-            .invert();
         RawIter {
-            data: self.data.as_ptr(),
-            ctrl: self.ctrl.as_ptr(),
-            current_group,
-            end: self.ctrl(self.bucket_mask),
+            iter: RawIterRange::new(self.ctrl.as_ptr(), self.data.as_ptr(), 0..self.buckets()),
             items: self.items,
         }
     }
@@ -727,6 +729,21 @@ impl<T> RawTable<T> {
             table: NonNull::from(self),
             _marker: PhantomData,
         }
+    }
+
+    /// Converts the table into a raw allocation. The contents of the table
+    /// should be dropped using a `RawIter` before freeing the allocation.
+    #[inline]
+    pub fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
+        let alloc = if self.bucket_mask != 0 {
+            let (layout, _) = calculate_layout::<T>(self.buckets())
+                .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
+            Some((self.ctrl.cast(), layout))
+        } else {
+            None
+        };
+        mem::forget(self);
+        alloc
     }
 }
 
@@ -805,41 +822,132 @@ impl<T> IntoIterator for RawTable<T> {
     #[inline]
     fn into_iter(self) -> RawIntoIter<T> {
         unsafe {
-            let alloc = if self.bucket_mask != 0 {
-                let (layout, _) = calculate_layout::<T>(self.buckets())
-                    .unwrap_or_else(|| hint::unreachable_unchecked());
-                Some((self.ctrl.cast(), layout))
-            } else {
-                None
-            };
             let iter = self.iter();
-            mem::forget(self);
+            let alloc = self.into_alloc();
             RawIntoIter { iter, alloc }
         }
     }
 }
 
-/// Iterator which returns a raw pointer to every full bucket in the table.
-pub struct RawIter<T> {
+/// Iterator over a a sub-range of a table. Unlike `RawIter` this iterator does
+/// not track an item count.
+pub struct RawIterRange<T> {
     // Using *const here for covariance
     data: *const T,
     ctrl: *const u8,
     current_group: BitMask,
     end: *const u8,
-    items: usize,
 }
 
-unsafe impl<T> Send for RawIter<T> where T: Send {}
-unsafe impl<T> Sync for RawIter<T> where T: Sync {}
+impl<T> RawIterRange<T> {
+    /// Returns a `RawIterRange` covering a subset of a table.
+    ///
+    /// The start offset must be aligned to the group width.
+    #[inline]
+    unsafe fn new(
+        input_ctrl: *const u8,
+        input_data: *const T,
+        range: Range<usize>,
+    ) -> RawIterRange<T> {
+        debug_assert_eq!(range.start % Group::WIDTH, 0);
+        let ctrl = input_ctrl.add(range.start);
+        let data = input_data.add(range.start);
+        let end = input_ctrl.add(range.end);
+        debug_assert_eq!(offset_from(end, ctrl), range.end - range.start);
+        let current_group = Group::load_aligned(ctrl).match_empty_or_deleted().invert();
+        RawIterRange {
+            data,
+            ctrl,
+            current_group,
+            end,
+        }
+    }
+
+    /// Splits a `RawIterRange` into two halves.
+    ///
+    /// This will fail if the total range is smaller than the group width.
+    #[inline]
+    #[cfg(feature = "rayon")]
+    pub fn split(mut self) -> (RawIterRange<T>, Option<RawIterRange<T>>) {
+        unsafe {
+            let len = offset_from(self.end, self.ctrl);
+            debug_assert!(len.is_power_of_two());
+            if len <= Group::WIDTH {
+                (self, None)
+            } else {
+                debug_assert_eq!(len % (Group::WIDTH * 2), 0);
+                let mid = len / 2;
+                let tail = RawIterRange::new(self.ctrl, self.data, mid..len);
+                debug_assert_eq!(self.data.add(mid), tail.data);
+                debug_assert_eq!(self.end, tail.end);
+                self.end = self.ctrl.add(mid);
+                debug_assert_eq!(self.end, tail.ctrl);
+                (self, Some(tail))
+            }
+        }
+    }
+}
+
+unsafe impl<T> Send for RawIterRange<T> where T: Send {}
+unsafe impl<T> Sync for RawIterRange<T> where T: Sync {}
+
+impl<T> Clone for RawIterRange<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        RawIterRange {
+            data: self.data,
+            ctrl: self.ctrl,
+            current_group: self.current_group,
+            end: self.end,
+        }
+    }
+}
+
+impl<T> Iterator for RawIterRange<T> {
+    type Item = Bucket<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Bucket<T>> {
+        unsafe {
+            loop {
+                if let Some(index) = self.current_group.lowest_set_bit() {
+                    self.current_group = self.current_group.remove_lowest_bit();
+                    return Some(Bucket::from_ptr(self.data.add(index)));
+                }
+
+                self.ctrl = self.ctrl.add(Group::WIDTH);
+                if self.ctrl >= self.end {
+                    return None;
+                }
+
+                self.data = self.data.add(Group::WIDTH);
+                self.current_group = Group::load_aligned(self.ctrl)
+                    .match_empty_or_deleted()
+                    .invert();
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We don't have an item count, so just guess based on the range size.
+        (0, Some(unsafe { offset_from(self.end, self.ctrl) }))
+    }
+}
+
+impl<T> FusedIterator for RawIterRange<T> {}
+
+/// Iterator which returns a raw pointer to every full bucket in the table.
+pub struct RawIter<T> {
+    pub iter: RawIterRange<T>,
+    items: usize,
+}
 
 impl<T> Clone for RawIter<T> {
     #[inline]
     fn clone(&self) -> Self {
         RawIter {
-            data: self.data,
-            ctrl: self.ctrl,
-            current_group: self.current_group,
-            end: self.end,
+            iter: self.iter.clone(),
             items: self.items,
         }
     }
@@ -850,27 +958,17 @@ impl<T> Iterator for RawIter<T> {
 
     #[inline]
     fn next(&mut self) -> Option<Bucket<T>> {
-        unsafe {
-            loop {
-                if let Some(index) = self.current_group.lowest_set_bit() {
-                    self.current_group = self.current_group.remove_lowest_bit();
-                    self.items -= 1;
-                    return Some(Bucket::from_ptr(self.data.add(index)));
-                }
-
-                self.ctrl = self.ctrl.add(Group::WIDTH);
-                if self.ctrl >= self.end {
-                    // We don't check against items == 0 here to allow the
-                    // compiler to optimize away the item count entirely if the
-                    // iterator length is never queried.
-                    debug_assert_eq!(self.items, 0);
-                    return None;
-                }
-
-                self.data = self.data.add(Group::WIDTH);
-                self.current_group = Group::load_aligned(self.ctrl)
-                    .match_empty_or_deleted()
-                    .invert();
+        match self.iter.next() {
+            Some(b) => {
+                self.items -= 1;
+                Some(b)
+            }
+            None => {
+                // We don't check against items == 0 here to allow the
+                // compiler to optimize away the item count entirely if the
+                // iterator length is never queried.
+                debug_assert_eq!(self.items, 0);
+                None
             }
         }
     }
