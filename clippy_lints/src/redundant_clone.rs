@@ -250,7 +250,8 @@ fn is_call_with_ref_arg<'tcx>(
 
 type CannotMoveOut = bool;
 
-/// Finds the first `to = (&)from`, and returns `Some(from)`.
+/// Finds the first `to = (&)from`, and returns
+/// ``Some((from, [`true` if `from` cannot be moved out]))``.
 fn find_stmt_assigns_to<'a, 'tcx: 'a>(
     cx: &LateContext<'_, 'tcx>,
     mir: &mir::Mir<'tcx>,
@@ -263,10 +264,10 @@ fn find_stmt_assigns_to<'a, 'tcx: 'a>(
             if *local == to {
                 if by_ref {
                     if let mir::Rvalue::Ref(_, _, ref place) = **v {
-                        return base_local(cx, mir, place);
+                        return base_local_and_movability(cx, mir, place);
                     }
                 } else if let mir::Rvalue::Use(mir::Operand::Copy(ref place)) = **v {
-                    return base_local(cx, mir, place);
+                    return base_local_and_movability(cx, mir, place);
                 }
             }
         }
@@ -275,15 +276,20 @@ fn find_stmt_assigns_to<'a, 'tcx: 'a>(
     })
 }
 
-fn base_local<'tcx>(
+/// Extracts and returns the undermost base `Local` of given `place`. Returns `place` itself
+/// if it is already a `Local`.
+///
+/// Also reports whether given `place` cannot be moved out.
+fn base_local_and_movability<'tcx>(
     cx: &LateContext<'_, 'tcx>,
     mir: &mir::Mir<'tcx>,
     mut place: &mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     use rustc::mir::Place::*;
 
+    // Dereference. You cannot move things out from a borrowed value.
     let mut deref = false;
-    // Accessing a field of an ADT that has `Drop`
+    // Accessing a field of an ADT that has `Drop`. Moving the field out will cause E0509.
     let mut field = false;
 
     loop {
