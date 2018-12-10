@@ -2169,7 +2169,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
         use core::fmt::Write;
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
-           .expect("a Display implementation return an error unexpectedly");
+           .expect("a Display implementation returned an error unexpectedly");
         buf.shrink_to_fit();
         buf
     }
