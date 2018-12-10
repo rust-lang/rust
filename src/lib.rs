@@ -312,7 +312,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let output_name = out_filename(sess, crate_type, &outputs, &res.crate_name.as_str());
             match crate_type {
                 CrateType::Rlib => link::link_rlib(sess, &res, output_name),
-                CrateType::Executable => link::link_bin(sess, &res, &output_name),
+                CrateType::Dylib | CrateType::Executable => {
+                    link::link_natively(sess, crate_type, &res, &output_name);
+                }
                 _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
             }
         }

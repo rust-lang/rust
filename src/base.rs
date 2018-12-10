@@ -267,7 +267,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                     drop_place.write_place_ref(fx, arg_place);
                     match ty.sty {
                         ty::Dynamic(..) => {
-                            unimpl!("Drop for trait object");
+                            fx.tcx.sess.warn("Drop for trait object");
                         }
                         _ => {
                             let drop_fn_ty = drop_fn.ty(fx.tcx);
