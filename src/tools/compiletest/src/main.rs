@@ -682,6 +682,20 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+/// Walk the directory at `path` and collect timestamps of all files into `inputs`.
+fn collect_timestamps(path: &PathBuf, inputs: &mut Vec<FileTime>) {
+    let mut entries = path.read_dir().unwrap().collect::<Vec<_>>();
+    while let Some(entry) = entries.pop() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if entry.metadata().unwrap().is_file() {
+            inputs.push(mtime(&path));
+        } else {
+            entries.extend(path.read_dir().unwrap());
+        }
+    }
+}
+
 fn up_to_date(
     config: &Config,
     testpaths: &TestPaths,
@@ -725,16 +739,7 @@ fn up_to_date(
     for pretty_printer_file in &pretty_printer_files {
         inputs.push(mtime(&rust_src_dir.join(pretty_printer_file)));
     }
-    let mut entries = config.run_lib_path.read_dir().unwrap().collect::<Vec<_>>();
-    while let Some(entry) = entries.pop() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if entry.metadata().unwrap().is_file() {
-            inputs.push(mtime(&path));
-        } else {
-            entries.extend(path.read_dir().unwrap());
-        }
-    }
+    collect_timestamps(&config.run_lib_path, &mut inputs);
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         inputs.push(mtime(&rustdoc_path));
         inputs.push(mtime(&rust_src_dir.join("src/etc/htmldocck.py")));
@@ -745,6 +750,9 @@ fn up_to_date(
         let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
         inputs.push(mtime(path));
     }
+
+    // Compiletest itself.
+    collect_timestamps(&rust_src_dir.join("src/tools/compiletest/"), &mut inputs);
 
     inputs.iter().any(|input| *input > stamp)
 }
