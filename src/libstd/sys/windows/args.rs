@@ -72,13 +72,14 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         QUOTE => {
             loop {
                 i += 1;
-                if *lp_cmd_line.offset(i) == 0 {
+                let c = *lp_cmd_line.offset(i);
+                if c == 0 {
                     ret_val.push(OsString::from_wide(
                         slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
                     ));
                     return ret_val.into_iter();
                 }
-                if *lp_cmd_line.offset(i) == QUOTE {
+                if c == QUOTE {
                     break;
                 }
             }
@@ -101,13 +102,14 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         _ => {
             loop {
                 i += 1;
-                if *lp_cmd_line.offset(i) == 0 {
+                let c = *lp_cmd_line.offset(i);
+                if c == 0 {
                     ret_val.push(OsString::from_wide(
                         slice::from_raw_parts(lp_cmd_line, i as usize)
                     ));
                     return ret_val.into_iter();
                 }
-                if let 0...SPACE = *lp_cmd_line.offset(i) {
+                if c > 0 && c <= SPACE {
                     break;
                 }
             }
