@@ -23,6 +23,7 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [How Clippy works](#how-clippy-works)
   * [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
 * [Issue and PR Triage](#issue-and-pr-triage)
+* [Bors and Homu](#bors-and-homu)
 * [Contributions](#contributions)
 
 ## Getting started
@@ -156,7 +157,7 @@ to style guidelines. The code has to be formatted by `rustfmt` before a PR will 
 
 It can be installed via `rustup`:
 ```bash
-rustup component add rustfmt-preview
+rustup component add rustfmt
 ```
 
 Use `cargo fmt --all` to format the whole codebase.
@@ -220,7 +221,7 @@ That's why the `else_if_without_else` example uses the `register_early_lint_pass
 
 ### Fixing build failures caused by Rust
 
-Clippy will sometimes break because it still depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
+Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
 
 In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit history][toolstate_commit_history].
 You will then have to look for the last commit that contains `test-pass -> build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
@@ -257,6 +258,17 @@ Our highest priority is fixing [crashes][l-crash] and [bugs][l-bug]. We don't
 want Clippy to crash on your code and we want it to be as reliable as the
 suggestions from Rust compiler errors.
 
+## Bors and Homu
+
+We use a bot powered by [Homu][homu] to help automate testing and landing of pull
+requests in Clippy. The bot's username is @bors.
+
+You can find the Clippy bors queue [here][homu_queue].
+
+If you have @bors permissions, you can find an overview of the available
+commands [here][homu_instructions].
+
+
 ## Contributions
 
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
@@ -288,3 +300,6 @@ or the [MIT](http://opensource.org/licenses/MIT) license.
 [triage]: https://forge.rust-lang.org/triage-procedure.html
 [l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash%20%3Aboom%3A
 [l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug%20%3Abeetle%3A
+[homu]: https://github.com/servo/homu
+[homu_instructions]: https://buildbot2.rust-lang.org/homu/
+[homu_queue]: https://buildbot2.rust-lang.org/homu/queue/clippy
