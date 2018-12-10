@@ -22,7 +22,7 @@ impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
 }
 
 pub struct PrintCx<'a, 'gcx, 'tcx> {
-    pub(crate) tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub(crate) is_debug: bool,
     pub(crate) is_verbose: bool,
     pub(crate) identify_regions: bool,
@@ -32,18 +32,20 @@ pub struct PrintCx<'a, 'gcx, 'tcx> {
 }
 
 impl PrintCx<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        PrintCx {
+            tcx,
+            is_debug: false,
+            is_verbose: tcx.sess.verbose(),
+            identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
+            used_region_names: None,
+            region_index: 0,
+            binder_depth: 0,
+        }
+    }
+
     pub(crate) fn with<R>(f: impl FnOnce(PrintCx<'_, '_, '_>) -> R) -> R {
-        ty::tls::with(|tcx| {
-            f(PrintCx {
-                tcx,
-                is_debug: false,
-                is_verbose: tcx.sess.verbose(),
-                identify_regions: tcx.sess.opts.debugging_opts.identify_regions,
-                used_region_names: None,
-                region_index: 0,
-                binder_depth: 0,
-            })
-        })
+        ty::tls::with(|tcx| f(PrintCx::new(tcx)))
     }
     pub(crate) fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
     where T: TypeFoldable<'tcx>

@@ -2,11 +2,11 @@ use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
+use ty::print::PrintCx;
 use syntax::ast;
-use syntax::symbol::{keywords, LocalInternedString, Symbol};
+use syntax::symbol::{keywords, Symbol};
 
 use std::cell::Cell;
-use std::fmt::Debug;
 
 thread_local! {
     static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false);
@@ -58,16 +58,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// suitable for user output. It is relative to the current crate
     /// root, unless with_forced_absolute_paths was used.
     pub fn item_path_str(self, def_id: DefId) -> String {
-        let mode = FORCE_ABSOLUTE.with(|force| {
-            if force.get() {
-                RootMode::Absolute
-            } else {
-                RootMode::Local
-            }
-        });
-        let mut printer = LocalPathPrinter::new(mode);
-        debug!("item_path_str: printer={:?} def_id={:?}", printer, def_id);
-        self.print_item_path(&mut printer, def_id)
+        debug!("item_path_str: def_id={:?}", def_id);
+        let mut cx = PrintCx::new(self);
+        if FORCE_ABSOLUTE.with(|force| force.get()) {
+            AbsolutePathPrinter::print_item_path(&mut cx, def_id)
+        } else {
+            LocalPathPrinter::print_item_path(&mut cx, def_id)
+        }
     }
 
     /// Returns a string identifying this local node-id.
@@ -78,246 +75,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It always begins with a crate identifier.
     pub fn absolute_item_path_str(self, def_id: DefId) -> String {
-        let mut printer = LocalPathPrinter::new(RootMode::Absolute);
-        debug!("absolute_item_path_str: printer={:?} def_id={:?}", printer, def_id);
-        self.print_item_path(&mut printer, def_id)
+        debug!("absolute_item_path_str: def_id={:?}", def_id);
+        let mut cx = PrintCx::new(self);
+        AbsolutePathPrinter::print_item_path(&mut cx, def_id)
     }
+}
 
-    /// Returns the "path" to a particular crate. This can proceed in
-    /// various ways, depending on the `root_mode` of the `printer`.
-    /// (See `RootMode` enum for more details.)
-    fn print_krate_path<P>(
-        self,
-        printer: &mut P,
-        cnum: CrateNum,
-    ) -> P::Path
-        where P: ItemPathPrinter + Debug
+impl PrintCx<'a, 'gcx, 'tcx> {
+    pub fn default_print_item_path<P>(&mut self, def_id: DefId) -> P::Path
+        where P: ItemPathPrinter
     {
-        debug!(
-            "print_krate_path: printer={:?} cnum={:?} LOCAL_CRATE={:?}",
-            printer, cnum, LOCAL_CRATE
-        );
-        match printer.root_mode() {
-            RootMode::Local => {
-                // In local mode, when we encounter a crate other than
-                // LOCAL_CRATE, execution proceeds in one of two ways:
-                //
-                // 1. for a direct dependency, where user added an
-                //    `extern crate` manually, we put the `extern
-                //    crate` as the parent. So you wind up with
-                //    something relative to the current crate.
-                // 2. for an extern inferred from a path or an indirect crate,
-                //    where there is no explicit `extern crate`, we just prepend
-                //    the crate name.
-                //
-                // Returns `None` for the local crate.
-                if cnum != LOCAL_CRATE {
-                    match *self.extern_crate(cnum.as_def_id()) {
-                        Some(ExternCrate {
-                            src: ExternCrateSource::Extern(def_id),
-                            direct: true,
-                            span,
-                            ..
-                        }) if !span.is_dummy() => {
-                            debug!("print_krate_path: def_id={:?}", def_id);
-                            self.print_item_path(printer, def_id)
-                        }
-                        _ => {
-                            let name = self.crate_name(cnum).as_str();
-                            debug!("print_krate_path: name={:?}", name);
-                            printer.path_crate(Some(&name))
-                        }
-                    }
-                } else if self.sess.rust_2018() {
-                    // We add the `crate::` keyword on Rust 2018, only when desired.
-                    if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
-                        printer.path_crate(Some(&keywords::Crate.name().as_str()))
-                    } else {
-                        printer.path_crate(None)
-                    }
-                } else {
-                    printer.path_crate(None)
-                }
-            }
-            RootMode::Absolute => {
-                // In absolute mode, just write the crate name
-                // unconditionally.
-                let name = self.original_crate_name(cnum).as_str();
-                debug!("print_krate_path: original_name={:?}", name);
-                printer.path_crate(Some(&name))
-            }
-        }
-    }
-
-    /// If possible, this returns a global path resolving to `external_def_id` that is visible
-    /// from at least one local module and returns true. If the crate defining `external_def_id` is
-    /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
-    fn try_print_visible_item_path<P>(
-        self,
-        printer: &mut P,
-        external_def_id: DefId,
-    ) -> Option<P::Path>
-        where P: ItemPathPrinter + Debug
-    {
-        debug!(
-            "try_print_visible_item_path: printer={:?} external_def_id={:?}",
-            printer, external_def_id
-        );
-        let visible_parent_map = self.visible_parent_map(LOCAL_CRATE);
-
-        let (mut cur_def, mut cur_path) = (external_def_id, Vec::<LocalInternedString>::new());
-        loop {
-            debug!(
-                "try_print_visible_item_path: cur_def={:?} cur_path={:?} CRATE_DEF_INDEX={:?}",
-                cur_def, cur_path, CRATE_DEF_INDEX,
-            );
-            // If `cur_def` is a direct or injected extern crate, return the path to the crate
-            // followed by the path to the item within the crate.
-            if cur_def.index == CRATE_DEF_INDEX {
-                match *self.extern_crate(cur_def) {
-                    Some(ExternCrate {
-                        src: ExternCrateSource::Extern(def_id),
-                        direct: true,
-                        span,
-                        ..
-                    }) => {
-                        debug!("try_print_visible_item_path: def_id={:?}", def_id);
-                        let path = if !span.is_dummy() {
-                            self.print_item_path(printer, def_id)
-                        } else {
-                            printer.path_crate(Some(
-                                &self.crate_name(cur_def.krate).as_str(),
-                            ))
-                        };
-                        return Some(cur_path.iter().rev().fold(path, |path, segment| {
-                            printer.path_append(path, &segment)
-                        }));
-                    }
-                    None => {
-                        let path = printer.path_crate(Some(
-                            &self.crate_name(cur_def.krate).as_str(),
-                        ));
-                        return Some(cur_path.iter().rev().fold(path, |path, segment| {
-                            printer.path_append(path, &segment)
-                        }));
-                    }
-                    _ => {},
-                }
-            }
-
-            let mut cur_def_key = self.def_key(cur_def);
-            debug!("try_print_visible_item_path: cur_def_key={:?}", cur_def_key);
-
-            // For a UnitStruct or TupleStruct we want the name of its parent rather than <unnamed>.
-            if let DefPathData::StructCtor = cur_def_key.disambiguated_data.data {
-                let parent = DefId {
-                    krate: cur_def.krate,
-                    index: cur_def_key.parent.expect("DefPathData::StructCtor missing a parent"),
-                };
-
-                cur_def_key = self.def_key(parent);
-            }
-
-            let visible_parent = visible_parent_map.get(&cur_def).cloned();
-            let actual_parent = self.parent(cur_def);
-
-            let data = cur_def_key.disambiguated_data.data;
-            debug!(
-                "try_print_visible_item_path: data={:?} visible_parent={:?} actual_parent={:?}",
-                data, visible_parent, actual_parent,
-            );
-            let symbol = match data {
-                // In order to output a path that could actually be imported (valid and visible),
-                // we need to handle re-exports correctly.
-                //
-                // For example, take `std::os::unix::process::CommandExt`, this trait is actually
-                // defined at `std::sys::unix::ext::process::CommandExt` (at time of writing).
-                //
-                // `std::os::unix` rexports the contents of `std::sys::unix::ext`. `std::sys` is
-                // private so the "true" path to `CommandExt` isn't accessible.
-                //
-                // In this case, the `visible_parent_map` will look something like this:
-                //
-                // (child) -> (parent)
-                // `std::sys::unix::ext::process::CommandExt` -> `std::sys::unix::ext::process`
-                // `std::sys::unix::ext::process` -> `std::sys::unix::ext`
-                // `std::sys::unix::ext` -> `std::os`
-                //
-                // This is correct, as the visible parent of `std::sys::unix::ext` is in fact
-                // `std::os`.
-                //
-                // When printing the path to `CommandExt` and looking at the `cur_def_key` that
-                // corresponds to `std::sys::unix::ext`, we would normally print `ext` and then go
-                // to the parent - resulting in a mangled path like
-                // `std::os::ext::process::CommandExt`.
-                //
-                // Instead, we must detect that there was a re-export and instead print `unix`
-                // (which is the name `std::sys::unix::ext` was re-exported as in `std::os`). To
-                // do this, we compare the parent of `std::sys::unix::ext` (`std::sys::unix`) with
-                // the visible parent (`std::os`). If these do not match, then we iterate over
-                // the children of the visible parent (as was done when computing
-                // `visible_parent_map`), looking for the specific child we currently have and then
-                // have access to the re-exported name.
-                DefPathData::Module(actual_name) |
-                DefPathData::TypeNs(actual_name) if visible_parent != actual_parent => {
-                    visible_parent
-                        .and_then(|parent| {
-                            self.item_children(parent)
-                                .iter()
-                                .find(|child| child.def.def_id() == cur_def)
-                                .map(|child| child.ident.as_str())
-                        })
-                        .unwrap_or_else(|| actual_name.as_str())
-                },
-                _ => {
-                    data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
-                        // Re-exported `extern crate` (#43189).
-                        if let DefPathData::CrateRoot = data {
-                            self.original_crate_name(cur_def.krate).as_str()
-                        } else {
-                            Symbol::intern("<unnamed>").as_str()
-                        }
-                    })
-                },
-            };
-            debug!("try_print_visible_item_path: symbol={:?}", symbol);
-            cur_path.push(symbol);
-
-            cur_def = visible_parent?;
-        }
-    }
-
-    pub fn print_item_path<P>(
-        self,
-        printer: &mut P,
-        def_id: DefId,
-    ) -> P::Path
-        where P: ItemPathPrinter + Debug
-    {
-        debug!(
-            "print_item_path: printer={:?} def_id={:?}",
-            printer, def_id
-        );
-        match printer.root_mode() {
-            RootMode::Local if !def_id.is_local() => {
-                match self.try_print_visible_item_path(printer, def_id) {
-                    Some(path) => return path,
-                    None => {}
-                }
-            }
-            _ => {}
-        }
-
-        let key = self.def_key(def_id);
-        debug!("print_item_path: key={:?}", key);
+        debug!("default_print_item_path: def_id={:?}", def_id);
+        let key = self.tcx.def_key(def_id);
+        debug!("default_print_item_path: key={:?}", key);
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {
                 assert!(key.parent.is_none());
-                self.print_krate_path(printer, def_id.krate)
+                P::path_crate(self, def_id.krate)
             }
 
             DefPathData::Impl => {
-                self.print_impl_path(printer, def_id)
+                self.default_print_impl_path::<P>(def_id)
             }
 
             // Unclear if there is any value in distinguishing these.
@@ -342,27 +120,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::ClosureExpr |
             data @ DefPathData::ImplTrait |
             data @ DefPathData::GlobalMetaData(..) => {
-                let parent_did = self.parent_def_id(def_id).unwrap();
-                let path = self.print_item_path(printer, parent_did);
-                printer.path_append(path, &data.as_interned_str().as_symbol().as_str())
+                let parent_did = self.tcx.parent_def_id(def_id).unwrap();
+                let path = P::print_item_path(self, parent_did);
+                P::path_append(path, &data.as_interned_str().as_symbol().as_str())
             },
 
             DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
-                let parent_def_id = self.parent_def_id(def_id).unwrap();
-                self.print_item_path(printer, parent_def_id)
+                let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                P::print_item_path(self, parent_def_id)
             }
         }
     }
 
-    fn print_impl_path<P>(
-        self,
-        printer: &mut P,
-        impl_def_id: DefId,
-    ) -> P::Path
-        where P: ItemPathPrinter + Debug
+    fn default_print_impl_path<P>(&mut self, impl_def_id: DefId) -> P::Path
+        where P: ItemPathPrinter
     {
-        debug!("print_impl_path: printer={:?} impl_def_id={:?}", printer, impl_def_id);
-        let parent_def_id = self.parent_def_id(impl_def_id).unwrap();
+        debug!("default_print_impl_path: impl_def_id={:?}", impl_def_id);
+        let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
 
         // Always use types for non-local impls, where types are always
         // available, and filename/line-number is mostly uninteresting.
@@ -373,7 +147,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
 
         if !use_types {
-            return self.print_impl_path_fallback(printer, impl_def_id);
+            return self.default_print_impl_path_fallback::<P>(impl_def_id);
         }
 
         // Decide whether to print the parent path for the impl.
@@ -381,27 +155,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // users may find it useful. Currently, we omit the parent if
         // the impl is either in the same module as the self-type or
         // as the trait.
-        let self_ty = self.type_of(impl_def_id);
+        let self_ty = self.tcx.type_of(impl_def_id);
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
-            Some(ty_def_id) => self.parent_def_id(ty_def_id) == Some(parent_def_id),
+            Some(ty_def_id) => self.tcx.parent_def_id(ty_def_id) == Some(parent_def_id),
         };
 
-        let impl_trait_ref = self.impl_trait_ref(impl_def_id);
+        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
         let in_trait_mod = match impl_trait_ref {
             None => false,
-            Some(trait_ref) => self.parent_def_id(trait_ref.def_id) == Some(parent_def_id),
+            Some(trait_ref) => self.tcx.parent_def_id(trait_ref.def_id) == Some(parent_def_id),
         };
 
         if !in_self_mod && !in_trait_mod {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
-            let path = self.print_item_path(printer, parent_def_id);
+            let path = P::print_item_path(self, parent_def_id);
             if let Some(trait_ref) = impl_trait_ref {
-                return printer.path_append(path, &format!("<impl {} for {}>", trait_ref, self_ty));
+                return P::path_append(path, &format!("<impl {} for {}>", trait_ref, self_ty));
             } else {
-                return printer.path_append(path, &format!("<impl {}>", self_ty));
+                return P::path_append(path, &format!("<impl {}>", self_ty));
             }
         }
 
@@ -410,7 +184,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(trait_ref) = impl_trait_ref {
             // Trait impls.
-            return printer.path_impl(&format!("<{} as {}>", self_ty, trait_ref));
+            return P::path_impl(self, &format!("<{} as {}>", self_ty, trait_ref));
         }
 
         // Inherent impls. Try to print `Foo::bar` for an inherent
@@ -420,13 +194,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::Adt(adt_def, substs) => {
                 // FIXME(eddyb) always print without <> here.
                 if substs.types().next().is_none() { // ignore regions
-                    self.print_item_path(printer, adt_def.did)
+                    P::print_item_path(self, adt_def.did)
                 } else {
-                    printer.path_impl(&format!("<{}>", self_ty))
+                    P::path_impl(self, &format!("<{}>", self_ty))
                 }
             }
 
-            ty::Foreign(did) => self.print_item_path(printer, did),
+            ty::Foreign(did) => P::print_item_path(self, did),
 
             ty::Bool |
             ty::Char |
@@ -434,33 +208,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::Uint(_) |
             ty::Float(_) |
             ty::Str => {
-                printer.path_impl(&self_ty.to_string())
+                P::path_impl(self, &self_ty.to_string())
             }
 
             _ => {
-                printer.path_impl(&format!("<{}>", self_ty))
+                P::path_impl(self, &format!("<{}>", self_ty))
             }
         }
     }
 
-    fn print_impl_path_fallback<P>(
-        self,
-        printer: &mut P,
-        impl_def_id: DefId,
-    ) -> P::Path
-        where P: ItemPathPrinter + Debug
+    fn default_print_impl_path_fallback<P>(&mut self, impl_def_id: DefId) -> P::Path
+        where P: ItemPathPrinter
     {
         // If no type info is available, fall back to
         // pretty printing some span information. This should
         // only occur very early in the compiler pipeline.
-        let parent_def_id = self.parent_def_id(impl_def_id).unwrap();
-        let path = self.print_item_path(printer, parent_def_id);
-        let hir_id = self.hir().as_local_hir_id(impl_def_id).unwrap();
-        let item = self.hir().expect_item_by_hir_id(hir_id);
-        let span_str = self.sess.source_map().span_to_string(item.span);
-        printer.path_append(path, &format!("<impl at {}>", span_str))
+        // FIXME(eddyb) this should just be using `tcx.def_span(impl_def_id)`
+        let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
+        let path = P::print_item_path(self, parent_def_id);
+        let hir_id = self.tcx.hir().as_local_hir_id(impl_def_id).unwrap();
+        let item = self.tcx.hir().expect_item_by_hir_id(hir_id);
+        let span_str = self.tcx.sess.source_map().span_to_string(item.span);
+        P::path_append(path, &format!("<impl at {}>", span_str))
     }
+}
 
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the `DefId` of `def_id`'s parent in the def tree. If
     /// this returns `None`, then `def_id` represents a crate root or
     /// inlined root.
@@ -519,58 +292,202 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 }
 
 /// Unifying Trait for different kinds of item paths we might
-/// construct. The basic interface is that components get pushed: the
-/// instance can also customize how we handle the root of a crate.
-pub trait ItemPathPrinter {
+/// construct. The basic interface is that components get appended.
+pub trait ItemPathPrinter: Sized {
     type Path;
 
-    fn root_mode(&self) -> RootMode;
+    fn print_item_path(cx: &mut PrintCx<'_, '_, '_>, def_id: DefId) -> Self::Path {
+        cx.default_print_item_path::<Self>(def_id)
+    }
 
-    fn path_crate(&self, name: Option<&str>) -> Self::Path;
-    fn path_impl(&self, text: &str) -> Self::Path;
-    fn path_append(&self, path: Self::Path, text: &str) -> Self::Path;
+    fn path_crate(cx: &mut PrintCx<'_, '_, '_>, cnum: CrateNum) -> Self::Path;
+    fn path_impl(cx: &mut PrintCx<'_, '_, '_>, text: &str) -> Self::Path;
+    fn path_append(path: Self::Path, text: &str) -> Self::Path;
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum RootMode {
-    /// Try to make a path relative to the local crate. In
-    /// particular, local paths have no prefix, and if the path comes
-    /// from an extern crate, start with the path to the `extern
-    /// crate` declaration.
-    Local,
+struct AbsolutePathPrinter;
 
-    /// Always prepend the crate name to the path, forming an absolute
-    /// path from within a given set of crates.
-    Absolute,
+impl ItemPathPrinter for AbsolutePathPrinter {
+    type Path = String;
+
+    fn path_crate(cx: &mut PrintCx<'_, '_, '_>, cnum: CrateNum) -> Self::Path {
+        cx.tcx.original_crate_name(cnum).to_string()
+    }
+    fn path_impl(_cx: &mut PrintCx<'_, '_, '_>, text: &str) -> Self::Path {
+        text.to_string()
+    }
+    fn path_append(mut path: Self::Path, text: &str) -> Self::Path {
+        if !path.is_empty() {
+            path.push_str("::");
+        }
+        path.push_str(text);
+        path
+    }
 }
 
-#[derive(Debug)]
-struct LocalPathPrinter {
-    root_mode: RootMode,
-}
+struct LocalPathPrinter;
 
 impl LocalPathPrinter {
-    fn new(root_mode: RootMode) -> LocalPathPrinter {
-        LocalPathPrinter {
-            root_mode,
+    /// If possible, this returns a global path resolving to `def_id` that is visible
+    /// from at least one local module and returns true. If the crate defining `def_id` is
+    /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
+    fn try_print_visible_item_path(
+        cx: &mut PrintCx<'_, '_, '_>,
+        def_id: DefId,
+    ) -> Option<<Self as ItemPathPrinter>::Path> {
+        debug!("try_print_visible_item_path: def_id={:?}", def_id);
+
+        // If `def_id` is a direct or injected extern crate, return the
+        // path to the crate followed by the path to the item within the crate.
+        if def_id.index == CRATE_DEF_INDEX {
+            let cnum = def_id.krate;
+
+            if cnum == LOCAL_CRATE {
+                return Some(Self::path_crate(cx, cnum));
+            }
+
+            // In local mode, when we encounter a crate other than
+            // LOCAL_CRATE, execution proceeds in one of two ways:
+            //
+            // 1. for a direct dependency, where user added an
+            //    `extern crate` manually, we put the `extern
+            //    crate` as the parent. So you wind up with
+            //    something relative to the current crate.
+            // 2. for an extern inferred from a path or an indirect crate,
+            //    where there is no explicit `extern crate`, we just prepend
+            //    the crate name.
+            match *cx.tcx.extern_crate(def_id) {
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(def_id),
+                    direct: true,
+                    span,
+                    ..
+                }) => {
+                    debug!("try_print_visible_item_path: def_id={:?}", def_id);
+                    let path = if !span.is_dummy() {
+                        Self::print_item_path(cx, def_id)
+                    } else {
+                        Self::path_crate(cx, cnum)
+                    };
+                    return Some(path);
+                }
+                None => {
+                    return Some(Self::path_crate(cx, cnum));
+                }
+                _ => {},
+            }
         }
+
+        if def_id.is_local() {
+            return None;
+        }
+
+        let visible_parent_map = cx.tcx.visible_parent_map(LOCAL_CRATE);
+
+        let mut cur_def_key = cx.tcx.def_key(def_id);
+        debug!("try_print_visible_item_path: cur_def_key={:?}", cur_def_key);
+
+        // For a UnitStruct or TupleStruct we want the name of its parent rather than <unnamed>.
+        if let DefPathData::StructCtor = cur_def_key.disambiguated_data.data {
+            let parent = DefId {
+                krate: def_id.krate,
+                index: cur_def_key.parent.expect("DefPathData::StructCtor missing a parent"),
+            };
+
+            cur_def_key = cx.tcx.def_key(parent);
+        }
+
+        let visible_parent = visible_parent_map.get(&def_id).cloned()?;
+        let path = Self::try_print_visible_item_path(cx, visible_parent)?;
+        let actual_parent = cx.tcx.parent(def_id);
+
+        let data = cur_def_key.disambiguated_data.data;
+        debug!(
+            "try_print_visible_item_path: data={:?} visible_parent={:?} actual_parent={:?}",
+            data, visible_parent, actual_parent,
+        );
+
+        let symbol = match data {
+            // In order to output a path that could actually be imported (valid and visible),
+            // we need to handle re-exports correctly.
+            //
+            // For example, take `std::os::unix::process::CommandExt`, this trait is actually
+            // defined at `std::sys::unix::ext::process::CommandExt` (at time of writing).
+            //
+            // `std::os::unix` rexports the contents of `std::sys::unix::ext`. `std::sys` is
+            // private so the "true" path to `CommandExt` isn't accessible.
+            //
+            // In this case, the `visible_parent_map` will look something like this:
+            //
+            // (child) -> (parent)
+            // `std::sys::unix::ext::process::CommandExt` -> `std::sys::unix::ext::process`
+            // `std::sys::unix::ext::process` -> `std::sys::unix::ext`
+            // `std::sys::unix::ext` -> `std::os`
+            //
+            // This is correct, as the visible parent of `std::sys::unix::ext` is in fact
+            // `std::os`.
+            //
+            // When printing the path to `CommandExt` and looking at the `cur_def_key` that
+            // corresponds to `std::sys::unix::ext`, we would normally print `ext` and then go
+            // to the parent - resulting in a mangled path like
+            // `std::os::ext::process::CommandExt`.
+            //
+            // Instead, we must detect that there was a re-export and instead print `unix`
+            // (which is the name `std::sys::unix::ext` was re-exported as in `std::os`). To
+            // do this, we compare the parent of `std::sys::unix::ext` (`std::sys::unix`) with
+            // the visible parent (`std::os`). If these do not match, then we iterate over
+            // the children of the visible parent (as was done when computing
+            // `visible_parent_map`), looking for the specific child we currently have and then
+            // have access to the re-exported name.
+            DefPathData::Module(actual_name) |
+            DefPathData::TypeNs(actual_name) if Some(visible_parent) != actual_parent => {
+                cx.tcx.item_children(visible_parent)
+                    .iter()
+                    .find(|child| child.def.def_id() == def_id)
+                    .map(|child| child.ident.as_str())
+                    .unwrap_or_else(|| actual_name.as_str())
+            }
+            _ => {
+                data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
+                    // Re-exported `extern crate` (#43189).
+                    if let DefPathData::CrateRoot = data {
+                        cx.tcx.original_crate_name(def_id.krate).as_str()
+                    } else {
+                        Symbol::intern("<unnamed>").as_str()
+                    }
+                })
+            },
+        };
+        debug!("try_print_visible_item_path: symbol={:?}", symbol);
+        Some(Self::path_append(path, &symbol))
     }
 }
 
 impl ItemPathPrinter for LocalPathPrinter {
     type Path = String;
 
-    fn root_mode(&self) -> RootMode {
-        self.root_mode
+    fn print_item_path(cx: &mut PrintCx<'_, '_, '_>, def_id: DefId) -> Self::Path {
+        Self::try_print_visible_item_path(cx, def_id)
+            .unwrap_or_else(|| cx.default_print_item_path::<Self>(def_id))
     }
 
-    fn path_crate(&self, name: Option<&str>) -> Self::Path {
-        name.unwrap_or("").to_string()
+    fn path_crate(cx: &mut PrintCx<'_, '_, '_>, cnum: CrateNum) -> Self::Path {
+        if cnum == LOCAL_CRATE {
+            if cx.tcx.sess.rust_2018() {
+                // We add the `crate::` keyword on Rust 2018, only when desired.
+                if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
+                    return keywords::Crate.name().to_string();
+                }
+            }
+            String::new()
+        } else {
+            cx.tcx.crate_name(cnum).to_string()
+        }
     }
-    fn path_impl(&self, text: &str) -> Self::Path {
+    fn path_impl(_cx: &mut PrintCx<'_, '_, '_>, text: &str) -> Self::Path {
         text.to_string()
     }
-    fn path_append(&self, mut path: Self::Path, text: &str) -> Self::Path {
+    fn path_append(mut path: Self::Path, text: &str) -> Self::Path {
         if !path.is_empty() {
             path.push_str("::");
         }

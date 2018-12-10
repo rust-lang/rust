@@ -4225,30 +4225,33 @@ pub fn path_to_def(tcx: &TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
 
 pub fn get_path_for_type<F>(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, def_ctor: F) -> hir::Path
 where F: Fn(DefId) -> Def {
-    #[derive(Debug)]
-    struct AbsolutePathBuffer {
-        names: Vec<String>,
+    use rustc::ty::item_path::ItemPathPrinter;
+    use rustc::ty::print::PrintCx;
+
+    struct AbsolutePathPrinter;
+
+    impl ItemPathPrinter for AbsolutePathPrinter {
+        type Path = Vec<String>;
+
+        fn path_crate(cx: &mut PrintCx<'_, '_, '_>, cnum: CrateNum) -> Self::Path {
+            vec![cx.tcx.original_crate_name(cnum).to_string()]
+        }
+        fn path_impl(_: &mut PrintCx<'_, '_, '_>, text: &str) -> Self::Path {
+            vec![text.to_string()]
+        }
+        fn path_append(mut path: Self::Path, text: &str) -> Self::Path {
+            path.push(text.to_string());
+            path
+        }
     }
 
-    impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
-        fn root_mode(&self) -> &ty::item_path::RootMode {
-            const ABSOLUTE: &'static ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
-            ABSOLUTE
-        }
-
-        fn push(&mut self, text: &str) {
-            self.names.push(text.to_owned());
-        }
-    }
-
-    let mut apb = AbsolutePathBuffer { names: vec![] };
-
-    tcx.push_item_path(&mut apb, def_id);
+    let mut cx = PrintCx::new(tcx);
+    let names = AbsolutePathPrinter::print_item_path(&mut cx, def_id);
 
     hir::Path {
         span: DUMMY_SP,
         def: def_ctor(def_id),
-        segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
+        segments: hir::HirVec::from_vec(names.iter().map(|s| hir::PathSegment {
             ident: ast::Ident::from_str(&s),
             hir_id: None,
             def: None,

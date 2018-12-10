@@ -87,12 +87,13 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::item_path::{self, ItemPathPrinter, RootMode};
+use rustc::ty::item_path::{self, ItemPathPrinter};
+use rustc::ty::print::PrintCx;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -224,7 +225,8 @@ fn get_symbol_hash<'a, 'tcx>(
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     item_path::with_forced_absolute_paths(|| {
-        tcx.push_item_path(&mut SymbolPath::new(tcx), def_id).into_interned()
+        let mut cx = PrintCx::new(tcx);
+        SymbolPathPrinter::print_item_path(&mut cx, def_id).into_interned()
     })
 }
 
@@ -394,29 +396,22 @@ impl SymbolPath {
     }
 }
 
-#[derive(Debug)]
 struct SymbolPathPrinter;
 
 impl ItemPathPrinter for SymbolPathPrinter {
     type Path = SymbolPath;
 
-    fn root_mode(&self) ->RootMode {
-        RootMode::Absolute
-    }
-
-    fn path_crate(&self, name: Option<&str>) -> Self::Path {
-        let mut path = SymbolPath::new();
-        if let Some(name) = name {
-            path.push(name);
-        }
+    fn path_crate(cx: &mut PrintCx<'_, '_, '_>, cnum: CrateNum) -> Self::Path {
+        let mut path = SymbolPath::new(cx.tcx);
+        path.push(&cx.tcx.original_crate_name(cnum).as_str());
         path
     }
-    fn path_impl(&self, text: &str) -> Self::Path {
-        let mut path = SymbolPath::new();
+    fn path_impl(cx: &mut PrintCx<'_, '_, '_>, text: &str) -> Self::Path {
+        let mut path = SymbolPath::new(cx.tcx);
         path.push(text);
         path
     }
-    fn path_append(&self, mut path: Self::Path, text: &str) -> Self::Path {
+    fn path_append(mut path: Self::Path, text: &str) -> Self::Path {
         path.push(text);
         path
     }
