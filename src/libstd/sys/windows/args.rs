@@ -182,7 +182,7 @@ impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
             }
             first = false;
 
-            fmt::Debug::fmt(i, f)?;
+            fmt::Debug::fmt(&i, f)?;
         }
         f.write_str("]")?;
         Ok(())
@@ -223,7 +223,7 @@ mod tests {
             parse_lp_cmd_line(wide.as_ptr() as *const u16, || OsString::from("TEST.EXE"))
         };
         let expected: Vec<OsString> = parts.iter().map(|k| OsString::from(k)).collect();
-        assert_eq!(parsed, expected);
+        assert_eq!(parsed.as_slice(), expected.as_slice());
     }
 
     #[test]
@@ -267,7 +267,7 @@ mod tests {
             r#"EXE "this is """all""" in the same argument""#,
             &["EXE", "this is \"all\" in the same argument"]
         );
-        chk(r#"EXE "\u{1}"""#, &["EXE", "\u{1}\""]);
+        chk(r#"EXE "a"""#, &["EXE", "a\""]);
         chk(r#"EXE "a"" a"#, &["EXE", "a\"", "a"]);
     }
 }
