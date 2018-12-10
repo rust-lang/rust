@@ -29,7 +29,9 @@ explanation
 
 ## Meta
 
-`rustc --version --verbose`:
+Rust version:
 
-## Backtrace:
+`rustc --version --verbose`
+
+## Backtrace
 Include additional detailed logs here if any.
