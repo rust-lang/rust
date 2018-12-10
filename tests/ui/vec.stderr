@@ -21,7 +21,7 @@ error: useless use of `vec!`
 error: useless use of `vec!`
   --> $DIR/vec.rs:39:14
    |
-39 |     on_slice(&vec![1, 2]);
+39 |     on_slice(&vec!(1, 2));
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`

@@ -31,39 +31,39 @@ error: immediately dereferencing a reference
    |             ^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:40:13
+  --> $DIR/reference.rs:41:13
    |
-40 |     let b = *(&a);
-   |             ^^^^^ help: try this: `a`
+41 |     let b = *((&a));
+   |             ^^^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:42:13
+  --> $DIR/reference.rs:43:13
    |
-42 |     let b = *&&a;
+43 |     let b = *&&a;
    |             ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:44:14
+  --> $DIR/reference.rs:45:14
    |
-44 |     let b = **&aref;
+45 |     let b = **&aref;
    |              ^^^^^^ help: try this: `aref`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:48:14
+  --> $DIR/reference.rs:49:14
    |
-48 |     let b = **&&a;
+49 |     let b = **&&a;
    |              ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:52:17
+  --> $DIR/reference.rs:53:17
    |
-52 |         let y = *&mut x;
+53 |         let y = *&mut x;
    |                 ^^^^^^^ help: try this: `x`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:59:18
+  --> $DIR/reference.rs:60:18
    |
-59 |         let y = **&mut &mut x;
+60 |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try this: `&mut x`
 
 error: aborting due to 11 previous errors

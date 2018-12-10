@@ -37,7 +37,8 @@ fn main() {
 
     let b = *(&a);
 
-    let b = *(&a);
+    #[rustfmt::skip]
+    let b = *((&a));
 
     let b = *&&a;
 

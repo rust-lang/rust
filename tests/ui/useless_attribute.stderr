@@ -12,11 +12,5 @@ error: useless lint attribute
 13 | #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![cfg_attr(feature = "cargo-clippy", allow(dead_code)`
 
-error: useless lint attribute
-  --> $DIR/useless_attribute.rs:14:1
-   |
-14 | #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![cfg_attr(feature = "cargo-clippy", allow(dead_code)`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

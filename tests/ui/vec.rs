@@ -35,8 +35,8 @@ fn main() {
 
     on_slice(&vec![1, 2]);
     on_slice(&[1, 2]);
-
-    on_slice(&vec![1, 2]);
+    #[rustfmt::skip]
+    on_slice(&vec!(1, 2));
     on_slice(&[1, 2]);
 
     on_slice(&vec![1; 2]);

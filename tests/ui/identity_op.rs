@@ -18,6 +18,7 @@ const ZERO: i64 = 0;
     clippy::double_parens
 )]
 #[warn(clippy::identity_op)]
+#[rustfmt::skip]
 fn main() {
     let x = 0;
 
@@ -28,7 +29,7 @@ fn main() {
     1 + x;
     x - ZERO; //no error, as we skip lookups (for now)
     x | (0);
-    (ZERO) | x; //no error, as we skip lookups (for now)
+    ((ZERO)) | x; //no error, as we skip lookups (for now)
 
     x * 1;
     1 * x;

@@ -19,33 +19,33 @@ error: missing return statement
    |         ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:32:17
+  --> $DIR/implicit_return.rs:33:17
    |
-32 |         true => false,
+33 |         true => false,
    |                 ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:33:18
+  --> $DIR/implicit_return.rs:34:20
    |
-33 |         false => true,
-   |                  ^^^^ help: add `return` as shown: `return true`
+34 |         false => { true },
+   |                    ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:40:9
+  --> $DIR/implicit_return.rs:41:9
    |
-40 |         break true;
+41 |         break true;
    |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:45:16
+  --> $DIR/implicit_return.rs:47:18
    |
-45 |     let _ = || true;
-   |                ^^^^ help: add `return` as shown: `return true`
+47 |     let _ = || { true };
+   |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:46:16
+  --> $DIR/implicit_return.rs:48:16
    |
-46 |     let _ = || true;
+48 |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
 error: aborting due to 8 previous errors
