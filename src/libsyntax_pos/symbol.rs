@@ -20,6 +20,7 @@ use std::fmt;
 use std::str;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroU32;
 
 use hygiene::SyntaxContext;
 use {Span, DUMMY_SP, GLOBALS};
@@ -143,9 +144,10 @@ impl Decodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string.
+/// A symbol is an interned or gensymed string. It's a NonZeroU32 so that
+/// Option<Symbol> only takes up 4 bytes.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Symbol(u32);
+pub struct Symbol(NonZeroU32);
 
 // The interner is pointed to by a thread local value which is only set on the main thread
 // with parallelization is disabled. So we don't allow `Symbol` to transfer between threads
@@ -188,8 +190,9 @@ impl Symbol {
         })
     }
 
+    #[inline(always)]
     pub fn as_u32(self) -> u32 {
-        self.0
+        self.0.get()
     }
 }
 
@@ -228,12 +231,36 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
     }
 }
 
+/// Symbols (which are 1-indexed) index into this (which is 0-indexed
+/// internally). The methods handle the index conversions.
+#[derive(Default)]
+pub struct SymbolVec(Vec<&'static str>);
+
+impl SymbolVec {
+    #[inline]
+    fn new_symbol(&mut self, s: &'static str) -> Symbol {
+        self.0.push(s);
+        // self.0.len() cannot be zero because of the push above.
+        Symbol(unsafe { NonZeroU32::new_unchecked(self.0.len() as u32) })
+    }
+
+    #[inline]
+    fn get(&self, sym: Symbol) -> Option<&&'static str> {
+        self.0.get(sym.0.get() as usize - 1)
+    }
+
+    #[inline]
+    fn contains(&self, sym: Symbol) -> bool {
+        sym.0.get() as usize <= self.0.len()
+    }
+}
+
 // The `&'static str`s in this type actually point into the arena.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
     names: FxHashMap<&'static str, Symbol>,
-    strings: Vec<&'static str>,
+    strings: SymbolVec,
     gensyms: Vec<Symbol>,
 }
 
@@ -243,9 +270,8 @@ impl Interner {
         for &string in init {
             if string == "" {
                 // We can't allocate empty strings in the arena, so handle this here.
-                let name = Symbol(this.strings.len() as u32);
+                let name = this.strings.new_symbol("");
                 this.names.insert("", name);
-                this.strings.push("");
             } else {
                 this.intern(string);
             }
@@ -258,8 +284,6 @@ impl Interner {
             return name;
         }
 
-        let name = Symbol(self.strings.len() as u32);
-
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
         let string: &str = unsafe {
@@ -270,16 +294,17 @@ impl Interner {
         let string: &'static str =  unsafe {
             &*(string as *const str)
         };
-        self.strings.push(string);
+
+        let name = self.strings.new_symbol(string);
         self.names.insert(string, name);
         name
     }
 
     pub fn interned(&self, symbol: Symbol) -> Symbol {
-        if (symbol.0 as usize) < self.strings.len() {
+        if self.strings.contains(symbol) {
             symbol
         } else {
-            self.interned(self.gensyms[(!0 - symbol.0) as usize])
+            self.interned(self.gensyms[(!0 - symbol.as_u32()) as usize])
         }
     }
 
@@ -290,17 +315,17 @@ impl Interner {
 
     fn gensymed(&mut self, symbol: Symbol) -> Symbol {
         self.gensyms.push(symbol);
-        Symbol(!0 - self.gensyms.len() as u32 + 1)
+        Symbol(NonZeroU32::new(!0 - self.gensyms.len() as u32 + 1).unwrap())
     }
 
     fn is_gensymed(&mut self, symbol: Symbol) -> bool {
-        symbol.0 as usize >= self.strings.len()
+        !self.strings.contains(symbol)
     }
 
     pub fn get(&self, symbol: Symbol) -> &str {
-        match self.strings.get(symbol.0 as usize) {
+        match self.strings.get(symbol) {
             Some(string) => string,
-            None => self.get(self.gensyms[(!0 - symbol.0) as usize]),
+            None => self.get(self.gensyms[(!0 - symbol.as_u32()) as usize]),
         }
     }
 }
@@ -313,6 +338,8 @@ macro_rules! declare_keywords {(
 ) => {
     pub mod keywords {
         use super::{Symbol, Ident};
+        use std::num::NonZeroU32;
+
         #[derive(Clone, Copy, PartialEq, Eq)]
         pub struct Keyword {
             ident: Ident,
@@ -321,10 +348,17 @@ macro_rules! declare_keywords {(
             #[inline] pub fn ident(self) -> Ident { self.ident }
             #[inline] pub fn name(self) -> Symbol { self.ident.name }
         }
+        // We must use `NonZeroU32::new_unchecked` below because it's `const`
+        // and `NonZeroU32::new` is not. So we static_assert the non-zeroness
+        // here.
+        mod asserts {
+            $(static_assert!($konst: $index > 0u32);)*
+        }
         $(
             #[allow(non_upper_case_globals)]
             pub const $konst: Keyword = Keyword {
-                ident: Ident::with_empty_ctxt(super::Symbol($index))
+                ident: Ident::with_empty_ctxt(
+                    super::Symbol(unsafe { NonZeroU32::new_unchecked($index) }))
             };
         )*
 
@@ -355,79 +389,80 @@ macro_rules! declare_keywords {(
 declare_keywords! {
     // Special reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
-    (0,  Invalid,            "")
-    (1,  PathRoot,           "{{root}}")
-    (2,  DollarCrate,        "$crate")
-    (3,  Underscore,         "_")
+    // (0 cannot be used because Symbol uses NonZeroU32)
+    (1,  Invalid,            "")
+    (2,  PathRoot,           "{{root}}")
+    (3,  DollarCrate,        "$crate")
+    (4,  Underscore,         "_")
 
     // Keywords that are used in stable Rust.
-    (4,  As,                 "as")
-    (5,  Box,                "box")
-    (6,  Break,              "break")
-    (7,  Const,              "const")
-    (8,  Continue,           "continue")
-    (9,  Crate,              "crate")
-    (10, Else,               "else")
-    (11, Enum,               "enum")
-    (12, Extern,             "extern")
-    (13, False,              "false")
-    (14, Fn,                 "fn")
-    (15, For,                "for")
-    (16, If,                 "if")
-    (17, Impl,               "impl")
-    (18, In,                 "in")
-    (19, Let,                "let")
-    (20, Loop,               "loop")
-    (21, Match,              "match")
-    (22, Mod,                "mod")
-    (23, Move,               "move")
-    (24, Mut,                "mut")
-    (25, Pub,                "pub")
-    (26, Ref,                "ref")
-    (27, Return,             "return")
-    (28, SelfLower,          "self")
-    (29, SelfUpper,          "Self")
-    (30, Static,             "static")
-    (31, Struct,             "struct")
-    (32, Super,              "super")
-    (33, Trait,              "trait")
-    (34, True,               "true")
-    (35, Type,               "type")
-    (36, Unsafe,             "unsafe")
-    (37, Use,                "use")
-    (38, Where,              "where")
-    (39, While,              "while")
+    (5,  As,                 "as")
+    (6,  Box,                "box")
+    (7,  Break,              "break")
+    (8,  Const,              "const")
+    (9,  Continue,           "continue")
+    (10,  Crate,              "crate")
+    (11, Else,               "else")
+    (12, Enum,               "enum")
+    (13, Extern,             "extern")
+    (14, False,              "false")
+    (15, Fn,                 "fn")
+    (16, For,                "for")
+    (17, If,                 "if")
+    (18, Impl,               "impl")
+    (19, In,                 "in")
+    (20, Let,                "let")
+    (21, Loop,               "loop")
+    (22, Match,              "match")
+    (23, Mod,                "mod")
+    (24, Move,               "move")
+    (25, Mut,                "mut")
+    (26, Pub,                "pub")
+    (27, Ref,                "ref")
+    (28, Return,             "return")
+    (29, SelfLower,          "self")
+    (30, SelfUpper,          "Self")
+    (31, Static,             "static")
+    (32, Struct,             "struct")
+    (33, Super,              "super")
+    (34, Trait,              "trait")
+    (35, True,               "true")
+    (36, Type,               "type")
+    (37, Unsafe,             "unsafe")
+    (38, Use,                "use")
+    (39, Where,              "where")
+    (40, While,              "while")
 
     // Keywords that are used in unstable Rust or reserved for future use.
-    (40, Abstract,           "abstract")
-    (41, Become,             "become")
-    (42, Do,                 "do")
-    (43, Final,              "final")
-    (44, Macro,              "macro")
-    (45, Override,           "override")
-    (46, Priv,               "priv")
-    (47, Typeof,             "typeof")
-    (48, Unsized,            "unsized")
-    (49, Virtual,            "virtual")
-    (50, Yield,              "yield")
+    (41, Abstract,           "abstract")
+    (42, Become,             "become")
+    (43, Do,                 "do")
+    (44, Final,              "final")
+    (45, Macro,              "macro")
+    (46, Override,           "override")
+    (47, Priv,               "priv")
+    (48, Typeof,             "typeof")
+    (49, Unsized,            "unsized")
+    (50, Virtual,            "virtual")
+    (51, Yield,              "yield")
 
     // Edition-specific keywords that are used in stable Rust.
-    (51, Dyn,                "dyn") // >= 2018 Edition only
+    (52, Dyn,                "dyn") // >= 2018 Edition only
 
     // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-    (52, Async,              "async") // >= 2018 Edition only
-    (53, Try,                "try") // >= 2018 Edition only
+    (53, Async,              "async") // >= 2018 Edition only
+    (54, Try,                "try") // >= 2018 Edition only
 
     // Special lifetime names
-    (54, UnderscoreLifetime, "'_")
-    (55, StaticLifetime,     "'static")
+    (55, UnderscoreLifetime, "'_")
+    (56, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (56, Auto,               "auto")
-    (57, Catch,              "catch")
-    (58, Default,            "default")
-    (59, Existential,        "existential")
-    (60, Union,              "union")
+    (57, Auto,               "auto")
+    (58, Catch,              "catch")
+    (59, Default,            "default")
+    (60, Existential,        "existential")
+    (61, Union,              "union")
 }
 
 impl Symbol {
@@ -708,20 +743,22 @@ mod tests {
     #[test]
     fn interner_tests() {
         let mut i: Interner = Interner::default();
-        // first one is zero:
-        assert_eq!(i.intern("dog"), Symbol(0));
+        let nz = |n| NonZeroU32::new(n).unwrap();
+
+        // first one is 1:
+        assert_eq!(i.intern("dog"), Symbol(nz(1)));
         // re-use gets the same entry:
-        assert_eq!(i.intern("dog"), Symbol(0));
-        // different string gets a different #:
-        assert_eq!(i.intern("cat"), Symbol(1));
-        assert_eq!(i.intern("cat"), Symbol(1));
-        // dog is still at zero
-        assert_eq!(i.intern("dog"), Symbol(0));
-        assert_eq!(i.gensym("zebra"), Symbol(4294967295));
-        // gensym of same string gets new number :
-        assert_eq!(i.gensym("zebra"), Symbol(4294967294));
+        assert_eq!(i.intern("dog"), Symbol(nz(1)));
+        // different string gets a different number:
+        assert_eq!(i.intern("cat"), Symbol(nz(2)));
+        assert_eq!(i.intern("cat"), Symbol(nz(2)));
+        // dog is still at 1
+        assert_eq!(i.intern("dog"), Symbol(nz(1)));
+        assert_eq!(i.gensym("zebra"), Symbol(nz(4294967295)));
+        // gensym of same string gets new number:
+        assert_eq!(i.gensym("zebra"), Symbol(nz(4294967294)));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym("dog"), Symbol(4294967293));
+        assert_eq!(i.gensym("dog"), Symbol(nz(4294967293)));
     }
 
     #[test]

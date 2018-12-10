@@ -28,6 +28,7 @@
 #![cfg_attr(not(stage0), feature(stdsimd))]
 
 extern crate arena;
+#[macro_use]
 extern crate rustc_data_structures;
 
 #[macro_use]
