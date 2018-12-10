@@ -75,7 +75,9 @@ fn get_arg_flag_value(name: &str) -> Option<String> {
 
 fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     // We need to get the manifest, and then the metadata, to enumerate targets.
-    let manifest_path = get_arg_flag_value("--manifest-path").map(PathBuf::from);
+    let manifest_path = get_arg_flag_value("--manifest-path").map(|m|
+        Path::new(&m).canonicalize().unwrap()
+    );
 
     let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
         manifest_path.as_ref().map(AsRef::as_ref),
