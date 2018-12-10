@@ -707,8 +707,6 @@ impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
 /// kept separate because of issue #42760.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum DocFragment {
-    // FIXME #44229 (misdreavus): sugared and raw doc comments can be brought back together once
-    // hoedown is completely removed from rustdoc.
     /// A doc fragment created from a `///` or `//!` doc comment.
     SugaredDoc(usize, syntax_pos::Span, String),
     /// A doc fragment created from a "raw" `#[doc=""]` attribute.
