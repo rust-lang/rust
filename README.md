@@ -133,9 +133,6 @@ cp config.toml.example config.toml
 rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
 # Now cd to your Miri directory, then configure rustup
 rustup override set custom
-# We also need to tell Miri where to find its sysroot. Since we set
-# `test-miri` above, we can just use rustc' sysroot.
-export MIRI_SYSROOT=$(rustc --print sysroot)
 ```
 
 With this, you should now have a working development setup!  See

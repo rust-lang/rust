@@ -53,24 +53,40 @@ fn show_error(msg: String) -> ! {
     std::process::exit(1)
 }
 
-fn list_targets(mut args: impl Iterator<Item=String>) -> impl Iterator<Item=cargo_metadata::Target> {
+fn get_arg_flag_value(name: &str) -> Option<String> {
+    // stop searching at `--`
+    let mut args = std::env::args().skip_while(|val| !(val.starts_with(name) || val == "--"));
+
+    match args.next() {
+        Some(ref p) if p == "--" => None,
+        Some(ref p) if p == name => args.next(),
+        Some(p) => {
+            // Make sure this really starts with `$name=`, we didn't test for the `=` yet.
+            let v = &p[name.len()..]; // strip leading `$name`
+            if v.starts_with('=') {
+                Some(v[1..].to_owned()) // strip leading `=`
+            } else {
+                None
+            }
+        },
+        None => None,
+    }
+}
+
+fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     // We need to get the manifest, and then the metadata, to enumerate targets.
-    let manifest_path_arg = args.find(|val| {
-        val.starts_with("--manifest-path=")
-    });
+    let manifest_path = get_arg_flag_value("--manifest-path").map(|m|
+        Path::new(&m).canonicalize().unwrap()
+    );
 
     let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
-        manifest_path_arg.as_ref().map(AsRef::as_ref),
+        manifest_path.as_ref().map(AsRef::as_ref),
     )
     {
         metadata
     } else {
         show_error(format!("error: Could not obtain cargo metadata."));
     };
-
-    let manifest_path = manifest_path_arg.map(|arg| {
-        PathBuf::from(Path::new(&arg["--manifest-path=".len()..]))
-    });
 
     let current_dir = std::env::current_dir();
 
@@ -176,17 +192,28 @@ path = "lib.rs"
         "#).unwrap();
     File::create(dir.join("lib.rs")).unwrap();
     // Run xargo
-    if !Command::new("xargo").arg("build").arg("-q")
+    let target = get_arg_flag_value("--target");
+    let mut command = Command::new("xargo");
+    command.arg("build").arg("-q")
         .current_dir(&dir)
         .env("RUSTFLAGS", miri::miri_default_args().join(" "))
-        .env("XARGO_HOME", dir.to_str().unwrap())
-        .status().unwrap().success()
+        .env("XARGO_HOME", dir.to_str().unwrap());
+    if let Some(ref target) = target {
+        command.arg("--target").arg(&target);
+    }
+    if !command.status().unwrap().success()
     {
         show_error(format!("Failed to run xargo"));
     }
 
-    // That should be it!
-    let sysroot = dir.join("HOST");
+    // That should be it!  But we need to figure out where xargo built stuff.
+    // Unfortunately, it puts things into a different directory when the
+    // architecture matches the host.
+    let is_host = match target {
+        None => true,
+        Some(target) => target == rustc_version::version_meta().unwrap().host,
+    };
+    let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot);
     if !ask_user {
         println!("A libstd for miri is now available in `{}`", sysroot.display());
@@ -232,7 +259,7 @@ fn main() {
         }
 
         // Now run the command.
-        for target in list_targets(std::env::args().skip(skip)) {
+        for target in list_targets() {
             let args = std::env::args().skip(skip);
             let kind = target.kind.get(0).expect(
                 "badly formatted cargo metadata: target::kind is an empty array",
@@ -315,11 +342,11 @@ fn main() {
                 .collect()
         };
         args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
+        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
 
         // this check ensures that dependencies are built but not interpreted and the final crate is
         // interpreted but not built
         let miri_enabled = std::env::args().any(|s| s == "--emit=dep-info,metadata");
-
         let mut command = if miri_enabled {
             let mut path = std::env::current_exe().expect("current executable path invalid");
             path.set_file_name("miri");
@@ -327,10 +354,9 @@ fn main() {
         } else {
             Command::new("rustc")
         };
+        command.args(&args);
 
-        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
-
-        match command.args(&args).status() {
+        match command.status() {
             Ok(exit) => {
                 if !exit.success() {
                     std::process::exit(exit.code().unwrap_or(42));
@@ -361,7 +387,7 @@ where
     args.push(r#"feature="cargo-miri""#.to_owned());
 
     let path = std::env::current_exe().expect("current executable path invalid");
-    let exit_status = std::process::Command::new("cargo")
+    let exit_status = Command::new("cargo")
         .args(&args)
         .env("RUSTC", path)
         .spawn()

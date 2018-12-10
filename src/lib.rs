@@ -80,81 +80,61 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         ));
     }
 
-    let libstd_has_mir = {
-        let rustc_panic = ecx.resolve_path(&["std", "panicking", "rust_panic"])?;
-        ecx.load_mir(rustc_panic.def).is_ok()
-    };
+    let start_id = tcx.lang_items().start_fn().unwrap();
+    let main_ret_ty = tcx.fn_sig(main_id).output();
+    let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
+    let start_instance = ty::Instance::resolve(
+        ecx.tcx.tcx,
+        ty::ParamEnv::reveal_all(),
+        start_id,
+        ecx.tcx.mk_substs(
+            ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))
+        ).unwrap();
+    let start_mir = ecx.load_mir(start_instance.def)?;
 
-    if libstd_has_mir {
-        let start_id = tcx.lang_items().start_fn().unwrap();
-        let main_ret_ty = tcx.fn_sig(main_id).output();
-        let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
-        let start_instance = ty::Instance::resolve(
-            ecx.tcx.tcx,
-            ty::ParamEnv::reveal_all(),
-            start_id,
-            ecx.tcx.mk_substs(
-                ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))
-            ).unwrap();
-        let start_mir = ecx.load_mir(start_instance.def)?;
-
-        if start_mir.arg_count != 3 {
-            return err!(AbiViolation(format!(
-                "'start' lang item should have three arguments, but has {}",
-                start_mir.arg_count
-            )));
-        }
-
-        // Return value (in static memory so that it does not count as leak)
-        let ret = ecx.layout_of(start_mir.return_ty())?;
-        let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into())?;
-
-        // Push our stack frame
-        ecx.push_stack_frame(
-            start_instance,
-            DUMMY_SP, // there is no call site, we want no span
-            start_mir,
-            Some(ret_ptr.into()),
-            StackPopCleanup::None { cleanup: true },
-        )?;
-
-        let mut args = ecx.frame().mir.args_iter();
-
-        // First argument: pointer to main()
-        let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
-
-        // Second argument (argc): 1
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        ecx.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
-
-        // FIXME: extract main source file path
-        // Third argument (argv): &[b"foo"]
-        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0").with_default_tag();
-        let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
-        let foo_layout = ecx.layout_of(foo_ty)?;
-        let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
-        ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
-        ecx.memory_mut().mark_immutable(foo_place.to_ptr()?.alloc_id)?;
-        ecx.write_scalar(foo_place.ptr, dest)?;
-
-        assert!(args.next().is_none(), "start lang item has more arguments than expected");
-    } else {
-        let ret_place = MPlaceTy::dangling(ecx.layout_of(tcx.mk_unit())?, &ecx).into();
-        ecx.push_stack_frame(
-            main_instance,
-            DUMMY_SP, // there is no call site, we want no span
-            main_mir,
-            Some(ret_place),
-            StackPopCleanup::None { cleanup: true },
-        )?;
-
-        // No arguments
-        let mut args = ecx.frame().mir.args_iter();
-        assert!(args.next().is_none(), "main function must not have arguments");
+    if start_mir.arg_count != 3 {
+        return err!(AbiViolation(format!(
+            "'start' lang item should have three arguments, but has {}",
+            start_mir.arg_count
+        )));
     }
+
+    // Return value (in static memory so that it does not count as leak)
+    let ret = ecx.layout_of(start_mir.return_ty())?;
+    let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into())?;
+
+    // Push our stack frame
+    ecx.push_stack_frame(
+        start_instance,
+        DUMMY_SP, // there is no call site, we want no span
+        start_mir,
+        Some(ret_ptr.into()),
+        StackPopCleanup::None { cleanup: true },
+    )?;
+
+    let mut args = ecx.frame().mir.args_iter();
+
+    // First argument: pointer to main()
+    let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
+    let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
+
+    // Second argument (argc): 1
+    let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    ecx.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+
+    // FIXME: extract main source file path
+    // Third argument (argv): &[b"foo"]
+    let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+    let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0").with_default_tag();
+    let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
+    let foo_layout = ecx.layout_of(foo_ty)?;
+    let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
+    ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
+    ecx.memory_mut().mark_immutable(foo_place.to_ptr()?.alloc_id)?;
+    ecx.write_scalar(foo_place.ptr, dest)?;
+
+    assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
     Ok(ecx)
 }
