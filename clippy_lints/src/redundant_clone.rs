@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 mir,
                 arg,
                 from_borrow,
-                bbdata.statements.iter().rev()
+                bbdata.statements.iter()
             ));
 
             if from_borrow && cannot_move_out {
@@ -166,7 +166,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     mir,
                     pred_arg,
                     true,
-                    mir[ps[0]].statements.iter().rev()
+                    mir[ps[0]].statements.iter()
                 ));
                 if cannot_move_out {
                     continue;
@@ -257,23 +257,29 @@ fn find_stmt_assigns_to<'a, 'tcx: 'a>(
     mir: &mir::Mir<'tcx>,
     to: mir::Local,
     by_ref: bool,
-    mut stmts: impl Iterator<Item = &'a mir::Statement<'tcx>>,
+    stmts: impl DoubleEndedIterator<Item = &'a mir::Statement<'tcx>>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
-    stmts.find_map(|stmt| {
-        if let mir::StatementKind::Assign(mir::Place::Local(local), v) = &stmt.kind {
-            if *local == to {
-                if by_ref {
-                    if let mir::Rvalue::Ref(_, _, ref place) = **v {
-                        return base_local_and_movability(cx, mir, place);
-                    }
-                } else if let mir::Rvalue::Use(mir::Operand::Copy(ref place)) = **v {
-                    return base_local_and_movability(cx, mir, place);
+    stmts
+        .rev()
+        .find_map(|stmt| {
+            if let mir::StatementKind::Assign(mir::Place::Local(local), v) = &stmt.kind {
+                if *local == to {
+                    return Some(v);
                 }
             }
-        }
 
-        None
-    })
+            None
+        })
+        .and_then(|v| {
+            if by_ref {
+                if let mir::Rvalue::Ref(_, _, ref place) = **v {
+                    return base_local_and_movability(cx, mir, place);
+                }
+            } else if let mir::Rvalue::Use(mir::Operand::Copy(ref place)) = **v {
+                return base_local_and_movability(cx, mir, place);
+            }
+            None
+        })
 }
 
 /// Extracts and returns the undermost base `Local` of given `place`. Returns `place` itself
