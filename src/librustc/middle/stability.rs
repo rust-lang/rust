@@ -599,7 +599,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let skip = self.lookup_deprecation_entry(parent_def_id)
                                .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
-
                 if let Some(since) = deprecated_in_future_version {
                     let path = self.item_path_str(def_id);
                     let message = format!("use of item '{}' \
@@ -640,13 +639,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 = stability {
             if let Some(id) = id {
                 let path = self.item_path_str(def_id);
-                let message = format!("use of deprecated item '{}'", path);
                 if deprecation_in_effect(&since.as_str()) {
+                    let message = format!("use of deprecated item '{}'", path);
                     lint_deprecated(def_id,
                                     id,
                                     Some(reason),
                                     &message,
                                     lint::builtin::DEPRECATED);
+                } else {
+                    let message = format!("use of item '{}' \
+                                           that will be deprecated in future version {}",
+                                          path,
+                                          since);
+                    lint_deprecated(def_id,
+                                    id,
+                                    Some(reason),
+                                    &message,
+                                    lint::builtin::DEPRECATED_IN_FUTURE);
                 }
             }
         }
