@@ -23,6 +23,7 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [How Clippy works](#how-clippy-works)
   * [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
 * [Issue and PR Triage](#issue-and-pr-triage)
+* [Bors and Homu](#bors-and-homu)
 * [Contributions](#contributions)
 
 ## Getting started
@@ -257,6 +258,17 @@ Our highest priority is fixing [crashes][l-crash] and [bugs][l-bug]. We don't
 want Clippy to crash on your code and we want it to be as reliable as the
 suggestions from Rust compiler errors.
 
+## Bors and Homu
+
+We use a bot powered by [Homu][homu] to help automate testing and landing of pull
+requests in Clippy. The bot's username is @bors.
+
+You can find the Clippy bors queue [here][homu_queue].
+
+If you have @bors permissions, you can find an overview of the available
+commands [here][homu_instructions].
+
+
 ## Contributions
 
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
@@ -288,3 +300,6 @@ or the [MIT](http://opensource.org/licenses/MIT) license.
 [triage]: https://forge.rust-lang.org/triage-procedure.html
 [l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash%20%3Aboom%3A
 [l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug%20%3Abeetle%3A
+[homu]: https://github.com/servo/homu
+[homu_instructions]: https://buildbot2.rust-lang.org/homu/
+[homu_queue]: https://buildbot2.rust-lang.org/homu/queue/clippy
