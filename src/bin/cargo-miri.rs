@@ -53,24 +53,38 @@ fn show_error(msg: String) -> ! {
     std::process::exit(1)
 }
 
-fn list_targets(mut args: impl Iterator<Item=String>) -> impl Iterator<Item=cargo_metadata::Target> {
+fn get_arg_flag_value(name: &str) -> Option<String> {
+    // stop searching at `--`
+    let mut args = std::env::args().skip_while(|val| !(val.starts_with(name) || val == "--"));
+
+    match args.next() {
+        Some(ref p) if p == "--" => None,
+        Some(ref p) if p == name => args.next(),
+        Some(p) => {
+            // Make sure this really starts with `$name=`, we didn't test for the `=` yet.
+            let v = &p[name.len()..]; // strip leading `$name`
+            if v.starts_with('=') {
+                Some(v[1..].to_owned()) // strip leading `=`
+            } else {
+                None
+            }
+        },
+        None => None,
+    }
+}
+
+fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     // We need to get the manifest, and then the metadata, to enumerate targets.
-    let manifest_path_arg = args.find(|val| {
-        val.starts_with("--manifest-path=")
-    });
+    let manifest_path = get_arg_flag_value("--manifest-path").map(PathBuf::from);
 
     let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
-        manifest_path_arg.as_ref().map(AsRef::as_ref),
+        manifest_path.as_ref().map(AsRef::as_ref),
     )
     {
         metadata
     } else {
         show_error(format!("error: Could not obtain cargo metadata."));
     };
-
-    let manifest_path = manifest_path_arg.map(|arg| {
-        PathBuf::from(Path::new(&arg["--manifest-path=".len()..]))
-    });
 
     let current_dir = std::env::current_dir();
 
@@ -232,7 +246,7 @@ fn main() {
         }
 
         // Now run the command.
-        for target in list_targets(std::env::args().skip(skip)) {
+        for target in list_targets() {
             let args = std::env::args().skip(skip);
             let kind = target.kind.get(0).expect(
                 "badly formatted cargo metadata: target::kind is an empty array",
