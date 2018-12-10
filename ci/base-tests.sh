@@ -20,6 +20,8 @@ fi
 # build clippy in debug mode and run tests
 cargo build --features debugging
 cargo test --features debugging
+# for faster build, share target dir between subcrates
+export CARGO_TARGET_DIR=`pwd`/target/
 cd clippy_lints && cargo test && cd ..
 cd rustc_tools_util && cargo test && cd ..
 cd clippy_dev && cargo test && cd ..
