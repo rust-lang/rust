@@ -496,6 +496,12 @@ mod test_par_map {
         // By the way, ensure that cloning doesn't screw up the dropping.
         drop(hm.clone());
 
+        assert_eq!(key.load(Ordering::Relaxed), 100);
+        assert_eq!(value.load(Ordering::Relaxed), 100);
+
+        // Ensure that dropping the iterator does not leak anything.
+        drop(hm.clone().into_par_iter());
+
         {
             assert_eq!(key.load(Ordering::Relaxed), 100);
             assert_eq!(value.load(Ordering::Relaxed), 100);
@@ -539,6 +545,12 @@ mod test_par_map {
 
         // By the way, ensure that cloning doesn't screw up the dropping.
         drop(hm.clone());
+
+        assert_eq!(key.load(Ordering::Relaxed), 100);
+        assert_eq!(value.load(Ordering::Relaxed), 100);
+
+        // Ensure that dropping the drain iterator does not leak anything.
+        drop(hm.clone().par_drain());
 
         {
             assert_eq!(key.load(Ordering::Relaxed), 100);
