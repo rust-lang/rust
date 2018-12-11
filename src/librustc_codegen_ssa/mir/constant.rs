@@ -2,7 +2,7 @@ use rustc::mir::interpret::ErrorHandled;
 use rustc_mir::const_eval::const_field;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, ConstValue};
+use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout;
 use syntax::source_map::Span;
@@ -14,10 +14,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn fully_evaluate(
         &mut self,
         bx: &Bx,
-        constant: &'tcx ty::Const<'tcx>,
+        constant: &'tcx ty::LazyConst<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
-        match constant.val {
-            ConstValue::Unevaluated(def_id, ref substs) => {
+        match *constant {
+            ty::LazyConst::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
                 let param_env = ty::ParamEnv::reveal_all();
                 let instance = ty::Instance::resolve(tcx, param_env, def_id, substs).unwrap();
@@ -27,7 +27,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 tcx.const_eval(param_env.and(cid))
             },
-            _ => Ok(constant),
+            ty::LazyConst::Evaluated(constant) => Ok(constant),
         }
     }
 
@@ -52,7 +52,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .and_then(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
-                    ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
+                    ty::Array(_, n) => n.unwrap_evaluated().unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
                 let values: Result<Vec<_>, ErrorHandled> = (0..fields).map(|field| {

@@ -59,7 +59,7 @@ pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TyKind, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const, LazyConst};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};

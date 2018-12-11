@@ -33,7 +33,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span,
             ty,
             user_ty: None,
-            literal,
+            literal: self.hir.tcx().intern_lazy_const(ty::LazyConst::Evaluated(literal)),
         };
         Operand::Constant(constant)
     }

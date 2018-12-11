@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::Array(inner, size) => {
-                            let size = size.unwrap_usize(tcx);
+                            let size = size.unwrap_evaluated().unwrap_usize(tcx);
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }

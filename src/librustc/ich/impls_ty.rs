@@ -301,7 +301,6 @@ impl_stable_hash_for!(struct ty::FieldDef {
 
 impl_stable_hash_for!(
     impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
-        Unevaluated(def_id, substs),
         Scalar(val),
         ScalarPair(a, b),
         ByRef(id, alloc, offset),
@@ -376,6 +375,11 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
 impl_stable_hash_for!(struct ty::Const<'tcx> {
     ty,
     val
+});
+
+impl_stable_hash_for!(impl<'tcx> for enum ty::LazyConst<'tcx> [ty::LazyConst] {
+    Unevaluated(did, substs),
+    Evaluated(c)
 });
 
 impl_stable_hash_for!(enum mir::interpret::ErrorHandled {

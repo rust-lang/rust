@@ -255,7 +255,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match const_to_op(&self.ecx, c.literal) {
+        match const_to_op(&self.ecx, *c.literal, c.ty) {
             Ok(op) => {
                 Some((op, c.span))
             },

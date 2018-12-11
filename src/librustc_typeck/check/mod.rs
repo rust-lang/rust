@@ -3453,7 +3453,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     ty::Array(_, len) => {
                         if let (Some(len), Ok(user_index)) = (
-                            len.assert_usize(self.tcx),
+                            len.unwrap_evaluated().assert_usize(self.tcx),
                             field.as_str().parse::<u64>()
                         ) {
                             let base = self.tcx.sess.source_map()
@@ -4442,7 +4442,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if element_ty.references_error() {
                     tcx.types.err
                 } else if let Ok(count) = count {
-                    tcx.mk_ty(ty::Array(t, count))
+                    tcx.mk_ty(ty::Array(t, tcx.intern_lazy_const(ty::LazyConst::Evaluated(count))))
                 } else {
                     tcx.types.err
                 }

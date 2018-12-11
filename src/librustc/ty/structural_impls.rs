@@ -53,6 +53,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::ty::UniverseIndex,
     ::ty::Variance,
     ::syntax_pos::Span,
+    ConstValue<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1020,25 +1021,30 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::LazyConst<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            ConstValue::Scalar(v) => ConstValue::Scalar(v),
-            ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
-            ConstValue::ByRef(id, alloc, offset) => ConstValue::ByRef(id, alloc, offset),
-            ConstValue::Unevaluated(def_id, substs) => {
-                ConstValue::Unevaluated(def_id, substs.fold_with(folder))
+        let new = match self {
+            ty::LazyConst::Evaluated(v) => ty::LazyConst::Evaluated(v.fold_with(folder)),
+            ty::LazyConst::Unevaluated(def_id, substs) => {
+                ty::LazyConst::Unevaluated(*def_id, substs.fold_with(folder))
             }
-        }
+        };
+        folder.tcx().intern_lazy_const(new)
+    }
+
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        folder.fold_const(*self)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstValue::Scalar(_) |
-            ConstValue::ScalarPair(_, _) |
-            ConstValue::ByRef(_, _, _) => false,
-            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ty::LazyConst::Evaluated(c) => c.visit_with(visitor),
+            ty::LazyConst::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
+    }
+
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        visitor.visit_const(self)
     }
 }
 
@@ -1052,15 +1058,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
         })
     }
 
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_const(*self)
-    }
-
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor) || self.val.visit_with(visitor)
-    }
-
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        visitor.visit_const(self)
     }
 }

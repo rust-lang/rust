@@ -113,7 +113,7 @@ pub enum TyKind<'tcx> {
     Str,
 
     /// An array with the given length. Written as `[T; n]`.
-    Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
+    Array(Ty<'tcx>, &'tcx ty::LazyConst<'tcx>),
 
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(Ty<'tcx>),
@@ -2013,6 +2013,36 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+/// Used in the HIR by using `Unevaluated` everywhere and later normalizing to `Evaluated` if the
+/// code is monomorphic enough for that.
+pub enum LazyConst<'tcx> {
+    Unevaluated(DefId, &'tcx Substs<'tcx>),
+    Evaluated(&'tcx Const<'tcx>),
+}
+
+static_assert!(MEM_SIZE_OF_LAZY_CONST: ::std::mem::size_of::<LazyConst<'_>>() == 24);
+
+impl<'tcx> LazyConst<'tcx> {
+    pub fn unwrap_evaluated(self) -> &'tcx Const<'tcx> {
+        match self {
+            LazyConst::Evaluated(c) => c,
+            LazyConst::Unevaluated(..) => bug!("unexpected unevaluated constant"),
+        }
+    }
+
+    pub fn map_evaluated<R>(self, f: impl FnOnce(&'tcx Const<'tcx>) -> Option<R>) -> Option<R> {
+        match self {
+            LazyConst::Evaluated(c) => f(c),
+            LazyConst::Unevaluated(..) => None,
+        }
+    }
+
+    pub fn assert_usize(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Option<u64> {
+        self.map_evaluated(|c| c.assert_usize(tcx))
+    }
+}
+
 /// Typed constant value.
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Const<'tcx> {
@@ -2022,18 +2052,6 @@ pub struct Const<'tcx> {
 }
 
 impl<'tcx> Const<'tcx> {
-    pub fn unevaluated(
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        tcx.mk_const(Const {
-            val: ConstValue::Unevaluated(def_id, substs),
-            ty,
-        })
-    }
-
     #[inline]
     pub fn from_const_value(
         tcx: TyCtxt<'_, '_, 'tcx>,
@@ -2149,3 +2167,4 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx LazyConst<'tcx> {}

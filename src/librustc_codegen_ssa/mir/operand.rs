@@ -76,7 +76,6 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         }
 
         let val = match val.val {
-            ConstValue::Unevaluated(..) => bug!(),
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,

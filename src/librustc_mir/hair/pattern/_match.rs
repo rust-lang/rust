@@ -635,7 +635,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect()
         }
         ty::Array(ref sub_ty, len) if len.assert_usize(cx.tcx).is_some() => {
-            let len = len.unwrap_usize(cx.tcx);
+            let len = len.unwrap_evaluated().unwrap_usize(cx.tcx);
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
@@ -1310,7 +1310,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
             )]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::Array(_, length) => Some(vec![
-                Slice(length.unwrap_usize(cx.tcx))
+                Slice(length.unwrap_evaluated().unwrap_usize(cx.tcx))
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
@@ -1751,23 +1751,23 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // necessarily point to memory, they are usually just integers. The only time
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
-                    let (opt_ptr, n, ty) = match (value.val, &value.ty.sty) {
-                        (ConstValue::ByRef(id, alloc, offset), ty::TyKind::Array(t, n)) => (
-                            Some((
-                                Pointer::new(id, offset),
-                                alloc,
-                            )),
-                            n.unwrap_usize(cx.tcx),
-                            t,
-                        ),
-                        (ConstValue::ScalarPair(ptr, n), ty::TyKind::Slice(t)) => (
-                            ptr.to_ptr().ok().map(|ptr| (
-                                ptr,
-                                cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
-                            )),
-                            n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64,
-                            t,
-                        ),
+                    let (opt_ptr, n, ty) = match value.ty.builtin_deref(false).unwrap().ty.sty {
+                        ty::TyKind::Array(t, n) =>
+                            (value.to_ptr(), n.unwrap_evaluated().unwrap_usize(cx.tcx), t),
+                        ty::TyKind::Slice(t) => {
+                            match value.val {
+                                ConstValue::ScalarPair(ptr, n) => (
+                                    ptr.to_ptr().ok(),
+                                    n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64,
+                                    t,
+                                ),
+                                _ => span_bug!(
+                                    pat.span,
+                                    "slice pattern constant must be scalar pair but is {:?}",
+                                    value,
+                                ),
+                            }
+                        },
                         _ => span_bug!(
                             pat.span,
                             "unexpected const-val {:?} with ctor {:?}",

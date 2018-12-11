@@ -382,6 +382,11 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             constant, location
         );
 
+        let literal = match constant.literal {
+            ty::LazyConst::Evaluated(lit) => lit,
+            ty::LazyConst::Unevaluated(..) => return,
+        };
+
         // FIXME(#46702) -- We need some way to get the predicates
         // associated with the "pre-evaluated" form of the
         // constant. For example, consider that the constant
@@ -390,7 +395,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         // constraints on `'a` and `'b`. These constraints
         // would be lost if we just look at the normalized
         // value.
-        if let ty::FnDef(def_id, substs) = constant.literal.ty.sty {
+        if let ty::FnDef(def_id, substs) = literal.ty.sty {
             let tcx = self.tcx();
             let type_checker = &mut self.cx;
 
@@ -411,10 +416,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             );
         }
 
-        debug!("sanitize_constant: expected_ty={:?}", constant.literal.ty);
+        debug!("sanitize_constant: expected_ty={:?}", literal.ty);
 
         if let Err(terr) = self.cx.eq_types(
-            constant.literal.ty,
+            literal.ty,
             constant.ty,
             location.to_locations(),
             ConstraintCategory::Boring,
@@ -424,7 +429,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 constant,
                 "constant {:?} should have type {:?} but has {:?} ({:?})",
                 constant,
-                constant.literal.ty,
+                literal.ty,
                 constant.ty,
                 terr,
             );
@@ -563,7 +568,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Subslice { from, to } => PlaceTy::Ty {
                 ty: match base_ty.sty {
                     ty::Array(inner, size) => {
-                        let size = size.unwrap_usize(tcx);
+                        let size = size.unwrap_evaluated().unwrap_usize(tcx);
                         let min_size = (from as u64) + (to as u64);
                         if let Some(rest_size) = size.checked_sub(min_size) {
                             tcx.mk_array(inner, rest_size)

@@ -29,7 +29,7 @@ use traits;
 use traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TyKind, List};
-use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
+use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const, LazyConst};
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
@@ -1112,6 +1112,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
+    pub fn intern_lazy_const(self, c: ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
+        self.global_interners.arena.alloc(c)
+    }
+
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
         self.layout_interner.borrow_mut().intern(layout, |layout| {
             self.global_arenas.layout.alloc(layout)
@@ -1802,6 +1806,21 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<Clause<'a>> {
             return Some(List::empty());
         }
 
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for &'a LazyConst<'a> {
+    type Lifted = &'tcx LazyConst<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx LazyConst<'tcx>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -2683,7 +2702,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, ty::Const::from_usize(self, n)))
+        self.mk_ty(Array(ty, self.intern_lazy_const(
+            ty::LazyConst::Evaluated(ty::Const::from_usize(self.global_tcx(), n))
+        )))
     }
 
     #[inline]

@@ -650,7 +650,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::Array(_, len) => {
                 // fixed-length array
-                let len = len.unwrap_usize(self.tcx);
+                let len = len.unwrap_evaluated().unwrap_usize(self.tcx);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
@@ -934,7 +934,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
             ty::Array(_, n) => {
                 PatternKind::Array {
-                    prefix: (0..n.unwrap_usize(self.tcx))
+                    prefix: (0..n.unwrap_evaluated().unwrap_usize(self.tcx))
                         .map(|i| adt_subpattern(i as usize, None))
                         .collect(),
                     slice: None,

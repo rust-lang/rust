@@ -809,7 +809,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
             ty::Array(ety, size) => {
-                let size = size.assert_usize(self.tcx());
+                let size = size.unwrap_evaluated().assert_usize(self.tcx());
                 self.open_drop_for_array(ety, size)
             },
             ty::Slice(ety) => self.open_drop_for_array(ety, None),
@@ -963,7 +963,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             span: self.source_info.span,
             ty: self.tcx().types.usize,
             user_ty: None,
-            literal: ty::Const::from_usize(self.tcx(), val.into()),
+            literal: self.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_usize(self.tcx(), val.into())
+            )),
         })
     }
 
