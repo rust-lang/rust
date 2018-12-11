@@ -516,6 +516,82 @@ impl<'tcx> Stacks {
     }
 }
 
+impl<'a, 'mir, 'tcx> EvalContextPrivExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
+trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+    fn reborrow(
+        &mut self,
+        place: MPlaceTy<'tcx, Borrow>,
+        size: Size,
+        fn_barrier: bool,
+        new_bor: Borrow
+    ) -> EvalResult<'tcx> {
+        let this = self.eval_context_mut();
+        let ptr = place.ptr.to_ptr()?;
+        let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
+        trace!("reborrow: Creating new reference for {:?} (pointee {}): {:?}",
+            ptr, place.layout.ty, new_bor);
+
+        // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
+        let alloc = this.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(this, ptr, size)?;
+        // Update the stacks.
+        if let Borrow::Shr(Some(_)) = new_bor {
+            // Reference that cares about freezing. We need a frozen-sensitive reborrow.
+            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+                let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
+                alloc.extra.reborrow(cur_ptr, size, barrier, new_bor, kind)
+            })?;
+        } else {
+            // Just treat this as one big chunk.
+            let kind = if new_bor.is_unique() { RefKind::Unique } else { RefKind::Raw };
+            alloc.extra.reborrow(ptr, size, barrier, new_bor, kind)?;
+        }
+        Ok(())
+    }
+
+    /// Retag an indidual pointer, returning the retagged version.
+    fn retag_reference(
+        &mut self,
+        val: ImmTy<'tcx, Borrow>,
+        mutbl: Mutability,
+        fn_barrier: bool,
+        two_phase: bool,
+    ) -> EvalResult<'tcx, Immediate<Borrow>> {
+        let this = self.eval_context_mut();
+        // We want a place for where the ptr *points to*, so we get one.
+        let place = this.ref_to_mplace(val)?;
+        let size = this.size_and_align_of_mplace(place)?
+            .map(|(size, _)| size)
+            .unwrap_or_else(|| place.layout.size);
+        if size == Size::ZERO {
+            // Nothing to do for ZSTs.
+            return Ok(*val);
+        }
+
+        // Compute new borrow.
+        let time = this.machine.stacked_borrows.increment_clock();
+        let new_bor = match mutbl {
+            MutMutable => Borrow::Uniq(time),
+            MutImmutable => Borrow::Shr(Some(time)),
+        };
+
+        // Reborrow.
+        this.reborrow(place, size, fn_barrier, new_bor)?;
+        let new_place = place.with_tag(new_bor);
+        // Handle two-phase borrows.
+        if two_phase {
+            assert!(mutbl == MutMutable, "two-phase shared borrows make no sense");
+            // We immediately share it, to allow read accesses
+            let two_phase_time = this.machine.stacked_borrows.increment_clock();
+            let two_phase_bor = Borrow::Shr(Some(two_phase_time));
+            this.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
+        }
+
+        // Return new ptr.
+        Ok(new_place.to_ref())
+    }
+}
+
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
 pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     fn tag_new_allocation(
@@ -599,79 +675,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let this = self.eval_context_mut();
         this.reborrow(place, size, /*fn_barrier*/ false, Borrow::default())?;
         Ok(())
-    }
-
-    fn reborrow(
-        &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        fn_barrier: bool,
-        new_bor: Borrow
-    ) -> EvalResult<'tcx> {
-        let this = self.eval_context_mut();
-        let ptr = place.ptr.to_ptr()?;
-        let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
-        trace!("reborrow: Creating new reference for {:?} (pointee {}): {:?}",
-            ptr, place.layout.ty, new_bor);
-
-        // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
-        let alloc = this.memory().get(ptr.alloc_id)?;
-        alloc.check_bounds(this, ptr, size)?;
-        // Update the stacks.
-        if let Borrow::Shr(Some(_)) = new_bor {
-            // Reference that cares about freezing. We need a frozen-sensitive reborrow.
-            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
-                let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
-                alloc.extra.reborrow(cur_ptr, size, barrier, new_bor, kind)
-            })?;
-        } else {
-            // Just treat this as one big chunk.
-            let kind = if new_bor.is_unique() { RefKind::Unique } else { RefKind::Raw };
-            alloc.extra.reborrow(ptr, size, barrier, new_bor, kind)?;
-        }
-        Ok(())
-    }
-
-    /// Retag an indidual pointer, returning the retagged version.
-    fn retag_reference(
-        &mut self,
-        val: ImmTy<'tcx, Borrow>,
-        mutbl: Mutability,
-        fn_barrier: bool,
-        two_phase: bool,
-    ) -> EvalResult<'tcx, Immediate<Borrow>> {
-        let this = self.eval_context_mut();
-        // We want a place for where the ptr *points to*, so we get one.
-        let place = this.ref_to_mplace(val)?;
-        let size = this.size_and_align_of_mplace(place)?
-            .map(|(size, _)| size)
-            .unwrap_or_else(|| place.layout.size);
-        if size == Size::ZERO {
-            // Nothing to do for ZSTs.
-            return Ok(*val);
-        }
-
-        // Compute new borrow.
-        let time = this.machine.stacked_borrows.increment_clock();
-        let new_bor = match mutbl {
-            MutMutable => Borrow::Uniq(time),
-            MutImmutable => Borrow::Shr(Some(time)),
-        };
-
-        // Reborrow.
-        this.reborrow(place, size, fn_barrier, new_bor)?;
-        let new_place = place.with_tag(new_bor);
-        // Handle two-phase borrows.
-        if two_phase {
-            assert!(mutbl == MutMutable, "two-phase shared borrows make no sense");
-            // We immediately share it, to allow read accesses
-            let two_phase_time = this.machine.stacked_borrows.increment_clock();
-            let two_phase_bor = Borrow::Shr(Some(two_phase_time));
-            this.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
-        }
-
-        // Return new ptr.
-        Ok(new_place.to_ref())
     }
 
     fn retag(
