@@ -24,5 +24,11 @@ error: using `write!()` with a format string that ends in a single newline, cons
 25 |     write!(&mut v, "{}/n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: using `write!()` with a format string that ends in a single newline, consider using `writeln!()` instead
+  --> $DIR/write_with_newline.rs:44:5
+   |
+44 |     write!(&mut v, "//n");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
