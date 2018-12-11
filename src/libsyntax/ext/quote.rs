@@ -247,7 +247,7 @@ pub mod rt {
 
             let delim_span = DelimSpan::from_single(self.span);
             r.push(TokenTree::Delimited(
-                delim_span, token::Bracket, TokenStream::concat(inner).into()
+                delim_span, token::Bracket, TokenStream::new(inner).into()
             ));
             r
         }

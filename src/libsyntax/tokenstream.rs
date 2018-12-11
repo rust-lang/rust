@@ -195,7 +195,7 @@ impl TokenStream {
                 new_stream.extend_from_slice(parts.0);
                 new_stream.push(comma);
                 new_stream.extend_from_slice(parts.1);
-                return Some((TokenStream::concat(new_stream), sp));
+                return Some((TokenStream::new(new_stream), sp));
             }
         }
         None
@@ -216,7 +216,7 @@ impl From<Token> for TokenStream {
 
 impl<T: Into<TokenStream>> iter::FromIterator<T> for TokenStream {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        TokenStream::concat(iter.into_iter().map(Into::into).collect::<Vec<_>>())
+        TokenStream::new(iter.into_iter().map(Into::into).collect::<Vec<_>>())
     }
 }
 
@@ -265,7 +265,7 @@ impl Extend<TokenStream> for TokenStream {
         // Build the resulting token stream. If it contains more than one token,
         // preserve capacity in the vector in anticipation of the caller
         // performing additional calls to extend.
-        *self = TokenStream::concat(builder.0);
+        *self = TokenStream::new(builder.0);
     }
 }
 
@@ -297,16 +297,12 @@ impl TokenStream {
         }
     }
 
-    pub fn concat(mut streams: Vec<TokenStream>) -> TokenStream {
+    pub fn new(mut streams: Vec<TokenStream>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::empty(),
             1 => streams.pop().unwrap(),
-            _ => TokenStream::concat_rc_vec(Lrc::new(streams)),
+            _ => TokenStream::Stream(Lrc::new(streams)),
         }
-    }
-
-    fn concat_rc_vec(streams: Lrc<Vec<TokenStream>>) -> TokenStream {
-        TokenStream::Stream(streams)
     }
 
     pub fn trees(&self) -> Cursor {
@@ -389,7 +385,7 @@ impl TokenStream {
             });
             i += 1;
         }
-        TokenStream::concat(result)
+        TokenStream::new(result)
     }
 
     pub fn map<F: FnMut(TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
@@ -402,7 +398,7 @@ impl TokenStream {
                 _ => unreachable!()
             });
         }
-        TokenStream::concat(result)
+        TokenStream::new(result)
     }
 
     fn first_tree_and_joint(&self) -> Option<(TokenTree, bool)> {
@@ -461,7 +457,7 @@ impl TokenStreamBuilder {
     }
 
     pub fn build(self) -> TokenStream {
-        TokenStream::concat(self.0)
+        TokenStream::new(self.0)
     }
 
     fn push_all_but_last_tree(&mut self, stream: &TokenStream) {
@@ -470,7 +466,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[0].clone().into()),
-                _ => self.0.push(TokenStream::concat(streams[0 .. len - 1].to_vec())),
+                _ => self.0.push(TokenStream::new(streams[0 .. len - 1].to_vec())),
             }
             self.push_all_but_last_tree(&streams[len - 1])
         }
@@ -482,7 +478,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[1].clone().into()),
-                _ => self.0.push(TokenStream::concat(streams[1 .. len].to_vec())),
+                _ => self.0.push(TokenStream::new(streams[1 .. len].to_vec())),
             }
             self.push_all_but_first_tree(&streams[0])
         }
@@ -577,7 +573,7 @@ impl Cursor {
             _ if stream.is_empty() => return,
             CursorKind::Empty => *self = stream.trees(),
             CursorKind::Tree(_, consumed) | CursorKind::JointTree(_, consumed) => {
-                *self = TokenStream::concat(vec![self.original_stream(), stream]).trees();
+                *self = TokenStream::new(vec![self.original_stream(), stream]).trees();
                 if consumed {
                     self.next();
                 }
@@ -593,10 +589,10 @@ impl Cursor {
             CursorKind::Empty => TokenStream::empty(),
             CursorKind::Tree(ref tree, _) => tree.clone().into(),
             CursorKind::JointTree(ref tree, _) => tree.clone().joint(),
-            CursorKind::Stream(ref cursor) => TokenStream::concat_rc_vec({
+            CursorKind::Stream(ref cursor) => TokenStream::Stream(
                 cursor.stack.get(0).cloned().map(|(stream, _)| stream)
                     .unwrap_or_else(|| cursor.stream.clone())
-            }),
+            ),
         }
     }
 
@@ -664,7 +660,7 @@ impl From<TokenStream> for ThinTokenStream {
 
 impl From<ThinTokenStream> for TokenStream {
     fn from(stream: ThinTokenStream) -> TokenStream {
-        stream.0.map(TokenStream::concat_rc_vec).unwrap_or_else(TokenStream::empty)
+        stream.0.map(TokenStream::Stream).unwrap_or_else(TokenStream::empty)
     }
 }
 
@@ -763,7 +759,7 @@ mod tests {
             let test_res = string_to_ts("foo::bar::baz");
             let test_fst = string_to_ts("foo::bar");
             let test_snd = string_to_ts("::baz");
-            let eq_res = TokenStream::concat(vec![test_fst, test_snd]);
+            let eq_res = TokenStream::new(vec![test_fst, test_snd]);
             assert_eq!(test_res.trees().count(), 5);
             assert_eq!(eq_res.trees().count(), 5);
             assert_eq!(test_res.eq_unspanned(&eq_res), true);

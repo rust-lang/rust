@@ -2928,7 +2928,7 @@ impl<'a> Parser<'a> {
                 _ => result.push(self.parse_token_tree().into()),
             }
         }
-        TokenStream::concat(result)
+        TokenStream::new(result)
     }
 
     /// Parse a prefix-unary-operator expr
@@ -4624,7 +4624,7 @@ impl<'a> Parser<'a> {
                         self.unexpected()?;
                         unreachable!()
                     };
-                    TokenStream::concat(vec![
+                    TokenStream::new(vec![
                         args.into(),
                         TokenTree::Token(token_lo.to(self.prev_span), token::FatArrow).into(),
                         body.into(),

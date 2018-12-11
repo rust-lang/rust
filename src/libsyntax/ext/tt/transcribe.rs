@@ -103,12 +103,12 @@ pub fn transcribe(cx: &ExtCtxt,
                 }
                 Frame::Delimited { forest, span, .. } => {
                     if result_stack.is_empty() {
-                        return TokenStream::concat(result);
+                        return TokenStream::new(result);
                     }
                     let tree = TokenTree::Delimited(
                         span,
                         forest.delim,
-                        TokenStream::concat(result).into(),
+                        TokenStream::new(result).into(),
                     );
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());

@@ -842,13 +842,13 @@ mod tests {
         with_globals(|| {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
-            let expected = TokenStream::concat(vec![
+            let expected = TokenStream::new(vec![
                 TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"), false)).into(),
                 TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"), false)).into(),
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
                     token::DelimToken::Paren,
-                    TokenStream::concat(vec![
+                    TokenStream::new(vec![
                         TokenTree::Token(sp(6, 7),
                                          token::Ident(Ident::from_str("b"), false)).into(),
                         TokenTree::Token(sp(8, 9), token::Colon).into(),
@@ -859,7 +859,7 @@ mod tests {
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                     token::DelimToken::Brace,
-                    TokenStream::concat(vec![
+                    TokenStream::new(vec![
                         TokenTree::Token(sp(17, 18),
                                          token::Ident(Ident::from_str("b"), false)).into(),
                         TokenTree::Token(sp(18, 19), token::Semi).into(),
