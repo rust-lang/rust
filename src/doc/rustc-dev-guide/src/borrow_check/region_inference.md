@@ -48,26 +48,40 @@ The MIR-based region analysis consists of two major functions:
 
 ## Universal regions
 
-The [`UnversalRegions`] type represents a collection of _unversal_ regions
+The [`UnversalRegions`] type represents a collection of _universal_ regions
 corresponding to some MIR `DefId`. It is constructed in
 [`replace_regions_in_mir`] when we replace all regions with fresh inference
 variables. [`UniversalRegions`] contains indices for all the free regions in
 the given MIR along with any relationships that are _known_ to hold between
 them (e.g. implied bounds, where clauses, etc.).
 
-TODO: is there more to write here?
+For example, given the MIR for the following function:
+
+```rust
+fn foo<'a>(x: &'a u32) {
+    // ...
+}
+```
+
+we would create a universal region for `'a` and one for `'static`. There may
+also be some complications for handling closures, but we will ignore those for
+the moment.
+
+TODO: write about _how_ these regions are computed.
 
 [`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/universal_regions/struct.UniversalRegions.html
 
 ## Region variables
 
-The value of a region can be thought of as a **set** of points in the MIR where
-the region is valid; we call the domain of this set a `RegionElement`. In the
-code, the value for all regions is maintained in
-[the `rustc_mir::borrow_check::nll::region_infer` module][ri]. For
-each region we maintain a set storing what elements are present in its
-value (to make this efficient, we give each kind of element an index,
-the `RegionElementIndex`, and use sparse bitsets).
+The value of a region can be thought of as a **set**. This set contains all
+points in the MIR where the region is valid along with any regions that are
+outlived by this region (e.g. if `'a: 'b`, then `end('b)` is in the set for
+`'a`); we call the domain of this set a `RegionElement`. In the code, the value
+for all regions is maintained in [the
+`rustc_mir::borrow_check::nll::region_infer` module][ri]. For each region we
+maintain a set storing what elements are present in its value (to make this
+efficient, we give each kind of element an index, the `RegionElementIndex`, and
+use sparse bitsets).
 
 [ri]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/borrow_check/nll/region_infer/
 
