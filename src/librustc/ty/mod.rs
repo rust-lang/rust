@@ -1754,17 +1754,19 @@ bitflags! {
     pub struct AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0;
         const IS_ENUM             = 1 << 0;
-        const IS_PHANTOM_DATA     = 1 << 1;
-        const IS_FUNDAMENTAL      = 1 << 2;
-        const IS_UNION            = 1 << 3;
-        const IS_BOX              = 1 << 4;
+        const IS_UNION            = 1 << 1;
+        const IS_STRUCT           = 1 << 2;
+        const IS_TUPLE_STRUCT     = 1 << 3;
+        const IS_PHANTOM_DATA     = 1 << 4;
+        const IS_FUNDAMENTAL      = 1 << 5;
+        const IS_BOX              = 1 << 6;
         /// Indicates whether the type is an `Arc`.
-        const IS_ARC              = 1 << 5;
+        const IS_ARC              = 1 << 7;
         /// Indicates whether the type is an `Rc`.
-        const IS_RC               = 1 << 6;
+        const IS_RC               = 1 << 8;
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
-        const IS_VARIANT_LIST_NON_EXHAUSTIVE   = 1 << 7;
+        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 9;
     }
 }
 
@@ -2079,31 +2081,43 @@ impl<'a, 'gcx, 'tcx> AdtDef {
            repr: ReprOptions) -> Self {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
-        let attrs = tcx.get_attrs(did);
-        if attr::contains_name(&attrs, "fundamental") {
-            flags = flags | AdtFlags::IS_FUNDAMENTAL;
-        }
-        if Some(did) == tcx.lang_items().phantom_data() {
-            flags = flags | AdtFlags::IS_PHANTOM_DATA;
-        }
-        if Some(did) == tcx.lang_items().owned_box() {
-            flags = flags | AdtFlags::IS_BOX;
-        }
-        if Some(did) == tcx.lang_items().arc() {
-            flags = flags | AdtFlags::IS_ARC;
-        }
-        if Some(did) == tcx.lang_items().rc() {
-            flags = flags | AdtFlags::IS_RC;
-        }
+
         if kind == AdtKind::Enum && tcx.has_attr(did, "non_exhaustive") {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
-        match kind {
-            AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
-            AdtKind::Union => flags = flags | AdtFlags::IS_UNION,
-            AdtKind::Struct => {}
+        flags |= match kind {
+            AdtKind::Enum => AdtFlags::IS_ENUM,
+            AdtKind::Union => AdtFlags::IS_UNION,
+            AdtKind::Struct => AdtFlags::IS_STRUCT,
+        };
+
+        if let AdtKind::Struct = kind {
+            let variant_def = &variants[VariantIdx::new(0)];
+            let def_key = tcx.def_key(variant_def.did);
+            match def_key.disambiguated_data.data {
+                DefPathData::StructCtor => flags |= AdtFlags::IS_TUPLE_STRUCT,
+                _ => (),
+            }
         }
+
+        let attrs = tcx.get_attrs(did);
+        if attr::contains_name(&attrs, "fundamental") {
+            flags |= AdtFlags::IS_FUNDAMENTAL;
+        }
+        if Some(did) == tcx.lang_items().phantom_data() {
+            flags |= AdtFlags::IS_PHANTOM_DATA;
+        }
+        if Some(did) == tcx.lang_items().owned_box() {
+            flags |= AdtFlags::IS_BOX;
+        }
+        if Some(did) == tcx.lang_items().arc() {
+            flags |= AdtFlags::IS_ARC;
+        }
+        if Some(did) == tcx.lang_items().rc() {
+            flags |= AdtFlags::IS_RC;
+        }
+
         AdtDef {
             did,
             variants,
@@ -2114,25 +2128,31 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     #[inline]
     pub fn is_struct(&self) -> bool {
-        !self.is_union() && !self.is_enum()
+        self.flags.contains(AdtFlags::IS_STRUCT)
+    }
+
+    /// If this function returns `true`, it implies that `is_struct` must return `true`.
+    #[inline]
+    pub fn is_tuple_struct(&self) -> bool {
+        self.flags.contains(AdtFlags::IS_TUPLE_STRUCT)
     }
 
     #[inline]
     pub fn is_union(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_UNION)
+        self.flags.contains(AdtFlags::IS_UNION)
     }
 
     #[inline]
     pub fn is_enum(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_ENUM)
+        self.flags.contains(AdtFlags::IS_ENUM)
     }
 
     #[inline]
     pub fn is_variant_list_non_exhaustive(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
+        self.flags.contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
     }
 
-    /// Returns the kind of the ADT - Struct or Enum.
+    /// Returns the kind of the ADT.
     #[inline]
     pub fn adt_kind(&self) -> AdtKind {
         if self.is_enum() {
@@ -2161,33 +2181,33 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
-    /// Returns whether this type is #[fundamental] for the purposes
+    /// Returns whether this type is `#[fundamental]` for the purposes
     /// of coherence checking.
     #[inline]
     pub fn is_fundamental(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_FUNDAMENTAL)
+        self.flags.contains(AdtFlags::IS_FUNDAMENTAL)
     }
 
     /// Returns `true` if this is PhantomData<T>.
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_PHANTOM_DATA)
+        self.flags.contains(AdtFlags::IS_PHANTOM_DATA)
     }
 
     /// Returns `true` if this is `Arc<T>`.
     pub fn is_arc(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_ARC)
+        self.flags.contains(AdtFlags::IS_ARC)
     }
 
     /// Returns `true` if this is `Rc<T>`.
     pub fn is_rc(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_RC)
+        self.flags.contains(AdtFlags::IS_RC)
     }
 
     /// Returns `true` if this is Box<T>.
     #[inline]
     pub fn is_box(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_BOX)
+        self.flags.contains(AdtFlags::IS_BOX)
     }
 
     /// Returns whether this type has a destructor.
