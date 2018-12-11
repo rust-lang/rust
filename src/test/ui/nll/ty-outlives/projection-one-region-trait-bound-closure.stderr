@@ -31,7 +31,7 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/projection-one-region-trait-bound-closure.rs:37:39
    |
 LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
@@ -76,7 +76,7 @@ LL | | }
                T
            ]
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/projection-one-region-trait-bound-closure.rs:47:39
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)

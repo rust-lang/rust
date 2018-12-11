@@ -40,7 +40,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/projection-one-region-closure.rs:45:39
    |
 LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
@@ -94,7 +94,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:39
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)

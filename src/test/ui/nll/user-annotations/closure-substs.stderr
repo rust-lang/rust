@@ -1,27 +1,27 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/closure-substs.rs:8:16
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
 ...
-LL |         return x; //~ ERROR unsatisfied lifetime constraints
+LL |         return x; //~ ERROR lifetime may not live long enough
    |                ^ returning this value requires that `'a` must outlive `'static`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/closure-substs.rs:15:16
    |
 LL |     |x: &i32| -> &'static i32 {
    |         - let's call the lifetime of this reference `'1`
-LL |         return x; //~ ERROR unsatisfied lifetime constraints
+LL |         return x; //~ ERROR lifetime may not live long enough
    |                ^ returning this value requires that `'1` must outlive `'static`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/closure-substs.rs:22:9
    |
 LL | fn bar<'a>() {
    |        -- lifetime `'a` defined here
 ...
-LL |         b(x); //~ ERROR unsatisfied lifetime constraints
+LL |         b(x); //~ ERROR lifetime may not live long enough
    |         ^^^^ argument requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of closure
