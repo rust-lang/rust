@@ -328,7 +328,8 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
         .arg("-o").arg(&out)
         .arg(&path)
         .arg("--markdown-css")
-        .arg("../rust.css");
+        .arg("../rust.css")
+        .arg("--generate-redirect-pages");
 
     builder.run(&mut cmd);
 }
@@ -503,6 +504,7 @@ impl Step for Std {
             cargo.arg("--")
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
+                 .arg("--generate-redirect-pages")
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);

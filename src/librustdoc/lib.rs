@@ -338,6 +338,11 @@ fn opts() -> Vec<RustcOptGroup> {
                        "enable-index-page",
                        "To enable generation of the index page")
         }),
+        stable("generate-redirect-pages", |o| {
+            o.optflag("",
+                      "generate-redirect-pages",
+                      "Generate extra pages to support legacy URLs and tool links")
+        }),
     ]
 }
 

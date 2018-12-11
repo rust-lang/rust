@@ -43,7 +43,7 @@ use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
 use std::ffi::OsStr;
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
 use std::mem;
@@ -140,6 +140,8 @@ struct SharedContext {
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
     pub resource_suffix: String,
+    /// Option disabled by default to generate files used by RLS and some other tools.
+    pub generate_redirect_pages: bool,
 }
 
 impl SharedContext {
@@ -506,6 +508,7 @@ pub fn run(mut krate: clean::Crate,
         extension_css,
         extern_html_root_urls,
         resource_suffix,
+        generate_redirect_pages,
         ..
     } = options;
 
@@ -533,6 +536,7 @@ pub fn run(mut krate: clean::Crate,
         sort_modules_alphabetically,
         themes,
         resource_suffix,
+        generate_redirect_pages,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -2142,6 +2146,27 @@ impl Context {
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
+                }
+                if self.shared.generate_redirect_pages {
+                    // Redirect from a sane URL using the namespace to Rustdoc's
+                    // URL for the page.
+                    let redir_name = format!("{}.{}.html", name, item_type.name_space());
+                    let redir_dst = self.dst.join(redir_name);
+                    if let Ok(redirect_out) = OpenOptions::new().create_new(true)
+                                                                .write(true)
+                                                                .open(&redir_dst) {
+                        let mut redirect_out = BufWriter::new(redirect_out);
+                        try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
+                    }
+                     // If the item is a macro, redirect from the old macro URL (with !)
+                    // to the new one (without).
+                    if item_type == ItemType::Macro {
+                        let redir_name = format!("{}.{}!.html", item_type, name);
+                        let redir_dst = self.dst.join(redir_name);
+                        let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                        let mut redirect_out = BufWriter::new(redirect_out);
+                        try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
+                    }
                 }
             }
         }

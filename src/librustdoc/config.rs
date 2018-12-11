@@ -192,6 +192,8 @@ pub struct RenderOptions {
     /// If present, playground URL to use in the "Run" button added to code samples generated from
     /// standalone Markdown files. If not present, `playground_url` is used.
     pub markdown_playground_url: Option<String>,
+    /// Option (disabled by default) to generate files used by RLS and some other tools.
+    pub generate_redirect_pages: bool,
 }
 
 impl Options {
@@ -434,6 +436,7 @@ impl Options {
         let markdown_playground_url = matches.opt_str("markdown-playground-url");
         let crate_version = matches.opt_str("crate-version");
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
+        let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -475,6 +478,7 @@ impl Options {
                 markdown_no_toc,
                 markdown_css,
                 markdown_playground_url,
+                generate_redirect_pages,
             }
         })
     }
