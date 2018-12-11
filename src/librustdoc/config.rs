@@ -192,6 +192,8 @@ pub struct RenderOptions {
     /// If false, the `select` element to have search filtering by crates on rendered docs
     /// won't be generated.
     pub generate_search_filter: bool,
+    /// Option (disabled by default) to generate files used by RLS and some other tools.
+    pub generate_redirect_pages: bool,
 }
 
 impl Options {
@@ -436,6 +438,7 @@ impl Options {
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
+        let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -480,6 +483,7 @@ impl Options {
                 markdown_css,
                 markdown_playground_url,
                 generate_search_filter,
+                generate_redirect_pages,
             }
         })
     }
