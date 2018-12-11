@@ -271,6 +271,7 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(min_const_unsafe_fn)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]

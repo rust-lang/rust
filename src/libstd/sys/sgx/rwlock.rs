@@ -21,7 +21,6 @@ pub struct RWLock {
 //unsafe impl Sync for RWLock {} // FIXME
 
 impl RWLock {
-    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> RWLock {
         RWLock {
             readers: SpinMutex::new(WaitVariable::new(None)),

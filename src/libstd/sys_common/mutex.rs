@@ -27,7 +27,6 @@ impl Mutex {
     /// Also, until `init` is called, behavior is undefined if this
     /// mutex is ever used reentrantly, i.e., `raw_lock` or `try_lock`
     /// are called by the thread currently holding the lock.
-    #[unstable(feature = "sys_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Mutex { Mutex(imp::Mutex::new()) }
 
     /// Prepare the mutex for use.
