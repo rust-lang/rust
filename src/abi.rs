@@ -79,7 +79,7 @@ pub fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
         unimpl!("Variadic function are not yet supported");
     }
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
-        Abi::Rust => (CallConv::Fast, sig.inputs().to_vec(), sig.output()),
+        Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             assert_eq!(sig.inputs().len(), 2);
@@ -89,7 +89,7 @@ pub fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
             };
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.into_iter());
-            (CallConv::Fast, inputs, sig.output())
+            (CallConv::SystemV, inputs, sig.output())
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
         Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),

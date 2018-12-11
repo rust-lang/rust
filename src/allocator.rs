@@ -39,8 +39,8 @@ pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind)
             }
         };
 
-        let mut sig = Signature {
-            call_conv: CallConv::Fast,
+        let sig = Signature {
+            call_conv: CallConv::SystemV,
             params: arg_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output.into_iter().map(AbiParam::new).collect(),
         };
@@ -49,12 +49,10 @@ pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind)
         let callee_name = kind.fn_name(method.name);
         //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
 
-        sig.call_conv = CallConv::Fast; // "rust" abi
         let func_id = module
             .declare_function(&caller_name, Linkage::Export, &sig)
             .unwrap();
 
-        sig.call_conv = CallConv::SystemV; // "C" abi
         let callee_func_id = module
             .declare_function(&callee_name, Linkage::Import, &sig)
             .unwrap();
