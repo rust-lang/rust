@@ -589,7 +589,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     fn into_key_slice(self) -> &'a [K] {
         // We have to be careful here because we might be pointing to the shared root.
         // In that case, we must not create an `&LeafNode`.  We could just return
-        // an empty slice whenever the lenght is 0 (this includes the shared root),
+        // an empty slice whenever the length is 0 (this includes the shared root),
         // but we want to avoid that run-time check.
         // Instead, we create a slice pointing into the node whenever possible.
         // We can sometimes do this even for the shared root, as the slice will be
