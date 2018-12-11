@@ -10,7 +10,6 @@
 
 use self::Entry::*;
 
-use intrinsics::unlikely;
 use collections::CollectionAllocErr;
 use cell::Cell;
 use borrow::Borrow;
