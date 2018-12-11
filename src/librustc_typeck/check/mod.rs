@@ -95,7 +95,7 @@ mod op;
 
 use astconv::AstConv;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-use rustc::hir::{self, GenericArg, Node, ItemKind, PatKind};
+use rustc::hir::{self, GenericArg, ItemKind, Node, PatKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -113,7 +113,8 @@ use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
                        UserSelfTy, UserSubsts};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate,
+                RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
@@ -3217,8 +3218,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             return_expr_ty);
     }
 
-    // A generic function for checking the then and else in an if
-    // or if-else.
+    // A generic function for checking the 'then' and 'else' clauses in an 'if'
+    // or 'if-else' expression.
     fn check_then_else(&self,
                        cond_expr: &'gcx hir::Expr,
                        then_expr: &'gcx hir::Expr,
@@ -3544,7 +3545,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // We don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
                 // a bug to have constructed one.
-                if adt_kind != ty::AdtKind::Enum {
+                if adt_kind != AdtKind::Enum {
                     tcx.check_stability(v_field.did, Some(expr_id), field.span);
                 }
 
@@ -5156,26 +5157,48 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }).unwrap_or(false);
 
         let mut new_def = def;
-        let (def_id, ty) = if let Def::SelfCtor(impl_def_id) = def {
-            let ty = self.impl_self_ty(span, impl_def_id).ty;
+        let (def_id, ty) = match def {
+            Def::SelfCtor(impl_def_id) => {
+                let ty = self.impl_self_ty(span, impl_def_id).ty;
+                let adt_def = ty.ty_adt_def();
 
-            match ty.ty_adt_def() {
-                Some(adt_def) if adt_def.is_struct() => {
-                    let variant = adt_def.non_enum_variant();
-                    new_def = Def::StructCtor(variant.did, variant.ctor_kind);
-                    (variant.did, self.tcx.type_of(variant.did))
-                }
-                _ => {
-                    (impl_def_id, self.tcx.types.err)
+                match adt_def {
+                    Some(adt_def) if adt_def.is_tuple_struct() => {
+                        let variant = adt_def.non_enum_variant();
+                        new_def = Def::StructCtor(variant.did, variant.ctor_kind);
+                        (variant.did, self.tcx.type_of(variant.did))
+                    }
+                    _ => {
+                        let mut err = self.tcx.sess.struct_span_err(span,
+                            "the `Self` constructor can only be used with tuple or unit structs");
+                        if let Some(adt_def) = adt_def {
+                            match adt_def.adt_kind() {
+                                AdtKind::Enum => {
+                                    err.note("did you mean to use one of the enum's variants?");
+                                },
+                                AdtKind::Union => {},
+                                AdtKind::Struct => {
+                                    err.span_label(
+                                        span,
+                                        format!("did you mean `Self {{ /* fields */ }}`?"),
+                                    );
+                                }
+                            }
+                        }
+                        err.emit();
+
+                        (impl_def_id, self.tcx.types.err)
+                    }
                 }
             }
-        } else {
-            let def_id = def.def_id();
+            _ => {
+                let def_id = def.def_id();
 
-            // The things we are substituting into the type should not contain
-            // escaping late-bound regions, and nor should the base type scheme.
-            let ty = self.tcx.type_of(def_id);
-            (def_id, ty)
+                // The things we are substituting into the type should not contain
+                // escaping late-bound regions, and nor should the base type scheme.
+                let ty = self.tcx.type_of(def_id);
+                (def_id, ty)
+            }
         };
 
         let substs = AstConv::create_substs_for_generic_args(
