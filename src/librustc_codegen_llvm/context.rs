@@ -10,7 +10,6 @@
 
 use attributes;
 use llvm;
-use llvm_util;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use debuginfo;
@@ -445,10 +444,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
         attributes::apply_target_cpu_attr(self, llfn)
-    }
-
-    fn closure_env_needs_indirect_debuginfo(&self) -> bool {
-        llvm_util::get_major_version() < 6
     }
 
     fn create_used_variable(&self) {
