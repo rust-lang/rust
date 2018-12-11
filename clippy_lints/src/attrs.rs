@@ -332,7 +332,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                     &format!("unknown clippy lint: clippy::{}", name),
                     |db| {
                         if name.as_str().chars().any(|c| c.is_uppercase()) {
-                            let name_lower = name.as_str().to_lowercase().to_string();
+                            let name_lower = name.as_str().to_lowercase();
                             match lint_store.check_lint_name(
                                 &name_lower,
                                 Some(tool_name.as_str())
