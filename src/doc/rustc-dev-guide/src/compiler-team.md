@@ -1,11 +1,11 @@
 # About the compiler team
 
-rustc is maintained by the
-[Rust compiler team](https://www.rust-lang.org/en-US/team.html). The
-people who belong to this team collectively work to track regressions
-and implement new features. Members of the Rust compiler team are
-people who have made significant contributions to rustc and its
-design.
+rustc is maintained by the [Rust compiler team][team]. The people who belong to
+this team collectively work to track regressions and implement new features.
+Members of the Rust compiler team are people who have made significant
+contributions to rustc and its design.
+
+[team]: https://www.rust-lang.org/governance/teams/language-and-compiler
 
 ## Discussion
 
@@ -89,7 +89,7 @@ The guidelines for reviewers are as follows:
   Rust project, so it is expected that you will go above and beyond
   when it comes to the [Code of Conduct].
 
-[Code of Conduct]: https://www.rust-lang.org/en-US/conduct.html
+[Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
 ### high-five
 
