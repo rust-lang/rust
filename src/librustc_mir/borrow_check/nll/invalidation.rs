@@ -135,7 +135,6 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             StatementKind::Nop |
             StatementKind::AscribeUserType(..) |
             StatementKind::Retag { .. } |
-            StatementKind::EscapeToRaw { .. } |
             StatementKind::StorageLive(..) => {
                 // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
                 // to borrow check.

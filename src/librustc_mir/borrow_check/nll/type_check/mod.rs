@@ -1316,7 +1316,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             | StatementKind::StorageDead(..)
             | StatementKind::InlineAsm { .. }
             | StatementKind::Retag { .. }
-            | StatementKind::EscapeToRaw { .. }
             | StatementKind::Nop => {}
         }
     }

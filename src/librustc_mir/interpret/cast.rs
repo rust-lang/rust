@@ -44,22 +44,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Misc => {
-                let src_layout = src.layout;
                 let src = self.read_immediate(src)?;
 
-                // There are no casts to references
-                assert!(!dest.layout.ty.is_region_ptr());
-                // Hence we make all casts erase the tag
-                let src = src.erase_tag().with_default_tag();
-
-                if self.type_is_fat_ptr(src_layout.ty) {
-                    match (src, self.type_is_fat_ptr(dest.layout.ty)) {
+                if self.type_is_fat_ptr(src.layout.ty) {
+                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Immediate::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Immediate::ScalarPair(..), true) => {
                             // No change to immediate
-                            self.write_immediate(src, dest)?;
+                            self.write_immediate(*src, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Immediate::ScalarPair(data, _), false) => {
@@ -67,11 +61,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         }
                     }
                 } else {
-                    match src_layout.variants {
+                    match src.layout.variants {
                         layout::Variants::Single { index } => {
-                            if let Some(def) = src_layout.ty.ty_adt_def() {
+                            if let Some(def) = src.layout.ty.ty_adt_def() {
                                 // Cast from a univariant enum
-                                assert!(src_layout.is_zst());
+                                assert!(src.layout.is_zst());
                                 let discr_val = def
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
@@ -84,7 +78,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         layout::Variants::NicheFilling { .. } => {},
                     }
 
-                    let dest_val = self.cast_scalar(src.to_scalar()?, src_layout, dest.layout)?;
+                    let dest_val = self.cast_scalar(src.to_scalar()?, src.layout, dest.layout)?;
                     self.write_scalar(dest_val, dest)?;
                 }
             }

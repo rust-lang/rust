@@ -709,16 +709,17 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_retag(
         &mut self,
-        fn_entry: &mut bool,
-        two_phase: &mut bool,
+        kind: &mut RetagKind,
         place: &mut Place<'tcx>,
         loc: Location,
     ) {
-        self.super_retag(fn_entry, two_phase, place, loc);
+        self.super_retag(kind, place, loc);
 
         // We have to patch all inlined retags to be aware that they are no longer
         // happening on function entry.
-        *fn_entry = false;
+        if *kind == RetagKind::FnEntry {
+            *kind = RetagKind::Default;
+        }
     }
 
     fn visit_terminator_kind(&mut self, block: BasicBlock,

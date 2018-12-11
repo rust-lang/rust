@@ -153,11 +153,10 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_retag(&mut self,
-                           fn_entry: & $($mutability)* bool,
-                           two_phase: & $($mutability)* bool,
+                           kind: & $($mutability)* RetagKind,
                            place: & $($mutability)* Place<'tcx>,
                            location: Location) {
-                self.super_retag(fn_entry, two_phase, place, location);
+                self.super_retag(kind, place, location);
             }
 
             fn visit_place(&mut self,
@@ -385,9 +384,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::EscapeToRaw(ref $($mutability)* op) => {
-                        self.visit_operand(op, location);
-                    }
                     StatementKind::StorageLive(ref $($mutability)* local) => {
                         self.visit_local(
                             local,
@@ -417,10 +413,9 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(input, location);
                         }
                     }
-                    StatementKind::Retag { ref $($mutability)* fn_entry,
-                                           ref $($mutability)* two_phase,
-                                           ref $($mutability)* place } => {
-                        self.visit_retag(fn_entry, two_phase, place, location);
+                    StatementKind::Retag ( ref $($mutability)* kind,
+                                           ref $($mutability)* place ) => {
+                        self.visit_retag(kind, place, location);
                     }
                     StatementKind::AscribeUserType(
                         ref $($mutability)* place,
@@ -725,8 +720,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_retag(&mut self,
-                           _fn_entry: & $($mutability)* bool,
-                           _two_phase: & $($mutability)* bool,
+                           _kind: & $($mutability)* RetagKind,
                            place: & $($mutability)* Place<'tcx>,
                            location: Location) {
                 self.visit_place(
