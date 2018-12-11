@@ -31,7 +31,7 @@ pub fn args() -> Args {
             lp_cmd_line as *const u16,
             || current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new()));
 
-        Args { parsed_args_list: parsed_args_list }
+        Args { parsed_args_list: parsed_args_list.into_iter() }
     }
 }
 
@@ -50,7 +50,7 @@ pub fn args() -> Args {
 /// <https://gist.github.com/notriddle/dde431930c392e428055b2dc22e638f5> or
 /// <https://paste.gg/p/anonymous/47d6ed5f5bd549168b1c69c799825223>.
 unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_name: F)
-                                                 -> vec::IntoIter<OsString> {
+                                                 -> Vec<OsString> {
     const BACKSLASH: u16 = '\\' as u16;
     const QUOTE: u16 = '"' as u16;
     const TAB: u16 = '\t' as u16;
@@ -62,7 +62,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
     let mut cur = Vec::new();
     if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
         ret_val.push(exe_name());
-        return ret_val.into_iter();
+        return ret_val;
     }
     let mut i = 0;
     // The executable name at the beginning is special.
@@ -77,7 +77,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
                     ret_val.push(OsString::from_wide(
                         slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
                     ));
-                    return ret_val.into_iter();
+                    return ret_val;
                 }
                 if c == QUOTE {
                     break;
@@ -107,7 +107,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
                     ret_val.push(OsString::from_wide(
                         slice::from_raw_parts(lp_cmd_line, i as usize)
                     ));
-                    return ret_val.into_iter();
+                    return ret_val;
                 }
                 if c > 0 && c <= SPACE {
                     break;
@@ -170,7 +170,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         }
         i += 1;
     }
-    ret_val.into_iter()
+    ret_val
 }
 
 pub struct Args {
@@ -183,18 +183,7 @@ pub struct ArgsInnerDebug<'a> {
 
 impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("[")?;
-        let mut first = true;
-        for i in self.args.parsed_args_list.as_slice() {
-            if !first {
-                f.write_str(", ")?;
-            }
-            first = false;
-
-            fmt::Debug::fmt(i, f)?;
-        }
-        f.write_str("]")?;
-        Ok(())
+        self.args.parsed_args_list.as_slice().fmt(f)
     }
 }
 
