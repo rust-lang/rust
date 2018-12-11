@@ -62,10 +62,14 @@ macro_rules! define_categories {
             }
 
             fn print(&self, lock: &mut StderrLock<'_>) {
-                writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
+                writeln!(lock, "| Phase            | Time (ms)      \
+                                | Time (%) | Queries        | Hits (%)")
                     .unwrap();
-                writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")
+                writeln!(lock, "| ---------------- | -------------- \
+                                | -------- | -------------- | --------")
                     .unwrap();
+
+                let total_time = ($(self.times.$name + )* 0) as f32;
 
                 $(
                     let (hits, total) = self.query_counts.$name;
@@ -78,11 +82,12 @@ macro_rules! define_categories {
 
                     writeln!(
                         lock,
-                        "| {0: <16} | {1: <14} | {2: <14} | {3: <8} |",
+                        "| {0: <16} | {1: <14} | {2: <8.2} | {3: <14} | {4: <8}",
                         stringify!($name),
                         self.times.$name / 1_000_000,
+                        ((self.times.$name as f32) / total_time) * 100.0,
                         total,
-                        hits
+                        hits,
                     ).unwrap();
                 )*
             }
