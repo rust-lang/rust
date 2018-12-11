@@ -55,38 +55,35 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
     const QUOTE: u16 = '"' as u16;
     const TAB: u16 = '\t' as u16;
     const SPACE: u16 = ' ' as u16;
-    let mut in_quotes = false;
-    let mut was_in_quotes = false;
-    let mut backslash_count: usize = 0;
     let mut ret_val = Vec::new();
-    let mut cur = Vec::new();
     if lp_cmd_line.is_null() || *lp_cmd_line == 0 {
         ret_val.push(exe_name());
         return ret_val;
     }
-    let mut i = 0;
+    let mut cmd_line = {
+        let mut end = 0;
+        while *lp_cmd_line.offset(end) != 0 {
+            end += 1;
+        }
+        slice::from_raw_parts(lp_cmd_line, end as usize)
+    };
     // The executable name at the beginning is special.
-    match *lp_cmd_line {
+    cmd_line = match cmd_line[0] {
         // The executable name ends at the next quote mark,
         // no matter what.
         QUOTE => {
-            loop {
-                i += 1;
-                let c = *lp_cmd_line.offset(i);
-                if c == 0 {
-                    ret_val.push(OsString::from_wide(
-                        slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
-                    ));
-                    return ret_val;
+            let args = {
+                let mut cut = cmd_line[1..].splitn(2, |&c| c == QUOTE);
+                if let Some(exe) = cut.next() {
+                    ret_val.push(OsString::from_wide(exe));
                 }
-                if c == QUOTE {
-                    break;
-                }
+                cut.next()
+            };
+            if let Some(args) = args {
+                args
+            } else {
+                return ret_val;
             }
-            ret_val.push(OsString::from_wide(
-                slice::from_raw_parts(lp_cmd_line.offset(1), i as usize - 1)
-            ));
-            i += 1;
         }
         // Implement quirk: when they say whitespace here,
         // they include the entire ASCII control plane:
@@ -95,32 +92,30 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         // end of lpCmdLine is ignored."
         0...SPACE => {
             ret_val.push(OsString::new());
-            i += 1;
+            &cmd_line[1..]
         },
         // The executable name ends at the next whitespace,
         // no matter what.
         _ => {
-            loop {
-                i += 1;
-                let c = *lp_cmd_line.offset(i);
-                if c == 0 {
-                    ret_val.push(OsString::from_wide(
-                        slice::from_raw_parts(lp_cmd_line, i as usize)
-                    ));
-                    return ret_val;
+            let args = {
+                let mut cut = cmd_line.splitn(2, |&c| c > 0 && c <= SPACE);
+                if let Some(exe) = cut.next() {
+                    ret_val.push(OsString::from_wide(exe));
                 }
-                if c > 0 && c <= SPACE {
-                    break;
-                }
+                cut.next()
+            };
+            if let Some(args) = args {
+                args
+            } else {
+                return ret_val;
             }
-            ret_val.push(OsString::from_wide(
-                slice::from_raw_parts(lp_cmd_line, i as usize)
-            ));
-            i += 1;
         }
-    }
-    loop {
-        let c = *lp_cmd_line.offset(i);
+    };
+    let mut cur = Vec::new();
+    let mut in_quotes = false;
+    let mut was_in_quotes = false;
+    let mut backslash_count: usize = 0;
+    for &c in cmd_line {
         match c {
             // backslash
             BACKSLASH => {
@@ -153,14 +148,6 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
                 backslash_count = 0;
                 was_in_quotes = false;
             }
-            0x00 => {
-                cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
-                // include empty quoted strings at the end of the arguments list
-                if !cur.is_empty() || was_in_quotes || in_quotes {
-                    ret_val.push(OsString::from_wide(&cur[..]));
-                }
-                break;
-            }
             _ => {
                 cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
                 backslash_count = 0;
@@ -168,7 +155,11 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
                 cur.push(c);
             }
         }
-        i += 1;
+    }
+    cur.extend(iter::repeat(b'\\' as u16).take(backslash_count));
+    // include empty quoted strings at the end of the arguments list
+    if !cur.is_empty() || was_in_quotes || in_quotes {
+        ret_val.push(OsString::from_wide(&cur[..]));
     }
     ret_val
 }
@@ -267,5 +258,10 @@ mod tests {
         );
         chk(r#"EXE "a"""#, &["EXE", "a\""]);
         chk(r#"EXE "a"" a"#, &["EXE", "a\"", "a"]);
+        // quotes cannot be escaped in command names
+        chk(r#""EXE" check"#, &["EXE", "check"]);
+        chk(r#""EXE check""#, &["EXE check"]);
+        chk(r#""EXE """for""" check"#, &["EXE ", r#"for""#, "check"]);
+        chk(r#""EXE \"for\" check"#, &[r#"EXE \"#, r#"for""#,  "check"]);
     }
 }
