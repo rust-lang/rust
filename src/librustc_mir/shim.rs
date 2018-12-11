@@ -318,7 +318,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
         ty::Array(ty, len) => {
-            let len = len.unwrap_usize(tcx);
+            let len = len.unwrap_evaluated().unwrap_usize(tcx);
             builder.array_shim(dest, src, ty, len)
         }
         ty::Closure(def_id, substs) => {
@@ -459,7 +459,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: func_ty,
             user_ty: None,
-            literal: ty::Const::zero_sized(self.tcx, func_ty),
+            literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::zero_sized(self.tcx, func_ty),
+            )),
         });
 
         let ref_loc = self.make_place(
@@ -519,7 +521,9 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             user_ty: None,
-            literal: ty::Const::from_usize(self.tcx, value),
+            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_usize(self.tcx, value),
+            )),
         }
     }
 
@@ -755,7 +759,9 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 ty,
                 user_ty: None,
-                literal: ty::Const::zero_sized(tcx, ty),
+                literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                    ty::Const::zero_sized(tcx, ty)
+                )),
              }),
              vec![rcvr])
         }

@@ -256,6 +256,15 @@ pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
 }
 
 #[inline]
+pub fn decode_lazy_const<'a, 'tcx, D>(decoder: &mut D)
+                                 -> Result<&'tcx ty::LazyConst<'tcx>, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(decoder.tcx().intern_lazy_const(Decodable::decode(decoder)?))
+}
+
+#[inline]
 pub fn decode_allocation<'a, 'tcx, D>(decoder: &mut D)
     -> Result<&'tcx Allocation, D::Error>
     where D: TyDecoder<'a, 'tcx>,
@@ -393,6 +402,13 @@ macro_rules! implement_ty_decoder {
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
                     decode_const(self)
+                }
+            }
+
+            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::ty::LazyConst<'tcx>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<&'tcx ty::LazyConst<'tcx>, Self::Error> {
+                    decode_lazy_const(self)
                 }
             }
 

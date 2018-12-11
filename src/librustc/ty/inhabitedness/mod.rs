@@ -1,6 +1,6 @@
 use ty::context::TyCtxt;
 use ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
-use ty::{DefId, Substs};
+use ty::{self, DefId, Substs};
 use ty::{AdtKind, Visibility};
 use ty::TyKind::*;
 
@@ -213,11 +213,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
 
             Array(ty, len) => {
-                match len.assert_usize(tcx) {
-                    // If the array is definitely non-empty, it's uninhabited if
-                    // the type of its elements is uninhabited.
-                    Some(n) if n != 0 => ty.uninhabited_from(tcx),
-                    _ => DefIdForest::empty()
+                match len {
+                    ty::LazyConst::Unevaluated(..) => DefIdForest::empty(),
+                    ty::LazyConst::Evaluated(len) => match len.assert_usize(tcx) {
+                        // If the array is definitely non-empty, it's uninhabited if
+                        // the type of its elements is uninhabited.
+                        Some(n) if n != 0 => ty.uninhabited_from(tcx),
+                        _ => DefIdForest::empty()
+                    },
                 }
             }
 

@@ -3,7 +3,7 @@
 
 use std::convert::TryInto;
 
-use rustc::mir;
+use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
 
 use rustc::mir::interpret::{
@@ -517,7 +517,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
                     self.layout_of(ty)
                 })?;
-                let op = self.const_value_to_op(constant.literal.val)?;
+                let op = self.const_value_to_op(*constant.literal)?;
                 OpTy { op, layout }
             }
         };
@@ -540,17 +540,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     // `eval_operand`, ideally).
     pub(crate) fn const_value_to_op(
         &self,
-        val: ConstValue<'tcx>,
+        val: ty::LazyConst<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
         trace!("const_value_to_op: {:?}", val);
-        match val {
-            ConstValue::Unevaluated(def_id, substs) => {
+        let val = match val {
+            ty::LazyConst::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                Ok(*OpTy::from(self.const_eval_raw(GlobalId {
+                return Ok(*OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
-                })?))
-            }
+                })?));
+            },
+            ty::LazyConst::Evaluated(c) => c,
+        };
+        match val.val {
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.

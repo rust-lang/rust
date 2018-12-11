@@ -537,7 +537,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
-                    let n = n.unwrap_usize(bx.cx().tcx());
+                    let n = n.unwrap_evaluated().unwrap_usize(bx.cx().tcx());
                     return bx.cx().const_usize(n);
                 }
             }

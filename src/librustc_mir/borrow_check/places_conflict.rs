@@ -388,7 +388,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
         (Place::Promoted(p1), Place::Promoted(p2)) => {
             if p1.0 == p2.0 {
                 if let ty::Array(_, size) = p1.1.sty {
-                    if size.unwrap_usize(tcx) == 0 {
+                    if size.unwrap_evaluated().unwrap_usize(tcx) == 0 {
                         // Ignore conflicts with promoted [T; 0].
                         debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
                         return Overlap::Disjoint;

@@ -418,18 +418,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     Some(format!("[{}]", self.tcx.type_of(def.did).to_string())),
                 ));
                 let tcx = self.tcx;
-                if let Some(len) = len.val.try_to_scalar().and_then(|scalar| {
-                    scalar.to_usize(&tcx).ok()
-                }) {
-                    flags.push((
-                        "_Self".to_owned(),
-                        Some(format!("[{}; {}]", self.tcx.type_of(def.did).to_string(), len)),
-                    ));
-                } else {
-                    flags.push((
-                        "_Self".to_owned(),
-                        Some(format!("[{}; _]", self.tcx.type_of(def.did).to_string())),
-                    ));
+                if let ty::LazyConst::Evaluated(len) = len {
+                    if let Some(len) = len.val.try_to_scalar().and_then(|scalar| {
+                        scalar.to_usize(&tcx).ok()
+                    }) {
+                        flags.push((
+                            "_Self".to_owned(),
+                            Some(format!("[{}; {}]", self.tcx.type_of(def.did).to_string(), len)),
+                        ));
+                    } else {
+                        flags.push((
+                            "_Self".to_owned(),
+                            Some(format!("[{}; _]", self.tcx.type_of(def.did).to_string())),
+                        ));
+                    }
                 }
             }
         }

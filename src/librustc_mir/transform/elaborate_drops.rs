@@ -533,7 +533,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             span,
             ty: self.tcx.types.bool,
             user_ty: None,
-            literal: ty::Const::from_bool(self.tcx, val),
+            literal: self.tcx.intern_lazy_const(ty::LazyConst::Evaluated(
+                ty::Const::from_bool(self.tcx, val),
+            )),
         })))
     }
 

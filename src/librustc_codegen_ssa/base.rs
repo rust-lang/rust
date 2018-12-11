@@ -171,7 +171,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
     let (source, target) = cx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.unwrap_usize(cx.tcx()))
+            cx.const_usize(len.unwrap_evaluated().unwrap_usize(cx.tcx()))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker

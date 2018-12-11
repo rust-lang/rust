@@ -1,6 +1,5 @@
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use mir::interpret::ConstValue;
 use middle::region;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
@@ -1412,12 +1411,12 @@ define_print! {
                 }),
                 Array(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
-                    match sz.val {
-                        ConstValue::Unevaluated(_def_id, _substs) => {
+                    match sz {
+                        ty::LazyConst::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
                         }
-                        _ => ty::tls::with(|tcx| {
-                            write!(f, "{}", sz.unwrap_usize(tcx))
+                        ty::LazyConst::Evaluated(c) => ty::tls::with(|tcx| {
+                            write!(f, "{}", c.unwrap_usize(tcx))
                         })?,
                     }
                     write!(f, "]")
