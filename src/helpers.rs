@@ -30,43 +30,31 @@ impl<Tag> ScalarExt for ScalarMaybeUndef<Tag> {
     }
 }
 
-pub trait EvalContextExt<'tcx> {
-    fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>>;
-
-    /// Visit the memory covered by `place`, sensitive to freezing:  The 3rd parameter
-    /// will be true if this is frozen, false if this is in an `UnsafeCell`.
-    fn visit_freeze_sensitive(
-        &self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        action: impl FnMut(Pointer<Borrow>, Size, bool) -> EvalResult<'tcx>,
-    ) -> EvalResult<'tcx>;
-}
-
-
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
+pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     /// Get an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
-        self.tcx
+        let this = self.eval_context_ref();
+        this.tcx
             .crates()
             .iter()
-            .find(|&&krate| self.tcx.original_crate_name(krate) == path[0])
+            .find(|&&krate| this.tcx.original_crate_name(krate) == path[0])
             .and_then(|krate| {
                 let krate = DefId {
                     krate: *krate,
                     index: CRATE_DEF_INDEX,
                 };
-                let mut items = self.tcx.item_children(krate);
+                let mut items = this.tcx.item_children(krate);
                 let mut path_it = path.iter().skip(1).peekable();
 
                 while let Some(segment) = path_it.next() {
                     for item in mem::replace(&mut items, Default::default()).iter() {
                         if item.ident.name == *segment {
                             if path_it.peek().is_none() {
-                                return Some(ty::Instance::mono(self.tcx.tcx, item.def.def_id()));
+                                return Some(ty::Instance::mono(this.tcx.tcx, item.def.def_id()));
                             }
 
-                            items = self.tcx.item_children(item.def.def_id());
+                            items = this.tcx.item_children(item.def.def_id());
                             break;
                         }
                     }
@@ -79,15 +67,18 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             })
     }
 
+    /// Visit the memory covered by `place`, sensitive to freezing:  The 3rd parameter
+    /// will be true if this is frozen, false if this is in an `UnsafeCell`.
     fn visit_freeze_sensitive(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
         mut action: impl FnMut(Pointer<Borrow>, Size, bool) -> EvalResult<'tcx>,
     ) -> EvalResult<'tcx> {
+        let this = self.eval_context_ref();
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(size,
-            self.size_and_align_of_mplace(place)?
+            this.size_and_align_of_mplace(place)?
             .map(|(size, _)| size)
             .unwrap_or_else(|| place.layout.size)
         );
@@ -106,8 +97,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
             // We assume that we are given the fields in increasing offset order,
             // and nothing else changes.
-            let unsafe_cell_offset = unsafe_cell_ptr.get_ptr_offset(self);
-            let end_offset = end_ptr.get_ptr_offset(self);
+            let unsafe_cell_offset = unsafe_cell_ptr.get_ptr_offset(this);
+            let end_offset = end_ptr.get_ptr_offset(this);
             assert!(unsafe_cell_offset >= end_offset);
             let frozen_size = unsafe_cell_offset - end_offset;
             // Everything between the end_ptr and this `UnsafeCell` is frozen.
@@ -119,18 +110,18 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 action(unsafe_cell_ptr.to_ptr()?, unsafe_cell_size, /*frozen*/false)?;
             }
             // Update end end_ptr.
-            end_ptr = unsafe_cell_ptr.ptr_wrapping_offset(unsafe_cell_size, self);
+            end_ptr = unsafe_cell_ptr.ptr_wrapping_offset(unsafe_cell_size, this);
             // Done
             Ok(())
         };
         // Run a visitor
         {
             let mut visitor = UnsafeCellVisitor {
-                ecx: self,
+                ecx: this,
                 unsafe_cell_action: |place| {
                     trace!("unsafe_cell_action on {:?}", place.ptr);
                     // We need a size to go on.
-                    let unsafe_cell_size = self.size_and_align_of_mplace(place)?
+                    let unsafe_cell_size = this.size_and_align_of_mplace(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size);
@@ -146,7 +137,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(place.ptr.ptr_wrapping_offset(size, self), Size::ZERO)?;
+        unsafe_cell_action(place.ptr.ptr_wrapping_offset(size, this), Size::ZERO)?;
         // Done!
         return Ok(());
 

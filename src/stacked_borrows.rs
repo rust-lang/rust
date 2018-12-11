@@ -516,60 +516,14 @@ impl<'tcx> Stacks {
     }
 }
 
-
-
-pub trait EvalContextExt<'tcx> {
-    fn ptr_dereference(
-        &self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        mutability: Option<Mutability>,
-    ) -> EvalResult<'tcx>;
-
-    fn tag_new_allocation(
-        &mut self,
-        id: AllocId,
-        kind: MemoryKind<MiriMemoryKind>,
-    ) -> Borrow;
-
-    /// Reborrow the given place, returning the newly tagged ptr to it.
-    fn reborrow(
-        &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        fn_barrier: bool,
-        new_bor: Borrow
-    ) -> EvalResult<'tcx>;
-
-    /// Retag an indidual pointer, returning the retagged version.
-    fn retag_reference(
-        &mut self,
-        ptr: ImmTy<'tcx, Borrow>,
-        mutbl: Mutability,
-        fn_barrier: bool,
-        two_phase: bool,
-    ) -> EvalResult<'tcx, Immediate<Borrow>>;
-
-    fn retag(
-        &mut self,
-        fn_entry: bool,
-        two_phase: bool,
-        place: PlaceTy<'tcx, Borrow>
-    ) -> EvalResult<'tcx>;
-
-    fn escape_to_raw(
-        &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-    ) -> EvalResult<'tcx>;
-}
-
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
+pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     fn tag_new_allocation(
         &mut self,
         id: AllocId,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Borrow {
+        let this = self.eval_context_mut();
         let time = match kind {
             MemoryKind::Stack => {
                 // New unique borrow. This `Uniq` is not accessible by the program,
@@ -580,7 +534,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
                 // `reset` which the blog post [1] says to perform when accessing a local.
                 //
                 // [1] https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html
-                self.machine.stacked_borrows.increment_clock()
+                this.machine.stacked_borrows.increment_clock()
             }
             _ => {
                 // Nothing to do for everything else
@@ -588,7 +542,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             }
         };
         // Make this the active borrow for this allocation
-        let alloc = self.memory_mut().get_mut(id).expect("This is a new allocation, it must still exist");
+        let alloc = this.memory_mut().get_mut(id).expect("This is a new allocation, it must still exist");
         let size = Size::from_bytes(alloc.bytes.len() as u64);
         alloc.extra.first_item(BorStackItem::Uniq(time), size);
         Borrow::Uniq(time)
@@ -604,6 +558,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         size: Size,
         mutability: Option<Mutability>,
     ) -> EvalResult<'tcx> {
+        let this = self.eval_context_ref();
         trace!("ptr_dereference: Accessing {} reference for {:?} (pointee {})",
             if let Some(mutability) = mutability { format!("{:?}", mutability) } else { format!("raw") },
             place.ptr, place.layout.ty);
@@ -614,13 +569,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         }
 
         // Get the allocation
-        let alloc = self.memory().get(ptr.alloc_id)?;
-        alloc.check_bounds(self, ptr, size)?;
+        let alloc = this.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(this, ptr, size)?;
         // If we got here, we do some checking, *but* we leave the tag unchanged.
         if let Borrow::Shr(Some(_)) = ptr.tag {
             assert_eq!(mutability, Some(MutImmutable));
             // We need a frozen-sensitive check
-            self.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                 let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
                 alloc.extra.deref(cur_ptr, size, kind)
             })?;
@@ -641,7 +596,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        self.reborrow(place, size, /*fn_barrier*/ false, Borrow::default())?;
+        let this = self.eval_context_mut();
+        this.reborrow(place, size, /*fn_barrier*/ false, Borrow::default())?;
         Ok(())
     }
 
@@ -652,18 +608,19 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         fn_barrier: bool,
         new_bor: Borrow
     ) -> EvalResult<'tcx> {
+        let this = self.eval_context_mut();
         let ptr = place.ptr.to_ptr()?;
-        let barrier = if fn_barrier { Some(self.frame().extra) } else { None };
+        let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
         trace!("reborrow: Creating new reference for {:?} (pointee {}): {:?}",
             ptr, place.layout.ty, new_bor);
 
         // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
-        let alloc = self.memory().get(ptr.alloc_id)?;
-        alloc.check_bounds(self, ptr, size)?;
+        let alloc = this.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(this, ptr, size)?;
         // Update the stacks.
         if let Borrow::Shr(Some(_)) = new_bor {
             // Reference that cares about freezing. We need a frozen-sensitive reborrow.
-            self.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                 let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
                 alloc.extra.reborrow(cur_ptr, size, barrier, new_bor, kind)
             })?;
@@ -675,6 +632,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         Ok(())
     }
 
+    /// Retag an indidual pointer, returning the retagged version.
     fn retag_reference(
         &mut self,
         val: ImmTy<'tcx, Borrow>,
@@ -682,9 +640,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         fn_barrier: bool,
         two_phase: bool,
     ) -> EvalResult<'tcx, Immediate<Borrow>> {
+        let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
-        let place = self.ref_to_mplace(val)?;
-        let size = self.size_and_align_of_mplace(place)?
+        let place = this.ref_to_mplace(val)?;
+        let size = this.size_and_align_of_mplace(place)?
             .map(|(size, _)| size)
             .unwrap_or_else(|| place.layout.size);
         if size == Size::ZERO {
@@ -693,22 +652,22 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         }
 
         // Compute new borrow.
-        let time = self.machine.stacked_borrows.increment_clock();
+        let time = this.machine.stacked_borrows.increment_clock();
         let new_bor = match mutbl {
             MutMutable => Borrow::Uniq(time),
             MutImmutable => Borrow::Shr(Some(time)),
         };
 
         // Reborrow.
-        self.reborrow(place, size, fn_barrier, new_bor)?;
+        this.reborrow(place, size, fn_barrier, new_bor)?;
         let new_place = place.with_tag(new_bor);
         // Handle two-phase borrows.
         if two_phase {
             assert!(mutbl == MutMutable, "two-phase shared borrows make no sense");
             // We immediately share it, to allow read accesses
-            let two_phase_time = self.machine.stacked_borrows.increment_clock();
+            let two_phase_time = this.machine.stacked_borrows.increment_clock();
             let two_phase_bor = Borrow::Shr(Some(two_phase_time));
-            self.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
+            this.reborrow(new_place, size, /*fn_barrier*/false, two_phase_bor)?;
         }
 
         // Return new ptr.
@@ -721,6 +680,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         two_phase: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
+        let this = self.eval_context_mut();
         // Determine mutability and whether to add a barrier.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
@@ -740,14 +700,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         // avoids allocating.
         if let Some((mutbl, barrier)) = qualify(place.layout.ty, fn_entry) {
             // fast path
-            let val = self.read_immediate(self.place_to_op(place)?)?;
-            let val = self.retag_reference(val, mutbl, barrier, two_phase)?;
-            self.write_immediate(val, place)?;
+            let val = this.read_immediate(this.place_to_op(place)?)?;
+            let val = this.retag_reference(val, mutbl, barrier, two_phase)?;
+            this.write_immediate(val, place)?;
             return Ok(());
         }
-        let place = self.force_allocation(place)?;
+        let place = this.force_allocation(place)?;
 
-        let mut visitor = RetagVisitor { ecx: self, fn_entry, two_phase };
+        let mut visitor = RetagVisitor { ecx: this, fn_entry, two_phase };
         visitor.visit_value(place)?;
 
         // The actual visitor

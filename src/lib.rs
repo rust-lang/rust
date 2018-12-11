@@ -277,6 +277,21 @@ impl<'tcx> Evaluator<'tcx> {
 #[allow(dead_code)] // FIXME https://github.com/rust-lang/rust/issues/47131
 type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>;
 
+// A little trait that's useful to be inherited by extension traits
+pub trait MiriEvalContextExt<'a, 'mir, 'tcx> {
+    fn eval_context_ref(&self) -> &MiriEvalContext<'a, 'mir, 'tcx>;
+    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx>;
+}
+impl<'a, 'mir, 'tcx> MiriEvalContextExt<'a, 'mir, 'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
+    #[inline(always)]
+    fn eval_context_ref(&self) -> &MiriEvalContext<'a, 'mir, 'tcx> {
+        self
+    }
+    #[inline(always)]
+    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx> {
+        self
+    }
+}
 
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
