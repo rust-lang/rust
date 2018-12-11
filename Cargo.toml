@@ -25,7 +25,7 @@ faerie = "0.6.0"
 ar = "0.6.1"
 bitflags = "1.0.3"
 byteorder = "1.2.6"
-libc = "0.2.43"
+libc = "0.2.45"
 tempfile = "3.0.4"
 
 # Uncomment to use local checkout of cranelift
