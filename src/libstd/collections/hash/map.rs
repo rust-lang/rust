@@ -1177,7 +1177,8 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: RawIter<(K, V)>,
-    _marker: PhantomData<&'a mut HashMap<K, V>>,
+    // To ensure invariance with respect to V
+    _marker: PhantomData<&'a mut V>,
 }
 
 impl<'a, K, V> IterMut<'a, K, V> {
