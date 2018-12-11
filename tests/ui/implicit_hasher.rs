@@ -85,8 +85,8 @@ macro_rules! gen {
         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
     };
 }
-
-gen!(impl );
+#[rustfmt::skip]
+gen!(impl);
 gen!(fn bar);
 
 // When the macro is in a different file, the suggestion spans can't be combined properly

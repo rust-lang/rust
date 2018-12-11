@@ -9,9 +9,9 @@
 
 #[warn(clippy::decimal_literal_representation)]
 #[allow(unused_variables)]
+#[rustfmt::skip]
 fn main() {
-    let good = (
-        // Hex:
+    let good = (       // Hex:
         127,           // 0x7F
         256,           // 0x100
         511,           // 0x1FF
@@ -21,8 +21,7 @@ fn main() {
         61_683,        // 0xF0F3
         2_131_750_925, // 0x7F0F_F00D
     );
-    let bad = (
-        // Hex:
+    let bad = (        // Hex:
         32_773,        // 0x8005
         65_280,        // 0xFF00
         2_131_750_927, // 0x7F0F_F00F

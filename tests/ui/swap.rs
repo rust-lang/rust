@@ -39,6 +39,7 @@ fn vec() {
     foo.swap(0, 1);
 }
 
+#[rustfmt::skip]
 fn main() {
     array();
     slice();
@@ -50,7 +51,7 @@ fn main() {
     a = b;
     b = a;
 
-;    let t = a;
+    ; let t = a;
     a = b;
     b = t;
 
@@ -59,7 +60,7 @@ fn main() {
     c.0 = a;
     a = c.0;
 
-;    let t = c.0;
+    ; let t = c.0;
     c.0 = a;
     a = t;
 }

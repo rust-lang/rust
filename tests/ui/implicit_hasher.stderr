@@ -96,8 +96,8 @@ error: impl for `HashMap` should be generalized over different hashers
 77 |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
    |                                           ^^^^^^^^^^^^^
 ...
-89 | gen!(impl );
-   | ------------ in this macro invocation
+89 | gen!(impl);
+   | ----------- in this macro invocation
 help: consider adding a type parameter
    |
 77 |         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
