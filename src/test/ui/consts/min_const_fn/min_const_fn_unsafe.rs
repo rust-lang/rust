@@ -28,13 +28,13 @@ const fn call_unsafe_generic_cell_const_fn() -> *const Vec<std::cell::Cell<u32>>
     unsafe { ret_null_mut_ptr_no_unsafe::<Vec<std::cell::Cell<u32>>>() }
     //~^ ERROR calls to `const unsafe fn` in const fns
 }
-const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x }
 //~^ dereferencing raw pointers in constant functions
 
 fn main() {}
 
 const unsafe fn no_union() {
     union Foo { x: (), y: () }
-    Foo { x: () }.y //~ ERROR not allowed in const fn
+    Foo { x: () }.y
     //~^ unions in const fn
 }

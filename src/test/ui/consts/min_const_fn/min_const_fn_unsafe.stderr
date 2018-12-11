@@ -1,7 +1,7 @@
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
   --> $DIR/min_const_fn_unsafe.rs:31:59
    |
-LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x }
    |                                                           ^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
@@ -9,7 +9,7 @@ LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR no
 error[E0658]: unions in const fn are unstable (see issue #51909)
   --> $DIR/min_const_fn_unsafe.rs:38:5
    |
-LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
+LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
@@ -38,24 +38,6 @@ LL |     unsafe { ret_null_mut_ptr_no_unsafe::<Vec<std::cell::Cell<u32>>>() }
    |
    = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
-error: dereference of raw pointer is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:31:59
-   |
-LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
-   |                                                           ^^ dereference of raw pointer
-   |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: access to union field is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe.rs:38:5
-   |
-LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
-   |     ^^^^^^^^^^^^^^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
