@@ -277,7 +277,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
             "memrchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_bytes()? as u8;
+                let val = this.read_scalar(args[1])?.to_i32()? as u8;
                 let num = this.read_scalar(args[2])?.to_usize(this)?;
                 if let Some(idx) = this.memory().read_bytes(ptr, Size::from_bytes(num))?
                     .iter().rev().position(|&c| c == val)
@@ -291,7 +291,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
             "memchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_bytes()? as u8;
+                let val = this.read_scalar(args[1])?.to_i32()? as u8;
                 let num = this.read_scalar(args[2])?.to_usize(this)?;
                 if let Some(idx) = this.memory().read_bytes(ptr, Size::from_bytes(num))?.iter().position(
                     |&c| c == val,
@@ -379,9 +379,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             }
 
             "write" => {
-                let fd = this.read_scalar(args[0])?.to_bytes()?;
+                let fd = this.read_scalar(args[0])?.to_i32()?;
                 let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_bytes()? as u64;
+                let n = this.read_scalar(args[2])?.to_usize(&*this.tcx)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
                     // stdout/stderr
@@ -489,18 +489,18 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_null(dest)?;
             }
             "pthread_key_delete" => {
-                let key = this.read_scalar(args[0])?.to_bytes()?;
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
                 this.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
-                let key = this.read_scalar(args[0])?.to_bytes()?;
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
                 let ptr = this.machine.tls.load_tls(key)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
-                let key = this.read_scalar(args[0])?.to_bytes()?;
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
                 this.machine.tls.store_tls(key, new_ptr)?;
 
@@ -586,12 +586,12 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                let key = this.read_scalar(args[0])?.to_bytes()?;
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
                 let ptr = this.machine.tls.load_tls(key)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
-                let key = this.read_scalar(args[0])?.to_bytes()?;
+                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
                 this.machine.tls.store_tls(key, new_ptr)?;
 

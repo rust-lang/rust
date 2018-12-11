@@ -43,7 +43,7 @@ pub use crate::intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 pub use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use crate::range_map::RangeMap;
 #[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
-pub use crate::helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
+pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
 use crate::mono_hash_map::MonoHashMap;
 pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 

@@ -5,31 +5,6 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
 use crate::*;
 
-pub trait ScalarExt {
-    /// HACK: this function just extracts all bits if `defined != 0`
-    /// Mainly used for args of C-functions and we should totally correctly fetch the size
-    /// of their arguments
-    fn to_bytes(self) -> EvalResult<'static, u128>;
-}
-
-impl<Tag> ScalarExt for Scalar<Tag> {
-    fn to_bytes(self) -> EvalResult<'static, u128> {
-        match self {
-            Scalar::Bits { bits, size } => {
-                assert_ne!(size, 0);
-                Ok(bits)
-            },
-            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
-        }
-    }
-}
-
-impl<Tag> ScalarExt for ScalarMaybeUndef<Tag> {
-    fn to_bytes(self) -> EvalResult<'static, u128> {
-        self.not_undef()?.to_bytes()
-    }
-}
-
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
 pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     /// Get an instance for a path.

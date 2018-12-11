@@ -6,7 +6,7 @@ use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 
 use crate::{
     PlaceTy, OpTy, Immediate, Scalar, ScalarMaybeUndef, Borrow,
-    ScalarExt, OperatorEvalContextExt
+    OperatorEvalContextExt
 };
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
@@ -227,7 +227,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let a = this.read_immediate(args[0])?;
                 let b = this.read_immediate(args[1])?;
                 // check x % y != 0
-                if this.binary_op_imm(mir::BinOp::Rem, a, b)?.0.to_bytes()? != 0 {
+                if this.binary_op_imm(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
@@ -375,7 +375,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "unchecked_div" => {
                 let l = this.read_immediate(args[0])?;
                 let r = this.read_immediate(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
+                let rval = r.to_scalar()?.to_bits(args[1].layout.size)?;
                 if rval == 0 {
                     return err!(Intrinsic(format!("Division by 0 in unchecked_div")));
                 }
@@ -390,7 +390,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "unchecked_rem" => {
                 let l = this.read_immediate(args[0])?;
                 let r = this.read_immediate(args[1])?;
-                let rval = r.to_scalar()?.to_bytes()?;
+                let rval = r.to_scalar()?.to_bits(args[1].layout.size)?;
                 if rval == 0 {
                     return err!(Intrinsic(format!("Division by 0 in unchecked_rem")));
                 }
