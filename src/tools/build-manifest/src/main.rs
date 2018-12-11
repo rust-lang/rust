@@ -14,7 +14,7 @@ extern crate serde_derive;
 
 use std::collections::BTreeMap;
 use std::env;
-use std::fs::File;
+use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
