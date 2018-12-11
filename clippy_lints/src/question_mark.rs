@@ -84,7 +84,7 @@ impl Pass {
                             expr.span,
                             "replace_it_with",
                             format!("{}?;", receiver_str),
-                            Applicability::MachineApplicable, // snippet
+                            Applicability::MaybeIncorrect, // snippet
                         );
                     }
                 )
