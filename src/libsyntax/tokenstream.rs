@@ -167,9 +167,9 @@ impl TokenStream {
     /// separating the two arguments with a comma for diagnostic suggestions.
     pub(crate) fn add_comma(&self) -> Option<(TokenStream, Span)> {
         // Used to suggest if a user writes `foo!(a b);`
-        if let TokenStreamKind::Stream(ref slice) = self.kind {
+        if let TokenStreamKind::Stream(ref stream) = self.kind {
             let mut suggestion = None;
-            let mut iter = slice.iter().enumerate().peekable();
+            let mut iter = stream.iter().enumerate().peekable();
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
                     let sp = match (&ts.kind, &next.kind) {
@@ -189,13 +189,12 @@ impl TokenStream {
                 }
             }
             if let Some((pos, comma, sp)) = suggestion {
-                let mut new_slice = vec![];
-                let parts = slice.split_at(pos + 1);
-                new_slice.extend_from_slice(parts.0);
-                new_slice.push(comma);
-                new_slice.extend_from_slice(parts.1);
-                let slice = Lrc::new(new_slice);
-                return Some((TokenStream { kind: TokenStreamKind::Stream(slice) }, sp));
+                let mut new_stream = vec![];
+                let parts = stream.split_at(pos + 1);
+                new_stream.extend_from_slice(parts.0);
+                new_stream.push(comma);
+                new_stream.extend_from_slice(parts.1);
+                return Some((TokenStream::concat(new_stream), sp));
             }
         }
         None
@@ -273,12 +272,7 @@ impl Extend<TokenStream> for TokenStream {
         // Build the resulting token stream. If it contains more than one token,
         // preserve capacity in the vector in anticipation of the caller
         // performing additional calls to extend.
-        let mut tts = builder.0;
-        *self = match tts.len() {
-            0 => TokenStream::empty(),
-            1 => tts.pop().unwrap(),
-            _ => TokenStream::concat_rc_vec(Lrc::new(tts)),
-        };
+        *self = TokenStream::concat(builder.0);
     }
 }
 
@@ -483,7 +477,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[0].clone().into()),
-                _ => self.0.push(TokenStream::concat_rc_vec( Lrc::new(streams[0 .. len - 1].to_vec()))),
+                _ => self.0.push(TokenStream::concat(streams[0 .. len - 1].to_vec())),
             }
             self.push_all_but_last_tree(&streams[len - 1])
         }
@@ -495,7 +489,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[1].clone().into()),
-                _ => self.0.push(TokenStream::concat_rc_vec(Lrc::new(streams[1 .. len].to_vec()))),
+                _ => self.0.push(TokenStream::concat(streams[1 .. len].to_vec())),
             }
             self.push_all_but_first_tree(&streams[0])
         }
