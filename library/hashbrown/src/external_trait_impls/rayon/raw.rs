@@ -1,4 +1,5 @@
-use alloc::alloc::{dealloc, Layout};
+use alloc::alloc::dealloc;
+use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 use raw::Bucket;
@@ -58,8 +59,7 @@ impl<T> UnindexedProducer for ParIterProducer<T> {
 
 /// Parallel iterator which consumes a table and returns elements.
 pub struct RawIntoParIter<T> {
-    iter: RawIterRange<T>,
-    alloc: Option<(NonNull<u8>, Layout)>,
+    table: RawTable<T>,
 }
 
 unsafe impl<T> Send for RawIntoParIter<T> {}
@@ -72,21 +72,25 @@ impl<T: Send> ParallelIterator for RawIntoParIter<T> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        let _guard = guard(self.alloc, |alloc| {
+        let iter = unsafe { self.table.iter().iter };
+        let _guard = guard(self.table.into_alloc(), |alloc| {
             if let Some((ptr, layout)) = *alloc {
                 unsafe {
                     dealloc(ptr.as_ptr(), layout);
                 }
             }
         });
-        let producer = ParDrainProducer { iter: self.iter };
+        let producer = ParDrainProducer { iter };
         plumbing::bridge_unindexed(producer, consumer)
     }
 }
 
 /// Parallel iterator which consumes elements without freeing the table storage.
 pub struct RawParDrain<'a, T> {
-    table: &'a mut RawTable<T>,
+    // We don't use a &'a RawTable<T> because we want RawParDrain to be
+    // covariant over 'a.
+    table: NonNull<RawTable<T>>,
+    _marker: PhantomData<&'a RawTable<T>>,
 }
 
 unsafe impl<'a, T> Send for RawParDrain<'a, T> {}
@@ -99,10 +103,20 @@ impl<'a, T: Send> ParallelIterator for RawParDrain<'a, T> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        let iter = unsafe { self.table.iter().iter };
-        let _guard = guard(self.table, |table| table.clear_no_drop());
+        let _guard = guard(self.table, |table| unsafe {
+            table.as_mut().clear_no_drop()
+        });
+        let iter = unsafe { self.table.as_ref().iter().iter };
+        mem::forget(self);
         let producer = ParDrainProducer { iter };
         plumbing::bridge_unindexed(producer, consumer)
+    }
+}
+
+impl<'a, T> Drop for RawParDrain<'a, T> {
+    fn drop(&mut self) {
+        // If drive_unindexed is not called then simply clear the table.
+        unsafe { self.table.as_mut().clear() }
     }
 }
 
@@ -136,9 +150,12 @@ impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
         while let Some(item) = self.iter.next() {
             folder = folder.consume(unsafe { item.read() });
             if folder.full() {
-                break;
+                return folder;
             }
         }
+
+        // If we processed all elements then we don't need to run the drop.
+        mem::forget(self);
         folder
     }
 }
@@ -146,10 +163,10 @@ impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
 impl<T> Drop for ParDrainProducer<T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            // Drop all remaining elements
-            if mem::needs_drop::<T>() {
-                while let Some(item) = self.iter.next() {
+        // Drop all remaining elements
+        if mem::needs_drop::<T>() {
+            while let Some(item) = self.iter.next() {
+                unsafe {
                     item.drop();
                 }
             }
@@ -169,16 +186,16 @@ impl<T> RawTable<T> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[inline]
     pub fn into_par_iter(self) -> RawIntoParIter<T> {
-        RawIntoParIter {
-            iter: unsafe { self.iter().iter },
-            alloc: self.into_alloc(),
-        }
+        RawIntoParIter { table: self }
     }
 
     /// Returns a parallel iterator which consumes all elements of a `RawTable`
     /// without freeing its memory allocation.
     #[inline]
     pub fn par_drain(&mut self) -> RawParDrain<T> {
-        RawParDrain { table: self }
+        RawParDrain {
+            table: NonNull::from(self),
+            _marker: PhantomData,
+        }
     }
 }
