@@ -15,7 +15,7 @@ pub use self::{
     symbols::{file_structure, file_symbols, FileSymbol, StructureNode},
     typing::{join_lines, on_enter, on_eq_typed},
 };
-use ra_text_edit::{Edit, EditBuilder};
+use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode, NameOwner},

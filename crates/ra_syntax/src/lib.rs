@@ -47,7 +47,7 @@ pub use crate::{
     },
 };
 
-use ra_text_edit::AtomEdit;
+use ra_text_edit::AtomTextEdit;
 use crate::yellow::GreenNode;
 
 /// `SourceFileNode` represents a parse tree for a single Rust file.
@@ -68,15 +68,15 @@ impl SourceFileNode {
             parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
         SourceFileNode::new(green, errors)
     }
-    pub fn reparse(&self, edit: &AtomEdit) -> SourceFileNode {
+    pub fn reparse(&self, edit: &AtomTextEdit) -> SourceFileNode {
         self.incremental_reparse(edit)
             .unwrap_or_else(|| self.full_reparse(edit))
     }
-    pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<SourceFileNode> {
+    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<SourceFileNode> {
         reparsing::incremental_reparse(self.syntax(), edit, self.errors())
             .map(|(green_node, errors)| SourceFileNode::new(green_node, errors))
     }
-    fn full_reparse(&self, edit: &AtomEdit) -> SourceFileNode {
+    fn full_reparse(&self, edit: &AtomTextEdit) -> SourceFileNode {
         let text =
             text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
         SourceFileNode::parse(&text)

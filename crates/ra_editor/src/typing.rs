@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 
-use crate::{find_node_at_offset, EditBuilder, LocalEdit};
+use crate::{find_node_at_offset, TextEditBuilder, LocalEdit};
 
 pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
@@ -19,7 +19,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
         let pos = match text.find('\n') {
             None => {
                 return LocalEdit {
-                    edit: EditBuilder::new().finish(),
+                    edit: TextEditBuilder::new().finish(),
                     cursor_position: None,
                 };
             }
@@ -31,7 +31,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     };
 
     let node = find_covering_node(file.syntax(), range);
-    let mut edit = EditBuilder::new();
+    let mut edit = TextEditBuilder::new();
     for node in node.descendants() {
         let text = match node.leaf_text() {
             Some(text) => text,
@@ -73,7 +73,7 @@ pub fn on_enter(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let indent = node_indent(file, comment.syntax())?;
     let inserted = format!("\n{}{} ", indent, prefix);
     let cursor_position = offset + TextUnit::of_str(&inserted);
-    let mut edit = EditBuilder::new();
+    let mut edit = TextEditBuilder::new();
     edit.insert(offset, inserted);
     Some(LocalEdit {
         edit: edit.finish(),
@@ -123,7 +123,7 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
         return None;
     }
     let offset = let_stmt.syntax().range().end();
-    let mut edit = EditBuilder::new();
+    let mut edit = TextEditBuilder::new();
     edit.insert(offset, ";".to_string());
     Some(LocalEdit {
         edit: edit.finish(),
@@ -131,7 +131,12 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
     })
 }
 
-fn remove_newline(edit: &mut EditBuilder, node: SyntaxNodeRef, node_text: &str, offset: TextUnit) {
+fn remove_newline(
+    edit: &mut TextEditBuilder,
+    node: SyntaxNodeRef,
+    node_text: &str,
+    offset: TextUnit,
+) {
     if node.kind() != WHITESPACE || node_text.bytes().filter(|&b| b == b'\n').count() != 1 {
         // The node is either the first or the last in the file
         let suff = &node_text[TextRange::from_to(
@@ -192,7 +197,7 @@ fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     }
 }
 
-fn join_single_expr_block(edit: &mut EditBuilder, node: SyntaxNodeRef) -> Option<()> {
+fn join_single_expr_block(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Option<()> {
     let block = ast::Block::cast(node.parent()?)?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
     let expr = single_expr(block)?;
@@ -270,14 +275,14 @@ fn foo() {
     fn test_join_lines_lambda_block() {
         check_join_lines(
             r"
-pub fn reparse(&self, edit: &AtomEdit) -> File {
+pub fn reparse(&self, edit: &AtomTextEdit) -> File {
     <|>self.incremental_reparse(edit).unwrap_or_else(|| {
         self.full_reparse(edit)
     })
 }
 ",
             r"
-pub fn reparse(&self, edit: &AtomEdit) -> File {
+pub fn reparse(&self, edit: &AtomTextEdit) -> File {
     <|>self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
 }
 ",

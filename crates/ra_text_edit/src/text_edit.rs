@@ -1,37 +1,37 @@
-use crate::AtomEdit;
+use crate::AtomTextEdit;
 use crate::text_utils::contains_offset_nonstrict;
 use text_unit::{TextRange, TextUnit};
 
 #[derive(Debug, Clone)]
-pub struct Edit {
-    atoms: Vec<AtomEdit>,
+pub struct TextEdit {
+    atoms: Vec<AtomTextEdit>,
 }
 
 #[derive(Debug)]
-pub struct EditBuilder {
-    atoms: Vec<AtomEdit>,
+pub struct TextEditBuilder {
+    atoms: Vec<AtomTextEdit>,
 }
 
-impl EditBuilder {
-    pub fn new() -> EditBuilder {
-        EditBuilder { atoms: Vec::new() }
+impl TextEditBuilder {
+    pub fn new() -> TextEditBuilder {
+        TextEditBuilder { atoms: Vec::new() }
     }
     pub fn replace(&mut self, range: TextRange, replace_with: String) {
-        self.atoms.push(AtomEdit::replace(range, replace_with))
+        self.atoms.push(AtomTextEdit::replace(range, replace_with))
     }
     pub fn delete(&mut self, range: TextRange) {
-        self.atoms.push(AtomEdit::delete(range))
+        self.atoms.push(AtomTextEdit::delete(range))
     }
     pub fn insert(&mut self, offset: TextUnit, text: String) {
-        self.atoms.push(AtomEdit::insert(offset, text))
+        self.atoms.push(AtomTextEdit::insert(offset, text))
     }
-    pub fn finish(self) -> Edit {
+    pub fn finish(self) -> TextEdit {
         let mut atoms = self.atoms;
         atoms.sort_by_key(|a| (a.delete.start(), a.delete.end()));
         for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {
             assert!(a1.delete.end() <= a2.delete.start())
         }
-        Edit { atoms }
+        TextEdit { atoms }
     }
     pub fn invalidates_offset(&self, offset: TextUnit) -> bool {
         self.atoms
@@ -40,8 +40,8 @@ impl EditBuilder {
     }
 }
 
-impl Edit {
-    pub fn into_atoms(self) -> Vec<AtomEdit> {
+impl TextEdit {
+    pub fn into_atoms(self) -> Vec<AtomTextEdit> {
         self.atoms
     }
 
