@@ -1066,6 +1066,15 @@ impl<T> AtomicPtr<T> {
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "atomic_bool_from", since = "1.24.0")]
 impl From<bool> for AtomicBool {
+    /// Converts a `bool` into an `AtomicBool`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicBool;
+    /// let atomic_bool = AtomicBool::from(true);
+    /// assert_eq!(format!("{:?}", atomic_bool), "true")
+    /// ```
     #[inline]
     fn from(b: bool) -> Self { Self::new(b) }
 }
@@ -1119,8 +1128,12 @@ macro_rules! atomic_int {
 
         #[$stable_from]
         impl From<$int_type> for $atomic_type {
-            #[inline]
-            fn from(v: $int_type) -> Self { Self::new(v) }
+            doc_comment! {
+                concat!(
+"Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`."),
+                #[inline]
+                fn from(v: $int_type) -> Self { Self::new(v) }
+            }
         }
 
         #[$stable_debug]
