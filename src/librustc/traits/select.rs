@@ -657,7 +657,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         stack: TraitObligationStackList<'o, 'tcx>,
         predicates: I,
-        recursion_depth: usize 
+        recursion_depth: usize
     ) -> Result<EvaluationResult, OverflowError>
     where
         I: IntoIterator<Item = &'a PredicateObligation<'tcx>>,
@@ -708,7 +708,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Predicate::Trait(ref t) => {
                 debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t.clone());
-                self.evaluate_trait_predicate_recursively(previous_stack, obligation, recursion_depth)
+                self.evaluate_trait_predicate_recursively(previous_stack, obligation,
+                                                          recursion_depth)
             }
 
             ty::Predicate::Subtype(ref p) => {
@@ -717,7 +718,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     .subtype_predicate(&obligation.cause, obligation.param_env, p)
                 {
                     Some(Ok(InferOk { obligations, .. })) => {
-                        self.evaluate_predicates_recursively(previous_stack, &obligations, recursion_depth)
+                        self.evaluate_predicates_recursively(previous_stack, &obligations,
+                                                             recursion_depth)
                     }
                     Some(Err(_)) => Ok(EvaluatedToErr),
                     None => Ok(EvaluatedToAmbig),
@@ -732,7 +734,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 obligation.cause.span,
             ) {
                 Some(obligations) => {
-                    self.evaluate_predicates_recursively(previous_stack, obligations.iter(), recursion_depth)
+                    self.evaluate_predicates_recursively(previous_stack, obligations.iter(),
+                        recursion_depth)
                 }
                 None => Ok(EvaluatedToAmbig),
             },
@@ -1108,7 +1111,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     // The weird return type of this function allows it to be used with the 'try' (?)
     // operator within certain functions
-    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>>(&self, recursion_depth: usize, obligation: &Obligation<'tcx, T>,
+    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>>(&self, recursion_depth: usize,
+                                                              obligation: &Obligation<'tcx, T>,
     ) -> Result<(), OverflowError>  {
         let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
         if recursion_depth >= recursion_limit {
@@ -1813,7 +1817,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.evaluation_probe(|this| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
-                    this.evaluate_predicates_recursively(stack.list(), obligations.iter(), recursion_depth)
+                    this.evaluate_predicates_recursively(stack.list(), obligations.iter(),
+                        recursion_depth)
                 }
                 Err(()) => Ok(EvaluatedToErr),
             }
