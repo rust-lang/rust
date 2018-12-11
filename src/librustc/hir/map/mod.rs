@@ -160,6 +160,9 @@ impl Forest {
         &self.krate
     }
 
+    /// This is internally in the depedency tracking system.
+    /// Use the `krate` method to ensure your dependency on the
+    /// crate is tracked.
     pub fn untracked_krate<'hir>(&'hir self) -> &'hir Crate {
         &self.krate
     }
