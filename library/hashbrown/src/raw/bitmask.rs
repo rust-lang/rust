@@ -1,4 +1,4 @@
-use super::imp::{BitMaskWord, BITMASK_MASK, BITMASK_SHIFT};
+use super::imp::{BitMaskWord, BITMASK_MASK, BITMASK_STRIDE};
 #[cfg(feature = "nightly")]
 use core::intrinsics;
 
@@ -7,6 +7,12 @@ use core::intrinsics;
 ///
 /// The bit mask is arranged so that low-order bits represent lower memory
 /// addresses for group match results.
+///
+/// For implementation reasons, the bits in the set may be sparsely packed, so
+/// that there is only one bit-per-byte used (the high bit, 7). If this is the
+/// case, `BITMASK_STRIDE` will be 8 to indicate a divide-by-8 should be
+/// performed on counts/indices to normalize this difference. `BITMASK_MASK` is
+/// similarly a mask of all the actually-used bits.
 #[derive(Copy, Clone)]
 pub struct BitMask(pub BitMaskWord);
 
@@ -24,7 +30,7 @@ impl BitMask {
     pub fn remove_lowest_bit(self) -> BitMask {
         BitMask(self.0 & (self.0 - 1))
     }
-    /// Returns whether the `BitMask` has at least one set bits.
+    /// Returns whether the `BitMask` has at least one set bit.
     #[inline]
     pub fn any_bit_set(self) -> bool {
         self.0 != 0
@@ -36,7 +42,7 @@ impl BitMask {
         if self.0 == 0 {
             None
         } else {
-            Some(self.trailing_zeros())
+            Some(unsafe { self.lowest_set_bit_nonzero() })
         }
     }
 
@@ -45,7 +51,7 @@ impl BitMask {
     #[inline]
     #[cfg(feature = "nightly")]
     pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
-        intrinsics::cttz_nonzero(self.0) as usize >> BITMASK_SHIFT
+        intrinsics::cttz_nonzero(self.0) as usize / BITMASK_STRIDE
     }
     #[cfg(not(feature = "nightly"))]
     pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
@@ -55,21 +61,22 @@ impl BitMask {
     /// Returns the number of trailing zeroes in the `BitMask`.
     #[inline]
     pub fn trailing_zeros(self) -> usize {
-        // ARM doesn't have a CTZ instruction, and instead uses RBIT + CLZ.
-        // However older ARM versions (pre-ARMv7) don't have RBIT and need to
-        // emulate it instead. Since we only have 1 bit set in each byte we can
-        // use REV + CLZ instead.
-        if cfg!(target_arch = "arm") && BITMASK_SHIFT >= 3 {
-            self.0.swap_bytes().leading_zeros() as usize >> BITMASK_SHIFT
+        // ARM doesn't have a trailing_zeroes instruction, and instead uses
+        // reverse_bits (RBIT) + leading_zeroes (CLZ). However older ARM
+        // versions (pre-ARMv7) don't have RBIT and need to emulate it
+        // instead. Since we only have 1 bit set in each byte on ARM, we can
+        // use swap_bytes (REV) + leading_zeroes instead.
+        if cfg!(target_arch = "arm") && BITMASK_STRIDE % 8 == 0 {
+            self.0.swap_bytes().leading_zeros() as usize / BITMASK_STRIDE
         } else {
-            self.0.trailing_zeros() as usize >> BITMASK_SHIFT
+            self.0.trailing_zeros() as usize / BITMASK_STRIDE
         }
     }
 
     /// Returns the number of leading zeroes in the `BitMask`.
     #[inline]
     pub fn leading_zeros(self) -> usize {
-        self.0.leading_zeros() as usize >> BITMASK_SHIFT
+        self.0.leading_zeros() as usize / BITMASK_STRIDE
     }
 }
 

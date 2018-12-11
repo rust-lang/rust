@@ -8,8 +8,8 @@ use core::arch::x86;
 use core::arch::x86_64 as x86;
 
 pub type BitMaskWord = u16;
-pub const BITMASK_SHIFT: u32 = 0;
-pub const BITMASK_MASK: u16 = 0xffff;
+pub const BITMASK_STRIDE: usize = 1;
+pub const BITMASK_MASK: BitMaskWord = 0xffff;
 
 /// Abstraction over a group of control bytes which can be scanned in
 /// parallel.
@@ -78,9 +78,10 @@ impl Group {
     }
 
     /// Returns a `BitMask` indicating all bytes in the group which are
-    /// `EMPTY` pr `DELETED`.
+    /// `EMPTY` or `DELETED`.
     #[inline]
     pub fn match_empty_or_deleted(&self) -> BitMask {
+        // A byte is EMPTY or DELETED iff the high bit is set
         unsafe { BitMask(x86::_mm_movemask_epi8(self.0) as u16) }
     }
 
@@ -90,6 +91,13 @@ impl Group {
     /// - `FULL => DELETED`
     #[inline]
     pub fn convert_special_to_empty_and_full_to_deleted(&self) -> Group {
+        // Map high_bit = 1 (EMPTY or DELETED) to 1111_1111
+        // and high_bit = 0 (FULL) to 1000_0000
+        //
+        // Here's this logic expanded to concrete values:
+        //   let special = 0 > byte = 1111_1111 (true) or 0000_0000 (false)
+        //   1111_1111 | 1000_0000 = 1111_1111
+        //   0000_0000 | 1000_0000 = 1000_0000
         unsafe {
             let zero = x86::_mm_setzero_si128();
             let special = x86::_mm_cmpgt_epi8(zero, self.0);

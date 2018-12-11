@@ -19,8 +19,9 @@ type GroupWord = u64;
 type GroupWord = u32;
 
 pub type BitMaskWord = GroupWord;
-pub const BITMASK_SHIFT: u32 = 3;
-pub const BITMASK_MASK: GroupWord = 0x8080808080808080u64 as GroupWord;
+pub const BITMASK_STRIDE: usize = 8;
+// We only care about the highest bit of each byte for the mask.
+pub const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080u64 as GroupWord;
 
 /// Helper function to replicate a byte across a `GroupWord`.
 #[inline]
@@ -107,13 +108,17 @@ impl Group {
     /// `EMPTY`.
     #[inline]
     pub fn match_empty(&self) -> BitMask {
+        // If the high bit is set, then the byte must be either:
+        // 1111_1111 (EMPTY) or 1000_0000 (DELETED).
+        // So we can just check if the top two bits are 1 by ANDing them.
         BitMask((self.0 & (self.0 << 1) & repeat(0x80)).to_le())
     }
 
     /// Returns a `BitMask` indicating all bytes in the group which are
-    /// `EMPTY` pr `DELETED`.
+    /// `EMPTY` or `DELETED`.
     #[inline]
     pub fn match_empty_or_deleted(&self) -> BitMask {
+        // A byte is EMPTY or DELETED iff the high bit is set
         BitMask((self.0 & repeat(0x80)).to_le())
     }
 
@@ -123,6 +128,13 @@ impl Group {
     /// - `FULL => DELETED`
     #[inline]
     pub fn convert_special_to_empty_and_full_to_deleted(&self) -> Group {
+        // Map high_bit = 1 (EMPTY or DELETED) to 1111_1111
+        // and high_bit = 0 (FULL) to 1000_0000
+        //
+        // Here's this logic expanded to concrete values:
+        //   let full = 1000_0000 (true) or 0000_0000 (false)
+        //   !1000_0000 + 1 = 0111_1111 + 1 = 1000_0000 (no carry)
+        //   !0000_0000 + 0 = 1111_1111 + 0 = 1111_1111 (no carry)
         let full = !self.0 & repeat(0x80);
         Group(!full + (full >> 7))
     }
