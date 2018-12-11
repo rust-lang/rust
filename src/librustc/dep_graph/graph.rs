@@ -1039,13 +1039,35 @@ impl CurrentDepGraph {
             match *icx.task {
                 OpenTask::Regular(ref task) => {
                     let mut task = task.lock();
+                    let RegularOpenTask {
+                        ref mut reads,
+                        ref mut read_set,
+                        ref node,
+                    } = *task;
                     self.total_read_count += 1;
-                    if task.read_set.insert(source) {
-                        task.reads.push(source);
+
+                    let is_new_entry = if reads.spilled() {
+                        read_set.insert(source)
+                    } else {
+                        if reads.as_slice().contains(&source) {
+                            false
+                        } else {
+                            if reads.inline_size() == reads.len() {
+                                read_set.reserve(16);
+                                read_set.extend(reads.iter().cloned());
+                                read_set.insert(source);
+                            }
+                            true
+                        }
+                    };
+
+                    if is_new_entry {
+                        reads.push(source);
+                        debug_assert!(read_set.is_empty() ^ reads.spilled());
 
                         if cfg!(debug_assertions) {
                             if let Some(ref forbidden_edge) = self.forbidden_edge {
-                                let target = &task.node;
+                                let target = node;
                                 let source = self.nodes[source];
                                 if forbidden_edge.test(&source, &target) {
                                     bug!("forbidden edge {:?} -> {:?} created",
