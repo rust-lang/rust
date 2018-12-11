@@ -1657,11 +1657,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn report_dead_assign(&self, hir_id: HirId, sp: Span, var: Variable, is_argument: bool) {
         if let Some(name) = self.should_warn(var) {
             if is_argument {
-                self.ir.tcx.lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
-                    &format!("value passed to `{}` is never read", name));
+                self.ir.tcx.struct_span_lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
+                &format!("value passed to `{}` is never read", name))
+                .help("maybe it is overwritten before being read?")
+                .emit();
             } else {
-                self.ir.tcx.lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
-                    &format!("value assigned to `{}` is never read", name));
+                self.ir.tcx.struct_span_lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
+                &format!("value assigned to `{}` is never read", name))
+                .help("maybe it is overwritten before being read?")
+                .emit();
             }
         }
     }
