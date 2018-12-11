@@ -68,3 +68,14 @@ fn main() {
     let _ = RangeInclusive::new(start, end);
     let _ = RangeToInclusive { end: end };
 }
+
+fn issue_3476() {
+    fn foo<T>() {
+    }
+
+    struct S {
+        foo: fn(),
+    }
+
+    S { foo: foo::<i32> };
+}
