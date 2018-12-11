@@ -120,37 +120,12 @@ So how do we compute the contents of a region? This process is called _region
 inference_. The high-level idea is pretty simple, but there are some details we
 need to take care of.
 
-The [`RegionInferenceContext`] type contains all of the information needed to
-do inference, including the universal regions from `replace_regions_in_mir` and
-the constraints computed for each region. It is constructed just after we
-compute the liveness constraints.
-
-Here are some of the fields of the struct:
-
-- `constraints`: contains all the outlives constraints.
-- `liveness_constraints`: contains all the liveness constraints.
-- `universal_regions`: contains the `UniversalRegions` returned by
-  `replace_regions_in_mir`.
-- `universal_region_relations`: contains relations known to be true about
-  universal regions. For example, if we have a where clause that `'a: 'b`, that
-  relation is assumed to be true while borrow checking the implementation (it
-  is checked at the caller), so `universal_region_relations` would contain `'a:
-  'b`.
-- `type_tests`: contains some constraints on types that we must check after
-  inference (e.g. `T: 'a`).
-- `closure_bounds_mapping`: used for propagating region constraints from
-  closures back out to the creater of the closure.
-
-TODO: should we discuss any of the others fields? What about the SCCs?
-
-Ok, now that we have constructed a `RegionInferenceContext`, we can do
-inference.  This is done by calling the [`solve`] method on the context.
-
-We will start off the value of each region with the liveness constraints (the
-places we already know must be in the region). We will then use the outlives
-constraints to widen each region until all constraints are met. This is done in
-[`propagate_constraints`]. For each region, if `'a: 'b`, we add all elements of
-`'b` to `'a`.
+Here is the high-level idea: we start off each region with the MIR locations we
+know must be in it from the liveness constraints. From there, we use all of the
+outlives constraints computed from the type checker to _propagate_ the
+constraints: for each region `'a`, if `'a: 'b`, then we add all elements of
+`'b` to `'a`, including `end('b)`. This all happens in
+[`propagate_constraints`].
 
 Then, we will check for errors. We first check that type tests are satisfied by
 calling [`check_type_tests`]. This checks constraints like `T: 'a`. Second, we
@@ -158,7 +133,102 @@ check that universal regions are not "too big". This is done by calling
 [`check_universal_regions`]. This checks that for each region `'a` if `'a`
 contains the element `end('b)`, then we must already know that `'a: 'b` holds
 (e.g. from a where clause). If we don't already know this, that is an error...
-well, almost.
+well, almost. There is some special handling for closures that we will discuss
+later.
+
+### Example
+
+Consider the following example:
+
+```rust,ignore
+fn foo<'a, 'b>(x: &'a usize) -> &'b usize {
+    x
+}
+```
+
+Clearly, this should not compile because we don't know if `'a` outlives `'b`
+(if it doesn't then the return value could be a dangling reference).
+
+Let's back up a bit. We need to introduce some free inference variables (as is
+done in [`replace_regions_in_mir`]). This example doesn't use the exact regions
+produced, but it (hopefully) is enough to get the idea across.
+
+```rust,ignore
+fn foo<'a, 'b>(x: &'a /* '#1 */ usize) -> &'b /* '#3 */ usize {
+    x // '#2, location L1
+}
+```
+
+Some notation: `'#1`, `'#3`, and `'#2` represent the universal regions for the
+argument, return value, and the expression `x`, respectively. Additionally, I
+will call the location of the expression `x` `L1`.
+
+So now we can use the liveness constraints to get the following starting points:
+
+Region  | Contents
+--------|----------
+'#1     |
+'#2     | `L1`
+'#3     | `L1`
+
+Now we use the outlives constraints to expand each region. Specifically, we
+know that `'#2: '#3` ...
+
+Region  | Contents
+--------|----------
+'#1     | `L1`
+'#2     | `L1, end('#3) // add contents of '#3 and end('#3)`
+'#3     | `L1`
+
+... and `'#1: '#2`, so ...
+
+Region  | Contents
+--------|----------
+'#1     | `L1, end('#2), end('#3) // add contents of '#2 and end('#2)`
+'#2     | `L1, end('#3)`
+'#3     | `L1`
+
+Now, we need to check that no regions were too big (we don't have any type
+tests to check in this case). Notice that `'#1` now contains `end('#3)`, but
+we have no `where` clause or implied bound to say that `'a: 'b`... that's an
+error!
+
+### Some details
+
+The [`RegionInferenceContext`] type contains all of the information needed to
+do inference, including the universal regions from [`replace_regions_in_mir`] and
+the constraints computed for each region. It is constructed just after we
+compute the liveness constraints.
+
+Here are some of the fields of the struct:
+
+- [`constraints`]: contains all the outlives constraints.
+- [`liveness_constraints`]: contains all the liveness constraints.
+- [`universal_regions`]: contains the `UniversalRegions` returned by
+  [`replace_regions_in_mir`].
+- [`universal_region_relations`]: contains relations known to be true about
+  universal regions. For example, if we have a where clause that `'a: 'b`, that
+  relation is assumed to be true while borrow checking the implementation (it
+  is checked at the caller), so `universal_region_relations` would contain `'a:
+  'b`.
+- [`type_tests`]: contains some constraints on types that we must check after
+  inference (e.g. `T: 'a`).
+- [`closure_bounds_mapping`]: used for propagating region constraints from
+  closures back out to the creater of the closure.
+
+[`constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.constraints
+[`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
+[`universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.universal_regions
+[`universal_region_relations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.universal_region_relations
+[`type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.type_tests
+[`closure_bounds_mapping`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#structfield.closure_bounds_mapping
+
+TODO: should we discuss any of the others fields? What about the SCCs?
+
+Ok, now that we have constructed a `RegionInferenceContext`, we can do
+inference. This is done by calling the [`solve`] method on the context. This
+is where we call [`propagate_constraints`] and then check the resulting type
+tests and universal regions, as discussed above.
 
 [`propagate_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.propagate_constraints
 [`check_type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.check_type_tests
@@ -173,15 +243,6 @@ we are inside a closure, we just collect all the constraints we can't prove yet
 and return them. Later, when we are borrow check the MIR node that created the
 closure, we can also check that these constraints hold. At that time, if we
 can't prove they hold, we report an error.
-
-## Causal tracking
-
-*to be written* – describe how we can extend the values of a variable
- with causal tracking etc
-
-TODO: is this what I described above or something else?
-
-<a name="placeholder"></a>
 
 ## Placeholders and universes
 
