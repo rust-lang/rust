@@ -42,7 +42,7 @@ use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use std::cmp;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -573,7 +573,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
 
-        let candidate = match self.candidate_from_obligation(&stack) {
+        // 'select' is an entry point into SelectionContext - we never call it recursively
+        // from within SelectionContext. Therefore, we start our recursion depth at 0
+        let candidate = match self.candidate_from_obligation(&stack, 0) {
             Err(SelectionError::Overflow) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
@@ -629,7 +631,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+            // Like 'select', 'evaluate_obligation_recursively' is an entry point into
+            // SelectionContext, so our recursion depth is 0
+            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation, 0)
         })
     }
 
@@ -653,6 +657,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         stack: TraitObligationStackList<'o, 'tcx>,
         predicates: I,
+        recursion_depth: usize 
     ) -> Result<EvaluationResult, OverflowError>
     where
         I: IntoIterator<Item = &'a PredicateObligation<'tcx>>,
@@ -660,7 +665,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
-            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
+            let eval = self.evaluate_predicate_recursively(stack, obligation, recursion_depth)?;
             debug!(
                 "evaluate_predicate_recursively({:?}) = {:?}",
                 obligation, eval
@@ -680,14 +685,30 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         obligation: &PredicateObligation<'tcx>,
+        mut recursion_depth: usize
     ) -> Result<EvaluationResult, OverflowError> {
-        debug!("evaluate_predicate_recursively({:?})", obligation);
+        debug!("evaluate_predicate_recursively({:?}, recursion_depth={:?})", obligation,
+            recursion_depth);
+
+        // We need to check for overflow here, since the normal
+        // recursion check uses the obligation from the stack.
+        // This is insufficient for two reasions:
+        // 1. That recursion depth is only incremented when a candidate is confirmed
+        //    Since evaluation skips candidate confirmation, this will never happen
+        // 2. It relies on the trait obligation stack. However, it's possible for overflow
+        //    to happen without involving the trait obligation stack. For example,
+        //    we might end up trying to infinitely recurse with a projection predicate,
+        //    which will never push anything onto the stack.
+        self.check_recursion_limit(recursion_depth, obligation)?;
+
+        // Now that we know that the recursion check has passed, increment our depth
+        recursion_depth += 1;
 
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t.clone());
-                self.evaluate_trait_predicate_recursively(previous_stack, obligation)
+                self.evaluate_trait_predicate_recursively(previous_stack, obligation, recursion_depth)
             }
 
             ty::Predicate::Subtype(ref p) => {
@@ -696,7 +717,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     .subtype_predicate(&obligation.cause, obligation.param_env, p)
                 {
                     Some(Ok(InferOk { obligations, .. })) => {
-                        self.evaluate_predicates_recursively(previous_stack, &obligations)
+                        self.evaluate_predicates_recursively(previous_stack, &obligations, recursion_depth)
                     }
                     Some(Err(_)) => Ok(EvaluatedToErr),
                     None => Ok(EvaluatedToAmbig),
@@ -711,7 +732,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 obligation.cause.span,
             ) {
                 Some(obligations) => {
-                    self.evaluate_predicates_recursively(previous_stack, obligations.iter())
+                    self.evaluate_predicates_recursively(previous_stack, obligations.iter(), recursion_depth)
                 }
                 None => Ok(EvaluatedToAmbig),
             },
@@ -737,6 +758,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         let result = self.evaluate_predicates_recursively(
                             previous_stack,
                             subobligations.iter(),
+                            recursion_depth
                         );
                         if let Some(key) =
                             ProjectionCacheKey::from_poly_projection_predicate(self, data)
@@ -795,6 +817,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: TraitObligation<'tcx>,
+        recursion_depth: usize
     ) -> Result<EvaluationResult, OverflowError> {
         debug!("evaluate_trait_predicate_recursively({:?})", obligation);
 
@@ -822,7 +845,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(result);
         }
 
-        let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
+        let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack, recursion_depth));
         let result = result?;
 
         debug!("CACHE MISS: EVAL({:?})={:?}", fresh_trait_ref, result);
@@ -834,6 +857,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn evaluate_stack<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
+        recursion_depth: usize
     ) -> Result<EvaluationResult, OverflowError> {
         // In intercrate mode, whenever any of the types are unbound,
         // there can always be an impl. Even if there are no impls in
@@ -874,7 +898,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // Heuristics: show the diagnostics when there are no candidates in crate.
             if self.intercrate_ambiguity_causes.is_some() {
                 debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                if let Ok(candidate_set) = self.assemble_candidates(stack) {
+                if let Ok(candidate_set) = self.assemble_candidates(stack, recursion_depth) {
                     if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
@@ -955,8 +979,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
         }
 
-        match self.candidate_from_obligation(stack) {
-            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
+        match self.candidate_from_obligation(stack, recursion_depth) {
+            Ok(Some(c)) => self.evaluate_candidate(stack, &c, recursion_depth),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow) => Err(OverflowError),
             Err(..) => Ok(EvaluatedToErr),
@@ -995,6 +1019,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidate: &SelectionCandidate<'tcx>,
+        recursion_depth: usize
     ) -> Result<EvaluationResult, OverflowError> {
         debug!(
             "evaluate_candidate: depth={} candidate={:?}",
@@ -1006,6 +1031,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(selection) => this.evaluate_predicates_recursively(
                     stack.list(),
                     selection.nested_obligations().iter(),
+                    recursion_depth
                 ),
                 Err(..) => Ok(EvaluatedToErr),
             }
@@ -1080,6 +1106,24 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .insert(trait_ref, WithDepNode::new(dep_node, result));
     }
 
+    // The weird return type of this function allows it to be used with the 'try' (?)
+    // operator within certain functions
+    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>>(&self, recursion_depth: usize, obligation: &Obligation<'tcx, T>,
+    ) -> Result<(), OverflowError>  {
+        let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
+        if recursion_depth >= recursion_limit {
+            match self.query_mode {
+                TraitQueryMode::Standard => {
+                    self.infcx().report_overflow_error(obligation, true);
+                }
+                TraitQueryMode::Canonical => {
+                    return Err(OverflowError);
+                }
+            }
+        }
+        Ok(())
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
     //
@@ -1093,20 +1137,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn candidate_from_obligation<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
+        recursion_depth: usize
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
-        let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
-        if stack.obligation.recursion_depth >= recursion_limit {
-            match self.query_mode {
-                TraitQueryMode::Standard => {
-                    self.infcx().report_overflow_error(&stack.obligation, true);
-                }
-                TraitQueryMode::Canonical => {
-                    return Err(Overflow);
-                }
-            }
-        }
+        self.check_recursion_limit(stack.obligation.recursion_depth, &stack.obligation)?;
 
         // Check the cache. Note that we freshen the trait-ref
         // separately rather than using `stack.fresh_trait_ref` --
@@ -1128,7 +1163,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // If no match, compute result and insert into cache.
         let (candidate, dep_node) =
-            self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
+            self.in_task(|this| this.candidate_from_obligation_no_cache(stack, recursion_depth));
 
         debug!(
             "CACHE MISS: SELECT({:?})={:?}",
@@ -1172,6 +1207,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn candidate_from_obligation_no_cache<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
+        recursion_depth: usize
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if stack.obligation.predicate.references_error() {
             // If we encounter a `Error`, we generally prefer the
@@ -1189,13 +1225,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             if self.intercrate_ambiguity_causes.is_some() {
                 debug!("evaluate_stack: intercrate_ambiguity_causes is some");
                 // Heuristics: show the diagnostics when there are no candidates in crate.
-                if let Ok(candidate_set) = self.assemble_candidates(stack) {
+                if let Ok(candidate_set) = self.assemble_candidates(stack, recursion_depth) {
                     let mut no_candidates_apply = true;
                     {
                         let evaluated_candidates = candidate_set
                             .vec
                             .iter()
-                            .map(|c| self.evaluate_candidate(stack, &c));
+                            .map(|c| self.evaluate_candidate(stack, &c, recursion_depth));
 
                         for ec in evaluated_candidates {
                             match ec {
@@ -1241,7 +1277,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(None);
         }
 
-        let candidate_set = self.assemble_candidates(stack)?;
+        let candidate_set = self.assemble_candidates(stack, recursion_depth)?;
 
         if candidate_set.ambiguous {
             debug!("candidate set contains ambig");
@@ -1288,7 +1324,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // is needed for specialization. Propagate overflow if it occurs.
         let mut candidates = candidates
             .into_iter()
-            .map(|c| match self.evaluate_candidate(stack, &c) {
+            .map(|c| match self.evaluate_candidate(stack, &c, recursion_depth) {
                 Ok(eval) if eval.may_apply() => Ok(Some(EvaluatedCandidate {
                     candidate: c,
                     evaluation: eval,
@@ -1526,6 +1562,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn assemble_candidates<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
+        recursion_depth: usize
     ) -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>> {
         let TraitObligationStack { obligation, .. } = *stack;
         let ref obligation = Obligation {
@@ -1601,7 +1638,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
-        self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
+        self.assemble_candidates_from_caller_bounds(stack, &mut candidates, recursion_depth)?;
         // Auto implementations have lower priority, so we only
         // consider triggering a default if there is no other impl that can apply.
         if candidates.vec.is_empty() {
@@ -1734,6 +1771,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
+        recursion_depth: usize
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(
             "assemble_candidates_from_caller_bounds({:?})",
@@ -1755,7 +1793,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // keep only those bounds which may apply, and propagate overflow if it occurs
         let mut param_candidates = vec![];
         for bound in matching_bounds {
-            let wc = self.evaluate_where_clause(stack, bound.clone())?;
+            let wc = self.evaluate_where_clause(stack, bound.clone(), recursion_depth)?;
             if wc.may_apply() {
                 param_candidates.push(ParamCandidate(bound));
             }
@@ -1770,11 +1808,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
+        recursion_depth: usize
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
-                    this.evaluate_predicates_recursively(stack.list(), obligations.iter())
+                    this.evaluate_predicates_recursively(stack.list(), obligations.iter(), recursion_depth)
                 }
                 Err(()) => Ok(EvaluatedToErr),
             }
