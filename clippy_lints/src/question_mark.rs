@@ -133,9 +133,13 @@ impl Pass {
             }
         }
 
-        // Check if the block has an implicit return expression
-        if let Some(ref ret_expr) = block.expr {
-            return Some(ret_expr.clone());
+        // Check for `return` without a semicolon.
+        if_chain! {
+            if block.stmts.len() == 0;
+            if let Some(ExprKind::Ret(Some(ret_expr))) = block.expr.as_ref().map(|e| &e.node);
+            then {
+                return Some(ret_expr.clone());
+            }
         }
 
         None
