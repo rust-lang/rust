@@ -153,9 +153,13 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             };
             mem::drop(lock);
 
+            // If we are single-threaded we know that we have cycle error,
+            // so we just turn the errror
             #[cfg(not(parallel_queries))]
-            return job.await(tcx, span);
+            return job.cycle_error(tcx, span);
 
+            // With parallel queries we might just have to wait on some other
+            // thread
             #[cfg(parallel_queries)]
             {
                 if let Err(cycle) = job.await(tcx, span) {

@@ -91,7 +91,7 @@ impl<'tcx> QueryJob<'tcx> {
     #[cfg(not(parallel_queries))]
     #[inline(never)]
     #[cold]
-    pub(super) fn await<'lcx, 'a, D: QueryDescription<'tcx>>(
+    pub(super) fn cycle_error<'lcx, 'a, D: QueryDescription<'tcx>>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
