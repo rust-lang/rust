@@ -454,7 +454,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             }
 
             "isatty" => {
-                self.write_null(dest)?;
+                this.write_null(dest)?;
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
