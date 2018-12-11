@@ -47,8 +47,7 @@ pub fn analyze_source_file(
 }
 
 cfg_if! {
-    if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
-                 not(stage0)))] {
+    if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))] {
         fn analyze_source_file_dispatch(src: &str,
                                     source_file_start_pos: BytePos,
                                     lines: &mut Vec<BytePos>,
