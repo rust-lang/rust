@@ -148,7 +148,7 @@ LL |         value1: &x, //~ ERROR
 LL | }
    | - `x` dropped here while still borrowed
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/patterns.rs:113:5
    |
 LL | fn static_to_a_to_static_through_variable<'a>(x: &'a u32) -> &'static u32 {
@@ -157,7 +157,7 @@ LL | fn static_to_a_to_static_through_variable<'a>(x: &'a u32) -> &'static u32 {
 LL |     y //~ ERROR
    |     ^ returning this value requires that `'a` must outlive `'static`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/patterns.rs:125:5
    |
 LL | fn static_to_a_to_static_through_tuple<'a>(x: &'a u32) -> &'static u32 {
@@ -166,7 +166,7 @@ LL | fn static_to_a_to_static_through_tuple<'a>(x: &'a u32) -> &'static u32 {
 LL |     y //~ ERROR
    |     ^ returning this value requires that `'a` must outlive `'static`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/patterns.rs:130:5
    |
 LL | fn static_to_a_to_static_through_struct<'a>(_x: &'a u32) -> &'static u32 {
@@ -175,7 +175,7 @@ LL |     let Single { value: y }: Single<&'a u32> = Single { value: &22 };
 LL |     y //~ ERROR
    |     ^ returning this value requires that `'a` must outlive `'static`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/patterns.rs:134:18
    |
 LL | fn a_to_static_then_static<'a>(x: &'a u32) -> &'static u32 {

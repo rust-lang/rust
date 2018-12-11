@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/type-alias-free-regions.rs:19:9
    |
 LL | impl<'a> FromBox<'a> for C<'a> {
@@ -8,7 +8,7 @@ LL |     fn from_box(b: Box<B>) -> Self {
 LL |         C { f: b } //~ ERROR
    |         ^^^^^^^^^^ returning this value requires that `'1` must outlive `'a`
 
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/type-alias-free-regions.rs:29:9
    |
 LL | impl<'a> FromTuple<'a> for C<'a> {

@@ -1,4 +1,4 @@
-error: unsatisfied lifetime constraints
+error: lifetime may not live long enough
   --> $DIR/issue-52742.rs:15:9
    |
 LL |     fn take_bar(&mut self, b: Bar<'_>) {
