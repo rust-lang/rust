@@ -1103,8 +1103,7 @@ impl<T: ?Sized> *const T {
     /// unless `x` and `y` point into the same allocated object.
     ///
     /// Always use `.offset(count)` instead when possible, because `offset`
-    /// allows the compiler to optimize better.  If you need to cross object
-    /// boundaries, cast the pointer to an integer and do the arithmetic there.
+    /// allows the compiler to optimize better.
     ///
     /// # Examples
     ///
