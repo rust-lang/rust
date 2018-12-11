@@ -330,12 +330,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             func: fun,
                             args,
                             cleanup: Some(cleanup),
-                            destination:
-                                if expr.ty.conservative_is_privately_uninhabited(this.hir.tcx()) {
-                                    None
-                                } else {
-                                    Some((destination.clone(), success))
-                                },
+                            // FIXME(varkor): replace this with an uninhabitedness-based check.
+                            // This requires getting access to the current module to call
+                            // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
+                            destination: if expr.ty.is_never() {
+                                None
+                            } else {
+                                Some((destination.clone(), success))
+                            },
                             from_hir_call,
                         },
                     );
