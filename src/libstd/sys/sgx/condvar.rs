@@ -18,7 +18,6 @@ pub struct Condvar {
 }
 
 impl Condvar {
-    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Condvar {
         Condvar { inner: SpinMutex::new(WaitVariable::new(())) }
     }
