@@ -852,7 +852,11 @@ pub fn plain_summary_line(md: &str) -> String {
             s.push_str(&t);
         }
     }
-    s
+    if s.len() > 60 {
+        s.chars().take(60).collect::<String>()
+    } else {
+        s
+    }
 }
 
 pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
