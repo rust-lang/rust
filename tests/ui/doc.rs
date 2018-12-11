@@ -174,3 +174,6 @@ fn issue_1920() {}
 /// Not ok: http://www.unicode.org/
 /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
 fn issue_1832() {}
+
+/// Ok: CamelCase (It should not be surrounded by backticks)
+fn issue_2395() {}
