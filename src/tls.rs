@@ -34,10 +34,6 @@ impl<'tcx> Default for TlsData<'tcx> {
     }
 }
 
-pub trait EvalContextExt<'tcx> {
-    fn run_tls_dtors(&mut self) -> EvalResult<'tcx>;
-}
-
 impl<'tcx> TlsData<'tcx> {
     pub fn create_tls_key(
         &mut self,
@@ -133,35 +129,37 @@ impl<'tcx> TlsData<'tcx> {
     }
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
+pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
-        let mut dtor = self.machine.tls.fetch_tls_dtor(None, &*self.tcx);
+        let this = self.eval_context_mut();
+        let mut dtor = this.machine.tls.fetch_tls_dtor(None, &*this.tcx);
         // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
             // TODO: Potentially, this has to support all the other possible instances?
             // See eval_fn_call in interpret/terminator/mod.rs
-            let mir = self.load_mir(instance.def)?;
-            let ret_place = MPlaceTy::dangling(self.layout_of(self.tcx.mk_unit())?, self).into();
-            self.push_stack_frame(
+            let mir = this.load_mir(instance.def)?;
+            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            this.push_stack_frame(
                 instance,
                 mir.span,
                 mir,
                 Some(ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;
-            let arg_local = self.frame().mir.args_iter().next().ok_or_else(
+            let arg_local = this.frame().mir.args_iter().next().ok_or_else(
                 || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
-            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
-            self.write_scalar(ptr, dest)?;
+            let dest = this.eval_place(&mir::Place::Local(arg_local))?;
+            this.write_scalar(ptr, dest)?;
 
             // step until out of stackframes
-            self.run()?;
+            this.run()?;
 
-            dtor = match self.machine.tls.fetch_tls_dtor(Some(key), &*self.tcx) {
+            dtor = match this.machine.tls.fetch_tls_dtor(Some(key), &*this.tcx) {
                 dtor @ Some(_) => dtor,
-                None => self.machine.tls.fetch_tls_dtor(None, &*self.tcx),
+                None => this.machine.tls.fetch_tls_dtor(None, &*this.tcx),
             };
         }
         // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.
