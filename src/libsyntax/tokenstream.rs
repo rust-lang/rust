@@ -123,7 +123,7 @@ impl TokenTree {
     }
 
     pub fn joint(self) -> TokenStream {
-        TokenStream { kind: TokenStreamKind::JointTree(self) }
+        TokenStream::JointTree(self)
     }
 
     /// Returns the opening delimiter as a token tree.
@@ -154,8 +154,11 @@ impl TokenTree {
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `Token::Interpolated` for back-compat.
 #[derive(Clone, Debug)]
-pub struct TokenStream {
-    kind: TokenStreamKind,
+pub enum TokenStream {
+    Empty,
+    Tree(TokenTree),
+    JointTree(TokenTree),
+    Stream(Lrc<Vec<TokenStream>>),
 }
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -167,24 +170,22 @@ impl TokenStream {
     /// separating the two arguments with a comma for diagnostic suggestions.
     pub(crate) fn add_comma(&self) -> Option<(TokenStream, Span)> {
         // Used to suggest if a user writes `foo!(a b);`
-        if let TokenStreamKind::Stream(ref stream) = self.kind {
+        if let TokenStream::Stream(ref stream) = self {
             let mut suggestion = None;
             let mut iter = stream.iter().enumerate().peekable();
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
-                    let sp = match (&ts.kind, &next.kind) {
-                        (TokenStreamKind::Tree(TokenTree::Token(_, token::Token::Comma)), _) |
-                        (_, TokenStreamKind::Tree(TokenTree::Token(_, token::Token::Comma))) => {
+                    let sp = match (&ts, &next) {
+                        (TokenStream::Tree(TokenTree::Token(_, token::Token::Comma)), _) |
+                        (_, TokenStream::Tree(TokenTree::Token(_, token::Token::Comma))) => {
                             continue;
                         }
-                        (TokenStreamKind::Tree(TokenTree::Token(sp, _)), _) => *sp,
-                        (TokenStreamKind::Tree(TokenTree::Delimited(sp, ..)), _) => sp.entire(),
+                        (TokenStream::Tree(TokenTree::Token(sp, _)), _) => *sp,
+                        (TokenStream::Tree(TokenTree::Delimited(sp, ..)), _) => sp.entire(),
                         _ => continue,
                     };
                     let sp = sp.shrink_to_hi();
-                    let comma = TokenStream {
-                        kind: TokenStreamKind::Tree(TokenTree::Token(sp, token::Comma)),
-                    };
+                    let comma = TokenStream::Tree(TokenTree::Token(sp, token::Comma));
                     suggestion = Some((pos, comma, sp));
                 }
             }
@@ -201,17 +202,9 @@ impl TokenStream {
     }
 }
 
-#[derive(Clone, Debug)]
-enum TokenStreamKind {
-    Empty,
-    Tree(TokenTree),
-    JointTree(TokenTree),
-    Stream(Lrc<Vec<TokenStream>>),
-}
-
 impl From<TokenTree> for TokenStream {
     fn from(tt: TokenTree) -> TokenStream {
-        TokenStream { kind: TokenStreamKind::Tree(tt) }
+        TokenStream::Tree(tt)
     }
 }
 
@@ -230,22 +223,22 @@ impl<T: Into<TokenStream>> iter::FromIterator<T> for TokenStream {
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, iter: I) {
         let iter = iter.into_iter();
-        let kind = mem::replace(&mut self.kind, TokenStreamKind::Empty);
+        let this = mem::replace(self, TokenStream::Empty);
 
         // Vector of token streams originally in self.
-        let tts: Vec<TokenStream> = match kind {
-            TokenStreamKind::Empty => {
+        let tts: Vec<TokenStream> = match this {
+            TokenStream::Empty => {
                 let mut vec = Vec::new();
                 vec.reserve(iter.size_hint().0);
                 vec
             }
-            TokenStreamKind::Tree(_) | TokenStreamKind::JointTree(_) => {
+            TokenStream::Tree(_) | TokenStream::JointTree(_) => {
                 let mut vec = Vec::new();
                 vec.reserve(1 + iter.size_hint().0);
-                vec.push(TokenStream { kind });
+                vec.push(this);
                 vec
             }
-            TokenStreamKind::Stream(rc_vec) => match Lrc::try_unwrap(rc_vec) {
+            TokenStream::Stream(rc_vec) => match Lrc::try_unwrap(rc_vec) {
                 Ok(mut vec) => {
                     // Extend in place using the existing capacity if possible.
                     // This is the fast path for libraries like `quote` that
@@ -286,7 +279,7 @@ impl PartialEq<TokenStream> for TokenStream {
 
 impl TokenStream {
     pub fn len(&self) -> usize {
-        if let TokenStreamKind::Stream(ref slice) = self.kind {
+        if let TokenStream::Stream(ref slice) = self {
             slice.len()
         } else {
             0
@@ -294,12 +287,12 @@ impl TokenStream {
     }
 
     pub fn empty() -> TokenStream {
-        TokenStream { kind: TokenStreamKind::Empty }
+        TokenStream::Empty
     }
 
     pub fn is_empty(&self) -> bool {
-        match self.kind {
-            TokenStreamKind::Empty => true,
+        match self {
+            TokenStream::Empty => true,
             _ => false,
         }
     }
@@ -313,7 +306,7 @@ impl TokenStream {
     }
 
     fn concat_rc_vec(streams: Lrc<Vec<TokenStream>>) -> TokenStream {
-        TokenStream { kind: TokenStreamKind::Stream(streams) }
+        TokenStream::Stream(streams)
     }
 
     pub fn trees(&self) -> Cursor {
@@ -377,9 +370,9 @@ impl TokenStream {
     /// Precondition: `self` consists of a single token tree.
     /// Returns true if the token tree is a joint operation w.r.t. `proc_macro::TokenNode`.
     pub fn as_tree(self) -> (TokenTree, bool /* joint? */) {
-        match self.kind {
-            TokenStreamKind::Tree(tree) => (tree, false),
-            TokenStreamKind::JointTree(tree) => (tree, true),
+        match self {
+            TokenStream::Tree(tree) => (tree, false),
+            TokenStream::JointTree(tree) => (tree, true),
             _ => unreachable!(),
         }
     }
@@ -389,9 +382,9 @@ impl TokenStream {
         let mut result = Vec::new();
         let mut i = 0;
         while let Some(stream) = trees.next_as_stream() {
-            result.push(match stream.kind {
-                TokenStreamKind::Tree(tree) => f(i, tree).into(),
-                TokenStreamKind::JointTree(tree) => f(i, tree).joint(),
+            result.push(match stream {
+                TokenStream::Tree(tree) => f(i, tree).into(),
+                TokenStream::JointTree(tree) => f(i, tree).joint(),
                 _ => unreachable!()
             });
             i += 1;
@@ -403,9 +396,9 @@ impl TokenStream {
         let mut trees = self.into_trees();
         let mut result = Vec::new();
         while let Some(stream) = trees.next_as_stream() {
-            result.push(match stream.kind {
-                TokenStreamKind::Tree(tree) => f(tree).into(),
-                TokenStreamKind::JointTree(tree) => f(tree).joint(),
+            result.push(match stream {
+                TokenStream::Tree(tree) => f(tree).into(),
+                TokenStream::JointTree(tree) => f(tree).joint(),
                 _ => unreachable!()
             });
         }
@@ -413,19 +406,19 @@ impl TokenStream {
     }
 
     fn first_tree_and_joint(&self) -> Option<(TokenTree, bool)> {
-        match self.kind {
-            TokenStreamKind::Empty => None,
-            TokenStreamKind::Tree(ref tree) => Some((tree.clone(), false)),
-            TokenStreamKind::JointTree(ref tree) => Some((tree.clone(), true)),
-            TokenStreamKind::Stream(ref stream) => stream.first().unwrap().first_tree_and_joint(),
+        match self {
+            TokenStream::Empty => None,
+            TokenStream::Tree(ref tree) => Some((tree.clone(), false)),
+            TokenStream::JointTree(ref tree) => Some((tree.clone(), true)),
+            TokenStream::Stream(ref stream) => stream.first().unwrap().first_tree_and_joint(),
         }
     }
 
     fn last_tree_if_joint(&self) -> Option<TokenTree> {
-        match self.kind {
-            TokenStreamKind::Empty | TokenStreamKind::Tree(..) => None,
-            TokenStreamKind::JointTree(ref tree) => Some(tree.clone()),
-            TokenStreamKind::Stream(ref stream) => stream.last().unwrap().last_tree_if_joint(),
+        match self {
+            TokenStream::Empty | TokenStream::Tree(..) => None,
+            TokenStream::JointTree(ref tree) => Some(tree.clone()),
+            TokenStream::Stream(ref stream) => stream.last().unwrap().last_tree_if_joint(),
         }
     }
 }
@@ -472,7 +465,7 @@ impl TokenStreamBuilder {
     }
 
     fn push_all_but_last_tree(&mut self, stream: &TokenStream) {
-        if let TokenStreamKind::Stream(ref streams) = stream.kind {
+        if let TokenStream::Stream(ref streams) = stream {
             let len = streams.len();
             match len {
                 1 => {}
@@ -484,7 +477,7 @@ impl TokenStreamBuilder {
     }
 
     fn push_all_but_first_tree(&mut self, stream: &TokenStream) {
-        if let TokenStreamKind::Stream(ref streams) = stream.kind {
+        if let TokenStream::Stream(ref streams) = stream {
             let len = streams.len();
             match len {
                 1 => {}
@@ -524,10 +517,10 @@ impl StreamCursor {
             if self.index < self.stream.len() {
                 self.index += 1;
                 let next = self.stream[self.index - 1].clone();
-                match next.kind {
-                    TokenStreamKind::Tree(..) | TokenStreamKind::JointTree(..) => return Some(next),
-                    TokenStreamKind::Stream(stream) => self.insert(stream),
-                    TokenStreamKind::Empty => {}
+                match next {
+                    TokenStream::Tree(..) | TokenStream::JointTree(..) => return Some(next),
+                    TokenStream::Stream(stream) => self.insert(stream),
+                    TokenStream::Empty => {}
                 }
             } else if let Some((stream, index)) = self.stack.pop() {
                 self.stream = stream;
@@ -548,8 +541,8 @@ impl Iterator for Cursor {
     type Item = TokenTree;
 
     fn next(&mut self) -> Option<TokenTree> {
-        self.next_as_stream().map(|stream| match stream.kind {
-            TokenStreamKind::Tree(tree) | TokenStreamKind::JointTree(tree) => tree,
+        self.next_as_stream().map(|stream| match stream {
+            TokenStream::Tree(tree) | TokenStream::JointTree(tree) => tree,
             _ => unreachable!()
         })
     }
@@ -557,11 +550,11 @@ impl Iterator for Cursor {
 
 impl Cursor {
     fn new(stream: TokenStream) -> Self {
-        Cursor(match stream.kind {
-            TokenStreamKind::Empty => CursorKind::Empty,
-            TokenStreamKind::Tree(tree) => CursorKind::Tree(tree, false),
-            TokenStreamKind::JointTree(tree) => CursorKind::JointTree(tree, false),
-            TokenStreamKind::Stream(stream) => CursorKind::Stream(StreamCursor::new(stream)),
+        Cursor(match stream {
+            TokenStream::Empty => CursorKind::Empty,
+            TokenStream::Tree(tree) => CursorKind::Tree(tree, false),
+            TokenStream::JointTree(tree) => CursorKind::JointTree(tree, false),
+            TokenStream::Stream(stream) => CursorKind::Stream(StreamCursor::new(stream)),
         })
     }
 
@@ -610,11 +603,11 @@ impl Cursor {
     pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
         fn look_ahead(streams: &[TokenStream], mut n: usize) -> Result<TokenTree, usize> {
             for stream in streams {
-                n = match stream.kind {
-                    TokenStreamKind::Tree(ref tree) | TokenStreamKind::JointTree(ref tree)
+                n = match stream {
+                    TokenStream::Tree(ref tree) | TokenStream::JointTree(ref tree)
                         if n == 0 => return Ok(tree.clone()),
-                    TokenStreamKind::Tree(..) | TokenStreamKind::JointTree(..) => n - 1,
-                    TokenStreamKind::Stream(ref stream) => match look_ahead(stream, n) {
+                    TokenStream::Tree(..) | TokenStream::JointTree(..) => n - 1,
+                    TokenStream::Stream(ref stream) => match look_ahead(stream, n) {
                         Ok(tree) => return Ok(tree),
                         Err(n) => n,
                     },
@@ -660,11 +653,11 @@ impl ThinTokenStream {
 
 impl From<TokenStream> for ThinTokenStream {
     fn from(stream: TokenStream) -> ThinTokenStream {
-        ThinTokenStream(match stream.kind {
-            TokenStreamKind::Empty => None,
-            TokenStreamKind::Tree(tree) => Some(Lrc::new(vec![tree.into()])),
-            TokenStreamKind::JointTree(tree) => Some(Lrc::new(vec![tree.joint()])),
-            TokenStreamKind::Stream(stream) => Some(stream),
+        ThinTokenStream(match stream {
+            TokenStream::Empty => None,
+            TokenStream::Tree(tree) => Some(Lrc::new(vec![tree.into()])),
+            TokenStream::JointTree(tree) => Some(Lrc::new(vec![tree.joint()])),
+            TokenStream::Stream(stream) => Some(stream),
         })
     }
 }
