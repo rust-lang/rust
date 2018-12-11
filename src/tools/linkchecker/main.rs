@@ -137,7 +137,6 @@ fn check(cache: &mut Cache,
        file.ends_with("symbol/struct.InternedString.html") ||
        file.ends_with("ast/struct.ThinVec.html") ||
        file.ends_with("util/struct.ThinVec.html") ||
-       file.ends_with("util/struct.RcSlice.html") ||
        file.ends_with("layout/struct.TyLayout.html") ||
        file.ends_with("humantime/struct.Timestamp.html") ||
        file.ends_with("log/index.html") ||
