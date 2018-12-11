@@ -28,8 +28,8 @@ use ext::tt::{macro_parser, quoted};
 use parse::Directory;
 use parse::token::{self, DelimToken, Token};
 use print::pprust;
+use rustc_data_structures::sync::Lrc;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
-use util::RcVec;
 
 use std::borrow::Cow;
 use std::{fmt, iter, mem};
@@ -160,7 +160,7 @@ pub struct TokenStream {
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 40);
+static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 32);
 
 impl TokenStream {
     /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
@@ -194,7 +194,7 @@ impl TokenStream {
                 new_slice.extend_from_slice(parts.0);
                 new_slice.push(comma);
                 new_slice.extend_from_slice(parts.1);
-                let slice = RcVec::new(new_slice);
+                let slice = Lrc::new(new_slice);
                 return Some((TokenStream { kind: TokenStreamKind::Stream(slice) }, sp));
             }
         }
@@ -207,7 +207,7 @@ enum TokenStreamKind {
     Empty,
     Tree(TokenTree),
     JointTree(TokenTree),
-    Stream(RcVec<TokenStream>),
+    Stream(Lrc<Vec<TokenStream>>),
 }
 
 impl From<TokenTree> for TokenStream {
@@ -246,7 +246,7 @@ impl Extend<TokenStream> for TokenStream {
                 vec.push(TokenStream { kind });
                 vec
             }
-            TokenStreamKind::Stream(rc_vec) => match RcVec::try_unwrap(rc_vec) {
+            TokenStreamKind::Stream(rc_vec) => match Lrc::try_unwrap(rc_vec) {
                 Ok(mut vec) => {
                     // Extend in place using the existing capacity if possible.
                     // This is the fast path for libraries like `quote` that
@@ -277,7 +277,7 @@ impl Extend<TokenStream> for TokenStream {
         *self = match tts.len() {
             0 => TokenStream::empty(),
             1 => tts.pop().unwrap(),
-            _ => TokenStream::concat_rc_vec(RcVec::new_preserving_capacity(tts)),
+            _ => TokenStream::concat_rc_vec(Lrc::new(tts)),
         };
     }
 }
@@ -314,11 +314,11 @@ impl TokenStream {
         match streams.len() {
             0 => TokenStream::empty(),
             1 => streams.pop().unwrap(),
-            _ => TokenStream::concat_rc_vec(RcVec::new(streams)),
+            _ => TokenStream::concat_rc_vec(Lrc::new(streams)),
         }
     }
 
-    fn concat_rc_vec(streams: RcVec<TokenStream>) -> TokenStream {
+    fn concat_rc_vec(streams: Lrc<Vec<TokenStream>>) -> TokenStream {
         TokenStream { kind: TokenStreamKind::Stream(streams) }
     }
 
@@ -483,7 +483,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[0].clone().into()),
-                _ => self.0.push(TokenStream::concat_rc_vec(streams.sub_slice(0 .. len - 1))),
+                _ => self.0.push(TokenStream::concat_rc_vec( Lrc::new(streams[0 .. len - 1].to_vec()))),
             }
             self.push_all_but_last_tree(&streams[len - 1])
         }
@@ -495,7 +495,7 @@ impl TokenStreamBuilder {
             match len {
                 1 => {}
                 2 => self.0.push(streams[1].clone().into()),
-                _ => self.0.push(TokenStream::concat_rc_vec(streams.sub_slice(1 .. len))),
+                _ => self.0.push(TokenStream::concat_rc_vec(Lrc::new(streams[1 .. len].to_vec()))),
             }
             self.push_all_but_first_tree(&streams[0])
         }
@@ -515,13 +515,13 @@ enum CursorKind {
 
 #[derive(Clone)]
 struct StreamCursor {
-    stream: RcVec<TokenStream>,
+    stream: Lrc<Vec<TokenStream>>,
     index: usize,
-    stack: Vec<(RcVec<TokenStream>, usize)>,
+    stack: Vec<(Lrc<Vec<TokenStream>>, usize)>,
 }
 
 impl StreamCursor {
-    fn new(stream: RcVec<TokenStream>) -> Self {
+    fn new(stream: Lrc<Vec<TokenStream>>) -> Self {
         StreamCursor { stream: stream, index: 0, stack: Vec::new() }
     }
 
@@ -544,7 +544,7 @@ impl StreamCursor {
         }
     }
 
-    fn insert(&mut self, stream: RcVec<TokenStream>) {
+    fn insert(&mut self, stream: Lrc<Vec<TokenStream>>) {
         self.stack.push((mem::replace(&mut self.stream, stream),
                          mem::replace(&mut self.index, 0)));
     }
@@ -656,7 +656,7 @@ impl Cursor {
 /// `ThinTokenStream` is smaller, but needs to allocate to represent a single `TokenTree`.
 /// We must use `ThinTokenStream` in `TokenTree::Delimited` to avoid infinite size due to recursion.
 #[derive(Debug, Clone)]
-pub struct ThinTokenStream(Option<RcVec<TokenStream>>);
+pub struct ThinTokenStream(Option<Lrc<Vec<TokenStream>>>);
 
 impl ThinTokenStream {
     pub fn stream(&self) -> TokenStream {
@@ -668,8 +668,8 @@ impl From<TokenStream> for ThinTokenStream {
     fn from(stream: TokenStream) -> ThinTokenStream {
         ThinTokenStream(match stream.kind {
             TokenStreamKind::Empty => None,
-            TokenStreamKind::Tree(tree) => Some(RcVec::new(vec![tree.into()])),
-            TokenStreamKind::JointTree(tree) => Some(RcVec::new(vec![tree.joint()])),
+            TokenStreamKind::Tree(tree) => Some(Lrc::new(vec![tree.into()])),
+            TokenStreamKind::JointTree(tree) => Some(Lrc::new(vec![tree.joint()])),
             TokenStreamKind::Stream(stream) => Some(stream),
         })
     }
