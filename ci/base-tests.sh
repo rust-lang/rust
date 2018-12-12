@@ -32,7 +32,7 @@ cargo +nightly fmt --all -- --check
 
 
 #avoid loop spam
-set +ex
+set +x
 # make sure tests are formatted
 
 # some lints are sensitive to formatting, exclude some files
@@ -45,5 +45,4 @@ if [ "${needs_reformatting}" = true] ; then
     echo "Tests need reformatting!"
     exit 2
 fi
-
-set -ex
+set -x
