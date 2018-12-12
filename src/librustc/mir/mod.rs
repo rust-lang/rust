@@ -2,7 +2,7 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
-use crate::hir::def::CtorKind;
+use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, HirId, InlineAsm};
 use crate::mir::interpret::{ConstValue, EvalErrorKind, Scalar};
@@ -2405,7 +2405,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        ppaux::parameterized(fmt, variant_def.did, substs)?;
+                        ppaux::parameterized(fmt, variant_def.did, substs, Namespace::ValueNS)?;
 
                         match variant_def.ctor_kind {
                             CtorKind::Const => Ok(()),

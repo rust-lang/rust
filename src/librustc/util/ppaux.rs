@@ -1,3 +1,4 @@
+use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
 use crate::hir::map::definitions::DefPathData;
 use crate::middle::region;
@@ -285,26 +286,12 @@ impl<F: fmt::Write> PrintCx<'a, 'gcx, 'tcx, FmtPrinter<F>> {
 
     fn parameterized(
         &mut self,
-        mut def_id: DefId,
+        def_id: DefId,
         substs: SubstsRef<'tcx>,
+        ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> fmt::Result {
-        let mut key = self.tcx.def_key(def_id);
-        let is_value_ns = match key.disambiguated_data.data {
-            DefPathData::ValueNs(_) |
-            DefPathData::EnumVariant(_) => true,
-
-            // Skip `StructCtor` so that `Struct::<T>` will be printed,
-            // instead of the less pretty `Struct<T>::{{constructor}}`.
-            DefPathData::StructCtor => {
-                def_id.index = key.parent.unwrap();
-                key = self.tcx.def_key(def_id);
-                true
-            }
-
-            _ => false,
-        };
-
+        let key = self.tcx.def_key(def_id);
         let generics = self.tcx.generics_of(def_id);
 
         if let Some(parent_def_id) = generics.parent {
@@ -315,13 +302,20 @@ impl<F: fmt::Write> PrintCx<'a, 'gcx, 'tcx, FmtPrinter<F>> {
                 parent_generics.has_self && parent_generics.parent_count == 0;
             if parent_has_own_self {
                 print!(self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
-            }
-            self.parameterized(parent_def_id, substs, iter::empty())?;
-            if parent_has_own_self {
+                self.parameterized(parent_def_id, substs, Namespace::TypeNS, iter::empty())?;
                 print!(self, write(">"))?;
+            } else {
+                self.parameterized(parent_def_id, substs, ns, iter::empty())?;
             }
 
-            print!(self, write("::{}", key.disambiguated_data.data.as_interned_str()))?;
+            // Skip `::{{constructor}}` on tuple/unit structs.
+            match key.disambiguated_data.data {
+                DefPathData::StructCtor => {}
+
+                _ => {
+                    print!(self, write("::{}", key.disambiguated_data.data.as_interned_str()))?;
+                }
+            }
         } else {
             // Try to print `impl`s more like how you'd refer to their associated items.
             if let DefPathData::Impl = key.disambiguated_data.data {
@@ -352,7 +346,7 @@ impl<F: fmt::Write> PrintCx<'a, 'gcx, 'tcx, FmtPrinter<F>> {
             }
         };
 
-        let start = if is_value_ns { "::<" } else { "<" };
+        let start = if ns == Namespace::ValueNS { "::<" } else { "<" };
 
         let has_own_self = generics.has_self && generics.parent_count == 0;
         let params = &generics.params[has_own_self as usize..];
@@ -496,10 +490,15 @@ impl<F: fmt::Write> PrintCx<'a, 'gcx, 'tcx, FmtPrinter<F>> {
     }
 }
 
-pub fn parameterized<F: fmt::Write>(f: &mut F, did: DefId, substs: SubstsRef<'_>) -> fmt::Result {
+pub fn parameterized<F: fmt::Write>(
+    f: &mut F,
+    did: DefId,
+    substs: SubstsRef<'_>,
+    ns: Namespace,
+) -> fmt::Result {
     PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
         let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
-        cx.parameterized(did, substs, iter::empty())
+        cx.parameterized(did, substs, ns, iter::empty())
     })
 }
 
@@ -538,6 +537,7 @@ define_print! {
                     cx.parameterized(
                         principal.def_id,
                         principal.substs,
+                        Namespace::TypeNS,
                         self.projection_bounds(),
                     )?;
                 }
@@ -663,7 +663,7 @@ define_print! {
             let trait_ref = *ty::Binder::bind(*self)
                 .with_self_ty(cx.tcx, dummy_self)
                 .skip_binder();
-            cx.parameterized(trait_ref.def_id, trait_ref.substs, iter::empty())
+            cx.parameterized(trait_ref.def_id, trait_ref.substs, Namespace::TypeNS, iter::empty())
         }
         debug {
             self.print_display(cx)
@@ -1112,12 +1112,16 @@ define_print_multi! {
 define_print! {
     ('tcx) ty::TraitRef<'tcx>, (self, cx) {
         display {
-            cx.parameterized(self.def_id, self.substs, iter::empty())
+            cx.parameterized(self.def_id, self.substs, Namespace::TypeNS, iter::empty())
         }
         debug {
-            print!(cx, write("<"), print(self.self_ty()), write(" as "))?;
-            cx.parameterized(self.def_id, self.substs, iter::empty())?;
-            print!(cx, write(">"))
+            print!(cx,
+                write("<"),
+                print(self.self_ty()),
+                write(" as "),
+                print_display(self),
+                write(">")
+            )
         }
     }
 }
@@ -1163,7 +1167,7 @@ define_print! {
                 FnDef(def_id, substs) => {
                     let sig = cx.tcx.fn_sig(def_id).subst(cx.tcx, substs);
                     print!(cx, print(sig), write(" {{"))?;
-                    cx.parameterized(def_id, substs, iter::empty())?;
+                    cx.parameterized(def_id, substs, Namespace::ValueNS, iter::empty())?;
                     print!(cx, write("}}"))
                 }
                 FnPtr(ref bare_fn) => {
@@ -1185,7 +1189,9 @@ define_print! {
                         ty::BoundTyKind::Param(p) => print!(cx, write("{}", p)),
                     }
                 }
-                Adt(def, substs) => cx.parameterized(def.did, substs, iter::empty()),
+                Adt(def, substs) => {
+                    cx.parameterized(def.did, substs, Namespace::TypeNS, iter::empty())
+                }
                 Dynamic(data, r) => {
                     let print_r = r.display_outputs_anything(cx);
                     if print_r {
@@ -1199,7 +1205,12 @@ define_print! {
                     Ok(())
                 }
                 Foreign(def_id) => {
-                    cx.parameterized(def_id, subst::InternalSubsts::empty(), iter::empty())
+                    cx.parameterized(
+                        def_id,
+                        subst::InternalSubsts::empty(),
+                        Namespace::TypeNS,
+                        iter::empty(),
+                    )
                 }
                 Projection(ref data) => data.print(cx),
                 UnnormalizedProjection(ref data) => {
@@ -1481,7 +1492,7 @@ define_print! {
 define_print! {
     ('tcx) ty::ProjectionTy<'tcx>, (self, cx) {
         display {
-            cx.parameterized(self.item_def_id, self.substs, iter::empty())
+            cx.parameterized(self.item_def_id, self.substs, Namespace::TypeNS, iter::empty())
         }
     }
 }
@@ -1518,7 +1529,7 @@ define_print! {
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     print!(cx, write("the constant `"))?;
-                    cx.parameterized(def_id, substs, iter::empty())?;
+                    cx.parameterized(def_id, substs, Namespace::ValueNS, iter::empty())?;
                     print!(cx, write("` can be evaluated"))
                 }
             }
