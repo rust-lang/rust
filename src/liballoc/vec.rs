@@ -748,10 +748,10 @@ impl<T> Vec<T> {
         self
     }
 
-    /// Forces the length of a vector to a particular value.
+    /// Forces the length of the vector to `new_len`.
     ///
     /// This is a low-level operation that maintains none of the normal
-    /// invariants of the type.  Normally changing the length of a `Vec`
+    /// invariants of the type.  Normally changing the length of a vector
     /// is done using one of the safe operations instead, such as
     /// [`truncate`], [`resize`], [`extend`], or [`clear`].
     ///
@@ -762,14 +762,15 @@ impl<T> Vec<T> {
     ///
     /// # Safety
     ///
-    /// - `new_len` must be less than or equal to `capacity()`.
-    /// - All elements between past the previous end up to the `new_len`
-    ///   must be initialized.
+    /// - `new_len` must be less than or equal to [`capacity()`].
+    /// - The elements at `old_len..new_len` must be initialized.
+    ///
+    /// [`capacity()`]: #method.capacity
     ///
     /// # Examples
     ///
-    /// This method can be useful for situations in which the `Vec` is
-    /// serving as a buffer for other code, particularly over FFI:
+    /// This method can be useful for situations in which the vector
+    /// is serving as a buffer for other code, particularly over FFI:
     ///
     /// ```no_run
     /// # #![allow(dead_code)]
@@ -786,7 +787,7 @@ impl<T> Vec<T> {
     /// # }
     /// # impl StreamWrapper {
     /// pub fn get_dictionary(&self) -> Option<Vec<u8>> {
-    ///     // Per the docs, "32768 bytes is always enough".
+    ///     // Per the FFI method's docs, "32768 bytes is always enough".
     ///     let mut dict = Vec::with_capacity(32_768);
     ///     let mut dict_length = 0;
     ///     unsafe {
@@ -816,7 +817,8 @@ impl<T> Vec<T> {
     /// }
     /// ```
     ///
-    /// (Instead, one would normally use [`clear`] in this situation.)
+    /// Normally, here, one would use [`clear`] instead to correctly drop
+    /// the contents and thus not leak memory.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, new_len: usize) {
