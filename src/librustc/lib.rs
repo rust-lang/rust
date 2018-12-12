@@ -69,6 +69,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
+#![cfg_attr(not(stage0), feature(stdsimd))]
 
 #![recursion_limit="512"]
 
@@ -108,6 +109,8 @@ extern crate backtrace;
 
 #[macro_use]
 extern crate smallvec;
+#[macro_use]
+extern crate cfg_if;
 
 // Note that librustc doesn't actually depend on these crates, see the note in
 // `Cargo.toml` for this crate about why these are here.

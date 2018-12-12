@@ -16,6 +16,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::env;
 use std::hash::Hash;
+use std::mem;
 use ty::{self, TyCtxt};
 use util::common::{ProfileQueriesMsg, profq_msg};
 
@@ -208,8 +209,7 @@ impl DepGraph {
         self.with_task_impl(key, cx, arg, false, task,
             |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
-                reads: SmallVec::new(),
-                read_set: Default::default(),
+                read_set: OrderedDepIndexSet::new(),
             })),
             |data, key, task| data.borrow_mut().complete_task(key, task))
     }
@@ -352,8 +352,7 @@ impl DepGraph {
         if let Some(ref data) = self.data {
             let (result, open_task) = ty::tls::with_context(|icx| {
                 let task = OpenTask::Anon(Lock::new(AnonOpenTask {
-                    reads: SmallVec::new(),
-                    read_set: Default::default(),
+                    read_set: OrderedDepIndexSet::new(),
                 }));
 
                 let r = {
@@ -949,8 +948,7 @@ impl CurrentDepGraph {
         if let OpenTask::Regular(task) = task {
             let RegularOpenTask {
                 node,
-                read_set: _,
-                reads
+                read_set,
             } = task.into_inner();
             assert_eq!(node, key);
 
@@ -961,22 +959,22 @@ impl CurrentDepGraph {
             // when called for LOCAL_CRATE) or they depend on a CrateMetadata
             // node.
             if cfg!(debug_assertions) {
-                if node.kind.is_input() && reads.len() > 0 &&
+                if node.kind.is_input() && read_set.reads.len() > 0 &&
                    // FIXME(mw): Special case for DefSpan until Spans are handled
                    //            better in general.
                    node.kind != DepKind::DefSpan &&
-                    reads.iter().any(|&i| {
+                    read_set.reads.iter().any(|&i| {
                         !(self.nodes[i].kind == DepKind::CrateMetadata ||
                           self.nodes[i].kind == DepKind::Krate)
                     })
                 {
                     bug!("Input node {:?} with unexpected reads: {:?}",
                         node,
-                        reads.iter().map(|&i| self.nodes[i]).collect::<Vec<_>>())
+                        read_set.reads.iter().map(|&i| self.nodes[i]).collect::<Vec<_>>())
                 }
             }
 
-            self.alloc_node(node, reads)
+            self.alloc_node(node, read_set.reads)
         } else {
             bug!("complete_task() - Expected regular task to be popped")
         }
@@ -985,18 +983,17 @@ impl CurrentDepGraph {
     fn pop_anon_task(&mut self, kind: DepKind, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::Anon(task) = task {
             let AnonOpenTask {
-                read_set: _,
-                reads
+                read_set,
             } = task.into_inner();
             debug_assert!(!kind.is_input());
 
             let mut fingerprint = self.anon_id_seed;
             let mut hasher = StableHasher::new();
 
-            for &read in reads.iter() {
+            for &read in read_set.reads.iter() {
                 let read_dep_node = self.nodes[read];
 
-                ::std::mem::discriminant(&read_dep_node.kind).hash(&mut hasher);
+                mem::discriminant(&read_dep_node.kind).hash(&mut hasher);
 
                 // Fingerprint::combine() is faster than sending Fingerprint
                 // through the StableHasher (at least as long as StableHasher
@@ -1014,7 +1011,7 @@ impl CurrentDepGraph {
             if let Some(&index) = self.node_to_node_index.get(&target_dep_node) {
                 index
             } else {
-                self.alloc_node(target_dep_node, reads)
+                self.alloc_node(target_dep_node, read_set.reads)
             }
         } else {
             bug!("pop_anon_task() - Expected anonymous task to be popped")
@@ -1039,35 +1036,12 @@ impl CurrentDepGraph {
             match *icx.task {
                 OpenTask::Regular(ref task) => {
                     let mut task = task.lock();
-                    let RegularOpenTask {
-                        ref mut reads,
-                        ref mut read_set,
-                        ref node,
-                    } = *task;
                     self.total_read_count += 1;
 
-                    let is_new_entry = if reads.spilled() {
-                        read_set.insert(source)
-                    } else {
-                        if reads.as_slice().contains(&source) {
-                            false
-                        } else {
-                            if reads.inline_size() == reads.len() {
-                                read_set.reserve(16);
-                                read_set.extend(reads.iter().cloned());
-                                read_set.insert(source);
-                            }
-                            true
-                        }
-                    };
-
-                    if is_new_entry {
-                        reads.push(source);
-                        debug_assert!(read_set.is_empty() ^ reads.spilled());
-
+                    if task.read_set.insert(source) {
                         if cfg!(debug_assertions) {
                             if let Some(ref forbidden_edge) = self.forbidden_edge {
-                                let target = node;
+                                let target = &task.node;
                                 let source = self.nodes[source];
                                 if forbidden_edge.test(&source, &target) {
                                     bug!("forbidden edge {:?} -> {:?} created",
@@ -1081,10 +1055,7 @@ impl CurrentDepGraph {
                     }
                 }
                 OpenTask::Anon(ref task) => {
-                    let mut task = task.lock();
-                    if task.read_set.insert(source) {
-                        task.reads.push(source);
-                    }
+                    task.lock().read_set.insert(source);
                 }
                 OpenTask::Ignore | OpenTask::EvalAlways { .. } => {
                     // ignore
@@ -1110,13 +1081,11 @@ impl CurrentDepGraph {
 
 pub struct RegularOpenTask {
     node: DepNode,
-    reads: SmallVec<[DepNodeIndex; 8]>,
-    read_set: FxHashSet<DepNodeIndex>,
+    read_set: OrderedDepIndexSet,
 }
 
 pub struct AnonOpenTask {
-    reads: SmallVec<[DepNodeIndex; 8]>,
-    read_set: FxHashSet<DepNodeIndex>,
+    read_set: OrderedDepIndexSet,
 }
 
 pub enum OpenTask {
@@ -1126,6 +1095,87 @@ pub enum OpenTask {
     EvalAlways {
         node: DepNode,
     },
+}
+
+struct OrderedDepIndexSet {
+    reads: SmallVec<[DepNodeIndex; 8]>,
+    read_set: FxHashSet<DepNodeIndex>,
+}
+
+impl OrderedDepIndexSet {
+    fn new() -> OrderedDepIndexSet {
+        OrderedDepIndexSet {
+            reads: SmallVec::from_buf_and_len([DepNodeIndex::INVALID; 8], 0),
+            read_set: Default::default(),
+        }
+    }
+}
+
+cfg_if! {
+    if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+                 target_feature = "sse2",
+                 not(stage0)))] {
+        impl OrderedDepIndexSet {
+
+            #[inline(always)]
+            fn insert(&mut self, dep_node_index: DepNodeIndex) -> bool {
+                unsafe {
+                    self.insert_impl(dep_node_index)
+                }
+            }
+
+            #[target_feature(enable = "sse2")]
+            unsafe fn insert_impl(&mut self, dep_node_index: DepNodeIndex) -> bool {
+                #[cfg(target_arch = "x86")]
+                use std::arch::x86::*;
+                #[cfg(target_arch = "x86_64")]
+                use std::arch::x86_64::*;
+
+                if self.reads.len() <= self.reads.inline_size() {
+                    debug_assert!(dep_node_index != DepNodeIndex::INVALID);
+                    debug_assert!(mem::size_of::<DepNodeIndex>() == 4);
+                    debug_assert!(self.reads.capacity() == 8);
+
+                    let ptr = self.reads.as_slice().as_ptr() as *const __m128i;
+                    let data1 = _mm_loadu_si128(ptr);
+                    let data2 = _mm_loadu_si128(ptr.offset(1));
+                    let cmp = _mm_set1_epi32(dep_node_index.as_u32() as i32);
+
+                    if (_mm_movemask_epi8(_mm_cmpeq_epi32(cmp, data1)) |
+                        _mm_movemask_epi8(_mm_cmpeq_epi32(cmp, data2))) != 0 {
+                        // Already contained
+                        false
+                    } else {
+                        self.reads.push(dep_node_index);
+
+                        if self.reads.len() > self.reads.inline_size() {
+                            self.read_set.extend(self.reads.iter().cloned());
+                        }
+                        true
+                    }
+                } else {
+                    if self.read_set.insert(dep_node_index) {
+                        self.reads.push(dep_node_index);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+        }
+    } else {
+        impl OrderedDepIndexSet {
+            #[inline(always)]
+            fn insert(&mut self, dep_node_index: DepNodeIndex) -> bool {
+                if self.read_set.insert(dep_node_index) {
+                    self.reads.push(dep_node_index);
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
 }
 
 // A data structure that stores Option<DepNodeColor> values as a contiguous

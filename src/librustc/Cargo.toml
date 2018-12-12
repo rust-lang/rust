@@ -11,6 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 arena = { path = "../libarena" }
 bitflags = "1.0"
+cfg-if = "0.1.2"
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
