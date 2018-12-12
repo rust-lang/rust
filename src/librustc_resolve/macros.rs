@@ -499,6 +499,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     .push((path, path_span, kind, parent_scope.clone(), def.ok()));
             }
 
+            self.prohibit_imported_non_macro_attrs(None, def.ok(), path_span);
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
@@ -515,7 +516,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
 
-            binding.map(|binding| binding.def_ignoring_ambiguity())
+            let def = binding.map(|binding| binding.def_ignoring_ambiguity());
+            self.prohibit_imported_non_macro_attrs(binding.ok(), def.ok(), path_span);
+            def
         }
     }
 
@@ -1095,6 +1098,20 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let _ = self.early_resolve_ident_in_lexical_scope(
                 ident, ScopeSet::Macro(MacroKind::Attr), &parent_scope, true, true, ident.span
             );
+        }
+    }
+
+    fn prohibit_imported_non_macro_attrs(&self, binding: Option<&'a NameBinding<'a>>,
+                                         def: Option<Def>, span: Span) {
+        if let Some(Def::NonMacroAttr(kind)) = def {
+            if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
+                let msg = format!("cannot use a {} through an import", kind.descr());
+                let mut err = self.session.struct_span_err(span, &msg);
+                if let Some(binding) = binding {
+                    err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
+                }
+                err.emit();
+            }
         }
     }
 
