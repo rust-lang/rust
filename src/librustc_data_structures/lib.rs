@@ -30,6 +30,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(vec_resize_with)]
 #![feature(hash_raw_entry)]
+#![feature(const_nonzero_methods)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
