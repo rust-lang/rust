@@ -27,6 +27,10 @@ fn main() {
         writeln!(std::io::stderr(), "test").unwrap();
         std::io::stdout().write_fmt(format_args!("test")).unwrap();
         std::io::stderr().write_fmt(format_args!("test")).unwrap();
+
+        // including newlines
+        writeln!(std::io::stdout(), "test\ntest").unwrap();
+        writeln!(std::io::stderr(), "test\ntest").unwrap();
     }
     // these should not warn, different destination
     {
