@@ -1760,7 +1760,8 @@ pub enum StatementKind<'tcx> {
     /// kind of pattern it comes from. This is in order to adapt potential
     /// error messages to these specific patterns.
     ///
-    /// Note that this also is emitted for regular `let` bindings to aid destructuring diagnostics
+    /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
+    /// never accessed still get some sanity checks for e.g. `let x: ! = ..;`
     FakeRead(FakeReadCause, Place<'tcx>),
 
     /// Write the discriminant for a variant to the enum Place.
