@@ -7,11 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 fn main() {
-
     #[clippy::author]
     let x: char = 0x45 as char;
 }

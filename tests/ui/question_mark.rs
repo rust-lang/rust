@@ -7,18 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn some_func(a: Option<u32>) -> Option<u32> {
-	if a.is_none() {
-		return None
-	}
+    if a.is_none() {
+        return None;
+    }
 
-	a
+    a
 }
 
 pub enum SeemsOption<T> {
     Some(T),
-    None
+    None,
 }
 
 impl<T> SeemsOption<T> {
@@ -39,25 +38,25 @@ fn returns_something_similar_to_option(a: SeemsOption<u32>) -> SeemsOption<u32> 
 }
 
 pub struct SomeStruct {
-	pub opt: Option<u32>,
+    pub opt: Option<u32>,
 }
 
 impl SomeStruct {
-	pub fn func(&self) -> Option<u32> {
-		if (self.opt).is_none() {
-			return None;
-		}
+    pub fn func(&self) -> Option<u32> {
+        if (self.opt).is_none() {
+            return None;
+        }
 
-		self.opt
-	}
+        self.opt
+    }
 }
 
 fn main() {
-	some_func(Some(42));
-	some_func(None);
+    some_func(Some(42));
+    some_func(None);
 
-	let some_struct = SomeStruct { opt: Some(54) };
-	some_struct.func();
+    let some_struct = SomeStruct { opt: Some(54) };
+    some_struct.func();
 
     let so = SeemsOption::Some(45);
     returns_something_similar_to_option(so);

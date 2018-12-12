@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 /// Calls which should trigger the `UNNECESSARY_FOLD` lint
 fn unnecessary_fold() {
     // Can be replaced by .any

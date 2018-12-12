@@ -7,21 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[warn(clippy::precedence)]
 #[allow(clippy::identity_op)]
 #[allow(clippy::eq_op)]
 
 macro_rules! trip {
-   ($a:expr) => {
-    match $a & 0b1111_1111i8 {
-        0 => println!("a is zero ({})", $a),
-        _ => println!("a is {}", $a),
-    }
-   };
+    ($a:expr) => {
+        match $a & 0b1111_1111i8 {
+            0 => println!("a is zero ({})", $a),
+            _ => println!("a is {}", $a),
+        }
+    };
 }
 
 fn main() {

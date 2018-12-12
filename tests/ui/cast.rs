@@ -7,11 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
-#[warn(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap, clippy::cast_lossless)]
+#[warn(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::cast_lossless
+)]
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     // Test clippy::cast_precision_loss
@@ -49,6 +51,7 @@ fn main() {
     false as bool;
     &1i32 as &i32;
     // Should not trigger
+    #[rustfmt::skip]
     let v = vec!(1);
     &v as &[i32];
     1.0 as f64;

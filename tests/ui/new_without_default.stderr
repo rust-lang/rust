@@ -1,39 +1,45 @@
 error: you should consider deriving a `Default` implementation for `Foo`
-  --> $DIR/new_without_default.rs:22:5
+  --> $DIR/new_without_default.rs:17:5
    |
-22 |     pub fn new() -> Foo { Foo }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 | /     pub fn new() -> Foo {
+18 | |         Foo
+19 | |     }
+   | |_____^
    |
    = note: `-D clippy::new-without-default-derive` implied by `-D warnings`
 help: try this
    |
-19 | #[derive(Default)]
+14 | #[derive(Default)]
    |
 
 error: you should consider deriving a `Default` implementation for `Bar`
-  --> $DIR/new_without_default.rs:28:5
+  --> $DIR/new_without_default.rs:25:5
    |
-28 |     pub fn new() -> Self { Bar }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+25 | /     pub fn new() -> Self {
+26 | |         Bar
+27 | |     }
+   | |_____^
 help: try this
    |
-25 | #[derive(Default)]
+22 | #[derive(Default)]
    |
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> $DIR/new_without_default.rs:76:5
+  --> $DIR/new_without_default.rs:89:5
    |
-76 |     pub fn new() -> LtKo<'c> { unimplemented!() }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+89 | /     pub fn new() -> LtKo<'c> {
+90 | |         unimplemented!()
+91 | |     }
+   | |_____^
    |
    = note: `-D clippy::new-without-default` implied by `-D warnings`
 help: try this
    |
-75 | impl Default for LtKo<'c> {
-76 |     fn default() -> Self {
-77 |         Self::new()
-78 |     }
-79 | }
+88 | impl Default for LtKo<'c> {
+89 |     fn default() -> Self {
+90 |         Self::new()
+91 |     }
+92 | }
    |
 
 error: aborting due to 3 previous errors

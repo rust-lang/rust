@@ -7,12 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(clippy::all)]
 
-fn main() { }
+fn main() {}
 
 pub trait Convert {
     type Action: From<*const f64>;

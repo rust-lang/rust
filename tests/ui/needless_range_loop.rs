@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn calc_idx(i: usize) -> usize {
     (i + i + 20) % 4
 }
@@ -51,7 +50,7 @@ fn main() {
     let g = vec![1, 2, 3, 4, 5, 6];
     let glen = g.len();
     for i in 0..glen {
-        let x: u32 = g[i+1..].iter().sum();
+        let x: u32 = g[i + 1..].iter().sum();
         println!("{}", g[i] + x);
     }
     assert_eq!(g, vec![20, 18, 15, 11, 6, 0]);
@@ -59,7 +58,7 @@ fn main() {
     let mut g = vec![1, 2, 3, 4, 5, 6];
     let glen = g.len();
     for i in 0..glen {
-        g[i] = g[i+1..].iter().sum();
+        g[i] = g[i + 1..].iter().sum();
     }
     assert_eq!(g, vec![20, 18, 15, 11, 6, 0]);
 
@@ -77,7 +76,7 @@ fn main() {
         vec[i] += 1;
     }
 
-    let arr = [1,2,3];
+    let arr = [1, 2, 3];
 
     for i in 0..3 {
         println!("{}", arr[i]);

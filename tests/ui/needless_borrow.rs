@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 use std::borrow::Cow;
 
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -41,7 +38,7 @@ fn main() {
     };
 }
 
-fn f<T:Copy>(y: &T) -> T {
+fn f<T: Copy>(y: &T) -> T {
     *y
 }
 

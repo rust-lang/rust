@@ -7,11 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::needless_pass_by_value)]
-#![allow(dead_code, clippy::single_match, clippy::redundant_pattern_matching, clippy::many_single_char_names, clippy::option_option)]
+#![allow(
+    dead_code,
+    clippy::single_match,
+    clippy::redundant_pattern_matching,
+    clippy::many_single_char_names,
+    clippy::option_option
+)]
 
 use std::borrow::Borrow;
 use std::convert::AsRef;
@@ -92,24 +95,19 @@ struct S<T, U>(T, U);
 
 impl<T: Serialize, U> S<T, U> {
     fn foo(
-        self, // taking `self` by value is always allowed
+        self,
+        // taking `self` by value is always allowed
         s: String,
         t: String,
     ) -> usize {
         s.len() + t.capacity()
     }
 
-    fn bar(
-        _t: T, // Ok, since `&T: Serialize` too
+    fn bar(_t: T // Ok, since `&T: Serialize` too
     ) {
     }
 
-    fn baz(
-        &self,
-        _u: U,
-        _s: Self,
-    ) {
-    }
+    fn baz(&self, _u: U, _s: Self) {}
 }
 
 trait FalsePositive {
@@ -120,7 +118,9 @@ trait FalsePositive {
 }
 
 // shouldn't warn on extern funcs
-extern "C" fn ext(x: String) -> usize { x.len() }
+extern "C" fn ext(x: String) -> usize {
+    x.len()
+}
 
 // whitelist RangeArgument
 fn range<T: ::std::ops::RangeBounds<usize>>(range: T) {

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![deny(clippy::if_same_then_else)]
 
 fn main() {}

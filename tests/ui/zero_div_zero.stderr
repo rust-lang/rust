@@ -1,59 +1,59 @@
 error: equal expressions as operands to `/`
-  --> $DIR/zero_div_zero.rs:17:15
+  --> $DIR/zero_div_zero.rs:13:15
    |
-17 |     let nan = 0.0 / 0.0;
+13 |     let nan = 0.0 / 0.0;
    |               ^^^^^^^^^
    |
    = note: #[deny(clippy::eq_op)] on by default
 
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:17:15
+  --> $DIR/zero_div_zero.rs:13:15
    |
-17 |     let nan = 0.0 / 0.0;
+13 |     let nan = 0.0 / 0.0;
    |               ^^^^^^^^^
    |
    = note: `-D clippy::zero-divided-by-zero` implied by `-D warnings`
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 
 error: equal expressions as operands to `/`
-  --> $DIR/zero_div_zero.rs:18:19
+  --> $DIR/zero_div_zero.rs:14:19
    |
-18 |     let f64_nan = 0.0 / 0.0f64;
+14 |     let f64_nan = 0.0 / 0.0f64;
    |                   ^^^^^^^^^^^^
 
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:18:19
+  --> $DIR/zero_div_zero.rs:14:19
    |
-18 |     let f64_nan = 0.0 / 0.0f64;
+14 |     let f64_nan = 0.0 / 0.0f64;
    |                   ^^^^^^^^^^^^
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 
 error: equal expressions as operands to `/`
-  --> $DIR/zero_div_zero.rs:19:25
+  --> $DIR/zero_div_zero.rs:15:25
    |
-19 |     let other_f64_nan = 0.0f64 / 0.0;
+15 |     let other_f64_nan = 0.0f64 / 0.0;
    |                         ^^^^^^^^^^^^
 
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:19:25
+  --> $DIR/zero_div_zero.rs:15:25
    |
-19 |     let other_f64_nan = 0.0f64 / 0.0;
+15 |     let other_f64_nan = 0.0f64 / 0.0;
    |                         ^^^^^^^^^^^^
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 
 error: equal expressions as operands to `/`
-  --> $DIR/zero_div_zero.rs:20:28
+  --> $DIR/zero_div_zero.rs:16:28
    |
-20 |     let one_more_f64_nan = 0.0f64/0.0f64;
-   |                            ^^^^^^^^^^^^^
+16 |     let one_more_f64_nan = 0.0f64 / 0.0f64;
+   |                            ^^^^^^^^^^^^^^^
 
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:20:28
+  --> $DIR/zero_div_zero.rs:16:28
    |
-20 |     let one_more_f64_nan = 0.0f64/0.0f64;
-   |                            ^^^^^^^^^^^^^
+16 |     let one_more_f64_nan = 0.0f64 / 0.0f64;
+   |                            ^^^^^^^^^^^^^^^
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 

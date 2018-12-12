@@ -1,33 +1,33 @@
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:14:19
+  --> $DIR/unnecessary_fold.rs:13:19
    |
-14 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
+13 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
    |
    = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:16:19
+  --> $DIR/unnecessary_fold.rs:15:19
    |
-16 |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
+15 |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.all(|x| x > 2)`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:18:19
+  --> $DIR/unnecessary_fold.rs:17:19
    |
-18 |     let _ = (0..3).fold(0, |acc, x| acc + x);
+17 |     let _ = (0..3).fold(0, |acc, x| acc + x);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:20:19
+  --> $DIR/unnecessary_fold.rs:19:19
    |
-20 |     let _ = (0..3).fold(1, |acc, x| acc * x);
+19 |     let _ = (0..3).fold(1, |acc, x| acc * x);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:25:34
+  --> $DIR/unnecessary_fold.rs:24:34
    |
-25 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+24 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 
 error: aborting due to 5 previous errors

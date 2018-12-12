@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(dead_code)]
 
 extern crate core;
@@ -101,11 +97,11 @@ fn useless() {
 
         let _: *const usize = std::mem::transmute(5_isize);
 
-        let _  = 5_isize as *const usize;
+        let _ = 5_isize as *const usize;
 
-        let _: *const usize = std::mem::transmute(1+1usize);
+        let _: *const usize = std::mem::transmute(1 + 1usize);
 
-        let _  = (1+1_usize) as *const usize;
+        let _ = (1 + 1_usize) as *const usize;
     }
 }
 
@@ -201,9 +197,7 @@ fn transmute_ptr_to_ptr() {
     let s = "hello world".to_owned();
     let lp = LifetimeParam { s: &s };
     let _: &LifetimeParam<'static> = unsafe { std::mem::transmute(&lp) };
-    let _: &GenericParam<&LifetimeParam<'static>> = unsafe {
-        std::mem::transmute(&GenericParam { t: &lp})
-    };
+    let _: &GenericParam<&LifetimeParam<'static>> = unsafe { std::mem::transmute(&GenericParam { t: &lp }) };
 }
 
-fn main() { }
+fn main() {}

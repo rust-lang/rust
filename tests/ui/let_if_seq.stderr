@@ -1,47 +1,47 @@
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:67:5
+  --> $DIR/let_if_seq.rs:72:5
    |
-67 | /     let mut foo = 0;
-68 | |     if f() {
-69 | |         foo = 42;
-70 | |     }
+72 | /     let mut foo = 0;
+73 | |     if f() {
+74 | |         foo = 42;
+75 | |     }
    | |_____^ help: it is more idiomatic to write: `let <mut> foo = if f() { 42 } else { 0 };`
    |
    = note: `-D clippy::useless-let-if-seq` implied by `-D warnings`
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:72:5
+  --> $DIR/let_if_seq.rs:77:5
    |
-72 | /     let mut bar = 0;
-73 | |     if f() {
-74 | |         f();
-75 | |         bar = 42;
-...  |
-78 | |         f();
-79 | |     }
+77 | /     let mut bar = 0;
+78 | |     if f() {
+79 | |         f();
+80 | |         bar = 42;
+81 | |     } else {
+82 | |         f();
+83 | |     }
    | |_____^ help: it is more idiomatic to write: `let <mut> bar = if f() { ..; 42 } else { ..; 0 };`
    |
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:81:5
+  --> $DIR/let_if_seq.rs:85:5
    |
-81 | /     let quz;
-82 | |     if f() {
-83 | |         quz = 42;
-84 | |     } else {
-85 | |         quz = 0;
-86 | |     }
+85 | /     let quz;
+86 | |     if f() {
+87 | |         quz = 42;
+88 | |     } else {
+89 | |         quz = 0;
+90 | |     }
    | |_____^ help: it is more idiomatic to write: `let quz = if f() { 42 } else { 0 };`
 
 error: `if _ { .. } else { .. }` is an expression
-   --> $DIR/let_if_seq.rs:110:5
+   --> $DIR/let_if_seq.rs:114:5
     |
-110 | /     let mut baz = 0;
-111 | |     if f() {
-112 | |         baz = 42;
-113 | |     }
+114 | /     let mut baz = 0;
+115 | |     if f() {
+116 | |         baz = 42;
+117 | |     }
     | |_____^ help: it is more idiomatic to write: `let <mut> baz = if f() { 42 } else { 0 };`
     |
     = note: you might not need `mut` at all

@@ -1,13 +1,13 @@
 error: the function has a cyclomatic complexity of 3
-  --> $DIR/cyclomatic_complexity_attr_used.rs:21:1
+  --> $DIR/cyclomatic_complexity_attr_used.rs:18:1
    |
-21 | / fn kaboom() {
-22 | |     if 42 == 43 {
-23 | |         panic!();
-24 | |     } else if "cake" == "lie" {
-25 | |         println!("what?");
-26 | |     }
-27 | | }
+18 | / fn kaboom() {
+19 | |     if 42 == 43 {
+20 | |         panic!();
+21 | |     } else if "cake" == "lie" {
+22 | |         println!("what?");
+23 | |     }
+24 | | }
    | |_^
    |
    = note: `-D clippy::cyclomatic-complexity` implied by `-D warnings`

@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[deny(clippy::naive_bytecount)]
 fn main() {
     let x = vec![0_u8; 16];

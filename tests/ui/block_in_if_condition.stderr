@@ -1,11 +1,11 @@
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-  --> $DIR/block_in_if_condition.rs:40:8
+  --> $DIR/block_in_if_condition.rs:35:8
    |
-40 |       if {
+35 |       if {
    |  ________^
-41 | |         let x = 3;
-42 | |         x == 3
-43 | |     } {
+36 | |         let x = 3;
+37 | |         x == 3
+38 | |     } {
    | |_____^
    |
    = note: `-D clippy::block-in-if-condition-stmt` implied by `-D warnings`
@@ -19,9 +19,9 @@ error: in an 'if' condition, avoid complex blocks or closures with blocks; inste
            } ... 
 
 error: omit braces around single expression condition
-  --> $DIR/block_in_if_condition.rs:51:8
+  --> $DIR/block_in_if_condition.rs:46:8
    |
-51 |     if { true } {
+46 |     if { true } {
    |        ^^^^^^^^
    |
    = note: `-D clippy::block-in-if-condition-expr` implied by `-D warnings`
@@ -31,21 +31,29 @@ error: omit braces around single expression condition
            } ... 
 
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-  --> $DIR/block_in_if_condition.rs:68:49
+  --> $DIR/block_in_if_condition.rs:66:17
    |
-68 |     if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+66 |               |x| {
+   |  _________________^
+67 | |                 let target = 3;
+68 | |                 x == target
+69 | |             },
+   | |_____________^
 
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
-  --> $DIR/block_in_if_condition.rs:71:22
+  --> $DIR/block_in_if_condition.rs:75:13
    |
-71 |     if predicate(|x| { let target = 3; x == target }, v) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+75 |           |x| {
+   |  _____________^
+76 | |             let target = 3;
+77 | |             x == target
+78 | |         },
+   | |_________^
 
 error: this boolean expression can be simplified
-  --> $DIR/block_in_if_condition.rs:77:8
+  --> $DIR/block_in_if_condition.rs:85:8
    |
-77 |     if true && x == 3 {
+85 |     if true && x == 3 {
    |        ^^^^^^^^^^^^^^ help: try: `x == 3`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`

@@ -1,42 +1,42 @@
 error: Iterator::step_by(0) will panic at runtime
-  --> $DIR/range.rs:20:13
+  --> $DIR/range.rs:17:13
    |
-20 |     let _ = (0..1).step_by(0);
+17 |     let _ = (0..1).step_by(0);
    |             ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iterator-step-by-zero` implied by `-D warnings`
 
 error: Iterator::step_by(0) will panic at runtime
-  --> $DIR/range.rs:24:13
+  --> $DIR/range.rs:21:13
    |
-24 |     let _ = (1..).step_by(0);
+21 |     let _ = (1..).step_by(0);
    |             ^^^^^^^^^^^^^^^^
+
+error: Iterator::step_by(0) will panic at runtime
+  --> $DIR/range.rs:22:13
+   |
+22 |     let _ = (1..=2).step_by(0);
+   |             ^^^^^^^^^^^^^^^^^^
 
 error: Iterator::step_by(0) will panic at runtime
   --> $DIR/range.rs:25:13
    |
-25 |     let _ = (1..=2).step_by(0);
-   |             ^^^^^^^^^^^^^^^^^^
-
-error: Iterator::step_by(0) will panic at runtime
-  --> $DIR/range.rs:28:13
-   |
-28 |     let _ = x.step_by(0);
+25 |     let _ = x.step_by(0);
    |             ^^^^^^^^^^^^
 
 error: It is more idiomatic to use v1.iter().enumerate()
-  --> $DIR/range.rs:36:14
+  --> $DIR/range.rs:33:14
    |
-36 |     let _x = v1.iter().zip(0..v1.len());
+33 |     let _x = v1.iter().zip(0..v1.len());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::range-zip-with-len` implied by `-D warnings`
 
 error: Iterator::step_by(0) will panic at runtime
-  --> $DIR/range.rs:40:13
+  --> $DIR/range.rs:37:13
    |
-40 |     let _ = v1.iter().step_by(2/3);
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+37 |     let _ = v1.iter().step_by(2 / 3);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

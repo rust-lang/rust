@@ -1,8 +1,9 @@
 error: you should not implement `visit_string` without also implementing `visit_str`
-  --> $DIR/serde.rs:49:5
+  --> $DIR/serde.rs:48:5
    |
-49 | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-50 | |         where E: serde::de::Error,
+48 | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
+49 | |     where
+50 | |         E: serde::de::Error,
 51 | |     {
 52 | |         unimplemented!()
 53 | |     }

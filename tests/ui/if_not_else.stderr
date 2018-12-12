@@ -1,24 +1,24 @@
 error: Unnecessary boolean `not` operation
-  --> $DIR/if_not_else.rs:19:5
+  --> $DIR/if_not_else.rs:18:5
    |
-19 | /     if !bla() {
-20 | |         println!("Bugs");
-21 | |     } else {
-22 | |         println!("Bunny");
-23 | |     }
+18 | /     if !bla() {
+19 | |         println!("Bugs");
+20 | |     } else {
+21 | |         println!("Bunny");
+22 | |     }
    | |_____^
    |
    = note: `-D clippy::if-not-else` implied by `-D warnings`
    = help: remove the `!` and swap the blocks of the if/else
 
 error: Unnecessary `!=` operation
-  --> $DIR/if_not_else.rs:24:5
+  --> $DIR/if_not_else.rs:23:5
    |
-24 | /     if 4 != 5 {
-25 | |         println!("Bugs");
-26 | |     } else {
-27 | |         println!("Bunny");
-28 | |     }
+23 | /     if 4 != 5 {
+24 | |         println!("Bugs");
+25 | |     } else {
+26 | |         println!("Bunny");
+27 | |     }
    | |_____^
    |
    = help: change to `==` and swap the blocks of the if/else

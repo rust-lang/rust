@@ -7,19 +7,47 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[warn(clippy::bool_comparison)]
 fn main() {
     let x = true;
-    if x == true { "yes" } else { "no" };
-    if x == false { "yes" } else { "no" };
-    if true == x { "yes" } else { "no" };
-    if false == x { "yes" } else { "no" };
-    if x != true { "yes" } else { "no" };
-    if x != false { "yes" } else { "no" };
-    if true != x { "yes" } else { "no" };
-    if false != x { "yes" } else { "no" };
+    if x == true {
+        "yes"
+    } else {
+        "no"
+    };
+    if x == false {
+        "yes"
+    } else {
+        "no"
+    };
+    if true == x {
+        "yes"
+    } else {
+        "no"
+    };
+    if false == x {
+        "yes"
+    } else {
+        "no"
+    };
+    if x != true {
+        "yes"
+    } else {
+        "no"
+    };
+    if x != false {
+        "yes"
+    } else {
+        "no"
+    };
+    if true != x {
+        "yes"
+    } else {
+        "no"
+    };
+    if false != x {
+        "yes"
+    } else {
+        "no"
+    };
 }

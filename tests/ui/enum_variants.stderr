@@ -1,61 +1,61 @@
 error: Variant name ends with the enum's name
-  --> $DIR/enum_variants.rs:26:5
+  --> $DIR/enum_variants.rs:24:5
    |
-26 |     cFoo,
+24 |     cFoo,
    |     ^^^^
    |
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
 error: Variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:37:5
+  --> $DIR/enum_variants.rs:35:5
    |
-37 |     FoodGood,
+35 |     FoodGood,
    |     ^^^^^^^^
 
 error: Variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:38:5
+  --> $DIR/enum_variants.rs:36:5
    |
-38 |     FoodMiddle,
+36 |     FoodMiddle,
    |     ^^^^^^^^^^
 
 error: Variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:39:5
+  --> $DIR/enum_variants.rs:37:5
    |
-39 |     FoodBad,
+37 |     FoodBad,
    |     ^^^^^^^
 
 error: All variants have the same prefix: `Food`
-  --> $DIR/enum_variants.rs:36:1
+  --> $DIR/enum_variants.rs:34:1
    |
-36 | / enum Food {
-37 | |     FoodGood,
-38 | |     FoodMiddle,
-39 | |     FoodBad,
-40 | | }
+34 | / enum Food {
+35 | |     FoodGood,
+36 | |     FoodMiddle,
+37 | |     FoodBad,
+38 | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `CallType`
-  --> $DIR/enum_variants.rs:46:1
+  --> $DIR/enum_variants.rs:44:1
    |
-46 | / enum BadCallType {
-47 | |     CallTypeCall,
-48 | |     CallTypeCreate,
-49 | |     CallTypeDestroy,
-50 | | }
+44 | / enum BadCallType {
+45 | |     CallTypeCall,
+46 | |     CallTypeCreate,
+47 | |     CallTypeDestroy,
+48 | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `Constant`
-  --> $DIR/enum_variants.rs:57:1
+  --> $DIR/enum_variants.rs:56:1
    |
-57 | / enum Consts {
-58 | |     ConstantInt,
-59 | |     ConstantCake,
-60 | |     ConstantLie,
-61 | | }
+56 | / enum Consts {
+57 | |     ConstantInt,
+58 | |     ConstantCake,
+59 | |     ConstantLie,
+60 | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports

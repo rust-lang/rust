@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #[allow(dead_code, unused_assignments)]
 #[warn(clippy::assign_op_pattern)]
 fn main() {

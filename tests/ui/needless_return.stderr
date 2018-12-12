@@ -1,51 +1,51 @@
 error: unneeded return statement
-  --> $DIR/needless_return.rs:21:5
+  --> $DIR/needless_return.rs:17:5
    |
-21 |     return true;
+17 |     return true;
    |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
    |
    = note: `-D clippy::needless-return` implied by `-D warnings`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:25:5
+  --> $DIR/needless_return.rs:21:5
    |
-25 |     return true
-   |     ^^^^^^^^^^^ help: remove `return` as shown: `true`
+21 |     return true;
+   |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:30:9
+  --> $DIR/needless_return.rs:26:9
    |
-30 |         return true;
+26 |         return true;
    |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:32:9
+  --> $DIR/needless_return.rs:28:9
    |
-32 |         return false;
+28 |         return false;
    |         ^^^^^^^^^^^^^ help: remove `return` as shown: `false`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:38:17
+  --> $DIR/needless_return.rs:34:17
    |
-38 |         true => return false,
+34 |         true => return false,
    |                 ^^^^^^^^^^^^ help: remove `return` as shown: `false`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:40:13
+  --> $DIR/needless_return.rs:36:13
    |
-40 |             return true;
+36 |             return true;
    |             ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:47:9
+  --> $DIR/needless_return.rs:43:9
    |
-47 |         return true;
+43 |         return true;
    |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:49:16
+  --> $DIR/needless_return.rs:45:16
    |
-49 |     let _ = || return true;
+45 |     let _ = || return true;
    |                ^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: aborting due to 8 previous errors

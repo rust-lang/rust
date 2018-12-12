@@ -1,5 +1,4 @@
 #![deny(clippy::internal)]
-
 #![feature(rustc_private)]
 
 #[macro_use]
@@ -28,5 +27,4 @@ impl lint::LintPass for Pass {
     }
 }
 
-fn main() {
-}
+fn main() {}

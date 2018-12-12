@@ -7,13 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::all)]
 #![warn(clippy::if_not_else)]
 
-fn bla() -> bool { unimplemented!() }
+fn bla() -> bool {
+    unimplemented!()
+}
 
 fn main() {
     if !bla() {

@@ -7,12 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![deny(clippy::all)]
 #![allow(unused_imports)]
 
 use std::*;
 
-fn main() { }
+fn main() {}

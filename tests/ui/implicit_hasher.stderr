@@ -1,136 +1,136 @@
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:21:35
+  --> $DIR/implicit_hasher.rs:20:35
    |
-21 | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
+20 | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
    |                                   ^^^^^^^^^^^^^
    |
    = note: `-D clippy::implicit-hasher` implied by `-D warnings`
 help: consider adding a type parameter
    |
-21 | impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {
+20 | impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^^^^^^^^
 help: ...and use generic constructor
    |
-27 |         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+26 |         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
    |          ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:30:36
+  --> $DIR/implicit_hasher.rs:29:36
    |
-30 | impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
+29 | impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
    |                                    ^^^^^^^^^^^^^
 help: consider adding a type parameter
    |
-30 | impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for (HashMap<K, V, S>,) {
+29 | impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for (HashMap<K, V, S>,) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^              ^^^^^^^^^^^^^^^^
 help: ...and use generic constructor
    |
-32 |         ((HashMap::default(),), (HashMap::with_capacity_and_hasher(10, Default::default()),))
+31 |         ((HashMap::default(),), (HashMap::with_capacity_and_hasher(10, Default::default()),))
    |           ^^^^^^^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:35:19
+  --> $DIR/implicit_hasher.rs:34:19
    |
-35 | impl Foo<i16> for HashMap<String, String> {
+34 | impl Foo<i16> for HashMap<String, String> {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider adding a type parameter
    |
-35 | impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashMap<String, String, S> {
+34 | impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashMap<String, String, S> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: ...and use generic constructor
    |
-37 |         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+36 |         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
    |          ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: impl for `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:53:32
+  --> $DIR/implicit_hasher.rs:51:32
    |
-53 | impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
+51 | impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
    |                                ^^^^^^^^^^
 help: consider adding a type parameter
    |
-53 | impl<T: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashSet<T, S> {
+51 | impl<T: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashSet<T, S> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^^^^^
 help: ...and use generic constructor
    |
-55 |         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+53 |         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
    |          ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: impl for `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:58:19
+  --> $DIR/implicit_hasher.rs:56:19
    |
-58 | impl Foo<i16> for HashSet<String> {
+56 | impl Foo<i16> for HashSet<String> {
    |                   ^^^^^^^^^^^^^^^
 help: consider adding a type parameter
    |
-58 | impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashSet<String, S> {
+56 | impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashSet<String, S> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^              ^^^^^^^^^^^^^^^^^^
 help: ...and use generic constructor
    |
-60 |         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+58 |         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
    |          ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: parameter of type `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:75:23
+  --> $DIR/implicit_hasher.rs:73:23
    |
-75 | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {
+73 | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                       ^^^^^^^^^^^^^^^^^
 help: consider adding a type parameter
    |
-75 | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _set: &mut HashSet<i32>) {
+73 | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _set: &mut HashSet<i32>) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^
 
 error: parameter of type `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:75:53
+  --> $DIR/implicit_hasher.rs:73:53
    |
-75 | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {
+73 | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                                     ^^^^^^^^^^^^
 help: consider adding a type parameter
    |
-75 | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {
+73 | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                          ^^^^^^^^^^^^^^^
 
 error: impl for `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:80:43
+  --> $DIR/implicit_hasher.rs:77:43
    |
-80 |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
+77 |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
    |                                           ^^^^^^^^^^^^^
 ...
-93 | gen!(impl);
+89 | gen!(impl);
    | ----------- in this macro invocation
 help: consider adding a type parameter
    |
-80 |         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
+77 |         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^^^^^^^^
 help: ...and use generic constructor
    |
-82 |                 (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+79 |                 (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
    |                  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: parameter of type `HashMap` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:88:33
+  --> $DIR/implicit_hasher.rs:85:33
    |
-88 |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {
+85 |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                 ^^^^^^^^^^^^^^^^^
 ...
-94 | gen!(fn bar);
+90 | gen!(fn bar);
    | ------------- in this macro invocation
 help: consider adding a type parameter
    |
-88 |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _set: &mut HashSet<i32>) {
+85 |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _set: &mut HashSet<i32>) {}
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^
 
 error: parameter of type `HashSet` should be generalized over different hashers
-  --> $DIR/implicit_hasher.rs:88:63
+  --> $DIR/implicit_hasher.rs:85:63
    |
-88 |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {
+85 |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                                               ^^^^^^^^^^^^
 ...
-94 | gen!(fn bar);
+90 | gen!(fn bar);
    | ------------- in this macro invocation
 help: consider adding a type parameter
    |
-88 |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {
+85 |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {}
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                          ^^^^^^^^^^^^^^^
 
 error: aborting due to 10 previous errors

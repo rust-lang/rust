@@ -3,11 +3,21 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 21 | /     match ExprNode::Butterflies {
 22 | |         ExprNode::ExprAddrOf => Some(&NODE),
-23 | |         _ => { let x = 5; None },
-24 | |     }
-   | |_____^ help: try this: `if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }`
+23 | |         _ => {
+24 | |             let x = 5;
+25 | |             None
+26 | |         },
+27 | |     }
+   | |_____^
    |
    = note: `-D clippy::single-match-else` implied by `-D warnings`
+help: try this
+   |
+21 |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+22 |     let x = 5;
+23 |     None
+24 | }
+   |
 
 error: aborting due to previous error
 

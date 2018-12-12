@@ -1,72 +1,72 @@
 error: integer arithmetic detected
-  --> $DIR/arithmetic.rs:17:5
+  --> $DIR/arithmetic.rs:22:5
    |
-17 |     1 + i;
+22 |     1 + i;
    |     ^^^^^
    |
    = note: `-D clippy::integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
-  --> $DIR/arithmetic.rs:18:5
+  --> $DIR/arithmetic.rs:23:5
    |
-18 |     i * 2;
+23 |     i * 2;
    |     ^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/arithmetic.rs:19:5
+  --> $DIR/arithmetic.rs:24:5
    |
-19 | /     1 %
-20 | |     i / 2; // no error, this is part of the expression in the preceding line
+24 | /     1 %
+25 | |     i / 2; // no error, this is part of the expression in the preceding line
    | |_________^
 
 error: integer arithmetic detected
-  --> $DIR/arithmetic.rs:21:5
+  --> $DIR/arithmetic.rs:26:5
    |
-21 |     i - 2 + 2 - i;
+26 |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/arithmetic.rs:22:5
+  --> $DIR/arithmetic.rs:27:5
    |
-22 |     -i;
+27 |     -i;
    |     ^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:32:5
+  --> $DIR/arithmetic.rs:37:5
    |
-32 |     f * 2.0;
+37 |     f * 2.0;
    |     ^^^^^^^
    |
    = note: `-D clippy::float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:34:5
+  --> $DIR/arithmetic.rs:39:5
    |
-34 |     1.0 + f;
+39 |     1.0 + f;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:35:5
+  --> $DIR/arithmetic.rs:40:5
    |
-35 |     f * 2.0;
+40 |     f * 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:36:5
+  --> $DIR/arithmetic.rs:41:5
    |
-36 |     f / 2.0;
+41 |     f / 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:37:5
+  --> $DIR/arithmetic.rs:42:5
    |
-37 |     f - 2.0 * 4.2;
+42 |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> $DIR/arithmetic.rs:38:5
+  --> $DIR/arithmetic.rs:43:5
    |
-38 |     -f;
+43 |     -f;
    |     ^^
 
 error: aborting due to 11 previous errors

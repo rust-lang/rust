@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(dead_code)]
 
 struct Foo;
 
 impl PartialEq for Foo {
-    fn eq(&self, _: &Foo) -> bool { true }
-    fn ne(&self, _: &Foo) -> bool { false }
+    fn eq(&self, _: &Foo) -> bool {
+        true
+    }
+    fn ne(&self, _: &Foo) -> bool {
+        false
+    }
 }
 
 fn main() {}

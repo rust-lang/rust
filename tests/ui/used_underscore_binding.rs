@@ -7,11 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::all)]
-
 #![allow(clippy::blacklisted_name)]
 #![warn(clippy::used_underscore_binding)]
 
@@ -19,7 +15,7 @@ macro_rules! test_macro {
     () => {{
         let _foo = 42;
         _foo + 1
-    }}
+    }};
 }
 
 /// Test that we lint if we use a binding with a single leading underscore
@@ -74,7 +70,7 @@ fn _fn_test() {}
 struct _StructTest;
 enum _EnumTest {
     _Empty,
-    _Value(_StructTest)
+    _Value(_StructTest),
 }
 
 /// Test that we do not lint for non-variable bindings

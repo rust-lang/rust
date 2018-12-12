@@ -1,25 +1,25 @@
 error: You appear to be counting bytes the naive way
-  --> $DIR/bytecount.rs:18:13
+  --> $DIR/bytecount.rs:14:13
    |
-18 |     let _ = x.iter().filter(|&&a| a == 0).count(); // naive byte count
+14 |     let _ = x.iter().filter(|&&a| a == 0).count(); // naive byte count
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count(x, 0)`
    |
 note: lint level defined here
-  --> $DIR/bytecount.rs:14:8
+  --> $DIR/bytecount.rs:10:8
    |
-14 | #[deny(clippy::naive_bytecount)]
+10 | #[deny(clippy::naive_bytecount)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: You appear to be counting bytes the naive way
-  --> $DIR/bytecount.rs:20:13
+  --> $DIR/bytecount.rs:16:13
    |
-20 |     let _ = (&x[..]).iter().filter(|&a| *a == 0).count(); // naive byte count
+16 |     let _ = (&x[..]).iter().filter(|&a| *a == 0).count(); // naive byte count
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count((&x[..]), 0)`
 
 error: You appear to be counting bytes the naive way
-  --> $DIR/bytecount.rs:32:13
+  --> $DIR/bytecount.rs:28:13
    |
-32 |     let _ = x.iter().filter(|a| b + 1 == **a).count(); // naive byte count
+28 |     let _ = x.iter().filter(|a| b + 1 == **a).count(); // naive byte count
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count(x, b + 1)`
 
 error: aborting due to 3 previous errors

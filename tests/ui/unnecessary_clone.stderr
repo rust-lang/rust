@@ -1,95 +1,95 @@
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:29:5
+  --> $DIR/unnecessary_clone.rs:26:5
    |
-29 |     42.clone();
+26 |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
    |
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:33:5
+  --> $DIR/unnecessary_clone.rs:30:5
    |
-33 |     (&42).clone();
+30 |     (&42).clone();
    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:36:5
+  --> $DIR/unnecessary_clone.rs:33:5
    |
-36 |     rc.borrow().clone();
+33 |     rc.borrow().clone();
    |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:46:5
+  --> $DIR/unnecessary_clone.rs:43:5
    |
-46 |     rc.clone();
+43 |     rc.clone();
    |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
    |
    = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
 
 error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:46:5
+   |
+46 |     arc.clone();
+   |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
+
+error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:49:5
    |
-49 |     arc.clone();
-   |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
+49 |     rcweak.clone();
+   |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:52:5
    |
-52 |     rcweak.clone();
-   |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
-
-error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:55:5
-   |
-55 |     arc_weak.clone();
+52 |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:59:29
+  --> $DIR/unnecessary_clone.rs:56:29
    |
-59 |     let _: Arc<SomeTrait> = x.clone();
+56 |     let _: Arc<SomeTrait> = x.clone();
    |                             ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:63:5
+  --> $DIR/unnecessary_clone.rs:60:5
    |
-63 |     t.clone();
+60 |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:65:5
+  --> $DIR/unnecessary_clone.rs:62:5
    |
-65 |     Some(t).clone();
+62 |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:71:22
+  --> $DIR/unnecessary_clone.rs:68:22
    |
-71 |     let z: &Vec<_> = y.clone();
+68 |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
    |
    = note: #[deny(clippy::clone_double_ref)] on by default
 help: try dereferencing it
    |
-71 |     let z: &Vec<_> = &(*y).clone();
+68 |     let z: &Vec<_> = &(*y).clone();
    |                      ^^^^^^^^^^^^^
 help: or try being explicit about what type to clone
    |
-71 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
+68 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:78:27
+  --> $DIR/unnecessary_clone.rs:75:26
    |
-78 |     let v2 : Vec<isize> = v.iter().cloned().collect();
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+75 |     let v2: Vec<isize> = v.iter().cloned().collect();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/unnecessary_clone.rs:110:20
+   --> $DIR/unnecessary_clone.rs:111:20
     |
-110 |         let _: E = a.clone();
+111 |         let _: E = a.clone();
     |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
 error: aborting due to 13 previous errors

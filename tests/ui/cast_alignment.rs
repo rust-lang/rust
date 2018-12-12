@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 //! Test casts for alignment issues
 
 #![feature(libc)]

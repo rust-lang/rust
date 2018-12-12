@@ -7,16 +7,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
-#![warn(clippy::all, clippy::pedantic, clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::shadow_same,
+    clippy::shadow_reuse,
+    clippy::shadow_unrelated
+)]
 #![allow(unused_parens, unused_variables, clippy::missing_docs_in_private_items)]
 
-fn id<T>(x: T) -> T { x }
+fn id<T>(x: T) -> T {
+    x
+}
 
-fn first(x: (isize, isize)) -> isize { x.0 }
+fn first(x: (isize, isize)) -> isize {
+    x.0
+}
 
 fn main() {
     let mut x = 1;
@@ -35,7 +41,9 @@ fn main() {
 
     let o = Some(1_u8);
 
-    if let Some(p) = o { assert_eq!(1, p); }
+    if let Some(p) = o {
+        assert_eq!(1, p);
+    }
     match o {
         Some(p) => p, // no error, because the p above is in its own scope
         None => 0,

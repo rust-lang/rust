@@ -7,17 +7,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-#![allow(clippy::single_match, unused_assignments, unused_variables, clippy::while_immutable_condition)]
+#![allow(
+    clippy::single_match,
+    unused_assignments,
+    unused_variables,
+    clippy::while_immutable_condition
+)]
 
 fn test1() {
     let mut x = 0;
-    loop { // clippy::never_loop
+    loop {
+        // clippy::never_loop
         x += 1;
         if x == 1 {
-            return
+            return;
         }
         break;
     }
@@ -28,16 +31,17 @@ fn test2() {
     loop {
         x += 1;
         if x == 1 {
-            break
+            break;
         }
     }
 }
 
 fn test3() {
     let mut x = 0;
-    loop { // never loops
+    loop {
+        // never loops
         x += 1;
-        break
+        break;
     }
 }
 
@@ -54,24 +58,29 @@ fn test4() {
 
 fn test5() {
     let i = 0;
-	loop { // never loops
-        while i == 0 { // never loops
-            break
+    loop {
+        // never loops
+        while i == 0 {
+            // never loops
+            break;
         }
-        return
-	}
+        return;
+    }
 }
 
 fn test6() {
     let mut x = 0;
     'outer: loop {
         x += 1;
-		loop { // never loops
-            if x == 5 { break }
-			continue 'outer
-		}
-		return
-	}
+        loop {
+            // never loops
+            if x == 5 {
+                break;
+            }
+            continue 'outer;
+        }
+        return;
+    }
 }
 
 fn test7() {
@@ -82,7 +91,7 @@ fn test7() {
             1 => continue,
             _ => (),
         }
-        return
+        return;
     }
 }
 
@@ -99,13 +108,15 @@ fn test8() {
 
 fn test9() {
     let x = Some(1);
-    while let Some(y) = x { // never loops
-        return
+    while let Some(y) = x {
+        // never loops
+        return;
     }
 }
 
 fn test10() {
-    for x in 0..10 { // never loops
+    for x in 0..10 {
+        // never loops
         match x {
             1 => break,
             _ => return,
@@ -118,7 +129,7 @@ fn test11<F: FnMut() -> i32>(mut f: F) {
         return match f() {
             1 => continue,
             _ => (),
-        }
+        };
     }
 }
 
@@ -138,7 +149,8 @@ pub fn test12(a: bool, b: bool) {
 
 pub fn test13() {
     let mut a = true;
-    loop { // infinite loop
+    loop {
+        // infinite loop
         while a {
             if true {
                 a = false;
@@ -151,11 +163,12 @@ pub fn test13() {
 
 pub fn test14() {
     let mut a = true;
-    'outer: while a { // never loops
+    'outer: while a {
+        // never loops
         while a {
             if a {
                 a = false;
-                continue
+                continue;
             }
         }
         break 'outer;
@@ -187,4 +200,3 @@ fn main() {
     test13();
     test14();
 }
-

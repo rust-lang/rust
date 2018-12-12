@@ -7,16 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(dead_code, clippy::items_after_statements, clippy::never_loop)]
 #![warn(clippy::unused_label)]
 
 fn unused_label() {
     'label: for i in 1..2 {
-        if i > 4 { continue }
+        if i > 4 {
+            continue;
+        }
     }
 }
 
@@ -26,9 +24,10 @@ fn foo() {
     }
 }
 
-
 fn bla() {
-    'a: loop { break }
+    'a: loop {
+        break;
+    }
     fn blub() {}
 }
 

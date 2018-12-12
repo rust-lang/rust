@@ -7,17 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![feature(const_string_new, const_vec_new)]
 #![allow(clippy::ref_in_deref, dead_code)]
 
-use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
-use std::cell::Cell;
-use std::sync::Once;
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::fmt::Display;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::Once;
 
 const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR interior mutable
 const CELL: Cell<usize> = Cell::new(6); //~ ERROR interior mutable
@@ -25,7 +22,9 @@ const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::n
 //~^ ERROR interior mutable
 
 macro_rules! declare_const {
-    ($name:ident: $ty:ty = $e:expr) => { const $name: $ty = $e; };
+    ($name:ident: $ty:ty = $e:expr) => {
+        const $name: $ty = $e;
+    };
 }
 declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
 
@@ -136,7 +135,7 @@ fn main() {
     let _ = ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
     let _ = ATOMIC_TUPLE.1.into_iter();
     let _ = ATOMIC_TUPLE.2;
-    let _ = &{ATOMIC_TUPLE};
+    let _ = &{ ATOMIC_TUPLE };
 
     CELL.set(2); //~ ERROR interior mutability
     assert_eq!(CELL.get(), 6); //~ ERROR interior mutability

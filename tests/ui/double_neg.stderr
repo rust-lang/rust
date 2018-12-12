@@ -1,7 +1,7 @@
 error: `--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op
-  --> $DIR/double_neg.rs:19:5
+  --> $DIR/double_neg.rs:15:5
    |
-19 |     --x;
+15 |     --x;
    |     ^^^
    |
    = note: `-D clippy::double-neg` implied by `-D warnings`

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::option_map_unit_fn)]
 #![allow(unused)]
 
@@ -34,7 +31,7 @@ impl HasOption {
         value + 1
     }
 }
-
+#[rustfmt::skip]
 fn option_map_unit_fn() {
     let x = HasOption { field: Some(10) };
 
@@ -108,5 +105,4 @@ fn option_map_unit_fn() {
     y.map(do_nothing);
 }
 
-fn main() {
-}
+fn main() {}

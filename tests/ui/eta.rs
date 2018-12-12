@@ -7,10 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-#![allow(unused, clippy::no_effect, clippy::redundant_closure_call, clippy::many_single_char_names, clippy::needless_pass_by_value, clippy::option_map_unit_fn, clippy::trivially_copy_pass_by_ref)]
+#![allow(
+    unused,
+    clippy::no_effect,
+    clippy::redundant_closure_call,
+    clippy::many_single_char_names,
+    clippy::needless_pass_by_value,
+    clippy::option_map_unit_fn,
+    clippy::trivially_copy_pass_by_ref
+)]
 #![warn(clippy::redundant_closure, clippy::needless_borrow)]
 
 fn main() {
@@ -32,25 +37,31 @@ fn main() {
         Some(vec![1i32, 2]).map(|v| -> Box<::std::ops::Deref<Target = [i32]>> { Box::new(v) });
 }
 
-fn meta<F>(f: F) where F: Fn(u8) {
+fn meta<F>(f: F)
+where
+    F: Fn(u8),
+{
     f(1u8)
 }
 
-fn foo(_: u8) {
-}
+fn foo(_: u8) {}
 
 fn foo2(_: u8) -> u8 {
     1u8
 }
 
 fn all<X, F>(x: &[X], y: &X, f: F) -> bool
-where F: Fn(&X, &X) -> bool {
+where
+    F: Fn(&X, &X) -> bool,
+{
     x.iter().all(|e| f(e, y))
 }
 
-fn below(x: &u8, y: &u8) -> bool { x < y }
+fn below(x: &u8, y: &u8) -> bool {
+    x < y
+}
 
-unsafe fn unsafe_fn(_: u8) { }
+unsafe fn unsafe_fn(_: u8) {}
 
 fn divergent(_: u8) -> ! {
     unimplemented!()

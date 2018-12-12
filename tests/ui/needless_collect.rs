@@ -7,10 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-use std::collections::{HashMap, HashSet, BTreeSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 #[warn(clippy::needless_collect)]
 #[allow(unused_variables, clippy::iter_cloned_collect)]

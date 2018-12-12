@@ -1,57 +1,57 @@
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:18:14
+  --> $DIR/cmp_owned.rs:14:14
    |
-18 |         x != "foo".to_string();
+14 |         x != "foo".to_string();
    |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
    |
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:20:9
+  --> $DIR/cmp_owned.rs:16:9
    |
-20 |         "foo".to_string() != x;
+16 |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:27:10
+  --> $DIR/cmp_owned.rs:23:10
    |
-27 |     x != "foo".to_owned();
+23 |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:29:10
+  --> $DIR/cmp_owned.rs:25:10
    |
-29 |     x != String::from("foo");
+25 |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:33:5
+  --> $DIR/cmp_owned.rs:29:5
    |
-33 |     Foo.to_owned() == Foo;
+29 |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:35:30
+  --> $DIR/cmp_owned.rs:31:30
    |
-35 |     "abc".chars().filter(|c| c.to_owned() != 'X');
+31 |     "abc".chars().filter(|c| c.to_owned() != 'X');
    |                              ^^^^^^^^^^^^ help: try: `*c`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:42:5
+  --> $DIR/cmp_owned.rs:38:5
    |
-42 |     y.to_owned() == *x;
+38 |     y.to_owned() == *x;
    |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:47:5
+  --> $DIR/cmp_owned.rs:43:5
    |
-47 |     y.to_owned() == **x;
+43 |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/cmp_owned.rs:54:9
+  --> $DIR/cmp_owned.rs:50:9
    |
-54 |         self.to_owned() == *other
+50 |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: aborting due to 9 previous errors

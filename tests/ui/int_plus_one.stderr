@@ -1,43 +1,43 @@
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:20:5
+  --> $DIR/int_plus_one.rs:16:5
    |
-20 |     x >= y + 1;
+16 |     x >= y + 1;
    |     ^^^^^^^^^^
    |
    = note: `-D clippy::int-plus-one` implied by `-D warnings`
 help: change `>= y + 1` to `> y` as shown
    |
-20 |     x > y;
+16 |     x > y;
    |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:21:5
+  --> $DIR/int_plus_one.rs:17:5
    |
-21 |     y + 1 <= x;
+17 |     y + 1 <= x;
    |     ^^^^^^^^^^
 help: change `>= y + 1` to `> y` as shown
    |
-21 |     y < x;
+17 |     y < x;
    |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:23:5
+  --> $DIR/int_plus_one.rs:19:5
    |
-23 |     x - 1 >= y;
+19 |     x - 1 >= y;
    |     ^^^^^^^^^^
 help: change `>= y + 1` to `> y` as shown
    |
-23 |     x > y;
+19 |     x > y;
    |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
-  --> $DIR/int_plus_one.rs:24:5
+  --> $DIR/int_plus_one.rs:20:5
    |
-24 |     y <= x - 1;
+20 |     y <= x - 1;
    |     ^^^^^^^^^^
 help: change `>= y + 1` to `> y` as shown
    |
-24 |     y < x;
+20 |     y < x;
    |     ^^^^^
 
 error: aborting due to 4 previous errors

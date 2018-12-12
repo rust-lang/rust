@@ -1,39 +1,39 @@
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:23:21
+  --> $DIR/use_self.rs:20:21
    |
-23 |         fn new() -> Foo {
+20 |         fn new() -> Foo {
    |                     ^^^ help: use the applicable keyword: `Self`
    |
    = note: `-D clippy::use-self` implied by `-D warnings`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:24:13
+  --> $DIR/use_self.rs:21:13
    |
-24 |             Foo {}
+21 |             Foo {}
    |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:26:22
+  --> $DIR/use_self.rs:23:22
    |
-26 |         fn test() -> Foo {
+23 |         fn test() -> Foo {
    |                      ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:27:13
+  --> $DIR/use_self.rs:24:13
    |
-27 |             Foo::new()
+24 |             Foo::new()
    |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:32:25
+  --> $DIR/use_self.rs:29:25
    |
-32 |         fn default() -> Foo {
+29 |         fn default() -> Foo {
    |                         ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:33:13
+  --> $DIR/use_self.rs:30:13
    |
-33 |             Foo::new()
+30 |             Foo::new()
    |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
@@ -75,56 +75,56 @@ error: unnecessary structure name repetition
 error: unnecessary structure name repetition
    --> $DIR/use_self.rs:108:28
     |
-108 |         fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {
+108 |         fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
     |                            ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
    --> $DIR/use_self.rs:108:46
     |
-108 |         fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {
+108 |         fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
     |                                              ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:111:20
+   --> $DIR/use_self.rs:110:20
     |
-111 |         fn vals(_: Bad) -> Bad {
+110 |         fn vals(_: Bad) -> Bad {
     |                    ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:111:28
+   --> $DIR/use_self.rs:110:28
     |
-111 |         fn vals(_: Bad) -> Bad {
+110 |         fn vals(_: Bad) -> Bad {
     |                            ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:112:13
+   --> $DIR/use_self.rs:111:13
     |
-112 |             Bad::default()
+111 |             Bad::default()
     |             ^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:117:23
+   --> $DIR/use_self.rs:116:23
     |
-117 |         type Output = Bad;
+116 |         type Output = Bad;
     |                       ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:119:27
+   --> $DIR/use_self.rs:118:27
     |
-119 |         fn mul(self, rhs: Bad) -> Bad {
+118 |         fn mul(self, rhs: Bad) -> Bad {
     |                           ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:119:35
+   --> $DIR/use_self.rs:118:35
     |
-119 |         fn mul(self, rhs: Bad) -> Bad {
+118 |         fn mul(self, rhs: Bad) -> Bad {
     |                                   ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/use_self.rs:213:54
+   --> $DIR/use_self.rs:210:56
     |
-213 |         fn bad(foos: &[Self]) -> impl Iterator<Item=&Foo> {
-    |                                                      ^^^ help: use the applicable keyword: `Self`
+210 |         fn bad(foos: &[Self]) -> impl Iterator<Item = &Foo> {
+    |                                                        ^^^ help: use the applicable keyword: `Self`
 
 error: aborting due to 21 previous errors
 

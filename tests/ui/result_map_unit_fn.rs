@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![feature(never_type)]
 #![warn(clippy::result_map_unit_fn)]
 #![allow(unused)]
@@ -36,11 +33,12 @@ impl HasResult {
     }
 }
 
+#[rustfmt::skip]
 fn result_map_unit_fn() {
     let x = HasResult { field: Ok(10) };
 
     x.field.map(plus_one);
-    let _ : Result<(), usize> = x.field.map(do_nothing);
+    let _: Result<(), usize> = x.field.map(do_nothing);
 
     x.field.map(do_nothing);
 
@@ -50,7 +48,7 @@ fn result_map_unit_fn() {
 
     let captured = 10;
     if let Ok(value) = x.field { do_nothing(value + captured) };
-    let _ : Result<(), usize> = x.field.map(|value| do_nothing(value + captured));
+    let _: Result<(), usize> = x.field.map(|value| do_nothing(value + captured));
 
     x.field.map(|value| x.do_result_nothing(value + captured));
 
@@ -110,6 +108,4 @@ fn result_map_unit_fn() {
     y.map(do_nothing);
 }
 
-fn main() {
-}
-
+fn main() {}

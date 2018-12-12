@@ -1,48 +1,48 @@
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:24:16
+  --> $DIR/dlist.rs:19:16
    |
-24 |     type Baz = LinkedList<u8>;
+19 |     type Baz = LinkedList<u8>;
    |                ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:25:12
+  --> $DIR/dlist.rs:20:12
    |
-25 |     fn foo(LinkedList<u8>);
+20 |     fn foo(LinkedList<u8>);
    |            ^^^^^^^^^^^^^^
    |
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:26:24
+  --> $DIR/dlist.rs:21:23
    |
-26 |     const BAR : Option<LinkedList<u8>>;
-   |                        ^^^^^^^^^^^^^^
+21 |     const BAR: Option<LinkedList<u8>>;
+   |                       ^^^^^^^^^^^^^^
    |
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:37:15
+  --> $DIR/dlist.rs:32:15
    |
-37 |     fn foo(_: LinkedList<u8>) {}
+32 |     fn foo(_: LinkedList<u8>) {}
    |               ^^^^^^^^^^^^^^
    |
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:40:39
+  --> $DIR/dlist.rs:35:39
    |
-40 | pub fn test(my_favourite_linked_list: LinkedList<u8>) {
+35 | pub fn test(my_favourite_linked_list: LinkedList<u8>) {
    |                                       ^^^^^^^^^^^^^^
    |
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> $DIR/dlist.rs:44:29
+  --> $DIR/dlist.rs:39:29
    |
-44 | pub fn test_ret() -> Option<LinkedList<u8>> {
+39 | pub fn test_ret() -> Option<LinkedList<u8>> {
    |                             ^^^^^^^^^^^^^^
    |
    = help: a VecDeque might work

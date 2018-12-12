@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![allow(dead_code, unused_variables)]
 
 /// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
@@ -21,7 +20,7 @@ fn spanless_hash_ice() {
     match txt {
         "something" => {
             let mut headers = [empty_header; 1];
-        }
+        },
         "" => (),
         _ => (),
     }

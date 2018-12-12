@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 fn main() {
     #[clippy::author]
     let _ = ::std::cmp::min(3, 4);

@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(unused_variables, clippy::trivially_copy_pass_by_ref)]
 
 fn takes_an_immutable_reference(a: &i32) {}
@@ -19,11 +15,9 @@ fn takes_a_mutable_reference(a: &mut i32) {}
 struct MyStruct;
 
 impl MyStruct {
-    fn takes_an_immutable_reference(&self, a: &i32) {
-    }
+    fn takes_an_immutable_reference(&self, a: &i32) {}
 
-    fn takes_a_mutable_reference(&self, a: &mut i32) {
-    }
+    fn takes_a_mutable_reference(&self, a: &mut i32) {}
 }
 
 #[warn(clippy::unnecessary_mut_passed)]
@@ -36,7 +30,6 @@ fn main() {
     // Methods
     let my_struct = MyStruct;
     my_struct.takes_an_immutable_reference(&mut 42);
-
 
     // No error
 

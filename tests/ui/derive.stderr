@@ -1,15 +1,17 @@
 error: you are deriving `Hash` but have implemented `PartialEq` explicitly
-  --> $DIR/derive.rs:27:10
+  --> $DIR/derive.rs:25:10
    |
-27 | #[derive(Hash)]
+25 | #[derive(Hash)]
    |          ^^^^
    |
    = note: #[deny(clippy::derive_hash_xor_eq)] on by default
 note: `PartialEq` implemented here
-  --> $DIR/derive.rs:30:1
+  --> $DIR/derive.rs:28:1
    |
-30 | / impl PartialEq for Bar {
-31 | |     fn eq(&self, _: &Bar) -> bool { true }
+28 | / impl PartialEq for Bar {
+29 | |     fn eq(&self, _: &Bar) -> bool {
+30 | |         true
+31 | |     }
 32 | | }
    | |_^
 
@@ -23,88 +25,106 @@ note: `PartialEq` implemented here
   --> $DIR/derive.rs:37:1
    |
 37 | / impl PartialEq<Baz> for Baz {
-38 | |     fn eq(&self, _: &Baz) -> bool { true }
-39 | | }
+38 | |     fn eq(&self, _: &Baz) -> bool {
+39 | |         true
+40 | |     }
+41 | | }
    | |_^
 
 error: you are implementing `Hash` explicitly but have derived `PartialEq`
-  --> $DIR/derive.rs:44:1
+  --> $DIR/derive.rs:46:1
    |
-44 | / impl Hash for Bah {
-45 | |     fn hash<H: Hasher>(&self, _: &mut H) {}
-46 | | }
+46 | / impl Hash for Bah {
+47 | |     fn hash<H: Hasher>(&self, _: &mut H) {}
+48 | | }
    | |_^
    |
 note: `PartialEq` implemented here
-  --> $DIR/derive.rs:41:10
+  --> $DIR/derive.rs:43:10
    |
-41 | #[derive(PartialEq)]
+43 | #[derive(PartialEq)]
    |          ^^^^^^^^^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:51:1
+  --> $DIR/derive.rs:53:1
    |
-51 | / impl Clone for Qux {
-52 | |     fn clone(&self) -> Self { Qux }
-53 | | }
+53 | / impl Clone for Qux {
+54 | |     fn clone(&self) -> Self {
+55 | |         Qux
+56 | |     }
+57 | | }
    | |_^
    |
    = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:51:1
+  --> $DIR/derive.rs:53:1
    |
-51 | / impl Clone for Qux {
-52 | |     fn clone(&self) -> Self { Qux }
-53 | | }
+53 | / impl Clone for Qux {
+54 | |     fn clone(&self) -> Self {
+55 | |         Qux
+56 | |     }
+57 | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:75:1
+  --> $DIR/derive.rs:77:1
    |
-75 | / impl<'a> Clone for Lt<'a> {
-76 | |     fn clone(&self) -> Self { unimplemented!() }
-77 | | }
+77 | / impl<'a> Clone for Lt<'a> {
+78 | |     fn clone(&self) -> Self {
+79 | |         unimplemented!()
+80 | |     }
+81 | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:75:1
+  --> $DIR/derive.rs:77:1
    |
-75 | / impl<'a> Clone for Lt<'a> {
-76 | |     fn clone(&self) -> Self { unimplemented!() }
-77 | | }
+77 | / impl<'a> Clone for Lt<'a> {
+78 | |     fn clone(&self) -> Self {
+79 | |         unimplemented!()
+80 | |     }
+81 | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:85:1
+  --> $DIR/derive.rs:89:1
    |
-85 | / impl Clone for BigArray {
-86 | |     fn clone(&self) -> Self { unimplemented!() }
-87 | | }
+89 | / impl Clone for BigArray {
+90 | |     fn clone(&self) -> Self {
+91 | |         unimplemented!()
+92 | |     }
+93 | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:85:1
+  --> $DIR/derive.rs:89:1
    |
-85 | / impl Clone for BigArray {
-86 | |     fn clone(&self) -> Self { unimplemented!() }
-87 | | }
+89 | / impl Clone for BigArray {
+90 | |     fn clone(&self) -> Self {
+91 | |         unimplemented!()
+92 | |     }
+93 | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:95:1
-   |
-95 | / impl Clone for FnPtr {
-96 | |     fn clone(&self) -> Self { unimplemented!() }
-97 | | }
-   | |_^
-   |
+   --> $DIR/derive.rs:101:1
+    |
+101 | / impl Clone for FnPtr {
+102 | |     fn clone(&self) -> Self {
+103 | |         unimplemented!()
+104 | |     }
+105 | | }
+    | |_^
+    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:95:1
-   |
-95 | / impl Clone for FnPtr {
-96 | |     fn clone(&self) -> Self { unimplemented!() }
-97 | | }
-   | |_^
+   --> $DIR/derive.rs:101:1
+    |
+101 | / impl Clone for FnPtr {
+102 | |     fn clone(&self) -> Self {
+103 | |         unimplemented!()
+104 | |     }
+105 | | }
+    | |_^
 
 error: aborting due to 7 previous errors
 

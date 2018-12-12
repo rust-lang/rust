@@ -29,4 +29,3 @@ fn main() {
     let a = Foo::A;
     test_hash!(&a, A => 0, B => 1, C => 2);
 }
-

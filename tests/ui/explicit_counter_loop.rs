@@ -26,9 +26,11 @@ fn main() {
 mod issue_1219 {
     pub fn test() {
         // should not trigger the lint because variable is used after the loop #473
-        let vec = vec![1,2,3];
+        let vec = vec![1, 2, 3];
         let mut index = 0;
-        for _v in &vec { index += 1 }
+        for _v in &vec {
+            index += 1
+        }
         println!("index: {}", index);
 
         // should not trigger the lint because the count is conditional #1219

@@ -7,13 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(integer_atomics)]
 #![allow(clippy::blacklisted_name)]
 #![deny(clippy::replace_consts)]
 
 use std::sync::atomic::*;
-use std::sync::{ONCE_INIT, Once};
+use std::sync::{Once, ONCE_INIT};
 
 #[rustfmt::skip]
 fn bad() {

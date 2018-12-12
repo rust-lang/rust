@@ -1,27 +1,27 @@
 error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrowed_ref.rs:18:34
+  --> $DIR/needless_borrowed_ref.rs:14:34
    |
-18 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+14 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
    |                                  ^^^^^^ help: try removing the `&ref` part and just keep: `a`
    |
    = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
 
 error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrowed_ref.rs:23:17
+  --> $DIR/needless_borrowed_ref.rs:19:17
    |
-23 |     if let Some(&ref v) = thingy {
+19 |     if let Some(&ref v) = thingy {
    |                 ^^^^^^ help: try removing the `&ref` part and just keep: `v`
 
 error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrowed_ref.rs:52:27
+  --> $DIR/needless_borrowed_ref.rs:48:27
    |
-52 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+48 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
    |                           ^^^^^^ help: try removing the `&ref` part and just keep: `k`
 
 error: this pattern takes a reference on something that is being de-referenced
-  --> $DIR/needless_borrowed_ref.rs:52:38
+  --> $DIR/needless_borrowed_ref.rs:48:38
    |
-52 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+48 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
    |                                      ^^^^^^ help: try removing the `&ref` part and just keep: `k`
 
 error: aborting due to 4 previous errors

@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::duplicate_underscore_argument)]
 #[allow(dead_code, unused)]
 

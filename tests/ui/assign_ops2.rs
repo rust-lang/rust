@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[allow(unused_assignments)]
 #[warn(clippy::misrefactored_assign_op, clippy::assign_op_pattern)]
 fn main() {
@@ -65,6 +61,4 @@ fn cow_add_assign() {
     // this should not as cow<str> Add is not commutative
     buf = cows + buf;
     println!("{}", buf);
-
 }
-

@@ -1,15 +1,15 @@
 error: don't use glob imports for enum variants
-  --> $DIR/enum_glob_use.rs:16:1
+  --> $DIR/enum_glob_use.rs:13:1
    |
-16 | use std::cmp::Ordering::*;
+13 | use std::cmp::Ordering::*;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::enum-glob-use` implied by `-D warnings`
 
 error: don't use glob imports for enum variants
-  --> $DIR/enum_glob_use.rs:22:1
+  --> $DIR/enum_glob_use.rs:19:1
    |
-22 | use self::Enum::*;
+19 | use self::Enum::*;
    | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

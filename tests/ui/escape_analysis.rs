@@ -8,7 +8,6 @@
 // except according to those terms.
 
 #![feature(box_syntax)]
-
 #![allow(clippy::borrowed_box, clippy::needless_pass_by_value, clippy::unused_unit)]
 #![warn(clippy::boxed_local)]
 
@@ -16,7 +15,7 @@
 struct A;
 
 impl A {
-    fn foo(&self){}
+    fn foo(&self) {}
 }
 
 trait Z {
@@ -29,8 +28,7 @@ impl Z for A {
     }
 }
 
-fn main() {
-}
+fn main() {}
 
 fn ok_box_trait(boxed_trait: &Box<Z>) {
     let boxed_local = boxed_trait;
@@ -85,10 +83,8 @@ fn nowarn_pass() {
     take_box(&bx); // fn needs &Box
 }
 
-
 fn take_box(x: &Box<A>) {}
 fn take_ref(x: &A) {}
-
 
 fn nowarn_ref_take() {
     // false positive, should actually warn
@@ -100,14 +96,15 @@ fn nowarn_ref_take() {
 fn nowarn_match() {
     let x = box A; // moved into a match
     match x {
-        y => drop(y)
+        y => drop(y),
     }
 }
 
 fn warn_match() {
     let x = box A;
-    match &x { // not moved
-        ref y => ()
+    match &x {
+        // not moved
+        ref y => (),
     }
 }
 
@@ -115,11 +112,11 @@ fn nowarn_large_array() {
     // should not warn, is large array
     // and should not be on stack
     let x = box [1; 10000];
-    match &x { // not moved
-        ref y => ()
+    match &x {
+        // not moved
+        ref y => (),
     }
 }
-
 
 /// ICE regression test
 pub trait Foo {
@@ -134,8 +131,7 @@ pub struct PeekableSeekable<I: Foo> {
     _peeked: I::Item,
 }
 
-pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {
-}
+pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {}
 
 /// Regression for #916, #1123
 ///

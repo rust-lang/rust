@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 /* This file incorporates work covered by the following copyright and
  * permission notice:
  *   Copyright 2013 The Rust Project Developers. See the COPYRIGHT
@@ -23,17 +20,14 @@
  *   except according to those terms.
  */
 
-
-
 #![warn(clippy::missing_docs_in_private_items)]
-
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 #![allow(dead_code)]
 #![feature(associated_type_defaults)]
 
 //! Some garbage docs for the crate here
-#![doc="More garbage"]
+#![doc = "More garbage"]
 
 type Typedef = String;
 pub type PubTypedef = String;
@@ -61,7 +55,8 @@ pub mod pub_module_no_dox {}
 pub fn foo() {}
 pub fn foo2() {}
 fn foo3() {}
-#[allow(clippy::missing_docs_in_private_items)] pub fn foo4() {}
+#[allow(clippy::missing_docs_in_private_items)]
+pub fn foo4() {}
 
 /// dox
 pub trait A {
@@ -84,7 +79,7 @@ pub trait C {
 
 #[allow(clippy::missing_docs_in_private_items)]
 pub trait D {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
 
 /// dox
@@ -110,7 +105,8 @@ impl PubFoo {
     /// dox
     pub fn foo1() {}
     fn foo2() {}
-    #[allow(clippy::missing_docs_in_private_items)] pub fn foo3() {}
+    #[allow(clippy::missing_docs_in_private_items)]
+    pub fn foo3() {}
 }
 
 #[allow(clippy::missing_docs_in_private_items)]
@@ -136,17 +132,12 @@ mod a {
 }
 
 enum Baz {
-    BazA {
-        a: isize,
-        b: isize
-    },
-    BarB
+    BazA { a: isize, b: isize },
+    BarB,
 }
 
 pub enum PubBaz {
-    PubBazA {
-        a: isize,
-    },
+    PubBazA { a: isize },
 }
 
 /// dox
@@ -160,14 +151,11 @@ pub enum PubBaz2 {
 
 #[allow(clippy::missing_docs_in_private_items)]
 pub enum PubBaz3 {
-    PubBaz3A {
-        b: isize
-    },
+    PubBaz3A { b: isize },
 }
 
 #[doc(hidden)]
 pub fn baz() {}
-
 
 const FOO: u32 = 0;
 /// dox
@@ -178,7 +166,6 @@ pub const FOO2: u32 = 0;
 pub const FOO3: u32 = 0;
 pub const FOO4: u32 = 0;
 
-
 static BAR: u32 = 0;
 /// dox
 pub static BAR1: u32 = 0;
@@ -187,7 +174,6 @@ pub static BAR2: u32 = 0;
 #[doc(hidden)]
 pub static BAR3: u32 = 0;
 pub static BAR4: u32 = 0;
-
 
 mod internal_impl {
     /// dox
@@ -206,9 +192,9 @@ mod internal_impl {
 /// dox
 pub mod public_interface {
     pub use internal_impl::documented as foo;
+    pub use internal_impl::globbed::*;
     pub use internal_impl::undocumented1 as bar;
     pub use internal_impl::{documented, undocumented2};
-    pub use internal_impl::globbed::*;
 }
 
 fn main() {}

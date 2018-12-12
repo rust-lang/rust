@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[warn(clippy::needless_borrowed_reference)]
 #[allow(unused_variables)]
 fn main() {
@@ -51,8 +47,6 @@ fn foo(a: &Animal, b: &Animal) {
     match (a, b) {
         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
         //                  ^    and   ^ should *not* be linted
-        (&Animal::Dog(ref a), &Animal::Dog(_)) => ()
-        //              ^ should *not* be linted
+        (&Animal::Dog(ref a), &Animal::Dog(_)) => (), //              ^ should *not* be linted
     }
 }
-

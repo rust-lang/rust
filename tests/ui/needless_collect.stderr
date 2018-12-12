@@ -1,27 +1,27 @@
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect.rs:19:28
+  --> $DIR/needless_collect.rs:16:28
    |
-19 |     let len = sample.iter().collect::<Vec<_>>().len();
+16 |     let len = sample.iter().collect::<Vec<_>>().len();
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `.count()`
    |
    = note: `-D clippy::needless-collect` implied by `-D warnings`
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect.rs:20:21
+  --> $DIR/needless_collect.rs:17:21
    |
-20 |     if sample.iter().collect::<Vec<_>>().is_empty() {
+17 |     if sample.iter().collect::<Vec<_>>().is_empty() {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `.next().is_none()`
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect.rs:23:27
+  --> $DIR/needless_collect.rs:20:27
    |
-23 |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
+20 |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `.any(|&x| x == 1)`
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect.rs:24:34
+  --> $DIR/needless_collect.rs:21:34
    |
-24 |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
+21 |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `.count()`
 
 error: aborting due to 4 previous errors

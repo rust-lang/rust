@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 //! This test case utilizes `f64` an easy example for `PartialOrd` only types
 //! but the lint itself actually validates any expression where the left
 //! operand implements `PartialOrd` but not `Ord`.
@@ -18,12 +15,10 @@ use std::cmp::Ordering;
 
 #[warn(clippy::neg_cmp_op_on_partial_ord)]
 fn main() {
-
     let a_value = 1.0;
     let another_value = 7.0;
 
     // --- Bad ---
-
 
     // Not Less but potentially Greater, Equal or Uncomparable.
     let _not_less = !(a_value < another_value);
@@ -37,12 +32,10 @@ fn main() {
     // Not Greater or Equal but potentially Less or Uncomparable.
     let _not_greater_or_equal = !(a_value >= another_value);
 
-
     // --- Good ---
 
-
     let _not_less = match a_value.partial_cmp(&another_value) {
-        None | Some(Ordering::Greater) | Some(Ordering::Equal)  => true,
+        None | Some(Ordering::Greater) | Some(Ordering::Equal) => true,
         _ => false,
     };
     let _not_less_or_equal = match a_value.partial_cmp(&another_value) {
@@ -58,9 +51,7 @@ fn main() {
         _ => false,
     };
 
-
     // --- Should not trigger ---
-
 
     let _ = a_value < another_value;
     let _ = a_value <= another_value;

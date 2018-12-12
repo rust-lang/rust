@@ -1,135 +1,135 @@
 error: variable appears on both sides of an assignment operation
-  --> $DIR/assign_ops2.rs:18:5
+  --> $DIR/assign_ops2.rs:14:5
    |
-18 |     a += a + 1;
+14 |     a += a + 1;
    |     ^^^^^^^^^^
    |
    = note: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
 help: Did you mean a = a + 1 or a = a + a + 1? Consider replacing it with
    |
-18 |     a += 1;
+14 |     a += 1;
    |     ^^^^^^
 help: or
    |
-18 |     a = a + a + 1;
+14 |     a = a + a + 1;
    |     ^^^^^^^^^^^^^
+
+error: variable appears on both sides of an assignment operation
+  --> $DIR/assign_ops2.rs:15:5
+   |
+15 |     a += 1 + a;
+   |     ^^^^^^^^^^
+help: Did you mean a = a + 1 or a = a + 1 + a? Consider replacing it with
+   |
+15 |     a += 1;
+   |     ^^^^^^
+help: or
+   |
+15 |     a = a + 1 + a;
+   |     ^^^^^^^^^^^^^
+
+error: variable appears on both sides of an assignment operation
+  --> $DIR/assign_ops2.rs:16:5
+   |
+16 |     a -= a - 1;
+   |     ^^^^^^^^^^
+help: Did you mean a = a - 1 or a = a - (a - 1)? Consider replacing it with
+   |
+16 |     a -= 1;
+   |     ^^^^^^
+help: or
+   |
+16 |     a = a - (a - 1);
+   |     ^^^^^^^^^^^^^^^
+
+error: variable appears on both sides of an assignment operation
+  --> $DIR/assign_ops2.rs:17:5
+   |
+17 |     a *= a * 99;
+   |     ^^^^^^^^^^^
+help: Did you mean a = a * 99 or a = a * a * 99? Consider replacing it with
+   |
+17 |     a *= 99;
+   |     ^^^^^^^
+help: or
+   |
+17 |     a = a * a * 99;
+   |     ^^^^^^^^^^^^^^
+
+error: variable appears on both sides of an assignment operation
+  --> $DIR/assign_ops2.rs:18:5
+   |
+18 |     a *= 42 * a;
+   |     ^^^^^^^^^^^
+help: Did you mean a = a * 42 or a = a * 42 * a? Consider replacing it with
+   |
+18 |     a *= 42;
+   |     ^^^^^^^
+help: or
+   |
+18 |     a = a * 42 * a;
+   |     ^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:19:5
    |
-19 |     a += 1 + a;
+19 |     a /= a / 2;
    |     ^^^^^^^^^^
-help: Did you mean a = a + 1 or a = a + 1 + a? Consider replacing it with
+help: Did you mean a = a / 2 or a = a / (a / 2)? Consider replacing it with
    |
-19 |     a += 1;
+19 |     a /= 2;
    |     ^^^^^^
 help: or
    |
-19 |     a = a + 1 + a;
-   |     ^^^^^^^^^^^^^
+19 |     a = a / (a / 2);
+   |     ^^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:20:5
    |
-20 |     a -= a - 1;
+20 |     a %= a % 5;
    |     ^^^^^^^^^^
-help: Did you mean a = a - 1 or a = a - (a - 1)? Consider replacing it with
+help: Did you mean a = a % 5 or a = a % (a % 5)? Consider replacing it with
    |
-20 |     a -= 1;
+20 |     a %= 5;
    |     ^^^^^^
 help: or
    |
-20 |     a = a - (a - 1);
+20 |     a = a % (a % 5);
    |     ^^^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:21:5
    |
-21 |     a *= a * 99;
-   |     ^^^^^^^^^^^
-help: Did you mean a = a * 99 or a = a * a * 99? Consider replacing it with
+21 |     a &= a & 1;
+   |     ^^^^^^^^^^
+help: Did you mean a = a & 1 or a = a & a & 1? Consider replacing it with
    |
-21 |     a *= 99;
-   |     ^^^^^^^
+21 |     a &= 1;
+   |     ^^^^^^
 help: or
    |
-21 |     a = a * a * 99;
-   |     ^^^^^^^^^^^^^^
+21 |     a = a & a & 1;
+   |     ^^^^^^^^^^^^^
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:22:5
    |
-22 |     a *= 42 * a;
-   |     ^^^^^^^^^^^
-help: Did you mean a = a * 42 or a = a * 42 * a? Consider replacing it with
-   |
-22 |     a *= 42;
-   |     ^^^^^^^
-help: or
-   |
-22 |     a = a * 42 * a;
-   |     ^^^^^^^^^^^^^^
-
-error: variable appears on both sides of an assignment operation
-  --> $DIR/assign_ops2.rs:23:5
-   |
-23 |     a /= a / 2;
-   |     ^^^^^^^^^^
-help: Did you mean a = a / 2 or a = a / (a / 2)? Consider replacing it with
-   |
-23 |     a /= 2;
-   |     ^^^^^^
-help: or
-   |
-23 |     a = a / (a / 2);
-   |     ^^^^^^^^^^^^^^^
-
-error: variable appears on both sides of an assignment operation
-  --> $DIR/assign_ops2.rs:24:5
-   |
-24 |     a %= a % 5;
-   |     ^^^^^^^^^^
-help: Did you mean a = a % 5 or a = a % (a % 5)? Consider replacing it with
-   |
-24 |     a %= 5;
-   |     ^^^^^^
-help: or
-   |
-24 |     a = a % (a % 5);
-   |     ^^^^^^^^^^^^^^^
-
-error: variable appears on both sides of an assignment operation
-  --> $DIR/assign_ops2.rs:25:5
-   |
-25 |     a &= a & 1;
-   |     ^^^^^^^^^^
-help: Did you mean a = a & 1 or a = a & a & 1? Consider replacing it with
-   |
-25 |     a &= 1;
-   |     ^^^^^^
-help: or
-   |
-25 |     a = a & a & 1;
-   |     ^^^^^^^^^^^^^
-
-error: variable appears on both sides of an assignment operation
-  --> $DIR/assign_ops2.rs:26:5
-   |
-26 |     a *= a * a;
+22 |     a *= a * a;
    |     ^^^^^^^^^^
 help: Did you mean a = a * a or a = a * a * a? Consider replacing it with
    |
-26 |     a *= a;
+22 |     a *= a;
    |     ^^^^^^
 help: or
    |
-26 |     a = a * a * a;
+22 |     a = a * a * a;
    |     ^^^^^^^^^^^^^
 
 error: manual implementation of an assign operation
-  --> $DIR/assign_ops2.rs:63:5
+  --> $DIR/assign_ops2.rs:59:5
    |
-63 |     buf = buf + cows.clone();
+59 |     buf = buf + cows.clone();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `buf += cows.clone()`
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`

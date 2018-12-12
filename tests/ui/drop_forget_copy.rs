@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::drop_copy, clippy::forget_copy)]
 #![allow(clippy::toplevel_ref_arg, clippy::drop_ref, clippy::forget_ref, unused_mut)]
 
@@ -18,18 +14,21 @@ use std::mem::{drop, forget};
 use std::vec::Vec;
 
 #[derive(Copy, Clone)]
-struct SomeStruct {
-}
+struct SomeStruct {}
 
 struct AnotherStruct {
     x: u8,
     y: u8,
-    z: Vec<u8>
+    z: Vec<u8>,
 }
 
 impl Clone for AnotherStruct {
-    fn clone(& self) -> AnotherStruct {
-        AnotherStruct{x: self.x, y: self.y, z: self.z.clone()}
+    fn clone(&self) -> AnotherStruct {
+        AnotherStruct {
+            x: self.x,
+            y: self.y,
+            z: self.z.clone(),
+        }
     }
 }
 
@@ -52,7 +51,11 @@ fn main() {
     forget(s4);
     forget(s5);
 
-    let a1 = AnotherStruct {x: 255, y: 0, z: vec![1, 2, 3]};
+    let a1 = AnotherStruct {
+        x: 255,
+        y: 0,
+        z: vec![1, 2, 3],
+    };
     let a2 = &a1;
     let mut a3 = a1.clone();
     let ref a4 = a1;

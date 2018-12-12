@@ -7,11 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-#![allow(unused_variables, clippy::blacklisted_name,
-         clippy::needless_pass_by_value, dead_code)]
+#![allow(
+    unused_variables,
+    clippy::blacklisted_name,
+    clippy::needless_pass_by_value,
+    dead_code
+)]
 
 // This should not compile-fail with:
 //

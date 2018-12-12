@@ -1,7 +1,7 @@
 error: any number modulo 1 will be 0
-  --> $DIR/modulo_one.rs:17:5
+  --> $DIR/modulo_one.rs:14:5
    |
-17 |     10 % 1;
+14 |     10 % 1;
    |     ^^^^^^
    |
    = note: `-D clippy::modulo-one` implied by `-D warnings`

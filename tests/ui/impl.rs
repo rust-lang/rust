@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(dead_code)]
 #![warn(clippy::multiple_inherent_impl)]
 

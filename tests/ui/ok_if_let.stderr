@@ -1,11 +1,11 @@
 error: Matching on `Some` with `ok()` is redundant
-  --> $DIR/ok_if_let.rs:17:5
+  --> $DIR/ok_if_let.rs:13:5
    |
-17 | /     if let Some(y) = x.parse().ok() {
-18 | |         y
-19 | |     } else {
-20 | |         0
-21 | |     }
+13 | /     if let Some(y) = x.parse().ok() {
+14 | |         y
+15 | |     } else {
+16 | |         0
+17 | |     }
    | |_____^
    |
    = note: `-D clippy::if-let-some-result` implied by `-D warnings`

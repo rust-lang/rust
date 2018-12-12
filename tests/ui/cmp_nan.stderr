@@ -1,75 +1,75 @@
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:18:5
+  --> $DIR/cmp_nan.rs:14:5
    |
-18 |     x == std::f32::NAN;
+14 |     x == std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::cmp-nan` implied by `-D warnings`
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:19:5
+  --> $DIR/cmp_nan.rs:15:5
    |
-19 |     x != std::f32::NAN;
+15 |     x != std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:20:5
+  --> $DIR/cmp_nan.rs:16:5
    |
-20 |     x < std::f32::NAN;
+16 |     x < std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:21:5
+  --> $DIR/cmp_nan.rs:17:5
    |
-21 |     x > std::f32::NAN;
+17 |     x > std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^
+
+error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
+  --> $DIR/cmp_nan.rs:18:5
+   |
+18 |     x <= std::f32::NAN;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
+  --> $DIR/cmp_nan.rs:19:5
+   |
+19 |     x >= std::f32::NAN;
+   |     ^^^^^^^^^^^^^^^^^^
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:22:5
    |
-22 |     x <= std::f32::NAN;
+22 |     y == std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:23:5
    |
-23 |     x >= std::f32::NAN;
+23 |     y != std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
+
+error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
+  --> $DIR/cmp_nan.rs:24:5
+   |
+24 |     y < std::f64::NAN;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
+  --> $DIR/cmp_nan.rs:25:5
+   |
+25 |     y > std::f64::NAN;
+   |     ^^^^^^^^^^^^^^^^^
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:26:5
    |
-26 |     y == std::f64::NAN;
+26 |     y <= std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:27:5
    |
-27 |     y != std::f64::NAN;
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:28:5
-   |
-28 |     y < std::f64::NAN;
-   |     ^^^^^^^^^^^^^^^^^
-
-error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:29:5
-   |
-29 |     y > std::f64::NAN;
-   |     ^^^^^^^^^^^^^^^^^
-
-error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:30:5
-   |
-30 |     y <= std::f64::NAN;
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
-  --> $DIR/cmp_nan.rs:31:5
-   |
-31 |     y >= std::f64::NAN;
+27 |     y >= std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors

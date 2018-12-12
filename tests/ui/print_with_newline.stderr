@@ -1,27 +1,27 @@
 error: using `print!()` with a format string that ends in a single newline, consider using `println!()` instead
-  --> $DIR/print_with_newline.rs:17:5
+  --> $DIR/print_with_newline.rs:14:5
    |
-17 |     print!("Hello/n");
+14 |     print!("Hello/n");
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-with-newline` implied by `-D warnings`
 
 error: using `print!()` with a format string that ends in a single newline, consider using `println!()` instead
-  --> $DIR/print_with_newline.rs:18:5
+  --> $DIR/print_with_newline.rs:15:5
    |
-18 |     print!("Hello {}/n", "world");
+15 |     print!("Hello {}/n", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `print!()` with a format string that ends in a single newline, consider using `println!()` instead
-  --> $DIR/print_with_newline.rs:19:5
+  --> $DIR/print_with_newline.rs:16:5
    |
-19 |     print!("Hello {} {}/n", "world", "#2");
+16 |     print!("Hello {} {}/n", "world", "#2");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `print!()` with a format string that ends in a single newline, consider using `println!()` instead
-  --> $DIR/print_with_newline.rs:20:5
+  --> $DIR/print_with_newline.rs:17:5
    |
-20 |     print!("{}/n", 1265);
+17 |     print!("{}/n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

@@ -20,7 +20,10 @@ static NODE: ExprNode = ExprNode::Unicorns;
 fn unwrap_addr() -> Option<&'static ExprNode> {
     match ExprNode::Butterflies {
         ExprNode::ExprAddrOf => Some(&NODE),
-        _ => { let x = 5; None },
+        _ => {
+            let x = 5;
+            None
+        },
     }
 }
 

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #[warn(clippy::string_add)]
 #[allow(clippy::string_add_assign)]
 fn add_only() {
