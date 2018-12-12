@@ -80,6 +80,7 @@ mod prelude {
 
     pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
     pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
+    pub use rustc_codegen_ssa::traits::*;
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
@@ -200,6 +201,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .unwrap();
 
             codegen_mono_items(tcx, &mut jit_module, &mut log);
+            crate::allocator::codegen(tcx.sess, &mut jit_module);
+            jit_module.finalize_definitions();
 
             tcx.sess.abort_if_errors();
             println!("Compiled everything");
@@ -216,10 +219,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             jit_module.finish();
             ::std::process::exit(0);
         } else {
-            let isa = build_isa(tcx.sess);
             let mut faerie_module: Module<FaerieBackend> = Module::new(
                 FaerieBuilder::new(
-                    isa,
+                    build_isa(tcx.sess),
                     "some_file.o".to_string(),
                     FaerieTrapCollection::Disabled,
                     FaerieBuilder::default_libcall_names(),
@@ -232,6 +234,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             );
 
             codegen_mono_items(tcx, &mut faerie_module, &mut log);
+            crate::allocator::codegen(tcx.sess, &mut faerie_module);
+            faerie_module.finalize_definitions();
 
             tcx.sess.abort_if_errors();
 
@@ -339,36 +343,26 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         .flatten()
         .collect::<FxHashSet<(_, _)>>();
 
+    time("codegen mono items", move || {
+        for (&mono_item, &(_linkage, _vis)) in mono_items {
+            unimpl::try_unimpl(tcx, log, || {
+                base::trans_mono_item(tcx, module, &mut caches, &mut ccx, mono_item);
+            });
+        }
+
+        crate::main_shim::maybe_create_entry_wrapper(tcx, module);
+
+        ccx.finalize(tcx, module);
+    });
+}
+
+fn time<R>(name: &str, f: impl FnOnce() -> R) -> R {
+    println!("[{}] start", name);
     let before = ::std::time::Instant::now();
-    println!("[codegen mono items] start");
-
-    for (&mono_item, &(_linkage, _vis)) in mono_items {
-        unimpl::try_unimpl(tcx, log, || {
-            base::trans_mono_item(tcx, module, &mut caches, &mut ccx, mono_item);
-        });
-    }
-
-    crate::main_shim::maybe_create_entry_wrapper(tcx, module);
-
-    let any_dynamic_crate = tcx
-        .sess
-        .dependency_formats
-        .borrow()
-        .iter()
-        .any(|(_, list)| {
-            use rustc::middle::dependency_format::Linkage;
-            list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
-    if any_dynamic_crate {
-    } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
-        allocator::codegen(module, kind);
-    }
-
-    ccx.finalize(tcx, module);
-    module.finalize_definitions();
-
+    let res = f();
     let after = ::std::time::Instant::now();
-    println!("[codegen mono items] end time: {:?}", after - before);
+    println!("[{}] end time: {:?}", name, after - before);
+    res
 }
 
 fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

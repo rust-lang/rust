@@ -13,7 +13,22 @@ use crate::prelude::*;
 use rustc::middle::allocator::AllocatorKind;
 use rustc_allocator::{AllocatorTy, ALLOCATOR_METHODS};
 
-pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
+pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) {
+    let any_dynamic_crate = sess
+        .dependency_formats
+        .borrow()
+        .iter()
+        .any(|(_, list)| {
+            use rustc::middle::dependency_format::Linkage;
+            list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+        });
+    if any_dynamic_crate {
+    } else if let Some(kind) = *sess.allocator_kind.get() {
+        codegen_inner(module, kind);
+    }
+}
+
+pub fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in ALLOCATOR_METHODS {

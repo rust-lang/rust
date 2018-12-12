@@ -1,6 +1,5 @@
 use std::fmt;
 
-use rustc_codegen_ssa::traits::BackendTypes;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::Module;
