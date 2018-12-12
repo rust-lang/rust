@@ -139,4 +139,18 @@ impl<'a, T: 'a> OptionRefWrapper<'a, T> {
     }
 }
 
+pub struct Allow(Foo);
+
+impl Allow {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self { unimplemented!() }
+}
+
+pub struct AllowDerive;
+
+impl AllowDerive {
+    #[allow(clippy::new_without_default_derive)]
+    pub fn new() -> Self { unimplemented!() }
+}
+
 fn main() {}

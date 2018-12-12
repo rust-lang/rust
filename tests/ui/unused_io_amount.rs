@@ -12,7 +12,7 @@
 
 use std::io;
 
-// FIXME: compiletest doesn't understand errors from macro invocation span
+
 fn try_macro<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
     try!(s.write(b"test"));
     let mut buf = [0u8; 4];
