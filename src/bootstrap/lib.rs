@@ -159,7 +159,7 @@ use std::os::windows::fs::symlink_file;
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 use filetime::FileTime;
 
-use util::{exe, libdir, OutputFolder, CiEnv};
+use crate::util::{exe, libdir, OutputFolder, CiEnv};
 
 mod cc_detect;
 mod channel;
@@ -188,7 +188,7 @@ mod job;
 mod job {
     use libc;
 
-    pub unsafe fn setup(build: &mut ::Build) {
+    pub unsafe fn setup(build: &mut crate::Build) {
         if build.config.low_priority {
             libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
         }
@@ -197,14 +197,14 @@ mod job {
 
 #[cfg(any(target_os = "haiku", not(any(unix, windows))))]
 mod job {
-    pub unsafe fn setup(_build: &mut ::Build) {
+    pub unsafe fn setup(_build: &mut crate::Build) {
     }
 }
 
-pub use config::Config;
-use flags::Subcommand;
-use cache::{Interned, INTERNER};
-use toolstate::ToolState;
+pub use crate::config::Config;
+use crate::flags::Subcommand;
+use crate::cache::{Interned, INTERNER};
+use crate::toolstate::ToolState;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-nm", // used to inspect binaries; it shows symbol names, their sizes and visibility

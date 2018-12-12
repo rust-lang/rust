@@ -22,15 +22,15 @@ use std::fs;
 use std::io;
 use std::path::{PathBuf, Path};
 
-use Mode;
+use crate::Mode;
 use build_helper::up_to_date;
 
-use util::symlink_dir;
-use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
-use tool::{self, prepare_tool_cargo, Tool, SourceType};
-use compile;
-use cache::{INTERNER, Interned};
-use config::Config;
+use crate::util::symlink_dir;
+use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
+use crate::tool::{self, prepare_tool_cargo, Tool, SourceType};
+use crate::compile;
+use crate::cache::{INTERNER, Interned};
+use crate::config::Config;
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr;)+) => {

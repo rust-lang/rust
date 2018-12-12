@@ -21,20 +21,20 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use cache::{Cache, Interned, INTERNER};
-use check;
-use compile;
-use dist;
-use doc;
-use flags::Subcommand;
-use install;
-use native;
-use test;
-use tool;
-use util::{add_lib_path, exe, libdir};
-use {Build, DocTests, Mode, GitRepo};
+use crate::cache::{Cache, Interned, INTERNER};
+use crate::check;
+use crate::compile;
+use crate::dist;
+use crate::doc;
+use crate::flags::Subcommand;
+use crate::install;
+use crate::native;
+use crate::test;
+use crate::tool;
+use crate::util::{add_lib_path, exe, libdir};
+use crate::{Build, DocTests, Mode, GitRepo};
 
-pub use Compiler;
+pub use crate::Compiler;
 
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
@@ -1246,7 +1246,7 @@ impl<'a> Builder<'a> {
 #[cfg(test)]
 mod __test {
     use super::*;
-    use config::Config;
+    use crate::config::Config;
     use std::thread;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
