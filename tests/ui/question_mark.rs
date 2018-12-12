@@ -42,10 +42,21 @@ pub struct SomeStruct {
 }
 
 impl SomeStruct {
+    #[rustfmt::skip]
     pub fn func(&self) -> Option<u32> {
         if (self.opt).is_none() {
             return None;
         }
+
+        if self.opt.is_none() {
+            return None
+        }
+
+        let _ = if self.opt.is_none() {
+            return None;
+        } else {
+            self.opt
+        };
 
         self.opt
     }
