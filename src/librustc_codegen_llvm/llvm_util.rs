@@ -124,6 +124,7 @@ const AARCH64_WHITELIST: &[(&str, Option<&str>)] = &[
 ];
 
 const X86_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("adx", Some("adx_target_feature")),
     ("aes", None),
     ("avx", None),
     ("avx2", None),
