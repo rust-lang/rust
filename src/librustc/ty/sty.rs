@@ -2021,7 +2021,7 @@ pub enum LazyConst<'tcx> {
     Evaluated(&'tcx Const<'tcx>),
 }
 
-static_assert!(MEM_SIZE_OF_LAZY_CONST: ::std::mem::size_of::<LazyConst<'_>>() == 24);
+static_assert!(MEM_SIZE_OF_LAZY_CONST: ::std::mem::size_of::<LazyConst<'_>>() <= 24);
 
 impl<'tcx> LazyConst<'tcx> {
     pub fn unwrap_evaluated(self) -> &'tcx Const<'tcx> {
