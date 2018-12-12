@@ -174,16 +174,12 @@ macro_rules! define_dep_nodes {
             }
 
             #[inline(always)]
-            pub fn is_input_inlined(&self) -> bool {
+            pub fn is_input(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => { contains_input_attr!($($attr),*) }
                     )*
                 }
-            }
-
-            pub fn is_input(&self) -> bool {
-                self.is_input_inlined()
             }
 
             #[inline(always)]
@@ -197,7 +193,7 @@ macro_rules! define_dep_nodes {
 
             #[allow(unreachable_code)]
             #[inline(always)]
-            pub fn has_params_inlined(&self) -> bool {
+            pub fn has_params(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => {
@@ -217,10 +213,6 @@ macro_rules! define_dep_nodes {
                         }
                     )*
                 }
-            }
-
-            pub fn has_params(&self) -> bool {
-                self.has_params_inlined()
             }
         }
 
@@ -326,7 +318,7 @@ macro_rules! define_dep_nodes {
             /// does not require any parameters.
             #[inline(always)]
             pub fn new_no_params(kind: DepKind) -> DepNode {
-                debug_assert!(!kind.has_params_inlined());
+                debug_assert!(!kind.has_params());
                 DepNode {
                     kind,
                     hash: Fingerprint::ZERO,

@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return Ok(result);
         }
 
-        if !dep_node.kind.is_input_inlined() {
+        if !dep_node.kind.is_input() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
                 profq_msg!(self, ProfileQueriesMsg::CacheHit);
                 self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
@@ -600,7 +600,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // Ensuring an "input" or anonymous query makes no sense
         assert!(!dep_node.kind.is_anon());
-        assert!(!dep_node.kind.is_input_inlined());
+        assert!(!dep_node.kind.is_input());
         if self.try_mark_green_and_read(&dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.
