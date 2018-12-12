@@ -12,10 +12,8 @@ os:
 dist: xenial
 
 before_script:
-# install extra stuff for cross-compilation
+# Linux: install extra stuff for cross-compilation
 - if [[ "$TRAVIS_OS_NAME" == linux ]]; then sudo apt update && sudo apt install gcc-multilib; fi
-# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307, https://github.com/travis-ci/travis-ci/issues/10165)
-- if [[ "$TRAVIS_OS_NAME" == osx ]]; then rvm get stable; fi
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
   if [[ "$TRAVIS_EVENT_TYPE" == cron ]]; then
@@ -23,40 +21,13 @@ before_script:
   else
     RUST_TOOLCHAIN=$(cat rust-version)
   fi
-- |
-  if [ "$TRAVIS_OS_NAME" == osx ]; then
-    export MIRI_SYSROOT_BASE=~/Library/Caches/miri.miri.miri/
-  else
-    export MIRI_SYSROOT_BASE=~/.cache/miri/
-  fi
-- |
-  if [[ "$TRAVIS_OS_NAME" == osx ]]; then
-    FOREIGN_TARGET=i686-apple-darwin
-  else
-    FOREIGN_TARGET=i686-unknown-linux-gnu
-  fi
 # install Rust
 - curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN"
 - export PATH=$HOME/.cargo/bin:$PATH
 - rustc --version
 
 script:
-- set -e
-- |
-  # Build and install miri
-  cargo build --release --all-features --all-targets &&
-  cargo install --all-features --force --path .
-- |
-  # Get ourselves a MIR-full libstd for the host and a foreign architecture
-  cargo miri setup &&
-  cargo miri setup --target "$FOREIGN_TARGET"
-- |
-  # Test miri with full MIR, on the host and other architectures
-  MIRI_SYSROOT=$MIRI_SYSROOT_BASE/HOST cargo test --release --all-features &&
-  MIRI_SYSROOT=$MIRI_SYSROOT_BASE MIRI_TARGET=$FOREIGN_TARGET cargo test --release --all-features
-- |
-  # Test cargo integration
-  (cd test-cargo-miri && MIRI_SYSROOT=$MIRI_SYSROOT_BASE/HOST ./run-test.py)
+- ./travis.sh
 
 notifications:
   email:
