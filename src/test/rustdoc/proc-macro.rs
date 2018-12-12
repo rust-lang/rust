@@ -61,3 +61,16 @@ pub fn some_proc_attr(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn some_derive(_item: TokenStream) -> TokenStream {
     TokenStream::new()
 }
+
+// @has some_macros/foo/index.html
+pub mod foo {
+    // @has - '//code' 'pub use some_proc_macro;'
+    // @has - '//a/@href' '../../some_macros/macro.some_proc_macro.html'
+    pub use some_proc_macro;
+    // @has - '//code' 'pub use some_proc_attr;'
+    // @has - '//a/@href' '../../some_macros/attr.some_proc_attr.html'
+    pub use some_proc_attr;
+    // @has - '//code' 'pub use some_derive;'
+    // @has - '//a/@href' '../../some_macros/derive.SomeDerive.html'
+    pub use some_derive;
+}
