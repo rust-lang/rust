@@ -154,9 +154,9 @@ MIRI_LOG=rustc_mir::interpret=debug,miri::stacked_borrows cargo run tests/run-pa
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally created.
 
-### Miri `-Z` flags
+### Miri `-Z` flags and environment variables
 
-Several `-Z` flags are relevant for miri:
+Several `-Z` flags are relevant for Miri:
 
 * `-Zmir-opt-level` controls how many MIR optimizations are performed.  miri
   overrides the default to be `0`; be advised that using any higher level can
@@ -167,6 +167,14 @@ Several `-Z` flags are relevant for miri:
 * `-Zmiri-disable-validation` is a custom `-Z` flag added by miri.  It disables
   enforcing the validity invariant, which is enforced by default.  This is
   mostly useful for debugging; it means miri will miss bugs in your program.
+
+Moreover, Miri recognizes some environment variables:
+
+* `MIRI_SYSROOT` (recognized by `miri`, `cargo miri` and the test suite)
+  indicates the sysroot to use.
+* `MIRI_TARGET` (recognized by the test suite) indicates which target
+  architecture to test against.  `miri` and `cargo miri` accept the `--target`
+  flag for the same purpose.
 
 ## Contributing and getting help
 
