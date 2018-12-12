@@ -623,6 +623,7 @@ impl Builder {
         let mut cmd = Command::new("gpg");
         cmd.arg("--no-tty")
             .arg("--yes")
+            .arg("--batch")
             .arg("--passphrase-fd").arg("0")
             .arg("--personal-digest-preferences").arg("SHA512")
             .arg("--armor")
