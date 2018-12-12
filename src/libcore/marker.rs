@@ -640,15 +640,15 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 #[unstable(feature = "pin", issue = "49150")]
 pub auto trait Unpin {}
 
-/// A type which does not implement `Unpin`.
+/// A marker type which does not implement `Unpin`.
 ///
-/// If a type contains a `Pinned`, it will not implement `Unpin` by default.
+/// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
 #[unstable(feature = "pin", issue = "49150")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Pinned;
+pub struct PhantomPinned;
 
 #[unstable(feature = "pin", issue = "49150")]
-impl !Unpin for Pinned {}
+impl !Unpin for PhantomPinned {}
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
