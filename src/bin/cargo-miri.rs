@@ -366,7 +366,7 @@ fn main() {
             Err(ref e) => panic!("error during rustc call: {:?}", e),
         }
     } else {
-        eprintln!("Unexpected call: Must be called with either `miri` or `rustc` as first argument.")
+        show_error!("Must be called with either `miri` or `rustc` as first argument.")
     }
 }
 
