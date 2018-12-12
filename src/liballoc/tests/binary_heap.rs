@@ -14,7 +14,7 @@ use std::collections::binary_heap::{Drain, PeekMut};
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, seq::SliceRandom};
 
 #[test]
 fn test_iterator() {
@@ -332,7 +332,7 @@ fn panic_safe() {
             let panic_item = PanicOrd(i, true);
 
             // heapify the sane items
-            rng.shuffle(&mut panic_ords);
+            panic_ords.shuffle(&mut rng);
             let mut heap = BinaryHeap::from(panic_ords);
             let inner_data;
 

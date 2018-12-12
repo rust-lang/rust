@@ -18,7 +18,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
 use std::thread;
 
-use rand::{Rng, RngCore, thread_rng};
+use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
 use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
@@ -459,7 +459,7 @@ fn test_sort() {
     for i in 0..v.len() {
         v[i] = i as i32;
     }
-    v.sort_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
+    v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
     v.sort();
     for i in 0..v.len() {
         assert_eq!(v[i], i as i32);

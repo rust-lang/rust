@@ -11,7 +11,7 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

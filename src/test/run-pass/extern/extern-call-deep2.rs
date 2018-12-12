@@ -12,7 +12,7 @@
 #![allow(unused_must_use)]
 // ignore-emscripten no threads support
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 use std::thread;

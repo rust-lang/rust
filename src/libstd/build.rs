@@ -82,7 +82,12 @@ fn main() {
 }
 
 fn build_libbacktrace(target: &str) -> Result<(), ()> {
-    let native = native_lib_boilerplate("libbacktrace", "libbacktrace", "backtrace", "")?;
+    let native = native_lib_boilerplate(
+        "../libbacktrace".as_ref(),
+        "libbacktrace",
+        "backtrace",
+        "",
+    )?;
 
     let mut build = cc::Build::new();
     build

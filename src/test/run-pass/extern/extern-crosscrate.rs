@@ -12,7 +12,7 @@
 // aux-build:extern-crosscrate-source.rs
 // ignore-wasm32-bare no libc to test ffi with
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate externcallback;
 extern crate libc;

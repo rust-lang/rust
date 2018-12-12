@@ -7,7 +7,7 @@
 // run-rustfix
 // ignore-wasm32 no external library to link to.
 // compile-flags: -g -Z continue-parse-after-error
-#![feature(libc)]
+#![feature(rustc_private)]
 extern crate libc;
 
 #[link(name = "rust_test_helpers", kind = "static")]

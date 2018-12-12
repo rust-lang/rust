@@ -1024,11 +1024,11 @@ fn test_rotate_right() {
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{FromEntropy, Rng, XorShiftRng};
+    use rand::{FromEntropy, Rng, rngs::SmallRng, seq::SliceRandom};
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = XorShiftRng::from_entropy();
+    let mut rng = SmallRng::from_entropy();
 
     for len in (2..25).chain(500..510) {
         let v = &mut v[0..len];
@@ -1073,7 +1073,7 @@ fn sort_unstable() {
     for i in 0..v.len() {
         v[i] = i as i32;
     }
-    v.sort_unstable_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
+    v.sort_unstable_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
     v.sort_unstable();
     for i in 0..v.len() {
         assert_eq!(v[i], i as i32);

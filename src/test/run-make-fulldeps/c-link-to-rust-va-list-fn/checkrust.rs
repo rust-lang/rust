@@ -10,7 +10,7 @@
 
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

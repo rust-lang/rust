@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name="anonexternmod"]
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

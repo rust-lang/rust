@@ -152,11 +152,10 @@ pub fn std_cargo(builder: &Builder,
 
     if builder.no_std(target) == Some(true) {
         // for no-std targets we only compile a few no_std crates
-        cargo.arg("--features").arg("c mem")
+        cargo
             .args(&["-p", "alloc"])
-            .args(&["-p", "compiler_builtins"])
             .arg("--manifest-path")
-            .arg(builder.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
+            .arg(builder.src.join("src/liballoc/Cargo.toml"));
     } else {
         let features = builder.std_features();
 

@@ -11,7 +11,7 @@
 // no-prefer-dynamic
 // pretty-expanded FIXME #23616
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

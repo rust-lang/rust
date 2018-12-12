@@ -13,7 +13,7 @@
 
 // revisions: rpass1
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

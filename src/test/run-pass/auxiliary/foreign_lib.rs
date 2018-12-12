@@ -10,7 +10,7 @@
 
 #![crate_name="foreign_lib"]
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 pub mod rustrt {
     extern crate libc;

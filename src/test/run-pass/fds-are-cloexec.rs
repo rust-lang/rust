@@ -14,7 +14,7 @@
 // ignore-emscripten no processes
 // ignore-haiku
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

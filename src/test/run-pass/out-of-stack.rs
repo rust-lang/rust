@@ -16,7 +16,7 @@
 // ignore-emscripten no processes
 
 #![feature(asm)]
-#![feature(libc)]
+#![feature(rustc_private)]
 
 #[cfg(unix)]
 extern crate libc;

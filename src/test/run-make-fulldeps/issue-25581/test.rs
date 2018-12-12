@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc)]
-
-extern crate libc;
-
 #[link(name = "test", kind = "static")]
 extern {
-    fn slice_len(s: &[u8]) -> libc::size_t;
-    fn slice_elem(s: &[u8], idx: libc::size_t) -> u8;
+    fn slice_len(s: &[u8]) -> usize;
+    fn slice_elem(s: &[u8], idx: usize) -> u8;
 }
 
 fn main() {

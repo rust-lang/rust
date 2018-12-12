@@ -857,12 +857,9 @@ impl Step for Src {
         // (essentially libstd and all of its path dependencies)
         let std_src_dirs = [
             "src/build_helper",
-            "src/dlmalloc",
             "src/liballoc",
             "src/libbacktrace",
-            "src/libcompiler_builtins",
             "src/libcore",
-            "src/liblibc",
             "src/libpanic_abort",
             "src/libpanic_unwind",
             "src/librustc_asan",
@@ -871,21 +868,15 @@ impl Step for Src {
             "src/librustc_tsan",
             "src/libstd",
             "src/libunwind",
-            "src/rustc/compiler_builtins_shim",
-            "src/rustc/libc_shim",
-            "src/rustc/dlmalloc_shim",
-            "src/rustc/fortanix-sgx-abi_shim",
             "src/libtest",
             "src/libterm",
             "src/libprofiler_builtins",
             "src/stdsimd",
             "src/libproc_macro",
-        ];
-        let std_src_dirs_exclude = [
-            "src/libcompiler_builtins/compiler-rt/test",
+            "src/tools/rustc-std-workspace-core",
         ];
 
-        copy_src_dirs(builder, &std_src_dirs[..], &std_src_dirs_exclude[..], &dst_src);
+        copy_src_dirs(builder, &std_src_dirs[..], &[], &dst_src);
         for file in src_files.iter() {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
@@ -909,7 +900,7 @@ impl Step for Src {
     }
 }
 
-const CARGO_VENDOR_VERSION: &str = "0.1.19";
+const CARGO_VENDOR_VERSION: &str = "0.1.22";
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
