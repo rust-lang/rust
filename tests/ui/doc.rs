@@ -181,3 +181,7 @@ fn issue_2395() {}
 /// An iterator over mycrate::Collection's values.
 /// It should not lint a `'static` lifetime in ticks.
 fn issue_2210() {}
+
+/// This should not cause the lint to trigger:
+/// #REQ-data-family.lint_partof_exists
+fn issue_2343() {}
