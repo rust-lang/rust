@@ -24,41 +24,35 @@ pub fn arb_offset(text: &str) -> BoxedStrategy<TextUnit> {
 }
 
 pub fn arb_edits(text: &str) -> BoxedStrategy<Vec<AtomTextEdit>> {
-    let offsets = text_offsets(text);
-    let offsets_len = offsets.len();
-
-    if offsets_len == 0 {
-        return proptest::bool::ANY
-            .prop_flat_map(|b| {
-                // only valid edits
-                if b {
-                    arb_text()
-                        .prop_map(|text| vec![AtomTextEdit::insert(TextUnit::from(0), text)])
-                        .boxed()
-                } else {
-                    Just(vec![]).boxed()
-                }
-            })
+    if text.is_empty() {
+        // only valid edits
+        return Just(vec![])
+            .boxed()
+            .prop_union(
+                arb_text()
+                    .prop_map(|text| vec![AtomTextEdit::insert(TextUnit::from(0), text)])
+                    .boxed(),
+            )
             .boxed();
     }
 
-    proptest::sample::subsequence(offsets, 0..offsets_len)
-        .prop_flat_map(|xs| {
-            let strategies: Vec<_> = xs
+    let offsets = text_offsets(text);
+    let max_cuts = offsets.len().min(7);
+
+    proptest::sample::subsequence(offsets, 0..max_cuts)
+        .prop_flat_map(|cuts| {
+            let strategies: Vec<_> = cuts
                 .chunks(2)
                 .map(|chunk| match chunk {
                     &[from, to] => {
                         let range = TextRange::from_to(from, to);
-                        (proptest::bool::ANY)
-                            .prop_flat_map(move |b| {
-                                if b {
-                                    Just(AtomTextEdit::delete(range)).boxed()
-                                } else {
-                                    arb_text()
-                                        .prop_map(move |text| AtomTextEdit::replace(range, text))
-                                        .boxed()
-                                }
-                            })
+                        Just(AtomTextEdit::delete(range))
+                            .boxed()
+                            .prop_union(
+                                arb_text()
+                                    .prop_map(move |text| AtomTextEdit::replace(range, text))
+                                    .boxed(),
+                            )
                             .boxed()
                     }
                     &[x] => arb_text()
@@ -92,7 +86,7 @@ fn intersect(r1: TextRange, r2: TextRange) -> Option<TextRange> {
 }
 
 proptest! {
-#[test]
+    #[test]
     fn atom_text_edits_are_valid((text, edits) in arb_text_with_edits()) {
         proptest_atom_text_edits_are_valid(text, edits)
     }
