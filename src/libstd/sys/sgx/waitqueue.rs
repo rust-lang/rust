@@ -50,7 +50,6 @@ pub struct WaitVariable<T> {
 }
 
 impl<T> WaitVariable<T> {
-    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new(var: T) -> Self {
         WaitVariable {
             queue: WaitQueue::new(),
@@ -137,7 +136,6 @@ impl<'a, T> Drop for WaitGuard<'a, T> {
 }
 
 impl WaitQueue {
-    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Self {
         WaitQueue {
             inner: UnsafeList::new()
@@ -255,7 +253,6 @@ mod unsafe_list {
     }
 
     impl<T> UnsafeList<T> {
-        #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
         pub const fn new() -> Self {
             unsafe {
                 UnsafeList {

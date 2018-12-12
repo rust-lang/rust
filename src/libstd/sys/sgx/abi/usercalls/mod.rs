@@ -33,14 +33,6 @@ pub fn read(fd: Fd, buf: &mut [u8]) -> IoResult<usize> {
     }
 }
 
-pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
-    unsafe {
-        let mut userbuf = alloc::User::<ByteBuffer>::uninitialized();
-        raw::read_alloc(fd, userbuf.as_raw_mut_ptr()).from_sgx_result()?;
-        Ok(copy_user_buffer(&userbuf))
-    }
-}
-
 pub fn write(fd: Fd, buf: &[u8]) -> IoResult<usize> {
     unsafe {
         let userbuf = alloc::User::new_from_enclave(buf);
