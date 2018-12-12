@@ -59,11 +59,6 @@ impl PrintCx<'a, 'gcx, 'tcx> {
 
 pub trait Print<'tcx> {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, 'tcx>) -> fmt::Result;
-    fn print_to_string(&self, cx: &mut PrintCx<'_, '_, 'tcx>) -> String {
-        let mut result = String::new();
-        let _ = self.print(&mut result, cx);
-        result
-    }
     fn print_display<F: fmt::Write>(
         &self,
         f: &mut F,
@@ -75,21 +70,11 @@ pub trait Print<'tcx> {
         cx.is_debug = old_debug;
         result
     }
-    fn print_display_to_string(&self, cx: &mut PrintCx<'_, '_, 'tcx>) -> String {
-        let mut result = String::new();
-        let _ = self.print_display(&mut result, cx);
-        result
-    }
     fn print_debug<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintCx<'_, '_, 'tcx>) -> fmt::Result {
         let old_debug = cx.is_debug;
         cx.is_debug = true;
         let result = self.print(f, cx);
         cx.is_debug = old_debug;
-        result
-    }
-    fn print_debug_to_string(&self, cx: &mut PrintCx<'_, '_, 'tcx>) -> String {
-        let mut result = String::new();
-        let _ = self.print_debug(&mut result, cx);
         result
     }
 }
