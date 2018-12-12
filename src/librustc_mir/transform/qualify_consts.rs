@@ -557,9 +557,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     match proj.elem {
                         ProjectionElem::Deref => {
                             if context.is_mutating_use() {
+                                // `not_const` errors out in const contexts
                                 this.not_const()
                             } else {
-                                this.qualif = Qualif::NOT_CONST;
+                                // just make sure this doesn't get promoted
+                                this.qualif.add(Qualif::NOT_CONST);
                             }
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             match this.mode {
