@@ -91,7 +91,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
             }
 
             DefPathData::Impl => {
-                self.default_print_impl_path(def_id)
+                self.print_impl_path(def_id)
             }
 
             // Unclear if there is any value in distinguishing these.
@@ -131,18 +131,6 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
     fn default_print_impl_path(&mut self, impl_def_id: DefId) -> P::Path {
         debug!("default_print_impl_path: impl_def_id={:?}", impl_def_id);
         let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
-
-        // Always use types for non-local impls, where types are always
-        // available, and filename/line-number is mostly uninteresting.
-        let use_types = !impl_def_id.is_local() || {
-            // Otherwise, use filename/line-number if forced.
-            let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
-            !force_no_types
-        };
-
-        if !use_types {
-            return self.default_print_impl_path_fallback(impl_def_id);
-        }
 
         // Decide whether to print the parent path for the impl.
         // Logically, since impls are global, it's never needed, but
@@ -209,19 +197,6 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
                 self.path_impl(&format!("<{}>", self_ty))
             }
         }
-    }
-
-    fn default_print_impl_path_fallback(&mut self, impl_def_id: DefId) -> P::Path {
-        // If no type info is available, fall back to
-        // pretty printing some span information. This should
-        // only occur very early in the compiler pipeline.
-        // FIXME(eddyb) this should just be using `tcx.def_span(impl_def_id)`
-        let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
-        let path = self.print_item_path(parent_def_id);
-        let hir_id = self.tcx.hir().as_local_hir_id(impl_def_id).unwrap();
-        let item = self.tcx.hir().expect_item_by_hir_id(hir_id);
-        let span_str = self.tcx.sess.source_map().span_to_string(item.span);
-        self.path_append(path, &format!("<impl at {}>", span_str))
     }
 }
 
@@ -290,6 +265,9 @@ pub trait ItemPathPrinter: Sized {
 
     fn print_item_path(self: &mut PrintCx<'_, '_, '_, Self>, def_id: DefId) -> Self::Path {
         self.default_print_item_path(def_id)
+    }
+    fn print_impl_path(self: &mut PrintCx<'_, '_, '_, Self>, impl_def_id: DefId) -> Self::Path {
+        self.default_print_impl_path(impl_def_id)
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path;
@@ -469,6 +447,28 @@ impl ItemPathPrinter for LocalPathPrinter {
     fn print_item_path(self: &mut PrintCx<'_, '_, '_, Self>, def_id: DefId) -> Self::Path {
         self.try_print_visible_item_path(def_id)
             .unwrap_or_else(|| self.default_print_item_path(def_id))
+    }
+    fn print_impl_path(self: &mut PrintCx<'_, '_, '_, Self>, impl_def_id: DefId) -> Self::Path {
+        // Always use types for non-local impls, where types are always
+        // available, and filename/line-number is mostly uninteresting.
+        let use_types = !impl_def_id.is_local() || {
+            // Otherwise, use filename/line-number if forced.
+            let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
+            !force_no_types
+        };
+
+        if !use_types {
+            // If no type info is available, fall back to
+            // pretty printing some span information. This should
+            // only occur very early in the compiler pipeline.
+            // FIXME(eddyb) this should just be using `tcx.def_span(impl_def_id)`
+            let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
+            let path = self.print_item_path(parent_def_id);
+            let span = self.tcx.def_span(impl_def_id);
+            return self.path_append(path, &format!("<impl at {:?}>", span));
+        }
+
+        self.default_print_impl_path(impl_def_id)
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
