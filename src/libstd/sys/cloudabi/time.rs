@@ -21,13 +21,8 @@ pub struct Instant {
 
 fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
     dur.as_secs()
-        .checked_mul(NSEC_PER_SEC)
-        .and_then(|nanos| nanos.checked_add(dur.subsec_nanos() as abi::timestamp))
-}
-
-pub fn dur2intervals(dur: &Duration) -> abi::timestamp {
-    checked_dur2intervals(dur)
-        .expect("overflow converting duration to nanoseconds")
+        .checked_mul(NSEC_PER_SEC)?
+        .checked_add(dur.subsec_nanos() as abi::timestamp)
 }
 
 impl Instant {
@@ -47,20 +42,16 @@ impl Instant {
         Duration::new(diff / NSEC_PER_SEC, (diff % NSEC_PER_SEC) as u32)
     }
 
-    pub fn add_duration(&self, other: &Duration) -> Instant {
-        Instant {
-            t: self.t
-                .checked_add(dur2intervals(other))
-                .expect("overflow when adding duration to instant"),
-        }
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+        Some(Instant {
+            t: self.t.checked_add(checked_dur2intervals(other)?)?,
+        })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> Instant {
-        Instant {
-            t: self.t
-                .checked_sub(dur2intervals(other))
-                .expect("overflow when subtracting duration from instant"),
-        }
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+        Some(Instant {
+            t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+        })
     }
 }
 
@@ -95,23 +86,16 @@ impl SystemTime {
         }
     }
 
-    pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        self.checked_add_duration(other)
-            .expect("overflow when adding duration to instant")
-    }
-
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        checked_dur2intervals(other)
-            .and_then(|d| self.t.checked_add(d))
-            .map(|t| SystemTime {t})
+        Some(SystemTime {
+            t: self.t.checked_add(checked_dur2intervals(other)?)?,
+        })
     }
 
-    pub fn sub_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime {
-            t: self.t
-                .checked_sub(dur2intervals(other))
-                .expect("overflow when subtracting duration from instant"),
-        }
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+        Some(SystemTime {
+            t: self.t.checked_sub(checked_dur2intervals(other)?)?,
+        })
     }
 }
 
