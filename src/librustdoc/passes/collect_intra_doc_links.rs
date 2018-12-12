@@ -459,6 +459,19 @@ pub fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
     start.to(end)
 }
 
+/// Reports a resolution failure diagnostic.
+///
+/// Ideally we can report the diagnostic with the actual span in the source where the link failure
+/// occurred. However, there's a mismatch between the span in the source code and the span in the
+/// markdown, so we have to do a bit of work to figure out the correspondence.
+///
+/// It's not too hard to find the span for sugared doc comments (`///` and `/**`), because the
+/// source will match the markdown exactly, excluding the comment markers. However, it's much more
+/// difficult to calculate the spans for unsugared docs, because we have to deal with escaping and
+/// other source features. So, we attempt to find the exact source span of the resolution failure
+/// in sugared docs, but use the span of the documentation attributes themselves for unsugared
+/// docs. Because this span might be overly large, we display the markdown line containing the
+/// failure as a note.
 fn resolution_failure(
     cx: &DocContext,
     attrs: &Attributes,
@@ -469,47 +482,75 @@ fn resolution_failure(
     let sp = span_of_attrs(attrs);
     let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
-    let code_dox = sp.to_src(cx);
-
-    let doc_comment_padding = 3;
     let mut diag = if let Some(link_range) = link_range {
-        // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-        //                       ^    ~~~~~~
-        //                       |    link_range
-        //                       last_new_line_offset
+        let src = cx.sess().source_map().span_to_snippet(sp);
+        let is_all_sugared_doc = attrs.doc_strings.iter().all(|frag| match frag {
+            DocFragment::SugaredDoc(..) => true,
+            _ => false,
+        });
 
-        let mut diag;
-        if dox.lines().count() == code_dox.lines().count() {
-            let line_offset = dox[..link_range.start].lines().count();
-            // The span starts in the `///`, so we don't have to account for the leading whitespace.
-            let code_dox_len = if line_offset <= 1 {
-                doc_comment_padding
-            } else {
-                // The first `///`.
-                doc_comment_padding +
-                    // Each subsequent leading whitespace and `///`.
-                    code_dox.lines().skip(1).take(line_offset - 1).fold(0, |sum, line| {
-                        sum + doc_comment_padding + line.len() - line.trim_start().len()
-                    })
-            };
+        if let (Ok(src), true) = (src, is_all_sugared_doc) {
+            // The number of markdown lines up to and including the resolution failure.
+            let num_lines = dox[..link_range.start].lines().count();
 
-            // Extract the specific span.
+            // We use `split_terminator('\n')` instead of `lines()` when counting bytes to ensure
+            // that DOS-style line endings do not cause the spans to be calculated incorrectly.
+            let mut src_lines = src.split_terminator('\n');
+            let mut md_lines = dox.split_terminator('\n').take(num_lines).peekable();
+
+            // The number of bytes from the start of the source span to the resolution failure that
+            // are *not* part of the markdown, like comment markers.
+            let mut extra_src_bytes = 0;
+
+            while let Some(md_line) = md_lines.next() {
+                loop {
+                    let source_line = src_lines
+                        .next()
+                        .expect("could not find markdown line in source");
+
+                    match source_line.find(md_line) {
+                        Some(offset) => {
+                            extra_src_bytes += if md_lines.peek().is_some() {
+                                source_line.len() - md_line.len()
+                            } else {
+                                offset
+                            };
+                            break;
+                        }
+                        None => {
+                            // Since this is a source line that doesn't include a markdown line,
+                            // we have to count the newline that we split from earlier.
+                            extra_src_bytes += source_line.len() + 1;
+                        }
+                    }
+                }
+            }
+
             let sp = sp.from_inner_byte_pos(
-                link_range.start + code_dox_len,
-                link_range.end + code_dox_len,
+                link_range.start + extra_src_bytes,
+                link_range.end + extra_src_bytes,
             );
 
-            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                                NodeId::from_u32(0),
-                                                sp,
-                                                &msg);
+            let mut diag = cx.tcx.struct_span_lint_node(
+                lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                NodeId::from_u32(0),
+                sp,
+                &msg,
+            );
             diag.span_label(sp, "cannot be resolved, ignoring");
+            diag
         } else {
-            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                                NodeId::from_u32(0),
-                                                sp,
-                                                &msg);
+            let mut diag = cx.tcx.struct_span_lint_node(
+                lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                NodeId::from_u32(0),
+                sp,
+                &msg,
+            );
 
+            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+            //                       ^     ~~~~
+            //                       |     link_range
+            //                       last_new_line_offset
             let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
@@ -522,8 +563,8 @@ fn resolution_failure(
                 before=link_range.start - last_new_line_offset,
                 found=link_range.len(),
             ));
+            diag
         }
-        diag
     } else {
         cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
                                      NodeId::from_u32(0),
