@@ -305,8 +305,8 @@ fn main() {
                 _ => {}
             }
         }
-    } else {
-        // This arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC` env var set to itself:
+    } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+        // This arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself:
         // Dependencies get dispatched to rustc, the final test/binary to miri.
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
@@ -332,11 +332,11 @@ fn main() {
 
         // this conditional check for the --sysroot flag is there so users can call `cargo-miri` directly
         // without having to pass --sysroot or anything
+        let rustc_args = std::env::args().skip(2);
         let mut args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
-            std::env::args().skip(1).collect()
+            rustc_args.collect()
         } else {
-            std::env::args()
-                .skip(1)
+            rustc_args
                 .chain(Some("--sysroot".to_owned()))
                 .chain(Some(sys_root))
                 .collect()
@@ -365,6 +365,8 @@ fn main() {
             Err(ref e) if miri_enabled => panic!("error during miri run: {:?}", e),
             Err(ref e) => panic!("error during rustc call: {:?}", e),
         }
+    } else {
+        eprintln!("Unexpected call: Must be called with either `miri` or `rustc` as first argument.")
     }
 }
 
@@ -389,7 +391,7 @@ where
     let path = std::env::current_exe().expect("current executable path invalid");
     let exit_status = Command::new("cargo")
         .args(&args)
-        .env("RUSTC", path)
+        .env("RUSTC_WRAPPER", path)
         .spawn()
         .expect("could not run cargo")
         .wait()
