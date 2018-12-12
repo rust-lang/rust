@@ -41,7 +41,7 @@ for file in `find tests -not -path "tests/ui/methods.rs" -not -path "tests/ui/fo
 rustfmt ${file} --check  || echo "${file} needs reformatting!" ; needs_formatting=true
 done
 
-if [ "${needs_reformatting}" = true] ; then
+if [ "${needs_reformatting}" = true ] ; then
     echo "Tests need reformatting!"
     exit 2
 fi
