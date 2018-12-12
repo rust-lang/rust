@@ -16,7 +16,10 @@ use stdsimd_test::assert_instr;
 #[cfg(test)]
 use wasm_bindgen_test::wasm_bindgen_test;
 
-pub mod atomic;
+#[cfg(any(target_feature = "atomics", dox))]
+mod atomic;
+#[cfg(any(target_feature = "atomics", dox))]
+pub use self::atomic::*;
 
 mod memory;
 pub use self::memory::*;

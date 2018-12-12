@@ -53,7 +53,7 @@ extern "C" {
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
 #[inline]
 #[cfg_attr(test, assert_instr("i32.atomic.wait"))]
-pub unsafe fn wait_i32(
+pub unsafe fn i32_atomic_wait(
     ptr: *mut i32, expression: i32, timeout_ns: i64,
 ) -> i32 {
     llvm_atomic_wait_i32(ptr, expression, timeout_ns)
@@ -90,25 +90,24 @@ pub unsafe fn wait_i32(
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
 #[inline]
 #[cfg_attr(test, assert_instr("i64.atomic.wait"))]
-pub unsafe fn wait_i64(
+pub unsafe fn i64_atomic_wait(
     ptr: *mut i64, expression: i64, timeout_ns: i64,
 ) -> i32 {
     llvm_atomic_wait_i64(ptr, expression, timeout_ns)
 }
 
-/// Corresponding intrinsic to wasm's [`atomic.wake` instruction][instr]
+/// Corresponding intrinsic to wasm's [`atomic.notify` instruction][instr]
 ///
-/// This function will wake up a number of threads blocked on the address
-/// indicated by `ptr`. Threads previously blocked with the `wait_i32` and
-/// `wait_i64` functions above will be woken up.
+/// This function will notify a number of threads blocked on the address
+/// indicated by `ptr`. Threads previously blocked with the `i32_atomic_wait`
+/// and `i64_atomic_wait` functions above will be woken up.
 ///
 /// The `waiters` argument indicates how many waiters should be woken up (a
-/// maximum). If the value is negative all waiters are woken up, and if the
-/// value is zero no waiters are woken up.
+/// maximum). If the value is zero no waiters are woken up.
 ///
 /// # Return value
 ///
-/// Returns the number of waiters which were actually woken up.
+/// Returns the number of waiters which were actually notified.
 ///
 /// # Availability
 ///
@@ -120,6 +119,6 @@ pub unsafe fn wait_i64(
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wake
 #[inline]
 #[cfg_attr(test, assert_instr("atomic.wake"))]
-pub unsafe fn wake(ptr: *mut i32, waiters: i32) -> i32 {
-    llvm_atomic_notify(ptr, waiters)
+pub unsafe fn atomic_notify(ptr: *mut i32, waiters: u32) -> u32 {
+    llvm_atomic_notify(ptr, waiters as i32) as u32
 }
