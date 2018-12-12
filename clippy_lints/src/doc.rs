@@ -238,7 +238,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
 }
 
 fn check_text(cx: &EarlyContext<'_>, valid_idents: &[String], text: &str, span: Span) {
-    for word in text.split_whitespace() {
+    for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
         // Or even as in `_foo bar_` which is emphasized.

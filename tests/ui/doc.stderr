@@ -180,5 +180,11 @@ error: you should put bare URLs between `<`/`>` or make a proper Markdown link
 175 | /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 30 previous errors
+error: you should put `mycrate::Collection` between ticks in the documentation
+   --> $DIR/doc.rs:181:22
+    |
+181 | /// An iterator over mycrate::Collection's values.
+    |                      ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 31 previous errors
 
