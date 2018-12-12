@@ -331,6 +331,64 @@ types! {
     /// ```
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m256d(f64, f64, f64, f64);
+
+    /// 512-bit wide integer vector type, x86-specific
+    ///
+    /// This type is the same as the `__m512i` type defined by Intel,
+    /// representing a 512-bit SIMD register. Usage of this type typically
+    /// corresponds to the `avx512*` and up target features for x86/x86_64.
+    ///
+    /// Internally this type may be viewed as:
+    ///
+    /// * `i8x64` - sixty-four `i8` variables packed together
+    /// * `i16x32` - thirty-two `i16` variables packed together
+    /// * `i32x16` - sixteen `i32` variables packed together
+    /// * `i64x8` - eight `i64` variables packed together
+    ///
+    /// (as well as unsigned versions). Each intrinsic may interpret the
+    /// internal bits differently, check the documentation of the intrinsic
+    /// to see how it's being used.
+    ///
+    /// Note that this means that an instance of `__m512i` typically just means
+    /// a "bag of bits" which is left up to interpretation at the point of use.
+    pub struct __m512i(i64, i64, i64, i64, i64, i64, i64, i64);
+
+    /// 512-bit wide set of sixteen `f32` types, x86-specific
+    ///
+    /// This type is the same as the `__m512` type defined by Intel,
+    /// representing a 512-bit SIMD register which internally is consisted of
+    /// eight packed `f32` instances. Usage of this type typically corresponds
+    /// to the `avx512*` and up target features for x86/x86_64.
+    ///
+    /// Note that unlike `__m512i`, the integer version of the 512-bit
+    /// registers, this `__m512` type has *one* interpretation. Each instance
+    /// of `__m512` always corresponds to `f32x16`, or sixteen `f32` types
+    /// packed together.
+    ///
+    /// Most intrinsics using `__m512` are prefixed with `_mm512_` and are
+    /// suffixed with "ps" (or otherwise contain "ps"). Not to be confused with
+    /// "pd" which is used for `__m512d`.
+    pub struct __m512(
+        f32, f32, f32, f32, f32, f32, f32, f32,
+        f32, f32, f32, f32, f32, f32, f32, f32,
+    );
+
+    /// 512-bit wide set of eight `f64` types, x86-specific
+    ///
+    /// This type is the same as the `__m512d` type defined by Intel,
+    /// representing a 512-bit SIMD register which internally is consisted of
+    /// eight packed `f64` instances. Usage of this type typically corresponds
+    /// to the `avx` and up target features for x86/x86_64.
+    ///
+    /// Note that unlike `__m512i`, the integer version of the 512-bit
+    /// registers, this `__m512d` type has *one* interpretation. Each instance
+    /// of `__m512d` always corresponds to `f64x4`, or eight `f64` types packed
+    /// together.
+    ///
+    /// Most intrinsics using `__m512d` are prefixed with `_mm512_` and are
+    /// suffixed with "pd" (or otherwise contain "pd"). Not to be confused with
+    /// "ps" which is used for `__m512`.
+    pub struct __m512d(f64, f64, f64, f64, f64, f64, f64, f64);
 }
 
 #[cfg(test)]
