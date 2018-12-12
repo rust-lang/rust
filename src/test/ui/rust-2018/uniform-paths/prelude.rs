@@ -6,9 +6,6 @@
 // Macro imported with `#[macro_use] extern crate`
 use vec as imported_vec;
 
-// Tool module
-use rustfmt as imported_rustfmt;
-
 // Standard library prelude
 use Vec as ImportedVec;
 
@@ -17,7 +14,6 @@ use u8 as imported_u8;
 
 type A = imported_u8;
 
-#[imported_rustfmt::skip]
 fn main() {
     imported_vec![0];
     ImportedVec::<u8>::new();

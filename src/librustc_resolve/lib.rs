@@ -3874,6 +3874,13 @@ impl<'a> Resolver<'a> {
                         module = Some(ModuleOrUniformRoot::Module(next_module));
                         record_segment_def(self, def);
                     } else if def == Def::ToolMod && i + 1 != path.len() {
+                        if binding.is_import() {
+                            self.session.struct_span_err(
+                                ident.span, "cannot use a tool module through an import"
+                            ).span_note(
+                                binding.span, "the tool module imported here"
+                            ).emit();
+                        }
                         let def = Def::NonMacroAttr(NonMacroAttrKind::Tool);
                         return PathResult::NonModule(PathResolution::new(def));
                     } else if def == Def::Err {
