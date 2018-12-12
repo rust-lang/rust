@@ -1,5 +1,7 @@
 mod text_edit;
 pub mod text_utils;
+#[cfg(test)]
+pub mod test_utils;
 
 pub use crate::text_edit::{TextEdit, TextEditBuilder};
 
