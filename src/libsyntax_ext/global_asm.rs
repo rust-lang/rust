@@ -20,7 +20,6 @@
 
 use syntax::ast;
 use syntax::source_map::respan;
-use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
 use syntax::ptr::P;
@@ -32,7 +31,7 @@ pub const MACRO: &str = "global_asm";
 
 pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
-                              tts: &[tokenstream::TokenTree]) -> Box<dyn base::MacResult + 'cx> {
+                              tts: &[tokenstream::TokenTree]) -> MacroResult<'cx> {
     if !cx.ecfg.enable_global_asm() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        MACRO,

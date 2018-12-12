@@ -724,7 +724,7 @@ impl<'a, 'b> Context<'a, 'b> {
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
                                mut sp: Span,
                                tts: &[tokenstream::TokenTree])
-                               -> Box<dyn base::MacResult + 'cx> {
+                               -> MacroResult<'cx> {
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {
@@ -738,7 +738,7 @@ pub fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt,
     mut sp: Span,
     tts: &[tokenstream::TokenTree],
-) -> Box<dyn base::MacResult + 'cx> {
+) -> MacroResult<'cx> {
     //if !ecx.ecfg.enable_allow_internal_unstable() {
 
     // For some reason, the only one that actually works for `println` is the first check

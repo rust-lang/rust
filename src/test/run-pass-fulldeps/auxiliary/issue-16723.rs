@@ -21,7 +21,7 @@ extern crate rustc_plugin;
 extern crate syntax_pos;
 
 use smallvec::SmallVec;
-use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
+use syntax::ext::base::{ExtCtxt, MacroResult, MacEager};
 use syntax::tokenstream;
 use rustc_plugin::Registry;
 
@@ -31,7 +31,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn expand(cx: &mut ExtCtxt, _: syntax_pos::Span, _: &[tokenstream::TokenTree])
-          -> Box<MacResult+'static> {
+          -> MacroResult<'static> {
     MacEager::items(smallvec![
         quote_item!(cx, struct Struct1;).unwrap(),
         quote_item!(cx, struct Struct2;).unwrap()

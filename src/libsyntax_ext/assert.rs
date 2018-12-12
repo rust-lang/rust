@@ -22,7 +22,7 @@ pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt,
     sp: Span,
     tts: &[TokenTree],
-) -> Box<dyn MacResult + 'cx> {
+) -> MacroResult<'cx> {
     let mut parser = cx.new_parser_from_tts(tts);
 
     if parser.token == token::Eof {

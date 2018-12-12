@@ -12,7 +12,7 @@ use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
 use edition::Edition;
 use errors::FatalError;
-use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
+use ext::base::{DummyResult, ExtCtxt, MacroResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::expand::{AstFragment, AstFragmentKind};
 use ext::tt::macro_parser::{Success, Error, Failure};
@@ -50,8 +50,8 @@ pub struct ParserAnyMacro<'a> {
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
-        let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
+    pub fn make(mut self, kind: AstFragmentKind) -> AstFragment {
+        let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = self;
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {  // early end of macro arm (#52866)
@@ -105,7 +105,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         sp: Span,
         input: TokenStream,
         def_span: Option<Span>,
-    ) -> Box<dyn MacResult+'cx> {
+    ) -> MacroResult<'cx> {
         if !self.valid {
             return DummyResult::any(sp);
         }
@@ -132,7 +132,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           arg: TokenStream,
                           lhses: &[quoted::TokenTree],
                           rhses: &[quoted::TokenTree])
-                          -> Box<dyn MacResult+'cx> {
+                          -> MacroResult<'cx> {
     if cx.trace_macros() {
         trace_macros_note(cx, sp, format!("expanding `{}! {{ {} }}`", name, arg));
     }
@@ -187,7 +187,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
-                return Box::new(ParserAnyMacro {
+                return MacroResult::ParserAnyMacro(ParserAnyMacro {
                     parser: p,
 
                     // Pass along the original expansion site and the name of the macro

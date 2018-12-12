@@ -22,7 +22,7 @@ use syntax::feature_gate::Features;
 use syntax::parse::token::{NtExpr, NtPat};
 use syntax::ast::{Ident, Pat, NodeId};
 use syntax::tokenstream::{TokenTree};
-use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
+use syntax::ext::base::{ExtCtxt, MacroResult, MacEager};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::tt::quoted;
 use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
@@ -33,7 +33,7 @@ use syntax_pos::{Span, edition::Edition};
 use rustc_plugin::Registry;
 
 fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
-        -> Box<MacResult + 'static> {
+        -> MacroResult<'static> {
 
     let mbe_matcher = quote_tokens!(cx, $$matched:expr, $$($$pat:pat)|+);
     let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(),

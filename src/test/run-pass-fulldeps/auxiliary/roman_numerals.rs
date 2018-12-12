@@ -20,7 +20,7 @@ extern crate rustc_plugin;
 
 use syntax::parse::token;
 use syntax::tokenstream::TokenTree;
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
+use syntax::ext::base::{ExtCtxt, MacroResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use syntax_pos::Span;
 use rustc_plugin::Registry;
@@ -32,7 +32,7 @@ use rustc_plugin::Registry;
 // Please keep the two copies in sync!  FIXME: have rustdoc read this file
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
-        -> Box<MacResult + 'static> {
+        -> MacroResult<'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[
         ("M", 1000), ("CM", 900), ("D", 500), ("CD", 400),

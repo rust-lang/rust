@@ -73,7 +73,7 @@ macro_rules! ast_fragments {
                 }
             }
 
-            fn make_from<'a>(self, result: Box<dyn MacResult + 'a>) -> Option<AstFragment> {
+            fn make_from<'a>(self, result: MacroResult<'a>) -> Option<AstFragment> {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),
@@ -135,7 +135,7 @@ macro_rules! ast_fragments {
         }
 
         impl<'a> MacResult for ::ext::tt::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<::ext::tt::macro_rules::ParserAnyMacro<'a>>)
+            $(fn $make_ast(self)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*

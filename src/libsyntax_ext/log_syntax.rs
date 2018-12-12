@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ext::base;
+use syntax::ext::base::{self, MacroResult};
 use syntax::feature_gate;
 use syntax::print;
 use syntax::tokenstream;
@@ -17,7 +17,7 @@ use syntax_pos;
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
                               sp: syntax_pos::Span,
                               tts: &[tokenstream::TokenTree])
-                              -> Box<dyn base::MacResult + 'cx> {
+                              -> MacroResult<'cx> {
     if !cx.ecfg.enable_log_syntax() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "log_syntax",

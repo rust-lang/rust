@@ -18,6 +18,7 @@ use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use ext::expand::{self, AstFragment, Invocation};
 use ext::hygiene::{self, Mark, SyntaxContext, Transparency};
+use ext::tt::macro_rules::ParserAnyMacro;
 use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
@@ -253,16 +254,16 @@ pub trait TTMacroExpander {
         span: Span,
         input: TokenStream,
         def_span: Option<Span>,
-    ) -> Box<dyn MacResult+'cx>;
+    ) -> MacroResult<'cx>;
 }
 
 pub type MacroExpanderFn =
     for<'cx> fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
-                -> Box<dyn MacResult+'cx>;
+                -> MacroResult<'cx>;
 
 impl<F> TTMacroExpander for F
     where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
-    -> Box<dyn MacResult+'cx>
+    -> MacroResult<'cx>
 {
     fn expand<'cx>(
         &self,
@@ -270,7 +271,7 @@ impl<F> TTMacroExpander for F
         span: Span,
         input: TokenStream,
         _def_span: Option<Span>,
-    ) -> Box<dyn MacResult+'cx> {
+    ) -> MacroResult<'cx> {
         struct AvoidInterpolatedIdents;
 
         impl Folder for AvoidInterpolatedIdents {
@@ -301,23 +302,23 @@ pub trait IdentMacroExpander {
                    sp: Span,
                    ident: ast::Ident,
                    token_tree: Vec<tokenstream::TokenTree>)
-                   -> Box<dyn MacResult+'cx>;
+                   -> MacroResult<'cx>;
 }
 
 pub type IdentMacroExpanderFn =
     for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<tokenstream::TokenTree>)
-                -> Box<dyn MacResult+'cx>;
+                -> MacroResult<'cx>;
 
 impl<F> IdentMacroExpander for F
     where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, ast::Ident,
-                          Vec<tokenstream::TokenTree>) -> Box<dyn MacResult+'cx>
+                          Vec<tokenstream::TokenTree>) -> MacroResult<'cx>
 {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
                    token_tree: Vec<tokenstream::TokenTree>)
-                   -> Box<dyn MacResult+'cx>
+                   -> MacroResult<'cx>
     {
         (*self)(cx, sp, ident, token_tree)
     }
@@ -336,31 +337,31 @@ macro_rules! make_stmts_default {
 
 /// The result of a macro expansion. The return values of the various
 /// methods are spliced into the AST at the callsite of the macro.
-pub trait MacResult {
+pub trait MacResult where Self: Sized {
     /// Create an expression.
-    fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
+    fn make_expr(self) -> Option<P<ast::Expr>> {
         None
     }
     /// Create zero or more items.
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+    fn make_items(self) -> Option<SmallVec<[P<ast::Item>; 1]>> {
         None
     }
 
     /// Create zero or more impl items.
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
+    fn make_impl_items(self) -> Option<SmallVec<[ast::ImplItem; 1]>> {
         None
     }
 
     /// Create zero or more trait items.
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
+    fn make_trait_items(self) -> Option<SmallVec<[ast::TraitItem; 1]>> {
         None
     }
 
     /// Create zero or more items in an `extern {}` block
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> { None }
+    fn make_foreign_items(self) -> Option<SmallVec<[ast::ForeignItem; 1]>> { None }
 
     /// Create a pattern.
-    fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
+    fn make_pat(self) -> Option<P<ast::Pat>> {
         None
     }
 
@@ -368,12 +369,144 @@ pub trait MacResult {
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    fn make_stmts(self) -> Option<SmallVec<[ast::Stmt; 1]>> {
         make_stmts_default!(self)
     }
 
-    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+    fn make_ty(self) -> Option<P<ast::Ty>> {
         None
+    }
+}
+
+pub struct ExpandResult<'a> {
+    pub p: parse::parser::Parser<'a>,
+}
+
+impl<'a> MacResult for ExpandResult<'a> {
+    fn make_expr(mut self: ExpandResult<'a>) -> Option<P<ast::Expr>> {
+        Some(panictry!(self.p.parse_expr()))
+    }
+
+    fn make_items(mut self: ExpandResult<'a>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+        let mut ret = SmallVec::new();
+        while self.p.token != token::Eof {
+            match panictry!(self.p.parse_item()) {
+                Some(item) => ret.push(item),
+                None => self.p.diagnostic().span_fatal(self.p.span,
+                                                       &format!("expected item, found `{}`",
+                                                                self.p.this_token_to_string()))
+                                           .raise()
+            }
+        }
+        Some(ret)
+    }
+}
+
+pub struct ConcatIdentsResult {
+    pub ident: ast::Ident
+}
+
+impl MacResult for ConcatIdentsResult {
+    fn make_expr(self) -> Option<P<ast::Expr>> {
+        Some(P(ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
+            span: self.ident.span,
+            attrs: ThinVec::new(),
+        }))
+    }
+
+    fn make_ty(self) -> Option<P<ast::Ty>> {
+        Some(P(ast::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::TyKind::Path(None, ast::Path::from_ident(self.ident)),
+            span: self.ident.span,
+        }))
+    }
+}
+
+pub enum MacroResult<'a> {
+    Eager(MacEager),
+    Expand(ExpandResult<'a>),
+    Dummy(DummyResult),
+    ParserAnyMacro(ParserAnyMacro<'a>),
+    ConcatIdentsResult(ConcatIdentsResult)
+}
+
+impl<'a> MacResult for MacroResult<'a> {
+    fn make_expr(self) -> Option<P<ast::Expr>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_expr(),
+            MacroResult::Expand(expand) => expand.make_expr(),
+            MacroResult::Dummy(dummy) => dummy.make_expr(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_expr(),
+            MacroResult::ConcatIdentsResult(cir) => cir.make_expr(),
+        }
+    }
+
+    fn make_items(self) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_items(),
+            MacroResult::Expand(expand) => expand.make_items(),
+            MacroResult::Dummy(dummy) => dummy.make_items(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_items(),
+            _ => unreachable!()
+        }
+    }
+
+    fn make_impl_items(self) -> Option<SmallVec<[ast::ImplItem; 1]>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_impl_items(),
+            MacroResult::Dummy(dummy) => dummy.make_impl_items(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_impl_items(),
+            _ => unreachable!()
+        }
+    }
+
+    fn make_trait_items(self) -> Option<SmallVec<[ast::TraitItem; 1]>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_trait_items(),
+            MacroResult::Dummy(dummy) => dummy.make_trait_items(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_trait_items(),
+            _ => unreachable!()
+        }
+    }
+
+    fn make_foreign_items(self) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_foreign_items(),
+            MacroResult::Dummy(dummy) => dummy.make_foreign_items(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_foreign_items(),
+            _ => unreachable!()
+        }
+    }
+
+    fn make_pat(self) -> Option<P<ast::Pat>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_pat(),
+            MacroResult::Dummy(dummy) => dummy.make_pat(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_pat(),
+            _ => unreachable!()
+        }
+    }
+
+    fn make_stmts(self) -> Option<SmallVec<[ast::Stmt; 1]>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_stmts(),
+            MacroResult::Dummy(dummy) => dummy.make_stmts(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_stmts(),
+            _ => unreachable!()
+        }
+    }
+
+    fn make_ty(self) -> Option<P<ast::Ty>> {
+        match self {
+            MacroResult::Eager(eager) => eager.make_ty(),
+            MacroResult::Dummy(dummy) => dummy.make_ty(),
+            MacroResult::ParserAnyMacro(pam) => pam.make_ty(),
+            MacroResult::ConcatIdentsResult(cir) => cir.make_ty(),
+            _ => unreachable!()
+        }
     }
 }
 
@@ -390,11 +523,13 @@ macro_rules! make_MacEager {
 
         impl MacEager {
             $(
-                pub fn $fld(v: $t) -> Box<dyn MacResult> {
-                    Box::new(MacEager {
-                        $fld: Some(v),
-                        ..Default::default()
-                    })
+                pub fn $fld<'a>(v: $t) -> MacroResult<'a> {
+                    MacroResult::Eager(
+                        MacEager {
+                            $fld: Some(v),
+                            ..Default::default()
+                        }
+                    )
                 }
             )*
         }
@@ -413,34 +548,34 @@ make_MacEager! {
 }
 
 impl MacResult for MacEager {
-    fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
+    fn make_expr(self) -> Option<P<ast::Expr>> {
         self.expr
     }
 
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+    fn make_items(self) -> Option<SmallVec<[P<ast::Item>; 1]>> {
         self.items
     }
 
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
+    fn make_impl_items(self) -> Option<SmallVec<[ast::ImplItem; 1]>> {
         self.impl_items
     }
 
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
+    fn make_trait_items(self) -> Option<SmallVec<[ast::TraitItem; 1]>> {
         self.trait_items
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
+    fn make_foreign_items(self) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
         self.foreign_items
     }
 
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    fn make_stmts(self) -> Option<SmallVec<[ast::Stmt; 1]>> {
         match self.stmts.as_ref().map_or(0, |s| s.len()) {
             0 => make_stmts_default!(self),
             _ => self.stmts,
         }
     }
 
-    fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
+    fn make_pat(self) -> Option<P<ast::Pat>> {
         if let Some(p) = self.pat {
             return Some(p);
         }
@@ -456,7 +591,7 @@ impl MacResult for MacEager {
         None
     }
 
-    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+    fn make_ty(self) -> Option<P<ast::Ty>> {
         self.ty
     }
 }
@@ -474,8 +609,8 @@ impl DummyResult {
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
-    pub fn any(sp: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, span: sp })
+    pub fn any(sp: Span) -> MacroResult<'static> {
+        MacroResult::Dummy(DummyResult { expr_only: false, span: sp })
     }
 
     /// Create a default MacResult that can only be an expression.
@@ -483,8 +618,8 @@ impl DummyResult {
     /// Use this for macros that must expand to an expression, so even
     /// if an error is encountered internally, the user will receive
     /// an error that they also used it in the wrong place.
-    pub fn expr(sp: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: true, span: sp })
+    pub fn expr(sp: Span) -> MacroResult<'static> {
+        MacroResult::Dummy(DummyResult { expr_only: true, span: sp })
     }
 
     /// A plain dummy expression.
@@ -516,15 +651,15 @@ impl DummyResult {
 }
 
 impl MacResult for DummyResult {
-    fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
+    fn make_expr(self) -> Option<P<ast::Expr>> {
         Some(DummyResult::raw_expr(self.span))
     }
 
-    fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
+    fn make_pat(self) -> Option<P<ast::Pat>> {
         Some(P(DummyResult::raw_pat(self.span)))
     }
 
-    fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+    fn make_items(self) -> Option<SmallVec<[P<ast::Item>; 1]>> {
         // this code needs a comment... why not always just return the Some() ?
         if self.expr_only {
             None
@@ -533,7 +668,7 @@ impl MacResult for DummyResult {
         }
     }
 
-    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
+    fn make_impl_items(self) -> Option<SmallVec<[ast::ImplItem; 1]>> {
         if self.expr_only {
             None
         } else {
@@ -541,7 +676,7 @@ impl MacResult for DummyResult {
         }
     }
 
-    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
+    fn make_trait_items(self) -> Option<SmallVec<[ast::TraitItem; 1]>> {
         if self.expr_only {
             None
         } else {
@@ -549,7 +684,7 @@ impl MacResult for DummyResult {
         }
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
+    fn make_foreign_items(self) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
         if self.expr_only {
             None
         } else {
@@ -557,7 +692,7 @@ impl MacResult for DummyResult {
         }
     }
 
-    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    fn make_stmts(self) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
@@ -565,7 +700,7 @@ impl MacResult for DummyResult {
         }])
     }
 
-    fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
+    fn make_ty(self) -> Option<P<ast::Ty>> {
         Some(DummyResult::raw_ty(self.span))
     }
 }

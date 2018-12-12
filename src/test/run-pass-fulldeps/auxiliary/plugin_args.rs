@@ -22,7 +22,7 @@ use std::borrow::ToOwned;
 use syntax::ast;
 use syntax::ext::hygiene;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager, NormalTT};
+use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacroResult, MacEager, NormalTT};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -39,7 +39,7 @@ impl TTMacroExpander for Expander {
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
                    _: TokenStream,
-                   _: Option<Span>) -> Box<MacResult+'cx> {
+                   _: Option<Span>) -> MacroResult<'cx> {
         let args = self.args.iter().map(|i| pprust::meta_list_item_to_string(i))
             .collect::<Vec<_>>().join(", ");
         MacEager::expr(ecx.expr_str(sp, Symbol::intern(&args)))

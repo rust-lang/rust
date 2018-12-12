@@ -46,7 +46,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
-                   -> Box<MacResult+'static> {
+                   -> MacroResult<'static> {
     if !tts.is_empty() {
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }
@@ -55,7 +55,7 @@ fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
 
 // See Issue #15750
 fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
-                   -> Box<MacResult+'static> {
+                   -> MacroResult<'static> {
     // Parse an expression and emit it unchanged.
     let mut parser = parse::new_parser_from_tts(cx.parse_sess(), tts.to_vec());
     let expr = parser.parse_expr().unwrap();

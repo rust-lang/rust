@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::thin_vec::ThinVec;
-
 use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::feature_gate;
 use syntax::parse::token;
-use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use syntax::tokenstream::TokenTree;
@@ -23,7 +20,7 @@ use syntax::tokenstream::TokenTree;
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[TokenTree])
-                              -> Box<dyn base::MacResult + 'cx> {
+                              -> MacroResult<'cx> {
     if !cx.ecfg.enable_concat_idents() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "concat_idents",
@@ -62,26 +59,5 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
 
     let ident = ast::Ident::new(Symbol::intern(&res_str), sp.apply_mark(cx.current_expansion.mark));
 
-    struct ConcatIdentsResult { ident: ast::Ident }
-
-    impl base::MacResult for ConcatIdentsResult {
-        fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
-            Some(P(ast::Expr {
-                id: ast::DUMMY_NODE_ID,
-                node: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
-                span: self.ident.span,
-                attrs: ThinVec::new(),
-            }))
-        }
-
-        fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
-            Some(P(ast::Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: ast::TyKind::Path(None, ast::Path::from_ident(self.ident)),
-                span: self.ident.span,
-            }))
-        }
-    }
-
-    Box::new(ConcatIdentsResult { ident })
+    MacroResult::ConcatIdentsResult(ConcatIdentsResult { ident })
 }

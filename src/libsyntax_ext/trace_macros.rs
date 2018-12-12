@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ext::base::ExtCtxt;
-use syntax::ext::base;
+use syntax::ext::base::{self, ExtCtxt, MacroResult};
 use syntax::feature_gate;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
@@ -18,7 +17,7 @@ use syntax::tokenstream::TokenTree;
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            sp: Span,
                            tt: &[TokenTree])
-                           -> Box<dyn base::MacResult + 'static> {
+                           -> MacroResult<'static> {
     if !cx.ecfg.enable_trace_macros() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "trace_macros",
