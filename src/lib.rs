@@ -171,35 +171,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         let metadata = tcx.encode_metadata();
 
-        let mut flags_builder = settings::builder();
-        flags_builder.enable("is_pic").unwrap();
-        flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
-            "true"
-        } else {
-            "false"
-        }).unwrap();
-
-        use rustc::session::config::OptLevel;
-        match tcx.sess.opts.optimize {
-            OptLevel::No => {
-                flags_builder.set("opt_level", "fastest").unwrap();
-            }
-            OptLevel::Less | OptLevel::Default => {}
-            OptLevel::Aggressive => {
-                flags_builder.set("opt_level", "best").unwrap();
-            }
-            OptLevel::Size | OptLevel::SizeMin => {
-                tcx.sess
-                    .warn("Optimizing for size is not supported. Just ignoring the request");
-            }
-        }
-
-        let flags = settings::Flags::new(flags_builder);
-        let isa =
-            cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
-                .unwrap()
-                .finish(flags);
-
         // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
         save_incremental(tcx);
         tcx.sess.warn("Saved incremental data");
@@ -245,6 +216,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             jit_module.finish();
             ::std::process::exit(0);
         } else {
+            let isa = build_isa(tcx.sess);
             let mut faerie_module: Module<FaerieBackend> = Module::new(
                 FaerieBuilder::new(
                     isa,
@@ -320,6 +292,36 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
         Ok(())
     }
+}
+
+fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
+    use rustc::session::config::OptLevel;
+
+    let mut flags_builder = settings::builder();
+    flags_builder.enable("is_pic").unwrap();
+    flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
+        "true"
+    } else {
+        "false"
+    }).unwrap();
+
+    match sess.opts.optimize {
+        OptLevel::No => {
+            flags_builder.set("opt_level", "fastest").unwrap();
+        }
+        OptLevel::Less | OptLevel::Default => {}
+        OptLevel::Aggressive => {
+            flags_builder.set("opt_level", "best").unwrap();
+        }
+        OptLevel::Size | OptLevel::SizeMin => {
+            sess.warn("Optimizing for size is not supported. Just ignoring the request");
+        }
+    }
+
+    let flags = settings::Flags::new(flags_builder);
+    cranelift::codegen::isa::lookup(sess.target.target.llvm_target.parse().unwrap())
+        .unwrap()
+        .finish(flags)
 }
 
 fn codegen_mono_items<'a, 'tcx: 'a>(
