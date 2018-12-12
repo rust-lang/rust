@@ -243,7 +243,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        if self.const_let_allowed() {
+        if self.tcx.features().const_let {
             let mut dest = dest;
             let index = loop {
                 match dest {
@@ -320,10 +320,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn const_let_allowed(&self) -> bool {
-        self.tcx.features().const_let
-    }
-
     /// Qualify a whole const, static initializer or const fn.
     fn qualify_const(&mut self) -> (Qualif, Lrc<BitSet<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
@@ -361,7 +357,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
-                    if !self.const_let_allowed() {
+                    if !self.tcx.features().const_let {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
@@ -468,7 +464,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::ReturnPointer => {
                 self.not_const();
             }
-            LocalKind::Var if !self.const_let_allowed() => {
+            LocalKind::Var if !self.tcx.features().const_let => {
                 if self.mode != Mode::Fn {
                     emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
                                     self.span, GateIssue::Language,
@@ -561,7 +557,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 this.not_const()
                             } else {
                                 // just make sure this doesn't get promoted
-                                this.qualif.add(Qualif::NOT_CONST);
+                                this.add(Qualif::NOT_CONST);
                             }
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             match this.mode {
@@ -1168,7 +1164,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index) &&
-               !self.const_let_allowed() {
+               !self.tcx.features().const_let {
                 // Direct use of an argument is permitted.
                 match *rvalue {
                     Rvalue::Use(Operand::Copy(Place::Local(local))) |
