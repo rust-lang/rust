@@ -3,7 +3,7 @@
 #![test_runner(test_runner)]
 
 use std::slice::SliceConcatExt;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 use std::env;
 
 use compiletest_rs as compiletest;
