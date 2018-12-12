@@ -87,7 +87,7 @@ environment:
     DIST_REQUIRE_ALL_TOOLS: 1
     DEPLOY: 1
     CI_JOB_NAME: dist-x86_64-msvc
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
+    APPVEYOR_BUILD_WORKER_IMAGE: Previous Visual Studio 2017 Preview
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
