@@ -1,9 +1,10 @@
 use languageserver_types::{
-    Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, TextEdit, Url, VersionedTextDocumentIdentifier,
+    self, Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
 };
 use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileNodeEdit, FilePosition};
-use ra_editor::{AtomEdit, Edit, LineCol, LineIndex};
+use ra_editor::{LineCol, LineIndex};
+use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 
 use crate::{req, server_world::ServerWorld, Result};
@@ -91,11 +92,11 @@ impl ConvWith for Range {
     }
 }
 
-impl ConvWith for Edit {
+impl ConvWith for TextEdit {
     type Ctx = LineIndex;
-    type Output = Vec<TextEdit>;
+    type Output = Vec<languageserver_types::TextEdit>;
 
-    fn conv_with(self, line_index: &LineIndex) -> Vec<TextEdit> {
+    fn conv_with(self, line_index: &LineIndex) -> Vec<languageserver_types::TextEdit> {
         self.into_atoms()
             .into_iter()
             .map_conv_with(line_index)
@@ -103,12 +104,12 @@ impl ConvWith for Edit {
     }
 }
 
-impl ConvWith for AtomEdit {
+impl ConvWith for AtomTextEdit {
     type Ctx = LineIndex;
-    type Output = TextEdit;
+    type Output = languageserver_types::TextEdit;
 
-    fn conv_with(self, line_index: &LineIndex) -> TextEdit {
-        TextEdit {
+    fn conv_with(self, line_index: &LineIndex) -> languageserver_types::TextEdit {
+        languageserver_types::TextEdit {
             range: self.delete.conv_with(line_index),
             new_text: self.insert,
         }
@@ -228,7 +229,7 @@ impl TryConvWith for SourceChange {
 fn translate_offset_with_edit(
     pre_edit_index: &LineIndex,
     offset: TextUnit,
-    edits: &[AtomEdit],
+    edits: &[AtomTextEdit],
 ) -> LineCol {
     let fallback = pre_edit_index.line_col(offset);
     let edit = match edits.first() {

@@ -18,7 +18,8 @@ pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
 
-use ra_syntax::{AtomEdit, SourceFileNode, TextRange, TextUnit};
+use ra_syntax::{SourceFileNode, TextRange, TextUnit};
+use ra_text_edit::AtomTextEdit;
 use ra_db::FileResolverImp;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
@@ -120,7 +121,7 @@ pub struct SourceChange {
 #[derive(Debug)]
 pub struct SourceFileNodeEdit {
     pub file_id: FileId,
-    pub edits: Vec<AtomEdit>,
+    pub edits: Vec<AtomTextEdit>,
 }
 
 #[derive(Debug)]

@@ -1,10 +1,11 @@
 mod reference_completion;
 
 use ra_editor::find_node_at_offset;
+use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
     algo::visit::{visitor_ctx, VisitorCtx},
     ast,
-    AstNode, AtomEdit,
+    AstNode,
     SyntaxNodeRef,
 };
 use ra_db::SyntaxDatabase;
@@ -33,7 +34,7 @@ pub(crate) fn completions(
     let original_file = db.source_file(position.file_id);
     // Insert a fake ident to get a valid parse tree
     let file = {
-        let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
+        let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
         original_file.reparse(&edit)
     };
 

@@ -1,8 +1,4 @@
-use crate::{TextRange, TextUnit};
-
-pub fn contains_offset_nonstrict(range: TextRange, offset: TextUnit) -> bool {
-    range.start() <= offset && offset <= range.end()
-}
+use crate::TextRange;
 
 pub fn intersect(r1: TextRange, r2: TextRange) -> Option<TextRange> {
     let start = r1.start().max(r2.start());

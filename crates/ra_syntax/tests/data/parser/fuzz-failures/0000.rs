@@ -10,10 +10,10 @@
         );
         File::new(green, errors)
     }
-    pub fn reparse(&self, edit: &AtomEdit) -> File {
+    pub fn reparse(&self, edit: &AtomTextEdit) -> File {
         self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
     }
-    pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
+    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<File> {
         let (node, reparser) = find_reparsable_node(self.syntax(), edit.delete)?;
         let text = replace_range(
             node.text().to_string(),
@@ -31,7 +31,7 @@
         let errors = merge_errors(self.errors(), new_errors, node, edit);
         Some(File::new(green_root, errors))
     }
-    fn full_reparse(&self, edit: &AtomEdit) -> File {
+    fn full_reparse(&self, edit: &AtomTextEdit) -> File {
         let text = replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
         File::parse(&text)
     }
@@ -58,22 +58,22 @@
 }
 
 #[derive(Debug, Clone)]
-pub struct AtomEdit {
+pub struct AtomTextEdit {
     pub delete: TextRange,
     pub insert: String,
 }
 
-impl AtomEdit {
-    pub fn replace(range: TextRange, replace_with: String) -> AtomEdit {
-        AtomEdit { delete: range, insert: replace_with }
+impl AtomTextEdit {
+    pub fn replace(range: TextRange, replace_with: String) -> AtomTextEdit {
+        AtomTextEdit { delete: range, insert: replace_with }
     }
 
-    pub fn delete(range: TextRange) -> AtomEdit {
-        AtomEdit::replace(range, String::new())
+    pub fn delete(range: TextRange) -> AtomTextEdit {
+        AtomTextEdit::replace(range, String::new())
     }
 
-    pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
-        AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
+    pub fn insert(offset: TextUnit, text: String) -> AtomTextEdit {
+        AtomTextEdit::replace(TextRange::offset_len(offset, 0.into()), text)
     }
 }
 
@@ -114,17 +114,17 @@ fn is_balanced(tokens: &[Token]) -> bool {
     pub insert: String,
 }
 
-impl AtomEdit {
-    pub fn replace(range: TextRange, replace_with: String) -> AtomEdit {
-        AtomEdit { delete: range, insert: replace_with }
+impl AtomTextEdit {
+    pub fn replace(range: TextRange, replace_with: String) -> AtomTextEdit {
+        AtomTextEdit { delete: range, insert: replace_with }
     }
 
-    pub fn delete(range: TextRange) -> AtomEdit {
-        AtomEdit::replace(range, String::new())
+    pub fn delete(range: TextRange) -> AtomTextEdit {
+        AtomTextEdit::replace(range, String::new())
     }
 
-    pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
-        AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
+    pub fn insert(offset: TextUnit, text: String) -> AtomTextEdit {
+        AtomTextEdit::replace(TextRange::offset_len(offset, 0.into()), text)
     }
 }
 
@@ -176,7 +176,7 @@ fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
     old_node: SyntaxNodeRef,
-    edit: &AtomEdit,
+    edit: &AtomTextEdit,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
     for e in old_errors {

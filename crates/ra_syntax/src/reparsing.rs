@@ -6,33 +6,11 @@ use crate::parser_impl;
 use crate::text_utils::replace_range;
 use crate::yellow::{self, GreenNode, SyntaxError, SyntaxNodeRef};
 use crate::{SyntaxKind::*, TextRange, TextUnit};
-
-#[derive(Debug, Clone)]
-pub struct AtomEdit {
-    pub delete: TextRange,
-    pub insert: String,
-}
-
-impl AtomEdit {
-    pub fn replace(range: TextRange, replace_with: String) -> AtomEdit {
-        AtomEdit {
-            delete: range,
-            insert: replace_with,
-        }
-    }
-
-    pub fn delete(range: TextRange) -> AtomEdit {
-        AtomEdit::replace(range, String::new())
-    }
-
-    pub fn insert(offset: TextUnit, text: String) -> AtomEdit {
-        AtomEdit::replace(TextRange::offset_len(offset, 0.into()), text)
-    }
-}
+use ra_text_edit::AtomTextEdit;
 
 pub(crate) fn incremental_reparse(
     node: SyntaxNodeRef,
-    edit: &AtomEdit,
+    edit: &AtomTextEdit,
     errors: Vec<SyntaxError>,
 ) -> Option<(GreenNode, Vec<SyntaxError>)> {
     let (node, green, new_errors) =
@@ -44,7 +22,7 @@ pub(crate) fn incremental_reparse(
 
 fn reparse_leaf<'node>(
     node: SyntaxNodeRef<'node>,
-    edit: &AtomEdit,
+    edit: &AtomTextEdit,
 ) -> Option<(SyntaxNodeRef<'node>, GreenNode, Vec<SyntaxError>)> {
     let node = algo::find_covering_node(node, edit.delete);
     match node.kind() {
@@ -70,7 +48,7 @@ fn reparse_leaf<'node>(
 
 fn reparse_block<'node>(
     node: SyntaxNodeRef<'node>,
-    edit: &AtomEdit,
+    edit: &AtomTextEdit,
 ) -> Option<(SyntaxNodeRef<'node>, GreenNode, Vec<SyntaxError>)> {
     let (node, reparser) = find_reparsable_node(node, edit.delete)?;
     let text = get_text_after_edit(node, &edit);
@@ -83,7 +61,7 @@ fn reparse_block<'node>(
     Some((node, green, new_errors))
 }
 
-fn get_text_after_edit(node: SyntaxNodeRef, edit: &AtomEdit) -> String {
+fn get_text_after_edit(node: SyntaxNodeRef, edit: &AtomTextEdit) -> String {
     replace_range(
         node.text().to_string(),
         edit.delete - node.range().start(),
@@ -161,7 +139,7 @@ fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
     old_node: SyntaxNodeRef,
-    edit: &AtomEdit,
+    edit: &AtomTextEdit,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
     for e in old_errors {
@@ -188,7 +166,7 @@ mod tests {
     where
         for<'a> F: Fn(
             SyntaxNodeRef<'a>,
-            &AtomEdit,
+            &AtomTextEdit,
         ) -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>,
     {
         let (range, before) = extract_range(before);
@@ -197,7 +175,7 @@ mod tests {
         let fully_reparsed = SourceFileNode::parse(&after);
         let incrementally_reparsed = {
             let f = SourceFileNode::parse(&before);
-            let edit = AtomEdit {
+            let edit = AtomTextEdit {
                 delete: range,
                 insert: replace_with.to_string(),
             };

@@ -8,11 +8,11 @@ use ra_syntax::{
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
-use crate::{find_node_at_offset, Edit, EditBuilder};
+use crate::{find_node_at_offset, TextEdit, TextEditBuilder};
 
 #[derive(Debug)]
 pub struct LocalEdit {
-    pub edit: Edit,
+    pub edit: TextEdit,
     pub cursor_position: Option<TextUnit>,
 }
 
@@ -26,7 +26,7 @@ pub fn flip_comma<'a>(
     let prev = non_trivia_sibling(comma, Direction::Prev)?;
     let next = non_trivia_sibling(comma, Direction::Next)?;
     Some(move || {
-        let mut edit = EditBuilder::new();
+        let mut edit = TextEditBuilder::new();
         edit.replace(prev.range(), next.text().to_string());
         edit.replace(next.range(), prev.text().to_string());
         LocalEdit {
@@ -49,7 +49,7 @@ pub fn add_derive<'a>(
             .filter(|(name, _arg)| name == "derive")
             .map(|(_name, arg)| arg)
             .next();
-        let mut edit = EditBuilder::new();
+        let mut edit = TextEditBuilder::new();
         let offset = match derive_attr {
             None => {
                 edit.insert(node_start, "#[derive()]\n".to_string());
@@ -82,7 +82,7 @@ pub fn add_impl<'a>(
 
     Some(move || {
         let type_params = nominal.type_param_list();
-        let mut edit = EditBuilder::new();
+        let mut edit = TextEditBuilder::new();
         let start_offset = nominal.syntax().range().end();
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
@@ -129,7 +129,7 @@ pub fn introduce_variable<'a>(
     }
     return Some(move || {
         let mut buf = String::new();
-        let mut edit = EditBuilder::new();
+        let mut edit = TextEditBuilder::new();
 
         buf.push_str("let var_name = ");
         expr.syntax().text().push_to(&mut buf);

@@ -15,6 +15,7 @@ drop_bomb = "0.1.4"
 parking_lot = "0.6.0"
 rowan = "0.1.2"
 text_unit = "0.1.5"
+ra_text_edit = { path = "../ra_text_edit" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

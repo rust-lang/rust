@@ -9,7 +9,8 @@ use languageserver_types::{
     WorkspaceEdit, ParameterInformation, SignatureInformation, Hover, HoverContents,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
-use ra_syntax::{TextUnit, text_utils::{contains_offset_nonstrict, intersect}};
+use ra_syntax::{TextUnit, text_utils::intersect};
+use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
 
