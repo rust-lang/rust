@@ -1416,6 +1416,8 @@ fn slice_pat_covered_by_const<'tcx>(
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
+                // This solely means that we don't lint about unreachable patterns, even if some
+                // are definitely unreachable.
                 return Ok(false);
             }
             let ptr = Pointer::new(id, offset);
@@ -1427,6 +1429,8 @@ fn slice_pat_covered_by_const<'tcx>(
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
+                // This solely means that we don't lint about unreachable patterns, even if some
+                // are definitely unreachable.
                 return Ok(false);
             }
             assert_eq!(n.to_usize(&tcx).unwrap(), 0);
@@ -1437,6 +1441,8 @@ fn slice_pat_covered_by_const<'tcx>(
             if *t != tcx.types.u8 {
                 // FIXME(oli-obk): can't mix const patterns with slice patterns and get
                 // any sort of exhaustiveness/unreachable check yet
+                // This solely means that we don't lint about unreachable patterns, even if some
+                // are definitely unreachable.
                 return Ok(false);
             }
             let n = n.to_usize(&tcx).unwrap();
