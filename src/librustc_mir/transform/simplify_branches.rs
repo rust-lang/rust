@@ -51,9 +51,8 @@ impl MirPass for SimplifyBranches {
                 },
                 TerminatorKind::Assert {
                     target, cond: Operand::Constant(ref c), expected, ..
-                } if (c.literal.unwrap_evaluated().assert_bool(tcx) == Some(true)) == expected => {
-                    TerminatorKind::Goto { target }
-                },
+                } if (c.literal.map_evaluated(|e| e.assert_bool(tcx)) == Some(true)) == expected =>
+                    TerminatorKind::Goto { target },
                 TerminatorKind::FalseEdges { real_target, .. } => {
                     TerminatorKind::Goto { target: real_target }
                 },

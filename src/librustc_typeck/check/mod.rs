@@ -3453,7 +3453,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     ty::Array(_, len) => {
                         if let (Some(len), Ok(user_index)) = (
-                            len.unwrap_evaluated().assert_usize(self.tcx),
+                            len.assert_usize(self.tcx),
                             field.as_str().parse::<u64>()
                         ) {
                             let base = self.tcx.sess.source_map()

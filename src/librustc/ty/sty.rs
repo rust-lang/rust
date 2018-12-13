@@ -2024,13 +2024,6 @@ pub enum LazyConst<'tcx> {
 static_assert!(MEM_SIZE_OF_LAZY_CONST: ::std::mem::size_of::<LazyConst<'_>>() <= 24);
 
 impl<'tcx> LazyConst<'tcx> {
-    pub fn unwrap_evaluated(self) -> &'tcx Const<'tcx> {
-        match self {
-            LazyConst::Evaluated(c) => c,
-            LazyConst::Unevaluated(..) => bug!("unexpected unevaluated constant"),
-        }
-    }
-
     pub fn map_evaluated<R>(self, f: impl FnOnce(&'tcx Const<'tcx>) -> Option<R>) -> Option<R> {
         match self {
             LazyConst::Evaluated(c) => f(c),
@@ -2038,8 +2031,13 @@ impl<'tcx> LazyConst<'tcx> {
         }
     }
 
-    pub fn assert_usize(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Option<u64> {
+    pub fn assert_usize(self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
         self.map_evaluated(|c| c.assert_usize(tcx))
+    }
+
+    #[inline]
+    pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
+        self.assert_usize(tcx).expect("expected `LazyConst` to contain a usize")
     }
 }
 
