@@ -208,11 +208,11 @@ struct LiteralExpander<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
-    /// Derefs `val` and potentially unsizes the value if `crty` is an array and `rty` a slice
+    /// Derefs `val` and potentially unsizes the value if `crty` is an array and `rty` a slice.
     ///
     /// `crty` and `rty` can differ because you can use array constants in the presence of slice
     /// patterns. So the pattern may end up being a slice, but the constant is an array. We convert
-    /// the array to a slice in that case
+    /// the array to a slice in that case.
     fn fold_const_value_deref(
         &mut self,
         val: ConstValue<'tcx>,
