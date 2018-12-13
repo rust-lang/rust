@@ -19,8 +19,8 @@ use lint;
 use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
-use session::search_paths::PathKind;
 use session::config::{OutputType, Lto};
+use session::search_paths::{PathKind, SearchPath};
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
@@ -48,7 +48,7 @@ use std::cell::{self, Cell, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::mpsc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -64,12 +64,15 @@ pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
+    pub host_tlib_path: SearchPath,
+    /// This is `None` if the host and target are the same.
+    pub target_tlib_path: Option<SearchPath>,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
     pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
     pub plugin_registrar_fn: Once<Option<ast::NodeId>>,
     pub proc_macro_decls_static: Once<Option<ast::NodeId>>,
-    pub default_sysroot: Option<PathBuf>,
+    pub sysroot: PathBuf,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
     pub local_crate_source_file: Option<PathBuf>,
@@ -694,27 +697,22 @@ impl Session {
         )
     }
 
-    pub fn sysroot<'a>(&'a self) -> &'a Path {
-        match self.opts.maybe_sysroot {
-            Some(ref sysroot) => sysroot,
-            None => self.default_sysroot
-                        .as_ref()
-                        .expect("missing sysroot and default_sysroot in Session"),
-        }
-    }
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
         filesearch::FileSearch::new(
-            self.sysroot(),
+            &self.sysroot,
             self.opts.target_triple.triple(),
             &self.opts.search_paths,
+            // target_tlib_path==None means it's the same as host_tlib_path.
+            self.target_tlib_path.as_ref().unwrap_or(&self.host_tlib_path),
             kind,
         )
     }
     pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
         filesearch::FileSearch::new(
-            self.sysroot(),
+            &self.sysroot,
             config::host_triple(),
             &self.opts.search_paths,
+            &self.host_tlib_path,
             kind,
         )
     }
@@ -1109,9 +1107,18 @@ pub fn build_session_(
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
     let p_s = parse::ParseSess::with_span_handler(span_diagnostic, source_map);
-    let default_sysroot = match sopts.maybe_sysroot {
-        Some(_) => None,
-        None => Some(filesearch::get_or_default_sysroot()),
+    let sysroot = match &sopts.maybe_sysroot {
+        Some(sysroot) => sysroot.clone(),
+        None => filesearch::get_or_default_sysroot(),
+    };
+
+    let host_triple = config::host_triple();
+    let target_triple = sopts.target_triple.triple();
+    let host_tlib_path = SearchPath::from_sysroot_and_triple(&sysroot, host_triple);
+    let target_tlib_path = if host_triple == target_triple {
+        None
+    } else {
+        Some(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };
 
     let file_path_mapping = sopts.file_path_mapping();
@@ -1142,12 +1149,14 @@ pub fn build_session_(
         target: target_cfg,
         host,
         opts: sopts,
+        host_tlib_path,
+        target_tlib_path,
         parse_sess: p_s,
         // For a library crate, this is always none
         entry_fn: Once::new(),
         plugin_registrar_fn: Once::new(),
         proc_macro_decls_static: Once::new(),
-        default_sysroot,
+        sysroot,
         local_crate_source_file,
         working_dir,
         lint_store: RwLock::new(lint::LintStore::new()),

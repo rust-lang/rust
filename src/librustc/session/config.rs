@@ -14,7 +14,7 @@
 use std::str::FromStr;
 
 use session::{early_error, early_warn, Session};
-use session::search_paths::SearchPaths;
+use session::search_paths::SearchPath;
 
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
@@ -374,7 +374,7 @@ top_level_options!(
         lint_cap: Option<lint::Level> [TRACKED],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
-        search_paths: SearchPaths [UNTRACKED],
+        search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
@@ -593,7 +593,7 @@ impl Default for Options {
             lint_cap: None,
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
-            search_paths: SearchPaths::new(),
+            search_paths: vec![],
             maybe_sysroot: None,
             target_triple: TargetTriple::from_triple(host_triple()),
             test: false,
@@ -2115,9 +2115,9 @@ pub fn build_session_options_and_crate_config(
         }
     };
 
-    let mut search_paths = SearchPaths::new();
+    let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.add_path(&s[..], error_format);
+        search_paths.push(SearchPath::from_cli_opt(&s[..], error_format));
     }
 
     let libs = matches
@@ -2535,6 +2535,7 @@ mod tests {
     use session::config::{build_configuration, build_session_options_and_crate_config};
     use session::config::{LtoCli, CrossLangLto};
     use session::build_session;
+    use session::search_paths::SearchPath;
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
     use std::path::PathBuf;
@@ -2790,48 +2791,48 @@ mod tests {
 
         // Reference
         v1.search_paths
-            .add_path("native=abc", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
         v1.search_paths
-            .add_path("crate=def", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
         v1.search_paths
-            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
         v1.search_paths
-            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
         v1.search_paths
-            .add_path("all=mno", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
 
         v2.search_paths
-            .add_path("native=abc", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
         v2.search_paths
-            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
         v2.search_paths
-            .add_path("crate=def", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
         v2.search_paths
-            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
         v2.search_paths
-            .add_path("all=mno", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
 
         v3.search_paths
-            .add_path("crate=def", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
         v3.search_paths
-            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
         v3.search_paths
-            .add_path("native=abc", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
         v3.search_paths
-            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
         v3.search_paths
-            .add_path("all=mno", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
 
         v4.search_paths
-            .add_path("all=mno", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
         v4.search_paths
-            .add_path("native=abc", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
         v4.search_paths
-            .add_path("crate=def", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
         v4.search_paths
-            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
         v4.search_paths
-            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());

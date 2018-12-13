@@ -1042,7 +1042,7 @@ impl RustcDefaultCalls {
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 },
-                Sysroot => println!("{}", sess.sysroot().display()),
+                Sysroot => println!("{}", sess.sysroot.display()),
                 TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
                 FileNames | CrateName => {
                     let input = input.unwrap_or_else(||

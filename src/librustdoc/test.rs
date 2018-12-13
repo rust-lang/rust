@@ -21,7 +21,7 @@ use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
-use rustc::session::search_paths::{SearchPaths, PathKind};
+use rustc::session::search_paths::{SearchPath, PathKind};
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
@@ -187,7 +187,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 }
 
 fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
-            cfgs: Vec<String>, libs: SearchPaths,
+            cfgs: Vec<String>, libs: Vec<SearchPath>,
             cg: CodegenOptions, externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
@@ -556,7 +556,7 @@ pub struct Collector {
     names: Vec<String>,
 
     cfgs: Vec<String>,
-    libs: SearchPaths,
+    libs: Vec<SearchPath>,
     cg: CodegenOptions,
     externs: Externs,
     use_headers: bool,
@@ -571,7 +571,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, cg: CodegenOptions,
+    pub fn new(cratename: String, cfgs: Vec<String>, libs: Vec<SearchPath>, cg: CodegenOptions,
                externs: Externs, use_headers: bool, opts: TestOptions,
                maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) -> Collector {

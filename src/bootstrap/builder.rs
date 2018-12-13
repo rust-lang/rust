@@ -684,6 +684,11 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC_REAL", self.rustdoc(host))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
+
+        // Remove make-related flags that can cause jobserver problems.
+        cmd.env_remove("MAKEFLAGS");
+        cmd.env_remove("MFLAGS");
+
         if let Some(linker) = self.linker(host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
