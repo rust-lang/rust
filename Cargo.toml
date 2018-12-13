@@ -60,5 +60,4 @@ bytecount = "0.4"
 rustc-workspace-hack = "1.0.0"
 
 [dev-dependencies]
-assert_cli = "0.6"
 lazy_static = "1.0.0"
