@@ -24,7 +24,7 @@ use crate::rustc_target::spec::abi::Abi;
 use crate::rustc_typeck::hir_ty_to_ty;
 use crate::syntax::ast::{FloatTy, IntTy, UintTy};
 use crate::syntax::errors::DiagnosticBuilder;
-use crate::syntax::source_map::{DUMMY_SP, Span};
+use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
@@ -288,7 +288,7 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                         let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
                         if let Some(def_id) = opt_def_id(def);
                         let boxed_type = cx.tcx.type_of(def_id);
-                        if boxed_type.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env);
+                        if boxed_type.is_sized(cx.tcx.at(ty.span), cx.param_env);
                         then {
                             span_lint_and_sugg(
                                 cx,
