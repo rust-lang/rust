@@ -27,7 +27,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
-                           literal: &'tcx ty::Const<'tcx>)
+                           literal: ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,

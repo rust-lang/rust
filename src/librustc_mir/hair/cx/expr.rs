@@ -871,7 +871,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
         span,
         kind: ExprKind::Literal {
             literal: cx.tcx().intern_lazy_const(ty::LazyConst::Evaluated(
-                ty::Const::zero_sized(cx.tcx(), ty)
+                ty::Const::zero_sized(ty)
             )),
             user_ty,
         },
@@ -933,7 +933,6 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             debug!("convert_path_expr: user_ty={:?}", user_ty);
             ExprKind::Literal {
                 literal: cx.tcx.intern_lazy_const(ty::LazyConst::Evaluated(ty::Const::zero_sized(
-                    cx.tcx,
                     cx.tables().node_id_to_type(expr.hir_id),
                 ))),
                 user_ty,

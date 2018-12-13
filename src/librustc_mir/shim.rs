@@ -460,7 +460,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ty: func_ty,
             user_ty: None,
             literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
-                ty::Const::zero_sized(self.tcx, func_ty),
+                ty::Const::zero_sized(func_ty),
             )),
         });
 
@@ -760,7 +760,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ty,
                 user_ty: None,
                 literal: tcx.intern_lazy_const(ty::LazyConst::Evaluated(
-                    ty::Const::zero_sized(tcx, ty)
+                    ty::Const::zero_sized(ty)
                 )),
              }),
              vec![rcvr])

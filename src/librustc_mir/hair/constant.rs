@@ -14,7 +14,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ty: Ty<'tcx>,
     neg: bool,
-) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+) -> Result<ty::Const<'tcx>, LitToConstError> {
     use syntax::ast::*;
 
     let trunc = |n| {
@@ -64,7 +64,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
         LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
         LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
     };
-    Ok(ty::Const::from_const_value(tcx, lit, ty))
+    Ok(ty::Const { val: lit, ty })
 }
 
 fn parse_float<'tcx>(

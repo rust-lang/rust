@@ -420,7 +420,7 @@ pub enum Constructor<'tcx> {
     /// Enum variants.
     Variant(DefId),
     /// Literal values.
-    ConstantValue(&'tcx ty::Const<'tcx>),
+    ConstantValue(ty::Const<'tcx>),
     /// Ranges of literal values (`2...5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
     /// Array patterns of length n.
@@ -1787,7 +1787,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                                         &cx.tcx, ptr, layout.size,
                                     ).ok()?;
                                     let scalar = scalar.not_undef().ok()?;
-                                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                                    let value = ty::Const::from_scalar(scalar, ty);
                                     let pattern = Pattern {
                                         ty,
                                         span: pat.span,

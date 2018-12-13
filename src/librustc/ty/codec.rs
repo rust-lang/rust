@@ -247,15 +247,6 @@ pub fn decode_canonical_var_infos<'a, 'tcx, D>(decoder: &mut D)
 }
 
 #[inline]
-pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
-                                 -> Result<&'tcx ty::Const<'tcx>, D::Error>
-    where D: TyDecoder<'a, 'tcx>,
-          'tcx: 'a,
-{
-    Ok(decoder.tcx().mk_const(Decodable::decode(decoder)?))
-}
-
-#[inline]
 pub fn decode_lazy_const<'a, 'tcx, D>(decoder: &mut D)
                                  -> Result<&'tcx ty::LazyConst<'tcx>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
@@ -395,13 +386,6 @@ macro_rules! implement_ty_decoder {
                 fn specialized_decode(&mut self)
                     -> Result<CanonicalVarInfos<'tcx>, Self::Error> {
                     decode_canonical_var_infos(self)
-                }
-            }
-
-            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::ty::Const<'tcx>>
-            for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-                    decode_const(self)
                 }
             }
 

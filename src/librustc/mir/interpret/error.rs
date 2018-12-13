@@ -37,7 +37,7 @@ impl ErrorHandled {
 }
 
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
-pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
+pub type ConstEvalResult<'tcx> = Result<ty::Const<'tcx>, ErrorHandled>;
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {

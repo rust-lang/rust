@@ -122,7 +122,6 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
-    const_: InternedSet<'tcx, Const<'tcx>>,
     clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
@@ -140,7 +139,6 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
             predicates: Default::default(),
-            const_: Default::default(),
             clauses: Default::default(),
             goal: Default::default(),
             goal_list: Default::default(),
@@ -1071,24 +1069,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn alloc_const_slice(self, values: &[&'tcx ty::Const<'tcx>])
-                             -> &'tcx [&'tcx ty::Const<'tcx>] {
-        if values.is_empty() {
-            &[]
-        } else {
-            self.interners.arena.alloc_slice(values)
-        }
-    }
-
-    pub fn alloc_name_const_slice(self, values: &[(ast::Name, &'tcx ty::Const<'tcx>)])
-                                  -> &'tcx [(ast::Name, &'tcx ty::Const<'tcx>)] {
-        if values.is_empty() {
-            &[]
-        } else {
-            self.interners.arena.alloc_slice(values)
-        }
-    }
-
     pub fn intern_const_alloc(
         self,
         alloc: Allocation,
@@ -1833,9 +1813,9 @@ impl<'a, 'tcx> Lift<'tcx> for &'a LazyConst<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Const<'a> {
-    type Lifted = &'tcx Const<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Const<'tcx>> {
+impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
+    type Lifted = &'tcx mir::interpret::Allocation;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -2516,7 +2496,6 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 
 direct_interners!('tcx,
     region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
-    const_: mk_const(|c: &Const<'_>| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>,
     goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>
 );
 

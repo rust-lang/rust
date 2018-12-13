@@ -95,7 +95,7 @@ pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
     may_normalize: bool,
-) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
+) -> EvalResult<'tcx, ty::Const<'tcx>> {
     // We do not normalize just any data.  Only scalar layout and fat pointers.
     let normalize = may_normalize
         && match op.layout.abi {
@@ -134,7 +134,7 @@ pub fn op_to_const<'tcx>(
         Ok(Immediate::ScalarPair(a, b)) =>
             ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
-    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
+    Ok(ty::Const { val, ty: op.layout.ty })
 }
 
 pub fn lazy_const_to_op<'tcx>(
@@ -510,7 +510,7 @@ pub fn const_field<'a, 'tcx>(
     instance: ty::Instance<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
-    value: &'tcx ty::Const<'tcx>,
+    value: ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     trace!("const_field: {:?}, {:?}, {:?}", instance, field, value);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
@@ -539,7 +539,7 @@ pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
+    val: ty::Const<'tcx>,
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();

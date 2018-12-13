@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<u128>,
-                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
+                                     indices: &mut FxHashMap<ty::Const<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
