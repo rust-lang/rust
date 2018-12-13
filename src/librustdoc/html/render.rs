@@ -2703,13 +2703,16 @@ fn stability_tags(item: &clean::Item) -> String {
         tags.push_str("[<div class='stab deprecated'>Deprecated</div>] ");
     }
 
-    if item
+    if let Some(stab) = item
         .stability
         .as_ref()
         .filter(|s| s.level == stability::Unstable)
-        .is_some()
     {
-        tags.push_str("[<div class='stab unstable'>Experimental</div>] ");
+        if stab.feature.as_ref().map(|s| &**s) == Some("rustc_private") {
+            tags.push_str("[<div class='stab internal'>Internal</div>] ");
+        } else {
+            tags.push_str("[<div class='stab unstable'>Experimental</div>] ");
+        }
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
@@ -2752,9 +2755,14 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
         .as_ref()
         .filter(|stab| stab.level == stability::Unstable)
     {
-        let mut message = String::from(
-            "<span class=microscope>🔬</span> This is a nightly-only experimental API.",
-        );
+        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+
+        let mut message = if is_rustc_private {
+            "<span class='emoji'>⚙️</span> This is an internal compiler API."
+        } else {
+            "<span class='emoji'>🔬</span> This is a nightly-only experimental API."
+        }
+        .to_owned();
 
         if let Some(feature) = stab.feature.as_ref() {
             let mut feature = format!("<code>{}</code>", Escape(&feature));
@@ -2770,6 +2778,17 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
         }
 
         if let Some(unstable_reason) = &stab.unstable_reason {
+            // Provide a more informative message than the compiler help.
+            let unstable_reason = if is_rustc_private {
+                "This crate is being loaded from the sysroot, a permanently unstable location \
+                for private compiler dependencies. It is not intended for general use. Prefer \
+                using a public version of this crate from \
+                [crates.io](https://crates.io) via [`Cargo.toml`]\
+                (https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)."
+            } else {
+                unstable_reason
+            };
+
             let mut ids = cx.id_map.borrow_mut();
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
@@ -2778,7 +2797,12 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             );
         }
 
-        stability.push(format!("<div class='stab unstable'>{}</div>", message))
+        let class = if is_rustc_private {
+            "internal"
+        } else {
+            "unstable"
+        };
+        stability.push(format!("<div class='stab {}'>{}</div>", class, message));
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
