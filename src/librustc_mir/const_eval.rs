@@ -137,7 +137,7 @@ pub fn op_to_const<'tcx>(
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
 }
 
-pub fn const_to_op<'tcx>(
+pub fn lazy_const_to_op<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     cnst: ty::LazyConst<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -516,7 +516,7 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         // get the operand again
-        let op = const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
+        let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(value), value.ty)?;
         // downcast
         let down = match variant {
             None => op,
@@ -543,7 +543,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
+    let op = lazy_const_to_op(&ecx, ty::LazyConst::Evaluated(val), val.ty)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
