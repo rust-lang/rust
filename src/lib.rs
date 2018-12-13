@@ -220,43 +220,51 @@ impl CodegenBackend for CraneliftCodegenBackend {
             jit_module.finish();
             ::std::process::exit(0);
         } else {
-            let mut faerie_module: Module<FaerieBackend> = Module::new(
-                FaerieBuilder::new(
-                    build_isa(tcx.sess),
-                    "some_file.o".to_string(),
-                    FaerieTrapCollection::Disabled,
-                    FaerieBuilder::default_libcall_names(),
-                )
-                .unwrap(),
-            );
-            assert_eq!(
-                pointer_ty(tcx),
-                faerie_module.target_config().pointer_type()
-            );
+            let new_module = |name: String| {
+                let module: Module<FaerieBackend> = Module::new(
+                    FaerieBuilder::new(
+                        build_isa(tcx.sess),
+                        name + ".o",
+                        FaerieTrapCollection::Disabled,
+                        FaerieBuilder::default_libcall_names(),
+                    )
+                    .unwrap(),
+                );
+                assert_eq!(
+                    pointer_ty(tcx),
+                    module.target_config().pointer_type()
+                );
+                module
+            };
+
+            let mut faerie_module = new_module("some_file".to_string());
 
             codegen_cgus(tcx, &mut faerie_module, &mut log);
             crate::allocator::codegen(tcx.sess, &mut faerie_module);
-            faerie_module.finalize_definitions();
 
             tcx.sess.abort_if_errors();
 
-            let artifact = faerie_module.finish().artifact;
+            let emit_module = |name: &str, kind: ModuleKind, mut module: Module<FaerieBackend>| {
+                module.finalize_definitions();
+                let artifact = module.finish().artifact;
 
-            let tmp_file = tcx
-                .output_filenames(LOCAL_CRATE)
-                .temp_path(OutputType::Object, None);
-            let obj = artifact.emit().unwrap();
-            std::fs::write(&tmp_file, obj).unwrap();
-
-            return Box::new(CodegenResults {
-                crate_name: tcx.crate_name(LOCAL_CRATE),
-                modules: vec![CompiledModule {
-                    name: "dummy_name".to_string(),
-                    kind: ModuleKind::Regular,
+                let tmp_file = tcx
+                    .output_filenames(LOCAL_CRATE)
+                    .temp_path(OutputType::Object, Some(name));
+                let obj = artifact.emit().unwrap();
+                std::fs::write(&tmp_file, obj).unwrap();
+                CompiledModule {
+                    name: name.to_string(),
+                    kind,
                     object: Some(tmp_file),
                     bytecode: None,
                     bytecode_compressed: None,
-                }],
+                }
+            };
+
+            return Box::new(CodegenResults {
+                crate_name: tcx.crate_name(LOCAL_CRATE),
+                modules: vec![emit_module("dummy_name", ModuleKind::Regular, faerie_module)],
                 allocator_module: None,
                 metadata_module: CompiledModule {
                     name: "dummy_metadata".to_string(),
