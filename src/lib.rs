@@ -24,6 +24,7 @@ use rustc::session::{
     CompileIncomplete,
 };
 use rustc::ty::query::Providers;
+use rustc::mir::mono::{Linkage as RLinkage, Visibility};
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -200,7 +201,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .declare_function("main", Linkage::Import, &sig)
                 .unwrap();
 
-            codegen_mono_items(tcx, &mut jit_module, &mut log);
+            codegen_cgus(tcx, &mut jit_module, &mut log);
             crate::allocator::codegen(tcx.sess, &mut jit_module);
             jit_module.finalize_definitions();
 
@@ -233,7 +234,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 faerie_module.target_config().pointer_type()
             );
 
-            codegen_mono_items(tcx, &mut faerie_module, &mut log);
+            codegen_cgus(tcx, &mut faerie_module, &mut log);
             crate::allocator::codegen(tcx.sess, &mut faerie_module);
             faerie_module.finalize_definitions();
 
@@ -328,29 +329,39 @@ fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
         .finish(flags)
 }
 
-fn codegen_mono_items<'a, 'tcx: 'a>(
+fn codegen_cgus<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend + 'static>,
     log: &mut Option<File>,
 ) {
-    let mut caches = Caches::new();
-    let mut ccx = ConstantCx::default();
-
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
         .iter()
         .map(|cgu| cgu.items().iter())
         .flatten()
-        .collect::<FxHashSet<(_, _)>>();
+        .map(|(&mono_item, &(linkage, vis))| (mono_item, (linkage, vis)))
+        .collect::<FxHashMap<_, (_, _)>>();
 
+    codegen_mono_items(tcx, module, log, mono_items);
+
+    crate::main_shim::maybe_create_entry_wrapper(tcx, module);
+}
+
+fn codegen_mono_items<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<impl Backend + 'static>,
+    log: &mut Option<File>,
+    mono_items: FxHashMap<MonoItem<'tcx>, (RLinkage, Visibility)>,
+) {
     time("codegen mono items", move || {
-        for (&mono_item, &(_linkage, _vis)) in mono_items {
+        let mut caches = Caches::new();
+        let mut ccx = ConstantCx::default();
+
+        for (mono_item, (_linkage, _vis)) in mono_items {
             unimpl::try_unimpl(tcx, log, || {
                 base::trans_mono_item(tcx, module, &mut caches, &mut ccx, mono_item);
             });
         }
-
-        crate::main_shim::maybe_create_entry_wrapper(tcx, module);
 
         ccx.finalize(tcx, module);
     });
