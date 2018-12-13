@@ -430,6 +430,45 @@ impl Step for Miri {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CompiletestTest {
+    stage: u32,
+    host: Interned<String>,
+}
+
+impl Step for CompiletestTest {
+    type Output = ();
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/compiletest")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(CompiletestTest {
+            stage: run.builder.top_stage,
+            host: run.target,
+        });
+    }
+
+    /// Runs `cargo test` for compiletest.
+    fn run(self, builder: &Builder) {
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolBootstrap,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/compiletest",
+                                                 SourceType::InTree,
+                                                 &[]);
+
+        try_run(builder, &mut cargo);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     stage: u32,
     host: Interned<String>,
