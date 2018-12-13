@@ -2,11 +2,7 @@
 #![cfg_attr(stdsimd_strict, deny(warnings))]
 #![cfg_attr(
     feature = "cargo-clippy",
-    allow(
-        clippy::option_unwrap_used,
-        clippy::use_debug,
-        clippy::print_stdout
-    )
+    allow(clippy::option_unwrap_used, clippy::use_debug, clippy::print_stdout)
 )]
 
 #[cfg(any(
@@ -21,10 +17,7 @@
 extern crate stdsimd;
 
 #[test]
-#[cfg(all(
-    target_arch = "arm",
-    any(target_os = "linux", target_os = "android")
-))]
+#[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android")))]
 fn arm_linux() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));

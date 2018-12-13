@@ -379,9 +379,7 @@ pub unsafe fn _mm_set_pi32(e1: i32, e0: i32) -> __m64 {
 /// Set packed 8-bit integers in dst with the supplied values.
 #[inline]
 #[target_feature(enable = "mmx")]
-pub unsafe fn _mm_set_pi8(
-    e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8,
-) -> __m64 {
+pub unsafe fn _mm_set_pi8(e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8) -> __m64 {
     _mm_setr_pi8(e0, e1, e2, e3, e4, e5, e6, e7)
 }
 
@@ -426,7 +424,14 @@ pub unsafe fn _mm_setr_pi32(e0: i32, e1: i32) -> __m64 {
 #[inline]
 #[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi8(
-    e0: i8, e1: i8, e2: i8, e3: i8, e4: i8, e5: i8, e6: i8, e7: i8,
+    e0: i8,
+    e1: i8,
+    e2: i8,
+    e3: i8,
+    e4: i8,
+    e5: i8,
+    e6: i8,
+    e7: i8,
 ) -> __m64 {
     mem::transmute(i8x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
 }
@@ -508,14 +513,8 @@ mod tests {
     #[simd_test(enable = "mmx")]
     unsafe fn test_mm_add_pi16() {
         let a = _mm_setr_pi16(-1, -1, 1, 1);
-        let b = _mm_setr_pi16(
-            i16::min_value() + 1,
-            30001,
-            -30001,
-            i16::max_value() - 1,
-        );
-        let e =
-            _mm_setr_pi16(i16::min_value(), 30000, -30000, i16::max_value());
+        let b = _mm_setr_pi16(i16::min_value() + 1, 30001, -30001, i16::max_value() - 1);
+        let e = _mm_setr_pi16(i16::min_value(), 30000, -30000, i16::max_value());
         assert_eq_m64(e, _mm_add_pi16(a, b));
         assert_eq_m64(e, _m_paddw(a, b));
     }
@@ -533,8 +532,7 @@ mod tests {
     unsafe fn test_mm_adds_pi8() {
         let a = _mm_setr_pi8(-100, -1, 1, 100, -1, 0, 1, 0);
         let b = _mm_setr_pi8(-100, 1, -1, 100, 0, -1, 0, 1);
-        let e =
-            _mm_setr_pi8(i8::min_value(), 0, 0, i8::max_value(), -1, -1, 1, 1);
+        let e = _mm_setr_pi8(i8::min_value(), 0, 0, i8::max_value(), -1, -1, 1, 1);
         assert_eq_m64(e, _mm_adds_pi8(a, b));
         assert_eq_m64(e, _m_paddsb(a, b));
     }

@@ -12,10 +12,7 @@ use stdsimd_test::assert_instr;
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi64)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(
-    all(test, not(target_os = "windows")),
-    assert_instr(pextrq, imm8 = 1)
-)]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(pextrq, imm8 = 1))]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {

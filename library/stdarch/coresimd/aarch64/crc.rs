@@ -1,4 +1,3 @@
-
 extern "C" {
     #[link_name = "llvm.aarch64.crc32b"]
     fn crc32b_(crc: u32, data: u32) -> u32;

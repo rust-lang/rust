@@ -74,9 +74,7 @@ pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(sha1rnds4, func = 0))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha1rnds4_epu32(
-    a: __m128i, b: __m128i, func: i32,
-) -> __m128i {
+pub unsafe fn _mm_sha1rnds4_epu32(a: __m128i, b: __m128i, func: i32) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     macro_rules! call {
@@ -125,9 +123,7 @@ pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256rnds2))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sha256rnds2_epu32(
-    a: __m128i, b: __m128i, k: __m128i,
-) -> __m128i {
+pub unsafe fn _mm_sha256rnds2_epu32(a: __m128i, b: __m128i, k: __m128i) -> __m128i {
     mem::transmute(sha256rnds2(a.as_i32x4(), b.as_i32x4(), k.as_i32x4()))
 }
 

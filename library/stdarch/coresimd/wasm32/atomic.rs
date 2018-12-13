@@ -53,9 +53,7 @@ extern "C" {
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
 #[inline]
 #[cfg_attr(test, assert_instr("i32.atomic.wait"))]
-pub unsafe fn i32_atomic_wait(
-    ptr: *mut i32, expression: i32, timeout_ns: i64,
-) -> i32 {
+pub unsafe fn i32_atomic_wait(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i32(ptr, expression, timeout_ns)
 }
 
@@ -90,9 +88,7 @@ pub unsafe fn i32_atomic_wait(
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
 #[inline]
 #[cfg_attr(test, assert_instr("i64.atomic.wait"))]
-pub unsafe fn i64_atomic_wait(
-    ptr: *mut i64, expression: i64, timeout_ns: i64,
-) -> i32 {
+pub unsafe fn i64_atomic_wait(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i64(ptr, expression, timeout_ns)
 }
 

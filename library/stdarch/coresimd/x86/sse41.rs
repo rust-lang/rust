@@ -35,24 +35,20 @@ pub const _MM_FROUND_NO_EXC: i32 = 0x08;
 pub const _MM_FROUND_NINT: i32 = 0x00;
 /// round down and do not suppress exceptions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub const _MM_FROUND_FLOOR: i32 =
-    (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEG_INF);
+pub const _MM_FROUND_FLOOR: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEG_INF);
 /// round up and do not suppress exceptions
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub const _MM_FROUND_CEIL: i32 =
-    (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_POS_INF);
+pub const _MM_FROUND_CEIL: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_POS_INF);
 /// truncate and do not suppress exceptions
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_FROUND_TRUNC: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_ZERO);
 /// use MXCSR.RC and do not suppress exceptions; see
 /// `vendor::_MM_SET_ROUNDING_MODE`
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub const _MM_FROUND_RINT: i32 =
-    (_MM_FROUND_RAISE_EXC | _MM_FROUND_CUR_DIRECTION);
+pub const _MM_FROUND_RINT: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_CUR_DIRECTION);
 /// use MXCSR.RC and suppress exceptions; see `vendor::_MM_SET_ROUNDING_MODE`
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub const _MM_FROUND_NEARBYINT: i32 =
-    (_MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTION);
+pub const _MM_FROUND_NEARBYINT: i32 = (_MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTION);
 
 /// Blend packed 8-bit integers from `a` and `b` using `mask`
 ///
@@ -65,9 +61,7 @@ pub const _MM_FROUND_NEARBYINT: i32 =
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pblendvb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_blendv_epi8(
-    a: __m128i, b: __m128i, mask: __m128i,
-) -> __m128i {
+pub unsafe fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i {
     mem::transmute(pblendvb(a.as_i8x16(), b.as_i8x16(), mask.as_i8x16()))
 }
 
@@ -1775,10 +1769,7 @@ mod tests {
             assert_eq_m128i(r, e);
         }
         {
-            let a = _mm_setr_epi32(
-                15, 2, /* ignored */
-                1234567, 4, /* ignored */
-            );
+            let a = _mm_setr_epi32(15, 2 /* ignored */, 1234567, 4 /* ignored */);
             let b = _mm_setr_epi32(
                 -20, -256, /* ignored */
                 666666, 666666, /* ignored */

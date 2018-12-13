@@ -150,10 +150,7 @@ macro_rules! impl_extract_lane {
                 a: v128,
             }
             // the vectors store a signed integer => extract into it
-            let v: $selem_ty = simd_extract(
-                U { a }.vec,
-                imm as u32, /* zero-extends index */
-            );
+            let v: $selem_ty = simd_extract(U { a }.vec, imm as u32 /* zero-extends index */);
             v as $x_ty
         }
 
@@ -173,10 +170,7 @@ macro_rules! impl_extract_lane {
                 a: v128,
             }
             // the vectors store a signed integer => extract into it
-            let v: $selem_ty = simd_extract(
-                U { a }.vec,
-                imm as u32, /* zero-extends index */
-            );
+            let v: $selem_ty = simd_extract(U { a }.vec, imm as u32 /* zero-extends index */);
             // re-interpret the signed integer as an unsigned one of the
             // same size (no-op)
             let v: $uelem_ty = ::mem::transmute(v);
@@ -845,11 +839,8 @@ pub mod tests {
 
     #[wasm_bindgen_test]
     fn v128_const() {
-        const A: v128 = unsafe {
-            v128::const_([
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-            ])
-        };
+        const A: v128 =
+            unsafe { v128::const_([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) };
         compare_bytes(A, A);
     }
 
@@ -942,8 +933,7 @@ pub mod tests {
         unsafe {
             let a = [0_u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
             let b = [
-                16_u8, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-                31,
+                16_u8, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
             ];
 
             let vec_a: v128 = mem::transmute(a);
@@ -955,8 +945,7 @@ pub mod tests {
                 [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]
             );
 
-            let e =
-                [0_u8, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30];
+            let e = [0_u8, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30];
             let vec_e: v128 = mem::transmute(e);
             compare_bytes(vec_r, vec_e);
         }
@@ -1225,14 +1214,9 @@ pub mod tests {
             | [1_i16, 0, 1, 0, 1, 0, 1, 0]
     );
     test_bool_red!(
-        i32x4[i32x4_boolean_reductions]
-            | [1_i32, 1, 1, 1]
-            | [0_i32, 0, 0, 0]
-            | [1_i32, 0, 1, 0]
+        i32x4[i32x4_boolean_reductions] | [1_i32, 1, 1, 1] | [0_i32, 0, 0, 0] | [1_i32, 0, 1, 0]
     );
-    test_bool_red!(
-        i64x2[i64x2_boolean_reductions] | [1_i64, 1] | [0_i64, 0] | [1_i64, 0]
-    );
+    test_bool_red!(i64x2[i64x2_boolean_reductions] | [1_i64, 1] | [0_i64, 0] | [1_i64, 0]);
 
     test_bop!(i8x16[i8; 16] | eq[i8x16_eq_test]:
               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -1395,10 +1379,7 @@ pub mod tests {
         [1_f32, 2., 3., 4.]
     );
     test_conv!(
-        f32x4_convert_u_i32x4
-            | convert_u_i32x4
-            | f32x4
-            | [u32::max_value(), 2, 3, 4],
+        f32x4_convert_u_i32x4 | convert_u_i32x4 | f32x4 | [u32::max_value(), 2, 3, 4],
         [u32::max_value() as f32, 2., 3., 4.]
     );
     test_conv!(
@@ -1406,10 +1387,7 @@ pub mod tests {
         [1_f64, 2.]
     );
     test_conv!(
-        f64x2_convert_u_i64x2
-            | convert_u_i64x2
-            | f64x2
-            | [u64::max_value(), 2],
+        f64x2_convert_u_i64x2 | convert_u_i64x2 | f64x2 | [u64::max_value(), 2],
         [18446744073709552000.0, 2.]
     );
 

@@ -43,14 +43,8 @@ mod sealed {
     // xxpermdi has an big-endian bias and extended mnemonics
     #[inline]
     #[target_feature(enable = "vsx")]
-    #[cfg_attr(
-        all(test, target_endian = "little"),
-        assert_instr(xxmrgld, dm = 0x0)
-    )]
-    #[cfg_attr(
-        all(test, target_endian = "big"),
-        assert_instr(xxspltd, dm = 0x0)
-    )]
+    #[cfg_attr(all(test, target_endian = "little"), assert_instr(xxmrgld, dm = 0x0))]
+    #[cfg_attr(all(test, target_endian = "big"), assert_instr(xxspltd, dm = 0x0))]
     unsafe fn xxpermdi(a: i64x2, b: i64x2, dm: u8) -> i64x2 {
         match dm & 0b11 {
             0 => simd_shuffle2(a, b, [0b00, 0b10]),

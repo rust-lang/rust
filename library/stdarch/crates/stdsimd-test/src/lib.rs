@@ -36,8 +36,7 @@ cfg_if! {
 }
 
 lazy_static! {
-    static ref DISASSEMBLY: HashMap<String, Vec<Function>> =
-        disassemble_myself();
+    static ref DISASSEMBLY: HashMap<String, Vec<Function>> = disassemble_myself();
 }
 
 struct Function {

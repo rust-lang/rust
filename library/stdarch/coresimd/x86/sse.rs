@@ -1962,7 +1962,10 @@ pub unsafe fn _mm_undefined_ps() -> __m128 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_TRANSPOSE4_PS(
-    row0: &mut __m128, row1: &mut __m128, row2: &mut __m128, row3: &mut __m128,
+    row0: &mut __m128,
+    row1: &mut __m128,
+    row2: &mut __m128,
+    row3: &mut __m128,
 ) {
     let tmp0 = _mm_unpacklo_ps(*row0, *row1);
     let tmp2 = _mm_unpacklo_ps(*row2, *row3);
@@ -2768,8 +2771,7 @@ mod tests {
 
         let b2 = _mm_setr_ps(1.0, 5.0, 6.0, 7.0);
         let r2: u32x4 = transmute(_mm_cmpeq_ss(a, b2));
-        let e2: u32x4 =
-            transmute(_mm_setr_ps(transmute(0xffffffffu32), 2.0, 3.0, 4.0));
+        let e2: u32x4 = transmute(_mm_setr_ps(transmute(0xffffffffu32), 2.0, 3.0, 4.0));
         assert_eq!(r2, e2);
     }
 
@@ -3484,8 +3486,7 @@ mod tests {
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvtss_si32() {
         let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
-        let result =
-            &[42i32, -3, i32::min_value(), 0, i32::min_value(), 2147483520];
+        let result = &[42i32, -3, i32::min_value(), 0, i32::min_value(), 2147483520];
         for i in 0..inputs.len() {
             let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
             let e = result[i];
@@ -3696,8 +3697,7 @@ mod tests {
         }
 
         let r = _mm_load_ps(p);
-        let e =
-            _mm_add_ps(_mm_setr_ps(1.0, 2.0, 3.0, 4.0), _mm_set1_ps(fixup));
+        let e = _mm_add_ps(_mm_setr_ps(1.0, 2.0, 3.0, 4.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
     }
 
@@ -3727,8 +3727,7 @@ mod tests {
         }
 
         let r = _mm_loadr_ps(p);
-        let e =
-            _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
+        let e = _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
     }
 
@@ -3978,8 +3977,7 @@ mod tests {
     #[simd_test(enable = "sse,mmx")]
     unsafe fn test_mm_stream_pi() {
         let a = transmute(i8x8::new(0, 0, 0, 0, 0, 0, 0, 7));
-        let mut mem =
-            ::std::boxed::Box::<__m64>::new(transmute(i8x8::splat(1)));
+        let mut mem = ::std::boxed::Box::<__m64>::new(transmute(i8x8::splat(1)));
         _mm_stream_pi(&mut *mem as *mut _ as *mut _, a);
         assert_eq_m64(a, *mem);
     }
@@ -4175,8 +4173,7 @@ mod tests {
 
     #[simd_test(enable = "sse,mmx")]
     unsafe fn test_mm_movemask_pi8() {
-        let a =
-            _mm_setr_pi16(0b1000_0000, 0b0100_0000, 0b1000_0000, 0b0100_0000);
+        let a = _mm_setr_pi16(0b1000_0000, 0b0100_0000, 0b1000_0000, 0b0100_0000);
         let r = _mm_movemask_pi8(a);
         assert_eq!(r, 0b10001);
 

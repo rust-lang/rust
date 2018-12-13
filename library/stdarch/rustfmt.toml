@@ -1,4 +1,0 @@
-max_width = 79
-wrap_comments = false
-error_on_line_overflow = false
-fn_args_density = "Compressed"

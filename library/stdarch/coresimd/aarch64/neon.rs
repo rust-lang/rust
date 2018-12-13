@@ -28,12 +28,7 @@ pub struct int8x16x2_t(pub int8x16_t, pub int8x16_t);
 pub struct int8x16x3_t(pub int8x16_t, pub int8x16_t, pub int8x16_t);
 /// ARM-specific type containing four `int8x16_t` vectors.
 #[derive(Copy, Clone)]
-pub struct int8x16x4_t(
-    pub int8x16_t,
-    pub int8x16_t,
-    pub int8x16_t,
-    pub int8x16_t,
-);
+pub struct int8x16x4_t(pub int8x16_t, pub int8x16_t, pub int8x16_t, pub int8x16_t);
 
 /// ARM-specific type containing two `uint8x16_t` vectors.
 #[derive(Copy, Clone)]
@@ -183,53 +178,55 @@ extern "C" {
     fn vqtbl2q(a0: int8x16_t, a1: int8x16_t, b: uint8x16_t) -> int8x16_t;
 
     #[link_name = "llvm.aarch64.neon.tbx2.v8i8"]
-    fn vqtbx2(
-        a: int8x8_t, b0: int8x16_t, b1: int8x16_t, c: uint8x8_t,
-    ) -> int8x8_t;
+    fn vqtbx2(a: int8x8_t, b0: int8x16_t, b1: int8x16_t, c: uint8x8_t) -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.tbx2.v16i8"]
-    fn vqtbx2q(
-        a: int8x16_t, b0: int8x16_t, b1: int8x16_t, c: uint8x16_t,
-    ) -> int8x16_t;
+    fn vqtbx2q(a: int8x16_t, b0: int8x16_t, b1: int8x16_t, c: uint8x16_t) -> int8x16_t;
 
     #[link_name = "llvm.aarch64.neon.tbl3.v8i8"]
-    fn vqtbl3(
-        a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, b: uint8x8_t,
-    ) -> int8x8_t;
+    fn vqtbl3(a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, b: uint8x8_t) -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.tbl3.v16i8"]
-    fn vqtbl3q(
-        a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, b: uint8x16_t,
-    ) -> int8x16_t;
+    fn vqtbl3q(a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, b: uint8x16_t) -> int8x16_t;
 
     #[link_name = "llvm.aarch64.neon.tbx3.v8i8"]
-    fn vqtbx3(
-        a: int8x8_t, b0: int8x16_t, b1: int8x16_t, b2: int8x16_t, c: uint8x8_t,
-    ) -> int8x8_t;
+    fn vqtbx3(a: int8x8_t, b0: int8x16_t, b1: int8x16_t, b2: int8x16_t, c: uint8x8_t) -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.tbx3.v16i8"]
     fn vqtbx3q(
-        a: int8x16_t, b0: int8x16_t, b1: int8x16_t, b2: int8x16_t,
+        a: int8x16_t,
+        b0: int8x16_t,
+        b1: int8x16_t,
+        b2: int8x16_t,
         c: uint8x16_t,
     ) -> int8x16_t;
 
     #[link_name = "llvm.aarch64.neon.tbl4.v8i8"]
-    fn vqtbl4(
-        a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, a3: int8x16_t,
-        b: uint8x8_t,
-    ) -> int8x8_t;
+    fn vqtbl4(a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, a3: int8x16_t, b: uint8x8_t)
+        -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.tbl4.v16i8"]
     fn vqtbl4q(
-        a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, a3: int8x16_t,
+        a0: int8x16_t,
+        a1: int8x16_t,
+        a2: int8x16_t,
+        a3: int8x16_t,
         b: uint8x16_t,
     ) -> int8x16_t;
 
     #[link_name = "llvm.aarch64.neon.tbx4.v8i8"]
     fn vqtbx4(
-        a: int8x8_t, b0: int8x16_t, b1: int8x16_t, b2: int8x16_t,
-        b3: int8x16_t, c: uint8x8_t,
+        a: int8x8_t,
+        b0: int8x16_t,
+        b1: int8x16_t,
+        b2: int8x16_t,
+        b3: int8x16_t,
+        c: uint8x8_t,
     ) -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.tbx4.v16i8"]
     fn vqtbx4q(
-        a: int8x16_t, b0: int8x16_t, b1: int8x16_t, b2: int8x16_t,
-        b3: int8x16_t, c: uint8x16_t,
+        a: int8x16_t,
+        b0: int8x16_t,
+        b1: int8x16_t,
+        b2: int8x16_t,
+        b3: int8x16_t,
+        c: uint8x16_t,
     ) -> int8x16_t;
 }
 
@@ -727,9 +724,7 @@ pub unsafe fn vcombine_f16 ( low: float16x4_t,  high: float16x4_t) -> float16x8_
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
-pub unsafe fn vcombine_f32(
-    low: float32x2_t, high: float32x2_t,
-) -> float32x4_t {
+pub unsafe fn vcombine_f32(low: float32x2_t, high: float32x2_t) -> float32x4_t {
     simd_shuffle4(low, high, [0, 1, 2, 3])
 }
 
@@ -757,9 +752,7 @@ pub unsafe fn vcombine_p16(low: poly16x4_t, high: poly16x4_t) -> poly16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
-pub unsafe fn vcombine_f64(
-    low: float64x1_t, high: float64x1_t,
-) -> float64x2_t {
+pub unsafe fn vcombine_f64(low: float64x1_t, high: float64x1_t) -> float64x2_t {
     simd_shuffle2(low, high, [0, 1])
 }
 
@@ -939,9 +932,7 @@ pub unsafe fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vtbx2_u8(
-    a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t {
     vqtbx1_u8(a, vcombine_u8(b.0, b.1), c)
 }
 
@@ -950,9 +941,7 @@ pub unsafe fn vtbx2_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vtbx2_p8(
-    a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t {
     vqtbx1_p8(a, vcombine_p8(b.0, b.1), c)
 }
 
@@ -977,9 +966,7 @@ pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vtbx3_u8(
-    a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t {
     use coresimd::simd::u8x8;
     let r = vqtbx2_u8(
         a,
@@ -995,9 +982,7 @@ pub unsafe fn vtbx3_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vtbx3_p8(
-    a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
     use coresimd::simd::u8x8;
     let r = vqtbx2_p8(
         a,
@@ -1026,9 +1011,7 @@ pub unsafe fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vtbx4_u8(
-    a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t {
     vqtbx2_u8(
         a,
         uint8x16x2_t(vcombine_u8(b.0, b.1), vcombine_u8(b.2, b.3)),
@@ -1041,9 +1024,7 @@ pub unsafe fn vtbx4_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vtbx4_p8(
-    a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
     vqtbx2_p8(
         a,
         poly8x16x2_t(vcombine_p8(b.0, b.1), vcombine_p8(b.2, b.3)),
@@ -1104,9 +1085,7 @@ pub unsafe fn vqtbl1q_p8(t: poly8x16_t, idx: uint8x16_t) -> poly8x16_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx1_s8(
-    a: int8x8_t, t: int8x16_t, idx: uint8x8_t,
-) -> int8x8_t {
+pub unsafe fn vqtbx1_s8(a: int8x8_t, t: int8x16_t, idx: uint8x8_t) -> int8x8_t {
     vqtbx1(a, t, idx)
 }
 /// Extended table look-up
@@ -1114,9 +1093,7 @@ pub unsafe fn vqtbx1_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx1q_s8(
-    a: int8x16_t, t: int8x16_t, idx: uint8x16_t,
-) -> int8x16_t {
+pub unsafe fn vqtbx1q_s8(a: int8x16_t, t: int8x16_t, idx: uint8x16_t) -> int8x16_t {
     vqtbx1q(a, t, idx)
 }
 /// Extended table look-up
@@ -1124,9 +1101,7 @@ pub unsafe fn vqtbx1q_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx1_u8(
-    a: uint8x8_t, t: uint8x16_t, idx: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vqtbx1_u8(a: uint8x8_t, t: uint8x16_t, idx: uint8x8_t) -> uint8x8_t {
     ::mem::transmute(vqtbx1(
         ::mem::transmute(a),
         ::mem::transmute(t),
@@ -1138,9 +1113,7 @@ pub unsafe fn vqtbx1_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx1q_u8(
-    a: uint8x16_t, t: uint8x16_t, idx: uint8x16_t,
-) -> uint8x16_t {
+pub unsafe fn vqtbx1q_u8(a: uint8x16_t, t: uint8x16_t, idx: uint8x16_t) -> uint8x16_t {
     ::mem::transmute(vqtbx1q(
         ::mem::transmute(a),
         ::mem::transmute(t),
@@ -1152,9 +1125,7 @@ pub unsafe fn vqtbx1q_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx1_p8(
-    a: poly8x8_t, t: poly8x16_t, idx: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vqtbx1_p8(a: poly8x8_t, t: poly8x16_t, idx: uint8x8_t) -> poly8x8_t {
     ::mem::transmute(vqtbx1(
         ::mem::transmute(a),
         ::mem::transmute(t),
@@ -1166,9 +1137,7 @@ pub unsafe fn vqtbx1_p8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx1q_p8(
-    a: poly8x16_t, t: poly8x16_t, idx: uint8x16_t,
-) -> poly8x16_t {
+pub unsafe fn vqtbx1q_p8(a: poly8x16_t, t: poly8x16_t, idx: uint8x16_t) -> poly8x16_t {
     ::mem::transmute(vqtbx1q(
         ::mem::transmute(a),
         ::mem::transmute(t),
@@ -1245,9 +1214,7 @@ pub unsafe fn vqtbl2q_p8(t: poly8x16x2_t, idx: uint8x16_t) -> poly8x16_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx2_s8(
-    a: int8x8_t, t: int8x16x2_t, idx: uint8x8_t,
-) -> int8x8_t {
+pub unsafe fn vqtbx2_s8(a: int8x8_t, t: int8x16x2_t, idx: uint8x8_t) -> int8x8_t {
     vqtbx2(a, t.0, t.1, idx)
 }
 /// Extended table look-up
@@ -1255,9 +1222,7 @@ pub unsafe fn vqtbx2_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx2q_s8(
-    a: int8x16_t, t: int8x16x2_t, idx: uint8x16_t,
-) -> int8x16_t {
+pub unsafe fn vqtbx2q_s8(a: int8x16_t, t: int8x16x2_t, idx: uint8x16_t) -> int8x16_t {
     vqtbx2q(a, t.0, t.1, idx)
 }
 /// Extended table look-up
@@ -1265,9 +1230,7 @@ pub unsafe fn vqtbx2q_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx2_u8(
-    a: uint8x8_t, t: uint8x16x2_t, idx: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vqtbx2_u8(a: uint8x8_t, t: uint8x16x2_t, idx: uint8x8_t) -> uint8x8_t {
     ::mem::transmute(vqtbx2(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1280,9 +1243,7 @@ pub unsafe fn vqtbx2_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx2q_u8(
-    a: uint8x16_t, t: uint8x16x2_t, idx: uint8x16_t,
-) -> uint8x16_t {
+pub unsafe fn vqtbx2q_u8(a: uint8x16_t, t: uint8x16x2_t, idx: uint8x16_t) -> uint8x16_t {
     ::mem::transmute(vqtbx2q(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1295,9 +1256,7 @@ pub unsafe fn vqtbx2q_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx2_p8(
-    a: poly8x8_t, t: poly8x16x2_t, idx: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vqtbx2_p8(a: poly8x8_t, t: poly8x16x2_t, idx: uint8x8_t) -> poly8x8_t {
     ::mem::transmute(vqtbx2(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1310,9 +1269,7 @@ pub unsafe fn vqtbx2_p8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx2q_p8(
-    a: poly8x16_t, t: poly8x16x2_t, idx: uint8x16_t,
-) -> poly8x16_t {
+pub unsafe fn vqtbx2q_p8(a: poly8x16_t, t: poly8x16x2_t, idx: uint8x16_t) -> poly8x16_t {
     ::mem::transmute(vqtbx2q(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1394,9 +1351,7 @@ pub unsafe fn vqtbl3q_p8(t: poly8x16x3_t, idx: uint8x16_t) -> poly8x16_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx3_s8(
-    a: int8x8_t, t: int8x16x3_t, idx: uint8x8_t,
-) -> int8x8_t {
+pub unsafe fn vqtbx3_s8(a: int8x8_t, t: int8x16x3_t, idx: uint8x8_t) -> int8x8_t {
     vqtbx3(a, t.0, t.1, t.2, idx)
 }
 /// Extended table look-up
@@ -1404,9 +1359,7 @@ pub unsafe fn vqtbx3_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx3q_s8(
-    a: int8x16_t, t: int8x16x3_t, idx: uint8x16_t,
-) -> int8x16_t {
+pub unsafe fn vqtbx3q_s8(a: int8x16_t, t: int8x16x3_t, idx: uint8x16_t) -> int8x16_t {
     vqtbx3q(a, t.0, t.1, t.2, idx)
 }
 /// Extended table look-up
@@ -1414,9 +1367,7 @@ pub unsafe fn vqtbx3q_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx3_u8(
-    a: uint8x8_t, t: uint8x16x3_t, idx: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vqtbx3_u8(a: uint8x8_t, t: uint8x16x3_t, idx: uint8x8_t) -> uint8x8_t {
     ::mem::transmute(vqtbx3(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1430,9 +1381,7 @@ pub unsafe fn vqtbx3_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx3q_u8(
-    a: uint8x16_t, t: uint8x16x3_t, idx: uint8x16_t,
-) -> uint8x16_t {
+pub unsafe fn vqtbx3q_u8(a: uint8x16_t, t: uint8x16x3_t, idx: uint8x16_t) -> uint8x16_t {
     ::mem::transmute(vqtbx3q(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1446,9 +1395,7 @@ pub unsafe fn vqtbx3q_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx3_p8(
-    a: poly8x8_t, t: poly8x16x3_t, idx: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vqtbx3_p8(a: poly8x8_t, t: poly8x16x3_t, idx: uint8x8_t) -> poly8x8_t {
     ::mem::transmute(vqtbx3(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1462,9 +1409,7 @@ pub unsafe fn vqtbx3_p8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx3q_p8(
-    a: poly8x16_t, t: poly8x16x3_t, idx: uint8x16_t,
-) -> poly8x16_t {
+pub unsafe fn vqtbx3q_p8(a: poly8x16_t, t: poly8x16x3_t, idx: uint8x16_t) -> poly8x16_t {
     ::mem::transmute(vqtbx3q(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1551,9 +1496,7 @@ pub unsafe fn vqtbl4q_p8(t: poly8x16x4_t, idx: uint8x16_t) -> poly8x16_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx4_s8(
-    a: int8x8_t, t: int8x16x4_t, idx: uint8x8_t,
-) -> int8x8_t {
+pub unsafe fn vqtbx4_s8(a: int8x8_t, t: int8x16x4_t, idx: uint8x8_t) -> int8x8_t {
     vqtbx4(a, t.0, t.1, t.2, t.3, idx)
 }
 /// Extended table look-up
@@ -1561,9 +1504,7 @@ pub unsafe fn vqtbx4_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx4q_s8(
-    a: int8x16_t, t: int8x16x4_t, idx: uint8x16_t,
-) -> int8x16_t {
+pub unsafe fn vqtbx4q_s8(a: int8x16_t, t: int8x16x4_t, idx: uint8x16_t) -> int8x16_t {
     vqtbx4q(a, t.0, t.1, t.2, t.3, idx)
 }
 /// Extended table look-up
@@ -1571,9 +1512,7 @@ pub unsafe fn vqtbx4q_s8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx4_u8(
-    a: uint8x8_t, t: uint8x16x4_t, idx: uint8x8_t,
-) -> uint8x8_t {
+pub unsafe fn vqtbx4_u8(a: uint8x8_t, t: uint8x16x4_t, idx: uint8x8_t) -> uint8x8_t {
     ::mem::transmute(vqtbx4(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1588,9 +1527,7 @@ pub unsafe fn vqtbx4_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx4q_u8(
-    a: uint8x16_t, t: uint8x16x4_t, idx: uint8x16_t,
-) -> uint8x16_t {
+pub unsafe fn vqtbx4q_u8(a: uint8x16_t, t: uint8x16x4_t, idx: uint8x16_t) -> uint8x16_t {
     ::mem::transmute(vqtbx4q(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1605,9 +1542,7 @@ pub unsafe fn vqtbx4q_u8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx4_p8(
-    a: poly8x8_t, t: poly8x16x4_t, idx: uint8x8_t,
-) -> poly8x8_t {
+pub unsafe fn vqtbx4_p8(a: poly8x8_t, t: poly8x16x4_t, idx: uint8x8_t) -> poly8x8_t {
     ::mem::transmute(vqtbx4(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1622,9 +1557,7 @@ pub unsafe fn vqtbx4_p8(
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
-pub unsafe fn vqtbx4q_p8(
-    a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t,
-) -> poly8x16_t {
+pub unsafe fn vqtbx4q_p8(a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t) -> poly8x16_t {
     ::mem::transmute(vqtbx4q(
         ::mem::transmute(a),
         ::mem::transmute(t.0),
@@ -1647,8 +1580,7 @@ mod tests {
         let a = 1.;
         let b = 8.;
         let e = 9.;
-        let r: f64 =
-            mem::transmute(vadd_f64(mem::transmute(a), mem::transmute(b)));
+        let r: f64 = mem::transmute(vadd_f64(mem::transmute(a), mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1657,10 +1589,7 @@ mod tests {
         let a = f64x2::new(1., 2.);
         let b = f64x2::new(8., 7.);
         let e = f64x2::new(9., 9.);
-        let r: f64x2 = ::mem::transmute(vaddq_f64(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: f64x2 = ::mem::transmute(vaddq_f64(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1669,8 +1598,7 @@ mod tests {
         let a = 1_i64;
         let b = 8_i64;
         let e = 9_i64;
-        let r: i64 =
-            mem::transmute(vaddd_s64(mem::transmute(a), mem::transmute(b)));
+        let r: i64 = mem::transmute(vaddd_s64(mem::transmute(a), mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1679,8 +1607,7 @@ mod tests {
         let a = 1_u64;
         let b = 8_u64;
         let e = 9_u64;
-        let r: u64 =
-            mem::transmute(vaddd_u64(mem::transmute(a), mem::transmute(b)));
+        let r: u64 = mem::transmute(vaddd_u64(mem::transmute(a), mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1710,8 +1637,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vmaxvq_s16() {
-        let r =
-            vmaxvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
+        let r = vmaxvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
         assert_eq!(r, 7_i16);
     }
 
@@ -1753,8 +1679,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vmaxvq_u16() {
-        let r =
-            vmaxvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
+        let r = vmaxvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
         assert_eq!(r, 16_u16);
     }
 
@@ -1814,8 +1739,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vminvq_s16() {
-        let r =
-            vminvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
+        let r = vminvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
         assert_eq!(r, -16_i16);
     }
 
@@ -1857,8 +1781,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vminvq_u16() {
-        let r =
-            vminvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
+        let r = vminvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
         assert_eq!(r, 1_u16);
     }
 
@@ -1900,10 +1823,7 @@ mod tests {
         let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = i8x16::new(-2, -4, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
-        let r: i8x16 = ::mem::transmute(vpminq_s8(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: i8x16 = ::mem::transmute(vpminq_s8(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1912,10 +1832,7 @@ mod tests {
         let a = i16x8::new(1, -2, 3, 4, 5, 6, 7, 8);
         let b = i16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = i16x8::new(-2, 3, 5, 7, 0, 2, 4, 6);
-        let r: i16x8 = ::mem::transmute(vpminq_s16(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: i16x8 = ::mem::transmute(vpminq_s16(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1924,10 +1841,7 @@ mod tests {
         let a = i32x4::new(1, -2, 3, 4);
         let b = i32x4::new(0, 3, 2, 5);
         let e = i32x4::new(-2, 3, 0, 2);
-        let r: i32x4 = ::mem::transmute(vpminq_s32(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: i32x4 = ::mem::transmute(vpminq_s32(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1939,10 +1853,7 @@ mod tests {
         let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = u8x16::new(1, 3, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
-        let r: u8x16 = ::mem::transmute(vpminq_u8(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: u8x16 = ::mem::transmute(vpminq_u8(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1951,10 +1862,7 @@ mod tests {
         let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = u16x8::new(1, 3, 5, 7, 0, 2, 4, 6);
-        let r: u16x8 = ::mem::transmute(vpminq_u16(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: u16x8 = ::mem::transmute(vpminq_u16(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1963,10 +1871,7 @@ mod tests {
         let a = u32x4::new(1, 2, 3, 4);
         let b = u32x4::new(0, 3, 2, 5);
         let e = u32x4::new(1, 3, 0, 2);
-        let r: u32x4 = ::mem::transmute(vpminq_u32(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: u32x4 = ::mem::transmute(vpminq_u32(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1975,10 +1880,7 @@ mod tests {
         let a = f32x4::new(1., -2., 3., 4.);
         let b = f32x4::new(0., 3., 2., 5.);
         let e = f32x4::new(-2., 3., 0., 2.);
-        let r: f32x4 = ::mem::transmute(vpminq_f32(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: f32x4 = ::mem::transmute(vpminq_f32(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -1987,10 +1889,7 @@ mod tests {
         let a = f64x2::new(1., -2.);
         let b = f64x2::new(0., 3.);
         let e = f64x2::new(-2., 0.);
-        let r: f64x2 = ::mem::transmute(vpminq_f64(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: f64x2 = ::mem::transmute(vpminq_f64(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2002,10 +1901,7 @@ mod tests {
         let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = i8x16::new(1, 3, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
-        let r: i8x16 = ::mem::transmute(vpmaxq_s8(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: i8x16 = ::mem::transmute(vpmaxq_s8(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2014,10 +1910,7 @@ mod tests {
         let a = i16x8::new(1, -2, 3, 4, 5, 6, 7, 8);
         let b = i16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = i16x8::new(1, 4, 6, 8, 3, 5, 7, 9);
-        let r: i16x8 = ::mem::transmute(vpmaxq_s16(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: i16x8 = ::mem::transmute(vpmaxq_s16(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2026,10 +1919,7 @@ mod tests {
         let a = i32x4::new(1, -2, 3, 4);
         let b = i32x4::new(0, 3, 2, 5);
         let e = i32x4::new(1, 4, 3, 5);
-        let r: i32x4 = ::mem::transmute(vpmaxq_s32(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: i32x4 = ::mem::transmute(vpmaxq_s32(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2041,10 +1931,7 @@ mod tests {
         let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = u8x16::new(2, 4, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
-        let r: u8x16 = ::mem::transmute(vpmaxq_u8(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: u8x16 = ::mem::transmute(vpmaxq_u8(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2053,10 +1940,7 @@ mod tests {
         let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = u16x8::new(2, 4, 6, 8, 3, 5, 7, 9);
-        let r: u16x8 = ::mem::transmute(vpmaxq_u16(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: u16x8 = ::mem::transmute(vpmaxq_u16(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2065,10 +1949,7 @@ mod tests {
         let a = u32x4::new(1, 2, 3, 4);
         let b = u32x4::new(0, 3, 2, 5);
         let e = u32x4::new(2, 4, 3, 5);
-        let r: u32x4 = ::mem::transmute(vpmaxq_u32(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: u32x4 = ::mem::transmute(vpmaxq_u32(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2077,10 +1958,7 @@ mod tests {
         let a = f32x4::new(1., -2., 3., 4.);
         let b = f32x4::new(0., 3., 2., 5.);
         let e = f32x4::new(1., 4., 3., 5.);
-        let r: f32x4 = ::mem::transmute(vpmaxq_f32(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: f32x4 = ::mem::transmute(vpmaxq_f32(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -2089,10 +1967,7 @@ mod tests {
         let a = f64x2::new(1., -2.);
         let b = f64x2::new(0., 3.);
         let e = f64x2::new(1., 3.);
-        let r: f64x2 = ::mem::transmute(vpmaxq_f64(
-            ::mem::transmute(a),
-            ::mem::transmute(b),
-        ));
+        let r: f64x2 = ::mem::transmute(vpmaxq_f64(::mem::transmute(a), ::mem::transmute(b)));
         assert_eq!(r, e);
     }
 

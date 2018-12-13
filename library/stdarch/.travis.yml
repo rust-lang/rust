@@ -96,6 +96,7 @@ matrix:
     - name: "rustfmt"
       install: rustup component add rustfmt-preview
       script: cargo fmt --all -- --check
+      rust: stable
     - name: "clippy"
       install: true
       script: |
@@ -113,7 +114,7 @@ matrix:
     - env: TARGET=i686-pc-windows-gnu
 
 install: rustup target add $TARGET
-script: 
+script:
   - cargo generate-lockfile
   - ci/run-docker.sh $TARGET $FEATURES
 

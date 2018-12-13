@@ -121,9 +121,7 @@ pub unsafe fn _mm_fmaddsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_fmaddsub_pd(
-    a: __m256d, b: __m256d, c: __m256d,
-) -> __m256d {
+pub unsafe fn _mm256_fmaddsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vfmaddsubpd256(a, b, c)
 }
 
@@ -251,9 +249,7 @@ pub unsafe fn _mm_fmsubadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 #[target_feature(enable = "fma")]
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_fmsubadd_pd(
-    a: __m256d, b: __m256d, c: __m256d,
-) -> __m256d {
+pub unsafe fn _mm256_fmsubadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vfmsubaddpd256(a, b, c)
 }
 

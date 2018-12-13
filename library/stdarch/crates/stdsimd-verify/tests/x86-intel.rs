@@ -125,8 +125,7 @@ fn verify_all_signatures() {
     let xml = include_bytes!("../x86-intel.xml");
 
     let xml = &xml[..];
-    let data: Data =
-        serde_xml_rs::deserialize(xml).expect("failed to deserialize xml");
+    let data: Data = serde_xml_rs::deserialize(xml).expect("failed to deserialize xml");
     let mut map = HashMap::new();
     for intrinsic in &data.intrinsics {
         map.entry(&intrinsic.name[..])
@@ -293,10 +292,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         // some extra assertions on our end.
         } else if !intel.instruction.is_empty() {
             for instr in rust.instrs {
-                let asserting = intel
-                    .instruction
-                    .iter()
-                    .any(|a| a.name.starts_with(instr));
+                let asserting = intel.instruction.iter().any(|a| a.name.starts_with(instr));
                 if !asserting {
                     println!(
                         "intel failed to list `{}` as an instruction for `{}`",
@@ -329,34 +325,32 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         if rust.arguments.len() != intel.parameters.len() {
             bail!("wrong number of arguments on {}", rust.name)
         }
-        for (i, (a, b)) in
-            intel.parameters.iter().zip(rust.arguments).enumerate()
-        {
+        for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
             let is_const = rust.required_const.contains(&i);
             equate(b, &a.type_, &intel.name, is_const)?;
         }
     }
 
-    let any_i64 =
-        rust.arguments
-            .iter()
-            .cloned()
-            .chain(rust.ret)
-            .any(|arg| match *arg {
-                Type::PrimSigned(64) | Type::PrimUnsigned(64) => true,
-                _ => false,
-            });
+    let any_i64 = rust
+        .arguments
+        .iter()
+        .cloned()
+        .chain(rust.ret)
+        .any(|arg| match *arg {
+            Type::PrimSigned(64) | Type::PrimUnsigned(64) => true,
+            _ => false,
+        });
     let any_i64_exempt = match rust.name {
         // These intrinsics have all been manually verified against Clang's
         // headers to be available on x86, and the u64 arguments seem
         // spurious I guess?
-        "_xsave" | "_xrstor" | "_xsetbv" | "_xgetbv" | "_xsaveopt"
-        | "_xsavec" | "_xsaves" | "_xrstors" => true,
+        "_xsave" | "_xrstor" | "_xsetbv" | "_xgetbv" | "_xsaveopt" | "_xsavec" | "_xsaves"
+        | "_xrstors" => true,
 
         // Apparently all of clang/msvc/gcc accept these intrinsics on
         // 32-bit, so let's do the same
-        "_mm_set_epi64x" | "_mm_set1_epi64x" | "_mm256_set_epi64x"
-        | "_mm256_setr_epi64x" | "_mm256_set1_epi64x" => true,
+        "_mm_set_epi64x" | "_mm_set1_epi64x" | "_mm256_set_epi64x" | "_mm256_setr_epi64x"
+        | "_mm256_set1_epi64x" => true,
 
         // These return a 64-bit argument but they're assembled from other
         // 32-bit registers, so these work on 32-bit just fine. See #308 for
@@ -375,9 +369,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
-fn equate(
-    t: &Type, intel: &str, intrinsic: &str, is_const: bool,
-) -> Result<(), String> {
+fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), String> {
     let intel = intel.replace(" *", "*");
     let intel = intel.replace(" const*", "*");
     let require_const = || {
@@ -433,8 +425,7 @@ fn equate(
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust
         // as we're not exposing it as a macro.
-        (&Type::Ptr(&Type::M128), "__m128")
-            if intrinsic == "_MM_TRANSPOSE4_PS" => {}
+        (&Type::Ptr(&Type::M128), "__m128") if intrinsic == "_MM_TRANSPOSE4_PS" => {}
 
         _ => bail!(
             "failed to equate: `{}` and {:?} for {}",

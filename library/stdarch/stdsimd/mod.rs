@@ -387,10 +387,7 @@ pub mod arch {
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::powerpc64;
 
-    #[cfg(all(
-        not(dox),
-        any(target_arch = "nvptx", target_arch = "nvptx64")
-    ))]
+    #[cfg(all(not(dox), any(target_arch = "nvptx", target_arch = "nvptx64")))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::nvptx;
 

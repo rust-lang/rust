@@ -75,9 +75,7 @@ fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
 
 #[target_feature(enable = "avx2")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn hex_encode_avx2<'a>(
-    mut src: &[u8], dst: &'a mut [u8],
-) -> Result<&'a str, usize> {
+unsafe fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
     let ascii_zero = _mm256_set1_epi8(b'0' as i8);
     let nines = _mm256_set1_epi8(9);
     let ascii_a = _mm256_set1_epi8((b'a' - 9 - 1) as i8);
@@ -95,14 +93,8 @@ unsafe fn hex_encode_avx2<'a>(
         let cmpmask2 = _mm256_cmpgt_epi8(masked2, nines);
 
         // add '0' or the offset depending on the masks
-        let masked1 = _mm256_add_epi8(
-            masked1,
-            _mm256_blendv_epi8(ascii_zero, ascii_a, cmpmask1),
-        );
-        let masked2 = _mm256_add_epi8(
-            masked2,
-            _mm256_blendv_epi8(ascii_zero, ascii_a, cmpmask2),
-        );
+        let masked1 = _mm256_add_epi8(masked1, _mm256_blendv_epi8(ascii_zero, ascii_a, cmpmask1));
+        let masked2 = _mm256_add_epi8(masked2, _mm256_blendv_epi8(ascii_zero, ascii_a, cmpmask2));
 
         // interleave masked1 and masked2 bytes
         let res1 = _mm256_unpacklo_epi8(masked2, masked1);
@@ -129,9 +121,7 @@ unsafe fn hex_encode_avx2<'a>(
 // copied from https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp
 #[target_feature(enable = "sse4.1")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn hex_encode_sse41<'a>(
-    mut src: &[u8], dst: &'a mut [u8],
-) -> Result<&'a str, usize> {
+unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
     let ascii_zero = _mm_set1_epi8(b'0' as i8);
     let nines = _mm_set1_epi8(9);
     let ascii_a = _mm_set1_epi8((b'a' - 9 - 1) as i8);
@@ -149,14 +139,8 @@ unsafe fn hex_encode_sse41<'a>(
         let cmpmask2 = _mm_cmpgt_epi8(masked2, nines);
 
         // add '0' or the offset depending on the masks
-        let masked1 = _mm_add_epi8(
-            masked1,
-            _mm_blendv_epi8(ascii_zero, ascii_a, cmpmask1),
-        );
-        let masked2 = _mm_add_epi8(
-            masked2,
-            _mm_blendv_epi8(ascii_zero, ascii_a, cmpmask2),
-        );
+        let masked1 = _mm_add_epi8(masked1, _mm_blendv_epi8(ascii_zero, ascii_a, cmpmask1));
+        let masked2 = _mm_add_epi8(masked2, _mm_blendv_epi8(ascii_zero, ascii_a, cmpmask2));
 
         // interleave masked1 and masked2 bytes
         let res1 = _mm_unpacklo_epi8(masked2, masked1);
@@ -174,9 +158,7 @@ unsafe fn hex_encode_sse41<'a>(
     Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
 }
 
-fn hex_encode_fallback<'a>(
-    src: &[u8], dst: &'a mut [u8],
-) -> Result<&'a str, usize> {
+fn hex_encode_fallback<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
     fn hex(byte: u8) -> u8 {
         static TABLE: &[u8] = b"0123456789abcdef";
         TABLE[byte as usize]
@@ -206,16 +188,10 @@ mod tests {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         unsafe {
             if is_x86_feature_detected!("avx2") {
-                assert_eq!(
-                    hex_encode_avx2(input, &mut tmp()).unwrap(),
-                    output
-                );
+                assert_eq!(hex_encode_avx2(input, &mut tmp()).unwrap(), output);
             }
             if is_x86_feature_detected!("sse4.1") {
-                assert_eq!(
-                    hex_encode_sse41(input, &mut tmp()).unwrap(),
-                    output
-                );
+                assert_eq!(hex_encode_sse41(input, &mut tmp()).unwrap(), output);
             }
         }
     }
@@ -310,7 +286,8 @@ mod benches {
     const LARGE_LEN: usize = 1 * 1024 * 1024;
 
     fn doit(
-        b: &mut test::Bencher, len: usize,
+        b: &mut test::Bencher,
+        len: usize,
         f: for<'a> unsafe fn(&[u8], &'a mut [u8]) -> Result<&'a str, usize>,
     ) {
         let input = rand::thread_rng()

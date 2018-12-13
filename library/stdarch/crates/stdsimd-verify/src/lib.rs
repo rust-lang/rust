@@ -64,8 +64,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                 }
             };
             let instrs = find_instrs(&f.attrs);
-            let target_feature = if let Some(i) = find_target_feature(&f.attrs)
-            {
+            let target_feature = if let Some(i) = find_target_feature(&f.attrs) {
                 quote! { Some(#i) }
             } else {
                 quote! { None }
@@ -92,30 +91,28 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 
 fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
     match *t {
-        syn::Type::Path(ref p) => {
-            match extract_path_ident(&p.path).to_string().as_ref() {
-                "__m128" => quote! { &M128 },
-                "__m128d" => quote! { &M128D },
-                "__m128i" => quote! { &M128I },
-                "__m256" => quote! { &M256 },
-                "__m256d" => quote! { &M256D },
-                "__m256i" => quote! { &M256I },
-                "__m64" => quote! { &M64 },
-                "bool" => quote! { &BOOL },
-                "f32" => quote! { &F32 },
-                "f64" => quote! { &F64 },
-                "i16" => quote! { &I16 },
-                "i32" => quote! { &I32 },
-                "i64" => quote! { &I64 },
-                "i8" => quote! { &I8 },
-                "u16" => quote! { &U16 },
-                "u32" => quote! { &U32 },
-                "u64" => quote! { &U64 },
-                "u8" => quote! { &U8 },
-                "CpuidResult" => quote! { &CPUID },
-                s => panic!("unspported type: \"{}\"", s),
-            }
-        }
+        syn::Type::Path(ref p) => match extract_path_ident(&p.path).to_string().as_ref() {
+            "__m128" => quote! { &M128 },
+            "__m128d" => quote! { &M128D },
+            "__m128i" => quote! { &M128I },
+            "__m256" => quote! { &M256 },
+            "__m256d" => quote! { &M256D },
+            "__m256i" => quote! { &M256I },
+            "__m64" => quote! { &M64 },
+            "bool" => quote! { &BOOL },
+            "f32" => quote! { &F32 },
+            "f64" => quote! { &F64 },
+            "i16" => quote! { &I16 },
+            "i32" => quote! { &I32 },
+            "i64" => quote! { &I64 },
+            "i8" => quote! { &I8 },
+            "u16" => quote! { &U16 },
+            "u32" => quote! { &U32 },
+            "u64" => quote! { &U64 },
+            "u8" => quote! { &U8 },
+            "CpuidResult" => quote! { &CPUID },
+            s => panic!("unspported type: \"{}\"", s),
+        },
         syn::Type::Ptr(syn::TypePtr { ref elem, .. })
         | syn::Type::Reference(syn::TypeReference { ref elem, .. }) => {
             let tokens = to_type(&elem);
@@ -221,9 +218,7 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
             syn::NestedMeta::Literal(_) => None,
         })
         .filter_map(|m| match m {
-            syn::Meta::NameValue(ref i) if i.ident == "enable" => {
-                Some(i.clone().lit)
-            }
+            syn::Meta::NameValue(ref i) if i.ident == "enable" => Some(i.clone().lit),
             _ => None,
         })
         .next()
@@ -249,15 +244,12 @@ struct RustcArgsRequiredConst {
 }
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
-    #[cfg_attr(
-        feature = "cargo-clippy",
-        allow(clippy::cast_possible_truncation)
-    )]
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_possible_truncation))]
     fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
         let content;
         parenthesized!(content in input);
-        let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>
-            ::parse_terminated(&content)?;
+        let list =
+            syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(&content)?;
         Ok(Self {
             args: list.into_iter().map(|a| a.value() as usize).collect(),
         })
