@@ -1847,9 +1847,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     }
                 }
                 ConstantValue(cv) => {
-                    match slice_pat_covered_by_const(
-                        cx.tcx, pat.span, cv, prefix, slice, suffix
-                            ) {
+                    match slice_pat_covered_by_const(cx.tcx, pat.span, cv, prefix, slice, suffix) {
                         Ok(true) => Some(smallvec![]),
                         Ok(false) => None,
                         Err(ErrorReported) => None
