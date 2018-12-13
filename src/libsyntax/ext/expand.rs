@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, Block, Ident, NodeId, PatKind, Path};
+use ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
 use source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
@@ -1535,21 +1535,65 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                             let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
                             items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
                         }
-                        Err(ref e) if e.kind() == ErrorKind::InvalidData => {
-                            self.cx.span_err(
-                                at.span,
-                                &format!("{} wasn't a utf-8 file", filename.display()),
-                            );
-                        }
                         Err(e) => {
-                            self.cx.span_err(
-                                at.span,
-                                &format!("couldn't read {}: {}", filename.display(), e),
-                            );
+                            let lit = it
+                                .meta_item()
+                                .and_then(|item| item.name_value_literal())
+                                .unwrap();
+
+                            if e.kind() == ErrorKind::InvalidData {
+                                self.cx
+                                    .struct_span_err(
+                                        lit.span,
+                                        &format!("{} wasn't a utf-8 file", filename.display()),
+                                    )
+                                    .span_label(lit.span, "contains invalid utf-8")
+                                    .emit();
+                            } else {
+                                let mut err = self.cx.struct_span_err(
+                                    lit.span,
+                                    &format!("couldn't read {}: {}", filename.display(), e),
+                                );
+                                err.span_label(lit.span, "couldn't read file");
+
+                                if e.kind() == ErrorKind::NotFound {
+                                    err.help("external doc paths are relative to the crate root");
+                                }
+
+                                err.emit();
+                            }
                         }
                     }
                 } else {
-                    items.push(noop_fold_meta_list_item(it, self));
+                    let mut err = self.cx.struct_span_err(
+                        it.span,
+                        &format!("expected path to external documentation"),
+                    );
+
+                    // Check if the user erroneously used `doc(include(...))` syntax.
+                    let literal = it.meta_item_list().and_then(|list| {
+                        if list.len() == 1 {
+                            list[0].literal().map(|literal| &literal.node)
+                        } else {
+                            None
+                        }
+                    });
+
+                    let (path, applicability) = match &literal {
+                        Some(LitKind::Str(path, ..)) => {
+                            (path.to_string(), Applicability::MachineApplicable)
+                        }
+                        _ => (String::from("<path>"), Applicability::HasPlaceholders),
+                    };
+
+                    err.span_suggestion_with_applicability(
+                        it.span,
+                        "provide a file path with `=`",
+                        format!("include = \"{}\"", path),
+                        applicability,
+                    );
+
+                    err.emit();
                 }
             }
 
