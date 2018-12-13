@@ -1756,7 +1756,7 @@ bitflags! {
         const IS_ENUM             = 1 << 0;
         const IS_UNION            = 1 << 1;
         const IS_STRUCT           = 1 << 2;
-        const IS_TUPLE_STRUCT     = 1 << 3;
+        const HAS_CTOR            = 1 << 3;
         const IS_PHANTOM_DATA     = 1 << 4;
         const IS_FUNDAMENTAL      = 1 << 5;
         const IS_BOX              = 1 << 6;
@@ -2096,7 +2096,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             let variant_def = &variants[VariantIdx::new(0)];
             let def_key = tcx.def_key(variant_def.did);
             match def_key.disambiguated_data.data {
-                DefPathData::StructCtor => flags |= AdtFlags::IS_TUPLE_STRUCT,
+                DefPathData::StructCtor => flags |= AdtFlags::HAS_CTOR,
                 _ => (),
             }
         }
@@ -2129,12 +2129,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn is_struct(&self) -> bool {
         self.flags.contains(AdtFlags::IS_STRUCT)
-    }
-
-    /// If this function returns `true`, it implies that `is_struct` must return `true`.
-    #[inline]
-    pub fn is_tuple_struct(&self) -> bool {
-        self.flags.contains(AdtFlags::IS_TUPLE_STRUCT)
     }
 
     #[inline]
@@ -2179,6 +2173,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             AdtKind::Union => "union",
             AdtKind::Enum => "variant",
         }
+    }
+
+    /// If this function returns `true`, it implies that `is_struct` must return `true`.
+    #[inline]
+    pub fn has_ctor(&self) -> bool {
+        self.flags.contains(AdtFlags::HAS_CTOR)
     }
 
     /// Returns whether this type is `#[fundamental]` for the purposes
