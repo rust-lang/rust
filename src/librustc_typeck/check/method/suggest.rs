@@ -428,7 +428,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .map(|p| format!("`{} : {}`", p.self_ty(), p))
                         .collect::<Vec<_>>();
                     bound_list.sort();
-                    bound_list.dedup_by(|a, b| a == b);  // #35677
+                    bound_list.dedup();  // #35677
                     let bound_list = bound_list.join("\n");
                     err.note(&format!("the method `{}` exists but the following trait bounds \
                                        were not satisfied:\n{}",
