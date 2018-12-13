@@ -90,7 +90,7 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-    pub VEC_BOX_SIZED,
+    pub VEC_BOX,
     complexity,
     "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
 }
@@ -175,7 +175,7 @@ declare_clippy_lint! {
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BOX_VEC, VEC_BOX_SIZED, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
+        lint_array!(BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
     }
 }
 
@@ -292,13 +292,14 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                         then {
                             span_lint_and_sugg(
                                 cx,
-                                VEC_BOX_SIZED,
+                                VEC_BOX,
                                 ast_ty.span,
-                                "you seem to be trying to use `Vec<Box<T>>`, but T is Sized. `Vec<T>` is already on the heap, `Vec<Box<T>>` makes an extra allocation.",
+                                "`Vec<T>` is already on the heap, the boxing is unnecessary.",
                                 "try",
                                 format!("Vec<{}>", boxed_type),
-                                Applicability::MachineApplicable
-                            )
+                                Applicability::MaybeIncorrect,
+                            );
+                            return; // don't recurse into the type
                         }
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
