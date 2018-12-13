@@ -200,20 +200,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 for (idx, discr) in adt_def.discriminants(tcx) {
                     target_blocks.push(if variants.contains(idx) {
                         values.push(discr.val);
-                        targets.push(self.cfg.start_new_block());
-                        *targets.last().unwrap()
+                        let block = self.cfg.start_new_block();
+                        targets.push(block);
+                        block
                     } else {
-                        if otherwise_block.is_none() {
-                            otherwise_block = Some(self.cfg.start_new_block());
-                        }
-                        otherwise_block.unwrap()
+                        *otherwise_block
+                            .get_or_insert_with(|| self.cfg.start_new_block())
                     });
                 }
-                if let Some(otherwise_block) = otherwise_block {
-                    targets.push(otherwise_block);
-                } else {
-                    targets.push(self.unreachable_block());
-                }
+                targets.push(
+                    otherwise_block
+                        .unwrap_or_else(|| self.unreachable_block()),
+                );
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
@@ -490,8 +488,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // away.)
         let tested_match_pair = candidate.match_pairs.iter()
                                                      .enumerate()
-                                                     .filter(|&(_, mp)| mp.place == *test_place)
-                                                     .next();
+                                                     .find(|&(_, mp)| mp.place == *test_place);
         let (match_pair_index, match_pair) = match tested_match_pair {
             Some(pair) => pair,
             None => {

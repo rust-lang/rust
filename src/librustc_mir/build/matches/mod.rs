@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             .collect();
 
         // create binding start block for link them by false edges
-        let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
+        let candidate_count = arms.iter().map(|c| c.patterns.len()).sum::<usize>();
         let pre_binding_blocks: Vec<_> = (0..=candidate_count)
             .map(|_| self.cfg.start_new_block())
             .collect();
@@ -337,7 +337,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn place_into_pattern(
         &mut self,
-        mut block: BasicBlock,
+        block: BasicBlock,
         irrefutable_pat: Pattern<'tcx>,
         initializer: &Place<'tcx>,
         set_match_place: bool,
@@ -359,7 +359,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
         // always convert all match-pairs into bindings.
-        unpack!(block = self.simplify_candidate(block, &mut candidate));
+        self.simplify_candidate(&mut candidate);
 
         if !candidate.match_pairs.is_empty() {
             span_bug!(
@@ -745,7 +745,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // complete, all the match pairs which remain require some
         // form of test, whether it be a switch or pattern comparison.
         for candidate in &mut candidates {
-            unpack!(block = self.simplify_candidate(block, candidate));
+            self.simplify_candidate(candidate);
         }
 
         // The candidates are sorted by priority. Check to see
@@ -1035,7 +1035,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             test, match_pair
         );
         let target_blocks = self.perform_test(block, &match_pair.place, &test);
-        let mut target_candidates: Vec<_> = (0..target_blocks.len()).map(|_| vec![]).collect();
+        let mut target_candidates = vec![vec![]; target_blocks.len()];
 
         // Sort the candidates into the appropriate vector in
         // `target_candidates`. Note that at some point we may
