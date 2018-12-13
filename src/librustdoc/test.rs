@@ -395,6 +395,7 @@ pub fn make_test(s: &str,
     // Now push any outer attributes from the example, assuming they
     // are intended to be crate attributes.
     prog.push_str(&crate_attrs);
+    prog.push_str(&crates);
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
@@ -487,6 +488,8 @@ pub fn make_test(s: &str,
         prog.push_str(everything_else);
         prog.push_str("\n}");
     }
+
+    debug!("final doctest:\n{}", prog);
 
     (prog, line_offset)
 }
