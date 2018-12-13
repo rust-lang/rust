@@ -20,7 +20,6 @@ pub struct Mutex {
 
 // Implementation according to “Operating Systems: Three Easy Pieces”, chapter 28
 impl Mutex {
-    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn new() -> Mutex {
         Mutex { inner: SpinMutex::new(WaitVariable::new(false)) }
     }
@@ -79,7 +78,6 @@ pub struct ReentrantMutex {
 }
 
 impl ReentrantMutex {
-    #[unstable(feature = "sgx_internals", issue = "0")] // FIXME: min_const_fn
     pub const fn uninitialized() -> ReentrantMutex {
         ReentrantMutex {
             inner: SpinMutex::new(WaitVariable::new(ReentrantLock { owner: None, count: 0 }))
