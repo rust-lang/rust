@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C linker=llllll -Z linker-flavor=ld
+// compile-flags: -C linker=llllll -C linker-flavor=ld
 // error-pattern: linker `llllll` not found
 
 fn main() {
