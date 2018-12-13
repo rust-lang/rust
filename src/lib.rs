@@ -237,13 +237,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 module
             };
 
-            let mut faerie_module = new_module("some_file".to_string());
-
-            codegen_cgus(tcx, &mut faerie_module, &mut log);
-            crate::allocator::codegen(tcx.sess, &mut faerie_module);
-
-            tcx.sess.abort_if_errors();
-
             let emit_module = |name: &str, kind: ModuleKind, mut module: Module<FaerieBackend>| {
                 module.finalize_definitions();
                 let artifact = module.finish().artifact;
@@ -261,6 +254,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     bytecode_compressed: None,
                 }
             };
+
+            let mut faerie_module = new_module("some_file".to_string());
+
+            codegen_cgus(tcx, &mut faerie_module, &mut log);
+            crate::allocator::codegen(tcx.sess, &mut faerie_module);
+
+            tcx.sess.abort_if_errors();
 
             return Box::new(CodegenResults {
                 crate_name: tcx.crate_name(LOCAL_CRATE),
