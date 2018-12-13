@@ -68,6 +68,7 @@ mod linux_musl_base;
 mod openbsd_base;
 mod netbsd_base;
 mod solaris_base;
+mod uefi_base;
 mod windows_base;
 mod windows_msvc_base;
 mod thumb_base;
@@ -419,6 +420,8 @@ supported_targets! {
     ("aarch64-unknown-none", aarch64_unknown_none),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
+
+    ("x86_64-unknown-uefi", x86_64_unknown_uefi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
