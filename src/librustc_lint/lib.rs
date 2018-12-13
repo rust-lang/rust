@@ -376,7 +376,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_removed("resolve_trait_on_defaulted_unit",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
     store.register_removed("private_no_mangle_fns",
-        "no longer an warning, #[no_mangle] functions always exported");
+        "no longer a warning, #[no_mangle] functions always exported");
     store.register_removed("private_no_mangle_statics",
-        "no longer an warning, #[no_mangle] statics always exported");
+        "no longer a warning, #[no_mangle] statics always exported");
 }
