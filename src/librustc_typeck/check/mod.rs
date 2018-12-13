@@ -5163,7 +5163,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let adt_def = ty.ty_adt_def();
 
                 match adt_def {
-                    Some(adt_def) if adt_def.is_tuple_struct() => {
+                    Some(adt_def) if adt_def.has_ctor() => {
                         let variant = adt_def.non_enum_variant();
                         new_def = Def::StructCtor(variant.did, variant.ctor_kind);
                         (variant.did, self.tcx.type_of(variant.did))
@@ -5176,8 +5176,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 AdtKind::Enum => {
                                     err.note("did you mean to use one of the enum's variants?");
                                 },
-                                AdtKind::Union => {},
-                                AdtKind::Struct => {
+                                AdtKind::Struct |
+                                AdtKind::Union => {
                                     err.span_label(
                                         span,
                                         format!("did you mean `Self {{ /* fields */ }}`?"),
