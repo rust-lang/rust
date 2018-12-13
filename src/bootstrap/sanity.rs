@@ -27,7 +27,7 @@ use std::process::Command;
 
 use build_helper::output;
 
-use Build;
+use crate::Build;
 
 struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,

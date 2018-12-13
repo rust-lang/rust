@@ -42,7 +42,7 @@
 use std::env;
 use std::io;
 use std::mem;
-use Build;
+use crate::Build;
 
 type HANDLE = *mut u8;
 type BOOL = i32;
