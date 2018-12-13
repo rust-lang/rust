@@ -33,6 +33,7 @@ use task::{Poll, LocalWaker};
 ///
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `await!` the value.
+#[must_use]
 pub trait Future {
     /// The result of the `Future`.
     type Output;
