@@ -316,6 +316,7 @@ pub enum EntryKind<'tcx> {
     AssociatedType(AssociatedContainer),
     AssociatedExistential(AssociatedContainer),
     AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
+    TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
@@ -369,6 +370,9 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             }
             EntryKind::Trait(ref trait_data) => {
                 trait_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::TraitAlias(ref trait_alias_data) => {
+                trait_alias_data.hash_stable(hcx, hasher);
             }
             EntryKind::Impl(ref impl_data) => {
                 impl_data.hash_stable(hcx, hasher);
@@ -471,6 +475,15 @@ impl_stable_hash_for!(struct TraitData<'tcx> {
     paren_sugar,
     has_auto_impl,
     is_marker,
+    super_predicates
+});
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct TraitAliasData<'tcx> {
+    pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
+}
+
+impl_stable_hash_for!(struct TraitAliasData<'tcx> {
     super_predicates
 });
 

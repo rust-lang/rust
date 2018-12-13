@@ -352,7 +352,7 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
 
         debug!("expand_trait_refs: trait_ref={:?}", trait_ref);
 
-        if !ty::is_trait_alias(tcx, trait_ref.def_id()) {
+        if !tcx.is_trait_alias(trait_ref.def_id()) {
             return true;
         }
 

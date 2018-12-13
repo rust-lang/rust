@@ -120,10 +120,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Trait(..) => DefPathData::Trait(i.ident.as_interned_str()),
+            ItemKind::TraitAlias(..) => DefPathData::TraitAlias(i.ident.as_interned_str()),
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
-            ItemKind::TraitAlias(..) | ItemKind::Existential(..) |
-            ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
-                DefPathData::TypeNs(i.ident.as_interned_str()),
+            ItemKind::Existential(..) | ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
+            ItemKind::Ty(..) => DefPathData::TypeNs(i.ident.as_interned_str()),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
                 return visit::walk_item(self, i);
             }

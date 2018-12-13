@@ -41,12 +41,12 @@ pub enum Def {
     Enum(DefId),
     Variant(DefId),
     Trait(DefId),
+    TraitAlias(DefId),
     /// `existential type Foo: Bar;`
     Existential(DefId),
     /// `type Foo = Bar;`
     TyAlias(DefId),
     ForeignTy(DefId),
-    TraitAlias(DefId),
     AssociatedTy(DefId),
     /// `existential type Foo: Bar;`
     AssociatedExistential(DefId),
