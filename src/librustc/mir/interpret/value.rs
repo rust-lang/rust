@@ -18,7 +18,7 @@ use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_ex
 /// Represents the result of a raw const operation, pre-validation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct RawConst<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is a `AllocType::Memory`
+    // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,

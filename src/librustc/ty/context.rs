@@ -946,7 +946,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores the value of constants (and deduplicates the actual memory)
     allocation_interner: Lock<FxHashMap<&'tcx Allocation, ()>>,
 
-    pub alloc_map: Lock<interpret::AllocMap<'tcx, &'tcx Allocation>>,
+    pub alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
     layout_interner: Lock<FxHashMap<&'tcx LayoutDetails, ()>>,
 

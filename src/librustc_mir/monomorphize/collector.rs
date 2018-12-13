@@ -197,7 +197,7 @@ use rustc::session::config;
 use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
-use rustc::mir::interpret::{Scalar, GlobalId, AllocType, ErrorHandled};
+use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -1161,22 +1161,22 @@ fn collect_miri<'a, 'tcx>(
     alloc_id: AllocId,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    let alloc_type = tcx.alloc_map.lock().get(alloc_id);
-    match alloc_type {
-        Some(AllocType::Static(did)) => {
+    let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
+    match alloc_kind {
+        Some(AllocKind::Static(did)) => {
             let instance = Instance::mono(tcx, did);
             if should_monomorphize_locally(tcx, &instance) {
                 trace!("collecting static {:?}", did);
                 output.push(MonoItem::Static(did));
             }
         }
-        Some(AllocType::Memory(alloc)) => {
+        Some(AllocKind::Memory(alloc)) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             for &((), inner) in alloc.relocations.values() {
                 collect_miri(tcx, inner, output);
             }
         },
-        Some(AllocType::Function(fn_instance)) => {
+        Some(AllocKind::Function(fn_instance)) => {
             if should_monomorphize_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(fn_instance));
