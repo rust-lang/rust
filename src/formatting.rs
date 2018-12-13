@@ -73,7 +73,12 @@ fn format_project<T: FormatHandler>(
     let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
     let mut parse_session = make_parse_sess(source_map.clone(), config);
     let mut report = FormatReport::new();
-    let krate = parse_crate(input, &parse_session, config, &mut report)?;
+    let krate = match parse_crate(input, &parse_session, config, &mut report) {
+        Ok(krate) => krate,
+        // Surface parse error via Session (errors are merged there from report)
+        Err(ErrorKind::ParseError) => return Ok(report),
+        Err(e) => return Err(e),
+    };
     timer = timer.done_parsing();
 
     // Suppress error output if we have to do any further parsing.
