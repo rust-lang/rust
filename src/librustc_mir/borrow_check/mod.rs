@@ -545,7 +545,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.mutate_place(
                     ContextKind::SetDiscrim.new(location),
                     (place, span),
-                    Shallow(Some(ArtificialField::Discriminant)),
+                    Shallow(None),
                     JustWrite,
                     flow_state,
                 );
@@ -782,7 +782,6 @@ use self::AccessDepth::{Deep, Shallow};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
-    Discriminant,
     ArrayLength,
     ShallowBorrow,
 }
@@ -1191,14 +1190,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             Rvalue::Len(ref place) | Rvalue::Discriminant(ref place) => {
                 let af = match *rvalue {
-                    Rvalue::Len(..) => ArtificialField::ArrayLength,
-                    Rvalue::Discriminant(..) => ArtificialField::Discriminant,
+                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
+                    Rvalue::Discriminant(..) => None,
                     _ => unreachable!(),
                 };
                 self.access_place(
                     context,
                     (place, span),
-                    (Shallow(Some(af)), Read(ReadKind::Copy)),
+                    (Shallow(af), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                     flow_state,
                 );
