@@ -293,7 +293,7 @@ fn stdin_disable_all_formatting_test() {
         _ => return, // these tests require nightly
     }
     let input = String::from("fn main() { println!(\"This should not be formatted.\"); }");
-    let mut child = Command::new("./target/debug/rustfmt")
+    let mut child = Command::new(rustfmt().to_str().unwrap())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .arg("--config-path=./tests/config/disable_all_formatting.toml")
