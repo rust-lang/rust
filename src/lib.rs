@@ -258,14 +258,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut faerie_module = new_module("some_file".to_string());
 
             codegen_cgus(tcx, &mut faerie_module, &mut log);
-            crate::allocator::codegen(tcx.sess, &mut faerie_module);
 
             tcx.sess.abort_if_errors();
+
+            let mut allocator_module = new_module("allocator_shim.o".to_string());
+            let created_alloc_shim =
+                crate::allocator::codegen(tcx.sess, &mut allocator_module);
 
             return Box::new(CodegenResults {
                 crate_name: tcx.crate_name(LOCAL_CRATE),
                 modules: vec![emit_module("dummy_name", ModuleKind::Regular, faerie_module)],
-                allocator_module: None,
+                allocator_module: if created_alloc_shim {
+                    Some(emit_module("allocator_shim", ModuleKind::Allocator, allocator_module))
+                } else {
+                    None
+                },
                 metadata_module: CompiledModule {
                     name: "dummy_metadata".to_string(),
                     kind: ModuleKind::Metadata,

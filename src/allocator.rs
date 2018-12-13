@@ -13,7 +13,8 @@ use crate::prelude::*;
 use rustc::middle::allocator::AllocatorKind;
 use rustc_allocator::{AllocatorTy, ALLOCATOR_METHODS};
 
-pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) {
+/// Returns whether an allocator shim was created
+pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) -> bool {
     let any_dynamic_crate = sess
         .dependency_formats
         .borrow()
@@ -23,8 +24,12 @@ pub fn codegen(sess: &Session, module: &mut Module<impl Backend + 'static>) {
             list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });
     if any_dynamic_crate {
+        false
     } else if let Some(kind) = *sess.allocator_kind.get() {
         codegen_inner(module, kind);
+        true
+    } else {
+        false
     }
 }
 
