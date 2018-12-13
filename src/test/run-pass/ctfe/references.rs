@@ -31,7 +31,7 @@ fn main() {
     #[allow(unreachable_patterns)]
     match &43 {
         &42 => panic!(),
-        BOO => panic!(), // pattern is unreachable
+        BOO => panic!(),
         _ => println!("d"),
     }
 }

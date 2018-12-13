@@ -1,4 +1,4 @@
-//compile-pass
+#![deny(unreachable_patterns)]
 
 fn main() {
     let s = &[0x00; 4][..]; //Slice of any value
@@ -6,33 +6,33 @@ fn main() {
     match s {
         MAGIC_TEST => (),
         [0x00, 0x00, 0x00, 0x00] => (),
-        [84, 69, 83, 84] => (), // this should warn
+        [84, 69, 83, 84] => (), //~ ERROR unreachable pattern
         _ => (),
     }
     match s {
         [0x00, 0x00, 0x00, 0x00] => (),
         MAGIC_TEST => (),
-        [84, 69, 83, 84] => (), // this should warn
+        [84, 69, 83, 84] => (), //~ ERROR unreachable pattern
         _ => (),
     }
     match s {
         [0x00, 0x00, 0x00, 0x00] => (),
         [84, 69, 83, 84] => (),
-        MAGIC_TEST => (), // this should warn
+        MAGIC_TEST => (), //~ ERROR unreachable pattern
         _ => (),
     }
     const FOO: [u8; 1] = [4];
     match [99] {
         [0x00] => (),
         [4] => (),
-        FOO => (), // this should warn
+        FOO => (), //~ ERROR unreachable pattern
         _ => (),
     }
     const BAR: &[u8; 1] = &[4];
     match &[99] {
         [0x00] => (),
         [4] => (),
-        BAR => (), // this should warn
+        BAR => (), //~ ERROR unreachable pattern
         b"a" => (),
         _ => (),
     }
@@ -40,8 +40,8 @@ fn main() {
     const BOO: &[u8; 0] = &[];
     match &[] {
         [] => (),
-        BOO => (), // this should warn
-        b"" => (),
-        _ => (),
+        BOO => (), //~ ERROR unreachable pattern
+        b"" => (), //~ ERROR unreachable pattern
+        _ => (), //~ ERROR unreachable pattern
     }
 }
