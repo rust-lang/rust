@@ -766,6 +766,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         types::UNIT_ARG,
         types::UNIT_CMP,
         types::UNNECESSARY_CAST,
+        types::VEC_BOX_SIZED,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,
@@ -931,6 +932,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         types::TYPE_COMPLEXITY,
         types::UNIT_ARG,
         types::UNNECESSARY_CAST,
+        types::VEC_BOX_SIZED,
         unused_label::UNUSED_LABEL,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);

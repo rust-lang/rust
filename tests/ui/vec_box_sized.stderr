@@ -1,0 +1,11 @@
+error: you seem to be trying to use `Vec<Box<T>>`, but T is Sized. Consider using just `Vec<T>`
+  --> $DIR/vec_box_sized.rs:10:14
+   |
+10 |     sized_type: Vec<Box<SizedStruct>>,
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::vec-box-sized` implied by `-D warnings`
+   = help: `Vec<T>` is already on the heap, `Vec<Box<T>>` makes an extra allocation.
+
+error: aborting due to previous error
+
