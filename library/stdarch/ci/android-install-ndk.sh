@@ -11,7 +11,7 @@
 
 set -ex
 
-curl -O \
+curl --retry 5 -O \
      https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip
 unzip -q android-ndk-r15b-linux-x86_64.zip
 

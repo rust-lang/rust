@@ -113,7 +113,7 @@ matrix:
     - env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
     - env: TARGET=i686-pc-windows-gnu
 
-install: rustup target add $TARGET
+install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
   - ci/run-docker.sh $TARGET $FEATURES

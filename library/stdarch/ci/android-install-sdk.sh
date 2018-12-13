@@ -19,7 +19,7 @@ set -ex
 # which apparently magically accepts the licenses.
 
 mkdir sdk
-curl https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O
+curl --retry 5 https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip -O
 unzip -d sdk sdk-tools-linux-3859397.zip
 
 case "$1" in

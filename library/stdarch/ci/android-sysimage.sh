@@ -24,7 +24,7 @@ main() {
     apt-get install --no-install-recommends e2tools
 
     pushd "$td"
-    curl -O "${URL}/${name}"
+    curl --retry 5 -O "${URL}/${name}"
     unzip -q "${name}"
 
     local system
