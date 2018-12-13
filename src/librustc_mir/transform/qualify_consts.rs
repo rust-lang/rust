@@ -712,8 +712,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     } else if let ty::Array(_, len) = ty.sty {
                         // FIXME(eddyb) the `self.mode == Mode::Fn` condition
                         // seems unnecessary, given that this is merely a ZST.
-                        let len = len.unwrap_usize(self.tcx);
-                        if len == 0 && self.mode == Mode::Fn {
+                        if len.unwrap_usize(self.tcx) == 0 && self.mode == Mode::Fn {
                             forbidden_mut = false;
                         }
                     }

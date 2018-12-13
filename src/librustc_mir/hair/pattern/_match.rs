@@ -1752,8 +1752,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
                     let (opt_ptr, n, ty) = match value.ty.builtin_deref(false).unwrap().ty.sty {
-                        ty::TyKind::Array(t, n) =>
-                            (value.to_ptr(), n.unwrap_usize(cx.tcx), t),
+                        ty::TyKind::Array(t, n) => (value.to_ptr(), n.unwrap_usize(cx.tcx), t),
                         ty::TyKind::Slice(t) => {
                             match value.val {
                                 ConstValue::ScalarPair(ptr, n) => (
