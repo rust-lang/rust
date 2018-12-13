@@ -611,9 +611,9 @@ pub trait Debug {
 #[rustc_on_unimplemented(
     on(
         _Self="std::path::Path",
-        label="`{Self}` cannot be formatted with the default formatter, call `.display()` on it",
-        note="you need to call `.display()` or `.to_string_lossy()` for safely printing paths as \
-              they may contain non-Unicode data"
+        label="`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
+        note="call `.display()` or `.to_string_lossy()` to safely print paths, \
+              as they may contain non-Unicode data"
     ),
     message="`{Self}` doesn't implement `{Display}`",
     label="`{Self}` cannot be formatted with the default formatter",
