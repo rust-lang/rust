@@ -525,6 +525,8 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref fresh_tables,
         } = *self;
         let in_progress_tables = fresh_tables.as_ref();
+        // Check that we haven't entered before
+        assert!(interners.is_none());
         global_tcx.enter_local(arena, interners, |tcx| {
             f(InferCtxt {
                 tcx,

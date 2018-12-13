@@ -1618,6 +1618,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
 impl<'gcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
+    /// `interners` is a slot passed so we can create a CtxtInterners
+    /// with the same lifetime as `arena`.
     pub fn enter_local<'tcx, F, R>(
         &'gcx self,
         arena: &'tcx SyncDroplessArena,
@@ -2020,7 +2022,7 @@ pub mod tls {
     /// This happens once per rustc session and TyCtxts only exists
     /// inside the `f` function.
     pub fn enter_global<'gcx, F, R>(gcx: &'gcx GlobalCtxt<'gcx>, f: F) -> R
-        where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
+        where F: FnOnce(TyCtxt<'gcx, 'gcx, 'gcx>) -> R
     {
         with_thread_locals(|| {
             // Update GCX_PTR to indicate there's a GlobalCtxt available
