@@ -24,7 +24,7 @@ use hair::constant::*;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -1210,8 +1210,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     }
 }
 
-pub fn compare_const_vals<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn compare_const_vals<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
@@ -1232,6 +1232,9 @@ pub fn compare_const_vals<'a, 'tcx>(
     if a.ty != b.ty || a.ty != ty.value {
         return fallback();
     }
+
+    let tcx = tcx.global_tcx();
+    let (a, b, ty) = (a, b, ty).lift_to_tcx(tcx).unwrap();
 
     // FIXME: This should use assert_bits(ty) instead of use_bits
     // but triggers possibly bugs due to mismatching of arrays and slices
