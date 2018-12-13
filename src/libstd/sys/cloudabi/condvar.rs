@@ -13,7 +13,7 @@ use mem;
 use sync::atomic::{AtomicU32, Ordering};
 use sys::cloudabi::abi;
 use sys::mutex::{self, Mutex};
-use sys::time::dur2intervals;
+use sys::time::checked_dur2intervals;
 use time::Duration;
 
 extern "C" {
@@ -114,6 +114,8 @@ impl Condvar {
 
         // Call into the kernel to wait on the condition variable.
         let condvar = self.condvar.get();
+        let timeout = checked_dur2intervals(&dur)
+            .expect("overflow converting duration to nanoseconds");
         let subscriptions = [
             abi::subscription {
                 type_: abi::eventtype::CONDVAR,
@@ -132,7 +134,7 @@ impl Condvar {
                 union: abi::subscription_union {
                     clock: abi::subscription_clock {
                         clock_id: abi::clockid::MONOTONIC,
-                        timeout: dur2intervals(&dur),
+                        timeout,
                         ..mem::zeroed()
                     },
                 },

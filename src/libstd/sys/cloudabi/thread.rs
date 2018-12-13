@@ -16,7 +16,7 @@ use libc;
 use mem;
 use ptr;
 use sys::cloudabi::abi;
-use sys::time::dur2intervals;
+use sys::time::checked_dur2intervals;
 use sys_common::thread::*;
 use time::Duration;
 
@@ -70,13 +70,15 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
+        let timeout = checked_dur2intervals(&dur)
+            .expect("overflow converting duration to nanoseconds");
         unsafe {
             let subscription = abi::subscription {
                 type_: abi::eventtype::CLOCK,
                 union: abi::subscription_union {
                     clock: abi::subscription_clock {
                         clock_id: abi::clockid::MONOTONIC,
-                        timeout: dur2intervals(&dur),
+                        timeout,
                         ..mem::zeroed()
                     },
                 },

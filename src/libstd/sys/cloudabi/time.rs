@@ -19,7 +19,7 @@ pub struct Instant {
     t: abi::timestamp,
 }
 
-fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
+pub fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
     dur.as_secs()
         .checked_mul(NSEC_PER_SEC)?
         .checked_add(dur.subsec_nanos() as abi::timestamp)
