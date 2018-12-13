@@ -409,7 +409,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         ));
 
         let llfn = self.declare_fn("rust_eh_unwind_resume", sig);
-        attributes::unwind(llfn, true);
         attributes::apply_target_cpu_attr(self, llfn);
         unwresume.set(Some(llfn));
         llfn

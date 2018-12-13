@@ -15,7 +15,7 @@ use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt, PolyFnSig};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
@@ -23,6 +23,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
+use abi::Abi;
 use attributes;
 use llvm::{self, Attribute};
 use llvm::AttributePlace::Function;
@@ -60,7 +61,7 @@ pub fn emit_uwtable(val: &'ll Value, emit: bool) {
 
 /// Tell LLVM whether the function can or cannot unwind.
 #[inline]
-pub fn unwind(val: &'ll Value, can_unwind: bool) {
+fn unwind(val: &'ll Value, can_unwind: bool) {
     Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
 }
 
@@ -150,9 +151,10 @@ pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
     id: Option<DefId>,
+    sig: PolyFnSig<'tcx>,
 ) {
     let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or_else(|| CodegenFnAttrs::new());
@@ -194,28 +196,37 @@ pub fn from_fn_attrs(
             llvm::AttributePlace::ReturnValue, llfn);
     }
 
-    let can_unwind = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        Some(true)
+    unwind(llfn, if cx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
+        // In panic=abort mode we assume nothing can unwind anywhere, so
+        // optimize based on this!
+        false
+    } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
+        // If a specific #[unwind] attribute is present, use that
+        true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        Some(false)
-
-    // Perhaps questionable, but we assume that anything defined
-    // *in Rust code* may unwind. Foreign items like `extern "C" {
-    // fn foo(); }` are assumed not to unwind **unless** they have
-    // a `#[unwind]` attribute.
-    } else if id.map(|id| !cx.tcx.is_foreign_item(id)).unwrap_or(false) {
-        Some(true)
-    } else {
-        None
-    };
-
-    match can_unwind {
-        Some(false) => attributes::unwind(llfn, false),
-        Some(true) if cx.tcx.sess.panic_strategy() == PanicStrategy::Unwind => {
-            attributes::unwind(llfn, true);
+        // Special attribute for allocator functions, which can't unwind
+        false
+    } else if let Some(id) = id {
+        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        if cx.tcx.is_foreign_item(id) {
+            // Foreign items like `extern "C" { fn foo(); }` are assumed not to
+            // unwind
+            false
+        } else if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
+            // Any items defined in Rust that *don't* have the `extern` ABI are
+            // defined to not unwind. We insert shims to abort if an unwind
+            // happens to enforce this.
+            false
+        } else {
+            // Anything else defined in Rust is assumed that it can possibly
+            // unwind
+            true
         }
-        Some(true) | None => {}
-    }
+    } else {
+        // assume this can possibly unwind, avoiding the application of a
+        // `nounwind` attribute below.
+        true
+    });
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated

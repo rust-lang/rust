@@ -82,7 +82,12 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if instance.def.is_inline(self.tcx) {
             attributes::inline(self, lldecl, attributes::InlineAttr::Hint);
         }
-        attributes::from_fn_attrs(self, lldecl, Some(instance.def.def_id()));
+        attributes::from_fn_attrs(
+            self,
+            lldecl,
+            Some(instance.def.def_id()),
+            mono_sig,
+        );
 
         self.instances.borrow_mut().insert(instance, lldecl);
     }
