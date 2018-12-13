@@ -1,4 +1,4 @@
-//! For each definition, we track the following data.  A definition
+//! For each definition, we track the following data. A definition
 //! here is defined somewhat circularly as "something with a def-id",
 //! but it generally corresponds to things like structs, enums, etc.
 //! There are also some rather random cases (like const initializer
@@ -114,7 +114,7 @@ impl Encodable for DefPathTable {
         self.index_to_key[DefIndexAddressSpace::Low.index()].encode(s)?;
         self.index_to_key[DefIndexAddressSpace::High.index()].encode(s)?;
 
-        // DefPath hashes
+        // `DefPath` hashes
         self.def_path_hashes[DefIndexAddressSpace::Low.index()].encode(s)?;
         self.def_path_hashes[DefIndexAddressSpace::High.index()].encode(s)?;
 

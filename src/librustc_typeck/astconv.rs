@@ -677,10 +677,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     /// Instantiates the path for the given trait reference, assuming that it's
-    /// bound to a valid trait type. Returns the def_id for the defining trait.
+    /// bound to a valid trait type. Returns the `DefId` for the defining trait.
     /// The type _cannot_ be a type other than a trait type.
     ///
-    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
+    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
     pub fn instantiate_mono_trait_ref(&self,
         trait_ref: &hir::TraitRef,
@@ -696,7 +696,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                         trait_ref.path.segments.last().unwrap())
     }
 
-    /// Get the `DefId` of the given trait ref. It _must_ actually be a trait.
+    /// Get the `DefId` of the given trait ref. It _must_ actually be a trait or trait alias.
     fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
         let path = &trait_ref.path;
         match path.def {
@@ -787,7 +787,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         if !self.tcx().features().unboxed_closures &&
             trait_segment.with_generic_args(|generic_args| generic_args.parenthesized)
             != trait_def.paren_sugar {
-            // For now, require that parenthetical notation be used only with `Fn()` etc.
+            // For now, require that parenthetical notation only be used with `Fn()`, etc.
             let msg = if trait_def.paren_sugar {
                 "the precise format of `Fn`-family traits' type parameters is subject to change. \
                  Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead"

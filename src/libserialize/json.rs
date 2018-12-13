@@ -294,7 +294,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
     }
 }
 
-/// Shortcut function to decode a JSON `&str` into an object
+/// Shortcut function to decode a JSON `&str` into an object.
 pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
@@ -305,7 +305,7 @@ pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
     ::Decodable::decode(&mut decoder)
 }
 
-/// Shortcut function to encode a `T` into a JSON `String`
+/// Shortcut function to encode a `T` into a JSON `String`.
 pub fn encode<T: ::Encodable>(object: &T) -> Result<string::String, EncoderError> {
     let mut s = String::new();
     {

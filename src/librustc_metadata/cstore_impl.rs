@@ -52,8 +52,8 @@ macro_rules! provide {
                 });
                 let dep_node = def_path_hash
                     .to_dep_node(::rustc::dep_graph::DepKind::CrateMetadata);
-                // The DepNodeIndex of the DepNode::CrateMetadata should be
-                // cached somewhere, so that we can use read_index().
+                // The `DepNodeIndex` of the `DepNode::CrateMetadata` should be
+                // cached somewhere, so that we can use `read_index()`.
                 $tcx.dep_graph.read(dep_node);
 
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
@@ -70,7 +70,7 @@ macro_rules! provide {
     }
 }
 
-// small trait to work around different signature queries all being defined via
+// Small trait to work around different signature queries, all being defined via
 // the macro above.
 trait IntoArgs {
     fn into_args(self) -> (DefId, DefId);
@@ -144,7 +144,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
     item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
-    // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+    // FIXME(#38501): we've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
@@ -252,9 +252,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
-    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // FIXME(#44234): almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
-    // resolve! Does this work? Unsure! That's what the issue is about
+    // resolve! Does this work? Unsure! That's what the issue is about.
     *providers = Providers {
         is_dllimport_foreign_item: |tcx, id| {
             tcx.native_library_kind(id) == Some(NativeLibraryKind::NativeUnknown)
@@ -308,7 +308,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
 
-            // Issue 46112: We want the map to prefer the shortest
+            // Issue #46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
             // build up the map via a breadth-first search (BFS),
             // which naturally yields minimal-length paths.
@@ -326,7 +326,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             // things as deterministic as crate-nums assignment is,
             // which is to say, its not deterministic in general. But
             // we believe that libstd is consistently assigned crate
-            // num 1, so it should be enough to resolve #46112.
+            // num 1, so it should be enough to resolve issue #46112.
             let mut crates: Vec<CrateNum> = (*tcx.crates()).clone();
             crates.sort();
 
@@ -342,7 +342,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 });
             }
 
-            // (restrict scope of mutable-borrow of `visible_parent_map`)
+            // Restrict scope of mutable-borrow of `visible_parent_map`.
             {
                 let visible_parent_map = &mut visible_parent_map;
                 let mut add_child = |bfs_queue: &mut VecDeque<_>,
@@ -438,7 +438,7 @@ impl cstore::CStore {
         let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
         let body = source_file_to_stream(&sess.parse_sess, source_file, None);
 
-        // Mark the attrs as used
+        // Mark the attributes as used.
         let attrs = data.get_item_attrs(id.index, sess);
         for attr in attrs.iter() {
             attr::mark_used(attr);

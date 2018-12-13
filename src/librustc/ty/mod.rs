@@ -2499,9 +2499,9 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 /// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
-    // Warning: Ordering is significant here! The ordering is chosen
-    // because the trait Fn is a subtrait of FnMut and so in turn, and
-    // hence we order it so that Fn < FnMut < FnOnce.
+    // Warning: ordering is significant here! The ordering is chosen
+    // because the trait `Fn` is a subtrait of `FnMut` and so in turn, and
+    // hence we order it so that `Fn < FnMut < FnOnce`.
     Fn,
     FnMut,
     FnOnce,
@@ -2852,7 +2852,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.original_crate_name(id.krate).as_interned_str()
         } else {
             let def_key = self.def_key(id);
-            // The name of a StructCtor is that of its struct parent.
+            // The name of a `StructCtor` is that of its parent struct.
             if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {
                     krate: id.krate,

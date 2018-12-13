@@ -305,7 +305,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
 
     for impl_def_id in trait_impls {
         if impl_def_id.is_local() {
-            // This is where impl overlap checking happens:
+            // This is where impl overlap checking happens.
             let insert_result = sg.insert(tcx, impl_def_id);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
@@ -381,7 +381,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
     Lrc::new(sg)
 }
 
-/// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
+/// Recovers the `impl X for Y` signature from `impl_def_id` and returns it as a
 /// string.
 fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
@@ -396,8 +396,8 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
 
     let substs = Substs::identity_for_item(tcx, impl_def_id);
 
-    // FIXME: Currently only handles ?Sized.
-    //        Needs to support ?Move and ?DynSized when they are implemented.
+    // FIXME: currently only handles `?Sized`; needs to support `?Move` and `?DynSized` when
+    // they are implemented.
     let mut types_without_default_bounds = FxHashSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 

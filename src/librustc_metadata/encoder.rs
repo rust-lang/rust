@@ -1,3 +1,5 @@
+//! Encodes metadata for a single crate.
+
 use index::Index;
 use index_builder::{FromId, IndexBuilder, Untracked};
 use isolated_encoder::IsolatedEncoder;
@@ -1067,9 +1069,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
 
-                // Encode def_ids for each field and method
-                // for methods, write all the stuff get_trait_method
-                // needs to know
+                // Encode a def-id for each field and a method for methods
+                // -- write everything that `get_trait_method` needs to know.
                 let struct_ctor = if !struct_def.is_struct() {
                     Some(tcx.hir().local_def_id(struct_def.id()).index)
                 } else {
@@ -1110,8 +1111,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     None
                 };
 
-                // if this is an impl of `CoerceUnsized`, create its
-                // "unsized info", else just store None
+                // If this is an impl of `CoerceUnsized`, create its
+                // "unsized info", else just store `None`.
                 let coerce_unsized_info =
                     trait_ref.and_then(|t| {
                         if Some(t.def_id) == tcx.lang_items().coerce_unsized_trait() {
@@ -1269,7 +1270,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    /// Serialize the text of exported macros
+    /// Serialize the text of exported macros.
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
         use syntax::print::pprust;
         let def_id = self.tcx.hir().local_def_id(macro_def.id);

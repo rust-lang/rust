@@ -373,7 +373,7 @@ where
     }
 
     fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        // squashing should only be done in coherence, not NLL
+        // Squashing should only be done in coherence, not in NLL.
         assert_eq!(self.infcx.trait_object_mode(),
                    relate::TraitObjectMode::NoSquash);
         relate::TraitObjectMode::NoSquash

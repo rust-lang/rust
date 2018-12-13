@@ -702,7 +702,7 @@ fn super_predicates_of<'a, 'tcx>(
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
     // Convert any explicit superbounds in the where clause,
-    // e.g., `trait Foo where Self : Bar`.
+    // e.g., `trait Foo where Self: Bar`.
     // In the case of trait aliases, however, we include all bounds in the where clause,
     // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
     // as one of its "superpredicates".

@@ -1,4 +1,4 @@
-//! Reduced graph building
+//! Reduced graph building.
 //!
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
@@ -89,7 +89,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
-        // If any statements are items, we need to create an anonymous module
+        // If any statements are items, we need to create an anonymous module.
         block.stmts.iter().any(|statement| match statement.node {
             StmtKind::Item(_) | StmtKind::Mac(_) => true,
             _ => false,
@@ -104,12 +104,12 @@ impl<'a> Resolver<'a> {
 
     fn build_reduced_graph_for_use_tree(
         &mut self,
-        // This particular use tree
+        // this particular use tree
         use_tree: &ast::UseTree,
         id: NodeId,
         parent_prefix: &[Segment],
         nested: bool,
-        // The whole `use` item
+        // the whole `use` item
         parent_scope: ParentScope<'a>,
         item: &Item,
         vis: ty::Visibility,
@@ -156,7 +156,7 @@ impl<'a> Resolver<'a> {
                 let mut type_ns_only = false;
 
                 if nested {
-                    // Correctly handle `self`
+                    // Correctly handle `self`.
                     if source.ident.name == keywords::SelfLower.name() {
                         type_ns_only = true;
 
@@ -170,21 +170,21 @@ impl<'a> Resolver<'a> {
                             return;
                         }
 
-                        // Replace `use foo::self;` with `use foo;`
+                        // Replace `use foo::self;` with `use foo;`.
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
                             ident = source.ident;
                         }
                     }
                 } else {
-                    // Disallow `self`
+                    // Disallow `self`.
                     if source.ident.name == keywords::SelfLower.name() {
                         resolve_error(self,
                                       use_tree.span,
                                       ResolutionError::SelfImportsOnlyAllowedWithin);
                     }
 
-                    // Disallow `use $crate;`
+                    // Disallow `use $crate;`.
                     if source.ident.name == keywords::DollarCrate.name() && module_path.is_empty() {
                         let crate_root = self.resolve_crate_root(source.ident);
                         let crate_name = match crate_root.kind {
@@ -289,9 +289,9 @@ impl<'a> Resolver<'a> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
+                        // this particular `use` tree
                         tree, id, &prefix, true,
-                        // The whole `use` item
+                        // the whole `use` item
                         parent_scope.clone(), item, vis, root_span,
                     );
                 }
@@ -549,7 +549,7 @@ impl<'a> Resolver<'a> {
             ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
 
-                // Add all the items within to a new module.
+                // Add all the items within a new module.
                 let module_kind = ModuleKind::Def(Def::Trait(def_id), ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
@@ -615,19 +615,20 @@ impl<'a> Resolver<'a> {
                                          expansion,
                                          block.span);
             self.block_map.insert(block.id, module);
-            self.current_module = module; // Descend into the block.
+            // Descend into the block.
+            self.current_module = module;
         }
     }
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
         let Export { ident, def, vis, span } = child;
-        // FIXME: We shouldn't create the gensym here, it should come from metadata,
+        // FIXME: we shouldn't create the gensym here, it should come from metadata,
         // but metadata cannot encode gensyms currently, so we create it here.
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();
         let def_id = def.def_id();
-        let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
+        let expansion = Mark::root(); // FIXME(jseyfried): intercrate hygiene
         match def {
             Def::Mod(..) | Def::Enum(..) => {
                 let module = self.new_module(parent,
@@ -773,7 +774,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    // This returns true if we should consider the underlying `extern crate` to be used.
+    // Returns `true` if we should consider the underlying `extern crate` to be used.
     fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
                                     parent_scope: &ParentScope<'a>) -> bool {
         let mut import_all = None;
@@ -856,7 +857,7 @@ impl<'a> Resolver<'a> {
         import_all.is_some() || !single_imports.is_empty()
     }
 
-    // does this attribute list contain "macro_use"?
+    // Does this attribute list contain "macro_use"?
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.check_name("macro_escape") {

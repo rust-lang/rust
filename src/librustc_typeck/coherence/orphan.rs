@@ -17,13 +17,13 @@ struct OrphanChecker<'cx, 'tcx: 'cx> {
 
 impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     /// Checks exactly one impl for orphan rules and other such
-    /// restrictions.  In this fn, it can happen that multiple errors
+    /// restrictions. In this fn, it can happen that multiple errors
     /// apply to a specific impl, so just return after reporting one
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
     fn visit_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.hir().local_def_id(item.id);
-        // "Trait" impl
+        // Trait impl
         if let hir::ItemKind::Impl(.., Some(_), _, _) = item.node {
             debug!("coherence2::orphan check: trait impl {}",
                    self.tcx.hir().node_to_string(item.id));

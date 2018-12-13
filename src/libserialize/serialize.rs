@@ -104,6 +104,7 @@ pub trait Encoder {
     }
 
     // Specialized types:
+
     fn emit_option<F>(&mut self, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
@@ -246,6 +247,7 @@ pub trait Decoder {
     }
 
     // Specialized types:
+
     fn read_option<T, F>(&mut self, mut f: F) -> Result<T, Self::Error>
         where F: FnMut(&mut Self, bool) -> Result<T, Self::Error>
     {

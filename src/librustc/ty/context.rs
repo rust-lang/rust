@@ -1,4 +1,4 @@
-//! type context book-keeping
+//! Type context book-keeping.
 
 use dep_graph::DepGraph;
 use dep_graph::{DepNode, DepConstructor};

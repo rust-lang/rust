@@ -30,11 +30,10 @@ use util::nodemap::{DefIdMap, FxHashMap};
 ///   has at most one parent.
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Graph {
-    // All impls have a parent; the "root" impls have as their parent the `def_id`
-    // of the trait.
+    // All impls have a parent; the "root" impls have as their parent the trait's def-ID.
     parent: DefIdMap<DefId>,
 
-    // The "root" impls are found by looking up the trait's def_id.
+    // The "root" impls are found by looking up the trait's def-ID.
     children: DefIdMap<Children>,
 }
 
@@ -63,12 +62,13 @@ struct Children {
 pub enum FutureCompatOverlapErrorKind {
     Issue43355,
     Issue33140,
+    Issue57057,
 }
 
 #[derive(Debug)]
 pub struct FutureCompatOverlapError {
     pub error: OverlapError,
-    pub kind: FutureCompatOverlapErrorKind
+    pub kind: FutureCompatOverlapErrorKind,
 }
 
 /// The result of attempting to insert an impl into a group of children.
@@ -204,8 +204,8 @@ impl<'a, 'gcx, 'tcx> Children {
                 replace_children.push(possible_sibling);
             } else {
                 if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
-                    // do future-compat checks for overlap. Have issue #43355
-                    // errors overwrite issue #33140 errors when both are present.
+                    // Do future-compat checks for overlap.
+                    // Make issue #43355 errors overwrite issue #33140 errors when both are present.
 
                     traits::overlapping_impls(
                         tcx,
@@ -238,7 +238,7 @@ impl<'a, 'gcx, 'tcx> Children {
                     );
                 }
 
-                // no overlap (error bailed already via ?)
+                // No overlap (error bailed already via `?`).
             }
         }
 

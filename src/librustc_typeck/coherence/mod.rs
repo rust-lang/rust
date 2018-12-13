@@ -1,9 +1,10 @@
-// Coherence phase
-//
-// The job of the coherence phase of typechecking is to ensure that
-// each trait has at most one implementation for each type. This is
-// done by the orphan and overlap modules. Then we build up various
-// mappings. That mapping code resides here.
+//! The coherence phase of type-checking.
+//!
+//! The job of the coherence phase of type-checking is to ensure that each trait
+//! has at most one implementation for each type. This is done by the `orphan`
+//! and `inherent_impl_overlap` modules (overlaps of trait impls are checked in
+//! the `rustc::traits::specialize` module). The next task is to
+//! build up various mappings, which is what this module is for.
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
@@ -143,12 +144,12 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     unsafety::check(tcx);
     orphan::check(tcx);
 
-    // these queries are executed for side-effects (error reporting):
+    // These queries are executed for side-effects (error reporting).
     ty::query::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
     ty::query::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
 }
 
-/// Overlap: No two impls for the same trait are implemented for the
+/// Overlap: no two impls for the same trait are implemented for the
 /// same type. Likewise, no two inherent impls for a given type
 /// constructor provide a method with the same name.
 fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {

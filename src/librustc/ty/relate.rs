@@ -22,15 +22,16 @@ pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
 #[derive(Clone, Debug)]
 pub enum Cause {
-    ExistentialRegionBound, // relating an existential region bound
+    /// Relating to an existential region bound.
+    ExistentialRegionBound,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TraitObjectMode {
     NoSquash,
-    /// A temporary mode to treat `Send + Sync = Sync + Send`, should be
-    /// used only in coherence.
-    SquashAutoTraitsIssue33140
+    /// A temporary mode to treat `Send + Sync == Sync + Send` (e.g.); should be
+    /// used only in coherence checking.
+    SquashAutoTraitsIssue33140,
 }
 
 pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
@@ -609,13 +610,13 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
             TraitObjectMode::SquashAutoTraitsIssue33140 => {
                 // Treat auto-trait "principal" components as equal
                 // to the non-principal components, to make
-                // `dyn Send+Sync = dyn Sync+Send`.
+                // `dyn Send + Sync = dyn Sync + Send`.
                 let normalize = |d: &[ty::ExistentialPredicate<'tcx>]| {
                     let mut result: Vec<_> = d.iter().map(|pi| match pi {
                         Trait(ref a) if tcx.trait_is_auto(a.def_id) => {
                             AutoTrait(a.def_id)
                         },
-                        other => *other
+                        other => *other,
                     }).collect();
 
                     result.sort_by(|a, b| a.stable_cmp(tcx, b));

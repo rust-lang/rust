@@ -38,7 +38,7 @@ pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 /// Returns the obligations that make this trait reference
-/// well-formed.  For example, if there is a trait `Set` defined like
+/// well-formed. For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
 pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// into `self.out`.
     fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
         // A projection is well-formed if (a) the trait ref itself is
-        // WF and (b) the trait-ref holds.  (It may also be
+        // WF and (b) the trait-ref holds. (It may also be
         // normalizable and be WF that way.)
         let trait_ref = data.trait_ref(self.infcx.tcx);
         self.compute_trait_ref(&trait_ref, Elaborate::None);
@@ -251,7 +251,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::Bound(..) |
                 ty::Placeholder(..) |
                 ty::Foreign(..) => {
-                    // WfScalar, WfParameter, etc
+                    // `WfScalar`, `WfParameter`, etc.
                 }
 
                 ty::Slice(subty) => {
@@ -273,18 +273,19 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::RawPtr(_) => {
-                    // simple cases that are WF if their type args are WF
+                    // Simple cases that are WF if their type args are WF.
                 }
 
                 ty::Projection(data) => {
-                    subtys.skip_current_subtree(); // subtree handled by compute_projection
+                    // Subtree is handled by `compute_projection`.
+                    subtys.skip_current_subtree();
                     self.compute_projection(data);
                 }
 
                 ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
                 ty::Adt(def, substs) => {
-                    // WfNominalType
+                    // `WfNominalType`
                     let obligations = self.nominal_obligations(def.did, substs);
                     self.out.extend(obligations);
                 }
@@ -295,7 +296,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::Ref(r, rty, _) => {
-                    // WfReference
+                    // `WfReference`
                     if !r.has_escaping_bound_vars() && !rty.has_escaping_bound_vars() {
                         let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
                         self.out.push(
@@ -309,7 +310,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::Generator(..) => {
-                    // Walk ALL the types in the generator: this will
+                    // Walk _all_ the types in the generator: this will
                     // include the upvar types as well as the yield
                     // type. Note that this is mildly distinct from
                     // the closure case, where we have to be careful
@@ -355,16 +356,16 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::FnPtr(_) => {
-                    // let the loop iterate into the argument/return
-                    // types appearing in the fn signature
+                    // Let the loop iterate into the argument/return
+                    // types appearing in the fn signature.
                 }
 
                 ty::Opaque(did, substs) => {
-                    // all of the requirements on type parameters
+                    // All of the requirements on type parameters
                     // should've been checked by the instantiation
                     // of whatever returned this exact `impl Trait`.
 
-                    // for named existential types we still need to check them
+                    // For named existential types, we still need to check them.
                     if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);
@@ -372,15 +373,15 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::Dynamic(data, r) => {
-                    // WfObject
+                    // `WfObject`
                     //
                     // Here, we defer WF checking due to higher-ranked
                     // regions. This is perhaps not ideal.
                     self.from_object_ty(ty, data, r);
 
-                    // FIXME(#27579) RFC also considers adding trait
-                    // obligations that don't refer to Self and
-                    // checking those
+                    // FIXME(#27579): RFC also considers adding trait
+                    // obligations that don't refer to `Self` and
+                    // checking those.
 
                     let cause = self.cause(traits::MiscObligation);
                     let component_traits =
@@ -398,9 +399,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 // know what type they are. We do two things:
                 //
                 // 1. Check if they have been resolved, and if so proceed with
-                //    THAT type.
+                //    _that_ type.
                 // 2. If not, check whether this is the type that we
-                //    started with (ty0). In that case, we've made no
+                //    started with (`ty0`). In that case, we've made no
                 //    progress at all, so return false. Otherwise,
                 //    we've at least simplified things (i.e., we went
                 //    from `Vec<$0>: WF` to `$0: WF`, so we can
@@ -409,27 +410,30 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 //    is satisfied to ensure termination.)
                 ty::Infer(_) => {
                     let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::Infer(_) = ty.sty { // not yet resolved...
-                        if ty == ty0 { // ...this is the type we started from! no progress.
+                    if let ty::Infer(_) = ty.sty {
+                        // Not yet resolved...
+                        if ty == ty0 {
+                            // ... this is the type we started from, so no progress!
                             return false;
                         }
 
                         let cause = self.cause(traits::MiscObligation);
-                        self.out.push( // ...not the type we started from, so we made progress.
+                        self.out.push(
+                            // ... this is not the type we started from, so we made progress.
                             traits::Obligation::new(cause,
                                                     self.param_env,
                                                     ty::Predicate::WellFormed(ty)));
                     } else {
                         // Yes, resolved, proceed with the
                         // result. Should never return false because
-                        // `ty` is not a Infer.
+                        // `ty` is not a `Infer`.
                         assert!(self.compute(ty));
                     }
                 }
             }
         }
 
-        // if we made it through that loop above, we made progress!
+        // If we made it through that loop above, we made progress!
         return true;
     }
 

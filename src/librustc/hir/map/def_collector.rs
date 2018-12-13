@@ -116,7 +116,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         debug!("visit_item: {:?}", i);
 
         // Pick the def data. This need not be unique, but the more
-        // information we encapsulate into, the better
+        // information we encapsulate into, the better.
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Trait(..) => DefPathData::Trait(i.ident.as_interned_str()),

@@ -1,4 +1,4 @@
-// Decoding metadata from a single crate's metadata
+//! Decodes metadata for a single crate.
 
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use schema::*;
@@ -302,13 +302,13 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            bug!("Cannot decode Span without Session.")
+            bug!("cannot decode Span without Session")
         };
 
         let imported_source_files = self.cdata().imported_source_files(&sess.source_map());
         let source_file = {
             // Optimize for the case that most spans within a translated item
-            // originate from the same source_file.
+            // originate from the same `source_file`.
             let last_source_file = &imported_source_files[self.last_source_file_index];
 
             if lo >= last_source_file.original_start_pos &&
