@@ -621,7 +621,8 @@ impl Builder {
         let asc = self.output.join(format!("{}.asc", filename));
         println!("signing: {:?}", path);
         let mut cmd = Command::new("gpg");
-        cmd.arg("--no-tty")
+        cmd.arg("--pinentry-mode=loopback")
+            .arg("--no-tty")
             .arg("--yes")
             .arg("--batch")
             .arg("--passphrase-fd").arg("0")
