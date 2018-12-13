@@ -20,7 +20,8 @@ use rustc::ty::layout::{
 
 use interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
 use const_eval::{
-    CompileTimeInterpreter, lazy_const_to_op, error_to_const_error, eval_promoted, mk_borrowck_eval_cx
+    CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_borrowck_eval_cx,
+    lazy_const_to_op,
 };
 use transform::{MirPass, MirSource};
 
