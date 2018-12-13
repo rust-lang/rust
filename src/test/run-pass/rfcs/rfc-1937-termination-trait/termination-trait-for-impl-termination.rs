@@ -9,6 +9,5 @@
 // except according to those terms.
 
 // run-pass
-#![feature(termination_trait_lib)]
 
 fn main() -> impl std::process::Termination { }

@@ -39,7 +39,6 @@
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
-#![feature(termination_trait_lib)]
 #![feature(test)]
 
 extern crate getopts;

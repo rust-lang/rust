@@ -1583,23 +1583,24 @@ pub fn id() -> u32 {
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
 #[cfg_attr(not(test), lang = "termination")]
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.33.0")]
 #[rustc_on_unimplemented(
   message="`main` has invalid return type `{Self}`",
   label="`main` can only return types that implement `{Termination}`")]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
+    #[stable(feature = "termination_trait_lib", since = "1.33.0")]
     fn report(self) -> i32;
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.33.0")]
 impl Termination for () {
     #[inline]
     fn report(self) -> i32 { ExitCode::SUCCESS.report() }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.33.0")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
     fn report(self) -> i32 {
         match self {
@@ -1609,12 +1610,12 @@ impl<E: fmt::Debug> Termination for Result<(), E> {
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.33.0")]
 impl Termination for ! {
     fn report(self) -> i32 { self }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.33.0")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> i32 {
         let Err(err) = self;
@@ -1623,7 +1624,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
     }
 }
 
-#[unstable(feature = "termination_trait_lib", issue = "43301")]
+#[stable(feature = "termination_trait_lib", since = "1.33.0")]
 impl Termination for ExitCode {
     #[inline]
     fn report(self) -> i32 {
