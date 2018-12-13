@@ -17,6 +17,9 @@
 
 // aux-build:lib.rs
 
+// rust-lang/rust#54143: This test *requires* optimizations to be turned on.
+// compile-flags: -O
+
 extern crate lib;
 
 fn main() {
