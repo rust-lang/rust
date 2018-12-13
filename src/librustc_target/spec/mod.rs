@@ -254,12 +254,12 @@ macro_rules! supported_targets {
             }
         }
 
-        pub fn get_targets() -> Box<dyn Iterator<Item=String>> {
-            Box::new(TARGETS.iter().filter_map(|t| -> Option<String> {
+        pub fn get_targets() -> impl Iterator<Item = String> {
+            TARGETS.iter().filter_map(|t| -> Option<String> {
                 load_specific(t)
                     .and(Ok(t.to_string()))
                     .ok()
-            }))
+            })
         }
 
         #[cfg(test)]
