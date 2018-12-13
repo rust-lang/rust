@@ -18,6 +18,7 @@ use rustc::session::config::Sanitizer;
 use rustc::ty::{self, TyCtxt, PolyFnSig};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
+use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
@@ -130,8 +131,7 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
 }
 
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
-    let cpu = llvm_util::target_cpu(cx.tcx.sess);
-    let target_cpu = CString::new(cpu).unwrap();
+    let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
     llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
@@ -231,11 +231,7 @@ pub fn from_fn_attrs(
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
     // functions (because Clang annotates functions this way too).
-    // NOTE: For now we just apply this if -Zcross-lang-lto is specified, since
-    //       it introduce a little overhead and isn't really necessary otherwise.
-    if cx.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() {
-        apply_target_cpu_attr(cx, llfn);
-    }
+    apply_target_cpu_attr(cx, llfn);
 
     let features = llvm_target_features(cx.tcx.sess)
         .map(|s| s.to_string())
