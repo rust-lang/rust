@@ -318,7 +318,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
         ty::Array(ty, len) => {
-            let len = len.unwrap_evaluated().unwrap_usize(tcx);
+            let len = len.unwrap_usize(tcx);
             builder.array_shim(dest, src, ty, len)
         }
         ty::Closure(def_id, substs) => {

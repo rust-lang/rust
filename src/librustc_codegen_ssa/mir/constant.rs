@@ -52,7 +52,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .and_then(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
-                    ty::Array(_, n) => n.unwrap_evaluated().unwrap_usize(bx.tcx()),
+                    ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
                 let values: Result<Vec<_>, ErrorHandled> = (0..fields).map(|field| {

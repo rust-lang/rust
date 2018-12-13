@@ -307,7 +307,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // u64 cast is from usize to u64, which is always good
                 let val = Immediate::new_slice(
                     ptr,
-                    length.unwrap_evaluated().unwrap_usize(self.tcx.tcx),
+                    length.unwrap_usize(self.tcx.tcx),
                     self,
                 );
                 self.write_immediate(val, dest)

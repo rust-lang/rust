@@ -635,7 +635,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect()
         }
         ty::Array(ref sub_ty, len) if len.assert_usize(cx.tcx).is_some() => {
-            let len = len.unwrap_evaluated().unwrap_usize(cx.tcx);
+            let len = len.unwrap_usize(cx.tcx);
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
@@ -1310,7 +1310,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
             )]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::Array(_, length) => Some(vec![
-                Slice(length.unwrap_evaluated().unwrap_usize(cx.tcx))
+                Slice(length.unwrap_usize(cx.tcx))
             ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
@@ -1753,7 +1753,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // slices
                     let (opt_ptr, n, ty) = match value.ty.builtin_deref(false).unwrap().ty.sty {
                         ty::TyKind::Array(t, n) =>
-                            (value.to_ptr(), n.unwrap_evaluated().unwrap_usize(cx.tcx), t),
+                            (value.to_ptr(), n.unwrap_usize(cx.tcx), t),
                         ty::TyKind::Slice(t) => {
                             match value.val {
                                 ConstValue::ScalarPair(ptr, n) => (
