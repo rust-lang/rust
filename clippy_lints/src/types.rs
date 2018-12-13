@@ -290,12 +290,14 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                         let boxed_type = cx.tcx.type_of(def_id);
                         if boxed_type.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env);
                         then {
-                            span_help_and_lint(
+                            span_lint_and_sugg(
                                 cx,
                                 VEC_BOX_SIZED,
                                 ast_ty.span,
-                                "you seem to be trying to use `Vec<Box<T>>`, but T is Sized. Consider using just `Vec<T>`",
-                                "`Vec<T>` is already on the heap, `Vec<Box<T>>` makes an extra allocation.",
+                                "you seem to be trying to use `Vec<Box<T>>`, but T is Sized. `Vec<T>` is already on the heap, `Vec<Box<T>>` makes an extra allocation.",
+                                "try",
+                                format!("Vec<{}>", boxed_type),
+                                Applicability::MachineApplicable
                             )
                         }
                     }
