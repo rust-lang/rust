@@ -1666,7 +1666,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                             ),
                             ty: switch_ty,
                         };
-                        fmt_const_val(&mut s, &c).unwrap();
+                        fmt_const_val(&mut s, c).unwrap();
                         s.into()
                     }).chain(iter::once("otherwise".into()))
                     .collect()
@@ -2155,7 +2155,7 @@ impl<'tcx> Operand<'tcx> {
             ty,
             user_ty: None,
             literal: tcx.intern_lazy_const(
-                ty::LazyConst::Evaluated(ty::Const::zero_sized(tcx, ty)),
+                ty::LazyConst::Evaluated(ty::Const::zero_sized(ty)),
             ),
         })
     }
@@ -2663,14 +2663,14 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_lazy_const_val(f: &mut impl Write, const_val: &ty::LazyConst<'_>) -> fmt::Result {
-    match const_val {
+    match *const_val {
         ty::LazyConst::Unevaluated(..) => write!(f, "{:?}", const_val),
         ty::LazyConst::Evaluated(c) => fmt_const_val(f, c),
     }
 }
 
 /// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
-pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Result {
+pub fn fmt_const_val(f: &mut impl Write, const_val: ty::Const<'_>) -> fmt::Result {
     use ty::TyKind::*;
     let value = const_val.val;
     let ty = const_val.ty;

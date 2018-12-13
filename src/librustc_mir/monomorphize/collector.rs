@@ -1252,10 +1252,10 @@ fn collect_lazy_const<'a, 'tcx>(
 
 fn collect_const<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    constant: &ty::Const<'tcx>,
+    constant: ty::Const<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    debug!("visiting const {:?}", *constant);
+    debug!("visiting const {:?}", constant);
 
     match constant.val {
         ConstValue::ScalarPair(Scalar::Ptr(a), Scalar::Ptr(b)) => {

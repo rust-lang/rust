@@ -2018,13 +2018,11 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 /// code is monomorphic enough for that.
 pub enum LazyConst<'tcx> {
     Unevaluated(DefId, &'tcx Substs<'tcx>),
-    Evaluated(&'tcx Const<'tcx>),
+    Evaluated(Const<'tcx>),
 }
 
-static_assert!(MEM_SIZE_OF_LAZY_CONST: ::std::mem::size_of::<LazyConst<'_>>() <= 24);
-
 impl<'tcx> LazyConst<'tcx> {
-    pub fn map_evaluated<R>(self, f: impl FnOnce(&'tcx Const<'tcx>) -> Option<R>) -> Option<R> {
+    pub fn map_evaluated<R>(self, f: impl FnOnce(Const<'tcx>) -> Option<R>) -> Option<R> {
         match self {
             LazyConst::Evaluated(c) => f(c),
             LazyConst::Unevaluated(..) => None,
@@ -2051,24 +2049,14 @@ pub struct Const<'tcx> {
 
 impl<'tcx> Const<'tcx> {
     #[inline]
-    pub fn from_const_value(
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        val: ConstValue<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        tcx.mk_const(Const {
-            val,
-            ty,
-        })
-    }
-
-    #[inline]
     pub fn from_scalar(
-        tcx: TyCtxt<'_, '_, 'tcx>,
         val: Scalar,
         ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        Self::from_const_value(tcx, ConstValue::Scalar(val), ty)
+    ) -> Self {
+        Self {
+            val: ConstValue::Scalar(val),
+            ty,
+        }
     }
 
     #[inline]
@@ -2076,7 +2064,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         bits: u128,
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> &'tcx Self {
+    ) -> Self {
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
@@ -2084,21 +2072,21 @@ impl<'tcx> Const<'tcx> {
         let shift = 128 - size.bits();
         let truncated = (bits << shift) >> shift;
         assert_eq!(truncated, bits, "from_bits called with untruncated value");
-        Self::from_scalar(tcx, Scalar::Bits { bits, size: size.bytes() as u8 }, ty.value)
+        Self::from_scalar(Scalar::Bits { bits, size: size.bytes() as u8 }, ty.value)
     }
 
     #[inline]
-    pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_scalar(tcx, Scalar::Bits { bits: 0, size: 0 }, ty)
+    pub fn zero_sized(ty: Ty<'tcx>) -> Self {
+        Self::from_scalar(Scalar::Bits { bits: 0, size: 0 }, ty)
     }
 
     #[inline]
-    pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> &'tcx Self {
+    pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> Self {
         Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
     }
 
     #[inline]
-    pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> &'tcx Self {
+    pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> Self {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
@@ -2164,5 +2152,4 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx LazyConst<'tcx> {}
