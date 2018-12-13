@@ -40,7 +40,11 @@ use str;
 use sync::Arc;
 use sys_common::AsInner;
 
-const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
+/// Replacement for surrogate byte sequences in lossy conversion. This uses the
+/// Unicode replacement character (U+FFFD). It is repeated three times for
+/// consistency with lossy conversion of such byte sequences in other code paths
+/// (anything using core's `run_utf8_validation` function).
+const SURROGATE_REPLACEMENT: &str = "\u{FFFD}\u{FFFD}\u{FFFD}";
 
 /// A Unicode code point: from U+0000 to U+10FFFF.
 ///
@@ -346,20 +350,14 @@ impl Wtf8Buf {
 
     /// Consumes the WTF-8 string and converts it lossily to UTF-8.
     ///
-    /// This does not copy the data (but may overwrite parts of it in place).
+    /// This does not copy the data if possible.
     ///
-    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”)
-    pub fn into_string_lossy(mut self) -> String {
-        let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    pos = surrogate_pos + 3;
-                    self.bytes[surrogate_pos..pos]
-                        .copy_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
-                },
-                None => return unsafe { String::from_utf8_unchecked(self.bytes) }
-            }
+    /// Surrogates are replaced with `"\u{FFFD}\u{FFFD}\u{FFFD}"` (three
+    /// instances of the replacement character “�”).
+    pub fn into_string_lossy(self) -> String {
+        match self.next_surrogate(0) {
+            None => unsafe { String::from_utf8_unchecked(self.bytes) },
+            Some(_) => self.as_slice().to_string_lossy().into_owned(),
         }
     }
 
@@ -460,7 +458,7 @@ impl fmt::Display for Wtf8 {
                     formatter.write_str(unsafe {
                         str::from_utf8_unchecked(&wtf8_bytes[pos .. surrogate_pos])
                     })?;
-                    formatter.write_str(UTF8_REPLACEMENT_CHARACTER)?;
+                    formatter.write_str(SURROGATE_REPLACEMENT)?;
                     pos = surrogate_pos + 3;
                 },
                 None => {
@@ -554,7 +552,8 @@ impl Wtf8 {
     /// Lossily converts the string to UTF-8.
     /// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
     ///
-    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
+    /// Surrogates are replaced with `"\u{FFFD}\u{FFFD}\u{FFFD}"` (three
+    /// instances of the replacement character “�”).
     ///
     /// This only copies the data if necessary (if it contains any surrogate).
     pub fn to_string_lossy(&self) -> Cow<str> {
@@ -565,13 +564,13 @@ impl Wtf8 {
         let wtf8_bytes = &self.bytes;
         let mut utf8_bytes = Vec::with_capacity(self.len());
         utf8_bytes.extend_from_slice(&wtf8_bytes[..surrogate_pos]);
-        utf8_bytes.extend_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
+        utf8_bytes.extend_from_slice(SURROGATE_REPLACEMENT.as_bytes());
         let mut pos = surrogate_pos + 3;
         loop {
             match self.next_surrogate(pos) {
                 Some((surrogate_pos, _)) => {
                     utf8_bytes.extend_from_slice(&wtf8_bytes[pos .. surrogate_pos]);
-                    utf8_bytes.extend_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
+                    utf8_bytes.extend_from_slice(SURROGATE_REPLACEMENT.as_bytes());
                     pos = surrogate_pos + 3;
                 },
                 None => {
@@ -1095,7 +1094,7 @@ mod tests {
         let mut string = Wtf8Buf::from_str("aé 💩");
         assert_eq!(string.clone().into_string_lossy(), String::from("aé 💩"));
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!(string.clone().into_string_lossy(), String::from("aé 💩�"));
+        assert_eq!(string.clone().into_string_lossy(), String::from("aé 💩���"));
     }
 
     #[test]
@@ -1238,7 +1237,7 @@ mod tests {
         assert_eq!(Wtf8::from_str("aé 💩").to_string_lossy(), Cow::Borrowed("aé 💩"));
         let mut string = Wtf8Buf::from_str("aé 💩");
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        let expected: Cow<str> = Cow::Owned(String::from("aé 💩�"));
+        let expected: Cow<str> = Cow::Owned(String::from("aé 💩���"));
         assert_eq!(string.to_string_lossy(), expected);
     }
 
@@ -1253,7 +1252,7 @@ mod tests {
 
         let mut string = Wtf8Buf::from_str("aé 💩");
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!("aé 💩�", d(string.as_inner()));
+        assert_eq!("aé 💩���", d(string.as_inner()));
     }
 
     #[test]

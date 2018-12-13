@@ -564,12 +564,14 @@ impl OsStr {
     ///
     ///     // Here the values 0x0066 and 0x006f correspond to 'f' and 'o'
     ///     // respectively. The value 0xD800 is a lone surrogate half, invalid
-    ///     // in a UTF-16 sequence.
+    ///     // in a UTF-16 sequence. Encoded in UTF-8 form this takes three
+    ///     // bytes; notice that lossy conversion of these particular invalid
+    ///     // UTF-8 sequences results in one replacement character per byte.
     ///     let source = [0x0066, 0x006f, 0xD800, 0x006f];
     ///     let os_string = OsString::from_wide(&source[..]);
     ///     let os_str = os_string.as_os_str();
     ///
-    ///     assert_eq!(os_str.to_string_lossy(), "fo�o");
+    ///     assert_eq!(os_str.to_string_lossy(), "fo���o");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
