@@ -37,9 +37,7 @@ pub fn simd_test(
         TokenTree::Literal(tt) => tt.to_string(),
         _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     };
-    let enable_feature = enable_feature
-        .trim_start_matches('"')
-        .trim_end_matches('"');
+    let enable_feature = enable_feature.trim_start_matches('"').trim_end_matches('"');
     let target_features: Vec<String> = enable_feature
         .replace('+', "")
         .split(',')
