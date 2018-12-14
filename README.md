@@ -106,8 +106,8 @@ script:
   # etc.
 ```
 
-It might happen that clippy is not available for a certain nightly release.
-In this case you can try to conditionally install clippy from the git repo.
+It might happen that Clippy is not available for a certain nightly release.
+In this case you can try to conditionally install Clippy from the git repo.
 
 ```yaml
 language: rust
@@ -149,21 +149,7 @@ You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 Note: `deny` produces errors instead of warnings.
 
-Note: To use the new `clippy::lint_name` syntax, a recent compiler has to be used
-currently. If you want to compile your code with the stable toolchain you can use a `cfg_attr` to
-activate the `tool_lints` feature:
-```rust
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::lint_name))]
-```
-
-For this to work you have to use Clippy on the nightly toolchain: `cargo +nightly clippy`. If you
-want to use Clippy with the stable toolchain, you can stick to the old unscoped method to
-enable/disable Clippy lints until `tool_lints` are stable:
-```rust
-#![cfg_attr(feature = "cargo-clippy", allow(clippy_lint))]
-```
-
-If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra flags to clippy during the run: `cargo clippy -- -A lint_name` will run clippy with `lint_name` disabled and `cargo clippy -- -W lint_name` will run it with that enabled. On newer compilers you may need to use `clippy::lint_name` instead.
+If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra flags to Clippy during the run: `cargo clippy -- -A clippy::lint_name` will run Clippy with `lint_name` disabled and `cargo clippy -- -W clippy::lint_name` will run it with that enabled. This also works with lint groups. For example you can run Clippy with warnings for all lints enabled: `cargo clippy -- -W clippy::pedantic`
 
 ## License
 

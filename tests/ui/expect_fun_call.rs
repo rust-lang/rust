@@ -16,7 +16,9 @@ fn expect_fun_call() {
     struct Foo;
 
     impl Foo {
-        fn new() -> Self { Foo }
+        fn new() -> Self {
+            Foo
+        }
 
         fn expect(&self, msg: &str) {
             panic!("{}", msg)

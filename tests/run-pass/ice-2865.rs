@@ -7,10 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[allow(dead_code)]
 struct Ice {
-    size: String
+    size: String,
 }
 
 impl<'a> From<String> for Ice {

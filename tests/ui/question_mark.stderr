@@ -1,22 +1,39 @@
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:12:2
+  --> $DIR/question_mark.rs:11:5
    |
-12 |       if a.is_none() {
-   |  _____^
-13 | |         return None
-14 | |     }
+11 | /     if a.is_none() {
+12 | |         return None;
+13 | |     }
    | |_____^ help: replace_it_with: `a?;`
    |
    = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:47:3
+  --> $DIR/question_mark.rs:47:9
    |
-47 |           if (self.opt).is_none() {
-   |  _________^
+47 | /         if (self.opt).is_none() {
 48 | |             return None;
 49 | |         }
    | |_________^ help: replace_it_with: `(self.opt)?;`
 
-error: aborting due to 2 previous errors
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:51:9
+   |
+51 | /         if self.opt.is_none() {
+52 | |             return None
+53 | |         }
+   | |_________^ help: replace_it_with: `self.opt?;`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:55:17
+   |
+55 |           let _ = if self.opt.is_none() {
+   |  _________________^
+56 | |             return None;
+57 | |         } else {
+58 | |             self.opt
+59 | |         };
+   | |_________^ help: replace_it_with: `Some(self.opt?)`
+
+error: aborting due to 4 previous errors
 

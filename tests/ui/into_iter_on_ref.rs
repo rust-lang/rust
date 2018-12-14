@@ -5,21 +5,21 @@ struct X;
 use std::collections::*;
 
 fn main() {
-    for _ in &[1,2,3] {}
+    for _ in &[1, 2, 3] {}
     for _ in vec![X, X] {}
     for _ in &vec![X, X] {}
-    for _ in [1,2,3].into_iter() {} //~ ERROR equivalent to .iter()
+    for _ in [1, 2, 3].into_iter() {} //~ ERROR equivalent to .iter()
 
-    let _ = [1,2,3].into_iter(); //~ ERROR equivalent to .iter()
-    let _ = vec![1,2,3].into_iter();
-    let _ = (&vec![1,2,3]).into_iter(); //~ WARN equivalent to .iter()
-    let _ = vec![1,2,3].into_boxed_slice().into_iter(); //~ WARN equivalent to .iter()
+    let _ = [1, 2, 3].into_iter(); //~ ERROR equivalent to .iter()
+    let _ = vec![1, 2, 3].into_iter();
+    let _ = (&vec![1, 2, 3]).into_iter(); //~ WARN equivalent to .iter()
+    let _ = vec![1, 2, 3].into_boxed_slice().into_iter(); //~ WARN equivalent to .iter()
     let _ = std::rc::Rc::from(&[X][..]).into_iter(); //~ WARN equivalent to .iter()
     let _ = std::sync::Arc::from(&[X][..]).into_iter(); //~ WARN equivalent to .iter()
 
-    let _ = (&&&&&&&[1,2,3]).into_iter(); //~ ERROR equivalent to .iter()
-    let _ = (&&&&mut &&&[1,2,3]).into_iter(); //~ ERROR equivalent to .iter()
-    let _ = (&mut &mut &mut [1,2,3]).into_iter(); //~ ERROR equivalent to .iter_mut()
+    let _ = (&&&&&&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
+    let _ = (&&&&mut &&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
+    let _ = (&mut &mut &mut [1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter_mut()
 
     let _ = (&Some(4)).into_iter(); //~ WARN equivalent to .iter()
     let _ = (&mut Some(5)).into_iter(); //~ WARN equivalent to .iter_mut()

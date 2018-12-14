@@ -7,33 +7,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::block_in_if_condition_expr)]
 #![warn(clippy::block_in_if_condition_stmt)]
 #![allow(unused, clippy::let_and_return)]
 #![warn(clippy::nonminimal_bool)]
 
-
 macro_rules! blocky {
-    () => {{true}}
+    () => {{
+        true
+    }};
 }
 
 macro_rules! blocky_too {
     () => {{
         let r = true;
         r
-    }}
+    }};
 }
 
 fn macro_if() {
-    if blocky!() {
-    }
+    if blocky!() {}
 
-    if blocky_too!() {
-    }
+    if blocky_too!() {}
 }
 
 fn condition_has_block() -> i32 {
@@ -55,7 +50,7 @@ fn condition_has_block_with_single_expression() -> i32 {
     }
 }
 
-fn predicate<F: FnOnce(T) -> bool, T>(pfn: F, val:T) -> bool {
+fn predicate<F: FnOnce(T) -> bool, T>(pfn: F, val: T) -> bool {
     pfn(val)
 }
 
@@ -65,11 +60,24 @@ fn pred_test() {
     // this is a sneaky case, where the block isn't directly in the condition, but is actually
     // inside a closure that the condition is using.  same principle applies.  add some extra
     // expressions to make sure linter isn't confused by them.
-    if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
-    }
+    if v == 3
+        && sky == "blue"
+        && predicate(
+            |x| {
+                let target = 3;
+                x == target
+            },
+            v,
+        )
+    {}
 
-    if predicate(|x| { let target = 3; x == target }, v) {
-    }
+    if predicate(
+        |x| {
+            let target = 3;
+            x == target
+        },
+        v,
+    ) {}
 }
 
 fn condition_is_normal() -> i32 {
@@ -82,9 +90,7 @@ fn condition_is_normal() -> i32 {
 }
 
 fn closure_without_block() {
-    if predicate(|x| x == 3, 6) {
-
-    }
+    if predicate(|x| x == 3, 6) {}
 }
 
 fn condition_is_unsafe_block() {
@@ -96,8 +102,7 @@ fn condition_is_unsafe_block() {
     }
 }
 
-fn main() {
-}
+fn main() {}
 
 fn macro_in_closure() {
     let option = Some(true);

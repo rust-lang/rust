@@ -1,51 +1,51 @@
 error: missing return statement
-  --> $DIR/implicit_return.rs:21:5
+  --> $DIR/implicit_return.rs:17:5
    |
-21 |     true
+17 |     true
    |     ^^^^ help: add `return` as shown: `return true`
    |
    = note: `-D clippy::implicit-return` implied by `-D warnings`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:27:9
+  --> $DIR/implicit_return.rs:23:9
    |
-27 |         true
+23 |         true
    |         ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:29:9
+  --> $DIR/implicit_return.rs:25:9
    |
-29 |         false
+25 |         false
    |         ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:36:17
+  --> $DIR/implicit_return.rs:33:17
    |
-36 |         true => false,
+33 |         true => false,
    |                 ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:38:13
+  --> $DIR/implicit_return.rs:34:20
    |
-38 |             true
-   |             ^^^^ help: add `return` as shown: `return true`
+34 |         false => { true },
+   |                    ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:46:9
+  --> $DIR/implicit_return.rs:41:9
    |
-46 |         break true;
+41 |         break true;
    |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:52:9
+  --> $DIR/implicit_return.rs:47:18
    |
-52 |         true
-   |         ^^^^ help: add `return` as shown: `return true`
+47 |     let _ = || { true };
+   |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:54:16
+  --> $DIR/implicit_return.rs:48:16
    |
-54 |     let _ = || true;
+48 |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
 error: aborting due to 8 previous errors

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
 #![allow(clippy::should_implement_trait)]
@@ -57,21 +54,24 @@ mod better {
 //todo the lint does not handle lifetimed struct
 //the following module should trigger the lint on the third method only
 mod lifetimes {
-    struct Foo<'a>{foo_str: &'a str}
+    struct Foo<'a> {
+        foo_str: &'a str,
+    }
 
     impl<'a> Foo<'a> {
-        // Cannot use `Self` as return type, because the function is actually `fn foo<'b>(s: &'b str) -> Foo<'b>`
+        // Cannot use `Self` as return type, because the function is actually `fn foo<'b>(s: &'b str) ->
+        // Foo<'b>`
         fn foo(s: &str) -> Foo {
             Foo { foo_str: s }
         }
         // cannot replace with `Self`, because that's `Foo<'a>`
         fn bar() -> Foo<'static> {
-            Foo { foo_str: "foo"}
+            Foo { foo_str: "foo" }
         }
 
         // `Self` is applicable here
         fn clone(&self) -> Foo<'a> {
-            Foo {foo_str: self.foo_str}
+            Foo { foo_str: self.foo_str }
         }
     }
 }
@@ -105,8 +105,7 @@ mod traits {
             p1
         }
 
-        fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {
-        }
+        fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
 
         fn vals(_: Bad) -> Bad {
             Bad::default()
@@ -137,8 +136,7 @@ mod traits {
             p1
         }
 
-        fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {
-        }
+        fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
 
         fn vals(_: Self) -> Self {
             Self::default()
@@ -175,8 +173,7 @@ mod traits {
             p1
         }
 
-        fn nested(_p1: Box<Self>, _p2: (&Self, &Self)) {
-        }
+        fn nested(_p1: Box<Self>, _p2: (&Self, &Self)) {}
 
         fn vals(_: Self) -> Self {
             Self::default()
@@ -210,11 +207,11 @@ mod existential {
     struct Foo;
 
     impl Foo {
-        fn bad(foos: &[Self]) -> impl Iterator<Item=&Foo> {
+        fn bad(foos: &[Self]) -> impl Iterator<Item = &Foo> {
             foos.iter()
         }
 
-        fn good(foos: &[Self]) -> impl Iterator<Item=&Self> {
+        fn good(foos: &[Self]) -> impl Iterator<Item = &Self> {
             foos.iter()
         }
     }
@@ -239,7 +236,7 @@ mod issue3425 {
         A,
     }
     impl Enum {
-        fn a () {
+        fn a() {
             use self::Enum::*;
         }
     }

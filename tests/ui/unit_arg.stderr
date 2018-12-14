@@ -1,19 +1,32 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:35:9
+  --> $DIR/unit_arg.rs:32:9
    |
-35 |     foo({});
+32 |     foo({});
    |         ^^
    |
    = note: `-D clippy::unit-arg` implied by `-D warnings`
 help: if you intended to pass a unit value, use a unit literal instead
    |
-35 |     foo(());
+32 |     foo(());
+   |         ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:33:9
+   |
+33 |       foo({
+   |  _________^
+34 | |         1;
+35 | |     });
+   | |_____^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+33 |     foo(());
    |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:36:9
    |
-36 |     foo({ 1; });
+36 |     foo(foo(1));
    |         ^^^^^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
@@ -23,45 +36,38 @@ help: if you intended to pass a unit value, use a unit literal instead
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:37:9
    |
-37 |     foo(foo(1));
-   |         ^^^^^^
+37 |       foo({
+   |  _________^
+38 | |         foo(1);
+39 | |         foo(2);
+40 | |     });
+   | |_____^
 help: if you intended to pass a unit value, use a unit literal instead
    |
 37 |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:38:9
+  --> $DIR/unit_arg.rs:41:10
    |
-38 |       foo({
-   |  _________^
-39 | |         foo(1);
-40 | |         foo(2);
-41 | |     });
+41 |     foo3({}, 2, 2);
+   |          ^^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+41 |     foo3((), 2, 2);
+   |          ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:43:11
+   |
+43 |       b.bar({
+   |  ___________^
+44 | |         1;
+45 | |     });
    | |_____^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-38 |     foo(());
-   |         ^^
-
-error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:42:10
-   |
-42 |     foo3({}, 2, 2);
-   |          ^^
-help: if you intended to pass a unit value, use a unit literal instead
-   |
-42 |     foo3((), 2, 2);
-   |          ^^
-
-error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:44:11
-   |
-44 |     b.bar({ 1; });
-   |           ^^^^^^
-help: if you intended to pass a unit value, use a unit literal instead
-   |
-44 |     b.bar(());
+43 |     b.bar(());
    |           ^^
 
 error: aborting due to 6 previous errors

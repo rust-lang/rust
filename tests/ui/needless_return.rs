@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::needless_return)]
 
 fn test_end_of_fn() -> bool {
@@ -22,7 +18,7 @@ fn test_end_of_fn() -> bool {
 }
 
 fn test_no_semicolon() -> bool {
-    return true
+    return true;
 }
 
 fn test_if_block() -> bool {
@@ -38,7 +34,7 @@ fn test_match(x: bool) -> bool {
         true => return false,
         false => {
             return true;
-        }
+        },
     }
 }
 

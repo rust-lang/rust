@@ -7,8 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 #![warn(clippy::all)]
 
 fn main() {
@@ -16,7 +14,5 @@ fn main() {
 }
 
 fn new_lines() {
-    let s = Some(String::from("test string"))
-        .unwrap_or("Fail".to_string())
-        .len();
+    let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
 }

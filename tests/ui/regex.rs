@@ -7,17 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(unused)]
 #![warn(clippy::invalid_regex, clippy::trivial_regex, clippy::regex_macro)]
 
 extern crate regex;
 
-use regex::{Regex, RegexSet, RegexBuilder};
-use regex::bytes::{Regex as BRegex, RegexSet as BRegexSet, RegexBuilder as BRegexBuilder};
+use regex::bytes::{Regex as BRegex, RegexBuilder as BRegexBuilder, RegexSet as BRegexSet};
+use regex::{Regex, RegexBuilder, RegexSet};
 
 const OPENING_PAREN: &str = "(";
 const NOT_A_REAL_REGEX: &str = "foobar";
@@ -37,24 +33,15 @@ fn syntax_error() {
     let closing_paren = ")";
     let not_linted = Regex::new(closing_paren);
 
-    let set = RegexSet::new(&[
-        r"[a-z]+@[a-z]+\.(com|org|net)",
-        r"[a-z]+\.(com|org|net)",
-    ]);
+    let set = RegexSet::new(&[r"[a-z]+@[a-z]+\.(com|org|net)", r"[a-z]+\.(com|org|net)"]);
     let bset = BRegexSet::new(&[
         r"[a-z]+@[a-z]+\.(com|org|net)",
         r"[a-z]+\.(com|org|net)",
         r".", // regression test
     ]);
 
-    let set_error = RegexSet::new(&[
-        OPENING_PAREN,
-        r"[a-z]+\.(com|org|net)",
-    ]);
-    let bset_error = BRegexSet::new(&[
-        OPENING_PAREN,
-        r"[a-z]+\.(com|org|net)",
-    ]);
+    let set_error = RegexSet::new(&[OPENING_PAREN, r"[a-z]+\.(com|org|net)"]);
+    let bset_error = BRegexSet::new(&[OPENING_PAREN, r"[a-z]+\.(com|org|net)"]);
 
     let raw_string_error = Regex::new(r"[...\/...]");
     let raw_string_error = Regex::new(r#"[...\/...]"#);

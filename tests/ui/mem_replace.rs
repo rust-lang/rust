@@ -7,8 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 #![warn(clippy::all, clippy::style, clippy::mem_replace_option_with_none)]
 
 use std::mem;

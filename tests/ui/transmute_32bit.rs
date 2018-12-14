@@ -7,10 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //ignore-x86_64
-
-
 
 #[warn(wrong_transmute)]
 fn main() {

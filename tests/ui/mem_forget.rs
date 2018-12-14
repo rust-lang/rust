@@ -7,16 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
-
-use std::sync::Arc;
 use std::rc::Rc;
+use std::sync::Arc;
 
-use std::mem::forget as forgetSomething;
 use std::mem as memstuff;
+use std::mem::forget as forgetSomething;
 
 #[warn(clippy::mem_forget)]
 #[allow(clippy::forget_copy)]

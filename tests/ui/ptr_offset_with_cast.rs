@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn main() {
     let vec = vec![b'a', b'b', b'c'];
     let ptr = vec.as_ptr();

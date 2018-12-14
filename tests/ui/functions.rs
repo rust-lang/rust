@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::all)]
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
@@ -18,11 +14,20 @@
 // TOO_MANY_ARGUMENTS
 fn good(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool) {}
 
-fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {
-}
+fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
 
 // don't lint extern fns
-extern fn extern_fn(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
+extern "C" fn extern_fn(
+    _one: u32,
+    _two: u32,
+    _three: &str,
+    _four: bool,
+    _five: f32,
+    _six: f32,
+    _seven: bool,
+    _eight: (),
+) {
+}
 
 pub trait Foo {
     fn good(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool);

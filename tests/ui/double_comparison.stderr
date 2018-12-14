@@ -1,51 +1,51 @@
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:14:8
+  --> $DIR/double_comparison.rs:13:8
    |
-14 |     if x == y || x < y {
+13 |     if x == y || x < y {
    |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
    |
    = note: `-D clippy::double-comparisons` implied by `-D warnings`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:17:8
+  --> $DIR/double_comparison.rs:16:8
    |
-17 |     if x < y || x == y {
+16 |     if x < y || x == y {
    |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:20:8
+  --> $DIR/double_comparison.rs:19:8
    |
-20 |     if x == y || x > y {
+19 |     if x == y || x > y {
    |        ^^^^^^^^^^^^^^^ help: try: `x >= y`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:23:8
+  --> $DIR/double_comparison.rs:22:8
    |
-23 |     if x > y || x == y {
+22 |     if x > y || x == y {
    |        ^^^^^^^^^^^^^^^ help: try: `x >= y`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:26:8
+  --> $DIR/double_comparison.rs:25:8
    |
-26 |     if x < y || x > y {
+25 |     if x < y || x > y {
    |        ^^^^^^^^^^^^^^ help: try: `x != y`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:29:8
+  --> $DIR/double_comparison.rs:28:8
    |
-29 |     if x > y || x < y {
+28 |     if x > y || x < y {
    |        ^^^^^^^^^^^^^^ help: try: `x != y`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:32:8
+  --> $DIR/double_comparison.rs:31:8
    |
-32 |     if x <= y && x >= y {
+31 |     if x <= y && x >= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`
 
 error: This binary expression can be simplified
-  --> $DIR/double_comparison.rs:35:8
+  --> $DIR/double_comparison.rs:34:8
    |
-35 |     if x >= y && x <= y {
+34 |     if x >= y && x <= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`
 
 error: aborting due to 8 previous errors

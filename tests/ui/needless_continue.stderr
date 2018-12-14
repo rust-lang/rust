@@ -12,9 +12,9 @@ error: This else block is redundant.
    = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
            if i % 2 == 0 && i % 3 == 0 {
            println!("{}", i);
-           println!("{}", i+1);
+           println!("{}", i + 1);
            if i % 5 == 0 {
-               println!("{}", i+2);
+               println!("{}", i + 2);
            }
            let i = 0;
            println!("bar {} ", i);

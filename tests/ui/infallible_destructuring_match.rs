@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![feature(exhaustive_patterns, never_type)]
 #![allow(clippy::let_and_return)]
 

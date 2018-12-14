@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::panic_params, clippy::unimplemented)]
 
 fn missing() {
@@ -46,7 +42,7 @@ fn ok_bracket() {
     }
 }
 
-const ONE : u32= 1;
+const ONE: u32 = 1;
 
 fn ok_nomsg() {
     assert!({ 1 == ONE });

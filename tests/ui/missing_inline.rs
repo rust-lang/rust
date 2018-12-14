@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 /* This file incorporates work covered by the following copyright and
  * permission notice:
  *   Copyright 2013 The Rust Project Developers. See the COPYRIGHT
@@ -32,7 +29,7 @@ type Typedef = String;
 pub type PubTypedef = String;
 
 struct Foo {} // ok
-pub struct PubFoo { } // ok
+pub struct PubFoo {} // ok
 enum FooE {} // ok
 pub enum PubFooE {} // ok
 
@@ -41,8 +38,10 @@ pub mod pub_module {} // ok
 
 fn foo() {}
 pub fn pub_foo() {} // missing #[inline]
-#[inline] pub fn pub_foo_inline() {} // ok
-#[inline(always)] pub fn pub_foo_inline_always() {} // ok
+#[inline]
+pub fn pub_foo_inline() {} // ok
+#[inline(always)]
+pub fn pub_foo_inline_always() {} // ok
 
 #[allow(clippy::missing_inline_in_public_items)]
 pub fn pub_foo_no_inline() {}
@@ -52,11 +51,11 @@ trait Bar {
     fn Bar_b() {} // ok
 }
 
-
 pub trait PubBar {
     fn PubBar_a(); // ok
     fn PubBar_b() {} // missing #[inline]
-    #[inline] fn PubBar_c() {} // ok
+    #[inline]
+    fn PubBar_c() {} // ok
 }
 
 // none of these need inline because Foo is not exported

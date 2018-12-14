@@ -1,13 +1,13 @@
 error: you are implementing `Iterator` on a `Copy` type
-  --> $DIR/copy_iterator.rs:18:1
+  --> $DIR/copy_iterator.rs:15:1
    |
-18 | / impl Iterator for Countdown {
-19 | |     type Item = u8;
-20 | |
-21 | |     fn next(&mut self) -> Option<u8> {
+15 | / impl Iterator for Countdown {
+16 | |     type Item = u8;
+17 | |
+18 | |     fn next(&mut self) -> Option<u8> {
 ...  |
-26 | |     }
-27 | | }
+23 | |     }
+24 | | }
    | |_^
    |
    = note: `-D clippy::copy-iterator` implied by `-D warnings`

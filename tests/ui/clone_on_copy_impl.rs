@@ -7,9 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::marker::PhantomData;
 use std::fmt;
+use std::marker::PhantomData;
 
 pub struct Key<T> {
     #[doc(hidden)]

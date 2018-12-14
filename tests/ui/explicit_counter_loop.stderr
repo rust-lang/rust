@@ -13,15 +13,15 @@ error: the variable `_index` is used as a loop counter. Consider using `for (_in
    |               ^^^^
 
 error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
-  --> $DIR/explicit_counter_loop.rs:58:19
+  --> $DIR/explicit_counter_loop.rs:60:19
    |
-58 |         for ch in text.chars() {
+60 |         for ch in text.chars() {
    |                   ^^^^^^^^^^^^
 
 error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
-  --> $DIR/explicit_counter_loop.rs:69:19
+  --> $DIR/explicit_counter_loop.rs:71:19
    |
-69 |         for ch in text.chars() {
+71 |         for ch in text.chars() {
    |                   ^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

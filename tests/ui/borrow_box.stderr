@@ -1,31 +1,31 @@
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:19:19
+  --> $DIR/borrow_box.rs:15:19
    |
-19 | pub fn test1(foo: &mut Box<bool>) {
+15 | pub fn test1(foo: &mut Box<bool>) {
    |                   ^^^^^^^^^^^^^^ help: try: `&mut bool`
    |
 note: lint level defined here
-  --> $DIR/borrow_box.rs:14:9
+  --> $DIR/borrow_box.rs:10:9
    |
-14 | #![deny(clippy::borrowed_box)]
+10 | #![deny(clippy::borrowed_box)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:24:14
+  --> $DIR/borrow_box.rs:20:14
    |
-24 |     let foo: &Box<bool>;
+20 |     let foo: &Box<bool>;
    |              ^^^^^^^^^^ help: try: `&bool`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:28:10
+  --> $DIR/borrow_box.rs:24:10
    |
-28 |     foo: &'a Box<bool>
+24 |     foo: &'a Box<bool>,
    |          ^^^^^^^^^^^^^ help: try: `&'a bool`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:32:17
+  --> $DIR/borrow_box.rs:28:17
    |
-32 |     fn test4(a: &Box<bool>);
+28 |     fn test4(a: &Box<bool>);
    |                 ^^^^^^^^^^ help: try: `&bool`
 
 error: aborting due to 4 previous errors

@@ -7,29 +7,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::temporary_assignment)]
 
 use std::ops::{Deref, DerefMut};
 
 struct Struct {
-    field: i32
+    field: i32,
 }
 
 struct Wrapper<'a> {
-    inner: &'a mut Struct
+    inner: &'a mut Struct,
 }
 
 impl<'a> Deref for Wrapper<'a> {
     type Target = Struct;
-    fn deref(&self) -> &Struct { self.inner }
+    fn deref(&self) -> &Struct {
+        self.inner
+    }
 }
 
 impl<'a> DerefMut for Wrapper<'a> {
-    fn deref_mut(&mut self) -> &mut Struct { self.inner }
+    fn deref_mut(&mut self) -> &mut Struct {
+        self.inner
+    }
 }
 
 fn main() {

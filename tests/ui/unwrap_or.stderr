@@ -1,16 +1,16 @@
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/unwrap_or.rs:15:47
+  --> $DIR/unwrap_or.rs:13:47
    |
-15 |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
+13 |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "Fail".to_string())`
    |
    = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/unwrap_or.rs:20:10
+  --> $DIR/unwrap_or.rs:17:47
    |
-20 |         .unwrap_or("Fail".to_string())
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "Fail".to_string())`
+17 |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "Fail".to_string())`
 
 error: aborting due to 2 previous errors
 

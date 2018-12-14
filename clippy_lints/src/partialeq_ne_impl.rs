@@ -10,7 +10,7 @@
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::utils::{is_automatically_derived, span_lint};
+use crate::utils::{is_automatically_derived, span_lint_node};
 use if_chain::if_chain;
 
 /// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.
@@ -56,10 +56,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             then {
                 for impl_item in impl_items {
                     if impl_item.ident.name == "ne" {
-                        span_lint(cx,
-                                  PARTIALEQ_NE_IMPL,
-                                  impl_item.span,
-                                  "re-implementing `PartialEq::ne` is unnecessary")
+                        span_lint_node(
+                            cx,
+                            PARTIALEQ_NE_IMPL,
+                            impl_item.id.node_id,
+                            impl_item.span,
+                            "re-implementing `PartialEq::ne` is unnecessary",
+                        );
                     }
                 }
             }

@@ -7,14 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #[warn(clippy::cmp_owned)]
 #[allow(clippy::unnecessary_operation)]
 fn main() {
-    fn with_to_string(x : &str) {
+    fn with_to_string(x: &str) {
         x != "foo".to_string();
 
         "foo".to_string() != x;

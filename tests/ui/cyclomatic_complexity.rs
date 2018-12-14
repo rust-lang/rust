@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![allow(clippy::all)]
 #![warn(clippy::cyclomatic_complexity)]
 #![allow(unused)]
@@ -181,8 +180,8 @@ fn bar() {
 
 #[test]
 #[clippy::cyclomatic_complexity = "0"]
-/// Tests are usually complex but simple at the same time. `clippy::cyclomatic_complexity` used to give
-/// lots of false-positives in tests.
+/// Tests are usually complex but simple at the same time. `clippy::cyclomatic_complexity` used to
+/// give lots of false-positives in tests.
 fn dont_warn_on_tests() {
     match 99 {
         0 => println!("hi"),
@@ -278,7 +277,6 @@ fn cake() {
     println!("whee");
 }
 
-
 #[clippy::cyclomatic_complexity = "0"]
 pub fn read_file(input_path: &str) -> String {
     use std::fs::File;
@@ -288,7 +286,7 @@ pub fn read_file(input_path: &str) -> String {
         Ok(f) => f,
         Err(err) => {
             panic!("Can't open {}: {}", input_path, err);
-        }
+        },
     };
 
     let mut bytes = Vec::new();
@@ -297,14 +295,14 @@ pub fn read_file(input_path: &str) -> String {
         Ok(..) => {},
         Err(_) => {
             panic!("Can't read {}", input_path);
-        }
+        },
     };
 
     match String::from_utf8(bytes) {
         Ok(contents) => contents,
         Err(_) => {
             panic!("{} is not UTF-8 encoded", input_path);
-        }
+        },
     }
 }
 
@@ -313,8 +311,7 @@ enum Void {}
 #[clippy::cyclomatic_complexity = "0"]
 fn void(void: Void) {
     if true {
-        match void {
-        }
+        match void {}
     }
 }
 

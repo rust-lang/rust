@@ -25,22 +25,28 @@ error: methods called `new` usually return `Self`
    | |_____^
 
 error: methods called `new` usually return `Self`
-   --> $DIR/new_ret_no_self.rs:120:5
+   --> $DIR/new_ret_no_self.rs:126:5
     |
-120 |     pub fn new() -> (u32, u32) { unimplemented!(); }
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+126 | /     pub fn new() -> (u32, u32) {
+127 | |         unimplemented!();
+128 | |     }
+    | |_____^
 
 error: methods called `new` usually return `Self`
-   --> $DIR/new_ret_no_self.rs:141:5
+   --> $DIR/new_ret_no_self.rs:153:5
     |
-141 |     pub fn new() -> *mut V { unimplemented!(); }
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+153 | /     pub fn new() -> *mut V {
+154 | |         unimplemented!();
+155 | |     }
+    | |_____^
 
 error: methods called `new` usually return `Self`
-   --> $DIR/new_ret_no_self.rs:155:5
+   --> $DIR/new_ret_no_self.rs:171:5
     |
-155 |     pub fn new() -> Option<u32> { unimplemented!(); }
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+171 | /     pub fn new() -> Option<u32> {
+172 | |         unimplemented!();
+173 | |     }
+    | |_____^
 
 error: aborting due to 6 previous errors
 

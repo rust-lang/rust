@@ -7,12 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::suspicious_arithmetic_impl)]
-use std::ops::{Add, AddAssign, Mul, Sub, Div};
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
 #[derive(Copy, Clone)]
 struct Foo(u32);

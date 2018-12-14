@@ -7,14 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 // ignore-x86
 
-
 #![warn(clippy::all)]
-
 #![allow(unused)]
 
 #[repr(usize)]
@@ -62,5 +57,4 @@ trait Trait {
 }
 */
 
-fn main() {
-}
+fn main() {}

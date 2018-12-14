@@ -7,16 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::default_hash_types)]
 #![feature(rustc_private)]
 
 extern crate rustc_data_structures;
 
-use std::collections::{HashMap, HashSet};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use std::collections::{HashMap, HashSet};
 
 fn main() {
     let _map: HashMap<String, String> = HashMap::default();

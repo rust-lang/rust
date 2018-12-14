@@ -1,21 +1,21 @@
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:26:5
+  --> $DIR/string_extend.rs:25:5
    |
-26 |     s.extend(abc.chars());
+25 |     s.extend(abc.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
    |
    = note: `-D clippy::string-extend-chars` implied by `-D warnings`
 
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:29:5
+  --> $DIR/string_extend.rs:28:5
    |
-29 |     s.extend("abc".chars());
+28 |     s.extend("abc".chars());
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str("abc")`
 
 error: calling `.extend(_.chars())`
-  --> $DIR/string_extend.rs:32:5
+  --> $DIR/string_extend.rs:31:5
    |
-32 |     s.extend(def.chars());
+31 |     s.extend(def.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
 error: aborting due to 3 previous errors

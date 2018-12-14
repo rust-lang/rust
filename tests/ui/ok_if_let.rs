@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::if_let_some_result)]
 
 fn str_to_int(x: &str) -> i32 {

@@ -7,9 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-fn input(_: Option<Option<u8>>) {
-}
+fn input(_: Option<Option<u8>>) {}
 
 fn output() -> Option<Option<u8>> {
     None
@@ -40,7 +38,7 @@ trait Trait {
 
 enum Enum {
     Tuple(Option<Option<u8>>),
-    Struct{x: Option<Option<u8>>},
+    Struct { x: Option<Option<u8>> },
 }
 
 // The lint allows this
@@ -69,5 +67,3 @@ fn main() {
     // The lint allows this
     let expr = Some(Some(true));
 }
-
-

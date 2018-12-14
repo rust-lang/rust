@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![deny(clippy::borrowed_box)]
 #![allow(clippy::blacklisted_name)]
 #![allow(unused_variables)]
@@ -25,7 +21,7 @@ pub fn test2() {
 }
 
 struct Test3<'a> {
-    foo: &'a Box<bool>
+    foo: &'a Box<bool>,
 }
 
 trait Test4 {
@@ -49,7 +45,7 @@ pub fn test6() {
 }
 
 struct Test7<'a> {
-    foo: &'a Box<Any>
+    foo: &'a Box<Any>,
 }
 
 trait Test8 {
@@ -71,7 +67,7 @@ pub fn test10() {
 }
 
 struct Test11<'a> {
-    foo: &'a Box<Any + Send>
+    foo: &'a Box<Any + Send>,
 }
 
 trait Test12 {
@@ -84,7 +80,7 @@ impl<'a> Test12 for Test11<'a> {
     }
 }
 
-fn main(){
+fn main() {
     test1(&mut Box::new(false));
     test2();
     test5(&mut (Box::new(false) as Box<Any>));

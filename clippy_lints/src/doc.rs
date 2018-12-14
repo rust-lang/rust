@@ -238,7 +238,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
 }
 
 fn check_text(cx: &EarlyContext<'_>, valid_idents: &[String], text: &str, span: Span) {
-    for word in text.split_whitespace() {
+    for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
         // Or even as in `_foo bar_` which is emphasized.
@@ -281,6 +281,10 @@ fn check_word(cx: &EarlyContext<'_>, word: &str, span: Span) {
         s != "_" && !s.contains("\\_") && s.contains('_')
     }
 
+    fn has_hyphen(s: &str) -> bool {
+        s != "-" && s.contains('-')
+    }
+
     if let Ok(url) = Url::parse(word) {
         // try to get around the fact that `foo::bar` parses as a valid URL
         if !url.cannot_be_a_base() {
@@ -293,6 +297,11 @@ fn check_word(cx: &EarlyContext<'_>, word: &str, span: Span) {
 
             return;
         }
+    }
+
+    // We assume that mixed-case words are not meant to be put inside bacticks. (Issue #2343)
+    if has_underscore(word) && has_hyphen(word) {
+        return;
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {

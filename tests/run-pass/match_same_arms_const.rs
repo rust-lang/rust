@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![deny(clippy::match_same_arms)]
 
 const PRICE_OF_SWEETS: u32 = 5;
@@ -21,7 +18,7 @@ pub fn price(thing: &str) -> u32 {
         "rolo" => PRICE_OF_SWEETS,
         "advice" => PRICE_OF_KINDNESS,
         "juice" => PRICE_OF_DRINKS,
-        _ => panic!()
+        _ => panic!(),
     }
 }
 

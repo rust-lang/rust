@@ -1,45 +1,45 @@
 error: use of a blacklisted/placeholder name `toto`
-  --> $DIR/conf_french_blacklisted_name.rs:19:9
+  --> $DIR/conf_french_blacklisted_name.rs:15:9
    |
-19 | fn test(toto: ()) {}
+15 | fn test(toto: ()) {}
    |         ^^^^
    |
    = note: `-D clippy::blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `toto`
-  --> $DIR/conf_french_blacklisted_name.rs:22:9
+  --> $DIR/conf_french_blacklisted_name.rs:18:9
    |
-22 |     let toto = 42;
+18 |     let toto = 42;
    |         ^^^^
 
 error: use of a blacklisted/placeholder name `tata`
-  --> $DIR/conf_french_blacklisted_name.rs:23:9
+  --> $DIR/conf_french_blacklisted_name.rs:19:9
    |
-23 |     let tata = 42;
+19 |     let tata = 42;
    |         ^^^^
 
 error: use of a blacklisted/placeholder name `titi`
-  --> $DIR/conf_french_blacklisted_name.rs:24:9
+  --> $DIR/conf_french_blacklisted_name.rs:20:9
    |
-24 |     let titi = 42;
+20 |     let titi = 42;
    |         ^^^^
 
 error: use of a blacklisted/placeholder name `toto`
-  --> $DIR/conf_french_blacklisted_name.rs:30:10
+  --> $DIR/conf_french_blacklisted_name.rs:26:10
    |
-30 |         (toto, Some(tata), titi @ Some(_)) => (),
+26 |         (toto, Some(tata), titi @ Some(_)) => (),
    |          ^^^^
 
 error: use of a blacklisted/placeholder name `tata`
-  --> $DIR/conf_french_blacklisted_name.rs:30:21
+  --> $DIR/conf_french_blacklisted_name.rs:26:21
    |
-30 |         (toto, Some(tata), titi @ Some(_)) => (),
+26 |         (toto, Some(tata), titi @ Some(_)) => (),
    |                     ^^^^
 
 error: use of a blacklisted/placeholder name `titi`
-  --> $DIR/conf_french_blacklisted_name.rs:30:28
+  --> $DIR/conf_french_blacklisted_name.rs:26:28
    |
-30 |         (toto, Some(tata), titi @ Some(_)) => (),
+26 |         (toto, Some(tata), titi @ Some(_)) => (),
    |                            ^^^^
 
 error: aborting due to 7 previous errors

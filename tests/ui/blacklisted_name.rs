@@ -7,11 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
-#![allow(dead_code, clippy::similar_names, clippy::single_match, clippy::toplevel_ref_arg, unused_mut, unused_variables)]
+#![allow(
+    dead_code,
+    clippy::similar_names,
+    clippy::single_match,
+    clippy::toplevel_ref_arg,
+    unused_mut,
+    unused_variables
+)]
 #![warn(clippy::blacklisted_name)]
 
 fn test(foo: ()) {}

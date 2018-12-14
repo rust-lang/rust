@@ -57,7 +57,10 @@ impl EarlyLintPass for RedundantFieldNames {
                     continue;
                 }
                 if let ExprKind::Path(None, path) = &field.expr.node {
-                    if path.segments.len() == 1 && path.segments[0].ident == field.ident {
+                    if path.segments.len() == 1
+                        && path.segments[0].ident == field.ident
+                        && path.segments[0].args.is_none()
+                    {
                         span_lint_and_sugg(
                             cx,
                             REDUNDANT_FIELD_NAMES,

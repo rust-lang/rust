@@ -1,81 +1,81 @@
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:14:17
+  --> $DIR/const_static_lifetime.rs:13:17
    |
-14 | const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removing 'static.
+13 | const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removing 'static.
    |                -^^^^^^^---- help: consider removing `'static`: `&str`
    |
    = note: `-D clippy::const-static-lifetime` implied by `-D warnings`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:18:21
+  --> $DIR/const_static_lifetime.rs:17:21
    |
-18 | const VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR Consider removing 'static
+17 | const VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR Consider removing 'static
    |                    -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:20:32
+  --> $DIR/const_static_lifetime.rs:19:32
    |
-20 | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+19 | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
    |                               -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:20:47
+  --> $DIR/const_static_lifetime.rs:19:47
    |
-20 | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+19 | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
    |                                              -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:22:18
+  --> $DIR/const_static_lifetime.rs:21:18
    |
-22 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
+21 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
    |                 -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:22:30
+  --> $DIR/const_static_lifetime.rs:21:30
    |
-22 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
+21 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
    |                             -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:24:17
+  --> $DIR/const_static_lifetime.rs:23:17
    |
-24 | const VAR_SIX: &'static u8 = &5;
+23 | const VAR_SIX: &'static u8 = &5;
    |                -^^^^^^^--- help: consider removing `'static`: `&u8`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:26:29
+  --> $DIR/const_static_lifetime.rs:25:29
    |
-26 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+25 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                            -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:26:39
+  --> $DIR/const_static_lifetime.rs:25:39
    |
-26 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+25 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
    |                                      -^^^^^^^---- help: consider removing `'static`: `&str`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:28:20
+  --> $DIR/const_static_lifetime.rs:27:20
    |
-28 | const VAR_HEIGHT: &'static Foo = &Foo {};
+27 | const VAR_HEIGHT: &'static Foo = &Foo {};
    |                   -^^^^^^^---- help: consider removing `'static`: `&Foo`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:30:19
+  --> $DIR/const_static_lifetime.rs:29:19
    |
-30 | const VAR_SLICE: &'static [u8] = b"Test constant #1"; // ERROR Consider removing 'static.
+29 | const VAR_SLICE: &'static [u8] = b"Test constant #1"; // ERROR Consider removing 'static.
    |                  -^^^^^^^----- help: consider removing `'static`: `&[u8]`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:32:19
+  --> $DIR/const_static_lifetime.rs:31:19
    |
-32 | const VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
+31 | const VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
    |                  -^^^^^^^--------- help: consider removing `'static`: `&(u8, u8)`
 
 error: Constants have by default a `'static` lifetime
-  --> $DIR/const_static_lifetime.rs:34:19
+  --> $DIR/const_static_lifetime.rs:33:19
    |
-34 | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
+33 | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
    |                  -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
 
 error: aborting due to 13 previous errors

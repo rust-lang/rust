@@ -1,15 +1,15 @@
 error: using `println!("")`
-  --> $DIR/println_empty_string.rs:13:5
+  --> $DIR/println_empty_string.rs:12:5
    |
-13 |     println!("");
+12 |     println!("");
    |     ^^^^^^^^^^^^ help: replace it with: `println!()`
    |
    = note: `-D clippy::println-empty-string` implied by `-D warnings`
 
 error: using `println!("")`
-  --> $DIR/println_empty_string.rs:16:14
+  --> $DIR/println_empty_string.rs:15:14
    |
-16 |         _ => println!(""),
+15 |         _ => println!(""),
    |              ^^^^^^^^^^^^ help: replace it with: `println!()`
 
 error: aborting due to 2 previous errors

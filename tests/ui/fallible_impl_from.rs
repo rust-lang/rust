@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![deny(clippy::fallible_impl_from)]
 
 // docs example
@@ -19,7 +16,6 @@ impl From<String> for Foo {
         Foo(s.parse().unwrap())
     }
 }
-
 
 struct Valid(Vec<u8>);
 
@@ -33,7 +29,6 @@ impl From<usize> for Valid {
         Valid(Vec::with_capacity(i))
     }
 }
-
 
 struct Invalid;
 

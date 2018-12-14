@@ -1,51 +1,51 @@
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:21:5
+  --> $DIR/overflow_check_conditional.rs:17:8
    |
-21 |     if a + b < a {
+17 |     if a + b < a {}
    |        ^^^^^^^^^
    |
    = note: `-D clippy::overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:24:5
+  --> $DIR/overflow_check_conditional.rs:18:8
    |
-24 |     if a > a + b {
+18 |     if a > a + b {}
    |        ^^^^^^^^^
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:27:5
+  --> $DIR/overflow_check_conditional.rs:19:8
    |
-27 |     if a + b < b {
+19 |     if a + b < b {}
    |        ^^^^^^^^^
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:30:5
+  --> $DIR/overflow_check_conditional.rs:20:8
    |
-30 |     if b > a + b {
+20 |     if b > a + b {}
    |        ^^^^^^^^^
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:33:5
+  --> $DIR/overflow_check_conditional.rs:21:8
    |
-33 |     if a - b > b {
+21 |     if a - b > b {}
    |        ^^^^^^^^^
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:36:5
+  --> $DIR/overflow_check_conditional.rs:22:8
    |
-36 |     if b < a - b {
+22 |     if b < a - b {}
    |        ^^^^^^^^^
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:39:5
+  --> $DIR/overflow_check_conditional.rs:23:8
    |
-39 |     if a - b > a {
+23 |     if a - b > a {}
    |        ^^^^^^^^^
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> $DIR/overflow_check_conditional.rs:42:5
+  --> $DIR/overflow_check_conditional.rs:24:8
    |
-42 |     if a < a - b {
+24 |     if a < a - b {}
    |        ^^^^^^^^^
 
 error: aborting due to 8 previous errors

@@ -1,57 +1,57 @@
 error: manual implementation of an assign operation
-  --> $DIR/assign_ops.rs:17:5
+  --> $DIR/assign_ops.rs:14:5
    |
-17 |     a = a + 1;
+14 |     a = a + 1;
    |     ^^^^^^^^^ help: replace it with: `a += 1`
    |
    = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
 
 error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:15:5
+   |
+15 |     a = 1 + a;
+   |     ^^^^^^^^^ help: replace it with: `a += 1`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:16:5
+   |
+16 |     a = a - 1;
+   |     ^^^^^^^^^ help: replace it with: `a -= 1`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:17:5
+   |
+17 |     a = a * 99;
+   |     ^^^^^^^^^^ help: replace it with: `a *= 99`
+
+error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:18:5
    |
-18 |     a = 1 + a;
-   |     ^^^^^^^^^ help: replace it with: `a += 1`
+18 |     a = 42 * a;
+   |     ^^^^^^^^^^ help: replace it with: `a *= 42`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:19:5
    |
-19 |     a = a - 1;
-   |     ^^^^^^^^^ help: replace it with: `a -= 1`
+19 |     a = a / 2;
+   |     ^^^^^^^^^ help: replace it with: `a /= 2`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:20:5
    |
-20 |     a = a * 99;
-   |     ^^^^^^^^^^ help: replace it with: `a *= 99`
+20 |     a = a % 5;
+   |     ^^^^^^^^^ help: replace it with: `a %= 5`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:21:5
    |
-21 |     a = 42 * a;
-   |     ^^^^^^^^^^ help: replace it with: `a *= 42`
-
-error: manual implementation of an assign operation
-  --> $DIR/assign_ops.rs:22:5
-   |
-22 |     a = a / 2;
-   |     ^^^^^^^^^ help: replace it with: `a /= 2`
-
-error: manual implementation of an assign operation
-  --> $DIR/assign_ops.rs:23:5
-   |
-23 |     a = a % 5;
-   |     ^^^^^^^^^ help: replace it with: `a %= 5`
-
-error: manual implementation of an assign operation
-  --> $DIR/assign_ops.rs:24:5
-   |
-24 |     a = a & 1;
+21 |     a = a & 1;
    |     ^^^^^^^^^ help: replace it with: `a &= 1`
 
 error: manual implementation of an assign operation
-  --> $DIR/assign_ops.rs:30:5
+  --> $DIR/assign_ops.rs:27:5
    |
-30 |     s = s + "bla";
+27 |     s = s + "bla";
    |     ^^^^^^^^^^^^^ help: replace it with: `s += "bla"`
 
 error: aborting due to 9 previous errors

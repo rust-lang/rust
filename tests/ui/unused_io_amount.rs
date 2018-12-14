@@ -7,16 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(dead_code)]
 #![warn(clippy::unused_io_amount)]
 
 use std::io;
 
-// FIXME: compiletest doesn't understand errors from macro invocation span
+
 fn try_macro<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
     try!(s.write(b"test"));
     let mut buf = [0u8; 4];
@@ -37,5 +33,4 @@ fn unwrap<T: io::Read + io::Write>(s: &mut T) {
     s.read(&mut buf).unwrap();
 }
 
-fn main() {
-}
+fn main() {}

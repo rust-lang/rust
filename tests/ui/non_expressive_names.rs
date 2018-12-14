@@ -7,12 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-#![warn(clippy::all,clippy::similar_names)]
+#![warn(clippy::all, clippy::similar_names)]
 #![allow(unused, clippy::println_empty_string)]
-
 
 struct Foo {
     apple: i32,
@@ -28,7 +24,6 @@ fn main() {
     let bpple: i32;
 
     let cpple: i32;
-
 
     let a_bar: i32;
     let b_bar: i32;
@@ -53,7 +48,6 @@ fn main() {
 
     let blubx: i32;
     let bluby: i32;
-
 
     let cake: i32;
     let cakes: i32;
@@ -81,7 +75,6 @@ fn main() {
     let parsed: i32;
     let parsee: i32;
 
-
     let setter: i32;
     let getter: i32;
     let tx1: i32;
@@ -92,8 +85,10 @@ fn main() {
 
 fn foo() {
     let Foo { apple, bpple } = unimplemented!();
-    let Foo { apple: spring,
-        bpple: sprang } = unimplemented!();
+    let Foo {
+        apple: spring,
+        bpple: sprang,
+    } = unimplemented!();
 }
 
 #[derive(Clone, Debug)]
@@ -132,7 +127,6 @@ fn bla() {
         {
             let e: i32;
             let f: i32;
-
         }
         match 5 {
             1 => println!(""),
@@ -149,18 +143,18 @@ fn underscores_and_numbers() {
     let _1 = 1; //~ERROR Consider a more descriptive name
     let ____1 = 1; //~ERROR Consider a more descriptive name
     let __1___2 = 12; //~ERROR Consider a more descriptive name
-    let _1_ok= 1;
+    let _1_ok = 1;
 }
 
 fn issue2927() {
-  let args = 1;
-  format!("{:?}", 2);
+    let args = 1;
+    format!("{:?}", 2);
 }
 
 fn issue3078() {
     match "a" {
         stringify!(a) => {},
-        _ => {}
+        _ => {},
     }
 }
 
@@ -171,7 +165,7 @@ impl Bar {
         let _1 = 1;
         let ____1 = 1;
         let __1___2 = 12;
-        let _1_ok= 1;
+        let _1_ok = 1;
     }
 }
 

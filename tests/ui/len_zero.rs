@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::len_without_is_empty, clippy::len_zero)]
 #![allow(dead_code, unused)]
 

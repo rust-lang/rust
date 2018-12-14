@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(unused, clippy::many_single_char_names)]
 #![warn(clippy::ptr_arg)]
 
@@ -19,7 +16,8 @@ fn do_vec(x: &Vec<i64>) {
     //Nothing here
 }
 
-fn do_vec_mut(x: &mut Vec<i64>) { // no error here
+fn do_vec_mut(x: &mut Vec<i64>) {
+    // no error here
     //Nothing here
 }
 
@@ -27,12 +25,12 @@ fn do_str(x: &String) {
     //Nothing here either
 }
 
-fn do_str_mut(x: &mut String) { // no error here
+fn do_str_mut(x: &mut String) {
+    // no error here
     //Nothing here either
 }
 
-fn main() {
-}
+fn main() {}
 
 trait Foo {
     type Item;
@@ -62,9 +60,7 @@ fn str_cloned(x: &String) -> String {
     let a = x.clone();
     let b = x.clone();
     let c = b.clone();
-    let d = a.clone()
-             .clone()
-             .clone();
+    let d = a.clone().clone().clone();
     x.clone()
 }
 
@@ -75,13 +71,14 @@ fn false_positive_capacity(x: &Vec<u8>, y: &String) {
 }
 
 fn false_positive_capacity_too(x: &String) -> String {
-    if x.capacity() > 1024 { panic!("Too large!"); }
+    if x.capacity() > 1024 {
+        panic!("Too large!");
+    }
     x.clone()
 }
 
 #[allow(dead_code)]
-fn test_cow_with_ref(c: &Cow<[i32]>) {
-}
+fn test_cow_with_ref(c: &Cow<[i32]>) {}
 
 #[allow(dead_code)]
 fn test_cow(c: Cow<[i32]>) {
@@ -93,4 +90,6 @@ trait Foo2 {
 }
 
 // no error for &self references where self is of type String (#2293)
-impl Foo2 for String { fn do_string(&self) {} }
+impl Foo2 for String {
+    fn do_string(&self) {}
+}

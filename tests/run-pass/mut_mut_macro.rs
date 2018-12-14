@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![deny(clippy::mut_mut, clippy::zero_ptr, clippy::cmp_nan)]
 #![allow(dead_code)]
 

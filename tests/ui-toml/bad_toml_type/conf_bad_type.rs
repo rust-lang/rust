@@ -7,10 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-// error-pattern: error reading Clippy's configuration file: `blacklisted-names` is expected to be a `Vec < String >` but is a `integer`
-
-
-
+// error-pattern: error reading Clippy's configuration file: `blacklisted-names` is expected to be a
+// `Vec < String >` but is a `integer`
 
 fn main() {}

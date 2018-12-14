@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(unused_imports, dead_code, clippy::missing_docs_in_private_items)]
 
@@ -34,8 +31,7 @@ mod tests {
 }
 
 #[allow(non_snake_case)]
-mod CamelCaseName {
-}
+mod CamelCaseName {}
 
 use CamelCaseName::*;
 

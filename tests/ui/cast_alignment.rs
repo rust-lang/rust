@@ -7,13 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 //! Test casts for alignment issues
 
-#![feature(libc)]
 
+#![feature(rustc_private)]
 extern crate libc;
 
 #[warn(clippy::cast_ptr_alignment)]

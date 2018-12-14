@@ -174,3 +174,14 @@ fn issue_1920() {}
 /// Not ok: http://www.unicode.org/
 /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
 fn issue_1832() {}
+
+/// Ok: CamelCase (It should not be surrounded by backticks)
+fn issue_2395() {}
+
+/// An iterator over mycrate::Collection's values.
+/// It should not lint a `'static` lifetime in ticks.
+fn issue_2210() {}
+
+/// This should not cause the lint to trigger:
+/// #REQ-data-family.lint_partof_exists
+fn issue_2343() {}

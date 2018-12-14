@@ -7,13 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 //ignore-x86
 //no-ignore-x86_64
-
-
 
 #[warn(clippy::wrong_transmute)]
 fn main() {

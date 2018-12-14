@@ -1,202 +1,202 @@
 error: this boolean expression contains a logic bug
-  --> $DIR/booleans.rs:22:13
+  --> $DIR/booleans.rs:19:13
    |
-22 |     let _ = a && b || a;
+19 |     let _ = a && b || a;
    |             ^^^^^^^^^^^ help: it would look like the following: `a`
    |
    = note: `-D clippy::logic-bug` implied by `-D warnings`
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/booleans.rs:22:18
+  --> $DIR/booleans.rs:19:18
    |
-22 |     let _ = a && b || a;
+19 |     let _ = a && b || a;
    |                  ^
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:24:13
+  --> $DIR/booleans.rs:21:13
    |
-24 |     let _ = !true;
+21 |     let _ = !true;
    |             ^^^^^ help: try: `false`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:25:13
+  --> $DIR/booleans.rs:22:13
    |
-25 |     let _ = !false;
+22 |     let _ = !false;
    |             ^^^^^^ help: try: `true`
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:26:13
+  --> $DIR/booleans.rs:23:13
    |
-26 |     let _ = !!a;
+23 |     let _ = !!a;
    |             ^^^ help: try: `a`
 
 error: this boolean expression contains a logic bug
-  --> $DIR/booleans.rs:27:13
+  --> $DIR/booleans.rs:24:13
    |
-27 |     let _ = false && a;
+24 |     let _ = false && a;
    |             ^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/booleans.rs:27:22
+  --> $DIR/booleans.rs:24:22
    |
-27 |     let _ = false && a;
+24 |     let _ = false && a;
    |                      ^
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:28:13
+  --> $DIR/booleans.rs:25:13
    |
-28 |     let _ = false || a;
+25 |     let _ = false || a;
    |             ^^^^^^^^^^ help: try: `a`
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:33:13
+  --> $DIR/booleans.rs:30:13
    |
-33 |     let _ = !(!a && b);
+30 |     let _ = !(!a && b);
    |             ^^^^^^^^^^ help: try: `!b || a`
 
 error: this boolean expression contains a logic bug
-  --> $DIR/booleans.rs:43:13
+  --> $DIR/booleans.rs:40:13
    |
-43 |     let _ = a == b && a != b;
+40 |     let _ = a == b && a != b;
    |             ^^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/booleans.rs:43:13
+  --> $DIR/booleans.rs:40:13
    |
-43 |     let _ = a == b && a != b;
+40 |     let _ = a == b && a != b;
    |             ^^^^^^
 
 error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:41:13
+   |
+41 |     let _ = a == b && c == 5 && a == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try
+   |
+41 |     let _ = a == b && c == 5;
+   |             ^^^^^^^^^^^^^^^^
+41 |     let _ = !(c != 5 || a != b);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:42:13
+   |
+42 |     let _ = a == b && c == 5 && b == a;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try
+   |
+42 |     let _ = a == b && c == 5;
+   |             ^^^^^^^^^^^^^^^^
+42 |     let _ = !(c != 5 || a != b);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: this boolean expression contains a logic bug
+  --> $DIR/booleans.rs:43:13
+   |
+43 |     let _ = a < b && a >= b;
+   |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
+   |
+help: this expression can be optimized out by applying boolean operations to the outer expression
+  --> $DIR/booleans.rs:43:13
+   |
+43 |     let _ = a < b && a >= b;
+   |             ^^^^^
+
+error: this boolean expression contains a logic bug
   --> $DIR/booleans.rs:44:13
    |
-44 |     let _ = a == b && c == 5 && a == b;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try
-   |
-44 |     let _ = a == b && c == 5;
-   |             ^^^^^^^^^^^^^^^^
-44 |     let _ = !(c != 5 || a != b);
-   |             ^^^^^^^^^^^^^^^^^^^
-
-error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:45:13
-   |
-45 |     let _ = a == b && c == 5 && b == a;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try
-   |
-45 |     let _ = a == b && c == 5;
-   |             ^^^^^^^^^^^^^^^^
-45 |     let _ = !(c != 5 || a != b);
-   |             ^^^^^^^^^^^^^^^^^^^
-
-error: this boolean expression contains a logic bug
-  --> $DIR/booleans.rs:46:13
-   |
-46 |     let _ = a < b && a >= b;
+44 |     let _ = a > b && a <= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/booleans.rs:46:13
+  --> $DIR/booleans.rs:44:13
    |
-46 |     let _ = a < b && a >= b;
-   |             ^^^^^
-
-error: this boolean expression contains a logic bug
-  --> $DIR/booleans.rs:47:13
-   |
-47 |     let _ = a > b && a <= b;
-   |             ^^^^^^^^^^^^^^^ help: it would look like the following: `false`
-   |
-help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/booleans.rs:47:13
-   |
-47 |     let _ = a > b && a <= b;
+44 |     let _ = a > b && a <= b;
    |             ^^^^^
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:49:13
+  --> $DIR/booleans.rs:46:13
    |
-49 |     let _ = a != b || !(a != b || c == d);
+46 |     let _ = a != b || !(a != b || c == d);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try
    |
-49 |     let _ = c != d || a != b;
+46 |     let _ = c != d || a != b;
    |             ^^^^^^^^^^^^^^^^
-49 |     let _ = !(a == b && c == d);
+46 |     let _ = !(a == b && c == d);
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:57:13
+  --> $DIR/booleans.rs:54:13
    |
-57 |     let _ = !a.is_some();
+54 |     let _ = !a.is_some();
    |             ^^^^^^^^^^^^ help: try: `a.is_none()`
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:59:13
+  --> $DIR/booleans.rs:56:13
    |
-59 |     let _ = !a.is_none();
+56 |     let _ = !a.is_none();
    |             ^^^^^^^^^^^^ help: try: `a.is_some()`
 
 error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:61:13
+  --> $DIR/booleans.rs:58:13
    |
-61 |     let _ = !b.is_err();
+58 |     let _ = !b.is_err();
    |             ^^^^^^^^^^^ help: try: `b.is_ok()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:60:13
+   |
+60 |     let _ = !b.is_ok();
+   |             ^^^^^^^^^^ help: try: `b.is_err()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:62:13
+   |
+62 |     let _ = !(a.is_some() && !c);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `c || a.is_none()`
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:63:13
    |
-63 |     let _ = !b.is_ok();
-   |             ^^^^^^^^^^ help: try: `b.is_err()`
+63 |     let _ = !(!c ^ c) || !a.is_some();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!(!c ^ c) || a.is_none()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:64:13
+   |
+64 |     let _ = (!c ^ c) || !a.is_some();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!c ^ c) || a.is_none()`
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:65:13
    |
-65 |     let _ = !(a.is_some() && !c);
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `c || a.is_none()`
-
-error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:66:13
-   |
-66 |     let _ = !(!c ^ c) || !a.is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!(!c ^ c) || a.is_none()`
-
-error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:67:13
-   |
-67 |     let _ = (!c ^ c) || !a.is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!c ^ c) || a.is_none()`
-
-error: this boolean expression can be simplified
-  --> $DIR/booleans.rs:68:13
-   |
-68 |     let _ = !c ^ c || !a.is_some();
+65 |     let _ = !c ^ c || !a.is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `!c ^ c || a.is_none()`
 
 error: this boolean expression can be simplified
-   --> $DIR/booleans.rs:120:8
+   --> $DIR/booleans.rs:137:8
     |
-120 |     if !res.is_ok() { }
+137 |     if !res.is_ok() {}
     |        ^^^^^^^^^^^^ help: try: `res.is_err()`
 
 error: this boolean expression can be simplified
-   --> $DIR/booleans.rs:121:8
+   --> $DIR/booleans.rs:138:8
     |
-121 |     if !res.is_err() { }
+138 |     if !res.is_err() {}
     |        ^^^^^^^^^^^^^ help: try: `res.is_ok()`
 
 error: this boolean expression can be simplified
-   --> $DIR/booleans.rs:124:8
+   --> $DIR/booleans.rs:141:8
     |
-124 |     if !res.is_some() { }
+141 |     if !res.is_some() {}
     |        ^^^^^^^^^^^^^^ help: try: `res.is_none()`
 
 error: this boolean expression can be simplified
-   --> $DIR/booleans.rs:125:8
+   --> $DIR/booleans.rs:142:8
     |
-125 |     if !res.is_none() { }
+142 |     if !res.is_none() {}
     |        ^^^^^^^^^^^^^^ help: try: `res.is_some()`
 
 error: aborting due to 25 previous errors

@@ -7,16 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #[deny(clippy::all)]
-
 #[derive(Debug)]
 pub enum Error {
-    Type(
-        &'static str,
-    ),
+    Type(&'static str),
 }
 
 fn main() {}

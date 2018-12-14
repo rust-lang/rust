@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::unit_arg)]
 #![allow(clippy::no_effect)]
 
@@ -33,7 +30,9 @@ impl Bar {
 
 fn bad() {
     foo({});
-    foo({ 1; });
+    foo({
+        1;
+    });
     foo(foo(1));
     foo({
         foo(1);
@@ -41,7 +40,9 @@ fn bad() {
     });
     foo3({}, 2, 2);
     let b = Bar;
-    b.bar({ 1; });
+    b.bar({
+        1;
+    });
 }
 
 fn ok() {

@@ -1,31 +1,37 @@
 error: this `.filter_map` can be written more simply using `.filter`
-  --> $DIR/unnecessary_filter_map.rs:12:13
+  --> $DIR/unnecessary_filter_map.rs:11:13
    |
-12 |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
+11 |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
 
 error: this `.filter_map` can be written more simply using `.filter`
-  --> $DIR/unnecessary_filter_map.rs:13:13
+  --> $DIR/unnecessary_filter_map.rs:12:13
    |
-13 |     let _ = (0..4).filter_map(|x| { if x > 1 { return Some(x); }; None });
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: this `.filter_map` can be written more simply using `.filter`
-  --> $DIR/unnecessary_filter_map.rs:14:13
-   |
-14 |       let _ = (0..4).filter_map(|x| match x {
+12 |       let _ = (0..4).filter_map(|x| {
    |  _____________^
-15 | |         0 | 1 => None,
-16 | |         _ => Some(x),
+13 | |         if x > 1 {
+14 | |             return Some(x);
+15 | |         };
+16 | |         None
 17 | |     });
    | |______^
 
-error: this `.filter_map` can be written more simply using `.map`
-  --> $DIR/unnecessary_filter_map.rs:19:13
+error: this `.filter_map` can be written more simply using `.filter`
+  --> $DIR/unnecessary_filter_map.rs:18:13
    |
-19 |     let _ = (0..4).filter_map(|x| Some(x + 1));
+18 |       let _ = (0..4).filter_map(|x| match x {
+   |  _____________^
+19 | |         0 | 1 => None,
+20 | |         _ => Some(x),
+21 | |     });
+   | |______^
+
+error: this `.filter_map` can be written more simply using `.map`
+  --> $DIR/unnecessary_filter_map.rs:23:13
+   |
+23 |     let _ = (0..4).filter_map(|x| Some(x + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

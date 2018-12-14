@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::wrong_self_convention)]
 #![warn(clippy::wrong_pub_self_convention)]
 #![allow(dead_code, clippy::trivially_copy_pass_by_ref)]
@@ -21,7 +17,6 @@ fn main() {}
 struct Foo;
 
 impl Foo {
-
     fn as_i32(self) {}
     fn as_u32(&self) {}
     fn into_i32(self) {}
@@ -39,14 +34,13 @@ impl Foo {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_cake(self) {}
 
-    fn as_x<F: AsRef<Self>>(_: F) { }
-    fn as_y<F: AsRef<Foo>>(_: F) { }
+    fn as_x<F: AsRef<Self>>(_: F) {}
+    fn as_y<F: AsRef<Foo>>(_: F) {}
 }
 
 struct Bar;
 
 impl Bar {
-
     fn as_i32(self) {}
     fn as_u32(&self) {}
     fn into_i32(&self) {}

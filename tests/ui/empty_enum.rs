@@ -7,14 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![allow(dead_code)]
 #![warn(clippy::empty_enum)]
 
 enum Empty {}
 
-fn main() {
-}
+fn main() {}

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::clone_on_ref_ptr)]
 #![allow(unused)]
 
@@ -70,14 +67,14 @@ fn clone_on_double_ref() {
     let y = &&x;
     let z: &Vec<_> = y.clone();
 
-    println!("{:p} {:p}",*y, z);
+    println!("{:p} {:p}", *y, z);
 }
 
 fn iter_clone_collect() {
-    let v = [1,2,3,4,5];
-    let v2 : Vec<isize> = v.iter().cloned().collect();
-    let v3 : HashSet<isize> = v.iter().cloned().collect();
-    let v4 : VecDeque<isize> = v.iter().cloned().collect();
+    let v = [1, 2, 3, 4, 5];
+    let v2: Vec<isize> = v.iter().cloned().collect();
+    let v3: HashSet<isize> = v.iter().cloned().collect();
+    let v4: VecDeque<isize> = v.iter().cloned().collect();
 }
 
 mod many_derefs {
@@ -92,9 +89,11 @@ mod many_derefs {
         ($src:ident, $dst:ident) => {
             impl std::ops::Deref for $src {
                 type Target = $dst;
-                fn deref(&self) -> &Self::Target { &$dst }
+                fn deref(&self) -> &Self::Target {
+                    &$dst
+                }
             }
-        }
+        };
     }
 
     impl_deref!(A, B);
@@ -102,7 +101,9 @@ mod many_derefs {
     impl_deref!(C, D);
     impl std::ops::Deref for D {
         type Target = &'static E;
-        fn deref(&self) -> &Self::Target { &&E }
+        fn deref(&self) -> &Self::Target {
+            &&E
+        }
     }
 
     fn go1() {

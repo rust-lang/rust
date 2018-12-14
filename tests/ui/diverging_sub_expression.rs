@@ -7,21 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![feature(never_type)]
-
 #![warn(clippy::diverging_sub_expression)]
 #![allow(clippy::match_same_arms, clippy::logic_bug)]
 
 #[allow(clippy::empty_loop)]
-fn diverge() -> ! { loop {} }
+fn diverge() -> ! {
+    loop {}
+}
 
 struct A;
 
 impl A {
-    fn foo(&self) -> ! { diverge() }
+    fn foo(&self) -> ! {
+        diverge()
+    }
 }
 
 #[allow(unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]

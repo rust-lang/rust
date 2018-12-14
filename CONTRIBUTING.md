@@ -19,7 +19,6 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [Running test suite](#running-test-suite)
   * [Running rustfmt](#running-rustfmt)
   * [Testing manually](#testing-manually)
-  * [Linting Clippy with your local changes](#linting-clippy-with-your-local-changes)
   * [How Clippy works](#how-clippy-works)
   * [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
 * [Issue and PR Triage](#issue-and-pr-triage)

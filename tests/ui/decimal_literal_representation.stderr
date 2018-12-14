@@ -1,33 +1,33 @@
 error: integer literal has a better hexadecimal representation
-  --> $DIR/decimal_literal_representation.rs:28:9
+  --> $DIR/decimal_literal_representation.rs:25:9
    |
-28 |         32_773,        // 0x8005
+25 |         32_773,        // 0x8005
    |         ^^^^^^ help: consider: `0x8005`
    |
    = note: `-D clippy::decimal-literal-representation` implied by `-D warnings`
 
 error: integer literal has a better hexadecimal representation
-  --> $DIR/decimal_literal_representation.rs:29:9
+  --> $DIR/decimal_literal_representation.rs:26:9
    |
-29 |         65_280,        // 0xFF00
+26 |         65_280,        // 0xFF00
    |         ^^^^^^ help: consider: `0xFF00`
 
 error: integer literal has a better hexadecimal representation
-  --> $DIR/decimal_literal_representation.rs:30:9
+  --> $DIR/decimal_literal_representation.rs:27:9
    |
-30 |         2_131_750_927, // 0x7F0F_F00F
+27 |         2_131_750_927, // 0x7F0F_F00F
    |         ^^^^^^^^^^^^^ help: consider: `0x7F0F_F00F`
 
 error: integer literal has a better hexadecimal representation
-  --> $DIR/decimal_literal_representation.rs:31:9
+  --> $DIR/decimal_literal_representation.rs:28:9
    |
-31 |         2_147_483_647, // 0x7FFF_FFFF
+28 |         2_147_483_647, // 0x7FFF_FFFF
    |         ^^^^^^^^^^^^^ help: consider: `0x7FFF_FFFF`
 
 error: integer literal has a better hexadecimal representation
-  --> $DIR/decimal_literal_representation.rs:32:9
+  --> $DIR/decimal_literal_representation.rs:29:9
    |
-32 |         4_042_322_160, // 0xF0F0_F0F0
+29 |         4_042_322_160, // 0xF0F0_F0F0
    |         ^^^^^^^^^^^^^ help: consider: `0xF0F0_F0F0`
 
 error: aborting due to 5 previous errors

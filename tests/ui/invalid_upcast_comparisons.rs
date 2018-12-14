@@ -7,14 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::invalid_upcast_comparisons)]
-#![allow(unused, clippy::eq_op, clippy::no_effect, clippy::unnecessary_operation, clippy::cast_lossless)]
+#![allow(
+    unused,
+    clippy::eq_op,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless
+)]
 
-fn mk_value<T>() -> T { unimplemented!() }
+fn mk_value<T>() -> T {
+    unimplemented!()
+}
 
 fn main() {
     let u32: u32 = mk_value();
@@ -54,7 +58,6 @@ fn main() {
     // inverted of the above
     1337 != (u8 as i32);
     1337 != (u8 as u32);
-
 
     // Those are Ok:
     (u8 as u32) > 20;

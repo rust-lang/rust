@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![allow(unused)]
 #![warn(clippy::all)]
 
@@ -17,10 +14,10 @@ fn main() {
     let v = Some(true);
     match v {
         Some(x) => (),
-        y @ _   => (),
+        y @ _ => (),
     }
     match v {
-        Some(x)  => (),
-        y @ None => (),  // no error
+        Some(x) => (),
+        y @ None => (), // no error
     }
 }

@@ -7,15 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
-const THREE_BITS : i64 = 7;
-const EVEN_MORE_REDIRECTION : i64 = THREE_BITS;
+const THREE_BITS: i64 = 7;
+const EVEN_MORE_REDIRECTION: i64 = THREE_BITS;
 
 #[warn(clippy::bad_bit_mask)]
-#[allow(clippy::ineffective_bit_mask, clippy::identity_op, clippy::no_effect, clippy::unnecessary_operation)]
+#[allow(
+    clippy::ineffective_bit_mask,
+    clippy::identity_op,
+    clippy::no_effect,
+    clippy::unnecessary_operation
+)]
 fn main() {
     let x = 5;
 

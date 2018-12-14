@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 #![warn(clippy::while_let_loop, clippy::empty_loop, clippy::while_let_on_iterator)]
 #![allow(dead_code, clippy::never_loop, unused, clippy::cyclomatic_complexity)]
 
@@ -20,10 +16,11 @@ fn main() {
         if let Some(_x) = y {
             let _v = 1;
         } else {
-            break
+            break;
         }
     }
-    loop { // no error, break is not in else clause
+    loop {
+        // no error, break is not in else clause
         if let Some(_x) = y {
             let _v = 1;
         }
@@ -32,13 +29,13 @@ fn main() {
     loop {
         match y {
             Some(_x) => true,
-            None => break
+            None => break,
         };
     }
     loop {
         let x = match y {
             Some(x) => x,
-            None => break
+            None => break,
         };
         let _x = x;
         let _str = "foo";
@@ -48,19 +45,25 @@ fn main() {
             Some(x) => x,
             None => break,
         };
-        { let _a = "bar"; };
-        { let _b = "foobar"; }
+        {
+            let _a = "bar";
+        };
+        {
+            let _b = "foobar";
+        }
     }
-    loop { // no error, else branch does something other than break
+    loop {
+        // no error, else branch does something other than break
         match y {
             Some(_x) => true,
             _ => {
                 let _z = 1;
                 break;
-            }
+            },
         };
     }
-    while let Some(x) = y { // no error, obviously
+    while let Some(x) = y {
+        // no error, obviously
         println!("{}", x);
     }
 
@@ -68,7 +71,7 @@ fn main() {
     loop {
         let (e, l) = match "".split_whitespace().next() {
             Some(word) => (word.is_empty(), word.len()),
-            None => break
+            None => break,
         };
 
         let _ = (e, l);
@@ -91,7 +94,8 @@ fn main() {
     while let None = iter.next() {} // this is fine (if nonsensical)
 
     let mut iter = 1..20;
-    if let Some(x) = iter.next() { // also fine
+    if let Some(x) = iter.next() {
+        // also fine
         println!("{}", x)
     }
 
@@ -109,7 +113,9 @@ fn main() {
 
     // or this
     let mut iter = 1u32..20;
-    while let Some(x) = iter.next() {break;}
+    while let Some(x) = iter.next() {
+        break;
+    }
     println!("Remaining iter {:?}", iter);
 
     // or this
@@ -128,7 +134,7 @@ fn no_panic<T>(slice: &[T]) {
     loop {
         let _ = match iter.next() {
             Some(ele) => ele,
-            None => break
+            None => break,
         };
         loop {}
     }
@@ -143,8 +149,8 @@ fn issue1017() {
             Err(_) => len = 0,
             Ok(length) => {
                 len = length;
-                break
-            }
+                break;
+            },
         }
     }
 }
@@ -155,20 +161,17 @@ fn refutable() {
     let mut b = a.iter();
 
     // consume all the 42s
-    while let Some(&42) = b.next() {
-    }
+    while let Some(&42) = b.next() {}
 
     let a = [(1, 2, 3)];
     let mut b = a.iter();
 
-    while let Some(&(1, 2, 3)) = b.next() {
-    }
+    while let Some(&(1, 2, 3)) = b.next() {}
 
     let a = [Some(42)];
     let mut b = a.iter();
 
-    while let Some(&None) = b.next() {
-    }
+    while let Some(&None) = b.next() {}
 
     /* This gives “refutable pattern in `for` loop binding: `&_` not covered”
     for &42 in b {}
@@ -177,20 +180,22 @@ fn refutable() {
     // */
 
     let mut y = a.iter();
-    loop { // x is reused, so don't lint here
-        while let Some(v) = y.next() {
-        }
+    loop {
+        // x is reused, so don't lint here
+        while let Some(v) = y.next() {}
     }
 
     let mut y = a.iter();
     for _ in 0..2 {
-        while let Some(v) = y.next() { // y is reused, don't lint
+        while let Some(v) = y.next() {
+            // y is reused, don't lint
         }
     }
 
     loop {
         let mut y = a.iter();
-        while let Some(v) = y.next() { // use a for loop here
+        while let Some(v) = y.next() {
+            // use a for loop here
         }
     }
 

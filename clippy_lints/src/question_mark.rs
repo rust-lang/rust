@@ -17,7 +17,7 @@ use if_chain::if_chain;
 
 use crate::rustc_errors::Applicability;
 use crate::utils::paths::*;
-use crate::utils::{match_def_path, match_type, span_lint_and_then};
+use crate::utils::{match_def_path, match_type, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for expressions that could be replaced by the question mark operator
 ///
@@ -64,14 +64,40 @@ impl Pass {
     /// If it matches, it will suggest to use the question mark operator instead
     fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
-            if let ExprKind::If(ref if_expr, ref body, _) = expr.node;
-            if let ExprKind::MethodCall(ref segment, _, ref args) = if_expr.node;
+            if let ExprKind::If(if_expr, body, else_) = &expr.node;
+            if let ExprKind::MethodCall(segment, _, args) = &if_expr.node;
             if segment.ident.name == "is_none";
             if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);
             if Self::is_option(cx, subject);
 
             then {
+                if let Some(else_) = else_ {
+                    if_chain! {
+                        if let ExprKind::Block(block, None) = &else_.node;
+                        if block.stmts.len() == 0;
+                        if let Some(block_expr) = &block.expr;
+                        if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
+                        then {
+                            span_lint_and_then(
+                                cx,
+                                QUESTION_MARK,
+                                expr.span,
+                                "this block may be rewritten with the `?` operator",
+                                |db| {
+                                    db.span_suggestion_with_applicability(
+                                        expr.span,
+                                        "replace_it_with",
+                                        format!("Some({}?)", Sugg::hir(cx, subject, "..")),
+                                        Applicability::MaybeIncorrect, // snippet
+                                    );
+                                }
+                            )
+                        }
+                    }
+                    return;
+                }
+
                 span_lint_and_then(
                     cx,
                     QUESTION_MARK,
@@ -84,7 +110,7 @@ impl Pass {
                             expr.span,
                             "replace_it_with",
                             format!("{}?;", receiver_str),
-                            Applicability::MachineApplicable, // snippet
+                            Applicability::MaybeIncorrect, // snippet
                         );
                     }
                 )
@@ -133,9 +159,13 @@ impl Pass {
             }
         }
 
-        // Check if the block has an implicit return expression
-        if let Some(ref ret_expr) = block.expr {
-            return Some(ret_expr.clone());
+        // Check for `return` without a semicolon.
+        if_chain! {
+            if block.stmts.len() == 0;
+            if let Some(ExprKind::Ret(Some(ret_expr))) = block.expr.as_ref().map(|e| &e.node);
+            then {
+                return Some(ret_expr.clone());
+            }
         }
 
         None

@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::all)]
 #![allow(unused, clippy::needless_pass_by_value)]
 #![feature(associated_type_defaults)]
@@ -32,19 +29,21 @@ enum E {
 
 impl S {
     const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
-    fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
+    fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
 }
 
 trait T {
     const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
     type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
     fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
-    fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
+    fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
 }
 
-fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> { vec![] }
+fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> {
+    vec![]
+}
 
-fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
+fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
 
 fn test3() {
     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
@@ -67,5 +66,4 @@ struct D {
     ),
 }
 
-fn main() {
-}
+fn main() {}

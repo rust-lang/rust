@@ -9,8 +9,8 @@
 
 #![warn(clippy::redundant_clone)]
 
-use std::path::Path;
 use std::ffi::OsString;
+use std::path::Path;
 
 fn main() {
     let _ = ["lorem", "ipsum"].join(" ").to_string();
@@ -33,7 +33,8 @@ fn main() {
     let _ = OsString::new().to_os_string();
 
     // Check that lint level works
-    #[allow(clippy::redundant_clone)] let _ = String::new().to_string();
+    #[allow(clippy::redundant_clone)]
+    let _ = String::new().to_string();
 
     let tup = (String::from("foo"),);
     let _ = tup.0.clone();
@@ -61,8 +62,6 @@ impl Drop for TypeWithDrop {
 }
 
 fn cannot_move_from_type_with_drop() -> String {
-    let s = TypeWithDrop {
-        x: String::new()
-    };
+    let s = TypeWithDrop { x: String::new() };
     s.x.clone() // removing this `clone()` summons E0509
 }

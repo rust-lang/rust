@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![feature(plugin)]
 #![warn(clippy::indexing_slicing)]
 #![warn(clippy::out_of_bounds_indexing)]
