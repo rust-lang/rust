@@ -413,12 +413,10 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::CountIs(i) => count("Is", Some(self.ecx.expr_usize(sp, i))),
             parse::CountIsParam(i) => {
                 // This needs mapping too, as `i` is referring to a macro
-                // argument.
-                let i = match self.count_positions.get(&i) {
-                    Some(&i) => i,
-                    None => 0, // error already emitted elsewhere
-                };
-                let i = i + self.count_args_index_offset;
+                // argument. If `i` is not found in `count_positions` then
+                // the error had already been emitted elsewhere.
+                let i = self.count_positions.get(&i).cloned().unwrap_or(0)
+                      + self.count_args_index_offset;
                 count("Param", Some(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => count("Implied", None),
@@ -503,10 +501,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     },
                 };
 
-                let fill = match arg.format.fill {
-                    Some(c) => c,
-                    None => ' ',
-                };
+                let fill = arg.format.fill.unwrap_or(' ');
 
                 if *arg != simple_arg || fill != ' ' {
                     self.all_pieces_simple = false;
@@ -805,8 +800,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
         let sp = fmt.span.from_inner_byte_pos(err.start, err.end);
-        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}",
-                                                        err.description));
+        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
             e.note(&note);
