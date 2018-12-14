@@ -13,15 +13,15 @@
 
 #![unstable(feature="test", issue = "32374")]
 
-// @has issue_32374/index.html '//*[@class="docblock-short"]' \
-//      '[Deprecated] [Experimental]'
+// @matches issue_32374/index.html '//*[@class="docblock-short"]' \
+//      '^\[Deprecated\] \[Experimental\] Docs'
 
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: text'
-// @has - '<code>test </code>'
-// @has - '<a href="http://issue_url/32374">#32374</a>'
+// @has - '<code>test</code>&nbsp;<a href="http://issue_url/32374">#32374</a>'
 // @matches issue_32374/struct.T.html '//*[@class="stab unstable"]' \
-//      '🔬 This is a nightly-only experimental API.  \(test #32374\)$'
+//      '🔬 This is a nightly-only experimental API. \(test #32374\)$'
+/// Docs
 #[rustc_deprecated(since = "1.0.0", reason = "text")]
 #[unstable(feature = "test", issue = "32374")]
 pub struct T;
