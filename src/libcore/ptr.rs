@@ -2544,7 +2544,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// assert_eq!(actual, expected);
 /// ```
 #[unstable(feature = "ptr_hash", reason = "newly added", issue = "56286")]
-pub fn hash<T, S: hash::Hasher>(hashee: *const T, into: &mut S) {
+pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
     use hash::Hash;
     hashee.hash(into);
 }
