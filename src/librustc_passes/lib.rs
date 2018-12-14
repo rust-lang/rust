@@ -41,7 +41,6 @@ pub mod ast_validation;
 pub mod rvalue_promotion;
 pub mod hir_stats;
 pub mod loops;
-mod mir_stats;
 
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 
