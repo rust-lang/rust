@@ -5,8 +5,8 @@ LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                                       ^^^^^
    |
    = note: the method `count` exists but the following trait bounds were not satisfied:
-           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
            `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
+           `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-36053-2.rs:17:32
