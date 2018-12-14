@@ -28,3 +28,6 @@ path = "../liballoc/benches/lib.rs"
 name = "vec_deque_append_bench"
 path = "../liballoc/benches/vec_deque_append.rs"
 harness = false
+
+[features]
+compiler-builtins-mem = ['compiler_builtins/mem']
