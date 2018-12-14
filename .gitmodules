@@ -47,3 +47,7 @@
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
+[submodule "src/parking_lot"]
+	path = src/parking_lot
+	url = https://github.com/faern/parking_lot
+

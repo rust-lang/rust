@@ -59,6 +59,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/target",
         "src/stdsimd",
         "src/rust-sgx",
+        "src/parking_lot",
         "target",
         "vendor",
     ];

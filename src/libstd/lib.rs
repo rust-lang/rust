@@ -495,6 +495,18 @@ pub mod rt;
 #[cfg(not(test))]
 mod std_detect;
 
+#[path = "../parking_lot/core/src/lib.rs"]
+mod parking_lot_core;
+
+#[path = "../parking_lot/lock_api/src/lib.rs"]
+#[allow(dead_code)]
+mod lock_api;
+
+#[path = "../parking_lot/src/lib.rs"]
+#[allow(dead_code)]
+mod parking_lot;
+
+
 #[doc(hidden)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]

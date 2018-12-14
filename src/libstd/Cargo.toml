@@ -49,7 +49,7 @@ fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 cc = "1.0"
 
 [features]
-default = ["compiler_builtins_c", "std_detect_file_io", "std_detect_dlsym_getauxval"]
+default = ["compiler_builtins_c", "std_detect_file_io", "std_detect_dlsym_getauxval", "i-am-libstd"]
 
 backtrace = ["backtrace-sys"]
 panic-unwind = ["panic_unwind"]
@@ -74,6 +74,9 @@ wasm-bindgen-threads = []
 # https://github.com/rust-lang-nursery/stdsimd/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = []
 std_detect_dlsym_getauxval = []
+
+# Feature used by parking_lot
+i-am-libstd = []
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing
