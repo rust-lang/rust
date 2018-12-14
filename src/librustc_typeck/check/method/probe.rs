@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        param_env_and_self_ty, self_ty);
                 MethodAutoderefStepsResult {
                     steps: Lrc::new(vec![CandidateStep {
-                        self_ty: self.make_query_response_with_obligations_pending(
+                        self_ty: self.make_query_response_ignoring_pending_obligations(
                             canonical_inference_vars, self_ty),
                         autoderefs: 0,
                         from_unsafe_deref: false,
@@ -387,7 +387,7 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let mut steps: Vec<_> = autoderef.by_ref()
             .map(|(ty, d)| {
                 let step = CandidateStep {
-                    self_ty: infcx.make_query_response_with_obligations_pending(
+                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars.clone(), ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
@@ -407,7 +407,7 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
             ty::Error => {
                 Some(MethodAutoderefBadTy {
                     reached_raw_pointer,
-                    ty: infcx.make_query_response_with_obligations_pending(
+                    ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars, final_ty)
                 })
             }
@@ -415,7 +415,7 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 let dereferences = steps.len() - 1;
 
                 steps.push(CandidateStep {
-                    self_ty: infcx.make_query_response_with_obligations_pending(
+                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars, infcx.tcx.mk_slice(elem_ty)),
                     autoderefs: dereferences,
                     // this could be from an unsafe deref if we had

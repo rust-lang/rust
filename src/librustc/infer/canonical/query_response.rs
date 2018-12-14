@@ -125,9 +125,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// include all region obligations, so this includes all cases
     /// that care about regions) with this function, you have to
     /// do it yourself, by e.g. having them be a part of the answer.
-    ///
-    /// TDFX(nikomatsakis): not sure this is the best name.
-    pub fn make_query_response_with_obligations_pending<T>(
+    pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T
