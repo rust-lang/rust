@@ -698,7 +698,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: plain_summary_line(item.doc_value()),
+                desc: plain_summary_line_short(item.doc_value()),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -736,7 +736,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
-        plain_summary_line(module.doc_value())
+        plain_summary_line_short(module.doc_value())
     }).unwrap_or(String::new());
 
     let mut crate_data = BTreeMap::new();
@@ -1481,7 +1481,7 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
-                            desc: plain_summary_line(item.doc_value()),
+                            desc: plain_summary_line_short(item.doc_value()),
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
@@ -1512,7 +1512,8 @@ impl DocFolder for Cache {
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::StaticItem(..) |
-            clean::UnionItem(..) | clean::ForeignTypeItem | clean::MacroItem(..)
+            clean::UnionItem(..) | clean::ForeignTypeItem |
+            clean::MacroItem(..) | clean::ProcMacroItem(..)
             if !self.stripped_mod => {
                 // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
@@ -1673,7 +1674,7 @@ impl<'a> Cache {
                                 ty: item.type_(),
                                 name: item_name.to_string(),
                                 path: path.clone(),
-                                desc: plain_summary_line(item.doc_value()),
+                                desc: plain_summary_line_short(item.doc_value()),
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),
@@ -2388,7 +2389,13 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
 #[inline]
 fn plain_summary_line(s: Option<&str>) -> String {
     let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line(&line[..])
+    markdown::plain_summary_line_full(&line[..], false)
+}
+
+#[inline]
+fn plain_summary_line_short(s: Option<&str>) -> String {
+    let line = shorter(s).replace("\n", " ");
+    markdown::plain_summary_line_full(&line[..], true)
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {

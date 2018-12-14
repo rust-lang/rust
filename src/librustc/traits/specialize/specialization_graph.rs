@@ -132,10 +132,12 @@ impl<'a, 'gcx, 'tcx> Children {
             simplified_self,
         );
 
-        for possible_sibling in match simplified_self {
-            Some(sty) => self.filtered(sty),
-            None => self.iter(),
-        } {
+        let possible_siblings = match simplified_self {
+            Some(sty) => PotentialSiblings::Filtered(self.filtered(sty)),
+            None => PotentialSiblings::Unfiltered(self.iter()),
+        };
+
+        for possible_sibling in possible_siblings {
             debug!(
                 "insert: impl_def_id={:?}, simplified_self={:?}, possible_sibling={:?}",
                 impl_def_id,
@@ -222,14 +224,37 @@ impl<'a, 'gcx, 'tcx> Children {
         Ok(Inserted::BecameNewSibling(last_lint))
     }
 
-    fn iter(&mut self) -> Box<dyn Iterator<Item = DefId> + '_> {
+    fn iter(&mut self) -> impl Iterator<Item = DefId> + '_ {
         let nonblanket = self.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
-        Box::new(self.blanket_impls.iter().chain(nonblanket).cloned())
+        self.blanket_impls.iter().chain(nonblanket).cloned()
     }
 
-    fn filtered(&mut self, sty: SimplifiedType) -> Box<dyn Iterator<Item = DefId> + '_> {
+    fn filtered(&mut self, sty: SimplifiedType) -> impl Iterator<Item = DefId> + '_ {
         let nonblanket = self.nonblanket_impls.entry(sty).or_default().iter();
-        Box::new(self.blanket_impls.iter().chain(nonblanket).cloned())
+        self.blanket_impls.iter().chain(nonblanket).cloned()
+    }
+}
+
+// A custom iterator used by Children::insert
+enum PotentialSiblings<I, J>
+    where I: Iterator<Item = DefId>,
+          J: Iterator<Item = DefId>
+{
+    Unfiltered(I),
+    Filtered(J)
+}
+
+impl<I, J> Iterator for PotentialSiblings<I, J>
+    where I: Iterator<Item = DefId>,
+          J: Iterator<Item = DefId>
+{
+    type Item = DefId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match *self {
+            PotentialSiblings::Unfiltered(ref mut iter) => iter.next(),
+            PotentialSiblings::Filtered(ref mut iter) => iter.next()
+        }
     }
 }
 

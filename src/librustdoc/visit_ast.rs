@@ -424,10 +424,11 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
             hir::ItemKind::Use(ref path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
 
-                // Struct and variant constructors always show up alongside their definitions, we've
-                // already processed them so just discard these.
+                // Struct and variant constructors and proc macro stubs always show up alongside
+                // their definitions, we've already processed them so just discard these.
                 match path.def {
-                    Def::StructCtor(..) | Def::VariantCtor(..) | Def::SelfCtor(..) => return,
+                    Def::StructCtor(..) | Def::VariantCtor(..) | Def::SelfCtor(..) |
+                    Def::Macro(_, MacroKind::ProcMacroStub) => return,
                     _ => {}
                 }
 

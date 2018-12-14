@@ -28,6 +28,10 @@ struct u32x4(pub u32, pub u32, pub u32, pub u32);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
+struct u32x8(u32, u32, u32, u32, u32, u32, u32, u32);
+
+#[repr(simd)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
 #[repr(simd)]
@@ -36,6 +40,7 @@ struct b8x4(pub i8, pub i8, pub i8, pub i8);
 
 extern "platform-intrinsic" {
     fn simd_select<T, U>(x: T, a: U, b: U) -> U;
+    fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
 }
 
 fn main() {
@@ -144,6 +149,31 @@ fn main() {
 
         let r: b8x4 = simd_select(m4, a, b);
         let e = b8x4(t, f, t, t);
+        assert_eq!(r, e);
+    }
+
+    unsafe {
+        let a = u32x8(0, 1, 2, 3, 4, 5, 6, 7);
+        let b = u32x8(8, 9, 10, 11, 12, 13, 14, 15);
+
+        let r: u32x8 = simd_select_bitmask(0u8, a, b);
+        let e = b;
+        assert_eq!(r, e);
+
+        let r: u32x8 = simd_select_bitmask(0xffu8, a, b);
+        let e = a;
+        assert_eq!(r, e);
+
+        let r: u32x8 = simd_select_bitmask(0b01010101u8, a, b);
+        let e = u32x8(0, 9, 2, 11, 4, 13, 6, 15);
+        assert_eq!(r, e);
+
+        let r: u32x8 = simd_select_bitmask(0b10101010u8, a, b);
+        let e = u32x8(8, 1, 10, 3, 12, 5, 14, 7);
+        assert_eq!(r, e);
+
+        let r: u32x8 = simd_select_bitmask(0b11110000u8, a, b);
+        let e = u32x8(8, 9, 10, 11, 4, 5, 6, 7);
         assert_eq!(r, e);
     }
 }
