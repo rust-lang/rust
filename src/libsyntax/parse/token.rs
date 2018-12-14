@@ -207,6 +207,10 @@ pub enum Token {
     Eof,
 }
 
+// `Token` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Token>() == 16);
+
 impl Token {
     pub fn interpolated(nt: Nonterminal) -> Token {
         Token::Interpolated(Lrc::new((nt, LazyTokenStream::new())))
