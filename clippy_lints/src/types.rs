@@ -68,6 +68,34 @@ declare_clippy_lint! {
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
+/// **What it does:** Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+///
+/// **Why is this bad?** `Vec` already keeps its contents in a separate area on
+/// the heap. So if you `Box` its contents, you just add another level of indirection.
+///
+/// **Known problems:** Vec<Box<T: Sized>> makes sense if T is a large type (see #3530,
+/// 1st comment).
+///
+/// **Example:**
+/// ```rust
+/// struct X {
+///     values: Vec<Box<i32>>,
+/// }
+/// ```
+///
+/// Better:
+///
+/// ```rust
+/// struct X {
+///     values: Vec<i32>,
+/// }
+/// ```
+declare_clippy_lint! {
+    pub VEC_BOX,
+    complexity,
+    "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
+}
+
 /// **What it does:** Checks for use of `Option<Option<_>>` in function signatures and type
 /// definitions
 ///
@@ -148,7 +176,7 @@ declare_clippy_lint! {
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BOX_VEC, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
+        lint_array!(BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
     }
 }
 
@@ -237,6 +265,43 @@ fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
                             "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
                         );
                         return; // don't recurse into the type
+                    }
+                } else if match_def_path(cx.tcx, def_id, &paths::VEC) {
+                    if_chain! {
+                        // Get the _ part of Vec<_>
+                        if let Some(ref last) = last_path_segment(qpath).args;
+                        if let Some(ty) = last.args.iter().find_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            GenericArg::Lifetime(_) => None,
+                        });
+                        // ty is now _ at this point
+                        if let TyKind::Path(ref ty_qpath) = ty.node;
+                        let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
+                        if let Some(def_id) = opt_def_id(def);
+                        if Some(def_id) == cx.tcx.lang_items().owned_box();
+                        // At this point, we know ty is Box<T>, now get T
+                        if let Some(ref last) = last_path_segment(ty_qpath).args;
+                        if let Some(ty) = last.args.iter().find_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            GenericArg::Lifetime(_) => None,
+                        });
+                        if let TyKind::Path(ref ty_qpath) = ty.node;
+                        let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
+                        if let Some(def_id) = opt_def_id(def);
+                        let boxed_type = cx.tcx.type_of(def_id);
+                        if boxed_type.is_sized(cx.tcx.at(ty.span), cx.param_env);
+                        then {
+                            span_lint_and_sugg(
+                                cx,
+                                VEC_BOX,
+                                ast_ty.span,
+                                "`Vec<T>` is already on the heap, the boxing is unnecessary.",
+                                "try",
+                                format!("Vec<{}>", boxed_type),
+                                Applicability::MaybeIncorrect,
+                            );
+                            return; // don't recurse into the type
+                        }
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
                     if match_type_parameter(cx, qpath, &paths::OPTION) {

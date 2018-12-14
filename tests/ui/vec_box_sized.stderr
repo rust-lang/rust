@@ -1,0 +1,10 @@
+error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+  --> $DIR/vec_box_sized.rs:10:14
+   |
+10 |     sized_type: Vec<Box<SizedStruct>>,
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<SizedStruct>`
+   |
+   = note: `-D clippy::vec-box` implied by `-D warnings`
+
+error: aborting due to previous error
+
