@@ -317,10 +317,6 @@
 
 #![default_lib_allocator]
 
-#[cfg(stage0)]
-#[global_allocator]
-static ALLOC: alloc::System = alloc::System;
-
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
 #[prelude_import]

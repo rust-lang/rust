@@ -533,6 +533,7 @@ impl<T: Error> Error for Box<T> {
         Error::description(&**self)
     }
 
+    #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         Error::cause(&**self)
     }

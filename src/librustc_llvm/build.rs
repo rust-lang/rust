@@ -192,11 +192,11 @@ fn main() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
             let name = Path::new(lib).file_name().unwrap().to_str().unwrap();
-            name.trim_right_matches(".lib")
+            name.trim_end_matches(".lib")
         } else if lib.ends_with(".lib") {
             // Some MSVC libraries just come up with `.lib` tacked on, so chop
             // that off
-            lib.trim_right_matches(".lib")
+            lib.trim_end_matches(".lib")
         } else {
             continue;
         };

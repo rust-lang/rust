@@ -294,23 +294,23 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
                      "trait@", "union@"].iter()
                                       .find(|p| link.starts_with(**p)) {
                     kind = PathKind::Type;
-                    link.trim_left_matches(prefix)
+                    link.trim_start_matches(prefix)
                 } else if let Some(prefix) =
                     ["const@", "static@",
                      "value@", "function@", "mod@",
                      "fn@", "module@", "method@"]
                         .iter().find(|p| link.starts_with(**p)) {
                     kind = PathKind::Value;
-                    link.trim_left_matches(prefix)
+                    link.trim_start_matches(prefix)
                 } else if link.ends_with("()") {
                     kind = PathKind::Value;
-                    link.trim_right_matches("()")
+                    link.trim_end_matches("()")
                 } else if link.starts_with("macro@") {
                     kind = PathKind::Macro;
-                    link.trim_left_matches("macro@")
+                    link.trim_start_matches("macro@")
                 } else if link.ends_with('!') {
                     kind = PathKind::Macro;
-                    link.trim_right_matches('!')
+                    link.trim_end_matches('!')
                 } else {
                     &link[..]
                 }.trim();

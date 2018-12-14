@@ -1940,7 +1940,7 @@ atomic_int! {
     8,
     u64 AtomicU64 ATOMIC_U64_INIT
 }
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1954,7 +1954,7 @@ atomic_int! {
     16,
     i128 AtomicI128 ATOMIC_I128_INIT
 }
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),

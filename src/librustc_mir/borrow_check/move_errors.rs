@@ -426,13 +426,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     .span_to_snippet(pat_span)
                     .unwrap();
                 if pat_snippet.starts_with('&') {
-                    let pat_snippet = pat_snippet[1..].trim_left();
+                    let pat_snippet = pat_snippet[1..].trim_start();
                     let suggestion;
                     let to_remove;
                     if pat_snippet.starts_with("mut")
                         && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
                     {
-                        suggestion = pat_snippet["mut".len()..].trim_left();
+                        suggestion = pat_snippet["mut".len()..].trim_start();
                         to_remove = "&mut";
                     } else {
                         suggestion = pat_snippet;

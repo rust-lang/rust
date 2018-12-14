@@ -57,7 +57,7 @@ impl Ident {
     }
 
     pub fn without_first_quote(self) -> Ident {
-        Ident::new(Symbol::intern(self.as_str().trim_left_matches('\'')), self.span)
+        Ident::new(Symbol::intern(self.as_str().trim_start_matches('\'')), self.span)
     }
 
     /// "Normalize" ident for use in comparisons using "item hygiene".

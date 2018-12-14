@@ -174,7 +174,6 @@ pub use self::os_str::{OsString, OsStr};
 #[stable(feature = "raw_os", since = "1.1.0")]
 pub use core::ffi::c_void;
 
-#[cfg(not(stage0))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
