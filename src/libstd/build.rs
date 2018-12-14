@@ -68,7 +68,6 @@ fn main() {
         println!("cargo:rustc-link-lib=advapi32");
         println!("cargo:rustc-link-lib=ws2_32");
         println!("cargo:rustc-link-lib=userenv");
-        println!("cargo:rustc-link-lib=shell32");
     } else if target.contains("fuchsia") {
         println!("cargo:rustc-link-lib=zircon");
         println!("cargo:rustc-link-lib=fdio");

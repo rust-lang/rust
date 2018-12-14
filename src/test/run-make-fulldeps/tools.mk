@@ -76,7 +76,7 @@ endif
 # Extra flags needed to compile a working executable with the standard library
 ifdef IS_WINDOWS
 ifdef IS_MSVC
-	EXTRACFLAGS := ws2_32.lib userenv.lib shell32.lib advapi32.lib
+	EXTRACFLAGS := ws2_32.lib userenv.lib advapi32.lib
 else
 	EXTRACFLAGS := -lws2_32 -luserenv
 endif

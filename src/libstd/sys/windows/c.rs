@@ -1035,9 +1035,6 @@ extern "system" {
 
     pub fn SetLastError(dwErrCode: DWORD);
     pub fn GetCommandLineW() -> *mut LPCWSTR;
-    pub fn LocalFree(ptr: *mut c_void);
-    pub fn CommandLineToArgvW(lpCmdLine: *mut LPCWSTR,
-                              pNumArgs: *mut c_int) -> *mut *mut u16;
     pub fn GetTempPathW(nBufferLength: DWORD,
                         lpBuffer: LPCWSTR) -> DWORD;
     pub fn OpenProcessToken(ProcessHandle: HANDLE,
