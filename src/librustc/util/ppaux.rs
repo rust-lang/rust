@@ -712,6 +712,7 @@ define_print! {
             ty::tls::with(|tcx| {
                 // Use a type that can't appear in defaults of type parameters.
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+                let mut first = true;
 
                 if let Some(principal) = self.principal() {
                     let principal = tcx
@@ -724,11 +725,17 @@ define_print! {
                             .with_self_ty(tcx, dummy_self)
                     }).collect::<Vec<_>>();
                     cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
+                    first = false;
                 }
 
                 // Builtin bounds.
                 for did in self.auto_traits() {
-                    write!(f, " + {}", tcx.item_path_str(did))?;
+                    if !first {
+                        write!(f, " + ")?;
+                    }
+                    first = false;
+
+                    write!(f, "{}", tcx.item_path_str(did))?;
                 }
 
                 Ok(())
