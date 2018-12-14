@@ -49,6 +49,7 @@ pub fn target() -> Result<Target, String> {
         max_atomic_width: Some(64),
         panic_strategy: PanicStrategy::Abort,
         cpu: "x86-64".into(),
+        features: "+rdrnd,+rdseed".into(),
         position_independent_executables: true,
         pre_link_args: iter::once(
                 (LinkerFlavor::Gcc, PRE_LINK_ARGS.iter().cloned().map(String::from).collect())
