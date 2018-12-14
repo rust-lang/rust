@@ -38,8 +38,8 @@ pub fn simd_test(
         _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     };
     let enable_feature = enable_feature
-        .trim_left_matches('"')
-        .trim_right_matches('"');
+        .trim_start_matches('"')
+        .trim_end_matches('"');
     let target_features: Vec<String> = enable_feature
         .replace('+', "")
         .split(',')
