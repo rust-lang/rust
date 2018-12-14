@@ -17,7 +17,6 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 fn clippy_driver_path() -> PathBuf {
     if let Some(path) = option_env!("CLIPPY_DRIVER_PATH") {
@@ -43,28 +42,6 @@ fn rustc_lib_path() -> PathBuf {
     option_env!("RUSTC_LIB_PATH").unwrap().into()
 }
 
-fn rustc_sysroot_path() -> PathBuf {
-    option_env!("SYSROOT")
-        .map(String::from)
-        .or_else(|| std::env::var("SYSROOT").ok())
-        .or_else(|| {
-            let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-            let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-            home.and_then(|home| toolchain.map(|toolchain| format!("{}/toolchains/{}", home, toolchain)))
-        })
-        .or_else(|| {
-            Command::new("rustc")
-                .arg("--print")
-                .arg("sysroot")
-                .output()
-                .ok()
-                .and_then(|out| String::from_utf8(out.stdout).ok())
-                .map(|s| s.trim().to_owned())
-        })
-        .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
-        .into()
-}
-
 fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
     let mut config = compiletest::Config::default();
 
@@ -78,11 +55,7 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
     }
-    config.target_rustcflags = Some(format!(
-        "-L {0} -L {0}/deps -Dwarnings --sysroot {1}",
-        host_libs().display(),
-        rustc_sysroot_path().display()
-    ));
+    config.target_rustcflags = Some(format!("-L {0} -L {0}/deps -Dwarnings", host_libs().display()));
 
     config.mode = cfg_mode;
     config.build_base = if rustc_test_suite().is_some() {
