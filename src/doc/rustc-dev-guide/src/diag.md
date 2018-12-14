@@ -305,4 +305,4 @@ are defining a new lint, you will want to add an entry to this enum. Then, add
 an appropriate mapping to the body of [`Lint::from_parser_lint_id`][fplid].
 
 [`BufferedEarlyLintId`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/early_buffered_lints/enum.BufferedEarlyLintId.html
-[fplid]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/struct.Lint.html#from_parser_lint_id
+[fplid]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/struct.Lint.html#method.from_parser_lint_id
