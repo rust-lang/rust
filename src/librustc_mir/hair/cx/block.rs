@@ -7,7 +7,7 @@ use rustc::ty;
 
 use rustc_data_structures::indexed_vec::Idx;
 
-impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
+impl<'tcx> Mirror<'tcx> for &'tcx hir::Block<'tcx> {
     type Output = Block<'tcx>;
 
     fn make_mirror(self, cx: &mut Cx<'_, 'tcx>) -> Block<'tcx> {
@@ -43,7 +43,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
 fn mirror_stmts<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
     block_id: hir::ItemLocalId,
-    stmts: &'tcx [hir::Stmt],
+    stmts: &'tcx [hir::Stmt<'tcx>],
 ) -> Vec<StmtRef<'tcx>> {
     let mut result = vec![];
     for (index, stmt) in stmts.iter().enumerate() {
@@ -117,7 +117,7 @@ fn mirror_stmts<'a, 'tcx>(
 
 pub fn to_expr_ref<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    block: &'tcx hir::Block,
+    block: &'tcx hir::Block<'tcx>,
 ) -> ExprRef<'tcx> {
     let block_ty = cx.tables().node_type(block.hir_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(block.hir_id.local_id);

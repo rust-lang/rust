@@ -72,9 +72,9 @@ fn mir_keys<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) -> &'tcx DefIdSet {
     }
     impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
         fn visit_variant_data(&mut self,
-                              v: &'tcx hir::VariantData,
+                              v: &'tcx hir::VariantData<'tcx>,
                               _: ast::Name,
-                              _: &'tcx hir::Generics,
+                              _: &'tcx hir::Generics<'tcx>,
                               _: hir::HirId,
                               _: Span) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {

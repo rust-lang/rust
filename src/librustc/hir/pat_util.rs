@@ -43,7 +43,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
     }
 }
 
-impl hir::Pat {
+impl hir::Pat<'_> {
     pub fn is_refutable(&self) -> bool {
         match self.node {
             PatKind::Lit(_) |
@@ -162,7 +162,7 @@ impl hir::Pat {
     }
 }
 
-impl hir::Arm {
+impl hir::Arm<'_> {
     /// Checks if the patterns for this arm contain any `ref` or `ref mut`
     /// bindings, and if yes whether its containing mutable ones or just immutables ones.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {

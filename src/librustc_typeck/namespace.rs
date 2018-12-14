@@ -19,7 +19,7 @@ impl From<ty::AssocKind> for Namespace {
     }
 }
 
-impl<'a> From <&'a hir::ImplItemKind> for Namespace {
+impl<'a> From <&'a hir::ImplItemKind<'a>> for Namespace {
     fn from(impl_kind: &'a hir::ImplItemKind) -> Self {
         match *impl_kind {
             hir::ImplItemKind::Existential(..) |

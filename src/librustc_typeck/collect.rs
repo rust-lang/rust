@@ -165,7 +165,7 @@ impl ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
     }
 
-    pub fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
@@ -338,7 +338,7 @@ impl ItemCtxt<'tcx> {
     /// bounds for a type parameter `X` if `X::Foo` is used.
     fn type_parameter_bounds_in_generics(
         &self,
-        ast_generics: &hir::Generics,
+        ast_generics: &hir::Generics<'tcx>,
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
@@ -1344,11 +1344,11 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
                             node: ExprKind::Path(QPath::Resolved(_, ref path)),
                             ..
                         }) => {
-                            Some(&**path)
+                            Some(&***path)
                         }
                         Node::Expr(&hir::Expr { node: ExprKind::Struct(ref path, ..), .. }) => {
                             if let QPath::Resolved(_, ref path) = **path {
-                                Some(&**path)
+                                Some(&***path)
                             } else {
                                 None
                             }
@@ -1788,8 +1788,8 @@ fn impl_polarity<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> hir::ImplPolarity {
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
     tcx: TyCtxt<'tcx>,
-    generics: &'a hir::Generics,
-) -> impl Iterator<Item = &'a hir::GenericParam> + Captures<'tcx> {
+    generics: &'a hir::Generics<'tcx>,
+) -> impl Iterator<Item = &'a hir::GenericParam<'tcx>> + Captures<'tcx> {
     generics
         .params
         .iter()
@@ -2205,7 +2205,7 @@ fn explicit_predicates_of<'tcx>(
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
-    bound: &hir::GenericBound,
+    bound: &hir::GenericBound<'tcx>,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
@@ -2227,7 +2227,7 @@ fn predicates_from_bound<'tcx>(
 fn compute_sig_of_foreign_fn_decl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    decl: &hir::FnDecl,
+    decl: &hir::FnDecl<'tcx>,
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {

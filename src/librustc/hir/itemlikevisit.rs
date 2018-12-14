@@ -46,9 +46,9 @@ use super::intravisit::Visitor;
 /// existing `fn visit_nested` methods to see where changes are
 /// needed.
 pub trait ItemLikeVisitor<'hir> {
-    fn visit_item(&mut self, item: &'hir Item);
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem);
-    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem);
+    fn visit_item(&mut self, item: &'hir Item<'hir>);
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>);
+    fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>);
 }
 
 pub struct DeepVisitor<'v, V: 'v> {

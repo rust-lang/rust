@@ -397,7 +397,7 @@ fn lint_literal<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr<'_>) {
         match e.node {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
@@ -440,8 +440,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn check_limits(cx: &LateContext<'_, '_>,
                         binop: hir::BinOp,
-                        l: &hir::Expr,
-                        r: &hir::Expr)
+                        l: &hir::Expr<'_>,
+                        r: &hir::Expr<'_>)
                         -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprKind::Lit(_), _) => (l, r, true),
@@ -887,7 +887,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl) {
+    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl<'_>) {
         let def_id = self.cx.tcx.hir().local_def_id_from_hir_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
@@ -919,7 +919,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
-    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem<'_>) {
         let mut vis = ImproperCTypesVisitor { cx };
         let abi = cx.tcx.hir().get_foreign_abi_by_hir_id(it.hir_id);
         if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
@@ -939,7 +939,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
 declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
             let item_def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);

@@ -31,7 +31,11 @@ macro_rules! arena_types {
                 rustc::hir::def_id::DefId,
                 rustc::ty::subst::SubstsRef<$tcx>
             )>,
-            [few] lowered_hir: rustc::hir::LoweredHir,
+            [] lits: syntax::source_map::Spanned<syntax::ast::LitKind>,
+            [] attrs: syntax::ast::Attribute,
+            [few] token_streams: syntax::tokenstream::TokenStream,
+            [few] inline_asm: rustc::hir::InlineAsm,
+            [few] lowered_hir: rustc::hir::LoweredHir<$tcx>,
             [few] hir_map: rustc::hir::map::Map<$tcx>,
             [few, decode] mir_keys: rustc::util::nodemap::DefIdSet,
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,

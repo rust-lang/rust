@@ -23,7 +23,7 @@ struct NodeData {
 }
 
 struct StatCollector<'k> {
-    krate: Option<&'k hir::Crate>,
+    krate: Option<&'k hir::Crate<'k>>,
     data: FxHashMap<&'static str, NodeData>,
     seen: FxHashSet<Id>,
 }

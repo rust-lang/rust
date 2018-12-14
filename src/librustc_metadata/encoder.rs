@@ -664,7 +664,7 @@ impl EncodeContext<'tcx> {
 
     fn encode_info_for_mod(
         &mut self,
-        (id, md, attrs, vis): (hir::HirId, &hir::Mod, &[ast::Attribute], &hir::Visibility),
+        (id, md, attrs, vis): (hir::HirId, &hir::Mod<'_>, &[ast::Attribute], &hir::Visibility<'_>),
     ) -> Entry<'tcx> {
         let tcx = self.tcx;
         let def_id = tcx.hir().local_def_id_from_hir_id(id);
@@ -1066,7 +1066,10 @@ impl EncodeContext<'tcx> {
         self.lazy(rendered_const)
     }
 
-    fn encode_info_for_item(&mut self, (def_id, item): (DefId, &'tcx hir::Item)) -> Entry<'tcx> {
+    fn encode_info_for_item(
+        &mut self,
+        (def_id, item): (DefId, &'tcx hir::Item<'_>)
+    ) -> Entry<'tcx> {
         let tcx = self.tcx;
 
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
@@ -1311,7 +1314,7 @@ impl EncodeContext<'tcx> {
     }
 
     /// Serialize the text of exported macros
-    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
+    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) -> Entry<'tcx> {
         use syntax::print::pprust;
         let def_id = self.tcx.hir().local_def_id_from_hir_id(macro_def.hir_id);
         Entry {
@@ -1602,7 +1605,7 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_info_for_foreign_item(&mut self,
-                                    (def_id, nitem): (DefId, &hir::ForeignItem))
+                                    (def_id, nitem): (DefId, &hir::ForeignItem<'_>))
                                     -> Entry<'tcx> {
         let tcx = self.tcx;
 
@@ -1650,11 +1653,11 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'_>) {
         intravisit::walk_expr(self, ex);
         self.encode_info_for_expr(ex);
     }
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         intravisit::walk_item(self, item);
         let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         match item.node {
@@ -1664,7 +1667,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         }
         self.encode_addl_info_for_item(item);
     }
-    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'_>) {
         intravisit::walk_foreign_item(self, ni);
         let def_id = self.tcx.hir().local_def_id_from_hir_id(ni.hir_id);
         self.record(def_id,
@@ -1672,8 +1675,8 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
                           (def_id, ni));
     }
     fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
-                     g: &'tcx hir::Generics,
+                     v: &'tcx hir::Variant<'_>,
+                     g: &'tcx hir::Generics<'_>,
                      id: hir::HirId) {
         intravisit::walk_variant(self, v, g, id);
 
@@ -1682,15 +1685,15 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
             self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
         }
     }
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'_>) {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
     }
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
         intravisit::walk_ty(self, ty);
         self.encode_info_for_ty(ty);
     }
-    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'_>) {
         let def_id = self.tcx.hir().local_def_id_from_hir_id(macro_def.hir_id);
         self.record(def_id, EncodeContext::encode_info_for_macro_def, macro_def);
     }
@@ -1708,7 +1711,7 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_info_for_generics(&mut self, generics: &hir::Generics) {
+    fn encode_info_for_generics(&mut self, generics: &hir::Generics<'_>) {
         for param in &generics.params {
             let def_id = self.tcx.hir().local_def_id_from_hir_id(param.hir_id);
             match param.kind {
@@ -1727,7 +1730,7 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
+    fn encode_info_for_ty(&mut self, ty: &hir::Ty<'_>) {
         match ty.node {
             hir::TyKind::Array(_, ref length) => {
                 let def_id = self.tcx.hir().local_def_id_from_hir_id(length.hir_id);
@@ -1737,7 +1740,7 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_info_for_expr(&mut self, expr: &hir::Expr) {
+    fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
         match expr.node {
             hir::ExprKind::Closure(..) => {
                 let def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
@@ -1751,7 +1754,7 @@ impl EncodeContext<'tcx> {
     /// encode some sub-items. Usually we want some info from the item
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
-    fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
+    fn encode_addl_info_for_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         match item.node {
             hir::ItemKind::Static(..) |
@@ -1821,7 +1824,7 @@ struct ImplVisitor<'tcx> {
 }
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl(..) = item.node {
             let impl_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
@@ -1833,9 +1836,9 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem) {}
+    fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem<'_>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem<'_>) {
         // handled in `visit_item` above
     }
 }

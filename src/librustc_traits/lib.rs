@@ -1,7 +1,7 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![deny(rust_2018_idioms)]
+//#![deny(rust_2018_idioms)]
 #![deny(internal)]
 #![deny(unused_lifetimes)]
 

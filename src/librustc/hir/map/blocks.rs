@@ -35,19 +35,19 @@ pub struct FnLikeNode<'a> { node: Node<'a> }
 /// corresponds to some FnLikeNode.
 trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 
-impl MaybeFnLike for ast::Item {
+impl MaybeFnLike for ast::Item<'_> {
     fn is_fn_like(&self) -> bool {
         match self.node { ast::ItemKind::Fn(..) => true, _ => false, }
     }
 }
 
-impl MaybeFnLike for ast::ImplItem {
+impl MaybeFnLike for ast::ImplItem<'_> {
     fn is_fn_like(&self) -> bool {
         match self.node { ast::ImplItemKind::Method(..) => true, _ => false, }
     }
 }
 
-impl MaybeFnLike for ast::TraitItem {
+impl MaybeFnLike for ast::TraitItem<'_> {
     fn is_fn_like(&self) -> bool {
         match self.node {
             ast::TraitItemKind::Method(_, ast::TraitMethod::Provided(_)) => true,
@@ -56,7 +56,7 @@ impl MaybeFnLike for ast::TraitItem {
     }
 }
 
-impl MaybeFnLike for ast::Expr {
+impl MaybeFnLike for ast::Expr<'_> {
     fn is_fn_like(&self) -> bool {
         match self.node {
             ast::ExprKind::Closure(..) => true,
@@ -71,7 +71,7 @@ impl MaybeFnLike for ast::Expr {
 #[derive(Copy, Clone)]
 pub enum Code<'a> {
     FnLike(FnLikeNode<'a>),
-    Expr(&'a Expr),
+    Expr(&'a Expr<'a>),
 }
 
 impl<'a> Code<'a> {
@@ -99,10 +99,10 @@ impl<'a> Code<'a> {
 /// use when implementing FnLikeNode operations.
 struct ItemFnParts<'a> {
     ident:    Ident,
-    decl:     &'a ast::FnDecl,
+    decl:     &'a ast::FnDecl<'a>,
     header:   ast::FnHeader,
-    vis:      &'a ast::Visibility,
-    generics: &'a ast::Generics,
+    vis:      &'a ast::Visibility<'a>,
+    generics: &'a ast::Generics<'a>,
     body:     ast::BodyId,
     id:       ast::HirId,
     span:     Span,
@@ -112,7 +112,7 @@ struct ItemFnParts<'a> {
 /// These are all the components one can extract from a closure expr
 /// for use when implementing FnLikeNode operations.
 struct ClosureParts<'a> {
-    decl: &'a FnDecl,
+    decl: &'a FnDecl<'a>,
     body: ast::BodyId,
     id: ast::HirId,
     span: Span,
@@ -156,7 +156,7 @@ impl<'a> FnLikeNode<'a> {
                     |c: ClosureParts<'a>| c.body)
     }
 
-    pub fn decl(self) -> &'a FnDecl {
+    pub fn decl(self) -> &'a FnDecl<'a> {
         self.handle(|i: ItemFnParts<'a>| &*i.decl,
                     |_, _, sig: &'a ast::MethodSig, _, _, _, _| &sig.decl,
                     |c: ClosureParts<'a>| c.decl)
@@ -193,7 +193,7 @@ impl<'a> FnLikeNode<'a> {
         let closure = |c: ClosureParts<'a>| {
             FnKind::Closure(c.attrs)
         };
-        let method = |_, ident: Ident, sig: &'a ast::MethodSig, vis, _, _, attrs| {
+        let method = |_, ident: Ident, sig: &'a ast::MethodSig<'a>, vis, _, _, attrs| {
             FnKind::Method(ident, sig, vis, attrs)
         };
         self.handle(item, method, closure)
@@ -203,8 +203,8 @@ impl<'a> FnLikeNode<'a> {
         I: FnOnce(ItemFnParts<'a>) -> A,
         M: FnOnce(ast::HirId,
                   Ident,
-                  &'a ast::MethodSig,
-                  Option<&'a ast::Visibility>,
+                  &'a ast::MethodSig<'a>,
+                  Option<&'a ast::Visibility<'a>>,
                   ast::BodyId,
                   Span,
                   &'a [Attribute])

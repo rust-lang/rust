@@ -185,7 +185,7 @@ pub enum ExprKind<'tcx> {
         arms: Vec<Arm<'tcx>>,
     },
     Block {
-        body: &'tcx hir::Block,
+        body: &'tcx hir::Block<'tcx>,
     },
     Assign {
         lhs: ExprRef<'tcx>,
@@ -280,7 +280,7 @@ pub enum ExprKind<'tcx> {
 
 #[derive(Clone, Debug)]
 pub enum ExprRef<'tcx> {
-    Hair(&'tcx hir::Expr),
+    Hair(&'tcx hir::Expr<'tcx>),
     Mirror(Box<Expr<'tcx>>),
 }
 

@@ -26,8 +26,8 @@ struct GatherMoveInfo<'c, 'tcx: 'c> {
 /// Represents the kind of pattern
 #[derive(Debug, Clone, Copy)]
 pub enum PatternSource<'tcx> {
-    MatchExpr(&'tcx Expr),
-    LetDecl(&'tcx Local),
+    MatchExpr(&'tcx Expr<'tcx>),
+    LetDecl(&'tcx Local<'tcx>),
     Other,
 }
 

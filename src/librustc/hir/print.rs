@@ -6,7 +6,6 @@ use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self, PrintState};
-use syntax::ptr::P;
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -14,6 +13,7 @@ use syntax_pos::{self, BytePos, FileName};
 use crate::hir;
 use crate::hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
 use crate::hir::{GenericParam, GenericParamKind, GenericArg};
+use hir::ptr::P;
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -22,11 +22,11 @@ use std::vec;
 
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
-    Block(&'a hir::Block),
-    Item(&'a hir::Item),
+    Block(&'a hir::Block<'a>),
+    Item(&'a hir::Item<'a>),
     SubItem(hir::HirId),
-    Expr(&'a hir::Expr),
-    Pat(&'a hir::Pat),
+    Expr(&'a hir::Expr<'a>),
+    Pat(&'a hir::Pat<'a>),
 }
 
 pub enum Nested {
@@ -56,7 +56,7 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate {
+impl PpAnn for hir::Crate<'_> {
     fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item> {
         Some(self.item(item))
     }
@@ -930,7 +930,7 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.ident,
                                            Some(bounds),
-                                           default.as_ref().map(|ty| &**ty))?;
+                                           default.as_ref().map(|ty| &***ty))?;
             }
         }
         self.ann.post(self, AnnNode::SubItem(ti.hir_id))
@@ -991,7 +991,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(st.span.lo())?;
         match st.node {
             hir::StmtKind::Local(ref loc) => {
-                self.print_local(loc.init.deref(), |this| this.print_local_decl(&loc))?;
+                self.print_local(loc.init.map(|e| &**e), |this| this.print_local_decl(&loc))?;
             }
             hir::StmtKind::Item(item) => {
                 self.ann.nested(self, Nested::Item(item))?

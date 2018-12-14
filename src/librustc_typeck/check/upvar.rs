@@ -80,7 +80,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         closure_hir_id: hir::HirId,
         span: Span,
-        body: &hir::Body,
+        body: &hir::Body<'tcx>,
         capture_clause: hir::CaptureClause,
     ) {
         /*!

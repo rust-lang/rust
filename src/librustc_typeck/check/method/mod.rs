@@ -177,10 +177,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_method(
         &self,
         self_ty: Ty<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'tcx>,
         span: Span,
-        call_expr: &'tcx hir::Expr,
-        self_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        self_expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.ident,
@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        call_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
         let mode = probe::Mode::MethodCall;

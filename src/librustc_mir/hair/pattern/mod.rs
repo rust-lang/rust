@@ -19,6 +19,7 @@ use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::{VariantIdx, Size};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
+use rustc::hir::ptr::P;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -26,7 +27,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
         tables: &'a ty::TypeckTables<'tcx>,
-        pat: &'tcx hir::Pat,
+        pat: &'tcx hir::Pat<'tcx>,
     ) -> Self {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
@@ -367,7 +367,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
+    pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pattern<'tcx> {
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -407,7 +407,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     fn lower_range_expr(
         &mut self,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
     ) -> (PatternKind<'tcx>, Option<Ascription<'tcx>>) {
         match self.lower_lit(expr) {
             PatternKind::AscribeUserType {
@@ -418,7 +418,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
+    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pattern<'tcx> {
         let mut ty = self.tables.node_type(pat.hir_id);
 
         let kind = match pat.node {
@@ -652,12 +652,14 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [P<hir::Pat>]) -> Vec<Pattern<'tcx>> {
+    fn lower_patterns(&mut self, pats: &'tcx [P<'tcx, hir::Pat<'tcx>>]) -> Vec<Pattern<'tcx>> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pattern<'tcx>>
-    {
+    fn lower_opt_pattern(
+        &mut self,
+        pat: &'tcx Option<P<'tcx, hir::Pat<'tcx>>>
+    ) -> Option<Pattern<'tcx>> {
         pat.as_ref().map(|p| self.lower_pattern(p))
     }
 
@@ -699,9 +701,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         &mut self,
         span: Span,
         ty: Ty<'tcx>,
-        prefix: &'tcx [P<hir::Pat>],
-        slice: &'tcx Option<P<hir::Pat>>,
-        suffix: &'tcx [P<hir::Pat>])
+        prefix: &'tcx [P<'tcx, hir::Pat<'tcx>>],
+        slice: &'tcx Option<P<'tcx, hir::Pat<'tcx>>>,
+        suffix: &'tcx [P<'tcx, hir::Pat<'tcx>>])
         -> PatternKind<'tcx>
     {
         let prefix = self.lower_patterns(prefix);
@@ -808,7 +810,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
     /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     fn lower_path(&mut self,
-                  qpath: &hir::QPath,
+                  qpath: &hir::QPath<'tcx>,
                   id: hir::HirId,
                   span: Span)
                   -> Pattern<'tcx> {
@@ -895,7 +897,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     /// The special case for negation exists to allow things like `-128_i8`
     /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
-    fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
+    fn lower_lit(&mut self, expr: &'tcx hir::Expr<'tcx>) -> PatternKind<'tcx> {
         match expr.node {
             hir::ExprKind::Lit(ref lit) => {
                 let ty = self.tables.expr_ty(expr);

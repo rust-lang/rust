@@ -13,8 +13,8 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,
     hir_map: &'a hir::map::Map<'tcx>,
-    found_local_pattern: Option<&'tcx Pat>,
-    found_arg_pattern: Option<&'tcx Pat>,
+    found_local_pattern: Option<&'tcx Pat<'tcx>>,
+    found_arg_pattern: Option<&'tcx Pat<'tcx>>,
     found_ty: Option<Ty<'tcx>>,
 }
 

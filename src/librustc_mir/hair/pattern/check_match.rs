@@ -17,13 +17,13 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
+use rustc::hir::ptr::P;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
 use smallvec::smallvec;
 use std::slice;
 
-use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
 pub(crate) fn check_match<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
@@ -61,7 +61,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'_>) {
         intravisit::walk_expr(self, ex);
 
         match ex.node {
@@ -72,7 +72,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_local(&mut self, loc: &'tcx hir::Local) {
+    fn visit_local(&mut self, loc: &'tcx hir::Local<'_>) {
         intravisit::walk_local(self, loc);
 
         self.check_irrefutable(&loc.pat, match loc.source {
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         self.check_patterns(false, slice::from_ref(&loc.pat));
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'_>) {
         intravisit::walk_body(self, body);
 
         for arg in &body.arguments {
@@ -130,7 +130,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
-    fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
+    fn check_patterns(&self, has_guard: bool, pats: &[P<'_, Pat<'_>>]) {
         check_legality_of_move_bindings(self, has_guard, pats);
         for pat in pats {
             check_legality_of_bindings_in_at_patterns(self, pat);
@@ -139,8 +139,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
     fn check_match(
         &self,
-        scrut: &hir::Expr,
-        arms: &'tcx [hir::Arm],
+        scrut: &hir::Expr<'_>,
+        arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource)
     {
         for arm in arms {
@@ -175,10 +175,10 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                         patcx.report_inlining_errors(pat.span);
                         have_errors = true;
                     }
-                    (pattern, &**pat)
+                    (pattern, &***pat)
                 }).collect(),
                 arm.guard.as_ref().map(|g| match g {
-                    hir::Guard::If(ref e) => &**e,
+                    hir::Guard::If(ref e) => &***e,
                 })
             )).collect();
 
@@ -260,7 +260,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         })
     }
 
-    fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
+    fn check_irrefutable(&self, pat: &'tcx Pat<'_>, origin: &str) {
         let module = self.tcx.hir().get_module_parent_by_hir_id(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
@@ -308,7 +308,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 }
 
-fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
+fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_>) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, ident, None) = p.node {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
@@ -344,7 +344,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
 }
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
-fn pat_is_catchall(pat: &Pat) -> bool {
+fn pat_is_catchall(pat: &Pat<'_>) -> bool {
     match pat.node {
         PatKind::Binding(.., None) => true,
         PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
@@ -357,11 +357,10 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms<'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    arms: &[(Vec<(&'a Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
-    source: hir::MatchSource,
-) {
+fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                        arms: &[(Vec<(&'a Pattern<'tcx>, &hir::Pat<'_>)>, Option<&hir::Expr<'_>>)],
+                        source: hir::MatchSource)
+{
     let mut seen = Matrix::empty();
     let mut catchall = None;
     for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
@@ -544,11 +543,9 @@ fn maybe_point_at_variant(
 }
 
 // Legality of move bindings checking
-fn check_legality_of_move_bindings(
-    cx: &MatchVisitor<'_, '_>,
-    has_guard: bool,
-    pats: &[P<Pat>],
-) {
+fn check_legality_of_move_bindings(cx: &MatchVisitor<'_, '_>,
+                                   has_guard: bool,
+                                   pats: &[P<'_, Pat<'_>>]) {
     let mut by_ref_span = None;
     for pat in pats {
         pat.each_binding(|_, hir_id, span, _path| {
@@ -562,7 +559,7 @@ fn check_legality_of_move_bindings(
         })
     }
     let span_vec = &mut Vec::new();
-    let check_move = |p: &Pat, sub: Option<&Pat>, span_vec: &mut Vec<Span>| {
+    let check_move = |p: &Pat<'_>, sub: Option<&Pat<'_>>, span_vec: &mut Vec<Span>| {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
@@ -593,7 +590,7 @@ fn check_legality_of_move_bindings(
                         ty::BindByValue(..) => {
                             let pat_ty = cx.tables.node_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                                check_move(p, sub.as_ref().map(|p| &**p), span_vec);
+                                check_move(p, sub.as_ref().map(|p| &***p), span_vec);
                             }
                         }
                         _ => {}
@@ -626,7 +623,7 @@ fn check_legality_of_move_bindings(
 /// Ensures that a pattern guard doesn't borrow by mutable reference or assign.
 //
 // FIXME: this should be done by borrowck.
-fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
+fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard<'_>) {
     let mut checker = MutationChecker {
         cx,
     };
@@ -647,9 +644,9 @@ struct MutationChecker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: euv::MatchMode) {}
+    fn matched_pat(&mut self, _: &Pat<'_>, _: &cmt_<'_>, _: euv::MatchMode) {}
     fn consume(&mut self, _: hir::HirId, _: Span, _: &cmt_<'_>, _: ConsumeMode) {}
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: ConsumeMode) {}
+    fn consume_pat(&mut self, _: &Pat<'_>, _: &cmt_<'_>, _: ConsumeMode) {}
     fn borrow(&mut self,
               _: hir::HirId,
               span: Span,
@@ -687,7 +684,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
 /// Forbids bindings in `@` patterns. This is necessary for memory safety,
 /// because of the way rvalues are handled in the borrow check. (See issue
 /// #14587.)
-fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
+fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_>) {
     AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 
@@ -701,7 +698,7 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_pat(&mut self, pat: &Pat) {
+    fn visit_pat(&mut self, pat: &Pat<'v>) {
         match pat.node {
             PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {

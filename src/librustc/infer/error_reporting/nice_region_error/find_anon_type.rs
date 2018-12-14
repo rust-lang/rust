@@ -25,7 +25,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         region: Region<'tcx>,
         br: &ty::BoundRegion,
-    ) -> Option<(&hir::Ty, &hir::FnDecl)> {
+    ) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnDecl<'tcx>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx().hir().as_local_node_id(def_id) {
@@ -50,7 +50,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     .iter()
                     .filter_map(|arg| self.find_component_for_bound_region(arg, br))
                     .next()
-                    .map(|ty| (ty, &**fndecl));
+                    .map(|ty| (ty, &***fndecl));
             }
         }
         None
@@ -62,7 +62,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         arg: &'tcx hir::Ty,
         br: &ty::BoundRegion,
-    ) -> Option<(&'tcx hir::Ty)> {
+    ) -> Option<(&'tcx hir::Ty<'tcx>)> {
         let mut nested_visitor = FindNestedTypeVisitor {
             tcx: self.tcx(),
             bound_region: *br,
@@ -88,7 +88,7 @@ struct FindNestedTypeVisitor<'tcx> {
     bound_region: ty::BoundRegion,
     // The type where the anonymous lifetime appears
     // for e.g., Vec<`&u8`> and <`&u8`>
-    found_type: Option<&'tcx hir::Ty>,
+    found_type: Option<&'tcx hir::Ty<'tcx>>,
     current_index: ty::DebruijnIndex,
 }
 

@@ -1,14 +1,14 @@
 use crate::hair::*;
 
 use rustc::hir;
-use syntax::ptr::P;
+use rustc::hir::ptr::P;
 
 pub trait ToRef {
     type Output;
     fn to_ref(self) -> Self::Output;
 }
 
-impl<'a, 'tcx: 'a> ToRef for &'tcx hir::Expr {
+impl<'a, 'tcx: 'a> ToRef for &'tcx hir::Expr<'tcx> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -16,7 +16,7 @@ impl<'a, 'tcx: 'a> ToRef for &'tcx hir::Expr {
     }
 }
 
-impl<'a, 'tcx: 'a> ToRef for &'tcx P<hir::Expr> {
+impl<'a, 'tcx: 'a> ToRef for &'tcx P<'tcx, hir::Expr<'tcx>> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -52,7 +52,7 @@ impl<'a, 'tcx: 'a, T, U> ToRef for &'tcx Vec<T>
     }
 }
 
-impl<'a, 'tcx: 'a, T, U> ToRef for &'tcx P<[T]>
+impl<'a, 'tcx: 'a, T, U> ToRef for &'tcx P<'tcx, [T]>
     where &'tcx T: ToRef<Output = U>
 {
     type Output = Vec<U>;

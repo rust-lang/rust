@@ -1,4 +1,4 @@
-#![deny(rust_2018_idioms)]
+//#![deny(rust_2018_idioms)]
 #![deny(internal)]
 #![deny(unused_lifetimes)]
 
@@ -24,6 +24,7 @@
 
 #![recursion_limit="256"]
 
+extern crate arena;
 extern crate getopts;
 extern crate env_logger;
 extern crate rustc;

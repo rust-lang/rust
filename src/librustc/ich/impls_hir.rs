@@ -136,7 +136,7 @@ impl_stable_hash_for!(struct ast::Label {
     ident
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -153,20 +153,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
     }
 }
 
-impl_stable_hash_for_spanned!(hir::FieldPat);
+impl_stable_hash_for_spanned!(for<'hir> hir::FieldPat<'hir>);
 
 impl_stable_hash_for_spanned!(hir::BinOpKind);
 
-impl_stable_hash_for!(struct hir::Stmt {
-    hir_id,
-    node,
-    span,
-});
-
+impl_stable_hash_for_spanned!(for<'hir> hir::StmtKind<'hir>);
 
 impl_stable_hash_for_spanned!(ast::Name);
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -194,7 +189,7 @@ impl_stable_hash_for!(struct ast::Ident {
     span,
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -218,7 +213,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
 }
 
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -250,7 +245,7 @@ impl_stable_hash_for!(enum ::syntax::ast::CrateSugar {
     PubCrate,
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -273,9 +268,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
     }
 }
 
-impl_stable_hash_for_spanned!(hir::VisibilityKind);
+impl_stable_hash_for_spanned!(for<'hir> hir::VisibilityKind<'hir>);
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -304,10 +299,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
     }
 }
 
-impl_stable_hash_for_spanned!(hir::VariantKind);
+impl_stable_hash_for_spanned!(for<'hir> hir::VariantKind<'hir>);
 
-
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Item<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -330,7 +324,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Body {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {

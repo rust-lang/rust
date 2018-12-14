@@ -515,7 +515,12 @@ fn should_abort_on_panic<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: DefId, abi: Abi) ->
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Pat>, Option<ImplicitSelfKind>);
+struct ArgInfo<'tcx>(
+    Ty<'tcx>,
+    Option<Span>,
+    Option<&'tcx hir::Pat<'tcx>>,
+    Option<ImplicitSelfKind>
+);
 
 fn construct_fn<'a, 'tcx, A>(
     hir: Cx<'a, 'tcx>,
@@ -526,7 +531,7 @@ fn construct_fn<'a, 'tcx, A>(
     return_ty: Ty<'tcx>,
     yield_ty: Option<Ty<'tcx>>,
     return_ty_span: Span,
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
 ) -> Body<'tcx>
 where
     A: Iterator<Item=ArgInfo<'tcx>>
@@ -775,7 +780,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                      mut block: BasicBlock,
                      arguments: &[ArgInfo<'tcx>],
                      argument_scope: region::Scope,
-                     ast_body: &'tcx hir::Expr)
+                     ast_body: &'tcx hir::Expr<'_>)
                      -> BlockAnd<()>
     {
         // Allocate locals for the function arguments

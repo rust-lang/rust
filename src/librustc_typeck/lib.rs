@@ -71,7 +71,7 @@ This API is completely unstable and subject to change.
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
+//#![deny(rust_2018_idioms)]
 #![deny(internal)]
 #![deny(unused_lifetimes)]
 #![allow(explicit_outlives_requirements)]
@@ -376,7 +376,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
 /// the type from a HIR node.
-pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
+pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
@@ -389,7 +389,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
 
 pub fn hir_trait_to_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_trait: &hir::TraitRef,
+    hir_trait: &hir::TraitRef<'tcx>,
 ) -> (ty::PolyTraitRef<'tcx>, Bounds<'tcx>) {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in

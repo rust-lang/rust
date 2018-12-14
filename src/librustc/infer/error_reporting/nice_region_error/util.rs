@@ -12,7 +12,7 @@ use syntax_pos::Span;
 #[derive(Debug)]
 pub(super) struct AnonymousArgInfo<'tcx> {
     // the argument corresponding to the anonymous region
-    pub arg: &'tcx hir::Arg,
+    pub arg: &'tcx hir::Arg<'tcx>,
     // the type corresponding to the anonymopus region argument
     pub arg_ty: Ty<'tcx>,
     // the ty::BoundRegion corresponding to the anonymous region

@@ -1,9 +1,9 @@
 use crate::cfg::*;
 use crate::middle::region;
 use rustc_data_structures::graph::implementation as graph;
-use syntax::ptr::P;
 use crate::ty::{self, TyCtxt};
 
+use crate::hir::ptr::P;
 use crate::hir::{self, PatKind};
 use crate::hir::def_id::DefId;
 
@@ -66,7 +66,7 @@ pub fn construct<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body) -> CFG {
 }
 
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
-    fn block(&mut self, blk: &hir::Block, pred: CFGIndex) -> CFGIndex {
+    fn block(&mut self, blk: &hir::Block<'_>, pred: CFGIndex) -> CFGIndex {
         if blk.targeted_by_break {
             let expr_exit = self.add_ast_node(blk.hir_id.local_id, &[]);
 
@@ -97,7 +97,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
+    fn stmt(&mut self, stmt: &hir::Stmt<'_>, pred: CFGIndex) -> CFGIndex {
         let exit = match stmt.node {
             hir::StmtKind::Local(ref local) => {
                 let init_exit = self.opt_expr(&local.init, pred);
@@ -114,7 +114,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         self.add_ast_node(stmt.hir_id.local_id, &[exit])
     }
 
-    fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
+    fn pat(&mut self, pat: &hir::Pat<'_>, pred: CFGIndex) -> CFGIndex {
         match pat.node {
             PatKind::Binding(.., None) |
             PatKind::Path(_) |
@@ -149,16 +149,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn pats_all<'b, I: Iterator<Item=&'b P<hir::Pat>>>(
-        &mut self,
-        pats: I,
-        pred: CFGIndex
-    ) -> CFGIndex {
+    fn pats_all<'b, 'h: 'b, I: Iterator<Item=&'b P<'h, hir::Pat<'h>>>>(&mut self,
+                                          pats: I,
+                                          pred: CFGIndex) -> CFGIndex {
         //! Handles case where all of the patterns must match.
         pats.fold(pred, |pred, pat| self.pat(&pat, pred))
     }
 
-    fn expr(&mut self, expr: &hir::Expr, pred: CFGIndex) -> CFGIndex {
+    fn expr(&mut self, expr: &hir::Expr<'_>, pred: CFGIndex) -> CFGIndex {
         match expr.node {
             hir::ExprKind::Block(ref blk, _) => {
                 let blk_exit = self.block(&blk, pred);
@@ -297,7 +295,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprKind::Index(ref l, ref r) |
             hir::ExprKind::Binary(_, ref l, ref r) if self.tables.is_method_call(expr) => {
-                self.call(expr, pred, &l, Some(&**r).into_iter())
+                self.call(expr, pred, &l, Some(&***r).into_iter())
             }
 
             hir::ExprKind::Unary(_, ref e) if self.tables.is_method_call(expr) => {
@@ -309,18 +307,18 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprKind::Struct(_, ref fields, ref base) => {
-                let field_cfg = self.straightline(expr, pred, fields.iter().map(|f| &*f.expr));
+                let field_cfg = self.straightline(expr, pred, fields.iter().map(|f| &**f.expr));
                 self.opt_expr(base, field_cfg)
             }
 
             hir::ExprKind::Assign(ref l, ref r) |
             hir::ExprKind::AssignOp(_, ref l, ref r) => {
-                self.straightline(expr, pred, [r, l].iter().map(|&e| &**e))
+                self.straightline(expr, pred, [r, l].iter().map(|&e| &***e))
             }
 
             hir::ExprKind::Index(ref l, ref r) |
             hir::ExprKind::Binary(_, ref l, ref r) => { // N.B., && and || handled earlier
-                self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
+                self.straightline(expr, pred, [l, r].iter().map(|&e| &***e))
             }
 
             hir::ExprKind::Box(ref e) |
@@ -332,7 +330,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ExprKind::Field(ref e, _) |
             hir::ExprKind::Yield(ref e) |
             hir::ExprKind::Repeat(ref e, _) => {
-                self.straightline(expr, pred, Some(&**e).into_iter())
+                self.straightline(expr, pred, Some(&***e).into_iter())
             }
 
             hir::ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
@@ -350,10 +348,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn call<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
-            call_expr: &hir::Expr,
+    fn call<'b, 'h: 'b, I: Iterator<Item=&'b hir::Expr<'h>>>(&mut self,
+            call_expr: &hir::Expr<'_>,
             pred: CFGIndex,
-            func_or_rcvr: &hir::Expr,
+            func_or_rcvr: &hir::Expr<'_>,
             args: I) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
@@ -365,7 +363,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn exprs<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
+    fn exprs<'b, 'h: 'b, I: Iterator<Item=&'b hir::Expr<'h>>>(&mut self,
                                              exprs: I,
                                              pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `exprs` evaluated in order
@@ -373,14 +371,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn opt_expr(&mut self,
-                opt_expr: &Option<P<hir::Expr>>,
+                opt_expr: &Option<P<'_, hir::Expr<'_>>>,
                 pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `opt_expr` evaluated, if Some
         opt_expr.iter().fold(pred, |p, e| self.expr(&e, p))
     }
 
-    fn straightline<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
-                    expr: &hir::Expr,
+    fn straightline<'b, 'h: 'b, I: Iterator<Item=&'b hir::Expr<'h>>>(&mut self,
+                    expr: &hir::Expr<'_>,
                     pred: CFGIndex,
                     subexprs: I) -> CFGIndex {
         //! Handles case of an expression that evaluates `subexprs` in order
@@ -389,8 +387,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         self.add_ast_node(expr.hir_id.local_id, &[subexprs_exit])
     }
 
-    fn match_(&mut self, id: hir::ItemLocalId, discr: &hir::Expr,
-              arms: &[hir::Arm], pred: CFGIndex) -> CFGIndex {
+    fn match_(&mut self, id: hir::ItemLocalId, discr: &hir::Expr<'_>,
+              arms: &[hir::Arm<'_>], pred: CFGIndex) -> CFGIndex {
         // The CFG for match expression is quite complex, so no ASCII
         // art for it (yet).
         //
@@ -495,7 +493,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn add_exiting_edge(&mut self,
-                        from_expr: &hir::Expr,
+                        from_expr: &hir::Expr<'_>,
                         from_index: CFGIndex,
                         target_scope: region::Scope,
                         to_index: CFGIndex) {
@@ -513,7 +511,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn add_returning_edge(&mut self,
-                          _from_expr: &hir::Expr,
+                          _from_expr: &hir::Expr<'_>,
                           from_index: CFGIndex) {
         let data = CFGEdgeData {
             exiting_scopes: self.loop_scopes.iter()
@@ -525,7 +523,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn find_scope_edge(&self,
-                  expr: &hir::Expr,
+                  expr: &hir::Expr<'_>,
                   destination: hir::Destination,
                   scope_cf_kind: ScopeCfKind) -> (region::Scope, CFGIndex) {
 

@@ -548,10 +548,10 @@ fn configure_and_expand_inner<'a>(
     Ok((krate, resolver))
 }
 
-fn lower_ast_to_hir(
-    tcx: TyCtxt<'_>,
+fn lower_ast_to_hir<'tcx>(
+    tcx: TyCtxt<'tcx>,
     _: (),
-) -> Result<&'_ hir::LoweredHir> {
+) -> Result<&'tcx hir::LoweredHir<'tcx>> {
     tcx.prepare_outputs(())?;
 
     let sess = tcx.sess;
@@ -566,6 +566,7 @@ fn lower_ast_to_hir(
             let hir_crate = lower_crate(
                 sess,
                 tcx.cstore,
+                &tcx.arena,
                 &tcx.dep_graph,
                 &tcx.ast_crate.borrow(),
                 resolver,
@@ -954,6 +955,8 @@ pub fn create_global_ctxt(
         if sess.opts.debugging_opts.query_stats {
             gcx.queries.print_stats();
         }
+
+        // FIXME: ^ ensure this is called. Won't happen if the generator is dropped
     });
 
     result

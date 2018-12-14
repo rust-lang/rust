@@ -17,8 +17,8 @@ use crate::middle::region;
 use crate::ty::{self, DefIdTree, TyCtxt, adjustment};
 
 use crate::hir::{self, PatKind};
+use hir::ptr::P;
 use std::rc::Rc;
-use syntax::ptr::P;
 use syntax_pos::Span;
 use crate::util::nodemap::ItemLocalSet;
 
@@ -308,7 +308,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn consume_body(&mut self, body: &hir::Body) {
+    pub fn consume_body(&mut self, body: &hir::Body<'tcx>) {
         debug!("consume_body(body={:?})", body);
 
         for arg in &body.arguments {
@@ -348,13 +348,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
-    fn consume_exprs(&mut self, exprs: &[hir::Expr]) {
+    fn consume_exprs(&mut self, exprs: &[hir::Expr<'_>]) {
         for expr in exprs {
             self.consume_expr(&expr);
         }
     }
 
-    pub fn consume_expr(&mut self, expr: &hir::Expr) {
+    pub fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
         debug!("consume_expr(expr={:?})", expr);
 
         let cmt = return_if_err!(self.mc.cat_expr(expr));
@@ -364,8 +364,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn mutate_expr(&mut self,
                    span: Span,
-                   assignment_expr: &hir::Expr,
-                   expr: &hir::Expr,
+                   assignment_expr: &hir::Expr<'_>,
+                   expr: &hir::Expr<'_>,
                    mode: MutateMode) {
         let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.mutate(assignment_expr.hir_id, span, &cmt, mode);
@@ -373,7 +373,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn borrow_expr(&mut self,
-                   expr: &hir::Expr,
+                   expr: &hir::Expr<'_>,
                    r: ty::Region<'tcx>,
                    bk: ty::BorrowKind,
                    cause: LoanCause) {
@@ -386,11 +386,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.walk_expr(expr)
     }
 
-    fn select_from_expr(&mut self, expr: &hir::Expr) {
+    fn select_from_expr(&mut self, expr: &hir::Expr<'_>) {
         self.walk_expr(expr)
     }
 
-    pub fn walk_expr(&mut self, expr: &hir::Expr) {
+    pub fn walk_expr(&mut self, expr: &hir::Expr<'_>) {
         debug!("walk_expr(expr={:?})", expr);
 
         self.walk_adjustment(expr);
@@ -552,7 +552,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_callee(&mut self, call: &hir::Expr, callee: &hir::Expr) {
+    fn walk_callee(&mut self, call: &hir::Expr<'_>, callee: &hir::Expr<'_>) {
         let callee_ty = return_if_err!(self.mc.expr_ty_adjusted(callee));
         debug!("walk_callee: callee={:?} callee_ty={:?}",
                callee, callee_ty);
@@ -592,7 +592,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_stmt(&mut self, stmt: &hir::Stmt) {
+    fn walk_stmt(&mut self, stmt: &hir::Stmt<'_>) {
         match stmt.node {
             hir::StmtKind::Local(ref local) => {
                 self.walk_local(&local);
@@ -610,7 +610,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_local(&mut self, local: &hir::Local) {
+    fn walk_local(&mut self, local: &hir::Local<'_>) {
         match local.init {
             None => {
                 local.pat.each_binding(|_, hir_id, span, _| {
@@ -632,7 +632,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
     /// depending on its type.
-    fn walk_block(&mut self, blk: &hir::Block) {
+    fn walk_block(&mut self, blk: &hir::Block<'_>) {
         debug!("walk_block(blk.hir_id={})", blk.hir_id);
 
         for stmt in &blk.stmts {
@@ -645,15 +645,15 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_struct_expr(&mut self,
-                        fields: &[hir::Field],
-                        opt_with: &Option<P<hir::Expr>>) {
+                        fields: &[hir::Field<'_>],
+                        opt_with: &Option<P<hir::Expr<'_>>>) {
         // Consume the expressions supplying values for each field.
         for field in fields {
             self.consume_expr(&field.expr);
         }
 
         let with_expr = match *opt_with {
-            Some(ref w) => &**w,
+            Some(ref w) => &***w,
             None => { return; }
         };
 
@@ -701,7 +701,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     // Invoke the appropriate delegate calls for anything that gets
     // consumed or borrowed as part of the automatic adjustment
     // process.
-    fn walk_adjustment(&mut self, expr: &hir::Expr) {
+    fn walk_adjustment(&mut self, expr: &hir::Expr<'_>) {
         let adjustments = self.mc.tables.expr_adjustments(expr);
         let mut cmt = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
@@ -738,7 +738,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// `expr`. `cmt_base` is the mem-categorized form of `expr`
     /// after all relevant autoderefs have occurred.
     fn walk_autoref(&mut self,
-                    expr: &hir::Expr,
+                    expr: &hir::Expr<'_>,
                     cmt_base: &mc::cmt_<'tcx>,
                     autoref: &adjustment::AutoBorrow<'tcx>) {
         debug!("walk_autoref(expr.hir_id={} cmt_base={:?} autoref={:?})",
@@ -780,7 +780,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm) -> TrackMatchMode {
+    fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm<'_>) -> TrackMatchMode {
         let mut mode = Unknown;
         for pat in &arm.pats {
             self.determine_pat_move_mode(discr_cmt.clone(), &pat, &mut mode);
@@ -788,7 +788,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         mode
     }
 
-    fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm, mode: MatchMode) {
+    fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm<'_>, mode: MatchMode) {
         for pat in &arm.pats {
             self.walk_pat(discr_cmt.clone(), &pat, mode);
         }
@@ -802,7 +802,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
-    fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
+    fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat<'_>) {
         let mut mode = Unknown;
         self.determine_pat_move_mode(cmt_discr.clone(), pat, &mut mode);
         let mode = mode.match_mode();
@@ -814,7 +814,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// copy, or borrow.
     fn determine_pat_move_mode(&mut self,
                                cmt_discr: mc::cmt<'tcx>,
-                               pat: &hir::Pat,
+                               pat: &hir::Pat<'_>,
                                mode: &mut TrackMatchMode) {
         debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr, pat);
 
@@ -840,7 +840,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// The core driver for walking a pattern; `match_mode` must be
     /// established up front, e.g., via `determine_pat_move_mode` (see
     /// also `walk_irrefutable_pat` for patterns that stand alone).
-    fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat, match_mode: MatchMode) {
+    fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat<'_>, match_mode: MatchMode) {
         debug!("walk_pat(cmt_discr={:?}, pat={:?})", cmt_discr, pat);
 
         let tcx = self.tcx();
@@ -927,7 +927,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }));
     }
 
-    fn walk_captures(&mut self, closure_expr: &hir::Expr, fn_decl_span: Span) {
+    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>, fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);

@@ -10,7 +10,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn ast_block(&mut self,
                      destination: &Place<'tcx>,
                      block: BasicBlock,
-                     ast_block: &'tcx hir::Block,
+                     ast_block: &'tcx hir::Block<'_>,
                      source_info: SourceInfo)
                      -> BlockAnd<()> {
         let Block {

@@ -191,6 +191,7 @@ impl<'tcx> CtxtInterners<'tcx> {
 
 pub struct Common<'tcx> {
     pub empty_predicates: ty::GenericPredicates<'tcx>,
+    pub empty_generic_args: hir::GenericArgs<'tcx>,
 }
 
 pub struct CommonTypes<'tcx> {
@@ -1060,7 +1061,7 @@ pub struct GlobalCtxt<'tcx> {
     /// librustc_resolve, so it cannot be used here.
     pub boxed_resolver: Steal<OneThread<Box<dyn Any>>>,
 
-    lowered_hir: AtomicOnce<&'tcx hir::LoweredHir>,
+    lowered_hir: AtomicOnce<&'tcx hir::LoweredHir<'tcx>>,
     hir_map: AtomicOnce<&'tcx hir_map::Map<'tcx>>,
 
     pub queries: query::Queries<'tcx>,
@@ -1113,12 +1114,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn global_arena(self) -> &'tcx SyncDroplessArena {
+        &self.gcx.global_interners.arena
+    }
+
     pub fn def_path_hash_to_def_id(self) -> Option<&'tcx FxHashMap<DefPathHash, DefId>> {
         self.lowered_hir().def_path_hash_to_def_id.as_ref()
     }
 
     #[inline(always)]
-    pub fn lowered_hir(self) -> &'tcx hir::LoweredHir {
+    pub fn lowered_hir(self) -> &'tcx hir::LoweredHir<'tcx> {
         self.lowered_hir.get_or_init(|| {
             // FIXME: The ignore here is only sound because all queries
             // used to compute LoweredHir are eval_always
@@ -1237,6 +1243,11 @@ impl<'tcx> TyCtxt<'tcx> {
             empty_predicates: ty::GenericPredicates {
                 parent: None,
                 predicates: vec![],
+            },
+            empty_generic_args: hir::GenericArgs {
+                args: hir::ptr::P::default(),
+                bindings: hir::ptr::P::default(),
+                parenthesized: false,
             },
         };
         let common_types = CommonTypes::new(&interners);

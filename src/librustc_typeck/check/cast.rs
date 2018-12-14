@@ -48,7 +48,7 @@ use crate::util::common::ErrorReported;
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 pub struct CastCheck<'tcx> {
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
     expr_ty: Ty<'tcx>,
     cast_ty: Ty<'tcx>,
     cast_span: Span,

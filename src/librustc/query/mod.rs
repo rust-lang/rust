@@ -37,7 +37,7 @@ rustc_queries! {
             desc { "preparing outputs" }
         }
 
-        query lower_ast_to_hir(_: ()) -> Result<&'tcx hir::LoweredHir, ErrorReported> {
+        query lower_ast_to_hir(_: ()) -> Result<&'tcx hir::LoweredHir<'tcx>, ErrorReported> {
             no_hash
             eval_always
             desc { "lowering AST to HIR" }

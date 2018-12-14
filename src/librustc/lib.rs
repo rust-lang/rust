@@ -28,9 +28,9 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![deny(rust_2018_idioms)]
 #![deny(internal)]
-#![deny(unused_lifetimes)]
+// FIXME: Enable
+//#![deny(unused_lifetimes)]
 #![allow(explicit_outlives_requirements)]
 
 #![feature(arbitrary_self_types)]

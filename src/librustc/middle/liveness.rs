@@ -111,13 +111,13 @@ use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
-use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
 use crate::hir;
 use crate::hir::{Expr, HirId};
 use crate::hir::def_id::DefId;
+use crate::hir::ptr::P;
 use crate::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 
 /// For use with `propagate_through_loop`.
@@ -125,7 +125,7 @@ enum LoopKind<'a> {
     /// An endless `loop` loop.
     LoopLoop,
     /// A `while` loop, with the given expression as condition.
-    WhileLoop(&'a Expr),
+    WhileLoop(&'a Expr<'a>),
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -976,7 +976,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if blk.targeted_by_break {
             self.break_ln.insert(blk.hir_id, succ);
         }
-        let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
+        let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &***e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
             self.propagate_through_stmt(stmt, succ)
         })
@@ -1000,7 +1000,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // initialization, which is mildly more complex than checking
                 // once at the func header but otherwise equivalent.
 
-                let succ = self.propagate_through_opt_expr(local.init.as_ref().map(|e| &**e), succ);
+                let succ = self.propagate_through_opt_expr(
+                    local.init.as_ref().map(|e| &***e),
+                    succ,
+                );
                 self.define_bindings_in_pat(&local.pat, succ)
             }
             hir::StmtKind::Item(..) => succ,
@@ -1087,14 +1090,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
                     let guard_succ = self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
+                        arm.guard.as_ref().map(|hir::Guard::If(e)| &***e),
                         body_succ
                     );
                     // only consider the first pattern; any later patterns must have
                     // the same bindings, and we also consider the first pattern to be
                     // the "authoritative" set of ids
                     let arm_succ =
-                        self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
+                        self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &***p),
                                                          guard_succ);
                     self.merge_from_succ(ln, arm_succ, first_merge);
                     first_merge = false;
@@ -1105,7 +1108,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Ret(ref o_e) => {
                 // ignore succ and subst exit_ln:
                 let exit_ln = self.s.exit_ln;
-                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
+                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &***e), exit_ln)
             }
 
             hir::ExprKind::Break(label, ref opt_expr) => {
@@ -1119,7 +1122,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // look it up in the break loop nodes table
 
                 match target {
-                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &***e), b),
                     None => span_bug!(expr.span, "break to unknown label")
                 }
             }
@@ -1164,7 +1167,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
-                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
+                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &***e), succ);
                 fields.iter().rev().fold(succ, |succ, field| {
                     self.propagate_through_expr(&field.expr, succ)
                 })

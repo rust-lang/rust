@@ -65,11 +65,17 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
             // FIXME: `with_scope` requires the `NodeId` of a module.
             let node_id = cx.tcx.hir().hir_to_node_id(id);
-            let result = cx.enter_resolver(|resolver| {
-                resolver.with_scope(node_id, |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns == ValueNS)
+            let result = cx.enter_resolver(|resolver| resolver.with_scope(
+                node_id,
+                |resolver| {
+                    resolver.resolve_str_path_error(
+                        &cx.tcx.arena,
+                        DUMMY_SP,
+                        &path_str,
+                        ns == ValueNS,
+                    )
                 })
-            });
+            );
 
             if let Ok(result) = result {
                 // In case this is a trait item, skip the
@@ -130,7 +136,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // FIXME: `with_scope` requires the `NodeId` of a module.
             let node_id = cx.tcx.hir().hir_to_node_id(id);
             let ty = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path, false)
+                    resolver.resolve_str_path_error(
+                        &cx.tcx.arena,
+                        DUMMY_SP,
+                        &path,
+                        false
+                    )
             }))?;
             match ty.res {
                 Res::Def(DefKind::Struct, did)

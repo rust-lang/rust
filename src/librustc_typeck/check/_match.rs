@@ -4,6 +4,7 @@ use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, PatKind, Pat, ExprKind};
 use rustc::hir::def::{Res, DefKind, CtorKind};
+use rustc::hir::ptr::P;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -12,7 +13,6 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
 use syntax::ast;
 use syntax::source_map::Spanned;
-use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 use syntax_pos::hygiene::CompilerDesugaringKind;
@@ -784,8 +784,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     fn if_fallback_coercion(
         &self,
         span: Span,
-        then_expr: &'tcx hir::Expr,
-        coercion: &mut CoerceMany<'tcx, '_, rustc::hir::Arm>,
+        then_expr: &'tcx hir::Expr<'tcx>,
+        coercion: &mut CoerceMany<'tcx, '_, rustc::hir::Arm<'tcx>>,
     ) {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
@@ -1022,9 +1022,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     fn check_pat_struct(
         &self,
-        pat: &'tcx hir::Pat,
-        qpath: &hir::QPath,
-        fields: &'tcx [Spanned<hir::FieldPat>],
+        pat: &'tcx hir::Pat<'tcx>,
+        qpath: &hir::QPath<'tcx>,
+        fields: &'tcx [Spanned<hir::FieldPat<'tcx>>],
         etc: bool,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
@@ -1055,9 +1055,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     fn check_pat_path(
         &self,
-        pat: &hir::Pat,
-        path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment]),
-        qpath: &hir::QPath,
+        pat: &hir::Pat<'tcx>,
+        path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'tcx>]),
+        qpath: &hir::QPath<'tcx>,
         expected: Ty<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
@@ -1088,9 +1088,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     fn check_pat_tuple_struct(
         &self,
-        pat: &hir::Pat,
-        qpath: &hir::QPath,
-        subpats: &'tcx [P<hir::Pat>],
+        pat: &hir::Pat<'tcx>,
+        qpath: &hir::QPath<'tcx>,
+        subpats: &'tcx [P<'tcx, hir::Pat<'tcx>>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,

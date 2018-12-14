@@ -20,8 +20,9 @@ use GenericParameters::*;
 use RibKind::*;
 use smallvec::smallvec;
 
+use rustc::arena::Arena;
 use rustc::hir::map::{Definitions, DefCollector};
-use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
+use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str, HirVec};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
@@ -1751,23 +1752,25 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
 
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
-impl<'a> hir::lowering::Resolver for Resolver<'a> {
+impl<'a, 'hir> hir::lowering::Resolver<'hir> for Resolver<'a> {
     fn resolve_hir_path(
         &mut self,
+        arena: &'hir Arena<'hir>,
         path: &ast::Path,
         is_value: bool,
-    ) -> hir::Path {
-        self.resolve_hir_path_cb(path, is_value,
+    ) -> hir::Path<'hir> {
+        self.resolve_hir_path_cb(arena, path, is_value,
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
 
     fn resolve_str_path(
         &mut self,
+        arena: &'hir Arena<'hir>,
         span: Span,
         crate_root: Option<Symbol>,
         components: &[Symbol],
         is_value: bool
-    ) -> hir::Path {
+    ) -> hir::Path<'hir> {
         let root = if crate_root.is_some() {
             kw::PathRoot
         } else {
@@ -1785,7 +1788,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             segments,
         };
 
-        self.resolve_hir_path(&path, is_value)
+        self.resolve_hir_path(arena, &path, is_value)
     }
 
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
@@ -1810,8 +1813,13 @@ impl<'a> Resolver<'a> {
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
-    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
-        -> Result<hir::Path, ()> {
+    pub fn resolve_str_path_error<'hir>(
+        &mut self,
+        arena: &'hir Arena<'hir>,
+        span: Span,
+        path_str: &str,
+        is_value: bool
+    ) -> Result<hir::Path<'hir>, ()> {
         let mut errored = false;
 
         let path = if path_str.starts_with("::") {
@@ -1834,7 +1842,7 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let path = self.resolve_hir_path_cb(&path, is_value, |_, _, _| errored = true);
+        let path = self.resolve_hir_path_cb(arena, &path, is_value, |_, _, _| errored = true);
         if errored || path.res == def::Res::Err {
             Err(())
         } else {
@@ -1843,12 +1851,13 @@ impl<'a> Resolver<'a> {
     }
 
     /// Like `resolve_hir_path`, but takes a callback in case there was an error.
-    fn resolve_hir_path_cb<F>(
+    fn resolve_hir_path_cb<'hir, F>(
         &mut self,
+        arena: &'hir Arena<'hir>,
         path: &ast::Path,
         is_value: bool,
         error_callback: F,
-    ) -> hir::Path
+    ) -> hir::Path<'hir>
         where F: for<'c, 'b> FnOnce(&'c mut Resolver<'_>, Span, ResolutionError<'b>)
     {
         let namespace = if is_value { ValueNS } else { TypeNS };
@@ -1889,7 +1898,7 @@ impl<'a> Resolver<'a> {
         hir::Path {
             span,
             res: res.map_id(|_| panic!("unexpected node_id")),
-            segments: segments.into(),
+            segments: HirVec::from_iter(arena, segments),
         }
     }
 

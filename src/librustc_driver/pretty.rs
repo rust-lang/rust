@@ -190,7 +190,7 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, F>(&self, tcx: TyCtxt<'tcx>, f: F) -> A
     where
-        F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A,
+        F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate<'_>) -> A,
     {
         match *self {
             PpmNormal => {

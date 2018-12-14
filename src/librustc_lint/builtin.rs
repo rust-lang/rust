@@ -65,7 +65,7 @@ declare_lint! {
 declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
         if let hir::ExprKind::While(ref cond, ..) = e.node {
             if let hir::ExprKind::Lit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
@@ -107,7 +107,7 @@ impl BoxPointers {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         match it.node {
             hir::ItemKind::Fn(..) |
             hir::ItemKind::Ty(..) |
@@ -134,7 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
         let ty = cx.tables.node_type(e.hir_id);
         self.check_heap_type(cx, e.span, ty);
     }
@@ -149,7 +149,7 @@ declare_lint! {
 declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
-    fn check_pat(&mut self, cx: &LateContext<'_, '_>, pat: &hir::Pat) {
+    fn check_pat(&mut self, cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>) {
         if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.node {
             let variant = cx.tables.pat_ty(pat).ty_adt_def()
                                    .expect("struct pattern type is not an ADT")
@@ -368,7 +368,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, krate: &hir::Crate) {
+    fn check_crate(&mut self, cx: &LateContext<'_, '_>, krate: &hir::Crate<'_>) {
         self.check_missing_docs_attrs(cx, None, &krate.attrs, krate.span, "crate");
 
         for macro_def in &krate.exported_macros {
@@ -381,7 +381,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         let desc = match it.node {
             hir::ItemKind::Fn(..) => "a function",
             hir::ItemKind::Mod(..) => "a module",
@@ -426,7 +426,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, desc);
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, trait_item: &hir::TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, trait_item: &hir::TraitItem<'_>) {
         if self.private_traits.contains(&trait_item.hir_id) {
             return;
         }
@@ -444,7 +444,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                                       desc);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
         if method_context(cx, impl_item.hir_id) == MethodLateContext::TraitImpl {
             return;
@@ -463,7 +463,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                                       desc);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, sf: &hir::StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, sf: &hir::StructField<'_>) {
         if !sf.is_positional() {
             self.check_missing_docs_attrs(cx,
                                           Some(sf.hir_id),
@@ -473,7 +473,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant, _: &hir::Generics) {
+    fn check_variant(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        v: &hir::Variant,
+        _: &hir::Generics<'_>
+    ) {
         self.check_missing_docs_attrs(cx,
                                       Some(v.node.id),
                                       &v.node.attrs,
@@ -491,7 +496,7 @@ declare_lint! {
 declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         if !cx.access_levels.is_reachable(item.hir_id) {
             return;
         }
@@ -549,7 +554,7 @@ pub struct MissingDebugImplementations {
 impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         if !cx.access_levels.is_reachable(item.hir_id) {
             return;
         }
@@ -781,7 +786,7 @@ declare_lint! {
 declare_lint_pass!(PluginAsLibrary => [PLUGIN_AS_LIBRARY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if cx.tcx.plugin_registrar_fn(LOCAL_CRATE).is_some() {
             // We're compiling a plugin; it's fine to link other plugins.
             return;
@@ -826,7 +831,7 @@ declare_lint! {
 declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GENERIC_ITEMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         match it.node {
             hir::ItemKind::Fn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
@@ -891,7 +896,7 @@ declare_lint! {
 declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
 
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
@@ -908,7 +913,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
 
         fn get_transmute_from_to<'a, 'tcx>
             (cx: &LateContext<'a, 'tcx>,
-             expr: &hir::Expr)
+             expr: &hir::Expr<'_>)
              -> Option<(Ty<'tcx>, Ty<'tcx>)> {
             let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
                 cx.tables.qpath_res(qpath, expr.hir_id)
@@ -969,7 +974,7 @@ declare_lint_pass!(
 );
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
-    fn check_item(&mut self, ctx: &LateContext<'_, '_>, item: &hir::Item) {
+    fn check_item(&mut self, ctx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         if let hir::ItemKind::Union(ref vdata, _) = item.node {
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(
@@ -999,7 +1004,7 @@ declare_lint_pass!(
 
 impl UnreachablePub {
     fn perform_lint(&self, cx: &LateContext<'_, '_>, what: &str, id: hir::HirId,
-                    vis: &hir::Visibility, span: Span, exportable: bool) {
+                    vis: &hir::Visibility<'_>, span: Span, exportable: bool) {
         let mut applicability = Applicability::MachineApplicable;
         match vis.node {
             hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
@@ -1032,20 +1037,24 @@ impl UnreachablePub {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         self.perform_lint(cx, "item", item.hir_id, &item.vis, item.span, true);
     }
 
-    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, foreign_item: &hir::ForeignItem) {
+    fn check_foreign_item(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        foreign_item: &hir::ForeignItem<'_>
+    ) {
         self.perform_lint(cx, "item", foreign_item.hir_id, &foreign_item.vis,
                           foreign_item.span, true);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField<'_>) {
         self.perform_lint(cx, "field", field.hir_id, &field.vis, field.span, false);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem<'_>) {
         self.perform_lint(cx, "item", impl_item.hir_id, &impl_item.vis, impl_item.span, false);
     }
 }
@@ -1064,7 +1073,7 @@ declare_lint_pass!(
 );
 
 impl TypeAliasBounds {
-    fn is_type_variable_assoc(qpath: &hir::QPath) -> bool {
+    fn is_type_variable_assoc(qpath: &hir::QPath<'_>) -> bool {
         match *qpath {
             hir::QPath::TypeRelative(ref ty, _) => {
                 // If this is a type variable, we found a `T::Assoc`.
@@ -1082,7 +1091,7 @@ impl TypeAliasBounds {
         }
     }
 
-    fn suggest_changing_assoc_types(ty: &hir::Ty, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound.  Let's see if this type does that.
 
@@ -1097,7 +1106,7 @@ impl TypeAliasBounds {
                 intravisit::NestedVisitorMap::None
             }
 
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: hir::HirId, span: Span) {
+            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'_>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span,
                         "use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to \
@@ -1114,7 +1123,7 @@ impl TypeAliasBounds {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         let (ty, type_alias_generics) = match item.node {
             hir::ItemKind::Ty(ref ty, ref generics) => (&*ty, generics),
             _ => return,
@@ -1181,7 +1190,7 @@ fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         match it.node {
             hir::ItemKind::Const(_, body_id) => {
                 check_const(cx, body_id);
@@ -1210,7 +1219,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     fn check_item(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
-        item: &'tcx hir::Item,
+        item: &'tcx hir::Item<'_>,
     ) {
         use rustc::ty::fold::TypeFoldable;
         use rustc::ty::Predicate::*;
@@ -1371,7 +1380,7 @@ impl UnnameableTestItems {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if self.items_nameable {
             if let hir::ItemKind::Mod(..) = it.node {}
             else {
@@ -1390,7 +1399,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
         }
     }
 
-    fn check_item_post(&mut self, _cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item_post(&mut self, _cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if !self.items_nameable && self.boundary == it.hir_id {
             self.items_nameable = true;
         }
@@ -1499,7 +1508,7 @@ impl ExplicitOutlivesRequirements {
         cx: &LateContext<'_, '_>,
         item_def_id: DefId,
         param_name: &str,
-        bounds: &hir::GenericBounds,
+        bounds: &hir::GenericBounds<'_>,
         infer_static: bool
     ) -> Vec<(usize, Span)> {
         // For lack of a more elegant strategy for comparing the `ty::Predicate`s
@@ -1551,7 +1560,7 @@ impl ExplicitOutlivesRequirements {
     fn consolidate_outlives_bound_spans(
         &self,
         lo: Span,
-        bounds: &hir::GenericBounds,
+        bounds: &hir::GenericBounds<'_>,
         bound_spans: Vec<(usize, Span)>
     ) -> Vec<Span> {
         if bounds.is_empty() {
@@ -1606,7 +1615,7 @@ impl ExplicitOutlivesRequirements {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
         let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         if let hir::ItemKind::Struct(_, ref generics) = item.node {

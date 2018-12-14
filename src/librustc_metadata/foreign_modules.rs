@@ -18,7 +18,7 @@ struct Collector<'tcx> {
 }
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
-    fn visit_item(&mut self, it: &'tcx hir::Item) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'_>) {
         let fm = match it.node {
             hir::ItemKind::ForeignMod(ref fm) => fm,
             _ => return,
@@ -33,6 +33,6 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
         });
     }
 
-    fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem) {}
-    fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem) {}
+    fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'_>) {}
+    fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'_>) {}
 }

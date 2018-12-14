@@ -184,7 +184,7 @@ pub fn check_loans<'a, 'tcx>(
     dfcx_loans: &LoanDataFlow<'tcx>,
     move_data: &move_data::FlowedMoveData<'tcx>,
     all_loans: &[Loan<'tcx>],
-    body: &hir::Body,
+    body: &hir::Body<'tcx>,
 ) {
     debug!("check_loans(body id={})", body.value.hir_id);
 

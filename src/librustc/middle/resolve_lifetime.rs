@@ -8,6 +8,7 @@
 use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
+use crate::hir::ptr::P;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
 use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
@@ -21,7 +22,6 @@ use std::cell::Cell;
 use std::mem::replace;
 use syntax::ast;
 use syntax::attr;
-use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
@@ -456,7 +456,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.node {
             hir::ItemKind::Fn(ref decl, _, ref generics, _) => {
                 self.visit_early_late(None, decl, generics, |this| {
@@ -538,7 +538,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.node {
             hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
                 self.visit_early_late(None, decl, generics, |this| {
@@ -554,7 +554,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         debug!("visit_ty: id={:?} ty={:?}", ty.hir_id, ty);
         match ty.node {
             hir::TyKind::BareFn(ref c) => {
@@ -764,7 +764,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         use self::hir::TraitItemKind::*;
         match trait_item.node {
             Method(ref sig, _) => {
@@ -816,7 +816,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         use self::hir::ImplItemKind::*;
         match impl_item.node {
             Method(ref sig, _) => {
@@ -908,7 +908,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         self.resolve_lifetime_ref(lifetime_ref);
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
             if let Some(ref args) = segment.args {
@@ -917,15 +917,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl) {
+    fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
         let output = match fd.output {
             hir::DefaultReturn(_) => None,
-            hir::Return(ref ty) => Some(&**ty),
+            hir::Return(ref ty) => Some(&***ty),
         };
         self.visit_fn_like_elision(&fd.inputs, output);
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
         for param in &generics.params {
             match param.kind {

@@ -168,6 +168,19 @@ macro_rules! impl_stable_hash_for {
 
 #[macro_export]
 macro_rules! impl_stable_hash_for_spanned {
+    (for<$($lt:lifetime),*> $T:path) => (
+        impl<'a, 'tcx $(, $lt)*> HashStable<StableHashingContext<'a>>
+            for ::syntax::source_map::Spanned<$T>
+        {
+            #[inline]
+            fn hash_stable<W: StableHasherResult>(&self,
+                                                  hcx: &mut StableHashingContext<'a>,
+                                                  hasher: &mut StableHasher<W>) {
+                self.node.hash_stable(hcx, hasher);
+                self.span.hash_stable(hcx, hasher);
+            }
+        }
+    );
     ($T:path) => (
 
         impl HashStable<StableHashingContext<'a>> for ::syntax::source_map::Spanned<$T>

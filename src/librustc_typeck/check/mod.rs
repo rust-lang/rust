@@ -92,6 +92,7 @@ use rustc::hir::def::{CtorOf, CtorKind, Res, DefKind};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::ptr::P;
 use crate::middle::lang_items;
 use crate::namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, InferResult};
@@ -121,7 +122,6 @@ use syntax_pos::hygiene::CompilerDesugaringKind;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::ptr::P;
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{Symbol, LocalInternedString, kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -759,7 +759,7 @@ fn adt_destructor<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<ty::Destruct
 fn primary_body_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)> {
+) -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl<'tcx>>)> {
     match tcx.hir().get_by_hir_id(id) {
         Node::Item(item) => {
             match item.node {
@@ -2471,13 +2471,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                            .register_bound(self, self.param_env, ty, def_id, cause);
     }
 
-    pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_t: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let t = AstConv::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
         t
     }
 
-    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
@@ -3344,10 +3344,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Checks a method call.
     fn check_method_call(
         &self,
-        expr: &'tcx hir::Expr,
-        segment: &hir::PathSegment,
+        expr: &'tcx hir::Expr<'tcx>,
+        segment: &hir::PathSegment<'tcx>,
         span: Span,
-        args: &'tcx [hir::Expr],
+        args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
         needs: Needs,
     ) -> Ty<'tcx> {
@@ -3794,8 +3794,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_struct_fields_on_error(
         &self,
-        fields: &'tcx [hir::Field],
-        base_expr: &'tcx Option<P<hir::Expr>>,
+        fields: &'tcx [hir::Field<'tcx>],
+        base_expr: &'tcx Option<P<'tcx, hir::Expr<'tcx>>>,
     ) {
         for field in fields {
             self.check_expr(&field.expr);
@@ -3806,7 +3806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                             qpath: &QPath,
+                             qpath: &QPath<'tcx>,
                              hir_id: hir::HirId)
                              -> Option<(&'tcx ty::VariantDef,  Ty<'tcx>)> {
         let path_span = match *qpath {
@@ -3863,14 +3863,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_struct(
-        &self,
-        expr: &hir::Expr,
-        expected: Expectation<'tcx>,
-        qpath: &QPath,
-        fields: &'tcx [hir::Field],
-        base_expr: &'tcx Option<P<hir::Expr>>,
-    ) -> Ty<'tcx> {
+    fn check_expr_struct(&self,
+                         expr: &hir::Expr<'tcx>,
+                         expected: Expectation<'tcx>,
+                         qpath: &QPath<'tcx>,
+                         fields: &'tcx [hir::Field<'tcx>],
+                         base_expr: &'tcx Option<P<'tcx, hir::Expr<'tcx>>>) -> Ty<'tcx>
+    {
         // Find the relevant variant
         let (variant, adt_ty) =
             if let Some(variant_ty) = self.check_struct_path(qpath, expr.hir_id) {
@@ -4702,7 +4701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(&self,
-                                    qpath: &QPath,
+                                    qpath: &QPath<'tcx>,
                                     path_span: Span,
                                     hir_id: hir::HirId)
                                     -> (Res, Ty<'tcx>)
@@ -4744,10 +4743,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Resolves associated value path into a base type and associated constant or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_res_ufcs<'b>(&self,
-                                       qpath: &'b QPath,
+                                       qpath: &'b QPath<'tcx>,
                                        hir_id: hir::HirId,
                                        span: Span)
-                                       -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment])
+                                       -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'tcx>])
     {
         debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
         let (ty, qself, item_segment) = match *qpath {
@@ -5039,13 +5038,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
-    fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(hir::FnDecl, ast::Ident)> {
+    fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(hir::FnDecl<'tcx>, ast::Ident)> {
         let parent = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_item(blk_id));
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node<'_>) -> Option<(hir::FnDecl, ast::Ident, bool)> {
+    fn get_node_fn_decl<'hir>(
+        &self,
+        node: Node<'hir>
+    ) -> Option<(hir::FnDecl<'hir>, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident, node: hir::ItemKind::Fn(ref decl, ..), ..
@@ -5071,7 +5073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a `HirId`, return the `FnDecl` of the method it is enclosed by and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(hir::FnDecl, bool)> {
+    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(hir::FnDecl<'tcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
@@ -5088,7 +5090,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
-        expression: &'tcx hir::Expr,
+        expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         cause_span: Span,
@@ -5212,7 +5214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_return_type(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
-        fn_decl: &hir::FnDecl,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
@@ -5349,7 +5351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
-                                  segments: &[hir::PathSegment],
+                                  segments: &[hir::PathSegment<'tcx>],
                                   self_ty: Option<Ty<'tcx>>,
                                   res: Res,
                                   span: Span,

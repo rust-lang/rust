@@ -743,8 +743,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 #[derive(Copy, Clone)]
 pub enum SelfSource<'a> {
-    QPath(&'a hir::Ty),
-    MethodCall(&'a hir::Expr /* rcvr */),
+    QPath(&'a hir::Ty<'a>),
+    MethodCall(&'a hir::Expr<'a> /* rcvr */),
 }
 
 #[derive(Copy, Clone)]

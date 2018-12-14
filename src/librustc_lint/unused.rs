@@ -37,7 +37,7 @@ declare_lint! {
 declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
         let expr = match s.node {
             hir::StmtKind::Semi(ref expr) => &**expr,
             _ => return,
@@ -226,7 +226,7 @@ declare_lint! {
 declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(ref expr) = s.node {
             if let hir::ExprKind::Path(_) = expr.node {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
@@ -520,7 +520,7 @@ declare_lint! {
 declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
         match e.node {
             hir::ExprKind::Box(_) => {}
             _ => return,
