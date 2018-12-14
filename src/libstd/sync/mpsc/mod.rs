@@ -1311,12 +1311,13 @@ impl<T> Receiver<T> {
         // Do an optimistic try_recv to avoid the performance impact of
         // Instant::now() in the full-channel case.
         match self.try_recv() {
-            Ok(result)
-                => Ok(result),
-            Err(TryRecvError::Disconnected)
-                => Err(RecvTimeoutError::Disconnected),
-            Err(TryRecvError::Empty)
-                => self.recv_deadline(Instant::now() + timeout)
+            Ok(result) => Ok(result),
+            Err(TryRecvError::Disconnected) => Err(RecvTimeoutError::Disconnected),
+            Err(TryRecvError::Empty) => match Instant::now().checked_add(timeout) {
+                Some(deadline) => self.recv_deadline(deadline),
+                // So far in the future that it's practically the same as waiting indefinitely.
+                None => self.recv().map_err(RecvTimeoutError::from),
+            },
         }
     }
 
@@ -2299,6 +2300,17 @@ mod tests {
         }
 
         assert_eq!(recv_count, stress);
+    }
+
+    #[test]
+    fn very_long_recv_timeout_wont_panic() {
+        let (tx, rx) = channel::<()>();
+        let join_handle = thread::spawn(move || {
+            rx.recv_timeout(Duration::from_secs(u64::max_value()))
+        });
+        thread::sleep(Duration::from_secs(1));
+        assert!(tx.send(()).is_ok());
+        assert_eq!(join_handle.join().unwrap(), Ok(()));
     }
 
     #[test]
