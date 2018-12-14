@@ -116,6 +116,7 @@ fn detect_features() -> cache::Initializer {
 
         enable(proc_info_ecx, 0, Feature::sse3);
         enable(proc_info_ecx, 9, Feature::ssse3);
+        enable(proc_info_ecx, 13, Feature::cmpxchg16b);
         enable(proc_info_ecx, 19, Feature::sse4_1);
         enable(proc_info_ecx, 20, Feature::sse4_2);
         enable(proc_info_ecx, 23, Feature::popcnt);
@@ -288,6 +289,7 @@ mod tests {
         println!("xsaveopt: {:?}", is_x86_feature_detected!("xsaveopt"));
         println!("xsaves: {:?}", is_x86_feature_detected!("xsaves"));
         println!("xsavec: {:?}", is_x86_feature_detected!("xsavec"));
+        println!("cmpxchg16b: {:?}", is_x86_feature_detected!("cmpxchg16b"));
     }
 
     #[test]
@@ -343,6 +345,10 @@ mod tests {
         assert_eq!(
             is_x86_feature_detected!("xsaves"),
             information.xsaves_xrstors_and_ia32_xss()
+        );
+        assert_eq!(
+            is_x86_feature_detected!("cmpxchg16b"),
+            information.cmpxchg16b(),
         );
     }
 }

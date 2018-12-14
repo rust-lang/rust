@@ -38,3 +38,6 @@ pub use self::bswap::*;
 
 mod rdrand;
 pub use self::rdrand::*;
+
+mod cmpxchg16b;
+pub use self::cmpxchg16b::*;

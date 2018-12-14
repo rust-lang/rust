@@ -37,7 +37,9 @@ static I8: Type = Type::PrimSigned(8);
 static U16: Type = Type::PrimUnsigned(16);
 static U32: Type = Type::PrimUnsigned(32);
 static U64: Type = Type::PrimUnsigned(64);
+static U128: Type = Type::PrimUnsigned(128);
 static U8: Type = Type::PrimUnsigned(8);
+static ORDERING: Type = Type::Ordering;
 
 static M64: Type = Type::M64;
 static M128: Type = Type::M128;
@@ -75,6 +77,7 @@ enum Type {
     Tuple,
     CpuidResult,
     Never,
+    Ordering,
 }
 
 stdsimd_verify::x86_functions!(static FUNCTIONS);
@@ -145,6 +148,8 @@ fn verify_all_signatures() {
             "__cpuid_count" |
             "__cpuid" |
             "__get_cpuid_max" |
+            // Not listed with intel, but manually verified
+            "cmpxchg16b" |
             // The UD2 intrinsic is not defined by Intel, but it was agreed on
             // in the RFC Issue 2512:
             // https://github.com/rust-lang/rfcs/issues/2512

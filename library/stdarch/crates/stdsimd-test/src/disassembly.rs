@@ -101,7 +101,9 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
                 .skip_while(|s| {
                     s.len() == expected_len
                         && usize::from_str_radix(s, 16).is_ok()
-                }).map(|s| s.to_string())
+                })
+                .skip_while(|s| *s == "lock") // skip x86-specific prefix
+                .map(|s| s.to_string())
                 .collect::<Vec<String>>();
             instructions.push(Instruction { parts });
         }
@@ -198,6 +200,7 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
                 .skip_while(|s| {
                     s.len() == 2 && usize::from_str_radix(s, 16).is_ok()
                 }).map(|s| s.to_string())
+                .skip_while(|s| *s == "lock") // skip x86-specific prefix
                 .collect::<Vec<String>>();
             instructions.push(Instruction { parts });
         }

@@ -124,7 +124,9 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "u16" => quote! { &U16 },
             "u32" => quote! { &U32 },
             "u64" => quote! { &U64 },
+            "u128" => quote! { &U128 },
             "u8" => quote! { &U8 },
+            "Ordering" => quote! { &ORDERING },
             "CpuidResult" => quote! { &CPUID },
 
             // arm ...
