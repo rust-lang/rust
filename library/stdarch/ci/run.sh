@@ -6,7 +6,6 @@ set -ex
 
 # Tests are all super fast anyway, and they fault often enough on travis that
 # having only one thread increases debuggability to be worth it.
-export RUST_TEST_THREADS=1
 #export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
 
@@ -46,6 +45,13 @@ cargo_test() {
         cmd="$cmd -p coresimd -p stdsimd"
     fi
     cmd="$cmd -- $2"
+    if [ "$NORUN" != "1" ]
+    then
+      if [ "$TARGET" != "wasm32-unknown-unknown" ]
+      then
+        cmd="$cmd --quiet"
+      fi
+    fi
     $cmd
 }
 

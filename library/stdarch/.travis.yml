@@ -112,6 +112,15 @@ matrix:
     # FIXME: https://github.com/rust-lang/rust/issues/56153
     - env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
     - env: TARGET=i686-pc-windows-gnu
+    # FIXME https://github.com/rust-lang/libc/issues/1170
+    - name: "x86_64-linux-android - no assert_instr"
+    - name: "arm-linux-androideabi - no assert_instr"
+    - name: "aarch64-linux-android - no assert_instr"
+    # clippy changes enough from time to time that it breaks relatively
+    # regularly
+    - name: "clippy"
+    # qemu seems to intermittently segfault...
+    - name: "powerpc-unknown-linux-gnu - no assert_instr"
 
 install: travis_retry rustup target add $TARGET
 script:
