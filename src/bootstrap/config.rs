@@ -92,6 +92,8 @@ pub struct Config {
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
 
+    pub gdb_enabled: bool,
+
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
@@ -320,6 +322,7 @@ struct Rust {
     wasm_syscall: Option<bool>,
     lld: Option<bool>,
     lldb: Option<bool>,
+    build_gdb: Option<bool>,
     llvm_tools: Option<bool>,
     deny_warnings: Option<bool>,
     backtrace_on_ice: Option<bool>,
@@ -552,6 +555,7 @@ impl Config {
             set(&mut config.wasm_syscall, rust.wasm_syscall);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.lldb_enabled, rust.lldb);
+            set(&mut config.gdb_enabled, rust.build_gdb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();

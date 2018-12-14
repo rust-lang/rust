@@ -35,6 +35,11 @@ use crate::tool::{self, Tool};
 use crate::cache::{INTERNER, Interned};
 use time;
 
+#[cfg(unix)]
+use std::os::unix::fs::symlink as symlink_file;
+#[cfg(windows)]
+use std::os::windows::fs::symlink_file;
+
 pub fn pkgname(builder: &Builder, component: &str) -> String {
     if component == "cargo" {
         format!("{}-{}", component, builder.cargo_package_vers())
@@ -48,6 +53,8 @@ pub fn pkgname(builder: &Builder, component: &str) -> String {
         format!("{}-{}", component, builder.llvm_tools_package_vers())
     } else if component == "lldb" {
         format!("{}-{}", component, builder.lldb_package_vers())
+    } else if component == "gdb" {
+        format!("{}-{}", component, builder.gdb_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, builder.rust_package_vers())
@@ -1400,6 +1407,7 @@ impl Step for Extended {
         let llvm_tools_installer = builder.ensure(LlvmTools { stage, target });
         let clippy_installer = builder.ensure(Clippy { stage, target });
         let lldb_installer = builder.ensure(Lldb { target });
+        let gdb_installer = builder.ensure(Gdb { target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
             compiler: builder.compiler(stage, self.host),
@@ -1440,6 +1448,7 @@ impl Step for Extended {
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
         tarballs.extend(lldb_installer);
+        tarballs.extend(gdb_installer);
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if builder.config.docs {
@@ -1873,6 +1882,7 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
         cmd.arg(builder.llvm_tools_package_vers());
         cmd.arg(builder.lldb_package_vers());
+        cmd.arg(builder.gdb_package_vers());
         cmd.arg(addr);
 
         builder.create_dir(&distdir(builder));
@@ -2115,6 +2125,95 @@ impl Step for Lldb {
             .arg(format!("--package-name={}-{}", name, target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg("--component-name=lldb-preview");
+
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Gdb {
+    pub target: Interned<String>,
+}
+
+impl Step for Gdb {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.path("src/tools/gdb").default_condition(builder.config.gdb_enabled)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Gdb {
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
+        let target = self.target;
+
+        if builder.config.dry_run {
+            return None;
+        }
+
+        let gdb_install = builder.gdb_out(target).join("install");
+        let bindir = gdb_install.join("bin");
+        let gdb_exe = bindir.join(exe("gdb", &target));
+        if !gdb_exe.exists() {
+            return None;
+        }
+
+        builder.info(&format!("Dist Gdb ({})", target));
+        let src = builder.src.join("src/tools/gdb");
+        let name = pkgname(builder, "gdb");
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("gdb-image");
+        drop(fs::remove_dir_all(&image));
+
+        // Prepare the image directory
+        let root = image.join("lib/rustlib").join(&*target);
+        let dst = root.join("bin");
+        t!(fs::create_dir_all(&dst));
+        // Install gdb as real-gdb, and run-gdb as gdb.
+        let filename = bindir.join(exe("gdb", &target));
+        builder.copy(&filename, &dst.join(exe("real-gdb", &target)));
+        let filename = bindir.join(exe("run-gdb", &target));
+        builder.copy(&filename, &dst.join(exe("gdb", &target)));
+
+        // gdb "share" files.
+        let sharedir = gdb_install.join("share/gdb");
+        let dst = root.join("share/gdb");
+        t!(fs::create_dir_all(&dst));
+        builder.cp_r(&sharedir, &dst);
+
+        // We want to pick up the system auto-loads.
+        t!(symlink_file(&Path::new("/usr/share/gdb/auto-load"), &dst.join("auto-load")));
+
+        // Prepare the overlay
+        let overlay = tmp.join("gdb-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        builder.create_dir(&overlay);
+        builder.install(&src.join("COPYING3"), &overlay, 0o644);
+        builder.create(&overlay.join("version"), &builder.gdb_vers());
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=gdb-installed.")
+            .arg("--image-dir").arg(&image)
+            .arg("--work-dir").arg(&tmpdir(builder))
+            .arg("--output-dir").arg(&distdir(builder))
+            .arg("--non-installed-overlay").arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, target))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=gdb");
 
 
         builder.run(&mut cmd);

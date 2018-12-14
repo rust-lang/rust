@@ -16,10 +16,22 @@ set -e
 RUSTC_SYSROOT=`rustc --print=sysroot`
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 
+if [ -z "$RUST_GDB" ]; then
+    # Find the host triple so we can find lldb in rustlib.
+    host=`rustc -vV | sed -n -e 's/^host: //p'`
+    RUST_GDB=gdb
+    if [ -f "$RUSTC_SYSROOT/lib/rustlib/$host/bin/gdb" ]; then
+        bin="$RUSTC_SYSROOT/lib/rustlib/$host/bin"
+        # Pass the path to real-gdb to the wrapper.  This avoids
+        # having to modify PATH here, which might possibly be
+        # confusing inside gdb.
+        RUST_GDB="$bin/gdb $bin/real-gdb"
+    fi
+fi
+
 # Run GDB with the additional arguments that load the pretty printers
 # Set the environment variable `RUST_GDB` to overwrite the call to a
 # different/specific command (defaults to `gdb`).
-RUST_GDB="${RUST_GDB:-gdb}"
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" exec ${RUST_GDB} \
   --directory="$GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \

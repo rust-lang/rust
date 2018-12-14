@@ -473,6 +473,48 @@ impl Step for Lld {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Gdb {
+    pub target: Interned<String>,
+}
+
+impl Step for Gdb {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.path("src/tools/gdb").default_condition(builder.config.gdb_enabled)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Gdb {
+            target: run.target
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        if builder.config.dry_run {
+            return;
+        }
+
+        let root = builder.gdb_out(self.target);
+        let build = root.join("build");
+        let install = root.join("install");
+        let src = builder.src.join("src/tools/gdb");
+        t!(fs::create_dir_all(&build));
+        t!(fs::create_dir_all(&install));
+
+        let mut cmd = Command::new(&src.join("build-for-rust.sh"));
+        cmd.arg(&src)
+            .arg(&build)
+            .arg(&install);
+
+        builder.run(&mut cmd);
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
     pub target: Interned<String>,

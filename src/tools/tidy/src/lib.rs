@@ -70,6 +70,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/miri",
         "src/tools/lld",
         "src/tools/lldb",
+        "src/tools/gdb",
         "src/target",
         "src/stdsimd",
         "src/rust-sgx",

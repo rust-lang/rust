@@ -1111,8 +1111,14 @@ impl Step for Compiletest {
             cmd.arg("--lldb-python").arg(builder.python());
         }
 
+        // If config.toml specifies a gdb, use it; otherwise, if we
+        // built a gdb, prefer that.
         if let Some(ref gdb) = builder.config.gdb {
             cmd.arg("--gdb").arg(gdb);
+        } else if builder.config.gdb_enabled {
+            cmd.arg("--gdb").arg(builder.gdb_out(target).join("install/bin/gdb"));
+        } else {
+            cmd.arg("--gdb").arg("gdb");
         }
 
         let run = |cmd: &mut Command| {

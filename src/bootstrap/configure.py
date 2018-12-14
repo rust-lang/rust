@@ -70,6 +70,7 @@ o("emscripten", None, "compile the emscripten backend as well as LLVM")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
 o("lldb", "rust.lldb", "build lldb")
+o("gdb", "rust.build-gdb", "build gdb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 
 # Optimization and debugging options. These may be overridden by the release

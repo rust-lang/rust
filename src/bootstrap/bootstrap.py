@@ -723,6 +723,10 @@ class RustBuild(object):
                 config = self.get_toml('lldb')
                 if config is None or config == 'false':
                     continue
+            if module.endswith("gdb"):
+                config = self.get_toml('build-gdb')
+                if config is None or config == 'false':
+                    continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)

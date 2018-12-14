@@ -23,7 +23,13 @@ RUN yum upgrade -y && yum install -y \
       pkgconfig \
       wget \
       autoconf \
-      gettext
+      gettext \
+      xz-static \
+      xz-devel \
+      expat-static \
+      expat-devel \
+      ncurses-static \
+      ncurses-devel
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
@@ -95,6 +101,7 @@ ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
       --enable-full-tools \
+      --enable-gdb \
       --enable-sanitizers \
       --enable-profiler \
       --enable-compiler-docs \

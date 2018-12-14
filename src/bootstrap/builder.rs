@@ -363,6 +363,7 @@ impl<'a> Builder<'a> {
                 tool::Rustdoc,
                 tool::Clippy,
                 native::Llvm,
+                native::Gdb,
                 tool::Rustfmt,
                 tool::Miri,
                 native::Lld
@@ -461,6 +462,7 @@ impl<'a> Builder<'a> {
                 dist::Clippy,
                 dist::LlvmTools,
                 dist::Lldb,
+                dist::Gdb,
                 dist::Extended,
                 dist::HashSign
             ),

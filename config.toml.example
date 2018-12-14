@@ -383,6 +383,9 @@
 # This is only built if LLVM is also being built.
 #lldb = false
 
+# Indicates whether GDB will also be built.
+#build-gdb = false
+
 # Whether to deny warnings in crates
 #deny-warnings = true
 

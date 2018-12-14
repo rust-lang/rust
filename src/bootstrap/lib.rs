@@ -594,6 +594,11 @@ impl Build {
         self.out.join(&*target).join("lld")
     }
 
+    /// Output directory for gdb build.
+    fn gdb_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("gdb")
+    }
+
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: Interned<String>) -> PathBuf {
         self.out.join(&*target).join("doc")
@@ -1044,6 +1049,14 @@ impl Build {
     }
 
     fn lldb_vers(&self) -> String {
+        self.rust_version()
+    }
+
+    fn gdb_package_vers(&self) -> String {
+        self.package_vers(&self.rust_version())
+    }
+
+    fn gdb_vers(&self) -> String {
         self.rust_version()
     }
 

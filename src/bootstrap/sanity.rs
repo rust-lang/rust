@@ -126,8 +126,7 @@ pub fn check(build: &mut Build) {
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    build.config.gdb = build.config.gdb.take().map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("gdb"));
+    build.config.gdb = build.config.gdb.take().map(|p| cmd_finder.must_have(p));
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
