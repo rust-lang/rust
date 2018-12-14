@@ -365,6 +365,13 @@ pub mod parser {
     }
 }
 
+declare_lint! {
+    pub DEPRECATED_IN_FUTURE,
+    Allow,
+    "detects use of items that will be deprecated in a future version",
+    report_in_external_macro: true
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -427,6 +434,7 @@ impl LintPass for HardwiredLints {
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             parser::QUESTION_MARK_MACRO_SEP,
+            DEPRECATED_IN_FUTURE,
         )
     }
 }
