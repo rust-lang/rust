@@ -49,6 +49,7 @@ extern "platform-intrinsic" {
     pub fn simd_reduce_any<T>(x: T) -> bool;
 
     pub fn simd_select<M, T>(m: M, a: T, b: T) -> T;
+    pub fn simd_select_bitmask<M, T>(m: M, a: T, b: T) -> T;
 
     pub fn simd_fmin<T>(a: T, b: T) -> T;
     pub fn simd_fmax<T>(a: T, b: T) -> T;

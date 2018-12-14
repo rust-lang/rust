@@ -1,4 +1,5 @@
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 use coresimd::x86::*;
 use mem;
 
@@ -12,7 +13,11 @@ use stdsimd_test::assert_instr;
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vpabsd))]
 pub unsafe fn _mm512_abs_epi32(a: __m512i) -> __m512i {
-    mem::transmute(pabsd(a.as_i32x16(), _mm512_setzero_si512().as_i32x16(), -1))
+    let a = a.as_i32x16();
+    let zero: i32x16 = mem::zeroed();
+    let sub = simd_sub(zero, a);
+    let cmp: i32x16 = simd_gt(a, zero);
+    mem::transmute(simd_select(cmp, a, sub))
 }
 
 /// Compute the absolute value of packed 32-bit integers in `a`, and store the
@@ -24,7 +29,8 @@ pub unsafe fn _mm512_abs_epi32(a: __m512i) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vpabsd))]
 pub unsafe fn _mm512_mask_abs_epi32(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
-    mem::transmute(pabsd(a.as_i32x16(), src.as_i32x16(), k))
+    let abs = _mm512_abs_epi32(a).as_i32x16();
+    mem::transmute(simd_select_bitmask(k, abs, src.as_i32x16()))
 }
 
 /// Compute the absolute value of packed 32-bit integers in `a`, and store the
@@ -36,7 +42,9 @@ pub unsafe fn _mm512_mask_abs_epi32(src: __m512i, k: __mmask16, a: __m512i) -> _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vpabsd))]
 pub unsafe fn _mm512_maskz_abs_epi32(k: __mmask16, a: __m512i) -> __m512i {
-    mem::transmute(pabsd(a.as_i32x16(), _mm512_setzero_si512().as_i32x16(), k))
+    let abs = _mm512_abs_epi32(a).as_i32x16();
+    let zero = _mm512_setzero_si512().as_i32x16();
+    mem::transmute(simd_select_bitmask(k, abs, zero))
 }
 
 /// Return vector of type `__m512i` with all elements set to zero.
@@ -75,12 +83,6 @@ pub unsafe fn _mm512_setr_epi32(
         e15, e14, e13, e12, e11, e10, e9, e8, e7, e6, e5, e4, e3, e2, e1, e0,
     );
     mem::transmute(r)
-}
-
-#[allow(improper_ctypes)]
-extern "C" {
-    #[link_name = "llvm.x86.avx512.mask.pabs.d.512"]
-    fn pabsd(a: i32x16, b: i32x16, c: i16) -> i32x16;
 }
 
 #[cfg(test)]
