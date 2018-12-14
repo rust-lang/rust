@@ -336,33 +336,30 @@ impl<'a, 'b> Context<'a, 'b> {
                     Placeholder(_) => {
                         // record every (position, type) combination only once
                         let ref mut seen_ty = self.arg_unique_types[arg];
-                        let i = match seen_ty.iter().position(|x| *x == ty) {
-                            Some(i) => i,
-                            None => {
-                                let i = seen_ty.len();
-                                seen_ty.push(ty);
-                                i
-                            }
-                        };
+                        let i = seen_ty.iter().position(|x| *x == ty).unwrap_or_else(|| {
+                            let i = seen_ty.len();
+                            seen_ty.push(ty);
+                            i
+                        });
                         self.arg_types[arg].push(i);
                     }
                     Count => {
-                        match self.count_positions.entry(arg) {
-                            Entry::Vacant(e) => {
-                                let i = self.count_positions_count;
-                                e.insert(i);
-                                self.count_args.push(Exact(arg));
-                                self.count_positions_count += 1;
-                            }
-                            Entry::Occupied(_) => {}
+                        if let Entry::Vacant(e) = self.count_positions.entry(arg) {
+                            let i = self.count_positions_count;
+                            e.insert(i);
+                            self.count_args.push(Exact(arg));
+                            self.count_positions_count += 1;
                         }
                     }
                 }
             }
 
             Named(name) => {
-                let idx = match self.names.get(&name) {
-                    Some(e) => *e,
+                match self.names.get(&name) {
+                    Some(idx) => {
+                        // Treat as positional arg.
+                        self.verify_arg_type(Exact(*idx), ty)
+                    }
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
                         let sp = if self.is_literal {
@@ -372,11 +369,8 @@ impl<'a, 'b> Context<'a, 'b> {
                         };
                         let mut err = self.ecx.struct_span_err(sp, &msg[..]);
                         err.emit();
-                        return;
                     }
-                };
-                // Treat as positional arg.
-                self.verify_arg_type(Exact(idx), ty)
+                }
             }
         }
     }
