@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc::mir::interpret::{
-    read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
+    read_target_uint, AllocId, AllocKind, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
@@ -253,7 +253,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             };
 
             let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {
-                AllocType::Function(instance) => {
+                AllocKind::Function(instance) => {
                     let (func_name, sig) = crate::abi::get_function_name_and_sig(tcx, instance);
                     let func_id = module
                         .declare_function(&func_name, Linkage::Import, &sig)
@@ -262,11 +262,11 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                     data_ctx.write_function_addr(reloc_offset as u32, local_func_id);
                     continue;
                 }
-                AllocType::Memory(_) => {
+                AllocKind::Memory(_) => {
                     cx.todo.insert(TodoItem::Alloc(reloc));
                     data_id_for_alloc_id(module, reloc)
                 }
-                AllocType::Static(def_id) => {
+                AllocKind::Static(def_id) => {
                     cx.todo.insert(TodoItem::Static(def_id));
                     data_id_for_static(tcx, module, def_id, Linkage::Import)
                 }
