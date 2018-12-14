@@ -26,6 +26,11 @@ cd clippy_lints && cargo test && cd ..
 cd rustc_tools_util && cargo test && cd ..
 cd clippy_dev && cargo test && cd ..
 
+# make sure clippy can be called via ./path/to/cargo-clippy
+cd clippy_workspace_tests
+../target/debug/cargo-clippy
+cd ..
+
 # Perform various checks for lint registration
 ./util/dev update_lints --check
 cargo +nightly fmt --all -- --check
