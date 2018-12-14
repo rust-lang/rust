@@ -42,8 +42,8 @@ fn main() {
     x.rmatches("x");
     x.match_indices("x");
     x.rmatch_indices("x");
-    x.trim_left_matches("x");
-    x.trim_right_matches("x");
+    x.trim_start_matches("x");
+    x.trim_end_matches("x");
     // Make sure we escape characters correctly.
     x.split("\n");
 
