@@ -3010,6 +3010,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
+            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
             match pat.node {
                 PatKind::Ident(bmode, ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
@@ -3166,6 +3167,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                  format!("not found in {}", mod_str),
                  item_span)
             };
+
             let code = DiagnosticId::Error(code.into());
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
@@ -3189,11 +3191,22 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {
+                debug!("smart_resolve_path_fragment E0424 source:{:?}", source);
+
                 __diagnostic_used!(E0424);
                 err.code(DiagnosticId::Error("E0424".into()));
-                err.span_label(span, format!("`self` value is a keyword \
-                                               only available in \
-                                               methods with `self` parameter"));
+                err.span_label(span, match source {
+                    PathSource::Pat => {
+                        format!("`self` value is a keyword \
+                                and may not be bound to \
+                                variables or shadowed")
+                    }
+                    _ => {
+                        format!("`self` value is a keyword \
+                                only available in methods \
+                                with `self` parameter")
+                    }
+                });
                 return (err, Vec::new());
             }
 
