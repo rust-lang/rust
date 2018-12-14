@@ -211,8 +211,7 @@ declare_lint! {
 declare_lint! {
     pub ORDER_DEPENDENT_TRAIT_OBJECTS,
     Deny,
-    // FIXME: ENG
-    "trait-object types are different depending on marker-trait order"
+    "trait-object types were treated as different depending on marker-trait order"
 }
 
 declare_lint! {
