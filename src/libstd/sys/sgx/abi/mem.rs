@@ -34,13 +34,6 @@ fn image_base() -> u64 {
     base
 }
 
-pub fn is_enclave_range(p: *const u8, len: usize) -> bool {
-    let start=p as u64;
-    let end=start + (len as u64);
-    start >= image_base() &&
-        end <= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
-}
-
 pub fn is_user_range(p: *const u8, len: usize) -> bool {
     let start=p as u64;
     let end=start + (len as u64);
