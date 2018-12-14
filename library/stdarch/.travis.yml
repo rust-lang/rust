@@ -68,25 +68,6 @@ matrix:
     - name: "thumbv7em-none-eabihf - build libcore only"
       env: TARGET=thumbv7em-none-eabihf NORUN=1 NOSTD=1
       script: ci/run.sh
-    - name: "x86_64-pc-windows-msvc"
-      env: TARGET=x86_64-pc-windows-msvc
-      os: windows
-      script: ci/run.sh
-      install: true
-    - name: "x86_64-pc-windows-gnu - no assert_instr"
-      # FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/595
-      env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
-      os: windows
-      script: ci/run.sh
-    - name: "i686-pc-windows-msvc - no assert_instr"
-      # FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/595
-      env: TARGET=i686-pc-windows-msvc STDSIMD_DISABLE_ASSERT_INSTR=1
-      os: windows
-      script: ci/run.sh
-    - name: "i686-pc-windows-gnu"
-      env: TARGET=i686-pc-windows-gnu
-      os: windows
-      script: ci/run.sh
     - name: "Documentation"
       install: true
       script: ci/dox.sh
@@ -109,9 +90,6 @@ matrix:
         - shellcheck --version
         - shellcheck ci/*.sh
   allow_failures:
-    # FIXME: https://github.com/rust-lang/rust/issues/56153
-    - env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
-    - env: TARGET=i686-pc-windows-gnu
     # FIXME https://github.com/rust-lang/libc/issues/1170
     - name: "x86_64-linux-android - no assert_instr"
     - name: "arm-linux-androideabi - no assert_instr"
