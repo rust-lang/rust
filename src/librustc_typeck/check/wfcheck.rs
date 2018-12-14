@@ -795,6 +795,14 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
     }
 }
 
+/// returns true if `receiver_ty` would be considered a valid receiver type for `self_ty`. If
+/// `arbitrary_self_types` is enabled, `receiver_ty` must transitively deref to `self_ty`, possibly
+/// through a `*const/mut T` raw pointer. If the feature is not enabled, the requirements are more
+/// strict: `receiver_ty` must implement `Receiver` and directly implement `Deref<Target=self_ty>`.
+///
+/// NB: there are cases this function returns `true` but then causes an error to be raised later,
+/// particularly when `receiver_ty` derefs to a type that is the same as `self_ty` but has the
+/// wrong lifetime.
 fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
     fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
     span: Span,
