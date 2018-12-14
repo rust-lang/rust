@@ -2350,8 +2350,8 @@ const PATTERN_METHODS: [(&str, usize); 17] = [
     ("rmatches", 1),
     ("match_indices", 1),
     ("rmatch_indices", 1),
-    ("trim_left_matches", 1),
-    ("trim_right_matches", 1),
+    ("trim_start_matches", 1),
+    ("trim_end_matches", 1),
 ];
 
 #[derive(Clone, Copy, PartialEq, Debug)]

@@ -116,7 +116,7 @@ fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 fn block_starts_with_comment(cx: &EarlyContext<'_>, expr: &ast::Block) -> bool {
     // We trim all opening braces and whitespaces and then check if the next string is a comment.
     let trimmed_block_text = snippet_block(cx, expr.span, "..")
-        .trim_left_matches(|c: char| c.is_whitespace() || c == '{')
+        .trim_start_matches(|c: char| c.is_whitespace() || c == '{')
         .to_owned();
     trimmed_block_text.starts_with("//") || trimmed_block_text.starts_with("/*")
 }

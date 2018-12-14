@@ -91,16 +91,16 @@ error: single-character string constant used as pattern
    |                      ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:45:25
+  --> $DIR/single_char_pattern.rs:45:26
    |
-45 |     x.trim_left_matches("x");
-   |                         ^^^ help: try using a char instead: `'x'`
+45 |     x.trim_start_matches("x");
+   |                          ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:46:26
+  --> $DIR/single_char_pattern.rs:46:24
    |
-46 |     x.trim_right_matches("x");
-   |                          ^^^ help: try using a char instead: `'x'`
+46 |     x.trim_end_matches("x");
+   |                        ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:48:13
