@@ -158,28 +158,15 @@ fn parse_args(ecx: &mut ExtCtxt,
         } // accept trailing commas
         if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
             named = true;
-            let ident = match p.token {
-                token::Ident(i, _) => {
-                    p.bump();
-                    i
-                }
-                _ if named => {
-                    ecx.span_err(
-                        p.span,
-                        "expected ident, positional arguments cannot follow named arguments",
-                    );
-                    return None;
-                }
-                _ => {
-                    ecx.span_err(
-                        p.span,
-                        &format!(
-                            "expected ident for named argument, found `{}`",
-                            p.this_token_to_string()
-                        ),
-                    );
-                    return None;
-                }
+            let ident = if let token::Ident(i, _) = p.token {
+                p.bump();
+                i
+            } else {
+                ecx.span_err(
+                    p.span,
+                    "expected ident, positional arguments cannot follow named arguments",
+                );
+                return None;
             };
             let name: &str = &ident.as_str();
 
