@@ -32,5 +32,3 @@ wasm-bindgen-test = "=0.2.19"
 [features]
 # Internal-usage only: denies all warnings.
 strict = []
-# Enables wasm simd128 intrinsics
-wasm_simd128 = []

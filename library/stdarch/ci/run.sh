@@ -60,8 +60,13 @@ case ${TARGET} in
         cargo_test "--release"
         ;;
     wasm32-unknown-unknown*)
-        # export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128"
-        cargo_test "--release --features=wasm_simd128"
+        # There's no node or other runtime which supports the most recent SIMD
+        # proposal, but hopefully that's coming soon! For now just test that we
+        # can codegen with no LLVM faults, and we'll remove `--no-run` at a
+        # later date.
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128"
+        export RUSTFLAGS="${RUSTFLAGS} -Cllvm-args=-wasm-enable-unimplemented-simd"
+        cargo_test "--release --no-run"
         ;;
     *)
         ;;

@@ -34,7 +34,8 @@
     arm_target_feature,
     aarch64_target_feature,
     mips_target_feature,
-    powerpc_target_feature
+    powerpc_target_feature,
+    wasm_target_feature
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
 #![cfg_attr(
@@ -119,3 +120,7 @@ use _core::ptr;
 use _core::result;
 #[allow(unused_imports)]
 use _core::slice;
+#[allow(unused_imports)]
+use _core::u128;
+#[allow(unused_imports)]
+use _core::u8;

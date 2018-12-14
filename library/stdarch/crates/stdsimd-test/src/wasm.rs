@@ -21,14 +21,7 @@ extern "C" {
     #[wasm_bindgen(js_namespace = require)]
     fn resolve(module: &str) -> String;
     #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn js_console_log(s: &str);
-}
-
-// println! doesn't work on wasm32 right now, so shadow the compiler's println!
-// macro with our own shim that redirects to `console.log`.
-#[allow(unused)]
-macro_rules! println {
-    ($($args:tt)*) => (js_console_log(&format!($($args)*)))
+    pub fn js_console_log(s: &str);
 }
 
 pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
@@ -52,10 +45,16 @@ pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
         // If we found the table of function pointers, fill in the known
         // address for all our `Function` instances
         if line.starts_with("(elem") {
-            for (i, name) in line.split_whitespace().skip(4).enumerate() {
+            let mut parts = line.split_whitespace().skip(3);
+            let offset = parts.next()
+                .unwrap()
+                .trim_right_matches(")")
+                .parse::<usize>()
+                .unwrap();
+            for (i, name) in parts.enumerate() {
                 let name = name.trim_right_matches(")");
                 for f in ret.get_mut(name).expect("ret.get_mut(name) failed") {
-                    f.addr = Some(i + 1);
+                    f.addr = Some(i + offset);
                 }
             }
             continue;
