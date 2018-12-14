@@ -92,6 +92,13 @@ There are essentially four kinds of representations one might want of an express
 * `Operand` is an argument to e.g. a `+` operation or a function call
 * a temporary variable containing a copy of the value
 
+These following image depicts a general overview of the interactions between the
+representations:
+
+<img src="mir_overview.svg">
+
+[Click here for a more detailed view](mir_detailed.svg)
+
 We start out with lowering the function body to an `Rvalue` so we can create an
 assignment to `RETURN_PLACE`, This `Rvalue` lowering will in turn trigger lowering to
 `Operand` for its arguments (if any). `Operand` lowering either produces a `const`
