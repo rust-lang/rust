@@ -8,6 +8,6 @@ use lib::*;
 struct Oracle;
 impl Backend for Oracle {}
 impl<'a, T:'a, Tab> QueryFragment<Oracle> for BatchInsert<'a, T, Tab> {}
-// ~^ ERROR E0210
+//~^ ERROR E0210
 
 fn main() {}
