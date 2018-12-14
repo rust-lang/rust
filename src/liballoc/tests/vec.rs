@@ -80,6 +80,11 @@ fn test_reserve() {
 }
 
 #[test]
+fn test_zst_capacity() {
+    assert_eq!(Vec::<()>::new().capacity(), usize::max_value());
+}
+
+#[test]
 fn test_extend() {
     let mut v = Vec::new();
     let mut w = Vec::new();
