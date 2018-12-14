@@ -54,6 +54,10 @@ static M128D: Type = Type::M128D;
 static M256: Type = Type::M256;
 static M256I: Type = Type::M256I;
 static M256D: Type = Type::M256D;
+static M512: Type = Type::M512;
+static M512I: Type = Type::M512I;
+static M512D: Type = Type::M512D;
+static MMASK16: Type = Type::MMASK16;
 
 static TUPLE: Type = Type::Tuple;
 static CPUID: Type = Type::CpuidResult;
@@ -72,6 +76,10 @@ enum Type {
     M256,
     M256D,
     M256I,
+    M512,
+    M512D,
+    M512I,
+    MMASK16,
     Tuple,
     CpuidResult,
     Never,
@@ -421,6 +429,15 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         | (&Type::Ptr(&Type::M256D), "__m256d*")
         | (&Type::M256, "__m256")
         | (&Type::Ptr(&Type::M256), "__m256*") => {}
+
+        (&Type::M512I, "__m512i")
+        | (&Type::Ptr(&Type::M512I), "__m512i*")
+        | (&Type::M512D, "__m512d")
+        | (&Type::Ptr(&Type::M512D), "__m512d*")
+        | (&Type::M512, "__m512")
+        | (&Type::Ptr(&Type::M512), "__m512*") => {}
+
+        (&Type::MMASK16, "__mmask16") => {}
 
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust

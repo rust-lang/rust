@@ -4,6 +4,9 @@ environment:
   # default so pass a flag to disable it to ensure our tests work ok.
   RUSTFLAGS: -Clink-args=/OPT:NOICF
 
+  # VS2017 looks to be the first with avx-512 support, notably in dumpbin
+  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+
   matrix:
   - TARGET: x86_64-pc-windows-msvc
 

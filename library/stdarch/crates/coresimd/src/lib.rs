@@ -33,6 +33,7 @@
     sse4a_target_feature,
     arm_target_feature,
     aarch64_target_feature,
+    avx512_target_feature,
     mips_target_feature,
     powerpc_target_feature,
     wasm_target_feature

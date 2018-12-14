@@ -135,3 +135,11 @@ mod x86_polyfill {
     pub use coresimd::x86_64::{_mm256_insert_epi64, _mm_insert_epi64};
 }
 pub use self::x86_polyfill::*;
+
+pub unsafe fn assert_eq_m512i(a: __m512i, b: __m512i) {
+    union A {
+        a: __m512i,
+        b: [i32; 16],
+    }
+    assert_eq!(A { a }.b, A { a: b }.b)
+}

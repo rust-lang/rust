@@ -391,6 +391,10 @@ types! {
     pub struct __m512d(f64, f64, f64, f64, f64, f64, f64, f64);
 }
 
+/// The `__mmask16` type used in AVX-512 intrinsics, a 16-bit integer
+#[allow(non_camel_case_types)]
+pub type __mmask16 = i16;
+
 #[cfg(test)]
 mod test;
 #[cfg(test)]
@@ -502,6 +506,24 @@ impl m256iExt for __m256i {
     }
 }
 
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdimd_internal", issue = "0")]
+pub(crate) trait m512iExt: Sized {
+    fn as_m512i(self) -> __m512i;
+
+    #[inline]
+    fn as_i32x16(self) -> ::coresimd::simd::i32x16 {
+        unsafe { mem::transmute(self.as_m512i()) }
+    }
+}
+
+impl m512iExt for __m512i {
+    #[inline]
+    fn as_m512i(self) -> Self {
+        self
+    }
+}
+
 mod eflags;
 pub use self::eflags::*;
 
@@ -580,3 +602,6 @@ use stdsimd_test::assert_instr;
 pub unsafe fn ud2() -> ! {
     ::intrinsics::abort()
 }
+
+mod avx512f;
+pub use self::avx512f::*;

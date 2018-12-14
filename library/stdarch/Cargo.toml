@@ -10,7 +10,9 @@ exclude = [
 [profile.release]
 debug = true
 opt-level = 3
+incremental = true
 
 [profile.bench]
 debug = 1
 opt-level = 3
+incremental = true
