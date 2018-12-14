@@ -435,7 +435,8 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
         "simd_cast" => (2, vec![param(0)], param(1)),
-        "simd_select" => (2, vec![param(0), param(1), param(1)], param(1)),
+        "simd_select" |
+        "simd_select_bitmask" => (2, vec![param(0), param(1), param(1)], param(1)),
         "simd_reduce_all" | "simd_reduce_any" => (1, vec![param(0)], tcx.types.bool),
         "simd_reduce_add_ordered" | "simd_reduce_mul_ordered"
             => (2, vec![param(0), param(1)], param(1)),

@@ -33,6 +33,7 @@ struct b8x8(pub i8, pub i8, pub i8, pub i8,
 
 extern "platform-intrinsic" {
     fn simd_select<T, U>(x: T, a: U, b: U) -> U;
+    fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
 }
 
 fn main() {
@@ -52,5 +53,14 @@ fn main() {
 
         simd_select(z, z, z);
         //~^ ERROR mask element type is `f32`, expected `i_`
+
+        simd_select_bitmask(0u8, x, x);
+        //~^ ERROR mask length `8` != other vector length `4`
+
+        simd_select_bitmask(0.0f32, x, x);
+        //~^ ERROR `f32` is not an integral type
+
+        simd_select_bitmask("x", x, x);
+        //~^ ERROR `&str` is not an integral type
     }
 }
