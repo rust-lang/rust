@@ -841,7 +841,7 @@ impl Session {
 
     #[inline(always)]
     pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        if unlikely!(self.self_profiling_active) {
+        if unlikely!(false) {
             self.profiler_active(f)
         }
     }
