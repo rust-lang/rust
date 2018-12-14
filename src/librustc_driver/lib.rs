@@ -25,7 +25,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
-#![feature(rustc_stack_internals)]
 #![feature(no_debug)]
 
 #![recursion_limit="256"]
