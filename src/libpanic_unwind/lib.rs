@@ -62,7 +62,7 @@ cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;
-    } else if #[cfg(any(target_arch = "wasm32", target_env = "sgx"))] {
+    } else if #[cfg(target_arch = "wasm32")] {
         #[path = "dummy.rs"]
         mod imp;
     } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
