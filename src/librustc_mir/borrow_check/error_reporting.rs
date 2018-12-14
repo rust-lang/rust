@@ -182,13 +182,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
 
             if !is_loop_move {
-                err.span_label(
-                    span,
-                    format!(
-                        "value {} here after move",
-                        desired_action.as_verb_in_past_tense()
-                    ),
-                );
+                if used_place.is_prefix_of(&moved_place) {
+                    err.span_label(
+                        span,
+                        format!(
+                            "value {} here after partial move",
+                            desired_action.as_verb_in_past_tense()
+                        ),
+                    );
+                } else {
+                    err.span_label(
+                        span,
+                        format!(
+                            "value {} here after move",
+                            desired_action.as_verb_in_past_tense()
+                        ),
+                    );
+                }
             }
 
             if let Some(ty) = self.retrieve_type_for_place(used_place) {
