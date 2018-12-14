@@ -19,12 +19,12 @@ use std::process;
 
 use getopts::Options;
 
-use builder::Builder;
-use config::Config;
-use metadata;
-use {Build, DocTests};
+use crate::builder::Builder;
+use crate::config::Config;
+use crate::metadata;
+use crate::{Build, DocTests};
 
-use cache::{Interned, INTERNER};
+use crate::cache::{Interned, INTERNER};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {

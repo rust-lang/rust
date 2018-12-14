@@ -19,7 +19,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use Build;
+use crate::Build;
 
 pub fn clean(build: &Build, all: bool) {
     rm_rf("tmp".as_ref());

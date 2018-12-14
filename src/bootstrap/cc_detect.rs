@@ -39,9 +39,9 @@ use std::process::Command;
 use build_helper::output;
 use cc;
 
-use {Build, GitRepo};
-use config::Target;
-use cache::Interned;
+use crate::{Build, GitRepo};
+use crate::config::Target;
+use crate::cache::Interned;
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
 // so use some simplified logic here. First we respect the environment variable `AR`, then
