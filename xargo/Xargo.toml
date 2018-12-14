@@ -1,7 +1,0 @@
-[dependencies]
-core = {}
-alloc = {}
-alloc_system = {}
-
-# Disabled due to missing support for many things (intrinsics, etc) in rustc_codegen_cranelift
-#std = {}

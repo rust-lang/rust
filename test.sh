@@ -21,26 +21,21 @@ SHOULD_RUN=1 $RUSTC --crate-type bin example/mini_core_hello_world.rs --cfg jit
 echo "[AOT] mini_core_hello_world"
 build_example_bin mini_core_hello_world example/mini_core_hello_world.rs
 
-pushd xargo
-rm -r ~/.xargo/HOST || true
-rm -r target || true
-time xargo build
-popd
+echo "[BUILD] sysroot"
+time ./build_sysroot/build_sysroot.sh
 
 # TODO linux linker doesn't accept duplicate definitions
-#$RUSTC --sysroot ~/.xargo/HOST example/alloc_example.rs --crate-type bin
+# echo "[BUILD+RUN] alloc_example"
+#$RUSTC --sysroot ./build_sysroot/sysroot example/alloc_example.rs --crate-type bin
 #./target/out/alloc_example
 
-$RUSTC --sysroot ~/.xargo/HOST example/mod_bench.rs --crate-type bin
+echo "[BUILD] mod_bench"
+$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin
 
-echo "[BUILD] RUSTFLAGS=-Zmir-opt-level=3"
-pushd xargo
-rm -r ~/.xargo/HOST || true
-rm -r target || true
-time RUSTFLAGS="-Zmir-opt-level=3 $RUSTFLAGS" xargo build
-popd
+echo "[BUILD] sysroot in release mode"
+./build_sysroot/build_sysroot.sh --release
 
-COMPILE_MOD_BENCH_INLINE="$RUSTC --sysroot ~/.xargo/HOST example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -Og --crate-name mod_bench_inline"
+COMPILE_MOD_BENCH_INLINE="$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -Og --crate-name mod_bench_inline"
 COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort"
 COMPILE_MOD_BENCH_LLVM_1="rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o target/out/mod_bench_llvm_1 -Cpanic=abort"
 COMPILE_MOD_BENCH_LLVM_2="rustc example/mod_bench.rs --crate-type bin -Copt-level=2 -o target/out/mod_bench_llvm_2 -Cpanic=abort"

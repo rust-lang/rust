@@ -1,0 +1,15 @@
+[package]
+authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
+name = "sysroot"
+version = "0.0.0"
+
+[dependencies]
+core = { path = "./sysroot_src/src/libcore" }
+compiler_builtins = "0.1"
+alloc = { path = "./sysroot_src/src/liballoc" }
+
+alloc_system = { path = "./alloc_system" }
+
+[patch.crates-io]
+rustc-std-workspace-core = { path = "./sysroot_src/src/tools/rustc-std-workspace-core" }
+compiler_builtins = { path = "./compiler_builtins" }

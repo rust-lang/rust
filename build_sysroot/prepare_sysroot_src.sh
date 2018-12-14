@@ -1,8 +1,9 @@
-#!/bin/bash --verbose
+#!/bin/bash
 set -e
+cd $(dirname "$0")
 
 SRC_DIR=$(dirname $(rustup which rustc))"/../lib/rustlib/src/rust/"
-DST_DIR="target/libcore"
+DST_DIR="sysroot_src"
 
 if [ ! -e $SRC_DIR ]; then
     echo "Please install rust-src component"
@@ -14,14 +15,17 @@ mkdir -p $DST_DIR/src
 cp -r $SRC_DIR/src $DST_DIR/
 
 pushd $DST_DIR
+echo "[GIT] init"
 git init
+echo "[GIT] add"
 git add .
+echo "[GIT] commit"
 git commit -m "Initial commit" -q
-git apply ../../patches/*.patch
+for file in $(ls ../../patches/ | grep -v patcha); do
+echo "[GIT] apply" $file
+git apply ../../patches/$file
+git commit -am "Patch $file"
+done
 popd
-
-# `alloc_system` has been merged with libstd, which doesn't build yet.
-# This copies the original source to the sysroot source dir to simplify building it
-cp -r alloc_system $DST_DIR/src/liballoc_system
 
 echo "Successfully prepared libcore for building"
