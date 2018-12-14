@@ -24,10 +24,13 @@
 #![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
+#![feature(rustc_attrs)]
 #![feature(specialization)]
+#![feature(step_trait)]
 #![cfg_attr(not(stage0), feature(stdsimd))]
 
 extern crate arena;
+#[macro_use]
 extern crate rustc_data_structures;
 
 #[macro_use]

@@ -14,6 +14,7 @@
 
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
@@ -143,9 +144,18 @@ impl Decodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string.
+/// A symbol is an interned or gensymed string. The use of newtype_index! means
+/// that Option<Symbol> only takes up 4 bytes, because newtype_index! reserves
+/// the last 256 values for tagging purposes.
+///
+/// Note that Symbol cannot be a newtype_index! directly because it implements
+/// fmt::Debug, Encodable, and Decodable in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Symbol(u32);
+pub struct Symbol(SymbolIndex);
+
+newtype_index! {
+    pub struct SymbolIndex { .. }
+}
 
 // The interner is pointed to by a thread local value which is only set on the main thread
 // with parallelization is disabled. So we don't allow `Symbol` to transfer between threads
@@ -156,6 +166,10 @@ impl !Send for Symbol { }
 impl !Sync for Symbol { }
 
 impl Symbol {
+    const fn new(n: u32) -> Self {
+        Symbol(SymbolIndex::from_u32_const(n))
+    }
+
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
         with_interner(|interner| interner.intern(string))
@@ -189,7 +203,7 @@ impl Symbol {
     }
 
     pub fn as_u32(self) -> u32 {
-        self.0
+        self.0.as_u32()
     }
 }
 
@@ -197,7 +211,7 @@ impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let is_gensymed = with_interner(|interner| interner.is_gensymed(*self));
         if is_gensymed {
-            write!(f, "{}({})", self, self.0)
+            write!(f, "{}({:?})", self, self.0)
         } else {
             write!(f, "{}", self)
         }
@@ -229,6 +243,9 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 }
 
 // The `&'static str`s in this type actually point into the arena.
+//
+// Note that normal symbols are indexed upward from 0, and gensyms are indexed
+// downward from SymbolIndex::MAX_AS_U32.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
@@ -243,7 +260,7 @@ impl Interner {
         for &string in init {
             if string == "" {
                 // We can't allocate empty strings in the arena, so handle this here.
-                let name = Symbol(this.strings.len() as u32);
+                let name = Symbol::new(this.strings.len() as u32);
                 this.names.insert("", name);
                 this.strings.push("");
             } else {
@@ -258,7 +275,7 @@ impl Interner {
             return name;
         }
 
-        let name = Symbol(self.strings.len() as u32);
+        let name = Symbol::new(self.strings.len() as u32);
 
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
@@ -276,10 +293,10 @@ impl Interner {
     }
 
     pub fn interned(&self, symbol: Symbol) -> Symbol {
-        if (symbol.0 as usize) < self.strings.len() {
+        if (symbol.0.as_usize()) < self.strings.len() {
             symbol
         } else {
-            self.interned(self.gensyms[(!0 - symbol.0) as usize])
+            self.interned(self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize])
         }
     }
 
@@ -290,17 +307,17 @@ impl Interner {
 
     fn gensymed(&mut self, symbol: Symbol) -> Symbol {
         self.gensyms.push(symbol);
-        Symbol(!0 - self.gensyms.len() as u32 + 1)
+        Symbol::new(SymbolIndex::MAX_AS_U32 - self.gensyms.len() as u32 + 1)
     }
 
     fn is_gensymed(&mut self, symbol: Symbol) -> bool {
-        symbol.0 as usize >= self.strings.len()
+        symbol.0.as_usize() >= self.strings.len()
     }
 
     pub fn get(&self, symbol: Symbol) -> &str {
-        match self.strings.get(symbol.0 as usize) {
+        match self.strings.get(symbol.0.as_usize()) {
             Some(string) => string,
-            None => self.get(self.gensyms[(!0 - symbol.0) as usize]),
+            None => self.get(self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]),
         }
     }
 }
@@ -324,7 +341,7 @@ macro_rules! declare_keywords {(
         $(
             #[allow(non_upper_case_globals)]
             pub const $konst: Keyword = Keyword {
-                ident: Ident::with_empty_ctxt(super::Symbol($index))
+                ident: Ident::with_empty_ctxt(super::Symbol::new($index))
             };
         )*
 
@@ -709,19 +726,19 @@ mod tests {
     fn interner_tests() {
         let mut i: Interner = Interner::default();
         // first one is zero:
-        assert_eq!(i.intern("dog"), Symbol(0));
+        assert_eq!(i.intern("dog"), Symbol::new(0));
         // re-use gets the same entry:
-        assert_eq!(i.intern("dog"), Symbol(0));
+        assert_eq!(i.intern("dog"), Symbol::new(0));
         // different string gets a different #:
-        assert_eq!(i.intern("cat"), Symbol(1));
-        assert_eq!(i.intern("cat"), Symbol(1));
+        assert_eq!(i.intern("cat"), Symbol::new(1));
+        assert_eq!(i.intern("cat"), Symbol::new(1));
         // dog is still at zero
-        assert_eq!(i.intern("dog"), Symbol(0));
-        assert_eq!(i.gensym("zebra"), Symbol(4294967295));
-        // gensym of same string gets new number :
-        assert_eq!(i.gensym("zebra"), Symbol(4294967294));
+        assert_eq!(i.intern("dog"), Symbol::new(0));
+        assert_eq!(i.gensym("zebra"), Symbol::new(SymbolIndex::MAX_AS_U32));
+        // gensym of same string gets new number:
+        assert_eq!(i.gensym("zebra"), Symbol::new(SymbolIndex::MAX_AS_U32 - 1));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym("dog"), Symbol(4294967293));
+        assert_eq!(i.gensym("dog"), Symbol::new(SymbolIndex::MAX_AS_U32 - 2));
     }
 
     #[test]
