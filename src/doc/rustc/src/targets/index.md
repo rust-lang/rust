@@ -4,7 +4,7 @@
 architecture. The list of *targets* are the possible architectures that you can build for.
 
 To see all the options that you can set with a target, see the docs
-[here](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_back/target/struct.Target.html).
+[here](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/spec/struct.Target.html).
 
 To compile to a particular target, use the `--target` flag:
 
