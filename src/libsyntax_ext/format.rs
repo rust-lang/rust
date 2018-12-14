@@ -273,11 +273,11 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             MultiSpan::from_span(self.fmtsp)
         };
-        let mut refs: Vec<_> = self
+        let refs_len = self.invalid_refs.len();
+        let mut refs = self
             .invalid_refs
             .iter()
-            .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)))
-            .collect();
+            .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)));
 
         if self.names.is_empty() && !numbered_position_args {
             e = self.ecx.mut_span_err(
@@ -290,28 +290,24 @@ impl<'a, 'b> Context<'a, 'b> {
                 ),
             );
         } else {
-            let (arg_list, mut sp) = match refs.len() {
-                1 => {
-                    let (reg, pos) = refs.pop().unwrap();
-                    (
-                        format!("argument {}", reg),
-                        MultiSpan::from_span(*pos.unwrap_or(&self.fmtsp)),
-                    )
-                }
-                _ => {
-                    let pos =
-                        MultiSpan::from_spans(refs.iter().map(|(_, p)| *p.unwrap()).collect());
-                    let mut refs: Vec<String> = refs.iter().map(|(s, _)| s.to_owned()).collect();
-                    let reg = refs.pop().unwrap();
-                    (
-                        format!(
-                            "arguments {head} and {tail}",
-                            tail = reg,
-                            head = refs.join(", ")
-                        ),
-                        pos,
-                    )
-                }
+            let (arg_list, mut sp) = if refs_len == 1 {
+                let (reg, pos) = refs.next().unwrap();
+                (
+                    format!("argument {}", reg),
+                    MultiSpan::from_span(*pos.unwrap_or(&self.fmtsp)),
+                )
+            } else {
+                let (mut refs, spans): (Vec<_>, Vec<_>) = refs.unzip();
+                let pos = MultiSpan::from_spans(spans.into_iter().map(|s| *s.unwrap()).collect());
+                let reg = refs.pop().unwrap();
+                (
+                    format!(
+                        "arguments {head} and {tail}",
+                        head = refs.join(", "),
+                        tail = reg,
+                    ),
+                    pos,
+                )
             };
             if !self.is_literal {
                 sp = MultiSpan::from_span(self.fmtsp);
