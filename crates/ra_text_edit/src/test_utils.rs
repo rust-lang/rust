@@ -1,4 +1,4 @@
-use proptest::{prelude::*, proptest, proptest_helper};
+use proptest::prelude::*;
 use text_unit::{TextUnit, TextRange};
 use crate::AtomTextEdit;
 
@@ -66,42 +66,48 @@ pub fn arb_edits(text: &str) -> BoxedStrategy<Vec<AtomTextEdit>> {
         .boxed()
 }
 
-fn arb_text_with_edits() -> BoxedStrategy<(String, Vec<AtomTextEdit>)> {
-    let text = arb_text();
-    text.prop_flat_map(|s| {
-        let edits = arb_edits(&s);
-        (Just(s), edits)
-    })
-    .boxed()
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::{proptest, proptest_helper};
 
-fn intersect(r1: TextRange, r2: TextRange) -> Option<TextRange> {
-    let start = r1.start().max(r2.start());
-    let end = r1.end().min(r2.end());
-    if start <= end {
-        Some(TextRange::from_to(start, end))
-    } else {
-        None
+    fn arb_text_with_edits() -> BoxedStrategy<(String, Vec<AtomTextEdit>)> {
+        let text = arb_text();
+        text.prop_flat_map(|s| {
+            let edits = arb_edits(&s);
+            (Just(s), edits)
+        })
+        .boxed()
     }
-}
 
-proptest! {
-    #[test]
-    fn atom_text_edits_are_valid((text, edits) in arb_text_with_edits()) {
-        proptest_atom_text_edits_are_valid(text, edits)
+    fn intersect(r1: TextRange, r2: TextRange) -> Option<TextRange> {
+        let start = r1.start().max(r2.start());
+        let end = r1.end().min(r2.end());
+        if start <= end {
+            Some(TextRange::from_to(start, end))
+        } else {
+            None
+        }
     }
-}
+    proptest! {
+        #[test]
+        fn atom_text_edits_are_valid((text, edits) in arb_text_with_edits()) {
+            proptest_atom_text_edits_are_valid(text, edits)
+        }
+    }
 
-fn proptest_atom_text_edits_are_valid(text: String, edits: Vec<AtomTextEdit>) {
-    // slicing doesn't panic
-    for e in &edits {
-        let _ = &text[e.delete];
-    }
-    // ranges do not overlap
-    for (i1, e1) in edits.iter().skip(1).enumerate() {
-        for e2 in &edits[0..i1] {
-            if intersect(e1.delete, e2.delete).is_some() {
-                assert!(false, "Overlapping ranges {} {}", e1.delete, e2.delete);
+    fn proptest_atom_text_edits_are_valid(text: String, edits: Vec<AtomTextEdit>) {
+        // slicing doesn't panic
+        for e in &edits {
+            let _ = &text[e.delete];
+        }
+        // ranges do not overlap
+        for i in 1..edits.len() {
+            let e1 = &edits[i];
+            for e2 in &edits[0..i] {
+                if intersect(e1.delete, e2.delete).is_some() {
+                    assert!(false, "Overlapping ranges {} {}", e1.delete, e2.delete);
+                }
             }
         }
     }

@@ -386,3 +386,64 @@ where
         self.iter.next().map(|item| item.conv_with(self.ctx))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use proptest::{prelude::*, proptest, proptest_helper};
+    use super::*;
+    use ra_text_edit::test_utils::{arb_text, arb_offset, arb_edits};
+
+    #[derive(Debug)]
+    struct ArbTextWithOffsetAndEdits {
+        text: String,
+        offset: TextUnit,
+        edits: Vec<AtomTextEdit>,
+    }
+
+    fn arb_text_with_offset_and_edits() -> BoxedStrategy<ArbTextWithOffsetAndEdits> {
+        arb_text()
+            .prop_flat_map(|text| {
+                (arb_offset(&text), arb_edits(&text), Just(text)).prop_map(
+                    |(offset, edits, text)| ArbTextWithOffsetAndEdits {
+                        text,
+                        offset,
+                        edits,
+                    },
+                )
+            })
+            .boxed()
+    }
+
+    fn translate_offset_with_edit_naive(
+        pre_edit_text: String,
+        offset: TextUnit,
+        edits: &[AtomTextEdit],
+    ) -> LineCol {
+        // apply edits ordered from last to first
+        // since they should not overlap we can just use start()
+        let mut edits: Vec<AtomTextEdit> = edits.to_vec();
+        edits.sort_by_key(|x| -(x.delete.start().to_usize() as isize));
+
+        let mut text = pre_edit_text;
+
+        for edit in &edits {
+            let range = edit.delete.start().to_usize()..edit.delete.end().to_usize();
+            text.replace_range(range, &edit.insert);
+        }
+
+        let line_index = LineIndex::new(&text);
+
+        line_index.line_col(offset)
+    }
+
+    proptest! {
+        #[test]
+        fn test_translate_offset_with_edit(x in arb_text_with_offset_and_edits()) {
+            if x.edits.len() <= 1 {
+                let expected = translate_offset_with_edit_naive(x.text.clone(), x.offset, &x.edits);
+                let actual = translate_offset_with_edit(&LineIndex::new(&x.text), x.offset, &x.edits);
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+}

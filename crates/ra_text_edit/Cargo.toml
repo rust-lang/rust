@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 text_unit = "0.1.5"
+proptest = "0.8.7"
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
-proptest = "0.8.7"
