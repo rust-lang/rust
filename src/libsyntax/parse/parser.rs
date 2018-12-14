@@ -3051,6 +3051,7 @@ impl<'a> Parser<'a> {
     ///
     /// This parses an expression accounting for associativity and precedence of the operators in
     /// the expression.
+    #[inline]
     fn parse_assoc_expr(&mut self,
                             already_parsed_attrs: Option<ThinVec<Attribute>>)
                             -> PResult<'a, P<Expr>> {
@@ -3711,6 +3712,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an expression
+    #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
         self.parse_expr_res(Restrictions::empty(), None)
     }
@@ -3730,6 +3732,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an expression, subject to the given restrictions
+    #[inline]
     fn parse_expr_res(&mut self, r: Restrictions,
                           already_parsed_attrs: Option<ThinVec<Attribute>>)
                           -> PResult<'a, P<Expr>> {
