@@ -1,4 +1,4 @@
-error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g. `MyStruct<T>`)
+error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/feature-gate-re-rebalance-coherence.rs:10:1
    |
 LL | impl<'a, T:'a, Tab> QueryFragment<Oracle> for BatchInsert<'a, T, Tab> {}
