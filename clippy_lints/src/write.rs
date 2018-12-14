@@ -206,10 +206,7 @@ impl EarlyLintPass for Pass {
         } else if mac.node.path == "print" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
-                if fmtstr.ends_with("\\n") &&
-                   // don't warn about strings with several `\n`s (#3126)
-                   fmtstr.matches("\\n").count() == 1
-                {
+                if check_newlines(&fmtstr) {
                     span_lint(
                         cx,
                         PRINT_WITH_NEWLINE,
@@ -221,10 +218,7 @@ impl EarlyLintPass for Pass {
             }
         } else if mac.node.path == "write" {
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true).0 {
-                if fmtstr.ends_with("\\n") &&
-                   // don't warn about strings with several `\n`s (#3126)
-                   fmtstr.matches("\\n").count() == 1
-                {
+                if check_newlines(&fmtstr) {
                     span_lint(
                         cx,
                         WRITE_WITH_NEWLINE,
@@ -374,4 +368,30 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
             _ => idx += 1,
         }
     }
+}
+
+// Checks if `s` constains a single newline that terminates it
+fn check_newlines(s: &str) -> bool {
+    if s.len() < 2 {
+        return false;
+    }
+
+    let bytes = s.as_bytes();
+    if bytes[bytes.len() - 2] != b'\\' || bytes[bytes.len() - 1] != b'n' {
+        return false;
+    }
+
+    let mut escaping = false;
+    for (index, &byte) in bytes.iter().enumerate() {
+        if escaping {
+            if byte == b'n' {
+                return index == bytes.len() - 1;
+            }
+            escaping = false;
+        } else if byte == b'\\' {
+            escaping = true;
+        }
+    }
+
+    false
 }
