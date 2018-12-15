@@ -1,4 +1,4 @@
-error: the `Self` constructor can only be used with tuple structs
+error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/issue-56835.rs:5:12
    |
 LL |     fn bar(Self(foo): Self) {}
