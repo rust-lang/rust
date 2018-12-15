@@ -52,8 +52,8 @@ RUN env \
     CXX=arm-linux-gnueabi-g++ CXXFLAGS="-march=armv6 -marm" \
     bash musl.sh arm && \
     env \
-    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv6 -marm" \
-    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv6 -marm" \
+    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv6 -marm -mfpu=vfp" \
+    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv6 -marm -mfpu=vfp" \
     bash musl.sh armhf && \
     env \
     CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a" \
