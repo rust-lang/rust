@@ -1013,6 +1013,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let mut associated_types = BTreeSet::default();
 
         for tr in traits::elaborate_trait_ref(tcx, principal) {
+            debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", tr);
             match tr {
                 ty::Predicate::Trait(pred) => {
                     associated_types.extend(tcx.associated_items(pred.def_id())
@@ -1020,8 +1021,31 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                     .map(|item| item.def_id));
                 }
                 ty::Predicate::Projection(pred) => {
-                    // Include projections defined on supertraits.
-                    projection_bounds.push((pred, DUMMY_SP))
+                    // A `Self` within the original bound will be substituted with a
+                    // `TRAIT_OBJECT_DUMMY_SELF`, so check for that.
+                    let references_self =
+                        pred.skip_binder().ty.walk().any(|t| t == dummy_self);
+
+                    // If the projection output contains `Self`, force the user to
+                    // elaborate it explicitly to avoid a bunch of complexity.
+                    //
+                    // The "classicaly useful" case is the following:
+                    // ```
+                    //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
+                    //         type MyOutput;
+                    //     }
+                    // ```
+                    //
+                    // Here, the user could theoretically write `dyn MyTrait<Output=X>`,
+                    // but actually supporting that would "expand" to an infinitely-long type
+                    // `fix $ τ → dyn MyTrait<MyOutput=X, Output=<τ as MyTrait>::MyOutput`.
+                    //
+                    // Instead, we force the user to write `dyn MyTrait<MyOutput=X, Output=X>`,
+                    // which is uglier but works. See the discussion in #56288 for alternatives.
+                    if !references_self {
+                        // Include projections defined on supertraits,
+                        projection_bounds.push((pred, DUMMY_SP))
+                    }
                 }
                 _ => ()
             }
