@@ -223,7 +223,7 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
                 assert_eq!(t, u);
                 ConstValue::ScalarPair(
                     Scalar::Ptr(p),
-                    n.val.try_to_scalar().unwrap(),
+                    n.map_evaluated(|val| val.val.try_to_scalar()).unwrap(),
                 )
             },
             // fat pointers stay the same
@@ -251,11 +251,10 @@ impl<'a, 'tcx> PatternFolder<'tcx> for LiteralExpander<'a, 'tcx> {
                         subpattern: Pattern {
                             ty: rty,
                             span: pat.span,
-                            kind: box PatternKind::Constant { value: Const::from_const_value(
-                                self.tcx,
-                                self.fold_const_value_deref(*val, rty, crty),
-                                rty,
-                            ) },
+                            kind: box PatternKind::Constant { value: Const {
+                                val: self.fold_const_value_deref(val, rty, crty),
+                                ty: rty,
+                            } },
                         }
                     }
                 }
@@ -1396,7 +1395,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 fn slice_pat_covered_by_const<'tcx>(
     tcx: TyCtxt<'_, 'tcx, '_>,
     _span: Span,
-    const_val: &ty::Const<'tcx>,
+    const_val: ty::Const<'tcx>,
     prefix: &[Pattern<'tcx>],
     slice: &Option<Pattern<'tcx>>,
     suffix: &[Pattern<'tcx>]
@@ -1751,12 +1750,27 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // necessarily point to memory, they are usually just integers. The only time
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
-                    let (opt_ptr, n, ty) = match value.ty.builtin_deref(false).unwrap().ty.sty {
-                        ty::TyKind::Array(t, n) => (value.to_ptr(), n.unwrap_usize(cx.tcx), t),
+                    let (opt_ptr, n, ty) = match value.ty.sty {
+                        ty::TyKind::Array(t, n) => {
+                            match value.val {
+                                ConstValue::ByRef(id, alloc, offset) => (
+                                    Some((Pointer::new(id, offset), alloc)),
+                                    n.unwrap_usize(cx.tcx),
+                                    t,
+                                ),
+                                _ => span_bug!(
+                                    pat.span,
+                                    "array pattern is {:?}", value,
+                                ),
+                            }
+                        },
                         ty::TyKind::Slice(t) => {
                             match value.val {
                                 ConstValue::ScalarPair(ptr, n) => (
-                                    ptr.to_ptr().ok(),
+                                    ptr.to_ptr().ok().map(|ptr| (
+                                        ptr,
+                                        cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                                    )),
                                     n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64,
                                     t,
                                 ),

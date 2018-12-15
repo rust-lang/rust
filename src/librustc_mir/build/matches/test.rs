@@ -658,7 +658,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (&TestKind::Range(range), &PatternKind::Constant { ref value }) => {
+            (&TestKind::Range(range), &PatternKind::Constant { value }) => {
                 if self.const_range_contains(range, value) == Some(false) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
@@ -787,7 +787,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn const_range_contains(
         &self,
         range: PatternRange<'tcx>,
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
@@ -807,9 +807,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatternRange<'tcx>,
-        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+        indices: &FxHashMap<ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
-        for val in indices.keys() {
+        for &val in indices.keys() {
             if self.const_range_contains(range, val)? {
                 return Some(false);
             }
