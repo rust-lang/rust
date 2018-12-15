@@ -86,6 +86,8 @@ pub fn matches_os(triple: &str, name: &str) -> bool {
     }
     panic!("Cannot determine OS from triple");
 }
+
+/// Determine the architecture from `triple`
 pub fn get_arch(triple: &str) -> &'static str {
     let triple: Vec<_> = triple.split('-').collect();
     for &(triple_arch, arch) in ARCH_TABLE {
@@ -150,4 +152,30 @@ impl PathBufExt for PathBuf {
             self.with_file_name(fname)
         }
     }
+}
+
+#[test]
+#[should_panic(expected = "Cannot determine Architecture from triple")]
+fn test_get_arch_failure() {
+    get_arch("abc");
+}
+
+#[test]
+fn test_get_arch() {
+    assert_eq!("x86_64", get_arch("x86_64-unknown-linux-gnu"));
+    assert_eq!("x86_64", get_arch("amd64"));
+}
+
+#[test]
+#[should_panic(expected = "Cannot determine OS from triple")]
+fn test_matches_os_failure() {
+    matches_os("abc", "abc");
+}
+
+#[test]
+fn test_matches_os() {
+    assert!(matches_os("x86_64-unknown-linux-gnu", "linux"));
+    assert!(matches_os("wasm32-unknown-unknown", "emscripten"));
+    assert!(matches_os("wasm32-unknown-unknown", "wasm32-bare"));
+    assert!(!matches_os("wasm32-unknown-unknown", "windows"));
 }
