@@ -8,7 +8,7 @@ use rustc::util::nodemap::DefIdSet;
 use std::mem;
 use std::fmt;
 use syntax::ast::NodeId;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 use std::ops::Range;
 
 use clean::{self, GetDefId, Item};
@@ -17,8 +17,6 @@ use fold;
 use fold::StripItem;
 
 use html::markdown::{find_testable_code, ErrorCodes, LangString};
-
-use self::collect_intra_doc_links::span_of_attrs;
 
 mod collapse_docs;
 pub use self::collapse_docs::COLLAPSE_DOCS;
@@ -46,6 +44,9 @@ pub use self::private_items_doc_tests::CHECK_PRIVATE_ITEMS_DOC_TESTS;
 
 mod collect_trait_impls;
 pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
+
+mod check_code_block_syntax;
+pub use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
 
 /// Represents a single pass.
 #[derive(Copy, Clone)]
@@ -137,6 +138,7 @@ pub const PASSES: &'static [Pass] = &[
     STRIP_PRIV_IMPORTS,
     PROPAGATE_DOC_CFG,
     COLLECT_INTRA_DOC_LINKS,
+    CHECK_CODE_BLOCK_SYNTAX,
     COLLECT_TRAIT_IMPLS,
 ];
 
@@ -147,6 +149,7 @@ pub const DEFAULT_PASSES: &'static [&'static str] = &[
     "strip-hidden",
     "strip-private",
     "collect-intra-doc-links",
+    "check-code-block-syntax",
     "collapse-docs",
     "unindent-comments",
     "propagate-doc-cfg",
@@ -158,6 +161,7 @@ pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
     "check-private-items-doc-tests",
     "strip-priv-imports",
     "collect-intra-doc-links",
+    "check-code-block-syntax",
     "collapse-docs",
     "unindent-comments",
     "propagate-doc-cfg",
@@ -397,6 +401,16 @@ pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
             diag.emit();
         }
     }
+}
+
+/// Return a span encompassing all the given attributes.
+crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
+    if attrs.doc_strings.is_empty() {
+        return DUMMY_SP;
+    }
+    let start = attrs.doc_strings[0].span();
+    let end = attrs.doc_strings.last().expect("No doc strings provided").span();
+    start.to(end)
 }
 
 /// Attempts to match a range of bytes from parsed markdown to a `Span` in the source code.

@@ -25,40 +25,51 @@ pub fn render_with_highlighting(
     tooltip: Option<(&str, &str)>,
 ) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.source_map().new_source_file(FileName::Custom("stdin".to_string()),
-                                               src.to_string());
-
     let mut out = Vec::new();
     if let Some((tooltip, class)) = tooltip {
         write!(out, "<div class='information'><div class='tooltip {}'>ⓘ<span \
                      class='tooltiptext'>{}</span></div></div>",
                class, tooltip).unwrap();
     }
-    write_header(class, &mut out).unwrap();
 
-    let lexer = match lexer::StringReader::new_without_err(&sess, fm, None, "Output from rustc:") {
-        Ok(l) => l,
-        Err(_) => {
-            let first_line = src.lines().next().unwrap_or_else(|| "");
-            let mut err = sess.span_diagnostic
-                              .struct_warn(&format!("Invalid doc comment starting with: `{}`\n\
-                                                     (Ignoring this codeblock)",
-                                                    first_line));
-            err.emit();
-            return String::new();
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.source_map().new_source_file(
+        FileName::Custom(String::from("rustdoc-highlighting")),
+        src.to_owned(),
+    );
+    let highlight_result =
+        lexer::StringReader::new_or_buffered_errs(&sess, fm, None).and_then(|lexer| {
+            let mut classifier = Classifier::new(lexer, sess.source_map());
+
+            let mut highlighted_source = vec![];
+            if classifier.write_source(&mut highlighted_source).is_err() {
+                Err(classifier.lexer.buffer_fatal_errors())
+            } else {
+                Ok(String::from_utf8_lossy(&highlighted_source).into_owned())
+            }
+        });
+
+    match highlight_result {
+        Ok(highlighted_source) => {
+            write_header(class, &mut out).unwrap();
+            write!(out, "{}", highlighted_source).unwrap();
+            if let Some(extension) = extension {
+                write!(out, "{}", extension).unwrap();
+            }
+            write_footer(&mut out).unwrap();
         }
-    };
-    let mut classifier = Classifier::new(lexer, sess.source_map());
-    if classifier.write_source(&mut out).is_err() {
-        classifier.lexer.emit_fatal_errors();
-        return format!("<pre>{}</pre>", src);
+        Err(errors) => {
+            // If errors are encountered while trying to highlight, cancel the errors and just emit
+            // the unhighlighted source. The errors will have already been reported in the
+            // `check-code-block-syntax` pass.
+            for mut error in errors {
+                error.cancel();
+            }
+
+            write!(out, "<pre><code>{}</code></pre>", src).unwrap();
+        }
     }
 
-    if let Some(extension) = extension {
-        write!(out, "{}", extension).unwrap();
-    }
-    write_footer(&mut out).unwrap();
     String::from_utf8_lossy(&out[..]).into_owned()
 }
 
@@ -151,6 +162,17 @@ impl<U: Write> Writer for U {
     }
 }
 
+enum HighlightError {
+    LexError,
+    IoError(io::Error),
+}
+
+impl From<io::Error> for HighlightError {
+    fn from(err: io::Error) -> Self {
+        HighlightError::IoError(err)
+    }
+}
+
 impl<'a> Classifier<'a> {
     fn new(lexer: lexer::StringReader<'a>, source_map: &'a SourceMap) -> Classifier<'a> {
         Classifier {
@@ -162,17 +184,11 @@ impl<'a> Classifier<'a> {
         }
     }
 
-    /// Gets the next token out of the lexer, emitting fatal errors if lexing fails.
-    fn try_next_token(&mut self) -> io::Result<TokenAndSpan> {
+    /// Gets the next token out of the lexer.
+    fn try_next_token(&mut self) -> Result<TokenAndSpan, HighlightError> {
         match self.lexer.try_next_token() {
             Ok(tas) => Ok(tas),
-            Err(_) => {
-                let mut err = self.lexer.sess.span_diagnostic
-                                  .struct_warn("Backing out of syntax highlighting");
-                err.note("You probably did not intend to render this as a rust code-block");
-                err.emit();
-                Err(io::Error::new(io::ErrorKind::Other, ""))
-            }
+            Err(_) => Err(HighlightError::LexError),
         }
     }
 
@@ -185,7 +201,7 @@ impl<'a> Classifier<'a> {
     /// source.
     fn write_source<W: Writer>(&mut self,
                                    out: &mut W)
-                                   -> io::Result<()> {
+                                   -> Result<(), HighlightError> {
         loop {
             let next = self.try_next_token()?;
             if next.tok == token::Eof {
@@ -202,7 +218,7 @@ impl<'a> Classifier<'a> {
     fn write_token<W: Writer>(&mut self,
                               out: &mut W,
                               tas: TokenAndSpan)
-                              -> io::Result<()> {
+                              -> Result<(), HighlightError> {
         let klass = match tas.tok {
             token::Shebang(s) => {
                 out.string(Escape(&s.as_str()), Class::None)?;
@@ -341,7 +357,9 @@ impl<'a> Classifier<'a> {
 
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
-        out.string(Escape(&self.snip(tas.sp)), klass)
+        out.string(Escape(&self.snip(tas.sp)), klass)?;
+
+        Ok(())
     }
 
     // Helper function to get a snippet from the source_map.

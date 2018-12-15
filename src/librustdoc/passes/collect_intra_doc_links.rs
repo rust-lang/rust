@@ -6,7 +6,7 @@ use syntax;
 use syntax::ast::{self, Ident, NodeId};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
-use syntax_pos::{self, DUMMY_SP};
+use syntax_pos::DUMMY_SP;
 
 use std::ops::Range;
 
@@ -16,6 +16,7 @@ use html::markdown::markdown_links;
 
 use clean::*;
 use passes::{look_for_tests, Pass};
+use super::span_of_attrs;
 
 pub const COLLECT_INTRA_DOC_LINKS: Pass =
     Pass::early("collect-intra-doc-links", collect_intra_doc_links,
@@ -438,15 +439,6 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
         return Some(*def);
     }
     None
-}
-
-pub fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
-    if attrs.doc_strings.is_empty() {
-        return DUMMY_SP;
-    }
-    let start = attrs.doc_strings[0].span();
-    let end = attrs.doc_strings.last().expect("No doc strings provided").span();
-    start.to(end)
 }
 
 /// Reports a resolution failure diagnostic.
