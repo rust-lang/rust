@@ -5316,22 +5316,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            Def::VariantCtor(_, _) if self_ty.is_some() => {
-                let def_id = def.def_id();
-
-                let ty = tcx.type_of(def_id);
-                if tcx.features().type_alias_enum_variants {
-                    if let Some(self_ty) = self_ty {
-                        match ty.ty_adt_def() {
-                            Some(adt_def) if adt_def.is_enum() => {
-                                return (self_ty, def);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                (def_id, ty)
-            }
             _ => {
                 let def_id = def.def_id();
 
