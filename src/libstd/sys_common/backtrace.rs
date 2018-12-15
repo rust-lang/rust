@@ -53,6 +53,14 @@ const MAX_NB_FRAMES: usize = 100;
 pub fn print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     static LOCK: Mutex = Mutex::new();
 
+    // There are issues currently linking libbacktrace into tests, and in
+    // general during libstd's own unit tests we're not testing this path. In
+    // test mode immediately return here to optimize away any references to the
+    // libbacktrace symbols
+    if cfg!(test) {
+        return Ok(())
+    }
+
     // Use a lock to prevent mixed output in multithreading context.
     // Some platforms also requires it, like `SymFromAddr` on Windows.
     unsafe {

@@ -346,6 +346,9 @@ extern crate rustc_demangle;
 #[allow(unused_extern_crates)]
 extern crate unwind;
 
+#[cfg(feature = "backtrace")]
+extern crate backtrace_sys;
+
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
 // code. So any lang items std defines are conditionally excluded (or else they

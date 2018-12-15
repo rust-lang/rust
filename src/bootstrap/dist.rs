@@ -858,7 +858,6 @@ impl Step for Src {
         let std_src_dirs = [
             "src/build_helper",
             "src/liballoc",
-            "src/libbacktrace",
             "src/libcore",
             "src/libpanic_abort",
             "src/libpanic_unwind",
