@@ -1095,7 +1095,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
-                            let sp = if has_bounds {
+                            let is_impl_trait = bound_kind.to_string().starts_with("impl ");
+                            let sp = if has_bounds && !is_impl_trait {
                                 sp.to(self.tcx
                                     .sess
                                     .source_map()
@@ -1103,7 +1104,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 sp
                             };
-                            (sp, has_bounds)
+                            (sp, has_bounds, is_impl_trait)
                         })
                     } else {
                         None
@@ -1136,25 +1137,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         fn binding_suggestion<'tcx, S: fmt::Display>(
             err: &mut DiagnosticBuilder<'tcx>,
-            type_param_span: Option<(Span, bool)>,
+            type_param_span: Option<(Span, bool, bool)>,
             bound_kind: GenericKind<'tcx>,
             sub: S,
         ) {
-            let consider = &format!(
-                "consider adding an explicit lifetime bound `{}: {}`...",
-                bound_kind, sub
+            let consider = format!(
+                "consider adding an explicit lifetime bound {}",
+                if type_param_span.map(|(_, _, is_impl_trait)| is_impl_trait).unwrap_or(false) {
+                    format!(" `{}` to `{}`...", sub, bound_kind)
+                } else {
+                    format!("`{}: {}`...", bound_kind, sub)
+                },
             );
-            if let Some((sp, has_lifetimes)) = type_param_span {
-                let tail = if has_lifetimes { " + " } else { "" };
-                let suggestion = format!("{}: {}{}", bound_kind, sub, tail);
+            if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
+                let suggestion = if is_impl_trait {
+                    format!("{} + {}", bound_kind, sub)
+                } else {
+                    let tail = if has_lifetimes { " + " } else { "" };
+                    format!("{}: {}{}", bound_kind, sub, tail)
+                };
                 err.span_suggestion_short_with_applicability(
                     sp,
-                    consider,
+                    &consider,
                     suggestion,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                err.help(consider);
+                err.help(&consider);
             }
         }
 
