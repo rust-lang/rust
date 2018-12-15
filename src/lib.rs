@@ -319,6 +319,7 @@ fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
 
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
+    flags_builder.set("probestack_enabled", "false").unwrap(); // ___cranelift_probestack is not provided
     flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
         "true"
     } else {
