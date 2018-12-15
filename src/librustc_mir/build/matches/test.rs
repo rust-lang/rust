@@ -72,16 +72,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Range { lo, hi, ty, end } => {
-                assert!(ty == match_pair.pattern.ty);
+            PatternKind::Range(range) => {
+                assert!(range.ty == match_pair.pattern.ty);
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Range {
-                        lo,
-                        hi,
-                        ty,
-                        end,
-                    },
+                    kind: TestKind::Range(range),
                 }
             }
 
@@ -137,9 +132,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Variant { .. } => {
                 panic!("you should have called add_variants_to_switch instead!");
             }
-            PatternKind::Range { ty, lo, hi, end } => {
+            PatternKind::Range(range) => {
                 // Check that none of the switch values are in the range.
-                self.values_not_contained_in_range(ty, lo, hi, end, indices)
+                self.values_not_contained_in_range(range, indices)
                     .unwrap_or(false)
             }
             PatternKind::Slice { .. } |
@@ -381,7 +376,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            TestKind::Range { ref lo, ref hi, ty, ref end } => {
+            TestKind::Range(PatternRange { ref lo, ref hi, ty, ref end }) => {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
                 let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
@@ -536,9 +531,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             (&TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
-             &PatternKind::Range { ty, lo, hi, end }) => {
+             &PatternKind::Range(range)) => {
                 let not_contained = self
-                    .values_not_contained_in_range(ty, lo, hi, end, indices)
+                    .values_not_contained_in_range(range, indices)
                     .unwrap_or(false);
 
                 if not_contained {
@@ -630,12 +625,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (&TestKind::Range {
-                lo: test_lo, hi: test_hi, ty: test_ty, end: test_end,
-            }, &PatternKind::Range {
-                lo: pat_lo, hi: pat_hi, ty: _, end: pat_end,
-            }) => {
-                if (test_lo, test_hi, test_end) == (pat_lo, pat_hi, pat_end) {
+            (&TestKind::Range(test),
+             &PatternKind::Range(pat)) => {
+                if test == pat {
                     resulting_candidates[0]
                         .push(self.candidate_without_match_pair(
                             match_pair_index,
@@ -648,13 +640,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     use std::cmp::Ordering::*;
                     use rustc::hir::RangeEnd::*;
 
-                    let param_env = ty::ParamEnv::empty().and(test_ty);
+                    let param_env = ty::ParamEnv::empty().and(test.ty);
                     let tcx = self.hir.tcx();
 
-                    let lo = compare_const_vals(tcx, test_lo, pat_hi, param_env)?;
-                    let hi = compare_const_vals(tcx, test_hi, pat_lo, param_env)?;
+                    let lo = compare_const_vals(tcx, test.lo, pat.hi, param_env)?;
+                    let hi = compare_const_vals(tcx, test.hi, pat.lo, param_env)?;
 
-                    match (test_end, pat_end, lo, hi) {
+                    match (test.end, pat.end, lo, hi) {
                         // pat < test
                         (_, _, Greater, _) |
                         (_, Excluded, Equal, _) |
@@ -675,12 +667,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (&TestKind::Range {
-                lo, hi, ty, end
-            }, &PatternKind::Constant {
-                ref value
-            }) => {
-                if self.const_range_contains(ty, lo, hi, end, value) == Some(false) {
+            (&TestKind::Range(range), &PatternKind::Constant { ref value }) => {
+                if self.const_range_contains(range, value) == Some(false) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
                     resulting_candidates[1].push(candidate.clone());
@@ -807,21 +795,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn const_range_contains(
         &self,
-        ty: Ty<'tcx>,
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
-        end: RangeEnd,
+        range: PatternRange<'tcx>,
         value: &'tcx ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
-        let param_env = ty::ParamEnv::empty().and(ty);
+        let param_env = ty::ParamEnv::empty().and(range.ty);
         let tcx = self.hir.tcx();
 
-        let a = compare_const_vals(tcx, lo, value, param_env)?;
-        let b = compare_const_vals(tcx, value, hi, param_env)?;
+        let a = compare_const_vals(tcx, range.lo, value, param_env)?;
+        let b = compare_const_vals(tcx, value, range.hi, param_env)?;
 
-        match (b, end) {
+        match (b, range.end) {
             (Less, _) |
             (Equal, RangeEnd::Included) if a != Greater => Some(true),
             _ => Some(false),
@@ -830,14 +815,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn values_not_contained_in_range(
         &self,
-        ty: Ty<'tcx>,
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
-        end: RangeEnd,
+        range: PatternRange<'tcx>,
         indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
         for val in indices.keys() {
-            if self.const_range_contains(ty, lo, hi, end, val)? {
+            if self.const_range_contains(range, val)? {
                 return Some(false);
             }
         }

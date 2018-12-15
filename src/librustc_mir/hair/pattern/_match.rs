@@ -173,7 +173,7 @@ use self::WitnessPreference::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::{FieldPattern, Pattern, PatternKind};
+use super::{FieldPattern, Pattern, PatternKind, PatternRange};
 use super::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
@@ -554,12 +554,12 @@ impl<'tcx> Witness<'tcx> {
                 _ => {
                     match *ctor {
                         ConstantValue(value) => PatternKind::Constant { value },
-                        ConstantRange(lo, hi, ty, end) => PatternKind::Range {
+                        ConstantRange(lo, hi, ty, end) => PatternKind::Range(PatternRange {
                             lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
                             hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
                             ty,
                             end,
-                        },
+                        }),
                         _ => PatternKind::Wild,
                     }
                 }
@@ -820,7 +820,7 @@ impl<'tcx> IntRange<'tcx> {
                 -> Option<IntRange<'tcx>> {
         Self::from_ctor(tcx, &match pat.kind {
             box PatternKind::Constant { value } => ConstantValue(value),
-            box PatternKind::Range { lo, hi, ty, end } => ConstantRange(
+            box PatternKind::Range(PatternRange { lo, hi, ty, end }) => ConstantRange(
                 lo.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
                 hi.to_bits(tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
                 ty,
@@ -1259,7 +1259,7 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
             Some(vec![Variant(adt_def.variants[variant_index].did)])
         }
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
-        PatternKind::Range { lo, hi, ty, end } =>
+        PatternKind::Range(PatternRange { lo, hi, ty, end }) =>
             Some(vec![ConstantRange(
                 lo.to_bits(cx.tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
                 hi.to_bits(cx.tcx, ty::ParamEnv::empty().and(ty)).unwrap(),
@@ -1556,7 +1556,7 @@ fn constructor_covered_by_range<'a, 'tcx>(
 ) -> Result<bool, ErrorReported> {
     let (from, to, end, ty) = match pat.kind {
         box PatternKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        box PatternKind::Range { lo, hi, ty, end } => (lo, hi, end, ty),
+        box PatternKind::Range(PatternRange { lo, hi, end, ty }) => (lo, hi, end, ty),
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);

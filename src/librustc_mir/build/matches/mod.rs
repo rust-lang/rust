@@ -19,7 +19,6 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
 use hair::pattern::PatternTypeProjections;
-use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -681,12 +680,7 @@ enum TestKind<'tcx> {
     },
 
     // test whether the value falls within an inclusive or exclusive range
-    Range {
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
-        ty: Ty<'tcx>,
-        end: hir::RangeEnd,
-    },
+    Range(PatternRange<'tcx>),
 
     // test length of the slice is equal to len
     Len {

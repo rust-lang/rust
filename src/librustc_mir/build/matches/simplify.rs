@@ -107,7 +107,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Range { lo, hi, ty, end } => {
+            PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
                 let range = match ty.sty {
                     ty::Char => {
                         Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32)))
