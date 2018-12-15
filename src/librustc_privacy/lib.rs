@@ -9,6 +9,7 @@
 
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
+#[macro_use] extern crate log;
 extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
@@ -1451,6 +1452,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
 struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item_id: ast::NodeId,
     item_def_id: DefId,
     span: Span,
     /// The visitor checks that each component type is at least this visible.
@@ -1516,16 +1518,18 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
                                    &format!("{} (error {})", msg, err_code));
             }
 
-            if self.leaks_private_dep(trait_ref.def_id) {
-                self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
-                                   node_id,
-                                   self.span,
-                                   &format!("trait `{}` from private dependency '{}' in public \
-                                             interface", trait_ref,
-                                             trait_ref.def_id.krate));
-
-            }
         }
+
+        if self.leaks_private_dep(trait_ref.def_id) {
+            self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
+                               self.item_id,
+                               self.span,
+                               &format!("trait `{}` from private dependency '{}' in public \
+                                         interface", trait_ref,
+                                         self.tcx.crate_name(trait_ref.def_id.krate)));
+
+        }
+
     }
 
     /// An item is 'leaked' from a private dependency if all
@@ -1537,9 +1541,13 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
         if !self.tcx.features().public_private_dependencies {
             return false
         }
-        self.required_visibility == ty::Visibility::Public &&
+        let ret = self.required_visibility == ty::Visibility::Public &&
             !item_id.is_local() &&
-            !self.public_crates.contains(&item_id.krate)
+            !self.public_crates.contains(&item_id.krate);
+
+
+        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
+        return ret;
     }
 }
 
@@ -1601,14 +1609,17 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                     }
                 }
 
-                if self.leaks_private_dep(def_id) {
-                    self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
-                                       node_id,
-                                       self.span,
-                                       &format!("type '{}' from private dependency '{}' in \
-                                                public interface", ty, def_id.krate));
-                }
             }
+
+            if self.leaks_private_dep(def_id) {
+                self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
+                                   self.item_id,
+                                   self.span,
+                                   &format!("type '{}' from private dependency '{}' in \
+                                            public interface", ty,
+                                            self.tcx.crate_name(def_id.krate)));
+            }
+
         }
 
         ty.super_visit_with(self)
@@ -1673,6 +1684,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
 
         SearchInterfaceForPrivateItemsVisitor {
             tcx: self.tcx,
+            item_id,
             item_def_id: self.tcx.hir().local_def_id(item_id),
             span: self.tcx.hir().span(item_id),
             required_visibility,
