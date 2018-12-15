@@ -120,6 +120,11 @@ if __name__ == '__main__':
         sys.exit(0)
 
     print(message)
+
+    if not github_token:
+        print('Dry run only, not committing anything')
+        sys.exit(0)
+
     with open(save_message_to_path, 'w') as f:
         f.write(message)
 
