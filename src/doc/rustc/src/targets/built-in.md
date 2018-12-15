@@ -6,5 +6,5 @@ the team is supporting directly.
 
 To see the list of built-in targets, you can run `rustc --print target-list`,
 or look at [the API
-docs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_back/target/#modules).
+docs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/spec/index.html#modules).
 Each module there defines a builder for a particular target.
