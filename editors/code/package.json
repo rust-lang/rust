@@ -13,7 +13,7 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.26.0"
+        "vscode": "^1.30.0"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -31,7 +31,7 @@
         "singleQuote": true
     },
     "dependencies": {
-        "vscode-languageclient": "^5.1.1"
+        "vscode-languageclient": "^5.2.1"
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
