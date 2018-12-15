@@ -5057,7 +5057,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Luckily, we can (at least for now) deduce the intermediate steps
         // just from the end-point.
         //
-        // There are basically four cases to consider:
+        // There are basically five cases to consider:
         //
         // 1. Reference to a constructor of a struct:
         //
@@ -5119,37 +5119,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Case 2. Reference to a variant constructor.
             Def::VariantCtor(def_id, ..) => {
-                if self.tcx.features().type_alias_enum_variants {
-                    let adt_def = self_ty.and_then(|t| t.ty_adt_def());
-                    let (generics_def_id, index) = if let Some(adt_def) = adt_def {
-                        debug_assert!(adt_def.is_enum());
-                        (adt_def.did, last)
-                    } else if last >= 1 && segments[last - 1].args.is_some() {
-                        // Everything but the penultimate segment should have no
-                        // parameters at all.
-                        let enum_def_id = self.tcx.parent_def_id(def_id).unwrap();
-                        (enum_def_id, last - 1)
-                    } else {
-                        // FIXME: lint here suggesting `Enum::<...>::Variant` form
-                        // instead of `Enum::Variant::<...>` form.
-
-                        // Everything but the final segment should have no
-                        // parameters at all.
-                        let generics = self.tcx.generics_of(def_id);
-                        // Variant and struct constructors use the
-                        // generics of their parent type definition.
-                        (generics.parent.unwrap_or(def_id), last)
-                    };
-                    path_segs.push(PathSeg(generics_def_id, index));
+                let adt_def = self_ty.and_then(|t| t.ty_adt_def());
+                let (generics_def_id, index) = if let Some(adt_def) = adt_def {
+                    debug_assert!(adt_def.is_enum());
+                    (adt_def.did, last)
+                } else if last >= 1 && segments[last - 1].args.is_some() {
+                    // Everything but the penultimate segment should have no
+                    // parameters at all.
+                    let enum_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                    (enum_def_id, last - 1)
                 } else {
+                    // FIXME: lint here suggesting `Enum::<...>::Variant` form
+                    // instead of `Enum::Variant::<...>` form.
+
                     // Everything but the final segment should have no
                     // parameters at all.
                     let generics = self.tcx.generics_of(def_id);
                     // Variant and struct constructors use the
                     // generics of their parent type definition.
-                    let generics_def_id = generics.parent.unwrap_or(def_id);
-                    path_segs.push(PathSeg(generics_def_id, last));
-                }
+                    (generics.parent.unwrap_or(def_id), last)
+                };
+                path_segs.push(PathSeg(generics_def_id, index));
             }
 
             // Case 3. Reference to a top-level value.
@@ -5234,14 +5224,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
 
-        let is_alias_variant_ctor = if tcx.features().type_alias_enum_variants {
+        let is_alias_variant_ctor =
             match def {
                 Def::VariantCtor(_, _) if self_ty.is_some() => true,
                 _ => false,
-            }
-        } else {
-            false
-        };
+            };
 
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
         AstConv::prohibit_generics(self, segments.iter().enumerate().filter_map(|(index, seg)| {
