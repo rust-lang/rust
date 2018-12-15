@@ -138,13 +138,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 panic!("you should have called add_variants_to_switch instead!");
             }
             PatternKind::Range { ty, lo, hi, end } => {
-                indices
-                    .keys()
-                    .all(|value| {
-                        !self
-                            .const_range_contains(ty, lo, hi, end, value)
-                            .unwrap_or(true)
-                    })
+                // Check that none of the switch values are in the range.
+                self.values_not_contained_in_range(ty, lo, hi, end, indices)
+                    .unwrap_or(false)
             }
             PatternKind::Slice { .. } |
             PatternKind::Array { .. } |
@@ -541,16 +537,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             (&TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
              &PatternKind::Range { ty, lo, hi, end }) => {
-                let not_contained = indices
-                    .keys()
-                    .all(|value| {
-                        !self
-                            .const_range_contains(ty, lo, hi, end, value)
-                            .unwrap_or(true)
-                    });
+                let not_contained = self
+                    .values_not_contained_in_range(ty, lo, hi, end, indices)
+                    .unwrap_or(false);
 
                 if not_contained {
-                    // No values are contained in the pattern range,
+                    // No switch values are contained in the pattern range,
                     // so the pattern can be matched only if this test fails.
                     let otherwise = options.len();
                     resulting_candidates[otherwise].push(candidate.clone());
@@ -834,6 +826,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             (Equal, RangeEnd::Included) if a != Greater => Some(true),
             _ => Some(false),
         }
+    }
+
+    fn values_not_contained_in_range(
+        &self,
+        ty: Ty<'tcx>,
+        lo: &'tcx ty::Const<'tcx>,
+        hi: &'tcx ty::Const<'tcx>,
+        end: RangeEnd,
+        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+    ) -> Option<bool> {
+        for val in indices.keys() {
+            if self.const_range_contains(ty, lo, hi, end, val)? {
+                return Some(false);
+            }
+        }
+
+        Some(true)
     }
 }
 
