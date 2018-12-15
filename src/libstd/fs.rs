@@ -1729,7 +1729,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// limited to just these cases:
 ///
 /// * `path` does not exist.
-/// * A component in path is not a directory.
+/// * A non-final component in path is not a directory.
 ///
 /// # Examples
 ///
