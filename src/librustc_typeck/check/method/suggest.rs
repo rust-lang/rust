@@ -424,10 +424,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if !unsatisfied_predicates.is_empty() {
-                    let bound_list = unsatisfied_predicates.iter()
+                    let mut bound_list = unsatisfied_predicates.iter()
                         .map(|p| format!("`{} : {}`", p.self_ty(), p))
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                        .collect::<Vec<_>>();
+                    bound_list.sort();
+                    bound_list.dedup();  // #35677
+                    let bound_list = bound_list.join("\n");
                     err.note(&format!("the method `{}` exists but the following trait bounds \
                                        were not satisfied:\n{}",
                                       item_name,
