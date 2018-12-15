@@ -1,0 +1,18 @@
+// run-rustfix
+
+use std::fmt::Debug;
+
+fn foo(d: impl Debug + 'static) {
+//~^ HELP consider adding an explicit lifetime bound  `'static` to `impl Debug`
+    bar(d);
+//~^ ERROR the parameter type `impl Debug` may not live long enough
+//~| NOTE ...so that the type `impl Debug` will meet its required lifetime bounds
+}
+
+fn bar(d: impl Debug + 'static) {
+    println!("{:?}", d)
+}
+
+fn main() {
+  foo("hi");
+}

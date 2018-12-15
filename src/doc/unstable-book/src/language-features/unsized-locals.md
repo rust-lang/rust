@@ -8,7 +8,7 @@ The tracking issue for this feature is: [#48055]
 
 This implements [RFC1909]. When turned on, you can have unsized arguments and locals:
 
-[RFC1909]: https://github.com/rust-lang/rfcs/blob/master/text/1909-coercions.md
+[RFC1909]: https://github.com/rust-lang/rfcs/blob/master/text/1909-unsized-rvalues.md
 
 ```rust
 #![feature(unsized_locals)]
