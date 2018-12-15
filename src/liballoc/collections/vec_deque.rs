@@ -1927,6 +1927,108 @@ impl<T> VecDeque<T> {
             self.truncate(new_len);
         }
     }
+
+    /// Rotates the double-ended queue `mid` places to the left.
+    ///
+    /// Equivalently,
+    /// - Rotates item `mid` into the first position.
+    /// - Pops the first `mid` items and pushes them to the end.
+    /// - Rotates `len() - mid` places to the right.
+    ///
+    /// # Panics
+    ///
+    /// If `mid` is greater than `len()`.  Note that `mid == len()`
+    /// does _not_ panic and is a no-op rotation.
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(min(mid, len() - mid))` time and no extra space.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_rotate)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf: VecDeque<_> = (0..10).collect();
+    ///
+    /// buf.rotate_left(3);
+    /// assert_eq!(buf, [3, 4, 5, 6, 7, 8, 9, 0, 1, 2]);
+    ///
+    /// for i in 1..10 {
+    ///     assert_eq!(i * 3 % 10, buf[0]);
+    ///     buf.rotate_left(3);
+    /// }
+    /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    /// ```
+    #[unstable(feature = "vecdeque_rotate", issue = "56686")]
+    pub fn rotate_left(&mut self, mid: usize) {
+        assert!(mid <= self.len());
+        let k = self.len() - mid;
+        if mid <= k {
+            unsafe { self.rotate_left_inner(mid) }
+        } else {
+            unsafe { self.rotate_right_inner(k) }
+        }
+    }
+
+    /// Rotates the double-ended queue `k` places to the right.
+    ///
+    /// Equivalently,
+    /// - Rotates the first item into position `k`.
+    /// - Pops the last `k` items and pushes them to the front.
+    /// - Rotates `len() - k` places to the left.
+    ///
+    /// # Panics
+    ///
+    /// If `k` is greater than `len()`.  Note that `k == len()`
+    /// does _not_ panic and is a no-op rotation.
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(min(k, len() - k))` time and no extra space.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_rotate)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf: VecDeque<_> = (0..10).collect();
+    ///
+    /// buf.rotate_right(3);
+    /// assert_eq!(buf, [7, 8, 9, 0, 1, 2, 3, 4, 5, 6]);
+    ///
+    /// for i in 1..10 {
+    ///     assert_eq!(0, buf[i * 3 % 10]);
+    ///     buf.rotate_right(3);
+    /// }
+    /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    /// ```
+    #[unstable(feature = "vecdeque_rotate", issue = "56686")]
+    pub fn rotate_right(&mut self, k: usize) {
+        assert!(k <= self.len());
+        let mid = self.len() - k;
+        if k <= mid {
+            unsafe { self.rotate_right_inner(k) }
+        } else {
+            unsafe { self.rotate_left_inner(mid) }
+        }
+    }
+
+    unsafe fn rotate_left_inner(&mut self, mid: usize) {
+        self.wrap_copy(self.head, self.tail, mid);
+        self.head = self.wrap_add(self.head, mid);
+        self.tail = self.wrap_add(self.tail, mid);
+    }
+
+    unsafe fn rotate_right_inner(&mut self, k: usize) {
+        self.head = self.wrap_sub(self.head, k);
+        self.tail = self.wrap_sub(self.tail, k);
+        self.wrap_copy(self.tail, self.head, k);
+    }
 }
 
 impl<T: Clone> VecDeque<T> {
