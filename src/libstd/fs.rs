@@ -195,9 +195,10 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 /// This module only currently provides one bit of information, [`readonly`],
 /// which is exposed on all currently supported platforms. Unix-specific
 /// functionality, such as mode bits, is available through the
-/// `os::unix::PermissionsExt` trait.
+/// [`PermissionsExt`] trait.
 ///
 /// [`readonly`]: struct.Permissions.html#method.readonly
+/// [`PermissionsExt`]: ../os/unix/fs/trait.PermissionsExt.html
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
