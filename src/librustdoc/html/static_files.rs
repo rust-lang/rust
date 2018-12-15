@@ -23,6 +23,9 @@ pub static RUSTDOC_CSS: &'static str = include_str!("static/rustdoc.css");
 /// The file contents of `settings.css`, responsible for the items on the settings page.
 pub static SETTINGS_CSS: &'static str = include_str!("static/settings.css");
 
+/// The file contents of the `noscript.css` file, used in case JS isn't supported or is disabled.
+pub static NOSCRIPT_CSS: &'static str = include_str!("static/noscript.css");
+
 /// The file contents of `normalize.css`, included to even out standard elements between browser
 /// implementations.
 pub static NORMALIZE_CSS: &'static str = include_str!("static/normalize.css");

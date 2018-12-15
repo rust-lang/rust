@@ -54,6 +54,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}light{suffix}.css\" \
           id=\"themeStyle\">\
     <script src=\"{root_path}storage{suffix}.js\"></script>\
+    <noscript><link rel=\"stylesheet\" href=\"{root_path}noscript{suffix}.css\"></noscript>\
     {css_extension}\
     {favicon}\
     {in_header}\

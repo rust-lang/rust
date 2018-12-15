@@ -368,6 +368,10 @@ body:not(.source) .example-wrap > pre {
 #main > .docblock h2 { font-size: 1.15em; }
 #main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
 
+#main > h2 + div, #main > h2 + h3, #main > h3 + div {
+	display: none;
+}
+
 .docblock h1 { font-size: 1em; }
 .docblock h2 { font-size: 0.95em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 0.9em; }
