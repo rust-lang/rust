@@ -1,35 +1,44 @@
-From fd6acae580c2be9e8ba9c32b013df4e9547d936f Mon Sep 17 00:00:00 2001
+From 8bce7b9601aec46ee7704027dc173257d3e43492 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Mon, 12 Nov 2018 19:08:45 +0100
+Date: Fri, 14 Dec 2018 13:09:42 +0100
 Subject: [PATCH] Disable stdsimd
 
 ---
  src/libcore/lib.rs | 2 ++
- src/libstd/lib.rs  | 2 ++
- 2 files changed, 4 insertions(+)
+ src/libstd/lib.rs  | 4 +++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index c69d444..1b7abad 100644
+index a51674f..313c173 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -228,6 +228,7 @@ mod nonzero;
- mod tuple;
- mod unit;
- 
+@@ -248,6 +248,7 @@ macro_rules! test_v256 { ($item:item) => {}; }
+ macro_rules! test_v512 { ($item:item) => {}; }
+ #[allow(unused_macros)]
+ macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
 +/*
- // Pull in the `coresimd` crate directly into libcore. This is where all the
- // architecture-specific (and vendor-specific) intrinsics are defined. AKA
- // things like SIMD and such. Note that the actual source for all this lies in a
-@@ -256,3 +257,4 @@ mod coresimd;
+ #[path = "../stdsimd/coresimd/mod.rs"]
+ #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
+ #[unstable(feature = "stdsimd", issue = "48556")]
+@@ -255,3 +256,4 @@ mod coresimd;
+ 
  #[stable(feature = "simd_arch", since = "1.27.0")]
- #[cfg(not(stage0))]
  pub use coresimd::arch;
 +*/
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index f460d10..6110b05 100644
+index 90c8eaf..95541c3 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -493,6 +493,7 @@ mod memchr;
+@@ -287,7 +287,7 @@
+ #![feature(rustc_attrs)]
+ #![feature(rustc_const_unstable)]
+ #![feature(std_internals)]
+-#![feature(stdsimd)]
++//#![feature(stdsimd)]
+ #![feature(shrink_to)]
+ #![feature(slice_concat_ext)]
+ #![feature(slice_internals)]
+@@ -503,6 +503,7 @@ mod memchr;
  // compiler
  pub mod rt;
  
@@ -37,9 +46,9 @@ index f460d10..6110b05 100644
  // Pull in the `stdsimd` crate directly into libstd. This is the same as
  // libcore's arch/simd modules where the source of truth here is in a different
  // repository, but we pull things in here manually to get it into libstd.
-@@ -517,6 +518,7 @@ mod coresimd {
+@@ -526,6 +527,7 @@ mod coresimd {
  #[stable(feature = "simd_arch", since = "1.27.0")]
- #[cfg(all(not(stage0), not(test)))]
+ #[cfg(not(test))]
  pub use stdsimd::arch;
 +*/
  

@@ -1,6 +1,6 @@
-From d8bb60cc115960702f73f83866cde65dcdcf1cb4 Mon Sep 17 00:00:00 2001
+From a99af7473c8b334ed6febe97294813298b6a3633 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 17 Nov 2018 11:08:10 +0100
+Date: Sat, 15 Dec 2018 14:32:15 +0100
 Subject: [PATCH] Fix libstd building
 
 ---
@@ -12,10 +12,17 @@ Subject: [PATCH] Fix libstd building
  5 files changed, 1 insertion(+), 49 deletions(-)
 
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index 6110b05..8b0c897 100644
+index f3965f3..13e17b1 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -255,7 +255,6 @@
+@@ -249,14 +249,12 @@
+ #![feature(cfg_target_thread_local)]
+ #![feature(cfg_target_vendor)]
+ #![feature(char_error_internals)]
+-#![feature(compiler_builtins_lib)]
+ #![feature(const_int_ops)]
+ #![feature(const_ip)]
+ #![feature(const_raw_ptr_deref)]
  #![feature(const_cstr_unchecked)]
  #![feature(core_intrinsics)]
  #![feature(dropck_eyepatch)]
@@ -23,15 +30,7 @@ index 6110b05..8b0c897 100644
  #![feature(exact_size_is_empty)]
  #![feature(external_doc)]
  #![feature(fixed_size_array)]
-@@ -286,7 +285,6 @@
- #![feature(rustc_attrs)]
- #![feature(rustc_const_unstable)]
- #![feature(std_internals)]
--#![cfg_attr(not(stage0), feature(stdsimd))]
- #![feature(shrink_to)]
- #![feature(slice_concat_ext)]
- #![feature(slice_internals)]
-@@ -402,8 +400,6 @@ pub use core::i16;
+@@ -409,8 +407,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::i64;
@@ -40,7 +39,7 @@ index 6110b05..8b0c897 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::usize;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -436,8 +432,6 @@ pub use alloc_crate::string;
+@@ -443,8 +439,6 @@ pub use alloc_crate::string;
  pub use alloc_crate::vec;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::char;
@@ -94,14 +93,14 @@ index 3f90c1f..85aab83 100644
  #[cfg(test)] use fmt;
  #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
-index 4bc18a5..5c87035 100644
+index 3eacc7a..b518448 100644
 --- a/src/libstd/panic.rs
 +++ b/src/libstd/panic.rs
 @@ -264,9 +264,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
  #[cfg(target_has_atomic = "64")]
  #[unstable(feature = "integer_atomics", issue = "32976")]
  impl RefUnwindSafe for atomic::AtomicI64 {}
--#[cfg(all(not(stage0), target_has_atomic = "128"))]
+-#[cfg(target_has_atomic = "128")]
 -#[unstable(feature = "integer_atomics", issue = "32976")]
 -impl RefUnwindSafe for atomic::AtomicI128 {}
  
@@ -111,17 +110,17 @@ index 4bc18a5..5c87035 100644
  #[cfg(target_has_atomic = "64")]
  #[unstable(feature = "integer_atomics", issue = "32976")]
  impl RefUnwindSafe for atomic::AtomicU64 {}
--#[cfg(all(not(stage0), target_has_atomic = "128"))]
+-#[cfg(target_has_atomic = "128")]
 -#[unstable(feature = "integer_atomics", issue = "32976")]
 -impl RefUnwindSafe for atomic::AtomicU128 {}
  
  #[cfg(target_has_atomic = "8")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 diff --git a/src/libstd/primitive_docs.rs b/src/libstd/primitive_docs.rs
-index c2a1612..99824c5 100644
+index 7c1654f..cc96271 100644
 --- a/src/libstd/primitive_docs.rs
 +++ b/src/libstd/primitive_docs.rs
-@@ -809,14 +809,6 @@ mod prim_i32 { }
+@@ -808,14 +808,6 @@ mod prim_i32 { }
  #[stable(feature = "rust1", since = "1.0.0")]
  mod prim_i64 { }
  
@@ -136,7 +135,7 @@ index c2a1612..99824c5 100644
  #[doc(primitive = "u8")]
  //
  /// The 8-bit unsigned integer type.
-@@ -849,14 +841,6 @@ mod prim_u32 { }
+@@ -848,14 +840,6 @@ mod prim_u32 { }
  #[stable(feature = "rust1", since = "1.0.0")]
  mod prim_u64 { }
  
