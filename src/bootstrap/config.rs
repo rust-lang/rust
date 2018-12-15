@@ -22,9 +22,9 @@ use std::cmp;
 
 use num_cpus;
 use toml;
-use cache::{INTERNER, Interned};
-use flags::Flags;
-pub use flags::Subcommand;
+use crate::cache::{INTERNER, Interned};
+use crate::flags::Flags;
+pub use crate::flags::Subcommand;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///

@@ -20,8 +20,8 @@ use std::process::Command;
 
 use build_helper::output;
 
-use Build;
-use config::Config;
+use crate::Build;
+use crate::config::Config;
 
 // The version number
 pub const CFG_RELEASE_NUM: &str = "1.33.0";

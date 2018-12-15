@@ -28,11 +28,11 @@ use build_helper::output;
 use cmake;
 use cc;
 
-use util::{self, exe};
+use crate::util::{self, exe};
 use build_helper::up_to_date;
-use builder::{Builder, RunConfig, ShouldRun, Step};
-use cache::Interned;
-use GitRepo;
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::cache::Interned;
+use crate::GitRepo;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {

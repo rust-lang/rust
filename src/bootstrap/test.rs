@@ -23,17 +23,17 @@ use std::process::Command;
 
 use build_helper::{self, output};
 
-use builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
-use cache::{Interned, INTERNER};
-use compile;
-use dist;
-use flags::Subcommand;
-use native;
-use tool::{self, Tool, SourceType};
-use toolstate::ToolState;
-use util::{self, dylib_path, dylib_path_var};
-use Crate as CargoCrate;
-use {DocTests, Mode, GitRepo};
+use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::cache::{Interned, INTERNER};
+use crate::compile;
+use crate::dist;
+use crate::flags::Subcommand;
+use crate::native;
+use crate::tool::{self, Tool, SourceType};
+use crate::toolstate::ToolState;
+use crate::util::{self, dylib_path, dylib_path_var};
+use crate::Crate as CargoCrate;
+use crate::{DocTests, Mode, GitRepo};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -616,7 +616,7 @@ impl Step for RustdocJS {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
             command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
-            builder.ensure(::doc::Std {
+            builder.ensure(crate::doc::Std {
                 target: self.target,
                 stage: builder.top_stage,
             });
