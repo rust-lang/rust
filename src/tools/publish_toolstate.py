@@ -34,16 +34,6 @@ MAINTAINERS = {
     'rust-by-example': '@steveklabnik @marioidival @projektir',
 }
 
-EMOJI = {
-    'miri': '🛰️',
-    'clippy-driver': '📎',
-    'rls': '💻',
-    'rustfmt': '📝',
-    'book': '📖',
-    'nomicon': '👿',
-    'reference': '📚',
-    'rust-by-example': '👩‍🏫',
-}
 
 def read_current_status(current_commit, path):
     '''Reads build status of `current_commit` from content of `history/*.tsv`
@@ -73,12 +63,13 @@ def update_latest(
         }
 
         slug = 'rust-lang/rust'
-        long_message = textwrap.dedent('''\
+        message = textwrap.dedent('''\
+            📣 Toolstate changed by {}!
+
             Tested on commit {}@{}.
             Direct link to PR: <{}>
 
-        ''').format(slug, current_commit, relevant_pr_url)
-        emoji_status = []
+        ''').format(relevant_pr_number, slug, current_commit, relevant_pr_url)
         anything_changed = False
         for status in latest:
             tool = status['tool']
@@ -90,18 +81,12 @@ def update_latest(
                 status[os] = new
                 if new > old:
                     changed = True
-                    long_message += '🎉 {} on {}: {} → {}.\n' \
-                        .format(tool, os, old, new)
-                    emoji = "{}🎉".format(EMOJI.get(tool))
-                    if msg not in emoji_status:
-                        emoji_status += [msg]
+                    message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                        .format(tool, os, old, new, MAINTAINERS.get(tool))
                 elif new < old:
                     changed = True
-                    long_message += '💔 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                    message += '💔 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
                         .format(tool, os, old, new, MAINTAINERS.get(tool))
-                    emoji = "{}💔".format(EMOJI.get(tool))
-                    if msg not in emoji_status:
-                        emoji_status += [msg]
 
             if changed:
                 status['commit'] = current_commit
@@ -111,9 +96,6 @@ def update_latest(
         if not anything_changed:
             return ''
 
-        short_message = "📣 Toolstate changed by {}! ({})"
-            .format(relevant_pr_number, '/'.join(emoji_status))
-        message = short_message + "\n\n" + long_message
         f.seek(0)
         f.truncate(0)
         json.dump(latest, f, indent=4, separators=(',', ': '))
