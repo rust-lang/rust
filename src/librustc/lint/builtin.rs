@@ -126,6 +126,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub LEAKED_PRIVATE_DEPENDENCY,
+    Warn,
+    "public interface leaks type from a private dependency"
+}
+
+declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
     "detect public re-exports of private extern crates"

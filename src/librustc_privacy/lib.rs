@@ -1458,6 +1458,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     has_pub_restricted: bool,
     has_old_errors: bool,
     in_assoc_ty: bool,
+    public_crates: FxHashSet<CrateNum>
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
@@ -1514,22 +1515,134 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
                 self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC, node_id, self.span,
                                    &format!("{} (error {})", msg, err_code));
             }
+
+            if self.leaks_private_dep(trait_ref.def_id) {
+                self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
+                                   node_id,
+                                   self.span,
+                                   &format!("trait `{}` from private dependency '{}' in public \
+                                             interface", trait_ref,
+                                             trait_ref.def_id.krate));
+
+            }
         }
-        false
+    }
+
+    /// An item is 'leaked' from a private dependency if all
+    /// of the following are true:
+    /// 1. It's contained within a public type
+    /// 2. It does not come from a crate marked as public
+    fn leaks_private_dep(&self, item_id: DefId) -> bool {
+        // Never do any leak checking if the feature is not enabled
+        if !self.tcx.features().public_private_dependencies {
+            return false
+        }
+        self.required_visibility == ty::Visibility::Public &&
+            !item_id.is_local() &&
+            !self.public_crates.contains(&item_id.krate)
     }
 }
 
-impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
-    fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
-        self.check_def_id(def_id, kind, descr)
+impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        let ty_def_id = match ty.sty {
+            ty::Adt(adt, _) => Some(adt.did),
+            ty::Foreign(did) => Some(did),
+            ty::Dynamic(ref obj, ..) => Some(obj.principal().def_id()),
+            ty::Projection(ref proj) => {
+                if self.required_visibility == ty::Visibility::Invisible {
+                    // Conservatively approximate the whole type alias as public without
+                    // recursing into its components when determining impl publicity.
+                    // For example, `impl <Type as Trait>::Alias {...}` may be a public impl
+                    // even if both `Type` and `Trait` are private.
+                    // Ideally, associated types should be substituted in the same way as
+                    // free type aliases, but this isn't done yet.
+                    return false;
+                }
+                let trait_ref = proj.trait_ref(self.tcx);
+                Some(trait_ref.def_id)
+            }
+            _ => None
+        };
+
+        if let Some(def_id) = ty_def_id {
+            // Non-local means public (private items can't leave their crate, modulo bugs).
+            if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
+                let hir_vis = match self.tcx.hir().find(node_id) {
+                    Some(Node::Item(item)) => &item.vis,
+                    Some(Node::ForeignItem(item)) => &item.vis,
+                    _ => bug!("expected item of foreign item"),
+                };
+
+                let vis = ty::Visibility::from_hir(hir_vis, node_id, self.tcx);
+
+                if !vis.is_at_least(self.min_visibility, self.tcx) {
+                    self.min_visibility = vis;
+                }
+                if !vis.is_at_least(self.required_visibility, self.tcx) {
+                    let vis_adj = match hir_vis.node {
+                        hir::VisibilityKind::Crate(_) => "crate-visible",
+                        hir::VisibilityKind::Restricted { .. } => "restricted",
+                        _ => "private"
+                    };
+
+                    if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
+                        let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
+                            "{} type `{}` in public interface", vis_adj, ty);
+                        err.span_label(self.span, format!("can't leak {} type", vis_adj));
+                        err.span_label(hir_vis.span, format!("`{}` declared as {}", ty, vis_adj));
+                        err.emit();
+                    } else {
+                        self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC,
+                                           node_id,
+                                           self.span,
+                                           &format!("{} type `{}` in public \
+                                                     interface (error E0446)", vis_adj, ty));
+                    }
+                }
+
+                if self.leaks_private_dep(def_id) {
+                    self.tcx.lint_node(lint::builtin::LEAKED_PRIVATE_DEPENDENCY,
+                                       node_id,
+                                       self.span,
+                                       &format!("type '{}' from private dependency '{}' in \
+                                                public interface", ty, def_id.krate));
+                }
+            }
+        }
+
+        ty.super_visit_with(self)
     }
 }
+
+/*struct LeakedPrivateDependenciesVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    public_crates: FxHashSet<CrateNum>
+}
+
+impl<'a, 'tcx> LeakedPrivateDependenciesVisitor<'a, 'tcx> {
+    fn is_private_dep(&self, item_id: DefId) {
+        !item_id.is_local() && !self.public_crates.contains(item_id.krate)
+    }
+
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for LeakedPrivateDependenciesVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> nestedvisitormap<'this, 'tcx> {
+        nestedvisitormap::onlybodies(&self.tcx.hir())
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
+
+    }
+
+}*/
 
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     has_pub_restricted: bool,
     old_error_set: &'a NodeSet,
+    public_crates: FxHashSet<CrateNum>
 }
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
@@ -1566,6 +1679,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             has_pub_restricted: self.has_pub_restricted,
             has_old_errors,
             in_assoc_ty: false,
+            public_crates: self.public_crates.clone()
         }
     }
 
@@ -1690,6 +1804,10 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
 fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
+    let public_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_public.iter().flat_map(|c| {
+        tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
+    }).collect();
+
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
         tcx,
@@ -1767,6 +1885,7 @@ fn privacy_access_levels<'tcx>(
             tcx,
             has_pub_restricted,
             old_error_set: &visitor.old_error_set,
+            public_crates
         };
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }

@@ -230,6 +230,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
+            id: LintId::of(LEAKED_PRIVATE_DEPENDENCY),
+            reference: "issue #44663 <https://github.com/rust-lang/rust/issues/44663>",
+            edition: None,
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
             edition: None,

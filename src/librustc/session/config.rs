@@ -411,6 +411,10 @@ top_level_options!(
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
 
         edition: Edition [TRACKED],
+
+        // The list of crates to consider public for
+        // checking leaked private dependency types in public interfaces
+        extern_public: FxHashSet<String> [UNTRACKED],
     }
 );
 
@@ -606,6 +610,7 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
+            extern_public: FxHashSet::default()
         }
     }
 }
@@ -1648,6 +1653,13 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                                     for the compiler to emit",
             "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
         ),
+        opt::multi_s(
+            "",
+            "extern-public",
+            "Comma separated list of crates to consider 'public'
+                                     for linting purposes",
+            "CRATES",
+        ),
         opt::opt_s(
             "",
             "crate-name",
@@ -1904,6 +1916,17 @@ pub fn build_session_options_and_crate_config(
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
+
+    if matches.opt_present("extern-public") && !nightly_options::is_nightly_build() {
+        early_error(
+            ErrorOutputType::default(),
+            "'--extern-public' is unstable and only \
+            available for nightly builds of rustc."
+        )
+    }
+
+    let extern_public: FxHashSet<String> = matches.opt_strs("extern-public").
+        iter().cloned().collect();
 
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -2287,6 +2310,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
+            extern_public
         },
         cfg,
     )
