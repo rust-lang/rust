@@ -44,12 +44,11 @@ function createTask(spec: Runnable): vscode.Task {
         env: spec.env
     };
 
-    const execCmd = `${definition.command} ${definition.args.join(' ')}`;
     const execOption: vscode.ShellExecutionOptions = {
         cwd: '.',
         env: definition.env
     };
-    const exec = new vscode.ShellExecution(`clear; ${execCmd}`, execOption);
+    const exec = new vscode.ShellExecution(definition.command, definition.args, execOption);
 
     const f = vscode.workspace.workspaceFolders![0];
     const t = new vscode.Task(
@@ -60,6 +59,7 @@ function createTask(spec: Runnable): vscode.Task {
         exec,
         ['$rustc']
     );
+    t.presentationOptions.clear = true
     return t;
 }
 
