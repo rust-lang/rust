@@ -1407,7 +1407,7 @@ impl<'a> Parser<'a> {
                 // definition...
 
                 // We don't allow argument names to be left off in edition 2018.
-                p.parse_arg_general(p.span.rust_2018())
+                p.parse_arg_general(p.span.rust_2018(), true)
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
@@ -1820,7 +1820,7 @@ impl<'a> Parser<'a> {
 
     /// This version of parse arg doesn't necessarily require
     /// identifier names.
-    fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
+    fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
         if let Ok(Some(_)) = self.parse_self_arg() {
@@ -1852,6 +1852,17 @@ impl<'a> Parser<'a> {
                         String::from("<identifier>: <type>"),
                         Applicability::HasPlaceholders,
                     );
+                } else if require_name && is_trait_item {
+                    if let PatKind::Ident(_, ident, _) = pat.node {
+                        err.span_suggestion_with_applicability(
+                            pat.span,
+                            "explicitly ignore parameter",
+                            format!("_: {}", ident),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+
+                    err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
                 }
 
                 return Err(err);
@@ -1917,7 +1928,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a single function argument
     crate fn parse_arg(&mut self) -> PResult<'a, Arg> {
-        self.parse_arg_general(true)
+        self.parse_arg_general(true, false)
     }
 
     /// Parse an argument in a lambda header e.g., |arg, arg|
@@ -5473,7 +5484,7 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else {
-                        match p.parse_arg_general(named_args) {
+                        match p.parse_arg_general(named_args, false) {
                             Ok(arg) => Ok(Some(arg)),
                             Err(mut e) => {
                                 e.emit();
