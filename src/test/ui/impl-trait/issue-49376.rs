@@ -9,9 +9,11 @@ fn gen() -> impl PartialOrd + PartialEq + Debug { }
 
 struct Bar {}
 trait Foo<T = Self> {}
+trait FooNested<T = Option<Self>> {}
 impl Foo for Bar {}
+impl FooNested for Bar {}
 
-fn foo() -> impl Foo {
+fn foo() -> impl Foo + FooNested {
     Bar {}
 }
 
