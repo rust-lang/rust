@@ -12,12 +12,12 @@
 #![crate_type="lib"]
 #![feature(maybe_uninit)]
 
-use std::mem::MaybeUninit;
+use std::mem::MaybeUninitialized;
 
-// Boxing a `MaybeUninit` value should not copy junk from the stack
+// Boxing a `MaybeUninitialized` value should not copy junk from the stack
 #[no_mangle]
-pub fn box_uninitialized() -> Box<MaybeUninit<usize>> {
+pub fn box_uninitialized() -> Box<MaybeUninitialized<usize>> {
     // CHECK-LABEL: @box_uninitialized
     // CHECK-NOT: store
-    Box::new(MaybeUninit::uninitialized())
+    Box::new(MaybeUninitialized::uninitialized())
 }

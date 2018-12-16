@@ -30,7 +30,7 @@
 //! detect recursive locks.
 
 use cell::UnsafeCell;
-use mem::{self, MaybeUninit};
+use mem::{self, MaybeUninitialized};
 use sync::atomic::{AtomicUsize, Ordering};
 use sys::c;
 use sys::compat;
@@ -157,14 +157,14 @@ fn kind() -> Kind {
     return ret;
 }
 
-pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>> }
+pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninitialized<c::CRITICAL_SECTION>> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
     pub fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { inner: UnsafeCell::new(MaybeUninit::uninitialized()) }
+        ReentrantMutex { inner: UnsafeCell::new(MaybeUninitialized::uninitialized()) }
     }
 
     pub unsafe fn init(&mut self) {

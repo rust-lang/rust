@@ -35,7 +35,7 @@
 #![feature(maybe_uninit)]
 #![omit_gdb_pretty_printer_section]
 
-use std::mem::MaybeUninit;
+use std::mem::MaybeUninitialized;
 
 enum ANilEnum {}
 enum AnotherNilEnum {}
@@ -45,8 +45,8 @@ enum AnotherNilEnum {}
 // The error from gdbr is expected since nil enums are not supposed to exist.
 fn main() {
     unsafe {
-        let first: ANilEnum = MaybeUninit::uninitialized().into_inner();
-        let second: AnotherNilEnum = MaybeUninit::uninitialized().into_inner();
+        let first: ANilEnum = MaybeUninitialized::uninitialized().into_inner();
+        let second: AnotherNilEnum = MaybeUninitialized::uninitialized().into_inner();
 
         zzz(); // #break
     }

@@ -42,7 +42,7 @@
 //   This implies that even an empty internal node has at least one edge.
 
 use core::marker::PhantomData;
-use core::mem::{self, MaybeUninit};
+use core::mem::{self, MaybeUninitialized};
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
@@ -70,7 +70,7 @@ struct LeafNode<K, V> {
     /// This node's index into the parent node's `edges` array.
     /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
     /// This is only guaranteed to be initialized when `parent` is non-null.
-    parent_idx: MaybeUninit<u16>,
+    parent_idx: MaybeUninitialized<u16>,
 
     /// The number of keys and values this node stores.
     ///
@@ -80,8 +80,8 @@ struct LeafNode<K, V> {
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
-    keys: MaybeUninit<[K; CAPACITY]>,
-    vals: MaybeUninit<[V; CAPACITY]>,
+    keys: MaybeUninitialized<[K; CAPACITY]>,
+    vals: MaybeUninitialized<[V; CAPACITY]>,
 }
 
 impl<K, V> LeafNode<K, V> {
@@ -91,10 +91,10 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            keys: MaybeUninit::uninitialized(),
-            vals: MaybeUninit::uninitialized(),
+            keys: MaybeUninitialized::uninitialized(),
+            vals: MaybeUninitialized::uninitialized(),
             parent: ptr::null(),
-            parent_idx: MaybeUninit::uninitialized(),
+            parent_idx: MaybeUninitialized::uninitialized(),
             len: 0
         }
     }
@@ -112,10 +112,10 @@ unsafe impl Sync for LeafNode<(), ()> {}
 // ever take a pointer past the first key.
 static EMPTY_ROOT_NODE: LeafNode<(), ()> = LeafNode {
     parent: ptr::null(),
-    parent_idx: MaybeUninit::uninitialized(),
+    parent_idx: MaybeUninitialized::uninitialized(),
     len: 0,
-    keys: MaybeUninit::uninitialized(),
-    vals: MaybeUninit::uninitialized(),
+    keys: MaybeUninitialized::uninitialized(),
+    vals: MaybeUninitialized::uninitialized(),
 };
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cmp;
-use mem::{self, MaybeUninit};
+use mem::{self, MaybeUninitialized};
 use ptr;
 
 /// Rotation is much faster if it has access to a little bit of memory. This
@@ -82,7 +82,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
     }
 
-    let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
+    let mut rawarray = MaybeUninitialized::<RawArray<T>>::uninitialized();
     let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
 
     let dim = mid.sub(left).add(right);

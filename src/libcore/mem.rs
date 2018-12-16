@@ -499,7 +499,8 @@ pub const fn needs_drop<T>() -> bool {
 /// assert_eq!(0, x);
 /// ```
 #[inline]
-#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::zeroed` instead")]
+#[rustc_deprecated(since = "2.0.0",
+                   reason = "use `mem::MaybeUninitialized::zeroed` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
@@ -592,7 +593,8 @@ pub unsafe fn zeroed<T>() -> T {
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
 /// [`Drop`]: ../ops/trait.Drop.html
 #[inline]
-#[rustc_deprecated(since = "2.0.0", reason = "use `mem::MaybeUninit::uninitialized` instead")]
+#[rustc_deprecated(since = "2.0.0",
+                   reason = "use `mem::MaybeUninitialized::uninitialized` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
@@ -1031,52 +1033,53 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// A newtype to construct uninitialized instances of `T`
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "maybe_uninit", issue = "53491")]
-// NOTE after stabilizing `MaybeUninit` proceed to deprecate `mem::{uninitialized,zeroed}`
-pub union MaybeUninit<T> {
+// NOTE after stabilizing `MaybeUninitialized` proceed to deprecate `mem::{uninitialized,zeroed}`
+pub union MaybeUninitialized<T> {
     uninit: (),
     value: ManuallyDrop<T>,
 }
 
-impl<T> MaybeUninit<T> {
-    /// Create a new `MaybeUninit` initialized with the given value.
+impl<T> MaybeUninitialized<T> {
+    /// Create a new `MaybeUninitialized` initialized with the given value.
     ///
-    /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
+    /// Note that dropping a `MaybeUninitialized` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub const fn new(val: T) -> MaybeUninit<T> {
-        MaybeUninit { value: ManuallyDrop::new(val) }
+    pub const fn new(val: T) -> MaybeUninitialized<T> {
+        MaybeUninitialized { value: ManuallyDrop::new(val) }
     }
 
-    /// Create a new `MaybeUninit` in an uninitialized state.
+    /// Create a new `MaybeUninitialized` in an uninitialized state.
     ///
-    /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
+    /// Note that dropping a `MaybeUninitialized` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
-    pub const fn uninitialized() -> MaybeUninit<T> {
-        MaybeUninit { uninit: () }
+    pub const fn uninitialized() -> MaybeUninitialized<T> {
+        MaybeUninitialized { uninit: () }
     }
 
-    /// Create a new `MaybeUninit` in an uninitialized state, with the memory being
+    /// Create a new `MaybeUninitialized` in an uninitialized state, with the memory being
     /// filled with `0` bytes.  It depends on `T` whether that already makes for
-    /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
-    /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
+    /// proper initialization. For example, `MaybeUninitialized<usize>::zeroed()` is initialized,
+    /// but `MaybeUninitialized<&'static i32>::zeroed()` is not because references must not
     /// be null.
     ///
-    /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
+    /// Note that dropping a `MaybeUninitialized` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline]
-    pub fn zeroed() -> MaybeUninit<T> {
-        let mut u = MaybeUninit::<T>::uninitialized();
+    pub fn zeroed() -> MaybeUninitialized<T> {
+        let mut u = MaybeUninitialized::<T>::uninitialized();
         unsafe {
             u.as_mut_ptr().write_bytes(0u8, 1);
         }
         u
     }
 
-    /// Set the value of the `MaybeUninit`. This overwrites any previous value without dropping it.
+    /// Set the value of the `MaybeUninitialized`. This overwrites any previous value without
+    /// dropping it.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn set(&mut self, val: T) {
@@ -1085,14 +1088,14 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Extract the value from the `MaybeUninit` container.  This is a great way
+    /// Extract the value from the `MaybeUninitialized` container.  This is a great way
     /// to ensure that the data will get dropped, because the resulting `T` is
     /// subject to the usual drop handling.
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
-    /// state, otherwise this will immediately cause undefined behavior.
+    /// It is up to the caller to guarantee that the `MaybeUninitialized` really is in an
+    /// initialized state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn into_inner(self) -> T {
@@ -1103,8 +1106,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
-    /// state, otherwise this will immediately cause undefined behavior.
+    /// It is up to the caller to guarantee that the `MaybeUninitialized` really is in an
+    /// initialized state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
@@ -1115,8 +1118,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
-    /// state, otherwise this will immediately cause undefined behavior.
+    /// It is up to the caller to guarantee that the `MaybeUninitialized` really is in an
+    /// initialized state, otherwise this will immediately cause undefined behavior.
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
@@ -1127,7 +1130,7 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Get a pointer to the contained value. Reading from this pointer will be undefined
-    /// behavior unless the `MaybeUninit` is initialized.
+    /// behavior unless the `MaybeUninitialized` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
@@ -1135,7 +1138,7 @@ impl<T> MaybeUninit<T> {
     }
 
     /// Get a mutable pointer to the contained value. Reading from this pointer will be undefined
-    /// behavior unless the `MaybeUninit` is initialized.
+    /// behavior unless the `MaybeUninitialized` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {

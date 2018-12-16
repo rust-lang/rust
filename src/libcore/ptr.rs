@@ -79,7 +79,7 @@ use ops::{CoerceUnsized, DispatchFromDyn};
 use fmt;
 use hash;
 use marker::{PhantomData, Unsize};
-use mem::{self, MaybeUninit};
+use mem::{self, MaybeUninitialized};
 use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -306,8 +306,8 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
-    // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    // We do not have to worry about drops: `MaybeUninitialized` does nothing when dropped.
+    let mut tmp = MaybeUninitialized::<T>::uninitialized();
 
     // Perform the swap
     copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
@@ -399,7 +399,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
         // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t = mem::MaybeUninit::<Block>::uninitialized();
+        let mut t = mem::MaybeUninitialized::<Block>::uninitialized();
         let t = t.as_mut_ptr() as *mut u8;
         let x = x.add(i);
         let y = y.add(i);
@@ -414,7 +414,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     if i < len {
         // Swap any remaining bytes
-        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
+        let mut t = mem::MaybeUninitialized::<UnalignedBlock>::uninitialized();
         let rem = len - i;
 
         let t = t.as_mut_ptr() as *mut u8;
@@ -582,7 +582,7 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp = MaybeUninitialized::<T>::uninitialized();
     copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
     tmp.into_inner()
 }
@@ -649,7 +649,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninitialized();
+    let mut tmp = MaybeUninitialized::<T>::uninitialized();
     copy_nonoverlapping(src as *const u8,
                         tmp.as_mut_ptr() as *mut u8,
                         mem::size_of::<T>());

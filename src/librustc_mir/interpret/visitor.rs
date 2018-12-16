@@ -310,7 +310,7 @@ macro_rules! make_value_visitor {
                     },
                     layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                         // Special handling needed for generators: All but the first field
-                        // (which is the state) are actually implicitly `MaybeUninit`, i.e.,
+                        // (which is the state) are actually implicitly `MaybeUninitialized`, i.e.,
                         // they may or may not be initialized, so we cannot visit them.
                         match v.layout().ty.sty {
                             ty::Generator(..) => {
