@@ -16,24 +16,36 @@ error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element 
 LL |         simd_select(z, z, z);
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: mismatched lengths: mask length `8` != other vector length `4`
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: expected SIMD argument type, found non-SIMD `u32`
   --> $DIR/simd-intrinsic-generic-select.rs:57:9
+   |
+LL |         simd_select(m4, 0u32, 1u32);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: mismatched lengths: mask length `8` != other vector length `4`
+  --> $DIR/simd-intrinsic-generic-select.rs:60:9
    |
 LL |         simd_select_bitmask(0u8, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: expected SIMD argument type, found non-SIMD `u32`
+  --> $DIR/simd-intrinsic-generic-select.rs:63:9
+   |
+LL |         simd_select_bitmask(0u8, 1u32, 2u32);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: `f32` is not an integral type
-  --> $DIR/simd-intrinsic-generic-select.rs:60:9
+  --> $DIR/simd-intrinsic-generic-select.rs:66:9
    |
 LL |         simd_select_bitmask(0.0f32, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: `&str` is not an integral type
-  --> $DIR/simd-intrinsic-generic-select.rs:63:9
+  --> $DIR/simd-intrinsic-generic-select.rs:69:9
    |
 LL |         simd_select_bitmask("x", x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0511`.

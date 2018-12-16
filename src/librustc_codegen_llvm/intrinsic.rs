@@ -1192,7 +1192,7 @@ fn generic_simd_intrinsic(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
-    // every intrinsic takes a SIMD vector as its first argument
+    // every intrinsic below takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");
     let in_ty = arg_tys[0];
     let in_elem = arg_tys[0].simd_type(tcx);
@@ -1296,6 +1296,7 @@ fn generic_simd_intrinsic(
     if name == "simd_select" {
         let m_elem_ty = in_elem;
         let m_len = in_len;
+        require_simd!(arg_tys[1], "argument");
         let v_len = arg_tys[1].simd_size(tcx);
         require!(m_len == v_len,
                  "mismatched lengths: mask length `{}` != other vector length `{}`",
