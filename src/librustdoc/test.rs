@@ -395,6 +395,7 @@ pub fn make_test(s: &str,
     // Now push any outer attributes from the example, assuming they
     // are intended to be crate attributes.
     prog.push_str(&crate_attrs);
+    prog.push_str(&crates);
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
@@ -488,36 +489,77 @@ pub fn make_test(s: &str,
         prog.push_str("\n}");
     }
 
+    debug!("final doctest:\n{}", prog);
+
     (prog, line_offset)
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
 fn partition_source(s: &str) -> (String, String, String) {
-    let mut after_header = false;
+    #[derive(Copy, Clone, PartialEq)]
+    enum PartitionState {
+        Attrs,
+        Crates,
+        Other,
+    }
+    let mut state = PartitionState::Attrs;
     let mut before = String::new();
     let mut crates = String::new();
     let mut after = String::new();
 
     for line in s.lines() {
         let trimline = line.trim();
-        let header = trimline.chars().all(|c| c.is_whitespace()) ||
-            trimline.starts_with("#![") ||
-            trimline.starts_with("#[macro_use] extern crate") ||
-            trimline.starts_with("extern crate");
-        if !header || after_header {
-            after_header = true;
-            after.push_str(line);
-            after.push_str("\n");
-        } else {
-            if trimline.starts_with("#[macro_use] extern crate")
-                || trimline.starts_with("extern crate") {
+
+        // FIXME(misdreavus): if a doc comment is placed on an extern crate statement, it will be
+        // shunted into "everything else"
+        match state {
+            PartitionState::Attrs => {
+                state = if trimline.starts_with("#![") ||
+                    trimline.chars().all(|c| c.is_whitespace()) ||
+                    (trimline.starts_with("//") && !trimline.starts_with("///"))
+                {
+                    PartitionState::Attrs
+                } else if trimline.starts_with("extern crate") ||
+                    trimline.starts_with("#[macro_use] extern crate")
+                {
+                    PartitionState::Crates
+                } else {
+                    PartitionState::Other
+                };
+            }
+            PartitionState::Crates => {
+                state = if trimline.starts_with("extern crate") ||
+                    trimline.starts_with("#[macro_use] extern crate") ||
+                    trimline.chars().all(|c| c.is_whitespace()) ||
+                    (trimline.starts_with("//") && !trimline.starts_with("///"))
+                {
+                    PartitionState::Crates
+                } else {
+                    PartitionState::Other
+                };
+            }
+            PartitionState::Other => {}
+        }
+
+        match state {
+            PartitionState::Attrs => {
+                before.push_str(line);
+                before.push_str("\n");
+            }
+            PartitionState::Crates => {
                 crates.push_str(line);
                 crates.push_str("\n");
             }
-            before.push_str(line);
-            before.push_str("\n");
+            PartitionState::Other => {
+                after.push_str(line);
+                after.push_str("\n");
+            }
         }
     }
+
+    debug!("before:\n{}", before);
+    debug!("crates:\n{}", crates);
+    debug!("after:\n{}", after);
 
     (before, after, crates)
 }
@@ -1035,8 +1077,8 @@ fn main() {
 assert_eq!(2+2, 4);";
         let expected =
 "#![allow(unused)]
-fn main() {
 //Ceci n'est pas une `fn main`
+fn main() {
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
@@ -1083,8 +1125,8 @@ assert_eq!(2+2, 4);";
 
         let expected =
 "#![allow(unused)]
-fn main() {
 // fn main
+fn main() {
 assert_eq!(2+2, 4);
 }".to_string();
 
