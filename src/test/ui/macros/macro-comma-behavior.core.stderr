@@ -40,5 +40,11 @@ error: 1 positional argument in format string, but no arguments were given
 LL |             write!(f, "{}",)?;
    |                        ^^
 
-error: aborting due to 7 previous errors
+error: `#[panic_handler]` function required, but not found
+
+error: language item required, but not found: `eh_personality`
+
+error: language item required, but not found: `eh_unwind_resume`
+
+error: aborting due to 10 previous errors
 

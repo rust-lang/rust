@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(intrinsics, lang_items, no_core)]
+
 #![crate_type="rlib"]
 #![no_core]
 

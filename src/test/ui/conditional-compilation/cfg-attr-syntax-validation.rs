@@ -33,3 +33,5 @@ macro_rules! generate_s10 {
 }
 
 generate_s10!(concat!("nonexistent"));
+
+fn main() {}
