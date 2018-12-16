@@ -2018,13 +2018,23 @@ impl<T> VecDeque<T> {
         }
     }
 
+    // Safety: the following two methods require that the rotation amount
+    // be less than half the length of the deque.
+    //
+    // `wrap_copy` requres that `min(x, cap() - x) + copy_len <= cap()`,
+    // but than `min` is never more than half the capacity, regardless of x,
+    // so it's sound to call here because we're calling with something
+    // less than half the length, which is never above half the capacity.
+
     unsafe fn rotate_left_inner(&mut self, mid: usize) {
+        debug_assert!(mid * 2 <= self.len());
         self.wrap_copy(self.head, self.tail, mid);
         self.head = self.wrap_add(self.head, mid);
         self.tail = self.wrap_add(self.tail, mid);
     }
 
     unsafe fn rotate_right_inner(&mut self, k: usize) {
+        debug_assert!(k * 2 <= self.len());
         self.head = self.wrap_sub(self.head, k);
         self.tail = self.wrap_sub(self.tail, k);
         self.wrap_copy(self.tail, self.head, k);
