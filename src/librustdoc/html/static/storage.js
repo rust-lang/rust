@@ -111,7 +111,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme) {
 
     var found = false;
     if (savedHref.length === 0) {
-        onEach(document.getElementsByTagName("link"), function(el) {
+        onEachLazy(document.getElementsByTagName("link"), function(el) {
             savedHref.push(el.href);
         });
     }
