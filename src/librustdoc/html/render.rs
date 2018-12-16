@@ -1223,7 +1223,10 @@ fn write_minify_replacer<W: Write>(dst: &mut W,
                                    -> io::Result<()> {
     if enable_minification {
         writeln!(dst, "{}",
-                 minifier::js::minify_and_replace_keywords(contents, keywords_to_replace))
+                 minifier::js::minify_and_replace_keywords(contents, keywords_to_replace)
+                              .apply(minifier::js::clean_tokens)
+                              .apply(minifier::js::aggregate_strings)
+                              .to_string())
     } else {
         writeln!(dst, "{}", contents)
     }
