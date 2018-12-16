@@ -491,7 +491,8 @@ impl f64 {
     #[inline]
     #[rustc_deprecated(since = "1.10.0",
                        reason = "you probably meant `(self - other).abs()`: \
-                                 this operation is `(self - other).max(0.0)` (also \
+                                 this operation is `(self - other).max(0.0)` \
+                                 except that `abs_sub` also propagates NaNs (also \
                                  known as `fdim` in C). If you truly need the positive \
                                  difference, consider using that expression or the C function \
                                  `fdim`, depending on how you wish to handle NaN (please consider \
