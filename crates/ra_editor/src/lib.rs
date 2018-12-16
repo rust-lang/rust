@@ -8,7 +8,7 @@ mod test_utils;
 mod typing;
 
 pub use self::{
-    code_actions::{add_derive, add_impl, flip_comma, introduce_variable, LocalEdit},
+    code_actions::{add_derive, add_impl, flip_comma, introduce_variable, make_pub_crate, LocalEdit},
     extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},

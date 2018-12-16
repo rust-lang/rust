@@ -4,7 +4,7 @@ use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset},
     ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
     Direction, SourceFileNode,
-    SyntaxKind::{COMMA, WHITESPACE, COMMENT},
+    SyntaxKind::{COMMA, WHITESPACE, COMMENT, VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF},
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
@@ -174,6 +174,39 @@ pub fn introduce_variable<'a>(
     }
 }
 
+pub fn make_pub_crate<'a>(
+    file: &'a SourceFileNode,
+    offset: TextUnit,
+) -> Option<impl FnOnce() -> LocalEdit + 'a> {
+    let syntax = file.syntax();
+
+    let keyword = find_leaf_at_offset(syntax, offset).find(|leaf| match leaf.kind() {
+        FN_KW | MOD_KW | STRUCT_KW | ENUM_KW | TRAIT_KW => true,
+        _ => false,
+    })?;
+    let parent = keyword.parent()?;
+    let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
+    let node_start = parent.range().start();
+    Some(move || {
+        let mut edit = TextEditBuilder::new();
+
+        if !def_kws.iter().any(|&def_kw| def_kw == parent.kind())
+            || parent.children().any(|child| child.kind() == VISIBILITY)
+        {
+            return LocalEdit {
+                edit: edit.finish(),
+                cursor_position: Some(offset),
+            };
+        }
+
+        edit.insert(node_start, "pub(crate) ".to_string());
+        LocalEdit {
+            edit: edit.finish(),
+            cursor_position: Some(node_start),
+        }
+    })
+}
+
 fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<SyntaxNodeRef> {
     node.siblings(direction)
         .skip(1)
@@ -333,4 +366,43 @@ fn foo() {
         );
     }
 
+    #[test]
+    fn test_make_pub_crate() {
+        check_action(
+            "<|>fn foo() {}",
+            "<|>pub(crate) fn foo() {}",
+            |file, off| make_pub_crate(file, off).map(|f| f()),
+        );
+        check_action(
+            "f<|>n foo() {}",
+            "<|>pub(crate) fn foo() {}",
+            |file, off| make_pub_crate(file, off).map(|f| f()),
+        );
+        check_action(
+            "<|>struct Foo {}",
+            "<|>pub(crate) struct Foo {}",
+            |file, off| make_pub_crate(file, off).map(|f| f()),
+        );
+        check_action("<|>mod foo {}", "<|>pub(crate) mod foo {}", |file, off| {
+            make_pub_crate(file, off).map(|f| f())
+        });
+        check_action(
+            "<|>trait Foo {}",
+            "<|>pub(crate) trait Foo {}",
+            |file, off| make_pub_crate(file, off).map(|f| f()),
+        );
+        check_action("m<|>od {}", "<|>pub(crate) mod {}", |file, off| {
+            make_pub_crate(file, off).map(|f| f())
+        });
+        check_action(
+            "pub(crate) f<|>n foo() {}",
+            "pub(crate) f<|>n foo() {}",
+            |file, off| make_pub_crate(file, off).map(|f| f()),
+        );
+        check_action(
+            "unsafe f<|>n foo() {}",
+            "<|>pub(crate) unsafe fn foo() {}",
+            |file, off| make_pub_crate(file, off).map(|f| f()),
+        );
+    }
 }
