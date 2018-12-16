@@ -68,7 +68,7 @@ pub struct Options {
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
-    /// Whether to persist the doctest executables.
+    /// Otional path to persist the doctest executables to.
     pub persist_doctests: Option<PathBuf>,
 
     // Options that affect the documentation process
@@ -123,6 +123,7 @@ impl fmt::Debug for Options {
             .field("lint_cap", &self.lint_cap)
             .field("should_test", &self.should_test)
             .field("test_args", &self.test_args)
+            .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)

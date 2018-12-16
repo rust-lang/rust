@@ -343,7 +343,7 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("persist-doctests", |o| {
              o.optopt("",
                        "persist-doctests",
-                       "Persists the rustdoc test executables",
+                       "Directory to persist doctest executables into",
                        "PATH")
         }),
     ]

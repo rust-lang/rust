@@ -290,7 +290,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                         .rsplit('/')
                         .next()
                         .unwrap()
-                        .replace(".", "_"), line)
+                        .replace(".", "_"),
+                        line)
                 );
                 std::fs::create_dir_all(&path)
                     .expect("Couldn't create directory for doctest executables");
