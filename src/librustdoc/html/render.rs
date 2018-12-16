@@ -868,10 +868,10 @@ themePicker.onblur = handleThemeButtonsBlur;
     }
 
     {
-        let mut data = static_files::STORAGE_JS.to_owned();
-        data.push_str(&format!("var resourcesSuffix = \"{}\";", cx.shared.resource_suffix));
         write_minify(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
-                     &data,
+                     &format!("var resourcesSuffix = \"{}\";{}",
+                              cx.shared.resource_suffix,
+                              static_files::STORAGE_JS),
                      options.enable_minification)?;
     }
 
