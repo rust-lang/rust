@@ -1,28 +1,28 @@
-error[E0307]: invalid `self` type: isize
+error[E0307]: invalid method receiver type: isize
   --> $DIR/ufcs-explicit-self-bad.rs:18:18
    |
 LL |     fn foo(self: isize, x: isize) -> isize {
    |                  ^^^^^
    |
-   = note: type must be `Foo` or a type that dereferences to it
+   = note: type must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
-error[E0307]: invalid `self` type: Bar<isize>
+error[E0307]: invalid method receiver type: Bar<isize>
   --> $DIR/ufcs-explicit-self-bad.rs:29:18
    |
 LL |     fn foo(self: Bar<isize>, x: isize) -> isize {
    |                  ^^^^^^^^^^
    |
-   = note: type must be `Bar<T>` or a type that dereferences to it
+   = note: type must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
-error[E0307]: invalid `self` type: &Bar<usize>
+error[E0307]: invalid method receiver type: &Bar<usize>
   --> $DIR/ufcs-explicit-self-bad.rs:33:18
    |
 LL |     fn bar(self: &Bar<usize>, x: isize) -> isize {
    |                  ^^^^^^^^^^^
    |
-   = note: type must be `Bar<T>` or a type that dereferences to it
+   = note: type must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0308]: mismatched method receiver

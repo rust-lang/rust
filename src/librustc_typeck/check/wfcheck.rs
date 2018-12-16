@@ -760,8 +760,8 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
             // report error, arbitrary_self_types was enabled
             fcx.tcx.sess.diagnostic().mut_span_err(
-                span, &format!("invalid `self` type: {:?}", receiver_ty)
-            ).note(&format!("type must be `{:?}` or a type that dereferences to it", self_ty))
+                span, &format!("invalid method receiver type: {:?}", receiver_ty)
+            ).note("type of `self` must be `Self` or a type that dereferences to it")
             .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
             .code(DiagnosticId::Error("E0307".into()))
             .emit();
@@ -785,8 +785,8 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
             } else {
                 // report error, would not have worked with arbitrary_self_types
                 fcx.tcx.sess.diagnostic().mut_span_err(
-                    span, &format!("invalid `self` type: {:?}", receiver_ty)
-                ).note(&format!("type must be `{:?}` or a type that dereferences to it", self_ty))
+                    span, &format!("invalid method receiver type: {:?}", receiver_ty)
+                ).note("type must be `Self` or a type that dereferences to it")
                 .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                 .code(DiagnosticId::Error("E0307".into()))
                 .emit();
@@ -800,9 +800,9 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
 /// through a `*const/mut T` raw pointer. If the feature is not enabled, the requirements are more
 /// strict: `receiver_ty` must implement `Receiver` and directly implement `Deref<Target=self_ty>`.
 ///
-/// NB: there are cases this function returns `true` but then causes an error to be raised later,
+/// NB: there are cases this function returns `true` but causes an error to be emitted,
 /// particularly when `receiver_ty` derefs to a type that is the same as `self_ty` but has the
-/// wrong lifetime.
+/// wrong lifetime. Be careful of this if you are calling this function speculatively.
 fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
     fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
     span: Span,
@@ -814,6 +814,7 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
 
     let can_eq_self = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
 
+    // `self: Self` is always valid
     if can_eq_self(receiver_ty) {
         if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, receiver_ty) {
             err.emit();
@@ -823,32 +824,47 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
 
     let mut autoderef = fcx.autoderef(span, receiver_ty);
 
+    // the `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`
     if arbitrary_self_types_enabled {
         autoderef = autoderef.include_raw_pointers();
     }
 
-    // skip the first type, we know its not equal to `self_ty`
+    // the first type is `receiver_ty`, which we know its not equal to `self_ty`. skip it.
     autoderef.next();
 
-    let potential_self_ty = loop {
+    // keep dereferencing `receiver_ty` until we get to `self_ty`
+    loop {
         if let Some((potential_self_ty, _)) = autoderef.next() {
             debug!("receiver_is_valid: potential self type `{:?}` to match `{:?}`",
                 potential_self_ty, self_ty);
 
             if can_eq_self(potential_self_ty) {
-                break potential_self_ty
+                autoderef.finalize(fcx);
+
+                if let Some(mut err) = fcx.demand_eqtype_with_origin(
+                    &cause, self_ty, potential_self_ty
+                ) {
+                    err.emit();
+                }
+
+                break
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`",
                 receiver_ty, self_ty);
             return false
         }
-    };
 
+        // without the `arbitrary_self_types` feature, `receiver_ty` must directly deref to
+        // `self_ty`. Enforce this by only doing one iteration of the loop
+        if !arbitrary_self_types_enabled {
+            return false
+        }
+    }
+
+    // without `feature(arbitrary_self_types)`, we require that `receiver_ty` implements `Receiver`
     if !arbitrary_self_types_enabled {
-        // check that receiver_ty: Receiver<Target=self_ty>
-
-        let receiver_trait_def_id = match fcx.tcx.lang_items().receiver_trait() {
+        let trait_def_id = match fcx.tcx.lang_items().receiver_trait() {
             Some(did) => did,
             None => {
                 debug!("receiver_is_valid: missing Receiver trait");
@@ -856,62 +872,23 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
             }
         };
 
-        let receiver_trait_ref = ty::TraitRef{
-            def_id: receiver_trait_def_id,
+        let trait_ref = ty::TraitRef{
+            def_id: trait_def_id,
             substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
         };
 
-        let receiver_obligation = traits::Obligation::new(
+        let obligation = traits::Obligation::new(
             cause.clone(),
             fcx.param_env,
-            receiver_trait_ref.to_predicate()
+            trait_ref.to_predicate()
         );
 
-        if !fcx.predicate_must_hold(&receiver_obligation) {
+        if !fcx.predicate_must_hold(&obligation) {
             debug!("receiver_is_valid: type `{:?}` does not implement `Receiver` trait",
                 receiver_ty);
             return false
         }
-
-        let deref_trait_def_id = match fcx.tcx.lang_items().deref_trait() {
-            Some(did) => did,
-            None => {
-                debug!("receiver_is_valid: missing Deref trait");
-                return false
-            }
-        };
-
-        let deref_trait_ref = ty::TraitRef {
-            def_id: deref_trait_def_id,
-            substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
-        };
-
-        let projection_ty = ty::ProjectionTy::from_ref_and_name(
-            fcx.tcx, deref_trait_ref, ast::Ident::from_str("Target")
-        );
-
-        let projection_predicate = ty::Binder::dummy(ty::ProjectionPredicate {
-            projection_ty, ty: self_ty
-        }).to_predicate();
-
-        let deref_obligation = traits::Obligation::new(
-            cause.clone(),
-            fcx.param_env,
-            projection_predicate,
-        );
-
-        if !fcx.predicate_must_hold(&deref_obligation) {
-            debug!("receiver_is_valid: type `{:?}` does not directly deref to `{:?}`",
-                receiver_ty, self_ty);
-            return false
-        }
     }
-
-    if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, potential_self_ty) {
-        err.emit();
-    }
-
-    autoderef.finalize(fcx);
 
     true
 }
