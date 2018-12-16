@@ -11,4 +11,4 @@ extern crate proc_macro2;
 
 mod hash_stable;
 
-decl_derive!([HashStable] => hash_stable::hash_stable_derive);
+decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
