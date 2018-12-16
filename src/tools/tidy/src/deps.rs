@@ -79,6 +79,7 @@ const WHITELIST: &[Crate] = &[
     Crate("chalk-macros"),
     Crate("cloudabi"),
     Crate("cmake"),
+    Crate("compiler_builtins"),
     Crate("crc"),
     Crate("crc32fast"),
     Crate("crossbeam-deque"),

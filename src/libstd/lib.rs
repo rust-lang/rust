@@ -339,6 +339,7 @@ pub use core::{unreachable, unimplemented, write, writeln, try};
 extern crate alloc as alloc_crate;
 #[doc(masked)]
 extern crate libc;
+extern crate rustc_demangle;
 
 // We always need an unwinder currently for backtraces
 #[doc(masked)]

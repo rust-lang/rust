@@ -21,6 +21,7 @@ libc = { version = "0.2.44", default-features = false, features = ['rustc-dep-of
 compiler_builtins = { version = "0.1.1" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
+rustc-demangle = { version = "0.1.10", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = "0.6.1"
