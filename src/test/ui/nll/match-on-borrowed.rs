@@ -46,9 +46,9 @@ fn enum_example(mut e: E) {
         E::V(ref mut x, _) => x,
         E::W => panic!(),
     };
-    match e { // OK, no access of borrowed data
+    match e { // Don't know that E uses a tag for its discriminant
         _ if false => (),
-        E::V(_, r) => (),
+        E::V(_, r) => (), //~ ERROR
         E::W => (),
     }
     x;
@@ -59,9 +59,9 @@ fn indirect_enum_example(mut f: &mut E) {
         E::V(ref mut x, _) => x,
         E::W => panic!(),
     };
-    match f { // OK, no access of borrowed data
+    match f { // Don't know that E uses a tag for its discriminant
         _ if false => (),
-        E::V(_, r) => (),
+        E::V(_, r) => (), //~ ERROR
         E::W => (),
     }
     x;

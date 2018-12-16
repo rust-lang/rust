@@ -627,7 +627,9 @@ impl<T> LinkedList<T> {
         self.pop_front_node().map(Node::into_element)
     }
 
-    /// Appends an element to the back of a list
+    /// Appends an element to the back of a list.
+    ///
+    /// This operation should compute in O(1) time.
     ///
     /// # Examples
     ///
@@ -646,6 +648,8 @@ impl<T> LinkedList<T> {
 
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
+    ///
+    /// This operation should compute in O(1) time.
     ///
     /// # Examples
     ///

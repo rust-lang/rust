@@ -34,29 +34,28 @@ const unsafe fn foo9_3() -> *const String {
 const unsafe fn foo10_3() -> *const Vec<std::cell::Cell<u32>> {
     unsafe { foo6::<Vec<std::cell::Cell<u32>>>() }
 }
-// not ok
 const unsafe fn foo8_2() -> i32 {
-    foo4() //~ ERROR not allowed in const fn
+    foo4()
 }
 const unsafe fn foo9_2() -> *const String {
-    foo5::<String>() //~ ERROR not allowed in const fn
+    foo5::<String>()
 }
 const unsafe fn foo10_2() -> *const Vec<std::cell::Cell<u32>> {
-    foo6::<Vec<std::cell::Cell<u32>>>() //~ ERROR not allowed in const fn
+    foo6::<Vec<std::cell::Cell<u32>>>()
 }
-const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+const unsafe fn foo30_3(x: *mut usize) -> usize { *x }
 //~^ dereferencing raw pointers in constant functions
 
-const unsafe fn foo30_4(x: *mut usize) -> &'static usize { &*x } //~ ERROR not allowed in const fn
+const unsafe fn foo30_4(x: *mut usize) -> &'static usize { &*x }
 //~^ dereferencing raw pointers in constant functions
 
-const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ ERROR not allowed
+const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
 //~^ dereferencing raw pointers in constant functions
 
 fn main() {}
 
 const unsafe fn no_union() {
     union Foo { x: (), y: () }
-    Foo { x: () }.y //~ ERROR not allowed in const fn
+    Foo { x: () }.y
     //~^ unions in const fn
 }

@@ -36,6 +36,7 @@ use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
 use ty::{self, BoundVar, Lift, Ty, TyCtxt};
+use util::captures::Captures;
 
 impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
@@ -527,32 +528,30 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unsubstituted_region_constraints: &'a [QueryRegionConstraint<'tcx>],
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a {
-        Box::new(
-            unsubstituted_region_constraints
-                .iter()
-                .map(move |constraint| {
-                    let constraint = substitute_value(self.tcx, result_subst, constraint);
-                    let &ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'gcx> {
+        unsubstituted_region_constraints
+            .iter()
+            .map(move |constraint| {
+                let constraint = substitute_value(self.tcx, result_subst, constraint);
+                let &ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
 
-                    Obligation::new(
-                        cause.clone(),
-                        param_env,
-                        match k1.unpack() {
-                            UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
-                                ty::Binder::bind(
-                                    ty::OutlivesPredicate(r1, r2)
-                                )
-                            ),
-                            UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
-                                ty::Binder::bind(
-                                    ty::OutlivesPredicate(t1, r2)
-                                )
-                            ),
-                        }
-                    )
-                })
-        ) as Box<dyn Iterator<Item = _>>
+                Obligation::new(
+                    cause.clone(),
+                    param_env,
+                    match k1.unpack() {
+                        UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
+                            ty::Binder::bind(
+                                ty::OutlivesPredicate(r1, r2)
+                            )
+                        ),
+                        UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
+                            ty::Binder::bind(
+                                ty::OutlivesPredicate(t1, r2)
+                            )
+                        ),
+                    }
+                )
+            })
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.

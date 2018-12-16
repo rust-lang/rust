@@ -1,0 +1,14 @@
+error[E0277]: `std::path::Path` doesn't implement `std::fmt::Display`
+  --> $DIR/path-display.rs:5:20
+   |
+LL |     println!("{}", path);
+   |                    ^^^^ `std::path::Path` cannot be formatted with the default formatter; call `.display()` on it
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `std::path::Path`
+   = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
+   = note: required because of the requirements on the impl of `std::fmt::Display` for `&std::path::Path`
+   = note: required by `std::fmt::Display::fmt`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

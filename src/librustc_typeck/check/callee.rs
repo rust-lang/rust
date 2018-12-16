@@ -280,7 +280,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         Def::Local(id) | Def::Upvar(id, ..) => {
                             Some(self.tcx.hir().span(id))
                         }
-                        _ => self.tcx.hir().span_if_local(def.def_id())
+                        _ => def.opt_def_id().and_then(|did| self.tcx.hir().span_if_local(did)),
                     };
                     if let Some(span) = def_span {
                         let label = match (unit_variant, inner_callee_path) {

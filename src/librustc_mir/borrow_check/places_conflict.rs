@@ -165,15 +165,12 @@ fn place_components_conflict<'gcx, 'tcx>(
                 let base_ty = base.ty(mir, tcx).to_ty(tcx);
 
                 match (elem, &base_ty.sty, access) {
-                    (_, _, Shallow(Some(ArtificialField::Discriminant)))
-                    | (_, _, Shallow(Some(ArtificialField::ArrayLength)))
+                    (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                     | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
-                        // The discriminant and array length are like
-                        // additional fields on the type; they do not
-                        // overlap any existing data there. Furthermore,
-                        // they cannot actually be a prefix of any
-                        // borrowed place (at least in MIR as it is
-                        // currently.)
+                        // The array length is like  additional fields on the
+                        // type; it does not overlap any existing data there.
+                        // Furthermore, if cannot actually be a prefix of any
+                        // borrowed place (at least in MIR as it is currently.)
                         //
                         // e.g., a (mutable) borrow of `a[5]` while we read the
                         // array length of `a`.
