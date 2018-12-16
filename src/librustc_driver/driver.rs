@@ -987,7 +987,6 @@ where
         };
 
         let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
-        let err_count = ecx.parse_sess.span_diagnostic.err_count();
 
         // Expand macros now!
         let krate = time(sess, "expand crate", || {
@@ -1012,9 +1011,6 @@ where
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
             sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
-        }
-        if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
-            ecx.parse_sess.span_diagnostic.abort_if_errors();
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
@@ -1118,12 +1114,6 @@ where
             );
         })
     })?;
-
-    // Unresolved macros might be due to mistyped `#[macro_use]`,
-    // so abort after checking for unknown attributes. (#49074)
-    if resolver.found_unresolved_macro {
-        sess.diagnostic().abort_if_errors();
-    }
 
     // Lower ast -> hir.
     // First, we need to collect the dep_graph.

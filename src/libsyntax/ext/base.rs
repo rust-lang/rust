@@ -2,7 +2,7 @@ pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use source_map::{self, SourceMap, Spanned, respan};
+use source_map::{SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -481,7 +481,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(source_map::respan(sp, ast::LitKind::Bool(false))),
+            node: ast::ExprKind::Err,
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -496,10 +496,11 @@ impl DummyResult {
         }
     }
 
+    /// A plain dummy type.
     pub fn raw_ty(sp: Span) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: ast::TyKind::Infer,
+            node: ast::TyKind::Err,
             span: sp
         })
     }
@@ -796,7 +797,6 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
-    pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
 }
@@ -811,7 +811,6 @@ impl<'a> ExtCtxt<'a> {
             ecfg,
             root_path: PathBuf::new(),
             resolver,
-            resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,

@@ -9,5 +9,6 @@ macro_rules! g {
 }
 
 fn main() {
+    let foo = 0;
     g!(foo);
 }

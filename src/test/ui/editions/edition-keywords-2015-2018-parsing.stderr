@@ -11,4 +11,3 @@ LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the t
    |                                   ^^^^^ no rules expected this token in macro call
 
 error: aborting due to 2 previous errors
-

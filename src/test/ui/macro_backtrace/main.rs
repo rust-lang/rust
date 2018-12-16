@@ -12,6 +12,8 @@ macro_rules! pong {
 //~| ERROR expected one of
 //~| ERROR expected one of
 
+struct syntax;
+
 fn main() {
     pong!();
     ping!();

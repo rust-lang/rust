@@ -13,3 +13,5 @@ mod derive {
     //~^ ERROR cannot find derive macro `x3300` in this scope
     struct S;
 }
+
+fn main() {}

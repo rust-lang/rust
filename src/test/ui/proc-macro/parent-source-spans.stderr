@@ -124,5 +124,33 @@ error: second source: "hop"
 LL |     three!("hip", "hop");
    |                   ^^^^^
 
-error: aborting due to 18 previous errors
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:40:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+...
+LL |     one!("hello", "world");
+   |     ----------------------- in this macro invocation
 
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:40:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+...
+LL |     two!("yay", "rust");
+   |     -------------------- in this macro invocation
+
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:40:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+...
+LL |     three!("hip", "hop");
+   |     --------------------- in this macro invocation
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

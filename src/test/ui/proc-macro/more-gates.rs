@@ -1,5 +1,7 @@
 // aux-build:more-gates.rs
 
+#![feature(decl_macro)]
+
 extern crate more_gates as foo;
 
 use foo::*;

@@ -28,6 +28,9 @@ macro three($($tokens:tt)*) {
 
 macro four($($tokens:tt)*) {
     parent_source_spans!($($tokens)*);
+    //~^ ERROR cannot find value `ok` in this scope
+    //~| ERROR cannot find value `ok` in this scope
+    //~| ERROR cannot find value `ok` in this scope
 }
 
 fn main() {

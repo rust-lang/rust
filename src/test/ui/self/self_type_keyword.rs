@@ -7,6 +7,7 @@ mod foo {
 
 struct Bar<'Self>;
 //~^ ERROR lifetimes cannot use keyword names
+//~| ERROR parameter `'Self` is never used
 
 struct Foo;
 
