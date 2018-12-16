@@ -2150,19 +2150,6 @@ impl isize {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
 }
 
-// Emits the correct `cttz` call, depending on the size of the type.
-macro_rules! uint_cttz_call {
-    // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
-    // emits two conditional moves on x86_64. By promoting the value to
-    // u16 and setting bit 8, we get better code without any conditional
-    // operations.
-    // FIXME: There's a LLVM patch (http://reviews.llvm.org/D9284)
-    // pending, remove this workaround once LLVM generates better code
-    // for cttz8.
-    ($value:expr, 8) => { intrinsics::cttz($value as u16 | 0x100) };
-    ($value:expr, $_BITS:expr) => { intrinsics::cttz($value) }
-}
-
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
     ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr,
@@ -2306,7 +2293,7 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
-                unsafe { uint_cttz_call!(self, $BITS) as u32 }
+                unsafe { intrinsics::cttz(self) as u32 }
             }
         }
 
