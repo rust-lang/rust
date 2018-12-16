@@ -213,9 +213,9 @@ if (!DOMTokenList.prototype.remove) {
     function expandSection(id) {
         var elem = document.getElementById(id);
         if (elem && isHidden(elem)) {
-            var h3 = elem.parentNode.previousSibling;
+            var h3 = elem.parentNode.previousElementSibling;
             if (h3 && h3.tagName !== "H3") {
-                h3 = h3.previousSibling; // skip div.docblock
+                h3 = h3.previousElementSibling; // skip div.docblock
             }
 
             if (h3) {
