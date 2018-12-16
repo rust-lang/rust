@@ -13,31 +13,28 @@ set -ex
 
 source shared.sh
 
-LLVM=7.0.0
+# Currently these commits are all tip-of-tree as of 2018-12-16, used to pick up
+# a fix for rust-lang/rust#56849
+LLVM=032b00a5404865765cda7db3039f39d54964d8b0
+LLD=3e4aa4e8671523321af51449e0569f455ef3ad43
+CLANG=a6b9739069763243020f4ea6fe586bc135fde1f9
 
 mkdir clang
 cd clang
 
-curl https://releases.llvm.org/$LLVM/llvm-$LLVM.src.tar.xz | \
-  xz -d | \
-  tar xf -
-
-cd llvm-$LLVM.src
+curl -L https://github.com/llvm-mirror/llvm/archive/$LLVM.tar.gz | \
+  tar xzf - --strip-components=1
 
 mkdir -p tools/clang
-
-curl https://releases.llvm.org/$LLVM/cfe-$LLVM.src.tar.xz | \
-  xz -d | \
-  tar xf - -C tools/clang --strip-components=1
+curl -L https://github.com/llvm-mirror/clang/archive/$CLANG.tar.gz | \
+  tar xzf - --strip-components=1 -C tools/clang
 
 mkdir -p tools/lld
+curl -L https://github.com/llvm-mirror/lld/archive/$LLD.tar.gz | \
+  tar zxf - --strip-components=1 -C tools/lld
 
-curl https://releases.llvm.org/$LLVM/lld-$LLVM.src.tar.xz | \
-  xz -d | \
-  tar xf - -C tools/lld --strip-components=1
-
-mkdir ../clang-build
-cd ../clang-build
+mkdir clang-build
+cd clang-build
 
 # For whatever reason the default set of include paths for clang is different
 # than that of gcc. As a result we need to manually include our sysroot's
@@ -55,7 +52,7 @@ INC="$INC:/rustroot/lib/gcc/x86_64-unknown-linux-gnu/4.8.5/include-fixed"
 INC="$INC:/usr/include"
 
 hide_output \
-    cmake ../llvm-$LLVM.src \
+    cmake .. \
       -DCMAKE_C_COMPILER=/rustroot/bin/gcc \
       -DCMAKE_CXX_COMPILER=/rustroot/bin/g++ \
       -DCMAKE_BUILD_TYPE=Release \
