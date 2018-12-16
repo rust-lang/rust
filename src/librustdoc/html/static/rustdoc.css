@@ -305,7 +305,7 @@ nav.sub {
 	overflow-x: auto;
 }
 
-body:not(.source) .example-wrap > pre {
+.rustdoc:not(.source) .example-wrap > pre {
 	margin: 0;
 }
 
