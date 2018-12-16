@@ -70,7 +70,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    $Ty(unsafe { NonZero(n) })
+                    $Ty(NonZero(n))
                 }
 
                 /// Create a non-zero if the given value is not zero.

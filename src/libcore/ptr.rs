@@ -2928,7 +2928,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        NonNull { pointer: unsafe { NonZero(ptr as _) } }
+        NonNull { pointer: NonZero(ptr as _) }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.

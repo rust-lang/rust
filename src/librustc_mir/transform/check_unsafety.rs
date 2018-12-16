@@ -311,13 +311,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(ast::NodeId, bool)]) {
         let safety = self.source_scope_local_data[self.source_info.scope].safety;
-        let within_unsafe = match (safety, self.min_const_fn) {
-            // Erring on the safe side, pun intended
-            (Safety::BuiltinUnsafe, true) |
-            // mir building encodes const fn bodies as safe, even for `const unsafe fn`
-            (Safety::FnUnsafe, true) => bug!("const unsafe fn body treated as inherently unsafe"),
+        let within_unsafe = match safety {
             // `unsafe` blocks are required in safe code
-            (Safety::Safe, _) => {
+            Safety::Safe => {
                 for violation in violations {
                     let mut violation = violation.clone();
                     match violation.kind {
@@ -342,9 +338,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 false
             }
-            // regular `unsafe` function bodies allow unsafe without additional unsafe blocks
-            (Safety::BuiltinUnsafe, false) | (Safety::FnUnsafe, false) => true,
-            (Safety::ExplicitUnsafe(node_id), _) => {
+            // `unsafe` function bodies allow unsafe without additional unsafe blocks
+            Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
+            Safety::ExplicitUnsafe(node_id) => {
                 // mark unsafe block as used if there are any unsafe operations inside
                 if !violations.is_empty() {
                     self.used_unsafe.insert(node_id);
@@ -616,21 +612,6 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     } in violations.iter() {
         // Report an error.
         match kind {
-            UnsafetyViolationKind::General if tcx.is_min_const_fn(def_id) => {
-                let mut err = tcx.sess.struct_span_err(
-                    source_info.span,
-                    &format!("{} is unsafe and unsafe operations \
-                            are not allowed in const fn", description));
-                err.span_label(source_info.span, &description.as_str()[..])
-                    .note(&details.as_str()[..]);
-                if tcx.fn_sig(def_id).unsafety() == hir::Unsafety::Unsafe {
-                    err.note(
-                        "unsafe action within a `const unsafe fn` still require an `unsafe` \
-                        block in contrast to regular `unsafe fn`."
-                    );
-                }
-                err.emit();
-            }
             UnsafetyViolationKind::GeneralAndConstFn |
             UnsafetyViolationKind::General => {
                 struct_span_err!(

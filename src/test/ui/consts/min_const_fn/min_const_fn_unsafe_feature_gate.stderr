@@ -1,97 +1,44 @@
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:47:51
+  --> $DIR/min_const_fn_unsafe_feature_gate.rs:46:51
    |
-LL | const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
+LL | const unsafe fn foo30_3(x: *mut usize) -> usize { *x }
    |                                                   ^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:50:60
+  --> $DIR/min_const_fn_unsafe_feature_gate.rs:49:60
    |
-LL | const unsafe fn foo30_4(x: *mut usize) -> &'static usize { &*x } //~ ERROR not allowed in const fn
+LL | const unsafe fn foo30_4(x: *mut usize) -> &'static usize { &*x }
    |                                                            ^^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:53:62
+  --> $DIR/min_const_fn_unsafe_feature_gate.rs:52:62
    |
-LL | const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ ERROR not allowed
+LL | const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
    |                                                              ^^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: unions in const fn are unstable (see issue #51909)
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:60:5
+  --> $DIR/min_const_fn_unsafe_feature_gate.rs:59:5
    |
-LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
+LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:39:5
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
+  --> $DIR/min_const_fn_unsafe_feature_gate.rs:52:62
    |
-LL |     foo4() //~ ERROR not allowed in const fn
-   |     ^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:42:5
-   |
-LL |     foo5::<String>() //~ ERROR not allowed in const fn
-   |     ^^^^^^^^^^^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:45:5
-   |
-LL |     foo6::<Vec<std::cell::Cell<u32>>>() //~ ERROR not allowed in const fn
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: dereference of raw pointer is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:47:51
-   |
-LL | const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
-   |                                                   ^^ dereference of raw pointer
-   |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: dereference of raw pointer is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:50:60
-   |
-LL | const unsafe fn foo30_4(x: *mut usize) -> &'static usize { &*x } //~ ERROR not allowed in const fn
-   |                                                            ^^^ dereference of raw pointer
-   |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
-
-error: dereference of raw pointer is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:53:62
-   |
-LL | const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ ERROR not allowed
+LL | const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
    |                                                              ^^^ dereference of raw pointer
    |
    = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
-error: access to union field is unsafe and unsafe operations are not allowed in const fn
-  --> $DIR/min_const_fn_unsafe_feature_gate.rs:60:5
-   |
-LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
-   |     ^^^^^^^^^^^^^^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-   = note: unsafe action within a `const unsafe fn` still require an `unsafe` block in contrast to regular `unsafe fn`.
+error: aborting due to 5 previous errors
 
-error: aborting due to 11 previous errors
-
-For more information about this error, try `rustc --explain E0658`.
+Some errors occurred: E0133, E0658.
+For more information about an error, try `rustc --explain E0133`.
