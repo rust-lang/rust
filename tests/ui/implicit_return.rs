@@ -42,6 +42,27 @@ fn test_loop() -> bool {
     }
 }
 
+#[allow(clippy::never_loop)]
+fn test_loop_with_block() -> bool {
+    loop {
+        {
+            break true;
+        }
+    }
+}
+
+#[allow(clippy::never_loop)]
+fn test_loop_with_nests() -> bool {
+    loop {
+        if true {
+            let _ = true;
+        }
+        else {
+            break true;
+        }
+    }
+}
+
 fn test_closure() {
     #[rustfmt::skip]
     let _ = || { true };
@@ -53,5 +74,7 @@ fn main() {
     let _ = test_if_block();
     let _ = test_match(true);
     let _ = test_loop();
+    let _ = test_loop_with_block();
+    let _ = test_loop_with_nests();
     test_closure();
 }
