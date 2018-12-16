@@ -10,7 +10,7 @@
 
 //! Parsing and validation of builtin attributes
 
-use ast::{self, Attribute, MetaItem, Name, NestedMetaItemKind};
+use ast::{self, Attribute, LitKind, MetaItem, Name, NestedMetaItemKind};
 use errors::{Applicability, Handler};
 use feature_gate::{Features, GatedCfg};
 use parse::ParseSess;
@@ -598,11 +598,9 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if attr.path != "deprecated" {
+        if !attr.check_name("deprecated") {
             continue
         }
-
-        mark_used(attr);
 
         if depr.is_some() {
             span_err!(diagnostic, item_sp, E0550, "multiple deprecated attributes");
@@ -670,6 +668,28 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
             }
 
             Some(Deprecation {since: since, note: note})
+        } else if let Some(lit) = attr
+            .meta()
+            .as_ref()
+            .and_then(|meta| meta.name_value_literal())
+        {
+            let mut err = sess
+                .span_diagnostic
+                .struct_span_err(attr.span, "expected meta item sequence");
+
+            if let LitKind::Str(s, _) = lit.node {
+                let sp = attr.path.span.to(lit.span);
+                err.span_suggestion_with_applicability(
+                    sp,
+                    "use the `note` key",
+                    format!("deprecated(note = \"{}\")", s),
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            err.emit();
+
+            continue 'outer;
         } else {
             Some(Deprecation{since: None, note: None})
         }

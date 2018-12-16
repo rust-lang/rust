@@ -40,7 +40,15 @@ error[E0538]: multiple 'since' items
 LL | #[deprecated(since = "a", since = "b", note = "c")] //~ ERROR multiple 'since' items
    |                           ^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: expected meta item sequence
+  --> $DIR/deprecation-sanity.rs:37:1
+   |
+LL | #[deprecated = "reason"]
+   | ^^---------------------^
+   |   |
+   |   help: use the `note` key: `deprecated(note = "reason")`
+
+error: aborting due to 8 previous errors
 
 Some errors occurred: E0538, E0541, E0550, E0551.
 For more information about an error, try `rustc --explain E0538`.

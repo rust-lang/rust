@@ -630,17 +630,17 @@ mod link_section {
 
 struct StructForDeprecated;
 
-#[deprecated = "1500"]
+#[deprecated]
 mod deprecated {
-    mod inner { #![deprecated="1500"] }
+    mod inner { #![deprecated] }
 
-    #[deprecated = "1500"] fn f() { }
+    #[deprecated] fn f() { }
 
-    #[deprecated = "1500"] struct S1;
+    #[deprecated] struct S1;
 
-    #[deprecated = "1500"] type T = super::StructForDeprecated;
+    #[deprecated] type T = super::StructForDeprecated;
 
-    #[deprecated = "1500"] impl super::StructForDeprecated { }
+    #[deprecated] impl super::StructForDeprecated { }
 }
 
 #[must_use = "1400"]

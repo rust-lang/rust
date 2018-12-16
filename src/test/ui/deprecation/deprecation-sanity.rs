@@ -34,4 +34,9 @@ fn multiple1() { } //~ ERROR multiple deprecated attributes
 #[deprecated(since = "a", since = "b", note = "c")] //~ ERROR multiple 'since' items
 fn f1() { }
 
+#[deprecated = "reason"]
+fn foo() { }             //~^ ERROR expected meta item sequence
+                         //~| HELP use the `note` key
+                         //~| SUGGESTION deprecated(note = "reason")
+
 fn main() { }
