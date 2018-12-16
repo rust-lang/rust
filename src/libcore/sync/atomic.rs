@@ -188,7 +188,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// [Ordering::Relaxed]: #variant.Relaxed
 /// [Ordering::SeqCst]: #variant.SeqCst
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
