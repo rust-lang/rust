@@ -2004,6 +2004,7 @@ impl<T> [T] {
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
     #[unstable(feature = "copy_within", issue = "54236")]
+    #[inline]
     pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
