@@ -55,10 +55,10 @@ fn test_loop_with_block() -> bool {
 fn test_loop_with_nests() -> bool {
     loop {
         if true {
-            let _ = true;
+            break true;
         }
         else {
-            break true;
+            let _ = true;
         }
     }
 }

@@ -43,9 +43,9 @@ error: missing return statement
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:61:13
+  --> $DIR/implicit_return.rs:58:13
    |
-61 |             break true;
+58 |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
