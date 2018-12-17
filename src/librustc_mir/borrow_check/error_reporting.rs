@@ -1566,7 +1566,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         )?;
                         buf.push_str("[");
                         if self.append_local_to_string(index, buf).is_err() {
-                            buf.push_str("..");
+                            buf.push_str("_");
                         }
                         buf.push_str("]");
                     }
