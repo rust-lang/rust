@@ -74,7 +74,7 @@ mod lock {
                 return DropLock
             }
             unsafe {
-                let r = wasm32::atomic::wait_i32(
+                let r = wasm32::i32_atomic_wait(
                     &LOCKED as *const AtomicI32 as *mut i32,
                     1,  // expected value
                     -1, // timeout
@@ -89,7 +89,7 @@ mod lock {
             let r = LOCKED.swap(0, SeqCst);
             debug_assert_eq!(r, 1);
             unsafe {
-                wasm32::atomic::wake(
+                wasm32::atomic_notify(
                     &LOCKED as *const AtomicI32 as *mut i32,
                     1, // only one thread
                 );
