@@ -1,5 +1,10 @@
 // compile-pass
 
+// Regression test related to #56288. Check that a supertrait projection (of
+// `Output`) that references `Self` can be ok if it is referencing a projection (of
+// `Self::Target`, in this case). Note that we still require the user to manually
+// specify both `Target` and `Output` for now.
+
 trait Base {
     type Output;
 }
