@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(uniform_paths, underscore_imports)]
+#![feature(uniform_paths)]
 
 mod T {
     pub struct U;

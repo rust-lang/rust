@@ -1,8 +1,6 @@
 // compile-pass
 // aux-build:duplicate.rs
 
-#![feature(underscore_imports)]
-
 extern crate duplicate;
 
 #[duplicate::duplicate]
