@@ -1,3 +1,14 @@
+Version 1.31.1 (2018-12-20)
+===========================
+
+- [Fix Rust failing to build on `powerpc-unknown-netbsd`][56562]
+- [Fix broken go-to-definition in RLS][rls/1171]
+- [Fix infinite loop on hover in RLS][rls/1170]
+
+[56562]: https://github.com/rust-lang/rust/pull/56562
+[rls/1171]: https://github.com/rust-lang/rls/issues/1171
+[rls/1170]: https://github.com/rust-lang/rls/pull/1170
+
 Version 1.31.0 (2018-12-06)
 ==========================
 
