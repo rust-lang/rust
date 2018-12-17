@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate assert_cli;
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
@@ -295,7 +293,7 @@ fn stdin_disable_all_formatting_test() {
         _ => return, // these tests require nightly
     }
     let input = String::from("fn main() { println!(\"This should not be formatted.\"); }");
-    let mut child = Command::new("./target/debug/rustfmt")
+    let mut child = Command::new(rustfmt().to_str().unwrap())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .arg("--config-path=./tests/config/disable_all_formatting.toml")
@@ -973,11 +971,10 @@ fn rustfmt() -> PathBuf {
 #[test]
 fn verify_check_works() {
     let temp_file = make_temp_file("temp_check.rs");
-    assert_cli::Assert::command(&[
-        rustfmt().to_str().unwrap(),
-        "--check",
-        temp_file.path.to_str().unwrap(),
-    ])
-    .succeeds()
-    .unwrap();
+
+    Command::new(rustfmt().to_str().unwrap())
+        .arg("--check")
+        .arg(temp_file.path.to_str().unwrap())
+        .status()
+        .expect("run with check option failed");
 }
