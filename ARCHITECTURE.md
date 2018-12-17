@@ -58,14 +58,42 @@ all `//test test_name` comments into files inside `tests/data` directory.
 See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which
 fixes a bug in the grammar.
 
+### `crates/ra_db`
+
+We use [salsa][https://github.com/salsa-rs/salsa] crate for incremental and
+on-demand computation. Roughly, you can think of salsa as a key-value store, but
+it also can compute derived values using specified functions. The `ra_db` crate
+provides a basic infrastructure for interracting with salsa. Crucially, it
+defines most of the "input" queries: facts supplied by the client of the analyzer.
+
 ### `crates/ra_hir`
 
-HIR (previsouly known as descriptors) provides a high-level OO acess to Rust
-code.
+HIR provides a high-level "object oriented" acess to Rust code.
 
-The principal difference between HIR and syntax trees is that HIR is bound
-to a particular crate instance. That is, it has cfg flags and features
-applied. So, there relation between syntax and HIR is many-to-one.
+The principal difference between HIR and syntax trees is that HIR is bound to a
+particular crate instance. That is, it has cfg flags and features applied (in
+theory, in practice this is to be implemented). So, there relation between
+syntax and HIR is many-to-one. The `source_binder` modules is responsible for
+guessing a hir for a particular source position.
+
+Underneath, hir works on top of salsa, using a `HirDatabase` trait.
+
+### `crates/ra_analysis`
+
+A stateful library for analyzing many Rust files as they change.
+`AnalysisHost` is a mutable entity (clojure's atom) which holds
+current state, incorporates changes and handles out `Analysis` --- an
+immutable consistent snapshot of world state at a point in time, which
+actually powers analysis.
+
+### `crates/ra_lsp_server`
+
+An LSP implementation which uses `ra_analysis` for managing state and
+`ra_editor` for actually doing useful stuff.
+
+See [#79](https://github.com/rust-analyzer/rust-analyzer/pull/79/) as an
+example of PR which adds a new feature to `ra_editor` and exposes it
+to `ra_lsp_server`.
 
 ### `crates/ra_editor`
 
@@ -79,26 +107,6 @@ syntax tree as an input.
 
 The tests for `ra_editor` are `#[cfg(test)] mod tests` unit-tests spread
 throughout its modules.
-
-### `crates/ra_analysis`
-
-A stateful library for analyzing many Rust files as they change.
-`AnalysisHost` is a mutable entity (clojure's atom) which holds
-current state, incorporates changes and handles out `Analysis` --- an
-immutable consistent snapshot of world state at a point in time, which
-actually powers analysis.
-
-### `crates/ra_db`
-This defines basic database traits. Concrete DB is defined by ra_analysis.
-
-### `crates/ra_lsp_server`
-
-An LSP implementation which uses `ra_analysis` for managing state and
-`ra_editor` for actually doing useful stuff.
-
-See [#79](https://github.com/rust-analyzer/rust-analyzer/pull/79/) as an
-example of PR which adds a new feature to `ra_editor` and exposes it
-to `ra_lsp_server`.
 
 ### `crates/gen_lsp_server`
 
