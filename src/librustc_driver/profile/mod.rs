@@ -64,9 +64,7 @@ struct StackFrame {
 }
 
 fn total_duration(traces: &[trace::Rec]) -> Duration {
-    let mut sum : Duration = Duration::new(0, 0);
-    for t in traces.iter() { sum += t.dur_total; }
-    return sum
+    Duration::new(0, 0) + traces.iter().map(|t| t.dur_total).sum()
 }
 
 // profiling thread; retains state (in local variables) and dump traces, upon request.
