@@ -25,7 +25,6 @@ members = [
   "src/tools/rustdoc-themes",
 ]
 exclude = [
-  "src/tools/rls/test_data",
   "build",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
