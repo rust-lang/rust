@@ -129,10 +129,11 @@ fn install_code_extension() -> Result<()> {
     run("cargo install --path crates/ra_lsp_server --force", ".")?;
     if cfg!(windows) {
         run(r"cmd.exe /c npm.cmd install", "./editors/code")?;
+        run(r"cmd.exe /c npm.cmd run package", "./editors/code")?;
     } else {
         run(r"npm install", "./editors/code")?;
+        run(r"npm run package", "./editors/code")?;
     }
-    run(r"npm run package", "./editors/code")?;
     if cfg!(windows) {
         run(
             r"cmd.exe /c code.cmd --install-extension ./ra-lsp-0.0.1.vsix",
