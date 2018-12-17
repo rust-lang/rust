@@ -74,6 +74,8 @@ fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
     args.insert(LinkerFlavor::Gcc,
                 vec!["-arch".to_string(),
                      arch_name.to_string(),
+                     "-isysroot".to_string(),
+                     sdk_root.clone(),
                      "-Wl,-syslibroot".to_string(),
                      sdk_root]);
 
