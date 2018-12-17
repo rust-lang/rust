@@ -6,11 +6,11 @@ error: unknown lint: `stutter`
    |
    = note: `-D unknown-lints` implied by `-D warnings`
 
-error: lint `clippy::stutter` has been renamed to `clippy::module_name_repeat`
+error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
   --> $DIR/rename.rs:12:8
    |
 12 | #[warn(clippy::stutter)]
-   |        ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repeat`
+   |        ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 

@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(clippy::module_name_repeat)]
+#![warn(clippy::module_name_repetitions)]
 #![allow(dead_code)]
 
 mod foo {
