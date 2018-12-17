@@ -39,6 +39,10 @@ directories = { version = "1.0", optional = true }
 rustc_version = { version = "0.2.3", optional = true }
 env_logger = "0.5"
 log = "0.4"
+# A noop dependency that changes in the Rust repository, it's a bit of a hack.
+# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
+# for more information.
+rustc-workspace-hack = "1.0.0"
 
 [build-dependencies]
 vergen = "3"
