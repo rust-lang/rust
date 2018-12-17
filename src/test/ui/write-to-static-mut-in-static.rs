@@ -12,10 +12,10 @@
 
 pub static mut A: u32 = 0;
 pub static mut B: () = unsafe { A = 1; };
-//~^ ERROR cannot mutate statics in the initializer of another static
+//~^ ERROR could not evaluate static initializer
 
 pub static mut C: u32 = unsafe { C = 1; 0 };
-//~^ ERROR cannot mutate statics in the initializer of another static
+//~^ ERROR cycle detected
 
 pub static D: u32 = D;
 
