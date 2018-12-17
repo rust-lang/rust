@@ -31,7 +31,6 @@ impl Foo {
         };
 
         let c = other;
-        //~^ ERROR cannot move out of `other` because it is borrowed [E0505]
     }
 }
 

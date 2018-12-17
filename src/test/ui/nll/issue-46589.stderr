@@ -10,19 +10,6 @@ LL |             None => (*other).new_self()
    |                     second mutable borrow occurs here
    |                     first borrow later used here
 
-error[E0505]: cannot move out of `other` because it is borrowed
-  --> $DIR/issue-46589.rs:33:17
-   |
-LL |         *other = match (*other).get_self() {
-   |                        -------- borrow of `**other` occurs here
-...
-LL |         let c = other;
-   |                 ^^^^^
-   |                 |
-   |                 move out of `other` occurs here
-   |                 borrow later used here
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors occurred: E0499, E0505.
-For more information about an error, try `rustc --explain E0499`.
+For more information about this error, try `rustc --explain E0499`.
