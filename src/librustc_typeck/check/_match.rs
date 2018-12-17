@@ -17,6 +17,8 @@ use util::nodemap::FxHashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 
+use super::report_unexpected_variant_def;
+
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// The `is_arg` argument indicates whether this pattern is the
     /// *outermost* pattern in an argument (e.g., in `fn foo(&x:
@@ -736,12 +738,6 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                       expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
-        let report_unexpected_def = |def: Def| {
-            span_err!(tcx.sess, pat.span, E0533,
-                      "expected unit struct/variant or constant, found {} `{}`",
-                      def.kind_name(),
-                      hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
-        };
 
         // Resolve the path and check the definition for errors.
         let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
@@ -751,7 +747,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 return tcx.types.err;
             }
             Def::Method(..) => {
-                report_unexpected_def(def);
+                report_unexpected_variant_def(tcx, &def, pat.span, qpath);
+                return tcx.types.err;
+            }
+            Def::VariantCtor(_, CtorKind::Fictive) => {
+                report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
             Def::VariantCtor(_, CtorKind::Const) |
