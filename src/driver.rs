@@ -110,6 +110,7 @@ pub fn main() {
                         ls.register_group(Some(sess), true, name, deprecated_name, to);
                     }
                     clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
+                    clippy_lints::register_renamed(&mut ls);
 
                     sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
                     sess.plugin_attributes.borrow_mut().extend(attributes);

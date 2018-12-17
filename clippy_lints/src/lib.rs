@@ -1028,8 +1028,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         unwrap::PANICKING_UNWRAP,
         unwrap::UNNECESSARY_UNWRAP,
     ]);
+}
 
-    store.register_renamed("stutter", "module_name_repeat");
+pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
+    ls.register_renamed("clippy::stutter", "clippy::module_name_repeat");
 }
 
 // only exists to let the dogfood integration test works.
