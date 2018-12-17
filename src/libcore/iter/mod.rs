@@ -649,19 +649,6 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
             _ => (usize::MAX, None)
         }
     }
-
-    #[inline]
-    fn try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R where
-        Self: Sized, F: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
-    {
-        let mut accum = init;
-        while let Some(x) = self.iter.next() {
-            accum = f(accum, x)?;
-            accum = self.iter.try_fold(accum, &mut f)?;
-            self.iter = self.orig.clone();
-        }
-        Try::from_ok(accum)
-    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
