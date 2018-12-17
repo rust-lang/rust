@@ -24,6 +24,11 @@ use if_chain::if_chain;
 /// implementation of
 /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html).
 ///
+/// It detects both the case when a manual
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
+/// implementation is required and also when it can be created with
+/// `#[derive(Default)]
+///
 /// **Why is this bad?** The user might expect to be able to use
 /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html) as the
 /// type can be constructed without arguments.
@@ -54,25 +59,9 @@ use if_chain::if_chain;
 /// }
 /// ```
 ///
-/// You can also have `new()` call `Default::default()`.
-declare_clippy_lint! {
-    pub NEW_WITHOUT_DEFAULT,
-    style,
-    "`fn new() -> Self` method without `Default` implementation"
-}
-
-/// **What it does:** Checks for types with a `fn new() -> Self` method
-/// and no implementation of
-/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html),
-/// where the `Default` can be derived by `#[derive(Default)]`.
-///
-/// **Why is this bad?** The user might expect to be able to use
-/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html) as the
-/// type can be constructed without arguments.
-///
-/// **Known problems:** Hopefully none.
-///
-/// **Example:**
+/// Or, if
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
+/// can be derived by `#[derive(Default)]`:
 ///
 /// ```rust
 /// struct Foo;
@@ -84,11 +73,24 @@ declare_clippy_lint! {
 /// }
 /// ```
 ///
-/// Just prepend `#[derive(Default)]` before the `struct` definition.
+/// Instead, use:
+///
+/// ```rust
+/// #[derive(Default)]
+/// struct Foo;
+///
+/// impl Foo {
+///     fn new() -> Self {
+///         Foo
+///     }
+/// }
+/// ```
+///
+/// You can also have `new()` call `Default::default()`.
 declare_clippy_lint! {
-    pub NEW_WITHOUT_DEFAULT_DERIVE,
+    pub NEW_WITHOUT_DEFAULT,
     style,
-    "`fn new() -> Self` without `#[derive]`able `Default` implementation"
+    "`fn new() -> Self` method without `Default` implementation"
 }
 
 #[derive(Clone, Default)]
@@ -98,7 +100,7 @@ pub struct NewWithoutDefault {
 
 impl LintPass for NewWithoutDefault {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NEW_WITHOUT_DEFAULT, NEW_WITHOUT_DEFAULT_DERIVE)
+        lint_array!(NEW_WITHOUT_DEFAULT)
     }
 }
 
@@ -167,7 +169,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                     if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
                                         span_lint_node_and_then(
                                             cx,
-                                            NEW_WITHOUT_DEFAULT_DERIVE,
+                                            NEW_WITHOUT_DEFAULT,
                                             id,
                                             impl_item.span,
                                             &format!(
