@@ -4,6 +4,33 @@ This document describes high-level architecture of rust-analyzer.
 If you want to familiarize yourself with the code base, you are just
 in the right place!
 
+## The Big Picture
+
+![](https://user-images.githubusercontent.com/1711539/50114578-e8a34280-0255-11e9-902c-7cfc70747966.png)
+
+On the highest level, rust-analyzer is a thing which accepts input source code
+from the client and produces a structured semantic model of the code.
+
+More specifically, input data consists of a set of test files (`(PathBuf,
+String)` pairs) and an information about project structure, the so called
+`CrateGraph`. Crate graph specifies which files are crate roots, which cfg flags
+are specified for each crate (TODO: actually implement this) and what are
+dependencies between the crate. The analyzer keeps all these input data in
+memory and never does any IO. Because the input data is source code, which
+typically measures in tens of megabytes at most, keeping all input data in
+memory is OK.
+
+A "structured semantic model" is basically an object-oriented representations of
+modules, functions and types which appear in the source code. This representation
+is fully "resolved": all expressions have types, all references are bound to
+declarations, etc.
+
+The client can submit a small delta of input data (typically, a change to a
+single file) and get a fresh code model which accounts for changes.
+
+Underlying engine makes sure that model is computed lazily (on-demand) and can
+be quickly updated for small modifications.
+
 
 ## Code generation
 
@@ -86,7 +113,7 @@ current state, incorporates changes and handles out `Analysis` --- an
 immutable consistent snapshot of world state at a point in time, which
 actually powers analysis.
 
-One interesting aspect of analysis is its support for cancelation. When a change
+One interesting aspect of analysis is its support for cancellation. When a change
 is applied to `AnalysisHost`, first all currently active snapshots are
 cancelled. Only after all snapshots are dropped the change actually affects the
 database.
