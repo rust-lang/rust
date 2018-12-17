@@ -309,7 +309,7 @@
 use ops::Try;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::iterator::Iterator;
+pub use self::traits::Iterator;
 
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits",
@@ -355,7 +355,6 @@ pub use self::adapters::Copied;
 
 use self::adapters::{flatten_compat, ChainState, ZipImpl};
 
-mod iterator;
 mod range;
 mod sources;
 mod traits;

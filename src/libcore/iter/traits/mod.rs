@@ -3,6 +3,10 @@ use num::Wrapping;
 
 use super::LoopState;
 
+mod iterator;
+
+pub use self::iterator::Iterator;
+
 /// Conversion from an `Iterator`.
 ///
 /// By implementing `FromIterator` for a type, you define how it will be

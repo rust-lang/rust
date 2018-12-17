@@ -1,12 +1,12 @@
 use cmp::Ordering;
 use ops::Try;
 
-use super::LoopState;
-use super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
-use super::{Flatten, FlatMap, flatten_compat};
-use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
-use super::{Zip, Sum, Product};
-use super::{ChainState, FromIterator, ZipImpl};
+use super::super::LoopState;
+use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{Flatten, FlatMap, flatten_compat};
+use super::super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
+use super::super::{Zip, Sum, Product};
+use super::super::{ChainState, FromIterator, ZipImpl};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 
