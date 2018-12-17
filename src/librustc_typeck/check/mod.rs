@@ -85,8 +85,8 @@ mod op;
 
 use astconv::AstConv;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
-use rustc::hir::{self, GenericArg, ItemKind, Node, PatKind};
-use rustc::hir::def::Def;
+use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
+use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -1864,6 +1864,16 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_representable(tcx, sp, def_id);
 }
 
+fn report_unexpected_variant_def<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                 def: &Def,
+                                                 span: Span,
+                                                 qpath: &QPath) {
+    span_err!(tcx.sess, span, E0533,
+              "expected unit struct/variant or constant, found {} `{}`",
+              def.kind_name(),
+              hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
+}
+
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
@@ -2947,7 +2957,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 let is_closure = match arg.node {
-                    hir::ExprKind::Closure(..) => true,
+                    ExprKind::Closure(..) => true,
                     _ => false
                 };
 
@@ -3097,8 +3107,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
-            // Add help to type error if this is an `if` condition with an assignment
-            if let (ExpectIfCondition, &hir::ExprKind::Assign(ref lhs, ref rhs))
+            // Add help to type error if this is an `if` condition with an assignment.
+            if let (ExpectIfCondition, &ExprKind::Assign(ref lhs, ref rhs))
                  = (expected, &expr.node)
             {
                 let msg = "try comparing for equality";
@@ -3691,12 +3701,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                             qpath: &hir::QPath,
+                             qpath: &QPath,
                              node_id: ast::NodeId)
                              -> Option<(&'tcx ty::VariantDef,  Ty<'tcx>)> {
         let path_span = match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.span,
-            hir::QPath::TypeRelative(ref qself, _) => qself.span
+            QPath::Resolved(_, ref path) => path.span,
+            QPath::TypeRelative(ref qself, _) => qself.span
         };
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, node_id);
         let variant = match def {
@@ -3749,7 +3759,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
                          expected: Expectation<'tcx>,
-                         qpath: &hir::QPath,
+                         qpath: &QPath,
                          fields: &'gcx [hir::Field],
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
@@ -3763,8 +3773,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
         let path_span = match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.span,
-            hir::QPath::TypeRelative(ref qself, _) => qself.span
+            QPath::Resolved(_, ref path) => path.span,
+            QPath::TypeRelative(ref qself, _) => qself.span
         };
 
         // Prohibit struct expressions when non-exhaustive flag is set.
@@ -3836,9 +3846,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Warn for non-block expressions with diverging children.
         match expr.node {
-            hir::ExprKind::Block(..) |
-            hir::ExprKind::Loop(..) | hir::ExprKind::While(..) |
-            hir::ExprKind::If(..) | hir::ExprKind::Match(..) => {}
+            ExprKind::Block(..) |
+            ExprKind::Loop(..) | ExprKind::While(..) |
+            ExprKind::If(..) | ExprKind::Match(..) => {}
 
             _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
         }
@@ -3879,7 +3889,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
-            hir::ExprKind::Box(ref subexpr) => {
+            ExprKind::Box(ref subexpr) => {
                 let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
                     match ty.sty {
                         ty::Adt(def, _) if def.is_box()
@@ -3891,16 +3901,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_box(referent_ty)
             }
 
-            hir::ExprKind::Lit(ref lit) => {
+            ExprKind::Lit(ref lit) => {
                 self.check_lit(&lit, expected)
             }
-            hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
+            ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.check_binop(expr, op, lhs, rhs)
             }
-            hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
+            ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                 self.check_binop_assign(expr, op, lhs, rhs)
             }
-            hir::ExprKind::Unary(unop, ref oprnd) => {
+            ExprKind::Unary(unop, ref oprnd) => {
                 let expected_inner = match unop {
                     hir::UnNot | hir::UnNeg => {
                         expected
@@ -3968,7 +3978,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 oprnd_t
             }
-            hir::ExprKind::AddrOf(mutbl, ref oprnd) => {
+            ExprKind::AddrOf(mutbl, ref oprnd) => {
                 let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                     match ty.sty {
                         ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
@@ -4008,13 +4018,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_ref(region, tm)
                 }
             }
-            hir::ExprKind::Path(ref qpath) => {
+            ExprKind::Path(ref qpath) => {
                 let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
-                let ty = if def != Def::Err {
-                    self.instantiate_value_path(segs, opt_ty, def, expr.span, id).0
-                } else {
-                    self.set_tainted_by_errors();
-                    tcx.types.err
+                let ty = match def {
+                    Def::Err => {
+                        self.set_tainted_by_errors();
+                        tcx.types.err
+                    }
+                    Def::VariantCtor(_, CtorKind::Fictive) => {
+                        report_unexpected_variant_def(tcx, &def, expr.span, qpath);
+                        tcx.types.err
+                    }
+                    _ => self.instantiate_value_path(segs, opt_ty, def, expr.span, id).0,
                 };
 
                 if let ty::FnDef(..) = ty.sty {
@@ -4061,13 +4076,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 ty
             }
-            hir::ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
+            ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
                 for expr in outputs.iter().chain(inputs.iter()) {
                     self.check_expr(expr);
                 }
                 tcx.mk_unit()
             }
-            hir::ExprKind::Break(destination, ref expr_opt) => {
+            ExprKind::Break(destination, ref expr_opt) => {
                 if let Ok(target_id) = destination.target_id {
                     let (e_ty, cause);
                     if let Some(ref e) = *expr_opt {
@@ -4140,7 +4155,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         // ... except when we try to 'break rust;'.
                         // ICE this expression in particular (see #43162).
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = e.node {
+                        if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.node {
                             if path.segments.len() == 1 && path.segments[0].ident.name == "rust" {
                                 fatally_break_rust(self.tcx.sess);
                             }
@@ -4151,7 +4166,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
             }
-            hir::ExprKind::Continue(destination) => {
+            ExprKind::Continue(destination) => {
                 if destination.target_id.is_ok() {
                     tcx.types.never
                 } else {
@@ -4159,7 +4174,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.types.err
                 }
             }
-            hir::ExprKind::Ret(ref expr_opt) => {
+            ExprKind::Ret(ref expr_opt) => {
                 if self.ret_coercion.is_none() {
                     struct_span_err!(self.tcx.sess, expr.span, E0572,
                                      "return statement outside of function body").emit();
@@ -4191,7 +4206,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 tcx.types.never
             }
-            hir::ExprKind::Assign(ref lhs, ref rhs) => {
+            ExprKind::Assign(ref lhs, ref rhs) => {
                 let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
 
                 let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
@@ -4221,11 +4236,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_unit()
                 }
             }
-            hir::ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
+            ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
                 self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
                                      expr.span, expected)
             }
-            hir::ExprKind::While(ref cond, ref body, _) => {
+            ExprKind::While(ref cond, ref body, _) => {
                 let ctxt = BreakableCtxt {
                     // cannot use break with a value from a while loop
                     coerce: None,
@@ -4249,7 +4264,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 self.tcx.mk_unit()
             }
-            hir::ExprKind::Loop(ref body, _, source) => {
+            ExprKind::Loop(ref body, _, source) => {
                 let coerce = match source {
                     // you can only use break with a value from a normal `loop { }`
                     hir::LoopSource::Loop => {
@@ -4289,22 +4304,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
             }
-            hir::ExprKind::Match(ref discrim, ref arms, match_src) => {
+            ExprKind::Match(ref discrim, ref arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            hir::ExprKind::Closure(capture, ref decl, body_id, _, gen) => {
+            ExprKind::Closure(capture, ref decl, body_id, _, gen) => {
                 self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
             }
-            hir::ExprKind::Block(ref body, _) => {
+            ExprKind::Block(ref body, _) => {
                 self.check_block_with_expected(&body, expected)
             }
-            hir::ExprKind::Call(ref callee, ref args) => {
+            ExprKind::Call(ref callee, ref args) => {
                 self.check_call(expr, &callee, args, expected)
             }
-            hir::ExprKind::MethodCall(ref segment, span, ref args) => {
+            ExprKind::MethodCall(ref segment, span, ref args) => {
                 self.check_method_call(expr, segment, span, args, expected, needs)
             }
-            hir::ExprKind::Cast(ref e, ref t) => {
+            ExprKind::Cast(ref e, ref t) => {
                 // Find the type of `e`. Supply hints based on the type we are casting to,
                 // if appropriate.
                 let t_cast = self.to_ty_saving_user_provided_ty(t);
@@ -4329,12 +4344,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Type(ref e, ref t) => {
+            ExprKind::Type(ref e, ref t) => {
                 let ty = self.to_ty_saving_user_provided_ty(&t);
                 self.check_expr_eq_type(&e, ty);
                 ty
             }
-            hir::ExprKind::Array(ref args) => {
+            ExprKind::Array(ref args) => {
                 let uty = expected.to_option(self).and_then(|uty| {
                     match uty.sty {
                         ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
@@ -4358,7 +4373,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 tcx.mk_array(element_ty, args.len() as u64)
             }
-            hir::ExprKind::Repeat(ref element, ref count) => {
+            ExprKind::Repeat(ref element, ref count) => {
                 let count_def_id = tcx.hir().local_def_id(count.id);
                 let param_env = ty::ParamEnv::empty();
                 let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
@@ -4414,7 +4429,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.types.err
                 }
             }
-            hir::ExprKind::Tup(ref elts) => {
+            ExprKind::Tup(ref elts) => {
                 let flds = expected.only_has_type(self).and_then(|ty| {
                     let ty = self.resolve_type_vars_with_obligations(ty);
                     match ty.sty {
@@ -4444,13 +4459,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tuple
                 }
             }
-            hir::ExprKind::Struct(ref qpath, ref fields, ref base_expr) => {
+            ExprKind::Struct(ref qpath, ref fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
-            hir::ExprKind::Field(ref base, field) => {
+            ExprKind::Field(ref base, field) => {
                 self.check_field(expr, needs, &base, field)
             }
-            hir::ExprKind::Index(ref base, ref idx) => {
+            ExprKind::Index(ref base, ref idx) => {
                 let base_t = self.check_expr_with_needs(&base, needs);
                 let idx_t = self.check_expr(&idx);
 
@@ -4476,7 +4491,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 let mut needs_note = true;
                                 // If the index is an integer, we can show the actual
                                 // fixed expression:
-                                if let hir::ExprKind::Lit(ref lit) = idx.node {
+                                if let ExprKind::Lit(ref lit) = idx.node {
                                     if let ast::LitKind::Int(i,
                                             ast::LitIntType::Unsuffixed) = lit.node {
                                         let snip = tcx.sess.source_map().span_to_snippet(base.span);
@@ -4501,7 +4516,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Yield(ref value) => {
+            ExprKind::Yield(ref value) => {
                 match self.yield_ty {
                     Some(ty) => {
                         self.check_expr_coercable_to_type(&value, ty);
@@ -4519,21 +4534,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(&self,
-                                    qpath: &hir::QPath,
+                                    qpath: &QPath,
                                     path_span: Span,
                                     node_id: ast::NodeId)
                                     -> (Def, Ty<'tcx>)
     {
         match *qpath {
-            hir::QPath::Resolved(ref maybe_qself, ref path) => {
+            QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
                 let ty = AstConv::def_to_ty(self, self_ty, path, true);
                 (path.def, ty)
             }
-            hir::QPath::TypeRelative(ref qself, ref segment) => {
+            QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let def = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.node {
+                let def = if let hir::TyKind::Path(QPath::Resolved(_, ref path)) = qself.node {
                     path.def
                 } else {
                     Def::Err
@@ -4553,18 +4568,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Resolve associated value path into a base type and associated constant or method definition.
     // The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
-                                       qpath: &'b hir::QPath,
+                                       qpath: &'b QPath,
                                        node_id: ast::NodeId,
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
         let (ty, qself, item_segment) = match *qpath {
-            hir::QPath::Resolved(ref opt_qself, ref path) => {
+            QPath::Resolved(ref opt_qself, ref path) => {
                 return (path.def,
                         opt_qself.as_ref().map(|qself| self.to_ty(qself)),
                         &path.segments[..]);
             }
-            hir::QPath::TypeRelative(ref qself, ref segment) => {
+            QPath::TypeRelative(ref qself, ref segment) => {
                 (self.to_ty(qself), qself, segment)
             }
         };
@@ -4935,13 +4950,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
             match expression.node {
-                hir::ExprKind::Call(..) |
-                hir::ExprKind::MethodCall(..) |
-                hir::ExprKind::If(..) |
-                hir::ExprKind::While(..) |
-                hir::ExprKind::Loop(..) |
-                hir::ExprKind::Match(..) |
-                hir::ExprKind::Block(..) => {
+                ExprKind::Call(..) |
+                ExprKind::MethodCall(..) |
+                ExprKind::If(..) |
+                ExprKind::While(..) |
+                ExprKind::Loop(..) |
+                ExprKind::Match(..) |
+                ExprKind::Block(..) => {
                     let sp = self.tcx.sess.source_map().next_point(cause_span);
                     err.span_suggestion_with_applicability(
                         sp,
@@ -5449,7 +5464,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If our calling expression is indeed the function itself, we're good!
         // If not, generate an error that this can only be called directly.
         if let Node::Expr(expr) = self.tcx.hir().get(self.tcx.hir().get_parent_node(node_id)) {
-            if let hir::ExprKind::Call(ref callee, ..) = expr.node {
+            if let ExprKind::Call(ref callee, ..) = expr.node {
                 if callee.id == node_id {
                     return
                 }
