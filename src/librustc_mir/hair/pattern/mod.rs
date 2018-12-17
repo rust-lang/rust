@@ -24,7 +24,7 @@ use hair::constant::*;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -219,12 +219,7 @@ pub enum PatternKind<'tcx> {
         value: &'tcx ty::Const<'tcx>,
     },
 
-    Range {
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
-        ty: Ty<'tcx>,
-        end: RangeEnd,
-    },
+    Range(PatternRange<'tcx>),
 
     /// matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
@@ -241,6 +236,14 @@ pub enum PatternKind<'tcx> {
         slice: Option<Pattern<'tcx>>,
         suffix: Vec<Pattern<'tcx>>,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PatternRange<'tcx> {
+    pub lo: &'tcx ty::Const<'tcx>,
+    pub hi: &'tcx ty::Const<'tcx>,
+    pub ty: Ty<'tcx>,
+    pub end: RangeEnd,
 }
 
 impl<'tcx> fmt::Display for Pattern<'tcx> {
@@ -354,7 +357,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Constant { value } => {
                 fmt_const_val(f, value)
             }
-            PatternKind::Range { lo, hi, ty: _, end } => {
+            PatternKind::Range(PatternRange { lo, hi, ty: _, end }) => {
                 fmt_const_val(f, lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
@@ -483,7 +486,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
-                                PatternKind::Range { lo, hi, ty, end },
+                                PatternKind::Range(PatternRange { lo, hi, ty, end }),
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
                                     self.tcx.sess,
@@ -497,7 +500,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatternKind::Constant { value: lo }
                             }
                             (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatternKind::Range { lo, hi, ty, end }
+                                PatternKind::Range(PatternRange { lo, hi, ty, end })
                             }
                             (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
@@ -1177,17 +1180,17 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             } => PatternKind::Constant {
                 value: value.fold_with(folder)
             },
-            PatternKind::Range {
+            PatternKind::Range(PatternRange {
                 lo,
                 hi,
                 ty,
                 end,
-            } => PatternKind::Range {
+            }) => PatternKind::Range(PatternRange {
                 lo: lo.fold_with(folder),
                 hi: hi.fold_with(folder),
                 ty: ty.fold_with(folder),
                 end,
-            },
+            }),
             PatternKind::Slice {
                 ref prefix,
                 ref slice,
@@ -1210,8 +1213,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     }
 }
 
-pub fn compare_const_vals<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn compare_const_vals<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
@@ -1232,6 +1235,9 @@ pub fn compare_const_vals<'a, 'tcx>(
     if a.ty != b.ty || a.ty != ty.value {
         return fallback();
     }
+
+    let tcx = tcx.global_tcx();
+    let (a, b, ty) = (a, b, ty).lift_to_tcx(tcx).unwrap();
 
     // FIXME: This should use assert_bits(ty) instead of use_bits
     // but triggers possibly bugs due to mismatching of arrays and slices

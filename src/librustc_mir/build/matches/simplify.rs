@@ -22,10 +22,9 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use build::{BlockAnd, BlockAndExtension, Builder};
+use build::Builder;
 use build::matches::{Ascription, Binding, MatchPair, Candidate};
 use hair::*;
-use rustc::mir::*;
 use rustc::ty;
 use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -35,24 +34,23 @@ use std::mem;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
-                                    block: BasicBlock,
-                                    candidate: &mut Candidate<'pat, 'tcx>)
-                                    -> BlockAnd<()> {
+                                    candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
-            let mut progress = match_pairs.len(); // count how many were simplified
+            let mut changed = false;
             for match_pair in match_pairs {
                 match self.simplify_match_pair(match_pair, candidate) {
-                    Ok(()) => {}
+                    Ok(()) => {
+                        changed = true;
+                    }
                     Err(match_pair) => {
                         candidate.match_pairs.push(match_pair);
-                        progress -= 1; // this one was not simplified
                     }
                 }
             }
-            if progress == 0 {
-                return block.unit(); // if we were not able to simplify any, done.
+            if !changed {
+                return; // if we were not able to simplify any, done.
             }
         }
     }
@@ -109,7 +107,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Range { lo, hi, ty, end } => {
+            PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
                 let range = match ty.sty {
                     ty::Char => {
                         Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32)))
