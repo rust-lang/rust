@@ -12,9 +12,6 @@
 // approximate the shorter end-point (`'y`) to with `'static`. This is
 // because `'y` is higher-ranked but we know of no relations to other
 // regions. Note that `'static` shows up in the stderr output as `'0`.
-//
-// FIXME(#45827) Because of shortcomings in the MIR type checker,
-// these errors are not (yet) reported.
 
 // compile-flags:-Zborrowck=mir -Zverbose
 
