@@ -1222,12 +1222,12 @@ extern "C" {
         B: &Builder<'a>,
         LHS: &'a Value,
         LHS: &'a Value,
-    ) -> Option<&'a Value>;
+    ) -> &'a Value;
     pub fn LLVMRustBuildMaxNum(
         B: &Builder<'a>,
         LHS: &'a Value,
         LHS: &'a Value,
-    ) -> Option<&'a Value>;
+    ) -> &'a Value;
 
     // Atomic Operations
     pub fn LLVMRustBuildAtomicLoad(B: &Builder<'a>,

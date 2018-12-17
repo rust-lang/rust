@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags: -O
-// min-llvm-version 6.0
 
 #![crate_type="rlib"]
 

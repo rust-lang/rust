@@ -10,7 +10,6 @@
 
 // ignore-emscripten
 // ignore-tidy-linelength
-// min-llvm-version 6.0
 
 // compile-flags: -C no-prepopulate-passes
 

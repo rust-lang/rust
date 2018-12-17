@@ -610,35 +610,13 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             };
             let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
 
-            // Store the pointer to closure data in an alloca for debuginfo
-            // because that's what the llvm.dbg.declare intrinsic expects.
-
-            // FIXME(eddyb) this shouldn't be necessary but SROA seems to
-            // mishandle DW_OP_plus not preceded by DW_OP_deref, i.e., it
-            // doesn't actually strip the offset when splitting the closure
-            // environment into its components so it ends up out of bounds.
-            // (cuviper) It seems to be fine without the alloca on LLVM 6 and later.
-            let env_alloca = !env_ref && bx.closure_env_needs_indirect_debuginfo();
-            let env_ptr = if env_alloca {
-                let scratch = PlaceRef::alloca(bx,
-                    bx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
-                    "__debuginfo_env_ptr");
-                bx.store(place.llval, scratch.llval, scratch.align);
-                scratch.llval
-            } else {
-                place.llval
-            };
-
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
                 let byte_offset_of_var_in_env = closure_layout.fields.offset(i).bytes();
 
                 let ops = bx.debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
-
-                // FIXME(eddyb) see above why we sometimes have to keep
-                // a pointer in an alloca for debuginfo atm.
-                let mut ops = if env_ref || env_alloca { &ops[..] } else { &ops[1..] };
+                let mut ops = if env_ref { &ops[..] } else { &ops[1..] };
 
                 let ty = if let (true, &ty::Ref(_, ty, _)) = (decl.by_ref, &ty.sty) {
                     ty
@@ -648,7 +626,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 };
 
                 let variable_access = VariableAccess::IndirectVariable {
-                    alloca: env_ptr,
+                    alloca: place.llval,
                     address_operations: &ops
                 };
                 bx.declare_local(

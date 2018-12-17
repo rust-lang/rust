@@ -11,7 +11,6 @@
 // ignore-tidy-linelength
 // only-macos
 // no-system-llvm
-// min-llvm-version 6.0
 // compile-flags: -O
 
 #![crate_type = "rlib"]

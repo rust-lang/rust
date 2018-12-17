@@ -10,7 +10,6 @@
 
 // run-pass
 // ignore-emscripten
-// min-llvm-version 6.0
 
 // Test that the simd_{gather,scatter} intrinsics produce the correct results.
 
