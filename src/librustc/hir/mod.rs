@@ -1372,6 +1372,7 @@ impl Expr {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Err => ExprPrecedence::Err,
         }
     }
 
@@ -1422,7 +1423,8 @@ impl Expr {
             ExprKind::AddrOf(..) |
             ExprKind::Binary(..) |
             ExprKind::Yield(..) |
-            ExprKind::Cast(..) => {
+            ExprKind::Cast(..) |
+            ExprKind::Err => {
                 false
             }
         }
@@ -1535,6 +1537,9 @@ pub enum ExprKind {
 
     /// A suspension point for generators. This is `yield <expr>` in Rust.
     Yield(P<Expr>),
+
+    /// Placeholder for an expression that wasn't syntactically well formed in some way.
+    Err,
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.

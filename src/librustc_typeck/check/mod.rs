@@ -4498,6 +4498,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 tcx.mk_unit()
             }
+            hir::ExprKind::Err => {
+                tcx.types.err
+            }
         }
     }
 

@@ -276,6 +276,7 @@ pub enum ExprPrecedence {
     TryBlock,
     Struct,
     Async,
+    Err,
 }
 
 impl ExprPrecedence {
@@ -334,7 +335,8 @@ impl ExprPrecedence {
             ExprPrecedence::Block |
             ExprPrecedence::TryBlock |
             ExprPrecedence::Async |
-            ExprPrecedence::Struct => PREC_PAREN,
+            ExprPrecedence::Struct |
+            ExprPrecedence::Err => PREC_PAREN,
         }
     }
 }

@@ -1103,7 +1103,9 @@ impl<'a> State<'a> {
                 self.s.word("_")?;
             }
             ast::TyKind::Err => {
-                self.s.word("?")?;
+                self.popen()?;
+                self.s.word("/*ERROR*/")?;
+                self.pclose()?;
             }
             ast::TyKind::ImplicitSelf => {
                 self.s.word("Self")?;
@@ -2400,6 +2402,11 @@ impl<'a> State<'a> {
                 self.head("try")?;
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?
+            }
+            ast::ExprKind::Err => {
+                self.popen()?;
+                self.s.word("/*ERROR*/")?;
+                self.pclose()?
             }
         }
         self.ann.post(self, AnnNode::Expr(expr))?;
