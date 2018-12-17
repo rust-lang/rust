@@ -1926,17 +1926,7 @@ pub mod tls {
 
     /// A thread local variable which stores a pointer to the current ImplicitCtxt
     #[cfg(not(parallel_queries))]
-    // Accessing `thread_local` in another crate is bugged, so we have
-    // two accessors `set_raw_tlv` and `get_tlv` which do not have an
-    // inline attribute to prevent that
-    #[thread_local]
-    static TLV: Cell<usize> = Cell::new(0);
-
-    /// This is used to set the pointer to the current ImplicitCtxt.
-    #[cfg(not(parallel_queries))]
-    fn set_raw_tlv(value: usize) {
-        TLV.set(value)
-    }
+    thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
     /// Sets TLV to `value` during the call to `f`.
     /// It is restored to its previous value after.
@@ -1944,15 +1934,15 @@ pub mod tls {
     #[cfg(not(parallel_queries))]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
-        let _reset = OnDrop(move || set_raw_tlv(old));
-        set_raw_tlv(value);
+        let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
+        TLV.with(|tlv| tlv.set(value));
         f()
     }
 
     /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(not(parallel_queries))]
     fn get_tlv() -> usize {
-        TLV.get()
+        TLV.with(|tlv| tlv.get())
     }
 
     /// This is a callback from libsyntax as it cannot access the implicit state
