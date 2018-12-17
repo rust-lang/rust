@@ -430,7 +430,9 @@ impl<'a> State<'a> {
                 self.s.word("_")?;
             }
             hir::TyKind::Err => {
-                self.s.word("?")?;
+                self.popen()?;
+                self.s.word("/*ERROR*/")?;
+                self.pclose()?;
             }
         }
         self.end()
@@ -1539,6 +1541,11 @@ impl<'a> State<'a> {
             hir::ExprKind::Yield(ref expr) => {
                 self.word_space("yield")?;
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
+            }
+            hir::ExprKind::Err => {
+                self.popen()?;
+                self.s.word("/*ERROR*/")?;
+                self.pclose()?;
             }
         }
         self.ann.post(self, AnnNode::Expr(expr))?;

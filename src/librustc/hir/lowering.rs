@@ -4117,6 +4117,8 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::Yield(P(expr))
             }
 
+            ExprKind::Err => hir::ExprKind::Err,
+
             // Desugar `ExprIfLet`
             // from: `if let <pat> = <sub_expr> <body> [<else_opt>]`
             ExprKind::IfLet(ref pats, ref sub_expr, ref body, ref else_opt) => {
