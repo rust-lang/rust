@@ -707,10 +707,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 new_relocations.extend(
                     relocations
                     .iter()
-                    .map(|&(offset, reloc)| {
-                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64),
-                     reloc)
-                    })
+                    .map(|&(offset, reloc)| (
+                        offset + dest.offset - src.offset + (i * size),
+                        reloc,
+                    ))
                 );
             }
 
