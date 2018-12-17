@@ -86,6 +86,11 @@ current state, incorporates changes and handles out `Analysis` --- an
 immutable consistent snapshot of world state at a point in time, which
 actually powers analysis.
 
+One interesting aspect of analysis is its support for cancelation. When a change
+is applied to `AnalysisHost`, first all currently active snapshots are
+cancelled. Only after all snapshots are dropped the change actually affects the
+database.
+
 ### `crates/ra_lsp_server`
 
 An LSP implementation which uses `ra_analysis` for managing state and
