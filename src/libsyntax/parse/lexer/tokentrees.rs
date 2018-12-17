@@ -97,7 +97,15 @@ impl<'a> StringReader<'a> {
                     // Correct delimiter.
                     token::CloseDelim(d) if d == delim => {
                         let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
-                        self.matching_delim_spans.push((open_brace, open_brace_span, self.span));
+                        if self.open_braces.len() == 0 {
+                            // Clear up these spans to avoid suggesting them as we've found
+                            // properly matched delimiters so far for an entire block.
+                            self.matching_delim_spans.clear();
+                        } else {
+                            self.matching_delim_spans.push(
+                                (open_brace, open_brace_span, self.span),
+                            );
+                        }
                         // Parse the close delimiter.
                         self.real_token();
                     }
