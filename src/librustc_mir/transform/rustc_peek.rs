@@ -95,8 +95,8 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 mir: &Mir<'tcx>,
                                                 id: ast::NodeId,
                                                 _attributes: &[ast::Attribute],
-                                                results: &DataflowResults<O>)
-    where O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
+                                                results: &DataflowResults<'tcx, O>)
+    where O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -110,9 +110,9 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
-                           results: &DataflowResults<O>,
+                           results: &DataflowResults<'tcx, O>,
                            bb: mir::BasicBlock) where
-    O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
+    O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     let move_data = results.0.operator.move_data();
     let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];

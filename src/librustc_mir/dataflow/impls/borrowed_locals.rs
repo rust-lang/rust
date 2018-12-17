@@ -36,7 +36,7 @@ impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     type Idx = Local;
     fn name() -> &'static str { "has_been_borrowed_locals" }
     fn bits_per_block(&self) -> usize {
@@ -71,11 +71,13 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
         }.visit_terminator(loc.block, self.mir[loc.block].terminator(), loc);
     }
 
-    fn propagate_call_return(&self,
-                             _in_out: &mut BitSet<Local>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
+    fn propagate_call_return(
+        &self,
+        _in_out: &mut BitSet<Local>,
+        _call_bb: mir::BasicBlock,
+        _dest_bb: mir::BasicBlock,
+        _dest_place: &mir::Place<'tcx>,
+    ) {
         // Nothing to do when a call returns successfully
     }
 }

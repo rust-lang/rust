@@ -195,18 +195,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     fn kill_borrows_on_place(
         &self,
         sets: &mut BlockSets<BorrowIndex>,
-        location: Location,
         place: &Place<'tcx>
     ) {
-        debug!("kill_borrows_on_place: location={:?} place={:?}", location, place);
+        debug!("kill_borrows_on_place: place={:?}", place);
         // Handle the `Place::Local(..)` case first and exit early.
         if let Place::Local(local) = place {
-            if let Some(borrow_indexes) = self.borrow_set.local_map.get(&local) {
-                debug!(
-                    "kill_borrows_on_place: local={:?} borrow_indexes={:?}",
-                    local, borrow_indexes,
-                );
-                sets.kill_all(borrow_indexes);
+            if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
+                debug!("kill_borrows_on_place: borrow_indices={:?}", borrow_indices);
+                sets.kill_all(borrow_indices);
                 return;
             }
         }
@@ -234,8 +230,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                 places_conflict::PlaceConflictBias::NoOverlap,
             ) {
                 debug!(
-                    "kill_borrows_on_place: (kill) place={:?} borrow_index={:?} borrow_data={:?}",
-                    place, borrow_index, borrow_data,
+                    "kill_borrows_on_place: (kill) borrow_index={:?} borrow_data={:?}",
+                    borrow_index, borrow_data,
                 );
                 sets.kill(borrow_index);
             }
@@ -243,7 +239,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
     type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
@@ -278,12 +274,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::Assign(ref lhs, ref rhs) => {
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(sets, location, lhs);
+                self.kill_borrows_on_place(sets, lhs);
 
-                // NOTE: if/when the Assign case is revised to inspect
-                // the assigned_place here, make sure to also
-                // re-consider the current implementations of the
-                // propagate_call_return method.
                 if let mir::Rvalue::Ref(_, _, ref place) = **rhs {
                     if place.ignore_borrow(
                         self.tcx,
@@ -317,13 +309,13 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(sets, location, &Place::Local(local));
+                self.kill_borrows_on_place(sets, &Place::Local(local));
             }
 
             mir::StatementKind::InlineAsm { ref outputs, ref asm, .. } => {
                 for (output, kind) in outputs.iter().zip(&asm.outputs) {
                     if !kind.is_indirect && !kind.is_rw {
-                        self.kill_borrows_on_place(sets, location, output);
+                        self.kill_borrows_on_place(sets, output);
                     }
                 }
             }
@@ -348,16 +340,13 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
     fn terminator_effect(&self, _: &mut BlockSets<BorrowIndex>, _: Location) {}
 
-    fn propagate_call_return(&self,
-                             _in_out: &mut BitSet<BorrowIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
-        // there are no effects on borrows from method call return...
-        //
-        // ... but if overwriting a place can affect flow state, then
-        // latter is not true; see NOTE on Assign case in
-        // statement_effect_on_borrows.
+    fn propagate_call_return(
+        &self,
+        _in_out: &mut BitSet<BorrowIndex>,
+        _call_bb: mir::BasicBlock,
+        _dest_bb: mir::BasicBlock,
+        _dest_place: &mir::Place<'tcx>,
+    ) {
     }
 }
 

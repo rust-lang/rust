@@ -303,8 +303,8 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
-    flow_uninits:  DataflowResults<MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
+    flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
+    flow_uninits:  DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }
