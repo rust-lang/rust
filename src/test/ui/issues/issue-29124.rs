@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct ret;
-struct obj;
+struct Ret;
+struct Obj;
 
-impl obj {
-    fn func() -> ret {
-        ret
+impl Obj {
+    fn func() -> Ret {
+        Ret
     }
 }
 
-fn func() -> ret {
-    ret
+fn func() -> Ret {
+    Ret
 }
 
 fn main() {
-    obj::func.x();
-    //~^ ERROR no method named `x` found for type `fn() -> ret {obj::func}` in the current scope
+    Obj::func.x();
+    //~^ ERROR no method named `x` found for type `fn() -> Ret {Obj::func}` in the current scope
     func.x();
-    //~^ ERROR no method named `x` found for type `fn() -> ret {func}` in the current scope
+    //~^ ERROR no method named `x` found for type `fn() -> Ret {func}` in the current scope
 }

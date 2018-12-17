@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait siphash {
+trait SipHash {
     fn result(&self) -> u64;
     fn reset(&self);
 }
@@ -26,7 +26,7 @@ fn siphash(k0 : u64, k1 : u64) {
         return v0 ^ v1;
     }
 
-   impl siphash for SipState {
+   impl SipHash for SipState {
         fn reset(&self) {
             self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR can't capture dynamic environment
             self.v1 = k1 ^ 0x646f72616e646f6d; //~ ERROR can't capture dynamic environment

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 #[derive(Debug)]
-struct foo {
+struct Foo {
     x: isize
 }
 
 fn main() {
-    println!("{}", foo{ x: 1 } as isize); //~ non-primitive cast: `foo` as `isize` [E0605]
+    println!("{}", Foo { x: 1 } as isize); //~ non-primitive cast: `Foo` as `isize` [E0605]
 }

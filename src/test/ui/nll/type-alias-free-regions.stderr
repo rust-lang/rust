@@ -1,21 +1,21 @@
 error: unsatisfied lifetime constraints
   --> $DIR/type-alias-free-regions.rs:19:9
    |
-LL | impl<'a> FromBox<'a> for c<'a> {
+LL | impl<'a> FromBox<'a> for C<'a> {
    |      -- lifetime `'a` defined here
-LL |     fn from_box(b: Box<b>) -> Self {
+LL |     fn from_box(b: Box<B>) -> Self {
    |                 - has type `std::boxed::Box<std::boxed::Box<&'1 isize>>`
-LL |         c { f: b } //~ ERROR
+LL |         C { f: b } //~ ERROR
    |         ^^^^^^^^^^ returning this value requires that `'1` must outlive `'a`
 
 error: unsatisfied lifetime constraints
   --> $DIR/type-alias-free-regions.rs:29:9
    |
-LL | impl<'a> FromTuple<'a> for c<'a> {
+LL | impl<'a> FromTuple<'a> for C<'a> {
    |      -- lifetime `'a` defined here
-LL |     fn from_tuple(b: (b,)) -> Self {
+LL |     fn from_tuple(b: (B,)) -> Self {
    |                   - has type `(std::boxed::Box<&'1 isize>,)`
-LL |         c { f: Box::new(b.0) } //~ ERROR
+LL |         C { f: Box::new(b.0) } //~ ERROR
    |         ^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'a`
 
 error: aborting due to 2 previous errors

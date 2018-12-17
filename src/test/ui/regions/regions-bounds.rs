@@ -12,14 +12,14 @@
 // nominal types (but not on other types) and that they are type
 // checked.
 
-struct an_enum<'a>(&'a isize);
-struct a_class<'a> { x:&'a isize }
+struct TupleStruct<'a>(&'a isize);
+struct Struct<'a> { x:&'a isize }
 
-fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
+fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
     return e; //~ ERROR mismatched types
 }
 
-fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
+fn a_fn3<'a,'b>(e: Struct<'a>) -> Struct<'b> {
     return e; //~ ERROR mismatched types
 }
 

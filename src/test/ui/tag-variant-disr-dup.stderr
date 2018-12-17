@@ -1,9 +1,9 @@
 error[E0081]: discriminant value `0` already exists
-  --> $DIR/tag-variant-disr-dup.rs:20:13
+  --> $DIR/tag-variant-disr-dup.rs:18:13
    |
-LL |     black = 0x000000,
+LL |     Black = 0x000000,
    |             -------- first use of `0`
-LL |     white = 0x000000,
+LL |     White = 0x000000, //~ ERROR discriminant value `0` already exists
    |             ^^^^^^^^ enum already has `0`
 
 error: aborting due to previous error

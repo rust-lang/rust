@@ -1,7 +1,7 @@
-error[E0404]: expected trait, found enum `chan`
+error[E0404]: expected trait, found enum `Chan`
   --> $DIR/issue-2330.rs:18:6
    |
-LL | impl chan for isize { //~ ERROR expected trait, found enum `chan`
+LL | impl Chan for isize { //~ ERROR expected trait, found enum `Chan`
    |      ^^^^ not a trait
 
 error: aborting due to previous error

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:25:17
+  --> $DIR/type-mismatch.rs:27:17
    |
 LL |     want::<foo>(f); //~ ERROR mismatched types
    |                 ^ expected struct `foo`, found usize
@@ -8,7 +8,7 @@ LL |     want::<foo>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:26:17
+  --> $DIR/type-mismatch.rs:28:17
    |
 LL |     want::<bar>(f); //~ ERROR mismatched types
    |                 ^ expected struct `bar`, found usize
@@ -17,7 +17,7 @@ LL |     want::<bar>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:27:24
+  --> $DIR/type-mismatch.rs:29:24
    |
 LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
    |                        ^ expected struct `Foo`, found usize
@@ -26,7 +26,7 @@ LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:28:27
+  --> $DIR/type-mismatch.rs:30:27
    |
 LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
    |                           ^ expected struct `Foo`, found usize
@@ -35,7 +35,7 @@ LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:29:22
+  --> $DIR/type-mismatch.rs:31:22
    |
 LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `Foo`, found usize
@@ -44,7 +44,7 @@ LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:30:25
+  --> $DIR/type-mismatch.rs:32:25
    |
 LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `Foo`, found usize
@@ -53,7 +53,7 @@ LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:31:22
+  --> $DIR/type-mismatch.rs:33:22
    |
 LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `Foo`, found usize
@@ -62,7 +62,7 @@ LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:32:25
+  --> $DIR/type-mismatch.rs:34:25
    |
 LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `Foo`, found usize
@@ -71,7 +71,7 @@ LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
               found type `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:36:19
+  --> $DIR/type-mismatch.rs:38:19
    |
 LL |     want::<usize>(f); //~ ERROR mismatched types
    |                   ^ expected usize, found struct `foo`
@@ -80,7 +80,7 @@ LL |     want::<usize>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:37:17
+  --> $DIR/type-mismatch.rs:39:17
    |
 LL |     want::<bar>(f); //~ ERROR mismatched types
    |                 ^ expected struct `bar`, found struct `foo`
@@ -89,7 +89,7 @@ LL |     want::<bar>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:38:24
+  --> $DIR/type-mismatch.rs:40:24
    |
 LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
    |                        ^ expected struct `Foo`, found struct `foo`
@@ -98,7 +98,7 @@ LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:39:27
+  --> $DIR/type-mismatch.rs:41:27
    |
 LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
    |                           ^ expected struct `Foo`, found struct `foo`
@@ -107,7 +107,7 @@ LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:40:22
+  --> $DIR/type-mismatch.rs:42:22
    |
 LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `Foo`, found struct `foo`
@@ -116,7 +116,7 @@ LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:41:25
+  --> $DIR/type-mismatch.rs:43:25
    |
 LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `Foo`, found struct `foo`
@@ -125,7 +125,7 @@ LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:42:22
+  --> $DIR/type-mismatch.rs:44:22
    |
 LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `Foo`, found struct `foo`
@@ -134,7 +134,7 @@ LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:43:25
+  --> $DIR/type-mismatch.rs:45:25
    |
 LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `Foo`, found struct `foo`
@@ -143,7 +143,7 @@ LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
               found type `foo`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:47:19
+  --> $DIR/type-mismatch.rs:49:19
    |
 LL |     want::<usize>(f); //~ ERROR mismatched types
    |                   ^ expected usize, found struct `Foo`
@@ -152,7 +152,7 @@ LL |     want::<usize>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:48:17
+  --> $DIR/type-mismatch.rs:50:17
    |
 LL |     want::<foo>(f); //~ ERROR mismatched types
    |                 ^ expected struct `foo`, found struct `Foo`
@@ -161,7 +161,7 @@ LL |     want::<foo>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:49:17
+  --> $DIR/type-mismatch.rs:51:17
    |
 LL |     want::<bar>(f); //~ ERROR mismatched types
    |                 ^ expected struct `bar`, found struct `Foo`
@@ -170,7 +170,7 @@ LL |     want::<bar>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:50:24
+  --> $DIR/type-mismatch.rs:52:24
    |
 LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
    |                        ^ expected usize, found struct `foo`
@@ -179,7 +179,7 @@ LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:51:27
+  --> $DIR/type-mismatch.rs:53:27
    |
 LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
    |                           ^ expected usize, found struct `foo`
@@ -188,7 +188,7 @@ LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:52:25
+  --> $DIR/type-mismatch.rs:54:25
    |
 LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `B`, found struct `A`
@@ -197,7 +197,7 @@ LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
               found type `Foo<_, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:53:22
+  --> $DIR/type-mismatch.rs:55:22
    |
 LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `bar`, found struct `foo`
@@ -206,7 +206,7 @@ LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:54:25
+  --> $DIR/type-mismatch.rs:56:25
    |
 LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `bar`, found struct `foo`
@@ -215,7 +215,7 @@ LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:55:23
+  --> $DIR/type-mismatch.rs:57:23
    |
 LL |     want::<&Foo<foo>>(f); //~ ERROR mismatched types
    |                       ^
@@ -227,7 +227,7 @@ LL |     want::<&Foo<foo>>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:56:26
+  --> $DIR/type-mismatch.rs:58:26
    |
 LL |     want::<&Foo<foo, B>>(f); //~ ERROR mismatched types
    |                          ^ expected reference, found struct `Foo`
@@ -236,7 +236,7 @@ LL |     want::<&Foo<foo, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:60:19
+  --> $DIR/type-mismatch.rs:62:19
    |
 LL |     want::<usize>(f); //~ ERROR mismatched types
    |                   ^ expected usize, found struct `Foo`
@@ -245,7 +245,7 @@ LL |     want::<usize>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:61:17
+  --> $DIR/type-mismatch.rs:63:17
    |
 LL |     want::<foo>(f); //~ ERROR mismatched types
    |                 ^ expected struct `foo`, found struct `Foo`
@@ -254,7 +254,7 @@ LL |     want::<foo>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:62:17
+  --> $DIR/type-mismatch.rs:64:17
    |
 LL |     want::<bar>(f); //~ ERROR mismatched types
    |                 ^ expected struct `bar`, found struct `Foo`
@@ -263,7 +263,7 @@ LL |     want::<bar>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:63:24
+  --> $DIR/type-mismatch.rs:65:24
    |
 LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
    |                        ^ expected usize, found struct `foo`
@@ -272,7 +272,7 @@ LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:64:27
+  --> $DIR/type-mismatch.rs:66:27
    |
 LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
    |                           ^ expected usize, found struct `foo`
@@ -281,7 +281,7 @@ LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, _>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:65:22
+  --> $DIR/type-mismatch.rs:67:22
    |
 LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `A`, found struct `B`
@@ -290,7 +290,7 @@ LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
               found type `Foo<_, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:66:22
+  --> $DIR/type-mismatch.rs:68:22
    |
 LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `bar`, found struct `foo`
@@ -299,7 +299,7 @@ LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:67:25
+  --> $DIR/type-mismatch.rs:69:25
    |
 LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `bar`, found struct `foo`
@@ -308,7 +308,7 @@ LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, _>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:68:23
+  --> $DIR/type-mismatch.rs:70:23
    |
 LL |     want::<&Foo<foo>>(f); //~ ERROR mismatched types
    |                       ^ expected &Foo<foo>, found struct `Foo`
@@ -317,7 +317,7 @@ LL |     want::<&Foo<foo>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:69:26
+  --> $DIR/type-mismatch.rs:71:26
    |
 LL |     want::<&Foo<foo, B>>(f); //~ ERROR mismatched types
    |                          ^
@@ -329,7 +329,7 @@ LL |     want::<&Foo<foo, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:73:19
+  --> $DIR/type-mismatch.rs:75:19
    |
 LL |     want::<usize>(f); //~ ERROR mismatched types
    |                   ^ expected usize, found struct `Foo`
@@ -338,7 +338,7 @@ LL |     want::<usize>(f); //~ ERROR mismatched types
               found type `Foo<foo, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:74:17
+  --> $DIR/type-mismatch.rs:76:17
    |
 LL |     want::<foo>(f); //~ ERROR mismatched types
    |                 ^ expected struct `foo`, found struct `Foo`
@@ -347,7 +347,7 @@ LL |     want::<foo>(f); //~ ERROR mismatched types
               found type `Foo<foo, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:75:17
+  --> $DIR/type-mismatch.rs:77:17
    |
 LL |     want::<bar>(f); //~ ERROR mismatched types
    |                 ^ expected struct `bar`, found struct `Foo`
@@ -356,7 +356,7 @@ LL |     want::<bar>(f); //~ ERROR mismatched types
               found type `Foo<foo, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:76:24
+  --> $DIR/type-mismatch.rs:78:24
    |
 LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
    |                        ^ expected usize, found struct `foo`
@@ -365,7 +365,7 @@ LL |     want::<Foo<usize>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:77:27
+  --> $DIR/type-mismatch.rs:79:27
    |
 LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
    |                           ^ expected usize, found struct `foo`
@@ -374,7 +374,7 @@ LL |     want::<Foo<usize, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, _, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:78:22
+  --> $DIR/type-mismatch.rs:80:22
    |
 LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `A`, found struct `B`
@@ -383,7 +383,7 @@ LL |     want::<Foo<foo>>(f); //~ ERROR mismatched types
               found type `Foo<_, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:79:25
+  --> $DIR/type-mismatch.rs:81:25
    |
 LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `B`, found struct `A`
@@ -392,7 +392,7 @@ LL |     want::<Foo<foo, B>>(f); //~ ERROR mismatched types
               found type `Foo<_, _, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:80:22
+  --> $DIR/type-mismatch.rs:82:22
    |
 LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
    |                      ^ expected struct `bar`, found struct `foo`
@@ -401,7 +401,7 @@ LL |     want::<Foo<bar>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:81:25
+  --> $DIR/type-mismatch.rs:83:25
    |
 LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
    |                         ^ expected struct `bar`, found struct `foo`
@@ -410,7 +410,7 @@ LL |     want::<Foo<bar, B>>(f); //~ ERROR mismatched types
               found type `Foo<foo, _, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:82:23
+  --> $DIR/type-mismatch.rs:84:23
    |
 LL |     want::<&Foo<foo>>(f); //~ ERROR mismatched types
    |                       ^ expected &Foo<foo>, found struct `Foo`
@@ -419,7 +419,7 @@ LL |     want::<&Foo<foo>>(f); //~ ERROR mismatched types
               found type `Foo<foo, B, A>`
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:83:26
+  --> $DIR/type-mismatch.rs:85:26
    |
 LL |     want::<&Foo<foo, B>>(f); //~ ERROR mismatched types
    |                          ^ expected reference, found struct `Foo`

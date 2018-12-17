@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
-  --> $DIR/or-patter-mismatch.rs:15:68
+  --> $DIR/or-pattern-mismatch.rs:13:68
    |
-LL | fn main() { match blah::a(1, 1, 2) { blah::a(_, x, y) | blah::b(x, y) => { } } }
+LL | fn main() { match Blah::A(1, 1, 2) { Blah::A(_, x, y) | Blah::B(x, y) => { } } }
    |                                                                    ^ expected usize, found isize
    |
    = note: expected type `usize`

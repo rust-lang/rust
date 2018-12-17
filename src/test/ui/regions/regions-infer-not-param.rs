@@ -8,29 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct direct<'a> {
+struct Direct<'a> {
     f: &'a isize
 }
 
-struct indirect1 {
+struct Indirect1 {
     // Here the lifetime parameter of direct is bound by the fn()
-    g: Box<FnOnce(direct) + 'static>
+    g: Box<FnOnce(Direct) + 'static>
 }
 
-struct indirect2<'a> {
+struct Indirect2<'a> {
     // But here it is set to 'a
-    g: Box<FnOnce(direct<'a>) + 'static>
+    g: Box<FnOnce(Direct<'a>) + 'static>
 }
 
-fn take_direct<'a,'b>(p: direct<'a>) -> direct<'b> { p } //~ ERROR mismatched types
+fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched types
 
-fn take_indirect1(p: indirect1) -> indirect1 { p }
+fn take_indirect1(p: Indirect1) -> Indirect1 { p }
 
-fn take_indirect2<'a,'b>(p: indirect2<'a>) -> indirect2<'b> { p } //~ ERROR mismatched types
-//~| expected type `indirect2<'b>`
-//~| found type `indirect2<'a>`
+fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
+//~| expected type `Indirect2<'b>`
+//~| found type `Indirect2<'a>`
 //~| ERROR mismatched types
-//~| expected type `indirect2<'b>`
-//~| found type `indirect2<'a>`
+//~| expected type `Indirect2<'b>`
+//~| found type `Indirect2<'a>`
 
 fn main() {}

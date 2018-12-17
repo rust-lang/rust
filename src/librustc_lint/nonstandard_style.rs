@@ -13,8 +13,8 @@ use rustc::hir::def::Def;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;
 use rustc_target::spec::abi::Abi;
-use lint::{LateContext, LintContext, LintArray};
-use lint::{LintPass, LateLintPass};
+use lint::{EarlyContext, LateContext, LintContext, LintArray};
+use lint::{EarlyLintPass, LintPass, LateLintPass};
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
@@ -50,7 +50,7 @@ declare_lint! {
 pub struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
-    fn check_case(&self, cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
+    fn check_case(&self, cx: &EarlyContext, sort: &str, name: ast::Name, span: Span) {
         fn char_has_case(c: char) -> bool {
             c.is_lowercase() || c.is_uppercase()
         }
@@ -114,12 +114,12 @@ impl LintPass for NonCamelCaseTypes {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+impl EarlyLintPass for NonCamelCaseTypes {
+    fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
         let has_repr_c = it.attrs
             .iter()
             .any(|attr| {
-                attr::find_repr_attrs(&cx.tcx.sess.parse_sess, attr)
+                attr::find_repr_attrs(&cx.sess.parse_sess, attr)
                     .iter()
                     .any(|r| r == &attr::ReprC)
             });
@@ -129,27 +129,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
         }
 
         match it.node {
-            hir::ItemKind::Ty(..) |
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::Union(..) => self.check_case(cx, "type", it.name, it.span),
-            hir::ItemKind::Trait(..) => self.check_case(cx, "trait", it.name, it.span),
+            ast::ItemKind::Ty(..) |
+            ast::ItemKind::Enum(..) |
+            ast::ItemKind::Struct(..) |
+            ast::ItemKind::Union(..) => self.check_case(cx, "type", it.ident.name, it.span),
+            ast::ItemKind::Trait(..) => self.check_case(cx, "trait", it.ident.name, it.span),
             _ => (),
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext, v: &hir::Variant, _: &hir::Generics) {
-        self.check_case(cx, "variant", v.node.name, v.span);
+    fn check_variant(&mut self, cx: &EarlyContext, v: &ast::Variant, _: &ast::Generics) {
+        self.check_case(cx, "variant", v.node.ident.name, v.span);
     }
 
-    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
-        match param.kind {
-            GenericParamKind::Lifetime { .. } => {}
-            GenericParamKind::Type { synthetic, .. } => {
-                if synthetic.is_none() {
-                    self.check_case(cx, "type parameter", param.name.ident().name, param.span);
-                }
-            }
+    fn check_generic_param(&mut self, cx: &EarlyContext, param: &ast::GenericParam) {
+        if let ast::GenericParamKind::Type { .. } = param.kind {
+            self.check_case(cx, "type parameter", param.ident.name, param.ident.span);
         }
     }
 }

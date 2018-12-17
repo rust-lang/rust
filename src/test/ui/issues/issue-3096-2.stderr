@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: type `*const bottom` is non-empty
+error[E0004]: non-exhaustive patterns: type `*const Bottom` is non-empty
   --> $DIR/issue-3096-2.rs:15:11
    |
 LL |     match x { } //~ ERROR non-exhaustive patterns

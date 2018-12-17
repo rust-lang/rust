@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-enum color { rgb(isize, isize, isize), rgba(isize, isize, isize, isize), }
+enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }
 
 fn main() {
-    let red: color = color::rgb(255, 0, 0);
+    let red: Color = Color::Rgb(255, 0, 0);
     match red {
-      color::rgb(r, g, b) => { println!("rgb"); }
-      color::hsl(h, s, l) => { println!("hsl"); }
+      Color::Rgb(r, g, b) => { println!("rgb"); }
+      Color::Hsl(h, s, l) => { println!("hsl"); }
       //~^ ERROR no variant
     }
 }

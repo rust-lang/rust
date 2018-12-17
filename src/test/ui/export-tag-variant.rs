@@ -11,7 +11,7 @@
 mod foo {
     pub fn x() { }
 
-    enum y { y1, }
+    enum Y { Y1 }
 }
 
-fn main() { let z = foo::y::y1; } //~ ERROR: enum `y` is private
+fn main() { let z = foo::Y::Y1; } //~ ERROR: enum `Y` is private

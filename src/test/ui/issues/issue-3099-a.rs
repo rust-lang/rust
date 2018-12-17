@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum a { b, c }
+enum A { B, C }
 
-enum a { d, e } //~ ERROR the name `a` is defined multiple times
+enum A { D, E } //~ ERROR the name `A` is defined multiple times
 
 fn main() {}

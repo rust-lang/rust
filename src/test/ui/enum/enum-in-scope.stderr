@@ -1,5 +1,5 @@
 error[E0530]: let bindings cannot shadow tuple structs
-  --> $DIR/enum-in-scope.rs:14:9
+  --> $DIR/enum-in-scope.rs:16:9
    |
 LL | struct hello(isize);
    | -------------------- the tuple struct `hello` is defined here

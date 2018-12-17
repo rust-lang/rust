@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct foo {
+struct Foo {
     a: isize,
     b: isize,
 }
 
-struct bar {
+struct Bar {
     a: isize,
     b: usize,
 }
 
-fn want_foo(f: foo) {}
-fn have_bar(b: bar) {
+fn want_foo(f: Foo) {}
+fn have_bar(b: Bar) {
     want_foo(b); //~  ERROR mismatched types
-                 //~| expected type `foo`
-                 //~| found type `bar`
-                 //~| expected struct `foo`, found struct `bar`
+                 //~| expected type `Foo`
+                 //~| found type `Bar`
+                 //~| expected struct `Foo`, found struct `Bar`
 }
 
 fn main() {}

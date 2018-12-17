@@ -1,3 +1,16 @@
+warning: type `snake_case` should have a camel case name such as `SnakeCase`
+  --> $DIR/lint-group-nonstandard-style.rs:32:9
+   |
+LL |         struct snake_case; //~ WARN should have a camel
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-group-nonstandard-style.rs:28:17
+   |
+LL |         #![warn(nonstandard_style)]
+   |                 ^^^^^^^^^^^^^^^^^
+   = note: #[warn(non_camel_case_types)] implied by #[warn(nonstandard_style)]
+
 error: function `CamelCase` should have a snake case name such as `camel_case`
   --> $DIR/lint-group-nonstandard-style.rs:14:1
    |
@@ -49,19 +62,6 @@ note: lint level defined here
 LL |         #![warn(nonstandard_style)]
    |                 ^^^^^^^^^^^^^^^^^
    = note: #[warn(non_snake_case)] implied by #[warn(nonstandard_style)]
-
-warning: type `snake_case` should have a camel case name such as `SnakeCase`
-  --> $DIR/lint-group-nonstandard-style.rs:32:9
-   |
-LL |         struct snake_case; //~ WARN should have a camel
-   |         ^^^^^^^^^^^^^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/lint-group-nonstandard-style.rs:28:17
-   |
-LL |         #![warn(nonstandard_style)]
-   |                 ^^^^^^^^^^^^^^^^^
-   = note: #[warn(non_camel_case_types)] implied by #[warn(nonstandard_style)]
 
 error: aborting due to 3 previous errors
 

@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:mismatched types
 // From Issue #778
-enum clam<T> { a(T), }
-fn main() { let c; c = clam::a(c); match c { clam::a::<isize>(_) => { } } }
+
+enum Clam<T> { A(T) }
+fn main() { let c; c = Clam::A(c); match c { Clam::A::<isize>(_) => { } } }
+//~^ ERROR mismatched types

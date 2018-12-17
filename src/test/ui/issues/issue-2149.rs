@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait vec_monad<A> {
+trait VecMonad<A> {
     fn bind<B, F>(&self, f: F) where F: FnMut(A) -> Vec<B>;
 }
 
-impl<A> vec_monad<A> for Vec<A> {
+impl<A> VecMonad<A> for Vec<A> {
     fn bind<B, F>(&self, mut f: F) where F: FnMut(A) -> Vec<B> {
         let mut r = panic!();
         for elt in self { r = r + f(*elt); }

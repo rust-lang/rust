@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct dog {
+struct Dog {
     cats_chased: usize,
 }
 
-impl dog {
+impl Dog {
     pub fn chase_cat(&mut self) {
         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
         *p += 1;
@@ -24,8 +24,8 @@ impl dog {
     }
 }
 
-fn dog() -> dog {
-    dog {
+fn dog() -> Dog {
+    Dog {
         cats_chased: 0
     }
 }

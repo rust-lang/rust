@@ -9,16 +9,16 @@
 // except according to those terms.
 
 #[derive(Debug)]
-struct foo {
+struct Foo {
   i: isize,
 }
 
-impl Drop for foo {
+impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-fn foo(i:isize) -> foo {
-    foo {
+fn foo(i:isize) -> Foo {
+    Foo {
         i: i
     }
 }

@@ -1,11 +1,11 @@
-error[E0599]: no method named `clone` found for type `std::boxed::Box<r>` in the current scope
+error[E0599]: no method named `clone` found for type `std::boxed::Box<R>` in the current scope
   --> $DIR/unique-pinned-nocopy.rs:22:16
    |
 LL |     let _j = i.clone(); //~ ERROR no method named `clone` found
    |                ^^^^^
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `std::boxed::Box<r> : std::clone::Clone`
+           `std::boxed::Box<R> : std::clone::Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `std::clone::Clone`

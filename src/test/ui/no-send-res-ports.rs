@@ -16,16 +16,16 @@ struct Port<T>(Rc<T>);
 
 fn main() {
     #[derive(Debug)]
-    struct foo {
+    struct Foo {
       _x: Port<()>,
     }
 
-    impl Drop for foo {
+    impl Drop for Foo {
         fn drop(&mut self) {}
     }
 
-    fn foo(x: Port<()>) -> foo {
-        foo {
+    fn foo(x: Port<()>) -> Foo {
+        Foo {
             _x: x
         }
     }

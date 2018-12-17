@@ -12,7 +12,7 @@ trait Groom {
     fn shave(other: usize);
 }
 
-pub struct cat {
+pub struct Cat {
   whiskers: isize,
 }
 
@@ -29,14 +29,14 @@ impl MaybeDog {
   }
 }
 
-impl Clone for cat {
+impl Clone for Cat {
   fn clone(&self) -> Self {
     clone();
     //~^ ERROR cannot find function `clone`
     loop {}
   }
 }
-impl Default for cat {
+impl Default for Cat {
   fn default() -> Self {
     default();
     //~^ ERROR cannot find function `default`
@@ -44,7 +44,7 @@ impl Default for cat {
   }
 }
 
-impl Groom for cat {
+impl Groom for Cat {
   fn shave(other: usize) {
     whiskers -= other;
     //~^ ERROR cannot find value `whiskers`
@@ -55,7 +55,7 @@ impl Groom for cat {
   }
 }
 
-impl cat {
+impl Cat {
     fn static_method() {}
 
     fn purr_louder() {
@@ -70,7 +70,7 @@ impl cat {
     }
 }
 
-impl cat {
+impl Cat {
   fn meow() {
     if self.whiskers > 3 {
         //~^ ERROR expected value, found module `self`

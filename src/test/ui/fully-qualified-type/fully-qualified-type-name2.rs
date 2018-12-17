@@ -11,19 +11,19 @@
 // Test that we use fully-qualified type names in error messages.
 
 mod x {
-    pub enum foo { }
+    pub enum Foo { }
 }
 
 mod y {
-    pub enum foo { }
+    pub enum Foo { }
 }
 
-fn bar(x: x::foo) -> y::foo {
+fn bar(x: x::Foo) -> y::Foo {
     return x;
     //~^ ERROR mismatched types
-    //~| expected type `y::foo`
-    //~| found type `x::foo`
-    //~| expected enum `y::foo`, found enum `x::foo`
+    //~| expected type `y::Foo`
+    //~| found type `x::Foo`
+    //~| expected enum `y::Foo`, found enum `x::Foo`
 }
 
 fn main() {

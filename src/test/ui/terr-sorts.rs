@@ -9,18 +9,18 @@
 // except according to those terms.
 
 
-struct foo {
+struct Foo {
     a: isize,
     b: isize,
 }
 
-type bar = Box<foo>;
+type Bar = Box<Foo>;
 
-fn want_foo(f: foo) {}
-fn have_bar(b: bar) {
+fn want_foo(f: Foo) {}
+fn have_bar(b: Bar) {
     want_foo(b); //~  ERROR mismatched types
-                 //~| expected type `foo`
-                 //~| found type `std::boxed::Box<foo>`
+                 //~| expected type `Foo`
+                 //~| found type `std::boxed::Box<Foo>`
 }
 
 fn main() {}

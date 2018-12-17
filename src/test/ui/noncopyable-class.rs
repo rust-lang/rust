@@ -12,28 +12,28 @@
 // copied
 
 #[derive(Debug)]
-struct bar {
+struct Bar {
   x: isize,
 }
 
-impl Drop for bar {
+impl Drop for Bar {
     fn drop(&mut self) {}
 }
 
-fn bar(x:isize) -> bar {
-    bar {
+fn bar(x:isize) -> Bar {
+    Bar {
         x: x
     }
 }
 
 #[derive(Debug)]
-struct foo {
+struct Foo {
   i: isize,
-  j: bar,
+  j: Bar,
 }
 
-fn foo(i:isize) -> foo {
-    foo {
+fn foo(i:isize) -> Foo {
+    Foo {
         i: i,
         j: bar(5)
     }

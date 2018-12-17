@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo { foo_(bar) }
-struct bar { x: bar }
+enum Foo { Foo_(Bar) }
+struct Bar { x: Bar }
 //~^ ERROR E0072
 
 fn main() {

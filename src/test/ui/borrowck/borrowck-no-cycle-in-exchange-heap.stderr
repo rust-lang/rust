@@ -1,7 +1,7 @@
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/borrowck-no-cycle-in-exchange-heap.rs:26:15
    |
-LL |       cycle::node(ref mut y) => {
+LL |       Cycle::Node(ref mut y) => {
    |                   --------- borrow of `x.0` occurs here
 LL |         y.a = x; //~ ERROR cannot move out of
    |               ^ move out of `x` occurs here

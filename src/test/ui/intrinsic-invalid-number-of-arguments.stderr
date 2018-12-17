@@ -1,5 +1,5 @@
 error[E0444]: platform-specific intrinsic has invalid number of arguments: found 3, expected 1
-  --> $DIR/intrinsic-invalid-number-of-arguments.rs:20:5
+  --> $DIR/intrinsic-invalid-number-of-arguments.rs:21:5
    |
 LL |     fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32; //~ platform-specific intrinsic
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

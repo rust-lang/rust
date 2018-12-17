@@ -4,12 +4,12 @@ error[E0308]: mismatched types
 LL |     b_isize //~ ERROR mismatched types
    |     ^^^^^^^ lifetime mismatch
    |
-   = note: expected type `invariant<'static>`
-              found type `invariant<'r>`
+   = note: expected type `Invariant<'static>`
+              found type `Invariant<'r>`
 note: the lifetime 'r as defined on the function body at 21:23...
   --> $DIR/regions-infer-invariance-due-to-decl.rs:21:23
    |
-LL | fn to_longer_lifetime<'r>(b_isize: invariant<'r>) -> invariant<'static> {
+LL | fn to_longer_lifetime<'r>(b_isize: Invariant<'r>) -> Invariant<'static> {
    |                       ^^
    = note: ...does not necessarily outlive the static lifetime
 

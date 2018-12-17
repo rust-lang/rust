@@ -11,11 +11,11 @@
 #![feature(slice_patterns)]
 #![allow(illegal_floating_point_literal_pattern)]
 
-enum t { a, b, }
+enum T { A, B }
 
 fn main() {
-    let x = t::a;
-    match x { t::b => { } } //~ ERROR non-exhaustive patterns: `a` not covered
+    let x = T::A;
+    match x { T::B => { } } //~ ERROR non-exhaustive patterns: `A` not covered
     match true { //~ ERROR non-exhaustive patterns: `false` not covered
       true => {}
     }
@@ -26,18 +26,18 @@ fn main() {
                       //  and `(_, _, 5i32..=2147483647i32)` not covered
       (_, _, 4) => {}
     }
-    match (t::a, t::a) { //~ ERROR non-exhaustive patterns: `(a, a)` not covered
-      (t::a, t::b) => {}
-      (t::b, t::a) => {}
+    match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` not covered
+      (T::A, T::B) => {}
+      (T::B, T::A) => {}
     }
-    match t::a { //~ ERROR non-exhaustive patterns: `b` not covered
-      t::a => {}
+    match T::A { //~ ERROR non-exhaustive patterns: `B` not covered
+      T::A => {}
     }
     // This is exhaustive, though the algorithm got it wrong at one point
-    match (t::a, t::b) {
-      (t::a, _) => {}
-      (_, t::a) => {}
-      (t::b, t::b) => {}
+    match (T::A, T::B) {
+      (T::A, _) => {}
+      (_, T::A) => {}
+      (T::B, T::B) => {}
     }
     let vec = vec![Some(42), None, Some(21)];
     let vec: &[Option<isize>] = &vec;

@@ -16,13 +16,13 @@ impl Drop for X {
     }
 }
 
-enum double_option<T,U> { some2(T,U), none2 }
+enum DoubleOption<T,U> { Some2(T,U), None2 }
 
 fn main() {
-    let x = double_option::some2(X { x: () }, X { x: () });
+    let x = DoubleOption::Some2(X { x: () }, X { x: () });
     match x {
-        double_option::some2(ref _y, _z) => { },
+        DoubleOption::Some2(ref _y, _z) => { },
         //~^ ERROR cannot bind by-move and by-ref in the same pattern
-        double_option::none2 => panic!()
+        DoubleOption::None2 => panic!()
     }
 }

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct cat {
+struct Cat {
   meows : usize,
 }
 
-impl cat {
+impl Cat {
     fn sleep(&self) { loop{} }
     fn meow(&self) {
       println!("Meow");

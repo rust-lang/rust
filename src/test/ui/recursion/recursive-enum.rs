@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum list<T> { cons(T, list<T>), nil }
-//~^ ERROR recursive type `list` has infinite size
+enum List<T> { Cons(T, List<T>), Nil }
+//~^ ERROR recursive type `List` has infinite size
 
 fn main() {}

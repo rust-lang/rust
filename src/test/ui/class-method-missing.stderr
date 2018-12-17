@@ -4,7 +4,7 @@ error[E0046]: not all trait items implemented, missing: `eat`
 LL |   fn eat(&self);
    |   -------------- `eat` from trait
 ...
-LL | impl animal for cat {
+LL | impl Animal for Cat {
    | ^^^^^^^^^^^^^^^^^^^ missing `eat` in implementation
 
 error: aborting due to previous error

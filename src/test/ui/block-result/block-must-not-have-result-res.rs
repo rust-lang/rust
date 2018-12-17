@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct r;
+struct R;
 
-impl Drop for r {
+impl Drop for R {
     fn drop(&mut self) {
         true //~  ERROR mismatched types
     }

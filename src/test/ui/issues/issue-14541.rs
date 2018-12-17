@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct vec2 { y: f32 }
-struct vec3 { y: f32, z: f32 }
+struct Vec2 { y: f32 }
+struct Vec3 { y: f32, z: f32 }
 
-fn make(v: vec2) {
-    let vec3 { y: _, z: _ } = v;
+fn make(v: Vec2) {
+    let Vec3 { y: _, z: _ } = v;
     //~^ ERROR mismatched types
-    //~| expected type `vec2`
-    //~| found type `vec3`
-    //~| expected struct `vec2`, found struct `vec3`
+    //~| expected type `Vec2`
+    //~| found type `Vec3`
+    //~| expected struct `Vec2`, found struct `Vec3`
 }
 
 fn main() { }

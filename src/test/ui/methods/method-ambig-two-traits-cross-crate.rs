@@ -13,9 +13,9 @@
 
 // aux-build:ambig_impl_2_lib.rs
 extern crate ambig_impl_2_lib;
-use ambig_impl_2_lib::me;
-trait me2 {
+use ambig_impl_2_lib::Me;
+trait Me2 {
     fn me(&self) -> usize;
 }
-impl me2 for usize { fn me(&self) -> usize { *self } }
+impl Me2 for usize { fn me(&self) -> usize { *self } }
 fn main() { 1_usize.me(); } //~ ERROR E0034

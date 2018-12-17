@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum bottom { }
+enum Bottom { }
 
 fn main() {
-    let x = &() as *const () as *const bottom;
+    let x = &() as *const () as *const Bottom;
     match x { } //~ ERROR non-exhaustive patterns
 }

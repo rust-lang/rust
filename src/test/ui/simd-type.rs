@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(repr_simd)]
+#![allow(non_camel_case_types)]
 
 #[repr(simd)]
 struct empty; //~ ERROR SIMD vector cannot be empty

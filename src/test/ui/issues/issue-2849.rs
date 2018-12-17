@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo { alpha, beta(isize) }
+enum Foo { Alpha, Beta(isize) }
 
 fn main() {
-    match foo::alpha {
-      foo::alpha | foo::beta(i) => {}
+    match Foo::Alpha {
+      Foo::Alpha | Foo::Beta(i) => {}
       //~^ ERROR variable `i` is not bound in all patterns
     }
 }

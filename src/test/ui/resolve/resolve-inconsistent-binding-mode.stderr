@@ -1,7 +1,7 @@
 error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
   --> $DIR/resolve-inconsistent-binding-mode.rs:17:32
    |
-LL |       opts::a(ref i) | opts::b(i) => {}
+LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                   -            ^ bound in different ways
    |                   |
    |                   first binding
@@ -9,7 +9,7 @@ LL |       opts::a(ref i) | opts::b(i) => {}
 error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
   --> $DIR/resolve-inconsistent-binding-mode.rs:26:32
    |
-LL |       opts::a(ref i) | opts::b(i) => {}
+LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                   -            ^ bound in different ways
    |                   |
    |                   first binding
@@ -17,13 +17,13 @@ LL |       opts::a(ref i) | opts::b(i) => {}
 error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
   --> $DIR/resolve-inconsistent-binding-mode.rs:35:40
    |
-LL |       opts::a(ref mut i) | opts::b(ref i) => {}
+LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
    |                       - first binding  ^ bound in different ways
 
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:17:32
    |
-LL |       opts::a(ref i) | opts::b(i) => {}
+LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
    |
    = note: expected type `&isize`
@@ -32,7 +32,7 @@ LL |       opts::a(ref i) | opts::b(i) => {}
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:26:32
    |
-LL |       opts::a(ref i) | opts::b(i) => {}
+LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
    |
    = note: expected type `&isize`
@@ -41,7 +41,7 @@ LL |       opts::a(ref i) | opts::b(i) => {}
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:35:36
    |
-LL |       opts::a(ref mut i) | opts::b(ref i) => {}
+LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
    |                                    ^^^^^ types differ in mutability
    |
    = note: expected type `&mut isize`

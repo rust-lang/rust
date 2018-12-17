@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct yes1<'a> {
+struct Yes1<'a> {
   x: &'a usize,
 }
 
-struct yes2<'a> {
+struct Yes2<'a> {
   x: &'a usize,
 }
 

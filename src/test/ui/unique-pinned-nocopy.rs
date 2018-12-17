@@ -9,16 +9,16 @@
 // except according to those terms.
 
 #[derive(Debug)]
-struct r {
+struct R {
   b: bool,
 }
 
-impl Drop for r {
+impl Drop for R {
     fn drop(&mut self) {}
 }
 
 fn main() {
-    let i = Box::new(r { b: true });
+    let i = Box::new(R { b: true });
     let _j = i.clone(); //~ ERROR no method named `clone` found
     println!("{:?}", i);
 }

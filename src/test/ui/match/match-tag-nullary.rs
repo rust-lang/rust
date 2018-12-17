@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mismatched types
+enum A { A }
+enum B { B }
 
-enum a { A, }
-enum b { B, }
-
-fn main() { let x: a = a::A; match x { b::B => { } } }
+fn main() { let x: A = A::A; match x { B::B => { } } } //~ ERROR mismatched types

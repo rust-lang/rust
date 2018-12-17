@@ -1,5 +1,5 @@
 error[E0408]: variable `beta` is not bound in all patterns
-  --> $DIR/issue-2848.rs:22:7
+  --> $DIR/issue-2848.rs:24:7
    |
 LL |       alpha | beta => {} //~  ERROR variable `beta` is not bound in all patterns
    |       ^^^^^   ---- variable not in all patterns

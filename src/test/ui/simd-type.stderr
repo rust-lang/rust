@@ -1,17 +1,17 @@
 error[E0075]: SIMD vector cannot be empty
-  --> $DIR/simd-type.rs:14:1
+  --> $DIR/simd-type.rs:15:1
    |
 LL | struct empty; //~ ERROR SIMD vector cannot be empty
    | ^^^^^^^^^^^^^
 
 error[E0076]: SIMD vector should be homogeneous
-  --> $DIR/simd-type.rs:17:1
+  --> $DIR/simd-type.rs:18:1
    |
 LL | struct i64f64(i64, f64); //~ ERROR SIMD vector should be homogeneous
    | ^^^^^^^^^^^^^^^^^^^^^^^^ SIMD elements must have the same type
 
 error[E0077]: SIMD vector element type should be machine type
-  --> $DIR/simd-type.rs:20:1
+  --> $DIR/simd-type.rs:21:1
    |
 LL | struct int4(isize, isize, isize, isize); //~ ERROR SIMD vector element type should be machine type
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

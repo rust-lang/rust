@@ -21,7 +21,7 @@ mod foo {
 mod a {
     pub mod b {
         use foo::foo;
-        type bar = isize;
+        type Bar = isize;
     }
     pub mod sub {
         use a::b::*;

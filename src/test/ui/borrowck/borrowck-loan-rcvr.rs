@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Point { x: isize, y: isize }
 
-struct point { x: isize, y: isize }
-
-trait methods {
+trait Methods {
     fn impurem(&self);
     fn blockm<F>(&self, f: F) where F: FnOnce();
 }
 
-impl methods for point {
+impl Methods for Point {
     fn impurem(&self) {
     }
 
@@ -24,7 +23,7 @@ impl methods for point {
 }
 
 fn a() {
-    let mut p = point {x: 3, y: 4};
+    let mut p = Point {x: 3, y: 4};
 
     // Here: it's ok to call even though receiver is mutable, because we
     // can loan it out.
@@ -37,7 +36,7 @@ fn a() {
 }
 
 fn b() {
-    let mut p = point {x: 3, y: 4};
+    let mut p = Point {x: 3, y: 4};
 
     // Here I create an outstanding loan and check that we get conflicts:
 

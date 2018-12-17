@@ -12,11 +12,11 @@ fn foo<T:'static>() {
     1.bar::<T>(); //~ ERROR `T` cannot be sent between threads safely
 }
 
-trait bar {
+trait Bar {
     fn bar<T:Send>(&self);
 }
 
-impl bar for usize {
+impl Bar for usize {
     fn bar<T:Send>(&self) {
     }
 }

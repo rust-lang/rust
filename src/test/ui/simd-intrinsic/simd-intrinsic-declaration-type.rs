@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(repr_simd, platform_intrinsics)]
+#![allow(non_camel_case_types)]
 
 #[repr(simd)]
 struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);

@@ -10,11 +10,11 @@
 
 fn siphash(k0 : u64) {
 
-    struct siphash {
+    struct SipHash {
         v0: u64,
     }
 
-    impl siphash {
+    impl SipHash {
         pub fn reset(&mut self) {
            self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR can't capture dynamic environment
         }

@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum ast<'a> {
-    num(usize),
-    add(&'a ast<'a>, &'a ast<'a>)
+enum Ast<'a> {
+    Num(usize),
+    Add(&'a Ast<'a>, &'a Ast<'a>)
 }
 
-fn mk_add_bad2<'a,'b>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'b> {
-    ast::add(x, y) //~ ERROR cannot infer
+fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
+    Ast::Add(x, y) //~ ERROR cannot infer
 }
 
 fn main() {

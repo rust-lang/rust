@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct t1 { //~ ERROR E0072
+struct T1 { //~ ERROR E0072
     foo: isize,
-    foolish: t1
+    foolish: T1
 }
 
 fn main() { }

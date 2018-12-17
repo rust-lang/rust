@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/match-tag-unary.rs:16:43
+  --> $DIR/match-tag-unary.rs:14:43
    |
-LL | fn main() { let x: a = a::A(0); match x { b::B(y) => { } } }
-   |                                           ^^^^^^^ expected enum `a`, found enum `b`
+LL | fn main() { let x: A = A::A(0); match x { B::B(y) => { } } } //~ ERROR mismatched types
+   |                                           ^^^^^^^ expected enum `A`, found enum `B`
    |
-   = note: expected type `a`
-              found type `b`
+   = note: expected type `A`
+              found type `B`
 
 error: aborting due to previous error
 

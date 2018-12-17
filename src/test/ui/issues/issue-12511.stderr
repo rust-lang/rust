@@ -1,15 +1,15 @@
-error[E0391]: cycle detected when computing the supertraits of `t1`
+error[E0391]: cycle detected when computing the supertraits of `T1`
   --> $DIR/issue-12511.rs:11:12
    |
-LL | trait t1 : t2 {
+LL | trait T1 : T2 {
    |            ^^
    |
-note: ...which requires computing the supertraits of `t2`...
+note: ...which requires computing the supertraits of `T2`...
   --> $DIR/issue-12511.rs:15:12
    |
-LL | trait t2 : t1 {
+LL | trait T2 : T1 {
    |            ^^
-   = note: ...which again requires computing the supertraits of `t1`, completing the cycle
+   = note: ...which again requires computing the supertraits of `T1`, completing the cycle
 
 error: aborting due to previous error
 

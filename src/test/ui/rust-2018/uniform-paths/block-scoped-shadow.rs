@@ -10,6 +10,8 @@
 
 // edition:2018
 
+#![allow(non_camel_case_types)]
+
 enum Foo {}
 
 struct std;

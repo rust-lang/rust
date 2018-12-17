@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait foo {
+trait Foo {
     fn bar(&self, x: usize) -> Self;
 }
-impl foo for isize {
+impl Foo for isize {
     fn bar(&self) -> isize {
-        //~^ ERROR method `bar` has 1 parameter but the declaration in trait `foo::bar` has 2
+        //~^ ERROR method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 2
         *self
     }
 }

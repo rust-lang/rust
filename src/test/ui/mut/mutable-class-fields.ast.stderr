@@ -1,7 +1,7 @@
 error[E0594]: cannot assign to field `nyan.how_hungry` of immutable binding
   --> $DIR/mutable-class-fields.rs:28:3
    |
-LL |   let nyan : cat = cat(52, 99);
+LL |   let nyan : Cat = cat(52, 99);
    |       ---- help: make this binding mutable: `mut nyan`
 LL |   nyan.how_hungry = 0; //[ast]~ ERROR cannot assign
    |   ^^^^^^^^^^^^^^^^^^^ cannot mutably borrow field of immutable binding

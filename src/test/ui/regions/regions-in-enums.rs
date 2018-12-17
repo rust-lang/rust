@@ -11,19 +11,19 @@
 // Test that lifetimes must be declared for use on enums.
 // See also regions-undeclared.rs
 
-enum yes0<'lt> {
+enum Yes0<'lt> {
     X3(&'lt usize)
 }
 
-enum yes1<'a> {
+enum Yes1<'a> {
     X4(&'a usize)
 }
 
-enum no0 {
+enum No0 {
     X5(&'foo usize) //~ ERROR use of undeclared lifetime name `'foo`
 }
 
-enum no1 {
+enum No1 {
     X6(&'a usize) //~ ERROR use of undeclared lifetime name `'a`
 }
 

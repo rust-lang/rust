@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `a` not covered
+error[E0004]: non-exhaustive patterns: `A` not covered
   --> $DIR/non-exhaustive-match.rs:18:11
    |
-LL |     match x { t::b => { } } //~ ERROR non-exhaustive patterns: `a` not covered
-   |           ^ pattern `a` not covered
+LL |     match x { T::B => { } } //~ ERROR non-exhaustive patterns: `A` not covered
+   |           ^ pattern `A` not covered
 
 error[E0004]: non-exhaustive patterns: `false` not covered
   --> $DIR/non-exhaustive-match.rs:19:11
@@ -22,17 +22,17 @@ error[E0004]: non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)` and `(_, 
 LL |     match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)`
    |           ^^^^^^^^^ patterns `(_, _, -2147483648i32..=3i32)` and `(_, _, 5i32..=2147483647i32)` not covered
 
-error[E0004]: non-exhaustive patterns: `(a, a)` not covered
+error[E0004]: non-exhaustive patterns: `(A, A)` not covered
   --> $DIR/non-exhaustive-match.rs:29:11
    |
-LL |     match (t::a, t::a) { //~ ERROR non-exhaustive patterns: `(a, a)` not covered
-   |           ^^^^^^^^^^^^ pattern `(a, a)` not covered
+LL |     match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` not covered
+   |           ^^^^^^^^^^^^ pattern `(A, A)` not covered
 
-error[E0004]: non-exhaustive patterns: `b` not covered
+error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/non-exhaustive-match.rs:33:11
    |
-LL |     match t::a { //~ ERROR non-exhaustive patterns: `b` not covered
-   |           ^^^^ pattern `b` not covered
+LL |     match T::A { //~ ERROR non-exhaustive patterns: `B` not covered
+   |           ^^^^ pattern `B` not covered
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
   --> $DIR/non-exhaustive-match.rs:44:11

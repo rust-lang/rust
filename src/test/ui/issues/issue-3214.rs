@@ -9,11 +9,11 @@
 // except according to those terms.
 
 fn foo<T>() {
-    struct foo {
+    struct Foo {
         x: T, //~ ERROR can't use type parameters from outer function
     }
 
-    impl<T> Drop for foo<T> {
+    impl<T> Drop for Foo<T> {
         //~^ ERROR wrong number of type arguments
         fn drop(&mut self) {}
     }

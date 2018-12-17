@@ -1,7 +1,7 @@
-error[E0605]: non-primitive cast: `non_nullary` as `isize`
+error[E0605]: non-primitive cast: `NonNullary` as `isize`
   --> $DIR/tag-variant-cast-non-nullary.rs:18:15
    |
-LL |     let val = v as isize; //~ ERROR non-primitive cast: `non_nullary` as `isize` [E0605]
+LL |     let val = v as isize; //~ ERROR non-primitive cast: `NonNullary` as `isize` [E0605]
    |               ^^^^^^^^^^
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait

@@ -10,7 +10,7 @@
 
 fn siphash<T>() {
 
-    trait t {
+    trait U {
         fn g(&self, x: T) -> T;  //~ ERROR can't use type parameters from outer function
         //~^ ERROR can't use type parameters from outer function
     }

@@ -10,12 +10,12 @@
 
 #![feature(fn_traits)]
 
-struct closure_box<'a> {
+struct ClosureBox<'a> {
     cl: Box<FnMut() + 'a>,
 }
 
-fn box_it<'r>(x: Box<FnMut() + 'r>) -> closure_box<'r> {
-    closure_box {cl: x}
+fn box_it<'r>(x: Box<FnMut() + 'r>) -> ClosureBox<'r> {
+    ClosureBox {cl: x}
 }
 
 fn main() {

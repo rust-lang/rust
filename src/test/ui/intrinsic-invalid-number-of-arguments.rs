@@ -12,6 +12,7 @@
 // This is the error E0444
 
 #![feature(repr_simd, platform_intrinsics)]
+#![allow(non_camel_case_types)]
 
 #[repr(simd)]
 struct f64x2(f64, f64);
