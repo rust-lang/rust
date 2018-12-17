@@ -143,7 +143,7 @@ fn current_op(p: &Parser) -> (u8, Op) {
 
     let bp = match p.current() {
         EQ => 1,
-        DOTDOT => 2,
+        DOTDOT | DOTDOTEQ => 2,
         EQEQ | NEQ | L_ANGLE | R_ANGLE => 5,
         PIPE => 6,
         CARET => 7,
@@ -173,7 +173,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
     };
 
     loop {
-        let is_range = p.current() == DOTDOT;
+        let is_range = p.current() == DOTDOT || p.current() == DOTDOTEQ;
         let (op_bp, op) = current_op(p);
         if op_bp < bp {
             break;
