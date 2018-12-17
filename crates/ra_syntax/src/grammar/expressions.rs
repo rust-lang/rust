@@ -368,12 +368,16 @@ fn try_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // test cast_expr
 // fn foo() {
 //     82 as i32;
+//     81 as i8 + 1;
+//     79 as i16 - 1;
 // }
 fn cast_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(AS_KW));
     let m = lhs.precede(p);
     p.bump();
-    types::type_(p);
+    // Use type_no_bounds(), because cast expressions are not
+    // allowed to have bounds.
+    types::type_no_bounds(p);
     m.complete(p, CAST_EXPR)
 }
 

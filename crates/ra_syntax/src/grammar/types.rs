@@ -11,6 +11,14 @@ pub(super) const TYPE_FIRST: TokenSet = token_set_union![
 const TYPE_RECOVERY_SET: TokenSet = token_set![R_PAREN, COMMA];
 
 pub(super) fn type_(p: &mut Parser) {
+    type_with_bounds_cond(p, true);
+}
+
+pub(super) fn type_no_bounds(p: &mut Parser) {
+    type_with_bounds_cond(p, false);
+}
+
+fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
     match p.current() {
         L_PAREN => paren_or_tuple_type(p),
         EXCL => never_type(p),
@@ -22,8 +30,9 @@ pub(super) fn type_(p: &mut Parser) {
         FOR_KW => for_type(p),
         IMPL_KW => impl_trait_type(p),
         DYN_KW => dyn_trait_type(p),
-        L_ANGLE => path_type(p),
-        _ if paths::is_path_start(p) => path_type(p),
+        // Some path types are not allowed to have bounds (no plus)
+        L_ANGLE => path_type_(p, allow_bounds),
+        _ if paths::is_path_start(p) => path_type_(p, allow_bounds),
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
         }
@@ -33,10 +42,6 @@ pub(super) fn type_(p: &mut Parser) {
 pub(super) fn ascription(p: &mut Parser) {
     p.expect(COLON);
     type_(p)
-}
-
-fn type_no_plus(p: &mut Parser) {
-    type_(p);
 }
 
 fn paren_or_tuple_type(p: &mut Parser) {
@@ -101,7 +106,7 @@ fn pointer_type(p: &mut Parser) {
         }
     };
 
-    type_no_plus(p);
+    type_no_bounds(p);
     m.complete(p, POINTER_TYPE);
 }
 
@@ -147,7 +152,7 @@ fn reference_type(p: &mut Parser) {
     p.bump();
     p.eat(LIFETIME);
     p.eat(MUT_KW);
-    type_no_plus(p);
+    type_no_bounds(p);
     m.complete(p, REFERENCE_TYPE);
 }
 
