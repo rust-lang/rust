@@ -174,7 +174,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                     )),
                     ignore_case,
                     Some((
-                        |l: Sugg<'_>, r: Sugg<'_>| (!l).and(&r),
+                        |l: Sugg<'_>, r: Sugg<'_>| (!l).bit_and(&r),
                         "order comparisons between booleans can be simplified",
                     )),
                 ),
@@ -189,7 +189,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                     ignore_case,
                     Some((|h| h, "greater than checks against false are unnecessary")),
                     Some((
-                        |l: Sugg<'_>, r: Sugg<'_>| l.and(&(!r)),
+                        |l: Sugg<'_>, r: Sugg<'_>| l.bit_and(&(!r)),
                         "order comparisons between booleans can be simplified",
                     )),
                 ),

@@ -76,13 +76,13 @@ error: order comparisons between booleans can be simplified
   --> $DIR/bool_comparison.rs:74:8
    |
 74 |     if x < y {
-   |        ^^^^^ help: try simplifying it as shown: `!x && y`
+   |        ^^^^^ help: try simplifying it as shown: `!x & y`
 
 error: order comparisons between booleans can be simplified
   --> $DIR/bool_comparison.rs:79:8
    |
 79 |     if x > y {
-   |        ^^^^^ help: try simplifying it as shown: `x && !y`
+   |        ^^^^^ help: try simplifying it as shown: `x & !y`
 
 error: aborting due to 14 previous errors
 
