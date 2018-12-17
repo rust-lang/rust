@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
                     token::CloseDelim(_) | token::Eof => self.unexpected()?,
                     _ => self.parse_token_tree(),
                 };
-                TokenStream::concat(vec![eq.into(), tree.into()])
+                TokenStream::new(vec![eq.into(), tree.into()])
             } else {
                 TokenStream::empty()
             };

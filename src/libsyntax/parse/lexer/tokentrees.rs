@@ -22,7 +22,7 @@ impl<'a> StringReader<'a> {
             tts.push(self.parse_token_tree()?);
         }
 
-        Ok(TokenStream::concat(tts))
+        Ok(TokenStream::new(tts))
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s, up to a `CloseDelim`.
@@ -30,14 +30,14 @@ impl<'a> StringReader<'a> {
         let mut tts = vec![];
         loop {
             if let token::CloseDelim(..) = self.token {
-                return TokenStream::concat(tts);
+                return TokenStream::new(tts);
             }
 
             match self.parse_token_tree() {
                 Ok(tree) => tts.push(tree),
                 Err(mut e) => {
                     e.emit();
-                    return TokenStream::concat(tts);
+                    return TokenStream::new(tts);
                 }
             }
         }

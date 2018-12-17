@@ -483,7 +483,7 @@ impl MetaItem {
             last_pos = segment.ident.span.hi();
         }
         idents.push(self.node.tokens(self.span));
-        TokenStream::concat(idents)
+        TokenStream::new(idents)
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
@@ -539,7 +539,7 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
             MetaItemKind::NameValue(ref lit) => {
-                TokenStream::concat(vec![TokenTree::Token(span, Token::Eq).into(), lit.tokens()])
+                TokenStream::new(vec![TokenTree::Token(span, Token::Eq).into(), lit.tokens()])
             }
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
@@ -552,7 +552,7 @@ impl MetaItemKind {
                 TokenTree::Delimited(
                     DelimSpan::from_single(span),
                     token::Paren,
-                    TokenStream::concat(tokens).into(),
+                    TokenStream::new(tokens).into(),
                 ).into()
             }
         }

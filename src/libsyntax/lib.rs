@@ -145,12 +145,6 @@ pub mod util {
     #[cfg(test)]
     pub mod parser_testing;
     pub mod move_map;
-
-    mod rc_slice;
-    pub use self::rc_slice::RcSlice;
-
-    mod rc_vec;
-    pub use self::rc_vec::RcVec;
 }
 
 pub mod json;
