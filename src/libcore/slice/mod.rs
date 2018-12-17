@@ -2293,16 +2293,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Option<Ordering>
     {
-        for pair in self.windows(2) {
-            if compare(&pair[0], &pair[1])
-                .map(|o| o == Ordering::Greater)
-                .unwrap_or(true)
-            {
-                return false;
-            }
-        }
-
-        true
+        self.iter().is_sorted_by(|a, b| compare(*a, *b))
     }
 
     /// Checks if the elements of this slice are sorted using the given key extraction function.
@@ -2853,7 +2844,13 @@ macro_rules! len {
 
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
-    (struct $name:ident -> $ptr:ty, $elem:ty, $raw_mut:tt, $( $mut_:tt )*) => {
+    (
+        struct $name:ident -> $ptr:ty,
+        $elem:ty,
+        $raw_mut:tt,
+        {$( $mut_:tt )*},
+        {$($extra:tt)*}
+    ) => {
         impl<'a, T> $name<'a, T> {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
@@ -3030,6 +3027,8 @@ macro_rules! iterator {
                         i
                     })
             }
+
+            $($extra)*
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -3167,7 +3166,17 @@ impl<'a, T> Iter<'a, T> {
     }
 }
 
-iterator!{struct Iter -> *const T, &'a T, const, /* no mut */}
+iterator!{struct Iter -> *const T, &'a T, const, {/* no mut */}, {
+    fn is_sorted_by<F>(self, mut compare: F) -> bool
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+    {
+        self.as_slice().windows(2).all(|w| {
+            compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
+        })
+    }
+}}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
@@ -3268,7 +3277,7 @@ impl<'a, T> IterMut<'a, T> {
     }
 }
 
-iterator!{struct IterMut -> *mut T, &'a mut T, mut, mut}
+iterator!{struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
