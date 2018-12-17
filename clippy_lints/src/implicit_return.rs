@@ -45,6 +45,19 @@ declare_clippy_lint! {
 pub struct Pass;
 
 impl Pass {
+    fn lint(cx: &LateContext<'_, '_>, outer_span: syntax_pos::Span, inner_span: syntax_pos::Span, msg: &str) {
+        span_lint_and_then(cx, IMPLICIT_RETURN, outer_span, "missing return statement", |db| {
+            if let Some(snippet) = snippet_opt(cx, inner_span) {
+                db.span_suggestion_with_applicability(
+                    outer_span,
+                    msg,
+                    format!("return {}", snippet),
+                    Applicability::MachineApplicable,
+                );
+            }
+        });
+    }
+
     fn expr_match(cx: &LateContext<'_, '_>, expr: &rustc::hir::Expr) {
         match &expr.node {
             // loops could be using `break` instead of `return`
@@ -55,23 +68,19 @@ impl Pass {
                 // only needed in the case of `break` with `;` at the end
                 else if let Some(stmt) = block.stmts.last() {
                     if let rustc::hir::StmtKind::Semi(expr, ..) = &stmt.node {
-                        Self::expr_match(cx, expr);
+                        // make sure it's a break, otherwise we want to skip
+                        if let ExprKind::Break(.., break_expr) = &expr.node {
+                            if let Some(break_expr) = break_expr {
+                                Self::lint(cx, expr.span, break_expr.span, "change `break` to `return` as shown");
+                            }
+                        }
                     }
                 }
             },
             // use `return` instead of `break`
             ExprKind::Break(.., break_expr) => {
                 if let Some(break_expr) = break_expr {
-                    span_lint_and_then(cx, IMPLICIT_RETURN, expr.span, "missing return statement", |db| {
-                        if let Some(snippet) = snippet_opt(cx, break_expr.span) {
-                            db.span_suggestion_with_applicability(
-                                expr.span,
-                                "change `break` to `return` as shown",
-                                format!("return {}", snippet),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    });
+                    Self::lint(cx, expr.span, break_expr.span, "change `break` to `return` as shown");
                 }
             },
             ExprKind::If(.., if_expr, else_expr) => {
@@ -89,16 +98,7 @@ impl Pass {
             // skip if it already has a return statement
             ExprKind::Ret(..) => (),
             // everything else is missing `return`
-            _ => span_lint_and_then(cx, IMPLICIT_RETURN, expr.span, "missing return statement", |db| {
-                if let Some(snippet) = snippet_opt(cx, expr.span) {
-                    db.span_suggestion_with_applicability(
-                        expr.span,
-                        "add `return` as shown",
-                        format!("return {}", snippet),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }),
+            _ => Self::lint(cx, expr.span, expr.span, "add `return` as shown"),
         }
     }
 }
