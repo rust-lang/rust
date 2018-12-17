@@ -569,13 +569,37 @@ impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
 impl<'tcx> List<ExistentialPredicate<'tcx>> {
+    /// Returns the "principal def id" of this set of existential predicates.
+    ///
+    /// A Rust trait object type consists (in addition to a lifetime bound)
+    /// of a set of trait bounds, which are separated into any number
+    /// of auto-trait bounds, and at most 1 non-auto-trait bound. The
+    /// non-auto-trait bound is called the "principal" of the trait
+    /// object.
+    ///
+    /// Only the principal can have methods or type parameters (because
+    /// auto traits can have neither of them). This is important, because
+    /// it means the auto traits can be treated as an unordered set (methods
+    /// would force an order for the vtable, while relating traits with
+    /// type parameters without knowing the order to relate them in is
+    /// a rather non-trivial task).
+    ///
+    /// For example, in the trait object `dyn fmt::Debug + Sync`, the
+    /// principal bound is `Some(fmt::Debug)`, while the auto-trait bounds
+    /// are the set `{Sync}`.
+    ///
+    /// It is also possible to have a "trivial" trait object that
+    /// consists only of auto traits, with no principal - for example,
+    /// `dyn Send + Sync`. In that case, the set of auto-trait bounds
+    /// is `{Send, Sync}`, while there is no principal. These trait objects
+    /// have a "trivial" vtable consisting of just the size, alignment,
+    /// and destructor.
     pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
         match self[0] {
             ExistentialPredicate::Trait(tr) => Some(tr),
             _ => None
         }
     }
-
 
     pub fn principal_def_id(&self) -> Option<DefId> {
         self.principal().map(|d| d.def_id)
