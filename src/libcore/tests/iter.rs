@@ -1003,6 +1003,8 @@ fn test_cycle() {
     assert_eq!(it.next(), None);
 
     assert_eq!(empty::<i32>().cycle().fold(0, |acc, x| acc + x), 0);
+
+    assert_eq!(once(1).cycle().skip(1).take(4).fold(0, |acc, x| acc + x), 4);
 }
 
 #[test]
