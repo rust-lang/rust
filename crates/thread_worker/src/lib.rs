@@ -30,7 +30,7 @@ where
 impl<I, O> Worker<I, O> {
     /// Stops the worker. Returns the message receiver to fetch results which
     /// have become ready before the worker is stopped.
-    pub fn stop(self) -> Receiver<O> {
+    pub fn shutdown(self) -> Receiver<O> {
         self.out
     }
 
@@ -45,11 +45,11 @@ impl WorkerHandle {
         WorkerHandle {
             name,
             thread,
-            bomb: DropBomb::new(format!("WorkerHandle {} was not stopped", name)),
+            bomb: DropBomb::new(format!("WorkerHandle {} was not shutdown", name)),
         }
     }
 
-    pub fn stop(mut self) -> thread::Result<()> {
+    pub fn shutdown(mut self) -> thread::Result<()> {
         log::info!("waiting for {} to finish ...", self.name);
         let name = self.name;
         self.bomb.defuse();

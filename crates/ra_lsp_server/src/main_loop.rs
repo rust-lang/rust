@@ -88,8 +88,8 @@ pub fn main_loop(
     drop(pool);
     log::info!("...threadpool has finished");
 
-    let fs_res = fs_watcher.stop();
-    let ws_res = ws_watcher.stop();
+    let fs_res = fs_watcher.shutdown();
+    let ws_res = ws_watcher.shutdown();
 
     main_res?;
     fs_res.map_err(|_| format_err!("fs watcher died"))?;

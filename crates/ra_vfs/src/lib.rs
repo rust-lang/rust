@@ -15,6 +15,7 @@ mod arena;
 mod io;
 
 use std::{
+    thread,
     cmp::Reverse,
     path::{Path, PathBuf},
     ffi::OsStr,
@@ -22,7 +23,12 @@ use std::{
 };
 
 use relative_path::RelativePathBuf;
-use crate::arena::{ArenaId, Arena};
+use thread_worker::{WorkerHandle, Worker};
+
+use crate::{
+    arena::{ArenaId, Arena},
+    io::FileEvent,
+};
 
 /// `RootFilter` is a predicate that checks if a file can belong to a root
 struct RootFilter {
@@ -76,16 +82,24 @@ struct VfsFileData {
     text: Arc<String>,
 }
 
-#[derive(Default)]
 struct Vfs {
     roots: Arena<VfsRoot, RootFilter>,
     files: Arena<VfsFile, VfsFileData>,
     // pending_changes: Vec<PendingChange>,
+    worker: Worker<PathBuf, (PathBuf, Vec<FileEvent>)>,
+    worker_handle: WorkerHandle,
 }
 
 impl Vfs {
     pub fn new(mut roots: Vec<PathBuf>) -> Vfs {
-        let mut res = Vfs::default();
+        let (worker, worker_handle) = io::start();
+
+        let mut res = Vfs {
+            roots: Arena::default(),
+            files: Arena::default(),
+            worker,
+            worker_handle,
+        };
 
         roots.sort_by_key(|it| Reverse(it.as_os_str().len()));
 
@@ -103,6 +117,11 @@ impl Vfs {
 
     pub fn commit_changes(&mut self) -> Vec<VfsChange> {
         unimplemented!()
+    }
+
+    pub fn shutdown(self) -> thread::Result<()> {
+        let _ = self.worker.shutdown();
+        self.worker_handle.shutdown()
     }
 }
 
