@@ -707,10 +707,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 new_relocations.extend(
                     relocations
                     .iter()
-                    .map(|&(offset, reloc)| (
-                        offset + dest.offset - src.offset + (i * size),
-                        reloc,
-                    ))
+                    .map(|&(offset, reloc)| {
+                        // compute offset for current repetition
+                        let dest_offset = dest.offset + (i * size);
+                        (
+                            // shift offsets from source allocation to destination allocation
+                            offset + dest_offset - src.offset,
+                            reloc,
+                        )
+                    })
                 );
             }
 
