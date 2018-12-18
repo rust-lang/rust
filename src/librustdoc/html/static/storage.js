@@ -33,15 +33,15 @@ function isHidden(elem) {
 
 function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
-        var length = arr.length;
+        let length = arr.length;
         if (reversed !== true) {
-            for (var i = 0; i < length; ++i) {
+            for (let i = 0; i < length; ++i) {
                 if (func(arr[i]) === true) {
                     return true;
                 }
             }
         } else {
-            for (var i = length - 1; i >= 0; --i) {
+            for (let i = length - 1; i >= 0; --i) {
                 if (func(arr[i]) === true) {
                     return true;
                 }
@@ -92,15 +92,15 @@ function getCurrentValue(name) {
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme) {
-    var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
-    var fullNewTheme = newTheme + resourcesSuffix + ".css";
-    var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
+    let fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
+    let fullNewTheme = newTheme + resourcesSuffix + ".css";
+    let newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
 
     if (styleElem.href === newHref) {
         return;
     }
 
-    var found = false;
+    let found = false;
     if (savedHref.length === 0) {
         onEachLazy(document.getElementsByTagName("link"), function(el) {
             savedHref.push(el.href);
