@@ -27,10 +27,11 @@ use thread_worker::{WorkerHandle, Worker};
 
 use crate::{
     arena::{ArenaId, Arena},
-    io::FileEvent,
+    io::{FileEvent, FsWorker},
 };
 
-/// `RootFilter` is a predicate that checks if a file can belong to a root
+/// `RootFilter` is a predicate that checks if a file can belong to a root. If
+/// several filters match a file (nested dirs), the most nested one wins.
 struct RootFilter {
     root: PathBuf,
     file_filter: fn(&Path) -> bool,
@@ -86,7 +87,7 @@ struct Vfs {
     roots: Arena<VfsRoot, RootFilter>,
     files: Arena<VfsFile, VfsFileData>,
     // pending_changes: Vec<PendingChange>,
-    worker: Worker<PathBuf, (PathBuf, Vec<FileEvent>)>,
+    worker: FsWorker,
     worker_handle: WorkerHandle,
 }
 
@@ -101,6 +102,7 @@ impl Vfs {
             worker_handle,
         };
 
+        // A hack to make nesting work.
         roots.sort_by_key(|it| Reverse(it.as_os_str().len()));
 
         for path in roots {

@@ -19,7 +19,9 @@ pub enum FileEventKind {
     Add(String),
 }
 
-pub fn start() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, WorkerHandle) {
+pub(crate) type FsWorker = Worker<PathBuf, (PathBuf, Vec<FileEvent>)>;
+
+pub(crate) fn start() -> (FsWorker, WorkerHandle) {
     thread_worker::spawn::<PathBuf, (PathBuf, Vec<FileEvent>), _>(
         "vfs",
         128,
