@@ -366,8 +366,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "iterator_step_by", since = "1.28.0")]
     fn step_by(self, step: usize) -> StepBy<Self> where Self: Sized {
-        assert!(step != 0);
-        StepBy{iter: self, step: step - 1, first_take: true}
+        StepBy::new(self, step)
     }
 
     /// Takes two iterators and creates a new iterator over both in sequence.
@@ -771,7 +770,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn enumerate(self) -> Enumerate<Self> where Self: Sized {
-        Enumerate { iter: self, count: 0 }
+        Enumerate::new(self)
     }
 
     /// Creates an iterator which can use `peek` to look at the next element of
@@ -817,7 +816,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn peekable(self) -> Peekable<Self> where Self: Sized {
-        Peekable{iter: self, peeked: None}
+        Peekable::new(self)
     }
 
     /// Creates an iterator that [`skip`]s elements based on a predicate.
@@ -880,7 +879,7 @@ pub trait Iterator {
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        SkipWhile { iter: self, flag: false, predicate }
+        SkipWhile::new(self, predicate)
     }
 
     /// Creates an iterator that yields elements based on a predicate.
@@ -960,7 +959,7 @@ pub trait Iterator {
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        TakeWhile { iter: self, flag: false, predicate }
+        TakeWhile::new(self, predicate)
     }
 
     /// Creates an iterator that skips the first `n` elements.
@@ -1225,7 +1224,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fuse(self) -> Fuse<Self> where Self: Sized {
-        Fuse{iter: self, done: false}
+        Fuse::new(self)
     }
 
     /// Do something with each element of an iterator, passing the value on.
@@ -2310,7 +2309,7 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn cycle(self) -> Cycle<Self> where Self: Sized + Clone {
-        Cycle{orig: self.clone(), iter: self}
+        Cycle::new(self)
     }
 
     /// Sums the elements of an iterator.

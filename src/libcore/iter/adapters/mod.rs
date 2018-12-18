@@ -339,8 +339,13 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cycle<I> {
-    pub(super) orig: I,
-    pub(super) iter: I,
+    orig: I,
+    iter: I,
+}
+impl<I: Clone> Cycle<I> {
+    pub(super) fn new(iter: I) -> Cycle<I> {
+        Cycle { orig: iter.clone(), iter }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -380,9 +385,15 @@ impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 #[derive(Clone, Debug)]
 pub struct StepBy<I> {
-    pub(super) iter: I,
-    pub(super) step: usize,
-    pub(super) first_take: bool,
+    iter: I,
+    step: usize,
+    first_take: bool,
+}
+impl<I> StepBy<I> {
+    pub(super) fn new(iter: I, step: usize) -> StepBy<I> {
+        assert!(step != 0);
+        StepBy { iter, step: step - 1, first_take: true }
+    }
 }
 
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
@@ -867,8 +878,13 @@ impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F>
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Enumerate<I> {
-    pub(super) iter: I,
-    pub(super) count: usize,
+    iter: I,
+    count: usize,
+}
+impl<I> Enumerate<I> {
+    pub(super) fn new(iter: I) -> Enumerate<I> {
+        Enumerate { iter, count: 0 }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1028,9 +1044,14 @@ unsafe impl<I> TrustedLen for Enumerate<I>
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Peekable<I: Iterator> {
-    pub(super) iter: I,
+    iter: I,
     /// Remember a peeked value, even if it was None.
-    pub(super) peeked: Option<Option<I::Item>>,
+    peeked: Option<Option<I::Item>>,
+}
+impl<I: Iterator> Peekable<I> {
+    pub(super) fn new(iter: I) -> Peekable<I> {
+        Peekable { iter, peeked: None }
+    }
 }
 
 // Peekable must remember if a None has been seen in the `.peek()` method.
@@ -1180,9 +1201,14 @@ impl<I: Iterator> Peekable<I> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct SkipWhile<I, P> {
-    pub(super) iter: I,
-    pub(super) flag: bool,
-    pub(super) predicate: P,
+    iter: I,
+    flag: bool,
+    predicate: P,
+}
+impl<I, P> SkipWhile<I, P> {
+    pub(super) fn new(iter: I, predicate: P) -> SkipWhile<I, P> {
+        SkipWhile { iter, flag: false, predicate }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -1263,9 +1289,14 @@ impl<I, P> FusedIterator for SkipWhile<I, P>
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct TakeWhile<I, P> {
-    pub(super) iter: I,
-    pub(super) flag: bool,
-    pub(super) predicate: P,
+    iter: I,
+    flag: bool,
+    predicate: P,
+}
+impl<I, P> TakeWhile<I, P> {
+    pub(super) fn new(iter: I, predicate: P) -> TakeWhile<I, P> {
+        TakeWhile { iter, flag: false, predicate }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -1632,8 +1663,13 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Fuse<I> {
-    pub(super) iter: I,
-    pub(super) done: bool
+    iter: I,
+    done: bool
+}
+impl<I> Fuse<I> {
+    pub(super) fn new(iter: I) -> Fuse<I> {
+        Fuse { iter, done: false }
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
