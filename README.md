@@ -45,8 +45,6 @@ Now you can run your project in miri:
    dependencies to be compiled the right way, that would not happen if they have
    previously already been compiled.
 2. To run all tests in your project through Miri, use `cargo +nightly miri test`.
-   **NOTE**: This is currently broken, see the discussion in
-   [#479](https://github.com/solson/miri/issues/479).
 3. If you have a binary project, you can run it through Miri using `cargo
    +nightly miri run`.
 
