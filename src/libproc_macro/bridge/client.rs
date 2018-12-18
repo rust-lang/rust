@@ -25,8 +25,7 @@ macro_rules! define_handles {
         }
 
         impl HandleCounters {
-            // FIXME(#53451) public to work around `Cannot create local mono-item` ICE.
-            pub extern "C" fn get() -> &'static Self {
+            extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
                     $($oty: AtomicUsize::new(1),)*
                     $($ity: AtomicUsize::new(1),)*
@@ -345,9 +344,7 @@ pub struct Client<F> {
     pub(super) f: F,
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
-// affecting not only the function itself, but also the `BridgeState` `thread_local!`.
-pub extern "C" fn __run_expand1(
+extern "C" fn run_expand1(
     mut bridge: Bridge,
     f: fn(::TokenStream) -> ::TokenStream,
 ) -> Buffer<u8> {
@@ -392,15 +389,13 @@ impl Client<fn(::TokenStream) -> ::TokenStream> {
     pub const fn expand1(f: fn(::TokenStream) -> ::TokenStream) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
-            run: __run_expand1,
+            run: run_expand1,
             f,
         }
     }
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
-// affecting not only the function itself, but also the `BridgeState` `thread_local!`.
-pub extern "C" fn __run_expand2(
+extern "C" fn run_expand2(
     mut bridge: Bridge,
     f: fn(::TokenStream, ::TokenStream) -> ::TokenStream,
 ) -> Buffer<u8> {
@@ -446,7 +441,7 @@ impl Client<fn(::TokenStream, ::TokenStream) -> ::TokenStream> {
     pub const fn expand2(f: fn(::TokenStream, ::TokenStream) -> ::TokenStream) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
-            run: __run_expand2,
+            run: run_expand2,
             f,
         }
     }
