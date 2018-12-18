@@ -10,6 +10,7 @@ use gen_lsp_server::{
 use languageserver_types::NumberOrString;
 use ra_analysis::{Canceled, FileId, LibraryData};
 use rayon;
+use thread_worker::Worker;
 use threadpool::ThreadPool;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
@@ -21,7 +22,6 @@ use crate::{
     project_model::{workspace_loader, CargoWorkspace},
     req,
     server_world::{ServerWorld, ServerWorldState},
-    thread_watcher::Worker,
     vfs::{self, FileEvent},
     Result,
 };
@@ -92,8 +92,8 @@ pub fn main_loop(
     let ws_res = ws_watcher.stop();
 
     main_res?;
-    fs_res?;
-    ws_res?;
+    fs_res.map_err(|_| format_err!("fs watcher died"))?;
+    ws_res.map_err(|_| format_err!("ws watcher died"))?;
 
     Ok(())
 }

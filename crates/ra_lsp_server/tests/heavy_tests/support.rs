@@ -17,11 +17,11 @@ use languageserver_types::{
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempdir::TempDir;
+use thread_worker::{WorkerHandle, Worker};
 use test_utils::{parse_fixture, find_mismatch};
 
 use ra_lsp_server::{
     main_loop, req,
-    thread_watcher::{ThreadWatcher, Worker},
 };
 
 pub fn project(fixture: &str) -> Server {
@@ -45,13 +45,13 @@ pub struct Server {
     messages: RefCell<Vec<RawMessage>>,
     dir: TempDir,
     worker: Option<Worker<RawMessage, RawMessage>>,
-    watcher: Option<ThreadWatcher>,
+    watcher: Option<WorkerHandle>,
 }
 
 impl Server {
     fn new(dir: TempDir, files: Vec<(PathBuf, String)>) -> Server {
         let path = dir.path().to_path_buf();
-        let (worker, watcher) = Worker::<RawMessage, RawMessage>::spawn(
+        let (worker, watcher) = thread_worker::spawn::<RawMessage, RawMessage, _>(
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {

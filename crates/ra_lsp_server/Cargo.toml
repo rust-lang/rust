@@ -26,6 +26,7 @@ text_unit = { version = "0.1.2", features = ["serde"] }
 smol_str = { version = "0.1.5", features = ["serde"] }
 rustc-hash = "1.0"
 
+thread_worker = { path = "../thread_worker" }
 ra_syntax = { path = "../ra_syntax" }
 ra_editor = { path = "../ra_editor" }
 ra_text_edit = { path = "../ra_text_edit" }

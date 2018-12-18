@@ -5,7 +5,6 @@ mod path_map;
 mod project_model;
 pub mod req;
 mod server_world;
-pub mod thread_watcher;
 mod vfs;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
