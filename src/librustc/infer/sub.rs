@@ -15,7 +15,7 @@ use traits::Obligation;
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::fold::TypeFoldable;
-use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use ty::relate::{self, Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -43,6 +43,10 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
     for Sub<'combine, 'infcx, 'gcx, 'tcx>
 {
     fn tag(&self) -> &'static str { "Sub" }
+    fn trait_object_mode(&self) -> relate::TraitObjectMode {
+        self.fields.infcx.trait_object_mode()
+    }
+
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 

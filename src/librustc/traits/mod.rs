@@ -64,6 +64,8 @@ pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::find_associated_item;
+pub use self::specialize::specialization_graph::FutureCompatOverlapError;
+pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{supertraits, supertrait_def_ids, transitive_bounds,

@@ -24,10 +24,10 @@ pub mod specialization_graph;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use lint;
+use traits::{self, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
-use traits::{self, ObligationCause, TraitEngine};
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::subst::{Subst, Substs};
@@ -36,6 +36,7 @@ use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
 /// Information pertinent to an overlapping impl error.
+#[derive(Debug)]
 pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
@@ -318,8 +319,9 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
             let insert_result = sg.insert(tcx, impl_def_id);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
-                Err(overlap) => (Some(overlap), false),
-                Ok(opt_overlap) => (opt_overlap, true)
+                Err(overlap) => (Some(overlap), None),
+                Ok(Some(overlap)) => (Some(overlap.error), Some(overlap.kind)),
+                Ok(None) => (None, None)
             };
 
             if let Some(overlap) = overlap {
@@ -329,14 +331,20 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
                         String::new(), |ty| {
                             format!(" for type `{}`", ty)
                         }),
-                    if used_to_be_allowed { " (E0119)" } else { "" }
+                    if used_to_be_allowed.is_some() { " (E0119)" } else { "" }
                 );
                 let impl_span = tcx.sess.source_map().def_span(
                     tcx.span_of_impl(impl_def_id).unwrap()
                 );
-                let mut err = if used_to_be_allowed {
+                let mut err = if let Some(kind) = used_to_be_allowed {
+                    let lint = match kind {
+                        FutureCompatOverlapErrorKind::Issue43355 =>
+                            lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
+                        FutureCompatOverlapErrorKind::Issue33140 =>
+                            lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS,
+                    };
                     tcx.struct_span_lint_node(
-                        lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
+                        lint,
                         tcx.hir().as_local_node_id(impl_def_id).unwrap(),
                         impl_span,
                         &msg)
