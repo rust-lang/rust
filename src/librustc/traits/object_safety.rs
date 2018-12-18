@@ -190,7 +190,26 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                         // In the case of a trait predicate, we can skip the "self" type.
                         data.skip_binder().input_types().skip(1).any(|t| t.has_self_ty())
                     }
-                    ty::Predicate::Projection(..) |
+                    ty::Predicate::Projection(ref data) => {
+                        // And similarly for projections. This should be redundant with
+                        // the previous check because any projection should have a
+                        // matching `Trait` predicate with the same inputs, but we do
+                        // the check to be safe.
+                        //
+                        // Note that we *do* allow projection *outputs* to contain
+                        // `self` (i.e., `trait Foo: Bar<Output=Self::Result> { type Result; }`),
+                        // we just require the user to specify *both* outputs
+                        // in the object type (i.e., `dyn Foo<Output=(), Result=()>`).
+                        //
+                        // This is ALT2 in issue #56288, see that for discussion of the
+                        // possible alternatives.
+                        data.skip_binder()
+                            .projection_ty
+                            .trait_ref(self)
+                            .input_types()
+                            .skip(1)
+                            .any(|t| t.has_self_ty())
+                    }
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::TypeOutlives(..) |
