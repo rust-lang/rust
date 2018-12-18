@@ -596,17 +596,58 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.read_scalar(args[0])?.to_u32()? as u128;
                 let ptr = this.machine.tls.load_tls(key)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.read_scalar(args[0])?.to_u32()? as u128;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
                 this.machine.tls.store_tls(key, new_ptr)?;
 
                 // Return success (1)
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+            }
+            "GetStdHandle" => {
+                let which = this.read_scalar(args[0])?.to_i32()?;
+                // We just make this the identity function, so we know later in "WriteFile"
+                // which one it is.
+                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
+            }
+            "WriteFile" => {
+                let handle = this.read_scalar(args[0])?.to_isize(this)?;
+                let buf = this.read_scalar(args[1])?.not_undef()?;
+                let n = this.read_scalar(args[2])?.to_u32()?;
+                let written_place = this.deref_operand(args[3])?;
+                this.write_null(written_place.into())?; // spec says we always write 0 first
+                let written = if handle == -11 || handle == -12 {
+                    // stdout/stderr
+                    use std::io::{self, Write};
+
+                    let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(u64::from(n)))?;
+                    let res = if handle == -11 {
+                        io::stdout().write(buf_cont)
+                    } else {
+                        io::stderr().write(buf_cont)
+                    };
+                    res.ok().map(|n| n as u32)
+                } else {
+                    eprintln!("Miri: Ignored output to handle {}", handle);
+                    Some(n) // pretend it all went well
+                };
+                // If there was no error, write back how much was written
+                if let Some(n) = written {
+                    this.write_scalar(Scalar::from_uint(n, Size::from_bits(32)), written_place.into())?;
+                }
+                // Return whether this was a success
+                this.write_scalar(
+                    Scalar::from_int(if written.is_some() { 1 } else { 0 }, dest.layout.size),
+                    dest,
+                )?;
+            }
+            "GetConsoleMode" => {
+                // Everything is a pipe
+                this.write_null(dest)?;
             }
 
             // We can't execute anything else

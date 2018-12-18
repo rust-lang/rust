@@ -1,5 +1,3 @@
-//ignore-msvc: Stdout not implemented on Windows
-
 #[repr(C)]
 #[derive(Debug)]
 struct PairFoo {
