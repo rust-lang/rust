@@ -9,13 +9,11 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-pub fn trans_mono_item<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    module: &mut Module<impl Backend>,
-    caches: &mut Caches<'tcx>,
-    ccx: &mut crate::constant::ConstantCx,
+pub fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
+    cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
     mono_item: MonoItem<'tcx>,
 ) {
+    let tcx = cx.tcx;
     match mono_item {
         MonoItem::Fn(inst) => {
             let _inst_guard =
@@ -44,10 +42,10 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 }
             });
 
-            trans_fn(tcx, module, ccx, caches, inst);
+            trans_fn(cx, inst);
         }
         MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(ccx, def_id);
+            crate::constant::codegen_static(&mut cx.ccx, def_id);
         }
         MonoItem::GlobalAsm(node_id) => tcx
             .sess
@@ -55,19 +53,18 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
     }
 }
 
-fn trans_fn<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    module: &mut Module<impl Backend>,
-    constants: &mut crate::constant::ConstantCx,
-    caches: &mut Caches<'tcx>,
+fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
+    cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
     instance: Instance<'tcx>,
 ) {
+    let tcx = cx.tcx;
+
     // Step 1. Get mir
     let mir = tcx.instance_mir(instance.def);
 
     // Step 2. Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance);
-    let func_id = module
+    let func_id = cx.module
         .declare_function(&name, Linkage::Export, &sig)
         .unwrap();
 
@@ -84,10 +81,10 @@ fn trans_fn<'a, 'tcx: 'a>(
     }
 
     // Step 5. Make FunctionCx
-    let pointer_type = module.target_config().pointer_type();
+    let pointer_type = cx.module.target_config().pointer_type();
     let mut fx = FunctionCx {
         tcx,
-        module,
+        module: cx.module,
         pointer_type,
 
         instance,
@@ -98,8 +95,8 @@ fn trans_fn<'a, 'tcx: 'a>(
         local_map: HashMap::new(),
 
         comments: HashMap::new(),
-        constants,
-        caches,
+        constants: &mut cx.ccx,
+        caches: &mut cx.caches,
 
         top_nop: None,
     };
@@ -132,11 +129,11 @@ fn trans_fn<'a, 'tcx: 'a>(
     verify_func(tcx, writer, &func);
 
     // Step 9. Define function
-    caches.context.func = func;
-    module
-        .define_function(func_id, &mut caches.context)
+    cx.caches.context.func = func;
+    cx.module
+        .define_function(func_id, &mut cx.caches.context)
         .unwrap();
-    caches.context.clear();
+    cx.caches.context.clear();
 }
 
 fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Function) {

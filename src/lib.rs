@@ -97,7 +97,7 @@ mod prelude {
     pub use crate::common::*;
     pub use crate::trap::*;
     pub use crate::unimpl::{unimpl, with_unimpl_span};
-    pub use crate::Caches;
+    pub use crate::{Caches, CodegenCx};
 }
 
 pub struct Caches<'tcx> {
@@ -105,12 +105,34 @@ pub struct Caches<'tcx> {
     pub vtables: HashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), DataId>,
 }
 
-impl<'tcx> Caches<'tcx> {
-    fn new() -> Self {
+impl<'tcx> Default for Caches<'tcx> {
+    fn default() -> Self {
         Caches {
             context: Context::new(),
             vtables: HashMap::new(),
         }
+    }
+}
+
+pub struct CodegenCx<'a, 'clif, 'tcx, B: Backend + 'static> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &'clif mut Module<B>,
+    ccx: ConstantCx,
+    caches: Caches<'tcx>,
+}
+
+impl<'a, 'clif, 'tcx, B: Backend + 'static> CodegenCx<'a, 'clif, 'tcx, B> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, module: &'clif mut Module<B>) -> Self {
+        CodegenCx {
+            tcx,
+            module,
+            ccx: ConstantCx::default(),
+            caches: Caches::default(),
+        }
+    }
+
+    fn finalize(self) {
+        self.ccx.finalize(self.tcx, self.module);
     }
 }
 
@@ -369,17 +391,15 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     log: &mut Option<File>,
     mono_items: FxHashMap<MonoItem<'tcx>, (RLinkage, Visibility)>,
 ) {
+    let mut cx = CodegenCx::new(tcx, module);
     time("codegen mono items", move || {
-        let mut caches = Caches::new();
-        let mut ccx = ConstantCx::default();
-
         for (mono_item, (_linkage, _vis)) in mono_items {
             unimpl::try_unimpl(tcx, log, || {
-                base::trans_mono_item(tcx, module, &mut caches, &mut ccx, mono_item);
+                base::trans_mono_item(&mut cx, mono_item);
             });
         }
 
-        ccx.finalize(tcx, module);
+        cx.finalize();
     });
 }
 

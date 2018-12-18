@@ -611,6 +611,7 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
 }
 
 pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
+    // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<B>,
     pub pointer_type: Type, // Cached from module
