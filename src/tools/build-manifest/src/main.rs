@@ -90,6 +90,7 @@ static TARGETS: &'static [&'static str] = &[
     "thumbv7em-none-eabi",
     "thumbv7em-none-eabihf",
     "thumbv7m-none-eabi",
+    "thumbv8m.main-none-eabi",
     "wasm32-unknown-emscripten",
     "wasm32-unknown-unknown",
     "x86_64-apple-darwin",
