@@ -1340,7 +1340,7 @@ impl MirPass for QualifyAndPromoteConstants {
                     let mut error = tcx.sess.struct_span_err(
                         span,
                         &format!(
-                            "new features like let bindings are not permitted in {} \
+                            "new features like let bindings are not permitted in {}s \
                             which also use short circuiting operators",
                             mode,
                         ),

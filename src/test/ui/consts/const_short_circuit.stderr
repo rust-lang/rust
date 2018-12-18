@@ -1,4 +1,4 @@
-error: new features like let bindings are not permitted in constant which also use short circuiting operators
+error: new features like let bindings are not permitted in constants which also use short circuiting operators
   --> $DIR/const_short_circuit.rs:6:9
    |
 LL |     let mut x = true && false;
@@ -10,7 +10,7 @@ note: use of `&&` operator here
 LL |     let mut x = true && false;
    |                      ^^
 
-error: new features like let bindings are not permitted in constant which also use short circuiting operators
+error: new features like let bindings are not permitted in constants which also use short circuiting operators
   --> $DIR/const_short_circuit.rs:11:9
    |
 LL |     let x = true && false;
