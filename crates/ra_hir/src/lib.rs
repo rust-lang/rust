@@ -143,11 +143,14 @@ impl SourceFileItems {
             return id;
         }
         // This should not happen. Let's try to give a sensible diagnostics.
-        if let Some((_, i)) = self.arena.iter().find(|(_id, i)| i.range() == item.range()) {
-            panic!(
+        if let Some((id, i)) = self.arena.iter().find(|(_id, i)| i.range() == item.range()) {
+            // FIXME(#288): whyyy are we getting here?
+            log::error!(
                 "unequal syntax nodes with the same range:\n{:?}\n{:?}",
-                item, i
-            )
+                item,
+                i
+            );
+            return id;
         }
         panic!(
             "Can't find {:?} in SourceFileItems:\n{:?}",
