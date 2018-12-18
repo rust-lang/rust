@@ -34,11 +34,10 @@ def test(name, cmd, stdout_ref, stderr_ref):
         sys.exit(1)
 
 def test_cargo_miri_run():
-    test("cargo miri run", ["cargo", "miri", "run", "-q"], "stout.ref", "stderr.ref")
+    test("cargo miri run", ["cargo", "miri", "run", "-q"], "stdout.ref", "stderr.ref")
 
 def test_cargo_miri_test():
-    # FIXME: validation disabled for now because of https://github.com/rust-lang/rust/issues/54957
-    test("cargo miri test", ["cargo", "miri", "test", "-q", "--", "-Zmiri-disable-validation"], "stout.ref", "stderr.ref")
+    test("cargo miri test", ["cargo", "miri", "test", "-q"], "test.stdout.ref", "test.stderr.ref")
 
 test_cargo_miri_run()
 test_cargo_miri_test()
