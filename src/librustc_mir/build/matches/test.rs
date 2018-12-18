@@ -347,7 +347,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             span: test.span,
                             ty: mty,
 
-                            // FIXME(#47184): This constant comes from user
+                            // FIXME(#54571): This constant comes from user
                             // input (a constant in a pattern).  Are
                             // there forms where users can add type
                             // annotations here?  For example, an
