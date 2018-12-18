@@ -558,7 +558,7 @@ pub trait Iterator {
     fn map<B, F>(self, f: F) -> Map<Self, F> where
         Self: Sized, F: FnMut(Self::Item) -> B,
     {
-        Map { iter: self, f }
+        Map::new(self, f)
     }
 
     /// Calls a closure on each element of an iterator.
@@ -669,7 +669,7 @@ pub trait Iterator {
     fn filter<P>(self, predicate: P) -> Filter<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        Filter {iter: self, predicate }
+        Filter::new(self, predicate)
     }
 
     /// Creates an iterator that both filters and maps.
@@ -726,7 +726,7 @@ pub trait Iterator {
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F> where
         Self: Sized, F: FnMut(Self::Item) -> Option<B>,
     {
-        FilterMap { iter: self, f }
+        FilterMap::new(self, f)
     }
 
     /// Creates an iterator which gives the current iteration count as well as
@@ -981,7 +981,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn skip(self, n: usize) -> Skip<Self> where Self: Sized {
-        Skip { iter: self, n }
+        Skip::new(self, n)
     }
 
     /// Creates an iterator that yields its first `n` elements.
@@ -1013,7 +1013,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self> where Self: Sized, {
-        Take { iter: self, n }
+        Take::new(self, n)
     }
 
     /// An iterator adaptor similar to [`fold`] that holds internal state and
@@ -1058,7 +1058,7 @@ pub trait Iterator {
     fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<Self, St, F>
         where Self: Sized, F: FnMut(&mut St, Self::Item) -> Option<B>,
     {
-        Scan { iter: self, f, state: initial_state }
+        Scan::new(self, initial_state, f)
     }
 
     /// Creates an iterator that works like map, but flattens nested structure.
@@ -1307,7 +1307,7 @@ pub trait Iterator {
     fn inspect<F>(self, f: F) -> Inspect<Self, F> where
         Self: Sized, F: FnMut(&Self::Item),
     {
-        Inspect { iter: self, f }
+        Inspect::new(self, f)
     }
 
     /// Borrows an iterator, rather than consuming it.
@@ -2181,7 +2181,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedIterator {
-        Rev{iter: self}
+        Rev::new(self)
     }
 
     /// Converts an iterator of pairs into a pair of containers.
@@ -2249,7 +2249,7 @@ pub trait Iterator {
     fn copied<'a, T: 'a>(self) -> Copied<Self>
         where Self: Sized + Iterator<Item=&'a T>, T: Copy
     {
-        Copied { it: self }
+        Copied::new(self)
     }
 
     /// Creates an iterator which [`clone`]s all of its elements.
@@ -2278,7 +2278,7 @@ pub trait Iterator {
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
         where Self: Sized + Iterator<Item=&'a T>, T: Clone
     {
-        Cloned { it: self }
+        Cloned::new(self)
     }
 
     /// Repeats an iterator endlessly.

@@ -26,7 +26,12 @@ pub(crate) use self::zip::TrustedRandomAccess;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rev<T> {
-    pub(super) iter: T
+    iter: T
+}
+impl<T> Rev<T> {
+    pub(super) fn new(iter: T) -> Rev<T> {
+        Rev { iter }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -127,7 +132,12 @@ unsafe impl<I> TrustedLen for Rev<I>
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 pub struct Copied<I> {
-    pub(super) it: I,
+    it: I,
+}
+impl<I> Copied<I> {
+    pub(super) fn new(it: I) -> Copied<I> {
+        Copied { it }
+    }
 }
 
 #[unstable(feature = "iter_copied", issue = "57127")]
@@ -227,7 +237,12 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 pub struct Cloned<I> {
-    pub(super) it: I,
+    it: I,
+}
+impl<I> Cloned<I> {
+    pub(super) fn new(it: I) -> Cloned<I> {
+        Cloned { it }
+    }
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
@@ -525,8 +540,13 @@ impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Map<I, F> {
-    pub(super) iter: I,
-    pub(super) f: F,
+    iter: I,
+    f: F,
+}
+impl<I, F> Map<I, F> {
+    pub(super) fn new(iter: I, f: F) -> Map<I, F> {
+        Map { iter, f }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -636,8 +656,13 @@ unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Filter<I, P> {
-    pub(super) iter: I,
-    pub(super) predicate: P,
+    iter: I,
+    predicate: P,
+}
+impl<I, P> Filter<I, P> {
+    pub(super) fn new(iter: I, predicate: P) -> Filter<I, P> {
+        Filter { iter, predicate }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -768,8 +793,13 @@ impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct FilterMap<I, F> {
-    pub(super) iter: I,
-    pub(super) f: F,
+    iter: I,
+    f: F,
+}
+impl<I, F> FilterMap<I, F> {
+    pub(super) fn new(iter: I, f: F) -> FilterMap<I, F> {
+        FilterMap { iter, f }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -1377,8 +1407,13 @@ impl<I, P> FusedIterator for TakeWhile<I, P>
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Skip<I> {
-    pub(super) iter: I,
-    pub(super) n: usize
+    iter: I,
+    n: usize
+}
+impl<I> Skip<I> {
+    pub(super) fn new(iter: I, n: usize) -> Skip<I> {
+        Skip { iter, n }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1518,6 +1553,11 @@ pub struct Take<I> {
     pub(super) iter: I,
     pub(super) n: usize
 }
+impl<I> Take<I> {
+    pub(super) fn new(iter: I, n: usize) -> Take<I> {
+        Take { iter, n }
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Take<I> where I: Iterator{
@@ -1603,9 +1643,14 @@ unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Scan<I, St, F> {
-    pub(super) iter: I,
-    pub(super) f: F,
-    pub(super) state: St,
+    iter: I,
+    f: F,
+    state: St,
+}
+impl<I, St, F> Scan<I, St, F> {
+    pub(super) fn new(iter: I, state: St, f: F) -> Scan<I, St, F> {
+        Scan { iter, state, f }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -1893,8 +1938,13 @@ impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Inspect<I, F> {
-    pub(super) iter: I,
-    pub(super) f: F,
+    iter: I,
+    f: F,
+}
+impl<I, F> Inspect<I, F> {
+    pub(super) fn new(iter: I, f: F) -> Inspect<I, F> {
+        Inspect { iter, f }
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
