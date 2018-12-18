@@ -140,7 +140,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     ecx.write_scalar(argv, dest)?;
     let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
     ecx.write_scalar(argv, argv_place.into())?;
-    ecx.machine.argc = Some(argv_place.ptr.to_ptr()?);
+    ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
 
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
