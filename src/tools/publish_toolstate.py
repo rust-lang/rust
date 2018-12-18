@@ -45,11 +45,41 @@ def read_current_status(current_commit, path):
                 return json.loads(status)
     return {}
 
+def issue(
+    title,
+    tool,
+    maintainers,
+    relevant_pr_number,
+    relevant_pr_user,
+):
+    # Open an issue about the toolstate failure.
+    gh_url = 'https://api.github.com/repos/rust-lang/rust/issues'
+    assignees = [x.strip() for x in maintainers.split('@') if x != '']
+    assignees.append(relevant_pr_user)
+    response = urllib2.urlopen(urllib2.Request(
+        gh_url,
+        json.dumps({
+            'body': '''\
+            @{}: your PR ({}) broke {}
+
+            If you have the time it would be great if you could open a PR against {} that
+            fixes the fallout from your PR.
+            '''.format(relevant_pr_user, relevant_pr_number, tool, tool),
+            'title': title,
+            'assignees': assignees,
+        }),
+        {
+            'Authorization': 'token ' + github_token,
+            'Content-Type': 'application/json',
+        }
+    ))
+    response.read()
 
 def update_latest(
     current_commit,
     relevant_pr_number,
     relevant_pr_url,
+    relevant_pr_user,
     current_datetime
 ):
     '''Updates `_data/latest.json` to match build result of the given commit.
@@ -85,8 +115,11 @@ def update_latest(
                         .format(tool, os, old, new, MAINTAINERS.get(tool))
                 elif new < old:
                     changed = True
-                    message += '💔 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
-                        .format(tool, os, old, new, MAINTAINERS.get(tool))
+                    title = '💔 {} on {}: {} → {}' \
+                        .format(tool, os, old, new)
+                    message += '{} (cc {}, @rust-lang/infra).\n' \
+                        .format(title, MAINTAINERS.get(tool))
+                    issue(title, tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user)
 
             if changed:
                 status['commit'] = current_commit
@@ -109,13 +142,15 @@ if __name__ == '__main__':
     save_message_to_path = sys.argv[3]
     github_token = sys.argv[4]
 
-    relevant_pr_match = re.search('#([0-9]+)', cur_commit_msg)
+    relevant_pr_match = re.search('Auto merge of #([0-9]+) - ([^:]+)', cur_commit_msg)
     if relevant_pr_match:
         number = relevant_pr_match.group(1)
+        relevant_pr_user = relevant_pr_match.group(2)
         relevant_pr_number = 'rust-lang/rust#' + number
         relevant_pr_url = 'https://github.com/rust-lang/rust/pull/' + number
     else:
         number = '-1'
+        relevant_pr_user = '<unknown user>'
         relevant_pr_number = '<unknown PR>'
         relevant_pr_url = '<unknown>'
 
@@ -123,6 +158,7 @@ if __name__ == '__main__':
         cur_commit,
         relevant_pr_number,
         relevant_pr_url,
+        relevant_pr_user,
         cur_datetime
     )
     if not message:
