@@ -43,7 +43,7 @@ impl AnalysisHostImpl {
     }
     pub fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
-        self.gc_syntax_trees();
+        // self.gc_syntax_trees();
 
         for (file_id, text) in change.files_changed {
             self.db
@@ -117,6 +117,10 @@ impl AnalysisHostImpl {
         }
     }
 
+    #[allow(unused)]
+    /// Ideally, we should call this function from time to time to collect heavy
+    /// syntax trees. However, if we actually do that, everything is recomputed
+    /// for some reason. Needs investigation.
     fn gc_syntax_trees(&mut self) {
         self.db
             .query(ra_db::SourceFileQuery)
