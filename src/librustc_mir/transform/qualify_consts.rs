@@ -1348,7 +1348,10 @@ impl MirPass for QualifyAndPromoteConstants {
                     for (span, kind) in mir.control_flow_destroyed.iter() {
                         error.span_note(
                             *span,
-                            &format!("use of {} here", kind),
+                            &format!("use of {} here does not actually short circuit due to \
+                            the const evaluator presently not being able to do control flow. \
+                            See https://github.com/rust-lang/rust/issues/49146 for more \
+                            information.", kind),
                         );
                     }
                     for local in locals {
