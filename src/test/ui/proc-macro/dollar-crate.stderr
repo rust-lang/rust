@@ -1,5 +1,5 @@
 error[E0428]: the name `D` is defined multiple times
-  --> $DIR/dollar-crate.rs:23:13
+  --> $DIR/dollar-crate.rs:27:13
    |
 LL |             struct D($crate::S); //~ ERROR the name `D` is defined multiple times
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     local!();
    = note: `D` must be defined only once in the type namespace of this module
 
 error[E0428]: the name `D` is defined multiple times
-  --> $DIR/dollar-crate.rs:31:5
+  --> $DIR/dollar-crate.rs:37:5
    |
 LL |     dollar_crate_external::external!(); //~ ERROR the name `D` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

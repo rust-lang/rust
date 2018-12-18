@@ -1,5 +1,4 @@
 // edition:2018
-// compile-flags:--extern dollar_crate --extern dollar_crate_external
 // aux-build:dollar-crate.rs
 // aux-build:dollar-crate-external.rs
 
@@ -7,9 +6,14 @@
 // normalize-stdout-test "bytes\([^0]\w*\.\.(\w+)\)" -> "bytes(LO..$1)"
 // normalize-stdout-test "bytes\((\w+)\.\.[^0]\w*\)" -> "bytes($1..HI)"
 
+extern crate dollar_crate;
+extern crate dollar_crate_external;
+
 type S = u8;
 
 mod local {
+    use crate::dollar_crate;
+
     macro_rules! local {
         () => {
             dollar_crate::m! {
@@ -28,6 +32,8 @@ mod local {
 }
 
 mod external {
+    use crate::dollar_crate_external;
+
     dollar_crate_external::external!(); //~ ERROR the name `D` is defined multiple times
 }
 
