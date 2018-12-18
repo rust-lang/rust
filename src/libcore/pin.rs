@@ -36,7 +36,7 @@
 //! are always freely movable, even if the data they point to isn't.
 //!
 //! [`Pin`]: struct.Pin.html
-//! [`Unpin`]: trait.Unpin.html
+//! [`Unpin`]: ../../std/marker/trait.Unpin.html
 //! [`swap`]: ../../std/mem/fn.swap.html
 //! [`Box`]: ../../std/boxed/struct.Box.html
 //!
