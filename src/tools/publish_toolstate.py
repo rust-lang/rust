@@ -67,6 +67,7 @@ def issue(
             '''.format(relevant_pr_user, relevant_pr_number, tool, tool),
             'title': title,
             'assignees': assignees,
+            'labels': ['T-compiler', 'I-nominated'],
         }),
         {
             'Authorization': 'token ' + github_token,
