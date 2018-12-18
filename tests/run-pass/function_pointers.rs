@@ -10,12 +10,12 @@ fn h(i: i32, j: i32) -> i32 {
     j * i * 7
 }
 
-fn return_fn_ptr() -> fn() -> i32 {
+fn return_fn_ptr(f: fn() -> i32) -> fn() -> i32 {
     f
 }
 
 fn call_fn_ptr() -> i32 {
-    return_fn_ptr()()
+    return_fn_ptr(f)()
 }
 
 fn indirect<F: Fn() -> i32>(f: F) -> i32 { f() }
@@ -41,6 +41,7 @@ fn main() {
     assert_eq!(indirect3(h), 210);
     assert_eq!(indirect_mut3(h), 210);
     assert_eq!(indirect_once3(h), 210);
-    assert!(return_fn_ptr() == f);
-    assert!(return_fn_ptr() as unsafe fn() -> i32 == f as fn() -> i32 as unsafe fn() -> i32);
+    let g = f as fn() -> i32;
+    assert!(return_fn_ptr(g) == g);
+    assert!(return_fn_ptr(g) as unsafe fn() -> i32 == g as fn() -> i32 as unsafe fn() -> i32);
 }
