@@ -1,28 +1,35 @@
+//! Small utility to correctly spawn crossbeam-channel based worker threads.
+
 use std::thread;
 
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use drop_bomb::DropBomb;
-use failure::format_err;
-
-use crate::Result;
 
 pub struct Worker<I, O> {
     pub inp: Sender<I>,
     pub out: Receiver<O>,
 }
 
-impl<I, O> Worker<I, O> {
-    pub fn spawn<F>(name: &'static str, buf: usize, f: F) -> (Self, ThreadWatcher)
-    where
-        F: FnOnce(Receiver<I>, Sender<O>) + Send + 'static,
-        I: Send + 'static,
-        O: Send + 'static,
-    {
-        let (worker, inp_r, out_s) = worker_chan(buf);
-        let watcher = ThreadWatcher::spawn(name, move || f(inp_r, out_s));
-        (worker, watcher)
-    }
+pub struct WorkerHandle {
+    name: &'static str,
+    thread: thread::JoinHandle<()>,
+    bomb: DropBomb,
+}
 
+pub fn spawn<I, O, F>(name: &'static str, buf: usize, f: F) -> (Worker<I, O>, WorkerHandle)
+where
+    F: FnOnce(Receiver<I>, Sender<O>) + Send + 'static,
+    I: Send + 'static,
+    O: Send + 'static,
+{
+    let (worker, inp_r, out_s) = worker_chan(buf);
+    let watcher = WorkerHandle::spawn(name, move || f(inp_r, out_s));
+    (worker, watcher)
+}
+
+impl<I, O> Worker<I, O> {
+    /// Stops the worker. Returns the message receiver to fetch results which
+    /// have become ready before the worker is stopped.
     pub fn stop(self) -> Receiver<O> {
         self.out
     }
@@ -32,30 +39,21 @@ impl<I, O> Worker<I, O> {
     }
 }
 
-pub struct ThreadWatcher {
-    name: &'static str,
-    thread: thread::JoinHandle<()>,
-    bomb: DropBomb,
-}
-
-impl ThreadWatcher {
-    fn spawn(name: &'static str, f: impl FnOnce() + Send + 'static) -> ThreadWatcher {
+impl WorkerHandle {
+    fn spawn(name: &'static str, f: impl FnOnce() + Send + 'static) -> WorkerHandle {
         let thread = thread::spawn(f);
-        ThreadWatcher {
+        WorkerHandle {
             name,
             thread,
-            bomb: DropBomb::new(format!("ThreadWatcher {} was not stopped", name)),
+            bomb: DropBomb::new(format!("WorkerHandle {} was not stopped", name)),
         }
     }
 
-    pub fn stop(mut self) -> Result<()> {
+    pub fn stop(mut self) -> thread::Result<()> {
         log::info!("waiting for {} to finish ...", self.name);
         let name = self.name;
         self.bomb.defuse();
-        let res = self
-            .thread
-            .join()
-            .map_err(|_| format_err!("ThreadWatcher {} died", name));
+        let res = self.thread.join();
         match &res {
             Ok(()) => log::info!("... {} terminated with ok", name),
             Err(_) => log::error!("... {} terminated with err", name),

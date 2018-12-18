@@ -4,8 +4,7 @@ use std::{
 };
 
 use walkdir::WalkDir;
-
-use crate::thread_watcher::{ThreadWatcher, Worker};
+use thread_worker::{WorkerHandle, Worker};
 
 #[derive(Debug)]
 pub struct FileEvent {
@@ -18,8 +17,8 @@ pub enum FileEventKind {
     Add(String),
 }
 
-pub fn roots_loader() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, ThreadWatcher) {
-    Worker::<PathBuf, (PathBuf, Vec<FileEvent>)>::spawn(
+pub fn roots_loader() -> (Worker<PathBuf, (PathBuf, Vec<FileEvent>)>, WorkerHandle) {
+    thread_worker::spawn::<PathBuf, (PathBuf, Vec<FileEvent>), _>(
         "roots loader",
         128,
         |input_receiver, output_sender| {

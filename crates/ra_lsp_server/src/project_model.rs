@@ -4,11 +4,9 @@ use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHashSet};
 use failure::{format_err, bail};
+use thread_worker::{WorkerHandle, Worker};
 
-use crate::{
-    Result,
-    thread_watcher::{ThreadWatcher, Worker},
-};
+use crate::Result;
 
 /// `CargoWorksapce` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -199,8 +197,8 @@ impl TargetKind {
     }
 }
 
-pub fn workspace_loader() -> (Worker<PathBuf, Result<CargoWorkspace>>, ThreadWatcher) {
-    Worker::<PathBuf, Result<CargoWorkspace>>::spawn(
+pub fn workspace_loader() -> (Worker<PathBuf, Result<CargoWorkspace>>, WorkerHandle) {
+    thread_worker::spawn::<PathBuf, Result<CargoWorkspace>, _>(
         "workspace loader",
         1,
         |input_receiver, output_sender| {
