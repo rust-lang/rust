@@ -1957,9 +1957,9 @@ impl<R: Read> Iterator for Bytes<R> {
         let mut byte = 0;
         loop {
             return match self.inner.read(slice::from_mut(&mut byte)) {
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                 Ok(0) => None,
                 Ok(..) => Some(Ok(byte)),
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => Some(Err(e)),
             };
         }
