@@ -111,9 +111,11 @@ impl<T> Box<T> {
         box x
     }
 
+    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
+    /// `x` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn pinned(x: T) -> Pin<Box<T>> {
+    pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
     }
 }

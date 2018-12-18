@@ -303,8 +303,10 @@ impl<T> Arc<T> {
         Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
     }
 
+    /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
+    /// `data` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn pinned(data: T) -> Pin<Arc<T>> {
+    pub fn pin(data: T) -> Pin<Arc<T>> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
