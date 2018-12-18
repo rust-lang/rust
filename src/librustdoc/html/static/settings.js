@@ -11,14 +11,14 @@
     }
 
     function setEvents() {
-        var elems = document.getElementsByClassName("slider");
+        let elems = document.getElementsByClassName("slider");
         if (!elems || elems.length === 0) {
             return;
         }
-        for (var i = 0; i < elems.length; ++i) {
-            var toggle = elems[i].previousElementSibling;
-            var settingId = toggle.id;
-            var settingValue = getSettingValue(settingId);
+        for (let i = 0; i < elems.length; ++i) {
+            let toggle = elems[i].previousElementSibling;
+            let settingId = toggle.id;
+            let settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
                 toggle.checked = settingValue === "true";
             }

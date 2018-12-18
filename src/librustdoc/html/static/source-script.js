@@ -8,15 +8,15 @@
 /* global addClass, getCurrentValue, hasClass, removeClass, updateLocalStorage */
 
 function getCurrentFilePath() {
-    var parts = window.location.pathname.split("/");
-    var rootPathParts = window.rootPath.split("/");
+    let parts = window.location.pathname.split("/");
+    let rootPathParts = window.rootPath.split("/");
 
-    for (var i = 0; i < rootPathParts.length; ++i) {
+    for (let i = 0; i < rootPathParts.length; ++i) {
         if (rootPathParts[i] === "..") {
             parts.pop();
         }
     }
-    var file = window.location.pathname.substring(parts.join("/").length);
+    let file = window.location.pathname.substring(parts.join("/").length);
     if (file.startsWith("/")) {
         file = file.substring(1);
     }
@@ -24,7 +24,7 @@ function getCurrentFilePath() {
 }
 
 function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
-    var name = document.createElement("div");
+    let name = document.createElement("div");
     name.className = "name";
 
     fullPath += elem["name"] + "/";
@@ -38,11 +38,11 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     };
     name.innerText = elem["name"];
 
-    var children = document.createElement("div");
+    let children = document.createElement("div");
     children.className = "children";
-    var folders = document.createElement("div");
+    let folders = document.createElement("div");
     folders.className = "folders";
-    for (var i = 0; i < elem.dirs.length; ++i) {
+    for (let i = 0; i < elem.dirs.length; ++i) {
         if (createDirEntry(elem.dirs[i], folders, fullPath, currentFile,
                            hasFoundFile) === true) {
             addClass(name, "expand");
@@ -51,10 +51,10 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     }
     children.appendChild(folders);
 
-    var files = document.createElement("div");
+    let files = document.createElement("div");
     files.className = "files";
-    for (i = 0; i < elem.files.length; ++i) {
-        var file = document.createElement("a");
+    for (let i = 0; i < elem.files.length; ++i) {
+        let file = document.createElement("a");
         file.innerText = elem.files[i];
         file.href = window.rootPath + "src/" + fullPath + elem.files[i] + ".html";
         if (hasFoundFile === false &&
@@ -73,8 +73,8 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
 }
 
 function toggleSidebar() {
-    var sidebar = document.getElementById("source-sidebar");
-    var child = this.children[0].children[0];
+    let sidebar = document.getElementById("source-sidebar");
+    let child = this.children[0].children[0];
     if (child.innerText === ">") {
         sidebar.style.left = "";
         this.style.left = "";
@@ -89,14 +89,14 @@ function toggleSidebar() {
 }
 
 function createSidebarToggle() {
-    var sidebarToggle = document.createElement("div");
+    let sidebarToggle = document.createElement("div");
     sidebarToggle.id = "sidebar-toggle";
     sidebarToggle.onclick = toggleSidebar;
 
-    var inner1 = document.createElement("div");
+    let inner1 = document.createElement("div");
     inner1.style.position = "relative";
 
-    var inner2 = document.createElement("div");
+    let inner2 = document.createElement("div");
     inner2.style.marginTop = "-2px";
     if (getCurrentValue("rustdoc-source-sidebar-show") === "true") {
         inner2.innerText = "<";
@@ -114,21 +114,21 @@ function createSourceSidebar() {
     if (window.rootPath.endsWith("/") === false) {
         window.rootPath += "/";
     }
-    var main = document.getElementById("main");
+    let main = document.getElementById("main");
 
-    var sidebarToggle = createSidebarToggle();
+    let sidebarToggle = createSidebarToggle();
     main.insertBefore(sidebarToggle, main.firstChild);
 
-    var sidebar = document.createElement("div");
+    let sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
     if (getCurrentValue("rustdoc-source-sidebar-show") !== "true") {
         sidebar.style.left = "-300px";
     }
 
-    var currentFile = getCurrentFilePath();
-    var hasFoundFile = false;
+    let currentFile = getCurrentFilePath();
+    let hasFoundFile = false;
 
-    var title = document.createElement("div");
+    let title = document.createElement("div");
     title.className = "title";
     title.innerText = "Files";
     sidebar.appendChild(title);
