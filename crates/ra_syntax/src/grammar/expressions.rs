@@ -416,7 +416,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
             m.complete(p, STRUCT_LIT)
         }
         EXCL => {
-            items::macro_call_after_excl(p);
+            items::macro_call_after_excl(p); // TODO: Use return type (BlockLike)
             m.complete(p, MACRO_CALL)
         }
         _ => m.complete(p, PATH_EXPR),
