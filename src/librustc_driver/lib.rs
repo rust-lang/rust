@@ -226,7 +226,7 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     // available for future dynamic libraries opened. This is currently used by
     // loading LLVM and then making its symbols available for other dynamic
     // libraries.
-    let lib = DynamicLibrary::open_global_now(path).unwrap_or_else(|err| {
+    let lib = DynamicLibrary::open(Some(path)).unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
         early_error(ErrorOutputType::default(), &err);
     });
