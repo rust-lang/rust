@@ -98,7 +98,7 @@ impl NamedImport {
     pub fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
         let source_item_id = SourceItemId {
             file_id,
-            item_id: self.file_item_id,
+            item_id: Some(self.file_item_id),
         };
         let syntax = db.file_item(source_item_id);
         let offset = syntax.borrowed().range().start();
@@ -281,7 +281,7 @@ where
                 module_id,
                 source_item_id: SourceItemId {
                     file_id,
-                    item_id: item.id,
+                    item_id: Some(item.id),
                 },
             };
             let def_id = def_loc.id(self.db);

@@ -109,7 +109,8 @@ pub(crate) type SourceFileItemId = Id<SyntaxNode>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
     file_id: FileId,
-    item_id: SourceFileItemId,
+    /// None for the whole file.
+    item_id: Option<SourceFileItemId>,
 }
 
 /// Maps item's `SyntaxNode`s to `SourceFileItemId` and back.

@@ -38,7 +38,6 @@ pub(super) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
 pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {
     let mut res = SourceFileItems::new(file_id);
     let source_file = db.source_file(file_id);
-    res.alloc(source_file.syntax().owned());
     let source_file = source_file.borrowed();
     source_file
         .syntax()
@@ -52,7 +51,10 @@ pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFi
 }
 
 pub(super) fn file_item(db: &impl HirDatabase, source_item_id: SourceItemId) -> SyntaxNode {
-    db.file_items(source_item_id.file_id)[source_item_id.item_id].clone()
+    match source_item_id.item_id {
+        Some(id) => db.file_items(source_item_id.file_id)[id].clone(),
+        None => db.source_file(source_item_id.file_id).syntax().owned(),
+    }
 }
 
 pub(crate) fn submodules(
