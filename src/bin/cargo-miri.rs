@@ -171,8 +171,7 @@ fn setup(ask_user: bool) {
         } else {
             println!("Installing xargo: `cargo install xargo -f`");
         }
-        // FIXME: Go back to using releases, once a 0.3.13 got released.
-        if !Command::new("cargo").args(&["install", "xargo", "-f", "--git", "https://github.com/japaric/xargo"]).status().unwrap().success() {
+        if !Command::new("cargo").args(&["install", "xargo", "-f"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
         }
     }
