@@ -723,6 +723,7 @@ version = "0.1.0"
 dependencies = [
  "itertools 0.7.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "join_to_string 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proptest 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -763,7 +764,6 @@ dependencies = [
  "languageserver-types 0.53.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proptest 0.8.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_analysis 0.1.0",
  "ra_editor 0.1.0",
  "ra_syntax 0.1.0",

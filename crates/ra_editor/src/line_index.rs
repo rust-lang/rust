@@ -1,4 +1,4 @@
-use crate::{TextUnit, TextRange};
+use crate::TextUnit;
 use rustc_hash::FxHashMap;
 use superslice::Ext;
 
@@ -121,7 +121,7 @@ impl LineIndex {
         col
     }
 
-    pub fn newlines(&self) -> &[TextUnit] {
+    pub(crate) fn newlines(&self) -> &[TextUnit] {
         &self.newlines[1..]
     }
 }

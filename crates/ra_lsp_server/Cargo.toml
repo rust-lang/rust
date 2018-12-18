@@ -34,8 +34,6 @@ ra_analysis = { path = "../ra_analysis" }
 gen_lsp_server = { path = "../gen_lsp_server" }
 ra_vfs = { path = "../ra_vfs" }
 
-proptest = "0.8.7"
-
 [dev-dependencies]
 tempdir = "0.3.7"
 test_utils = { path = "../test_utils" }
