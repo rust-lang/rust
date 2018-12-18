@@ -77,9 +77,7 @@ fn miri_pass(path: &str, target: &str, opt: bool) {
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     flags.push("--edition 2018".to_owned());
     if opt {
-        // FIXME: We use opt level 1 because MIR inlining defeats the validation
-        // whitelist.
-        flags.push("-Zmir-opt-level=1".to_owned());
+        flags.push("-Zmir-opt-level=3".to_owned());
     }
 
     let mut config = mk_config("ui");

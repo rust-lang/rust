@@ -60,7 +60,10 @@ fn main() {
     let a = [0,1,2];
     let square_local : fn(u32) -> u32 = square;
     let (f,g) = fn_coercions(&square_local);
-    assert_eq!(f as *const (), square as *const());
+    // cannot use `square as *const ()` because we can't know whether the compiler duplicates
+    // functions, so two function pointers are only equal if they result from the same function
+    // to function pointer cast
+    assert_eq!(f as *const (), square_local as *const());
     assert_eq!(g(4), 16);
     assert_eq!(identity_coercion(g)(5), 25);
 
