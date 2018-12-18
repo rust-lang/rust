@@ -271,15 +271,13 @@ pub struct ModuleData {
 
 impl ModuleSource {
     // precondition: item_id **must** point to module
-    fn new(file_id: FileId, item_id: SourceFileItemId) -> ModuleSource {
+    fn new(file_id: FileId, item_id: Option<SourceFileItemId>) -> ModuleSource {
         let source_item_id = SourceItemId { file_id, item_id };
         ModuleSource(source_item_id)
     }
 
-    pub(crate) fn new_file(db: &impl HirDatabase, file_id: FileId) -> ModuleSource {
-        let file_items = db.file_items(file_id);
-        let item_id = file_items.id_of_source_file();
-        ModuleSource::new(file_id, item_id)
+    pub(crate) fn new_file(file_id: FileId) -> ModuleSource {
+        ModuleSource::new(file_id, None)
     }
 
     pub(crate) fn new_inline(
@@ -290,7 +288,7 @@ impl ModuleSource {
         assert!(!m.has_semi());
         let file_items = db.file_items(file_id);
         let item_id = file_items.id_of(file_id, m.syntax());
-        ModuleSource::new(file_id, item_id)
+        ModuleSource::new(file_id, Some(item_id))
     }
 
     pub fn file_id(self) -> FileId {

@@ -66,7 +66,7 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.iter() {
-        let source = ModuleSource::new_file(db, file_id);
+        let source = ModuleSource::new_file(file_id);
         if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
@@ -126,7 +126,7 @@ fn build_subtree(
                             visited,
                             roots,
                             Some(link),
-                            ModuleSource::new_file(db, file_id),
+                            ModuleSource::new_file(file_id),
                         ),
                     })
                     .collect::<Cancelable<Vec<_>>>()?;

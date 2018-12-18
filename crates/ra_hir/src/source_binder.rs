@@ -20,7 +20,7 @@ use crate::{
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Cancelable<Option<Module>> {
-    let module_source = ModuleSource::new_file(db, file_id);
+    let module_source = ModuleSource::new_file(file_id);
     module_from_source(db, module_source)
 }
 
@@ -32,7 +32,7 @@ pub fn module_from_position(
     let file = db.source_file(position.file_id);
     let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset) {
         Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
-        _ => ModuleSource::new_file(db, position.file_id),
+        _ => ModuleSource::new_file(position.file_id),
     };
     module_from_source(db, module_source)
 }
@@ -50,7 +50,7 @@ pub fn module_from_child_node(
     {
         ModuleSource::new_inline(db, file_id, m)
     } else {
-        ModuleSource::new_file(db, file_id)
+        ModuleSource::new_file(file_id)
     };
     module_from_source(db, module_source)
 }
@@ -76,7 +76,10 @@ pub fn function_from_source(
     let module = ctry!(module_from_child_node(db, file_id, fn_def.syntax())?);
     let file_items = db.file_items(file_id);
     let item_id = file_items.id_of(file_id, fn_def.syntax());
-    let source_item_id = SourceItemId { file_id, item_id };
+    let source_item_id = SourceItemId {
+        file_id,
+        item_id: Some(item_id),
+    };
     let def_loc = DefLoc {
         kind: DefKind::Function,
         source_root_id: module.source_root_id,
