@@ -3,7 +3,7 @@ use ops::Try;
 
 use super::super::LoopState;
 use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
-use super::super::{Flatten, FlatMap, flatten_compat};
+use super::super::{Flatten, FlatMap};
 use super::super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::super::{Zip, Sum, Product};
 use super::super::{FromIterator, ZipImpl};
@@ -1098,7 +1098,7 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        FlatMap { inner: flatten_compat(self.map(f)) }
+        FlatMap::new(self, f)
     }
 
     /// Creates an iterator that flattens nested structure.
@@ -1166,7 +1166,7 @@ pub trait Iterator {
     #[stable(feature = "iterator_flatten", since = "1.29.0")]
     fn flatten(self) -> Flatten<Self>
     where Self: Sized, Self::Item: IntoIterator {
-        Flatten { inner: flatten_compat(self) }
+        Flatten::new(self)
     }
 
     /// Creates an iterator which ends after the first [`None`].

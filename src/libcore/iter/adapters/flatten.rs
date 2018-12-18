@@ -14,7 +14,12 @@ use super::Map;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {
-    pub(in super::super) inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>
+    inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>
+}
+impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
+    pub(in super::super) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
+        FlatMap { inner: FlattenCompat::new(iter.map(f)) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -100,7 +105,13 @@ impl<I, U, F> FusedIterator for FlatMap<I, U, F>
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub struct Flatten<I: Iterator>
 where I::Item: IntoIterator {
-    pub(in super::super) inner: FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>,
+    inner: FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>,
+}
+impl<I: Iterator> Flatten<I>
+where I::Item: IntoIterator {
+    pub(in super::super) fn new(iter: I) -> Flatten<I> {
+        Flatten { inner: FlattenCompat::new(iter) }
+    }
 }
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
@@ -177,18 +188,19 @@ impl<I, U> FusedIterator for Flatten<I>
     where I: FusedIterator, U: Iterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
 
-/// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
-pub(in super::super) fn flatten_compat<I, U>(iter: I) -> FlattenCompat<I, U> {
-    FlattenCompat { iter, frontiter: None, backiter: None }
-}
-
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
 #[derive(Clone, Debug)]
-pub(in super::super) struct FlattenCompat<I, U> {
+struct FlattenCompat<I, U> {
     iter: I,
     frontiter: Option<U>,
     backiter: Option<U>,
+}
+impl<I, U> FlattenCompat<I, U> {
+    /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
+    fn new(iter: I) -> FlattenCompat<I, U> {
+        FlattenCompat { iter, frontiter: None, backiter: None }
+    }
 }
 
 impl<I, U> Iterator for FlattenCompat<I, U>

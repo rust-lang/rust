@@ -13,7 +13,6 @@ mod zip;
 pub use self::chain::Chain;
 pub use self::flatten::{FlatMap, Flatten};
 pub use self::zip::Zip;
-pub(super) use self::flatten::{FlattenCompat, flatten_compat};
 pub(super) use self::zip::ZipImpl;
 pub(crate) use self::zip::TrustedRandomAccess;
 
