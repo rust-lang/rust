@@ -174,6 +174,11 @@ impl<'a> Sugg<'a> {
         make_binop(ast::BinOpKind::And, &self, rhs)
     }
 
+    /// Convenience method to create the `<lhs> & <rhs>` suggestion.
+    pub fn bit_and(self, rhs: &Self) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::BitAnd, &self, rhs)
+    }
+
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
     pub fn as_ty<R: Display>(self, rhs: R) -> Sugg<'static> {
         make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.to_string().into()))
