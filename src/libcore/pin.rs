@@ -100,11 +100,8 @@
 #![unstable(feature = "pin", issue = "49150")]
 
 use fmt;
-use marker::Sized;
+use marker::{Sized, Unpin};
 use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
-
-#[doc(inline)]
-pub use marker::Unpin;
 
 /// A pinned pointer.
 ///
@@ -121,6 +118,7 @@ pub use marker::Unpin;
 // cannot move the value behind `pointer`.
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
+#[repr(transparent)]
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Pin<P> {
     pointer: P,
@@ -200,10 +198,10 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     #[unstable(feature = "pin", issue = "49150")]
-    pub unsafe fn map_unchecked<U, F>(this: Pin<&'a T>, func: F) -> Pin<&'a U> where
+    pub unsafe fn map_unchecked<U, F>(self: Pin<&'a T>, func: F) -> Pin<&'a U> where
         F: FnOnce(&T) -> &U,
     {
-        let pointer = &*this.pointer;
+        let pointer = &*self.pointer;
         let new_pointer = func(pointer);
         Pin::new_unchecked(new_pointer)
     }
@@ -217,8 +215,8 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// with the same lifetime as the original `Pin`.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
-    pub fn get_ref(this: Pin<&'a T>) -> &'a T {
-        this.pointer
+    pub fn get_ref(self: Pin<&'a T>) -> &'a T {
+        self.pointer
     }
 }
 
@@ -226,8 +224,8 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Convert this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
-    pub fn into_ref(this: Pin<&'a mut T>) -> Pin<&'a T> {
-        Pin { pointer: this.pointer }
+    pub fn into_ref(self: Pin<&'a mut T>) -> Pin<&'a T> {
+        Pin { pointer: self.pointer }
     }
 
     /// Get a mutable reference to the data inside of this `Pin`.
@@ -241,10 +239,10 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// with the same lifetime as the original `Pin`.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
-    pub fn get_mut(this: Pin<&'a mut T>) -> &'a mut T
+    pub fn get_mut(self: Pin<&'a mut T>) -> &'a mut T
         where T: Unpin,
     {
-        this.pointer
+        self.pointer
     }
 
     /// Get a mutable reference to the data inside of this `Pin`.
@@ -259,8 +257,8 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// instead.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
-    pub unsafe fn get_mut_unchecked(this: Pin<&'a mut T>) -> &'a mut T {
-        this.pointer
+    pub unsafe fn get_unchecked_mut(self: Pin<&'a mut T>) -> &'a mut T {
+        self.pointer
     }
 
     /// Construct a new pin by mapping the interior value.
@@ -275,10 +273,10 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     #[unstable(feature = "pin", issue = "49150")]
-    pub unsafe fn map_unchecked_mut<U, F>(this: Pin<&'a mut T>, func: F) -> Pin<&'a mut U> where
+    pub unsafe fn map_unchecked_mut<U, F>(self: Pin<&'a mut T>, func: F) -> Pin<&'a mut U> where
         F: FnOnce(&mut T) -> &mut U,
     {
-        let pointer = Pin::get_mut_unchecked(this);
+        let pointer = Pin::get_unchecked_mut(self);
         let new_pointer = func(pointer);
         Pin::new_unchecked(new_pointer)
     }
@@ -342,6 +340,3 @@ impl<'a, P, U> DispatchFromDyn<Pin<U>> for Pin<P>
 where
     P: DispatchFromDyn<U>,
 {}
-
-#[unstable(feature = "pin", issue = "49150")]
-impl<P> Unpin for Pin<P> {}
