@@ -10,7 +10,8 @@
 
 //! Representation of a `#[doc(cfg(...))]` attribute.
 
-// FIXME: Once RFC #1868 is implemented, switch to use those structures instead.
+// FIXME: Once the portability lint RFC is implemented (see tracking issue #41619),
+// switch to use those structures instead.
 
 use std::mem;
 use std::fmt::{self, Write};
