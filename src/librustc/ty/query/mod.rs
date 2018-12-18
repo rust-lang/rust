@@ -27,8 +27,7 @@ use traits::{self, Vtable};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
     CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpAscribeUserTypeWellFormedGoal, CanonicalTypeOpEqGoal,
-    CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
     CanonicalTypeOpNormalizeGoal, NoSolution,
 };
 use traits::query::method_autoderef::MethodAutoderefStepsResult;
@@ -605,14 +604,6 @@ define_queries! { <'tcx>
         /// Do not call this query directly: part of the `Eq` type-op
         [] fn type_op_ascribe_user_type: TypeOpAscribeUserType(
             CanonicalTypeOpAscribeUserTypeGoal<'tcx>
-        ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
-            NoSolution,
-        >,
-
-        /// Do not call this query directly: part of the `Eq` type-op
-        [] fn type_op_ascribe_user_type_well_formed: TypeOpAscribeUserTypeWellFormed(
-            CanonicalTypeOpAscribeUserTypeWellFormedGoal<'tcx>
         ) -> Result<
             Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,

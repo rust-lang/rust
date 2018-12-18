@@ -289,6 +289,11 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.out.extend(obligations);
                 }
 
+                ty::FnDef(did, substs) => {
+                    let obligations = self.nominal_obligations(did, substs);
+                    self.out.extend(obligations);
+                }
+
                 ty::Ref(r, rty, _) => {
                     // WfReference
                     if !r.has_escaping_bound_vars() && !rty.has_escaping_bound_vars() {
@@ -349,7 +354,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::FnDef(..) | ty::FnPtr(_) => {
+                ty::FnPtr(_) => {
                     // let the loop iterate into the argument/return
                     // types appearing in the fn signature
                 }

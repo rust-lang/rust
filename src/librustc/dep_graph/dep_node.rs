@@ -62,8 +62,7 @@ use syntax_pos::symbol::InternedString;
 use traits;
 use traits::query::{
     CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
-    CanonicalTypeOpAscribeUserTypeWellFormedGoal, CanonicalTypeOpEqGoal,
-    CanonicalTypeOpSubtypeGoal, CanonicalPredicateGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalPredicateGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
 };
 use ty::{TyCtxt, FnSig, Instance, InstanceDef,
@@ -651,7 +650,6 @@ define_dep_nodes!( <'tcx>
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
     [] EvaluateGoal(traits::ChalkCanonicalGoal<'tcx>),
     [] TypeOpAscribeUserType(CanonicalTypeOpAscribeUserTypeGoal<'tcx>),
-    [] TypeOpAscribeUserTypeWellFormed(CanonicalTypeOpAscribeUserTypeWellFormedGoal<'tcx>),
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
     [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),
     [] TypeOpProvePredicate(CanonicalTypeOpProvePredicateGoal<'tcx>),
