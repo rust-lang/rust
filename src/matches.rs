@@ -17,7 +17,7 @@ use syntax::source_map::{BytePos, Span};
 use syntax::{ast, ptr};
 
 use comment::{combine_strs_with_missing_comments, rewrite_comment};
-use config::{Config, ControlBraceStyle, IndentStyle};
+use config::{Config, ControlBraceStyle, IndentStyle, Version};
 use expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
     rewrite_multiple_patterns, ExprType, RhsTactics,
@@ -413,11 +413,12 @@ fn rewrite_match_body(
             } else {
                 ""
             };
-            let semicolon = if semicolon_for_expr(context, body) {
-                ";"
-            } else {
-                ""
-            };
+            let semicolon =
+                if context.config.version() == Version::Two && semicolon_for_expr(context, body) {
+                    ";"
+                } else {
+                    ""
+                };
             ("{", format!("{}{}}}{}", semicolon, indent_str, comma))
         } else {
             ("", String::from(","))

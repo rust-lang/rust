@@ -1,3 +1,4 @@
 error_on_line_overflow = true
 error_on_unformatted = true
+version = "Two"
 edition = "2018"
