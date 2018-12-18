@@ -13,9 +13,14 @@ use super::super::{Iterator, DoubleEndedIterator, FusedIterator, TrustedLen};
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<A, B> {
-    pub(in super::super) a: A,
-    pub(in super::super) b: B,
-    pub(in super::super) state: ChainState,
+    a: A,
+    b: B,
+    state: ChainState,
+}
+impl<A, B> Chain<A, B> {
+    pub(in super::super) fn new(a: A, b: B) -> Chain<A, B> {
+        Chain { a, b, state: ChainState::Both }
+    }
 }
 
 // The iterator protocol specifies that iteration ends with the return value
@@ -32,7 +37,7 @@ pub struct Chain<A, B> {
 //  The fourth state (neither iterator is remaining) only occurs after Chain has
 //  returned None once, so we don't need to store this state.
 #[derive(Clone, Debug)]
-pub(in super::super) enum ChainState {
+enum ChainState {
     // both front and back iterator are remaining
     Both,
     // only front is remaining

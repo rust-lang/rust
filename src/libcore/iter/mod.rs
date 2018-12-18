@@ -353,7 +353,7 @@ pub use self::adapters::Flatten;
 #[unstable(feature = "iter_copied", issue = "57127")]
 pub use self::adapters::Copied;
 
-use self::adapters::{flatten_compat, ChainState, ZipImpl};
+use self::adapters::{flatten_compat, ZipImpl};
 pub(crate) use self::adapters::TrustedRandomAccess;
 
 mod range;

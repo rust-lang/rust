@@ -6,7 +6,7 @@ use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, F
 use super::super::{Flatten, FlatMap, flatten_compat};
 use super::super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::super::{Zip, Sum, Product};
-use super::super::{ChainState, FromIterator, ZipImpl};
+use super::super::{FromIterator, ZipImpl};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 
@@ -425,7 +425,7 @@ pub trait Iterator {
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
         Self: Sized, U: IntoIterator<Item=Self::Item>,
     {
-        Chain{a: self, b: other.into_iter(), state: ChainState::Both}
+        Chain::new(self, other.into_iter())
     }
 
     /// 'Zips up' two iterators into a single iterator of pairs.
