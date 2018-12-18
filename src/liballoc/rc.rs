@@ -325,8 +325,10 @@ impl<T> Rc<T> {
         }
     }
 
+    /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
+    /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
-    pub fn pinned(value: T) -> Pin<Rc<T>> {
+    pub fn pin(value: T) -> Pin<Rc<T>> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
     }
 

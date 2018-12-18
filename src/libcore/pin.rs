@@ -70,7 +70,7 @@
 //!             slice: NonNull::dangling(),
 //!             _pin: PhantomPinned,
 //!         };
-//!         let mut boxed = Box::pinned(res);
+//!         let mut boxed = Box::pin(res);
 //!
 //!         let slice = NonNull::from(&boxed.data);
 //!         // we know this is safe because modifying a field doesn't move the whole struct

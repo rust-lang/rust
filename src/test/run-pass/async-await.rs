@@ -138,7 +138,7 @@ where
     F: FnOnce(u8) -> Fut,
     Fut: Future<Output = u8>,
 {
-    let mut fut = Box::pinned(f(9));
+    let mut fut = Box::pin(f(9));
     let counter = Arc::new(Counter { wakes: AtomicUsize::new(0) });
     let waker = local_waker_from_nonlocal(counter.clone());
     assert_eq!(0, counter.wakes.load(atomic::Ordering::SeqCst));
