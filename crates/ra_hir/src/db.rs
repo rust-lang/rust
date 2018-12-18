@@ -27,20 +27,16 @@ pub trait HirDatabase: SyntaxDatabase
     }
     fn fn_syntax(fn_id: FnId) -> FnDefNode {
         type FnSyntaxQuery;
-        // Don't retain syntax trees in memory
-        storage dependencies;
         use fn query_definitions::fn_syntax;
     }
 
     fn file_items(file_id: FileId) -> Arc<SourceFileItems> {
         type SourceFileItemsQuery;
-        storage dependencies;
         use fn query_definitions::file_items;
     }
 
     fn file_item(source_item_id: SourceItemId) -> SyntaxNode {
         type FileItemQuery;
-        storage dependencies;
         use fn query_definitions::file_item;
     }
 

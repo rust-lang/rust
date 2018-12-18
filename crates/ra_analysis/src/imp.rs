@@ -10,7 +10,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
-use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase, SourceFileQuery};
+use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
@@ -43,6 +43,7 @@ impl AnalysisHostImpl {
     }
     pub fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
+        self.gc_syntax_trees();
 
         for (file_id, text) in change.files_changed {
             self.db
@@ -115,6 +116,21 @@ impl AnalysisHostImpl {
                 .set((), Arc::new(crate_graph))
         }
     }
+
+    fn gc_syntax_trees(&mut self) {
+        self.db
+            .query(ra_db::SourceFileQuery)
+            .sweep(salsa::SweepStrategy::default().discard_values());
+        self.db
+            .query(hir::db::FnSyntaxQuery)
+            .sweep(salsa::SweepStrategy::default().discard_values());
+        self.db
+            .query(hir::db::SourceFileItemsQuery)
+            .sweep(salsa::SweepStrategy::default().discard_values());
+        self.db
+            .query(hir::db::FileItemQuery)
+            .sweep(salsa::SweepStrategy::default().discard_values());
+    }
 }
 
 pub(crate) struct AnalysisImpl {
@@ -160,9 +176,6 @@ impl AnalysisImpl {
                 .filter_map(|it| it.ok())
                 .collect()
         };
-        self.db
-            .query(SourceFileQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
     /// This returns `Vec` because a module may be included from several places. We
