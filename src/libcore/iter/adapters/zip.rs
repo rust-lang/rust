@@ -18,6 +18,15 @@ pub struct Zip<A, B> {
     index: usize,
     len: usize,
 }
+impl<A: Iterator, B: Iterator> Zip<A, B> {
+    fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
+        while let Some(x) = Iterator::next(self) {
+            if n == 0 { return Some(x) }
+            n -= 1;
+        }
+        None
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
@@ -59,13 +68,6 @@ pub(in super::super) trait ZipImpl<A, B> {
     fn next(&mut self) -> Option<Self::Item>;
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
-    fn super_nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        while let Some(x) = self.next() {
-            if n == 0 { return Some(x) }
-            n -= 1;
-        }
-        None
-    }
     fn next_back(&mut self) -> Option<Self::Item>
         where A: DoubleEndedIterator + ExactSizeIterator,
               B: DoubleEndedIterator + ExactSizeIterator;
