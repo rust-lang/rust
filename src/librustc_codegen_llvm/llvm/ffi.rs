@@ -1601,15 +1601,12 @@ extern "C" {
                                                 -> &'a Value;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
-}
 
-#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
-extern "C" {
+    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
+    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
-}
 
-extern "C" {
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
     pub fn LLVMIsAConstantFP(value_ref: &Value) -> Option<&Value>;
 
@@ -1687,21 +1684,15 @@ extern "C" {
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
     pub fn LLVMRustGetSectionName(SI: &SectionIterator, data: &mut *const c_char) -> size_t;
-}
 
-#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
-extern "C" {
+    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
-}
 
-extern "C" {
     pub fn LLVMContextSetDiagnosticHandler(C: &Context,
                                            Handler: DiagnosticHandler,
                                            DiagnosticContext: *mut c_void);
-}
 
-#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
-extern "C" {
+    #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackOptimizationDiagnostic(DI: &'a DiagnosticInfo,
                                                 pass_name_out: &RustString,
                                                 function_out: &mut Option<&'a Value>,
@@ -1709,34 +1700,23 @@ extern "C" {
                                                 loc_column_out: &mut c_uint,
                                                 loc_filename_out: &RustString,
                                                 message_out: &RustString);
-}
 
-extern "C" {
     pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: &'a DiagnosticInfo,
                                              cookie_out: &mut c_uint,
                                              message_out: &mut Option<&'a Twine>,
                                              instruction_out: &mut Option<&'a Value>);
-}
 
-#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
-extern "C" {
+    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
-}
-
-extern "C" {
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: &Context,
                                                  H: InlineAsmDiagHandler,
                                                  CX: *mut c_void);
-}
 
-#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
-extern "C" {
+    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
-}
 
-extern "C" {
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
                                 Members: *const &RustArchiveMember,
