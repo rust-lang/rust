@@ -997,7 +997,7 @@ span.since {
 		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
-		z-index: 1;
+		z-index: 11;
 	}
 
 	.sidebar > .location {
