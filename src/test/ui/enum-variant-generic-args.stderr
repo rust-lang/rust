@@ -7,35 +7,35 @@ LL |     Enum::<()>::SVariant::<()>(());
    |     |           did you mean `TSVariant`?
    |     did you mean `Enum::SVariant { /* fields */ }`?
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:9:27
    |
 LL |         Self::TSVariant::<()>(());
-   |                           ^^ type parameter not allowed
+   |                           ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:11:16
    |
 LL |         Self::<()>::TSVariant(());
-   |                ^^ type parameter not allowed
+   |                ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:13:16
    |
 LL |         Self::<()>::TSVariant::<()>(());
-   |                ^^ type parameter not allowed
+   |                ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:13:33
    |
 LL |         Self::<()>::TSVariant::<()>(());
-   |                                 ^^ type parameter not allowed
+   |                                 ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:19:26
    |
 LL |         Self::SVariant::<()>(());
-   |                          ^^ type parameter not allowed
+   |                          ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<Self>::SVariant::<()>`
   --> $DIR/enum-variant-generic-args.rs:19:9
@@ -52,11 +52,11 @@ help: `<Self>::SVariant::<()>` is a unit variant, you need to write it without t
 LL |         <Self>::SVariant::<()>;
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:21:16
    |
 LL |         Self::<()>::SVariant(());
-   |                ^^ type parameter not allowed
+   |                ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<Self<()>>::SVariant`
   --> $DIR/enum-variant-generic-args.rs:21:9
@@ -73,17 +73,17 @@ help: `<Self<()>>::SVariant` is a unit variant, you need to write it without the
 LL |         <Self<()>>::SVariant;
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:23:16
    |
 LL |         Self::<()>::SVariant::<()>(());
-   |                ^^ type parameter not allowed
+   |                ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:23:32
    |
 LL |         Self::<()>::SVariant::<()>(());
-   |                                ^^ type parameter not allowed
+   |                                ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<Self<()>>::SVariant::<()>`
   --> $DIR/enum-variant-generic-args.rs:23:9
@@ -100,29 +100,29 @@ help: `<Self<()>>::SVariant::<()>` is a unit variant, you need to write it witho
 LL |         <Self<()>>::SVariant::<()>;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:32:29
    |
 LL |     Enum::<()>::TSVariant::<()>(());
-   |                             ^^ type parameter not allowed
+   |                             ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:35:24
    |
 LL |     Alias::TSVariant::<()>(());
-   |                        ^^ type parameter not allowed
+   |                        ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:37:30
    |
 LL |     Alias::<()>::TSVariant::<()>(());
-   |                              ^^ type parameter not allowed
+   |                              ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:40:29
    |
 LL |     AliasFixed::TSVariant::<()>(());
-   |                             ^^ type parameter not allowed
+   |                             ^^ type argument not allowed
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/enum-variant-generic-args.rs:42:18
@@ -136,17 +136,17 @@ error[E0107]: wrong number of type arguments: expected 0, found 1
 LL |     AliasFixed::<()>::TSVariant::<()>(());
    |                  ^^ unexpected type argument
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:44:35
    |
 LL |     AliasFixed::<()>::TSVariant::<()>(());
-   |                                   ^^ type parameter not allowed
+   |                                   ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:53:23
    |
 LL |     Alias::SVariant::<()>(());
-   |                       ^^ type parameter not allowed
+   |                       ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<Alias>::SVariant::<()>`
   --> $DIR/enum-variant-generic-args.rs:53:5
@@ -163,11 +163,11 @@ help: `<Alias>::SVariant::<()>` is a unit variant, you need to write it without 
 LL |     <Alias>::SVariant::<()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:55:29
    |
 LL |     Alias::<()>::SVariant::<()>(());
-   |                             ^^ type parameter not allowed
+   |                             ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<Alias<()>>::SVariant::<()>`
   --> $DIR/enum-variant-generic-args.rs:55:5
@@ -184,11 +184,11 @@ help: `<Alias<()>>::SVariant::<()>` is a unit variant, you need to write it with
 LL |     <Alias<()>>::SVariant::<()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:58:28
    |
 LL |     AliasFixed::SVariant::<()>(());
-   |                            ^^ type parameter not allowed
+   |                            ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<AliasFixed>::SVariant::<()>`
   --> $DIR/enum-variant-generic-args.rs:58:5
@@ -232,11 +232,11 @@ error[E0107]: wrong number of type arguments: expected 0, found 1
 LL |     AliasFixed::<()>::SVariant::<()>(());
    |                  ^^ unexpected type argument
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/enum-variant-generic-args.rs:62:34
    |
 LL |     AliasFixed::<()>::SVariant::<()>(());
-   |                                  ^^ type parameter not allowed
+   |                                  ^^ type argument not allowed
 
 error[E0618]: expected function, found enum variant `<AliasFixed<()>>::SVariant::<()>`
   --> $DIR/enum-variant-generic-args.rs:62:5

@@ -6,7 +6,7 @@ trait Tr {
         //~^ ERROR expected struct, variant or union type, found Self
         let z = Self::<u8> {};
         //~^ ERROR expected struct, variant or union type, found Self
-        //~| ERROR type parameters are not allowed on this type
+        //~| ERROR type arguments are not allowed on this entity
         match s {
             Self { .. } => {}
             //~^ ERROR expected struct, variant or union type, found Self
@@ -17,7 +17,7 @@ trait Tr {
 impl Tr for S {
     fn f() {
         let s = Self {}; // OK
-        let z = Self::<u8> {}; //~ ERROR type parameters are not allowed on this type
+        let z = Self::<u8> {}; //~ ERROR type arguments are not allowed on this entity
         match s {
             Self { .. } => {} // OK
         }
@@ -27,7 +27,7 @@ impl Tr for S {
 impl S {
     fn g() {
         let s = Self {}; // OK
-        let z = Self::<u8> {}; //~ ERROR type parameters are not allowed on this type
+        let z = Self::<u8> {}; //~ ERROR type arguments are not allowed on this entity
         match s {
             Self { .. } => {} // OK
         }

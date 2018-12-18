@@ -420,7 +420,7 @@ pub struct GenericArgs {
     /// The generic arguments for this path segment.
     pub args: HirVec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
-    /// E.g., `Foo<A=Bar>`.
+    /// E.g., `Foo<A = Bar>`.
     pub bindings: HirVec<TypeBinding>,
     /// Were arguments written in parenthesized form `Fn(T) -> U`?
     /// This is required mostly for pretty-printing and diagnostics,

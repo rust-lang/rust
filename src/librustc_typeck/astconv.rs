@@ -1437,7 +1437,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                             if err_for_lt { continue }
                             err_for_lt = true;
                             (struct_span_err!(self.tcx().sess, lt.span, E0110,
-                                              "lifetime parameters are not allowed on this type"),
+                                              "lifetime arguments are not allowed on this entity"),
                              lt.span,
                              "lifetime")
                         }
@@ -1445,12 +1445,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                             if err_for_ty { continue }
                             err_for_ty = true;
                             (struct_span_err!(self.tcx().sess, ty.span, E0109,
-                                              "type parameters are not allowed on this type"),
+                                              "type arguments are not allowed on this entity"),
                              ty.span,
                              "type")
                         }
                     };
-                    span_err.span_label(span, format!("{} parameter not allowed", kind))
+                    span_err.span_label(span, format!("{} argument not allowed", kind))
                             .emit();
                     if err_for_lt && err_for_ty {
                         break;

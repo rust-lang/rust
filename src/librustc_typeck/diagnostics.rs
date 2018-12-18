@@ -1291,7 +1291,7 @@ You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:
 
 ```compile_fail,E0109
-type X = u32<i32>; // error: type parameters are not allowed on this type
+type X = u32<i32>; // error: type arguments are not allowed on this entity
 ```
 
 Please check that you used the correct type and recheck its definition. Perhaps

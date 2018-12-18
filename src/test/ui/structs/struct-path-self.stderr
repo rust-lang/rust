@@ -4,11 +4,11 @@ error[E0071]: expected struct, variant or union type, found Self
 LL |         let s = Self {};
    |                 ^^^^ not a struct
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-self.rs:7:24
    |
 LL |         let z = Self::<u8> {};
-   |                        ^^ type parameter not allowed
+   |                        ^^ type argument not allowed
 
 error[E0071]: expected struct, variant or union type, found Self
   --> $DIR/struct-path-self.rs:7:17
@@ -22,17 +22,17 @@ error[E0071]: expected struct, variant or union type, found Self
 LL |             Self { .. } => {}
    |             ^^^^ not a struct
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-self.rs:20:24
    |
-LL |         let z = Self::<u8> {}; //~ ERROR type parameters are not allowed on this type
-   |                        ^^ type parameter not allowed
+LL |         let z = Self::<u8> {}; //~ ERROR type arguments are not allowed on this entity
+   |                        ^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/struct-path-self.rs:30:24
    |
-LL |         let z = Self::<u8> {}; //~ ERROR type parameters are not allowed on this type
-   |                        ^^ type parameter not allowed
+LL |         let z = Self::<u8> {}; //~ ERROR type arguments are not allowed on this entity
+   |                        ^^ type argument not allowed
 
 error: aborting due to 6 previous errors
 
