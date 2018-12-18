@@ -75,7 +75,7 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-    pub STUTTER,
+    pub MODULE_NAME_REPETITIONS,
     pedantic,
     "type names prefixed/postfixed with their containing module's name"
 }
@@ -126,7 +126,12 @@ impl EnumVariantNames {
 
 impl LintPass for EnumVariantNames {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ENUM_VARIANT_NAMES, PUB_ENUM_VARIANT_NAMES, STUTTER, MODULE_INCEPTION)
+        lint_array!(
+            ENUM_VARIANT_NAMES,
+            PUB_ENUM_VARIANT_NAMES,
+            MODULE_NAME_REPETITIONS,
+            MODULE_INCEPTION
+        )
     }
 }
 
@@ -277,7 +282,7 @@ impl EarlyLintPass for EnumVariantNames {
                             match item_camel.chars().nth(nchars) {
                                 Some(c) if is_word_beginning(c) => span_lint(
                                     cx,
-                                    STUTTER,
+                                    MODULE_NAME_REPETITIONS,
                                     item.span,
                                     "item name starts with its containing module's name",
                                 ),
@@ -287,7 +292,7 @@ impl EarlyLintPass for EnumVariantNames {
                         if rmatching == nchars {
                             span_lint(
                                 cx,
-                                STUTTER,
+                                MODULE_NAME_REPETITIONS,
                                 item.span,
                                 "item name ends with its containing module's name",
                             );
