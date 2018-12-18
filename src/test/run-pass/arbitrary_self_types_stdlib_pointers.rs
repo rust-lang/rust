@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pin)]
+#![feature(arbitrary_self_types)]
 #![feature(rustc_attrs)]
 
 use std::{

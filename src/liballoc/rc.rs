@@ -325,7 +325,7 @@ impl<T> Rc<T> {
         }
     }
 
-    #[unstable(feature = "pin", issue = "49150")]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn pinned(value: T) -> Pin<Rc<T>> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
     }
@@ -1931,5 +1931,5 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
     }
 }
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> { }

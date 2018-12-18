@@ -303,7 +303,7 @@ impl<T> Arc<T> {
         Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
     }
 
-    #[unstable(feature = "pin", issue = "49150")]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn pinned(data: T) -> Pin<Arc<T>> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
@@ -2047,5 +2047,5 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
     }
 }
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> { }

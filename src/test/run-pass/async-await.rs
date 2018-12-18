@@ -10,7 +10,7 @@
 
 // edition:2018
 
-#![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
+#![feature(arbitrary_self_types, async_await, await_macro, futures_api)]
 
 use std::pin::Pin;
 use std::future::Future;
