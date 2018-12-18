@@ -621,7 +621,6 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
 /// ```rust
-/// #![feature(pin)]
 /// use std::mem::replace;
 /// use std::pin::Pin;
 ///
