@@ -5147,11 +5147,13 @@ impl<'a> Resolver<'a> {
             if let (
                 Ok(snippet),
                 NameBindingKind::Import { directive, ..},
-                _dummy @ false,
+                false,
+                false,
             ) = (
                 cm.span_to_snippet(binding.span),
                 binding.kind.clone(),
                 binding.span.is_dummy(),
+                binding.span.ctxt().outer().expn_info().is_some(),
             ) {
                 let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
                     format!("Other{}", name)
