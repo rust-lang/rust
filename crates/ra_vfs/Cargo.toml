@@ -12,3 +12,6 @@ crossbeam-channel = "0.2.4"
 log = "0.4.6"
 
 thread_worker = { path = "../thread_worker" }
+
+[dev-dependencies]
+tempfile = "3"

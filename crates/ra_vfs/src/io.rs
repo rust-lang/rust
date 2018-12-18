@@ -1,35 +1,26 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    thread::JoinHandle,
 };
 
 use walkdir::{DirEntry, WalkDir};
-use crossbeam_channel::{Sender, Receiver};
 use thread_worker::{WorkerHandle};
+use relative_path::RelativePathBuf;
 
 use crate::VfsRoot;
 
-pub(crate) enum Task {
-    ScanRoot {
-        root: VfsRoot,
-        path: PathBuf,
-        filter: Box<FnMut(&DirEntry) -> bool + Send>,
-    },
-}
-
-#[derive(Debug)]
-pub(crate) struct FileEvent {
+pub(crate) struct Task {
+    pub(crate) root: VfsRoot,
     pub(crate) path: PathBuf,
-    pub(crate) kind: FileEventKind,
+    pub(crate) filter: Box<Fn(&DirEntry) -> bool + Send>,
 }
 
-#[derive(Debug)]
-pub(crate) enum FileEventKind {
-    Add(String),
+pub struct TaskResult {
+    pub(crate) root: VfsRoot,
+    pub(crate) files: Vec<(RelativePathBuf, String)>,
 }
 
-pub(crate) type Worker = thread_worker::Worker<Task, (PathBuf, Vec<FileEvent>)>;
+pub(crate) type Worker = thread_worker::Worker<Task, TaskResult>;
 
 pub(crate) fn start() -> (Worker, WorkerHandle) {
     thread_worker::spawn("vfs", 128, |input_receiver, output_sender| {
@@ -39,17 +30,17 @@ pub(crate) fn start() -> (Worker, WorkerHandle) {
     })
 }
 
-fn handle_task(task: Task) -> (PathBuf, Vec<FileEvent>) {
-    let Task::ScanRoot { path, .. } = task;
+fn handle_task(task: Task) -> TaskResult {
+    let Task { root, path, filter } = task;
     log::debug!("loading {} ...", path.as_path().display());
-    let events = load_root(path.as_path());
+    let files = load_root(path.as_path(), &*filter);
     log::debug!("... loaded {}", path.as_path().display());
-    (path, events)
+    TaskResult { root, files }
 }
 
-fn load_root(path: &Path) -> Vec<FileEvent> {
+fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePathBuf, String)> {
     let mut res = Vec::new();
-    for entry in WalkDir::new(path) {
+    for entry in WalkDir::new(root).into_iter().filter_entry(filter) {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
@@ -71,10 +62,8 @@ fn load_root(path: &Path) -> Vec<FileEvent> {
                 continue;
             }
         };
-        res.push(FileEvent {
-            path: path.to_owned(),
-            kind: FileEventKind::Add(text),
-        })
+        let path = RelativePathBuf::from_path(path.strip_prefix(root).unwrap()).unwrap();
+        res.push((path.to_owned(), text))
     }
     res
 }

@@ -1,5 +1,4 @@
 use std::{
-    hash::{Hash, Hasher},
     marker::PhantomData,
     ops::{Index, IndexMut},
 };
@@ -20,6 +19,12 @@ impl<ID: ArenaId, T> Arena<ID, T> {
         let id = self.data.len() as u32;
         self.data.push(value);
         ID::from_u32(id)
+    }
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (ID, &'a T)> {
+        self.data
+            .iter()
+            .enumerate()
+            .map(|(idx, value)| (ID::from_u32(idx as u32), value))
     }
 }
 
