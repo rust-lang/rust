@@ -1,6 +1,6 @@
 //ignore-windows: Uses POSIX APIs
 
-#![feature(libc)]
+#![feature(rustc_private)]
 extern crate libc;
 
 use std::mem;

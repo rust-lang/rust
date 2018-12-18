@@ -3,7 +3,7 @@
 extern crate cargo_metadata;
 
 use std::path::{PathBuf, Path};
-use std::io::{self, Write};
+use std::io::{self, Write, BufRead};
 use std::process::Command;
 use std::fs::{self, File};
 
@@ -114,6 +114,36 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     package.targets.into_iter()
 }
 
+fn xargo_version() -> Option<(u32, u32, u32)> {
+    let out = Command::new("xargo").arg("--version").output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    // Parse output. The first line looks like "xargo 0.3.12 (b004f1c 2018-12-13)".
+    let line = out.stderr.lines().nth(0)
+        .expect("malformed `xargo --version` output: not at least one line")
+        .expect("malformed `xargo --version` output: error reading first line");
+    let version = line.split(' ').nth(1)
+        .expect("malformed `xargo --version` output: not at least two words");
+    let mut version_pieces = version.split('.');
+    let major = version_pieces.next()
+        .expect("malformed `xargo --version` output: not a major version piece")
+        .parse()
+        .expect("malformed `xargo --version` output: major version is not an integer");
+    let minor = version_pieces.next()
+        .expect("malformed `xargo --version` output: not a minor version piece")
+        .parse()
+        .expect("malformed `xargo --version` output: minor version is not an integer");
+    let patch = version_pieces.next()
+        .expect("malformed `xargo --version` output: not a patch version piece")
+        .parse()
+        .expect("malformed `xargo --version` output: patch version is not an integer");
+    if !version_pieces.next().is_none() {
+        panic!("malformed `xargo --version` output: more than three pieces in version");
+    }
+    Some((major, minor, patch))
+}
+
 fn ask(question: &str) {
     let mut buf = String::new();
     print!("{} [Y/n] ", question);
@@ -134,14 +164,15 @@ fn setup(ask_user: bool) {
     }
 
     // First, we need xargo
-    if Command::new("xargo").arg("--version").output().is_err()
-    {
+    let xargo = xargo_version();
+    if xargo.map_or(true, |v| v < (0, 3, 13)) {
         if ask_user {
-            ask("It seems you do not have xargo installed. I will run `cargo install xargo`. Proceed?");
+            ask("It seems you do not have a recent enough xargo installed. I will run `cargo install xargo -f`. Proceed?");
         } else {
-            println!("Installing xargo: `cargo install xargo`");
+            println!("Installing xargo: `cargo install xargo -f`");
         }
-        if !Command::new("cargo").args(&["install", "xargo"]).status().unwrap().success() {
+        // FIXME: Go back to using releases, once a 0.3.13 got released.
+        if !Command::new("cargo").args(&["install", "xargo", "-f", "--git", "https://github.com/japaric/xargo"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
         }
     }
@@ -304,8 +335,8 @@ fn main() {
                 _ => {}
             }
         }
-    } else {
-        // This arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC` env var set to itself:
+    } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+        // This arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself:
         // Dependencies get dispatched to rustc, the final test/binary to miri.
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
@@ -331,11 +362,11 @@ fn main() {
 
         // this conditional check for the --sysroot flag is there so users can call `cargo-miri` directly
         // without having to pass --sysroot or anything
+        let rustc_args = std::env::args().skip(2);
         let mut args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
-            std::env::args().skip(1).collect()
+            rustc_args.collect()
         } else {
-            std::env::args()
-                .skip(1)
+            rustc_args
                 .chain(Some("--sysroot".to_owned()))
                 .chain(Some(sys_root))
                 .collect()
@@ -364,6 +395,8 @@ fn main() {
             Err(ref e) if miri_enabled => panic!("error during miri run: {:?}", e),
             Err(ref e) => panic!("error during rustc call: {:?}", e),
         }
+    } else {
+        show_error(format!("Must be called with either `miri` or `rustc` as first argument."))
     }
 }
 
@@ -388,7 +421,7 @@ where
     let path = std::env::current_exe().expect("current executable path invalid");
     let exit_status = Command::new("cargo")
         .args(&args)
-        .env("RUSTC", path)
+        .env("RUSTC_WRAPPER", path)
         .spawn()
         .expect("could not run cargo")
         .wait()
