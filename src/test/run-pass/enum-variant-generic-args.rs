@@ -8,9 +8,9 @@ type Alias<T> = Enum<T>;
 type AliasFixed = Enum<()>;
 
 macro_rules! is_variant {
-    (TSVariant, $expr:expr) => (is_variant!(@TSVariant, (_), $expr));
-    (SVariant, $expr:expr) => (is_variant!(@SVariant, { v: _ }, $expr));
-    (@$variant:ident, $matcher:tt, $expr:expr) => (
+    (TSVariant, $expr:expr) => (is_variant!(@check TSVariant, (_), $expr));
+    (SVariant, $expr:expr) => (is_variant!(@check SVariant, { v: _ }, $expr));
+    (@check $variant:ident, $matcher:tt, $expr:expr) => (
         assert!(if let Enum::$variant::<()> $matcher = $expr { true } else { false },
                 "expr does not have correct type");
     );

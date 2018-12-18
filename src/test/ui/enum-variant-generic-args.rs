@@ -16,13 +16,16 @@ impl<T> Enum<T> {
     }
 
     fn s_variant() {
-        Self::SVariant::<()>(());
+        Self::SVariant::<()> { v: () };
         //~^ ERROR type arguments are not allowed on this entity [E0109]
-        Self::<()>::SVariant(());
+        //~^^ ERROR mismatched types [E0308]
+        Self::<()>::SVariant { v: () };
         //~^ ERROR type arguments are not allowed on this entity [E0109]
-        Self::<()>::SVariant::<()>(());
+        //~^^ ERROR mismatched types [E0308]
+        Self::<()>::SVariant::<()> { v: () };
         //~^ ERROR type arguments are not allowed on this entity [E0109]
         //~^^ ERROR type arguments are not allowed on this entity [E0109]
+        //~^^^ ERROR mismatched types [E0308]
     }
 }
 
@@ -47,19 +50,19 @@ fn main() {
 
     // Struct variant
 
-    Enum::<()>::SVariant::<()>(());
+    Enum::<()>::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this entity [E0109]
 
-    Alias::SVariant::<()>(());
+    Alias::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this entity [E0109]
-    Alias::<()>::SVariant::<()>(());
+    Alias::<()>::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this entity [E0109]
 
-    AliasFixed::SVariant::<()>(());
+    AliasFixed::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this entity [E0109]
-    AliasFixed::<()>::SVariant(());
+    AliasFixed::<()>::SVariant { v: () };
     //~^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
-    AliasFixed::<()>::SVariant::<()>(());
+    AliasFixed::<()>::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this entity [E0109]
     //~^^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
 }
