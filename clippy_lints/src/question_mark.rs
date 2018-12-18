@@ -84,6 +84,8 @@ impl Pass {
                             replacement_str = format!("Some({}?)", receiver_str);
                         }
                     }
+                } else if Self::moves_by_default(cx, subject) {
+                        replacement_str = format!("{}.as_ref()?;", receiver_str);
                 } else {
                         replacement_str = format!("{}?;", receiver_str);
                 }
@@ -103,6 +105,12 @@ impl Pass {
                 )
             }
         }
+    }
+
+    fn moves_by_default(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
+        let expr_ty = cx.tables.expr_ty(expression);
+
+        expr_ty.moves_by_default(cx.tcx, cx.param_env, expression.span)
     }
 
     fn is_option(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {

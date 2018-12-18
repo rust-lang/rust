@@ -35,5 +35,29 @@ error: this block may be rewritten with the `?` operator
 59 | |         };
    | |_________^ help: replace_it_with: `Some(self.opt?)`
 
-error: aborting due to 4 previous errors
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:72:9
+   |
+72 | /         if self.opt.is_none() {
+73 | |             return None;
+74 | |         }
+   | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:80:9
+   |
+80 | /         if self.opt.is_none() {
+81 | |             return None;
+82 | |         }
+   | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:88:9
+   |
+88 | /         if self.opt.is_none() {
+89 | |             return None;
+90 | |         }
+   | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
+
+error: aborting due to 7 previous errors
 
