@@ -1,8 +1,8 @@
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/qualified-path-params-2.rs:18:26
    |
 LL | type A = <S as Tr>::A::f<u8>;
-   |                          ^^ type parameter not allowed
+   |                          ^^ type argument not allowed
 
 error[E0223]: ambiguous associated type
   --> $DIR/qualified-path-params-2.rs:18:10

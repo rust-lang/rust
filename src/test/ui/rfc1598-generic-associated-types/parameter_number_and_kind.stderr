@@ -4,35 +4,35 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/parameter_number_and_kind.rs:17:27
    |
 LL |     type FOk<T> = Self::E<'static, T>;
-   |                           ^^^^^^^ lifetime parameter not allowed
+   |                           ^^^^^^^ lifetime argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/parameter_number_and_kind.rs:17:36
    |
 LL |     type FOk<T> = Self::E<'static, T>;
-   |                                    ^ type parameter not allowed
+   |                                    ^ type argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/parameter_number_and_kind.rs:20:26
    |
 LL |     type FErr1 = Self::E<'static, 'static>; // Error
-   |                          ^^^^^^^ lifetime parameter not allowed
+   |                          ^^^^^^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/parameter_number_and_kind.rs:22:29
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
-   |                             ^^^^^^^ lifetime parameter not allowed
+   |                             ^^^^^^^ lifetime argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/parameter_number_and_kind.rs:22:38
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
-   |                                      ^ type parameter not allowed
+   |                                      ^ type argument not allowed
 
 error: aborting due to 5 previous errors
 

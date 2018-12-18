@@ -16,23 +16,23 @@ error[E0261]: use of undeclared lifetime name `'undeclared`
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
    |                                         ^^^^^^^^^^^ undeclared lifetime
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/generic_associated_type_undeclared_lifetimes.rs:11:47
    |
 LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>
-   |                                               ^^ lifetime parameter not allowed
+   |                                               ^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/generic_associated_type_undeclared_lifetimes.rs:13:37
    |
 LL |         + Deref<Target = Self::Item<'b>>;
-   |                                     ^^ lifetime parameter not allowed
+   |                                     ^^ lifetime argument not allowed
 
-error[E0110]: lifetime parameters are not allowed on this type
+error[E0110]: lifetime arguments are not allowed on this entity
   --> $DIR/generic_associated_type_undeclared_lifetimes.rs:17:41
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
-   |                                         ^^^^^^^^^^^ lifetime parameter not allowed
+   |                                         ^^^^^^^^^^^ lifetime argument not allowed
 
 error: aborting due to 5 previous errors
 
