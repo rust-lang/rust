@@ -43,8 +43,6 @@
 //! # Examples
 //!
 //! ```rust
-//! #![feature(pin)]
-//!
 //! use std::pin::Pin;
 //! use std::marker::PhantomPinned;
 //! use std::ptr::NonNull;
@@ -78,7 +76,7 @@
 //!         // we know this is safe because modifying a field doesn't move the whole struct
 //!         unsafe {
 //!             let mut_ref: Pin<&mut Self> = Pin::as_mut(&mut boxed);
-//!             Pin::get_mut_unchecked(mut_ref).slice = slice;
+//!             Pin::get_unchecked_mut(mut_ref).slice = slice;
 //!         }
 //!         boxed
 //!     }
