@@ -5,8 +5,6 @@ use relative_path::RelativePathBuf;
 use ra_syntax::SmolStr;
 use salsa;
 
-use crate::file_resolver::FileResolverImp;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
 
@@ -123,7 +121,6 @@ pub struct SourceRootId(pub u32);
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
-    pub file_resolver: FileResolverImp,
     pub files: FxHashSet<FileId>,
 }
 

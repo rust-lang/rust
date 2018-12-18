@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use rustc_hash::FxHashSet;
 use relative_path::{RelativePath, RelativePathBuf};
 
-use crate::{FileId, FileResolver, SourceRoot, FileResolverImp};
+use crate::{FileId, FileResolver, SourceRoot};
 
 #[derive(Default, Debug, Clone)]
 pub struct FileMap(Vec<(FileId, RelativePathBuf)>);
@@ -17,11 +15,7 @@ impl FileMap {
 
     pub fn into_source_root(self) -> SourceRoot {
         let files = self.files();
-        let file_resolver = FileResolverImp::new(Arc::new(self));
-        SourceRoot {
-            file_resolver,
-            files,
-        }
+        SourceRoot { files }
     }
 
     pub fn files(&self) -> FxHashSet<FileId> {
