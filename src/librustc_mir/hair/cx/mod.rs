@@ -56,6 +56,9 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
+
+    /// See field with the same name on `Mir`
+    control_flow_destroyed: Vec<(Span, String)>,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -96,9 +99,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             constness,
             body_owner_kind,
             check_overflow,
+            control_flow_destroyed: Vec::new(),
         }
     }
 
+    pub fn control_flow_destroyed(self) -> Vec<(Span, String)> {
+        self.control_flow_destroyed
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {

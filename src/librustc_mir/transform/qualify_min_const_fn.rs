@@ -230,7 +230,7 @@ fn check_statement(
             check_rvalue(tcx, mir, rval, span)
         }
 
-        StatementKind::FakeRead(..) => Err((span, "match in const fn is unstable".into())),
+        StatementKind::FakeRead(_, place) => check_place(tcx, mir, place, span, PlaceMode::Read),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),

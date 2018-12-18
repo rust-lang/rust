@@ -149,6 +149,14 @@ pub struct Mir<'tcx> {
     /// This is used for the "rust-call" ABI.
     pub spread_arg: Option<Local>,
 
+    /// Mark this MIR of a const context other than const functions as having converted a `&&` or
+    /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
+    /// this conversion from happening and use short circuiting, we will cause the following code
+    /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
+    ///
+    /// List of places where control flow was destroyed. Used for error reporting.
+    pub control_flow_destroyed: Vec<(Span, String)>,
+
     /// A span representing this MIR, for error reporting
     pub span: Span,
 
@@ -167,6 +175,7 @@ impl<'tcx> Mir<'tcx> {
         arg_count: usize,
         upvar_decls: Vec<UpvarDecl>,
         span: Span,
+        control_flow_destroyed: Vec<(Span, String)>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place
         assert!(
@@ -191,6 +200,7 @@ impl<'tcx> Mir<'tcx> {
             spread_arg: None,
             span,
             cache: cache::Cache::new(),
+            control_flow_destroyed,
         }
     }
 
@@ -421,6 +431,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     arg_count,
     upvar_decls,
     spread_arg,
+    control_flow_destroyed,
     span,
     cache
 });
@@ -1748,6 +1759,9 @@ pub enum StatementKind<'tcx> {
     /// (e.g., inspecting constants and discriminant values), and the
     /// kind of pattern it comes from. This is in order to adapt potential
     /// error messages to these specific patterns.
+    ///
+    /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
+    /// never accessed still get some sanity checks for e.g. `let x: ! = ..;`
     FakeRead(FakeReadCause, Place<'tcx>),
 
     /// Write the discriminant for a variant to the enum Place.
@@ -2984,6 +2998,7 @@ BraceStructTypeFoldableImpl! {
         arg_count,
         upvar_decls,
         spread_arg,
+        control_flow_destroyed,
         span,
         cache,
     }

@@ -849,15 +849,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
 
-        Mir::new(self.cfg.basic_blocks,
-                 self.source_scopes,
-                 ClearCrossCrate::Set(self.source_scope_local_data),
-                 IndexVec::new(),
-                 yield_ty,
-                 self.local_decls,
-                 self.arg_count,
-                 self.upvar_decls,
-                 self.fn_span
+        Mir::new(
+            self.cfg.basic_blocks,
+            self.source_scopes,
+            ClearCrossCrate::Set(self.source_scope_local_data),
+            IndexVec::new(),
+            yield_ty,
+            self.local_decls,
+            self.arg_count,
+            self.upvar_decls,
+            self.fn_span,
+            self.hir.control_flow_destroyed(),
         )
     }
 

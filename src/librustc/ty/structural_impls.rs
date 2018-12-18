@@ -35,6 +35,7 @@ CloneTypeFoldableAndLiftImpls! {
     usize,
     ::ty::layout::VariantIdx,
     u64,
+    String,
     ::middle::region::Scope,
     ::syntax::ast::FloatTy,
     ::syntax::ast::NodeId,

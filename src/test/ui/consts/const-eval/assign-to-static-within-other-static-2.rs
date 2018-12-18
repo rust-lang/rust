@@ -24,7 +24,7 @@ unsafe impl Sync for Foo {}
 static FOO: Foo = Foo(UnsafeCell::new(42));
 
 static BAR: () = unsafe {
-    *FOO.0.get() = 5; //~ ERROR could not evaluate static initializer
+    *FOO.0.get() = 5; //~ ERROR contains unimplemented expression type
 };
 
 fn main() {}

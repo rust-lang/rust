@@ -27,9 +27,7 @@ fn foo() {}
 
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-    // we do not error on the above access, because that is not detectable statically. Instead,
-    // const evaluation will error when trying to evaluate it. Due to the error below, we never even
-    // attempt to const evaluate `BAR`, so we don't see the error
+    //~^ contains unimplemented expression
 
     foo();
     //~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants

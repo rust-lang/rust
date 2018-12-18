@@ -1,8 +1,21 @@
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/single_variant_match_ice.rs:6:5
+   |
+LL |     Foo::Prob => 42, //~ ERROR unimplemented expression type
+   |     ^^^^^^^^^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/single_variant_match_ice.rs:10:5
+   |
+LL |     x => 42, //~ ERROR unimplemented expression type
+   |     ^
+
 error: `if`, `match`, `&&` and `||` are not stable in const fn
-  --> $DIR/single_variant_match_ice.rs:10:13
+  --> $DIR/single_variant_match_ice.rs:18:13
    |
 LL |             Prob => 0x1, //~ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
    |             ^^^^
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0019`.

@@ -553,7 +553,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
-                            this.add(Qualif::NOT_CONST);
+                            if context.is_mutating_use() {
+                                // `not_const` errors out in const contexts
+                                this.not_const()
+                            } else {
+                                // just make sure this doesn't get promoted
+                                this.add(Qualif::NOT_CONST);
+                            }
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             match this.mode {
                                 Mode::Fn => {},
@@ -1178,7 +1184,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index) &&
                !self.tcx.features().const_let {
-
                 // Direct use of an argument is permitted.
                 match *rvalue {
                     Rvalue::Use(Operand::Copy(Place::Local(local))) |
@@ -1189,7 +1194,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                     _ => {}
                 }
-
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.contains(Qualif::FN_ARGUMENT) {
                     let decl = &self.mir.local_decls[index];
@@ -1348,6 +1352,37 @@ impl MirPass for QualifyAndPromoteConstants {
             // Do the actual promotion, now that we know what's viable.
             promote_consts::promote_candidates(mir, tcx, temps, candidates);
         } else {
+            if !mir.control_flow_destroyed.is_empty() {
+                let mut locals = mir.vars_iter();
+                if let Some(local) = locals.next() {
+                    let span = mir.local_decls[local].source_info.span;
+                    let mut error = tcx.sess.struct_span_err(
+                        span,
+                        &format!(
+                            "new features like let bindings are not permitted in {}s \
+                            which also use short circuiting operators",
+                            mode,
+                        ),
+                    );
+                    for (span, kind) in mir.control_flow_destroyed.iter() {
+                        error.span_note(
+                            *span,
+                            &format!("use of {} here does not actually short circuit due to \
+                            the const evaluator presently not being able to do control flow. \
+                            See https://github.com/rust-lang/rust/issues/49146 for more \
+                            information.", kind),
+                        );
+                    }
+                    for local in locals {
+                        let span = mir.local_decls[local].source_info.span;
+                        error.span_note(
+                            span,
+                            "more locals defined here",
+                        );
+                    }
+                    error.emit();
+                }
+            }
             let promoted_temps = if mode == Mode::Const {
                 // Already computed by `mir_const_qualif`.
                 const_promoted_temps.unwrap()

@@ -19,7 +19,7 @@ LL |     &Y
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
   --> $DIR/const-fn-not-safe-for-const.rs:40:13
    |
-LL |     let x = 22;
+LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
    |             ^^
    |
    = help: add #![feature(const_let)] to the crate attributes to enable
@@ -27,29 +27,29 @@ LL |     let x = 22;
 error[E0658]: statements in constant functions are unstable (see issue #48821)
   --> $DIR/const-fn-not-safe-for-const.rs:40:13
    |
-LL |     let x = 22;
+LL |     let x = 22; //~ ERROR let bindings in constant functions are unstable
    |             ^^
    |
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:43:13
+  --> $DIR/const-fn-not-safe-for-const.rs:42:13
    |
-LL |     let y = 44;
+LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
    |             ^^
    |
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:43:13
+  --> $DIR/const-fn-not-safe-for-const.rs:42:13
    |
-LL |     let y = 44;
+LL |     let y = 44; //~ ERROR let bindings in constant functions are unstable
    |             ^^
    |
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:46:5
+  --> $DIR/const-fn-not-safe-for-const.rs:44:5
    |
 LL |     x + y
    |     ^
@@ -57,7 +57,7 @@ LL |     x + y
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-not-safe-for-const.rs:46:9
+  --> $DIR/const-fn-not-safe-for-const.rs:44:9
    |
 LL |     x + y
    |         ^
