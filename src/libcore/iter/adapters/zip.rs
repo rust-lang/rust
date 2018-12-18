@@ -19,6 +19,9 @@ pub struct Zip<A, B> {
     len: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
+    pub(in super::super) fn new(a: A, b: B) -> Zip<A, B> {
+        ZipImpl::new(a, b)
+    }
     fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
         while let Some(x) = Iterator::next(self) {
             if n == 0 { return Some(x) }
@@ -62,7 +65,7 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
 
 // Zip specialization trait
 #[doc(hidden)]
-pub(in super::super) trait ZipImpl<A, B> {
+trait ZipImpl<A, B> {
     type Item;
     fn new(a: A, b: B) -> Self;
     fn next(&mut self) -> Option<Self::Item>;

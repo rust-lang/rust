@@ -13,7 +13,6 @@ mod zip;
 pub use self::chain::Chain;
 pub use self::flatten::{FlatMap, Flatten};
 pub use self::zip::Zip;
-pub(super) use self::zip::ZipImpl;
 pub(crate) use self::zip::TrustedRandomAccess;
 
 /// A double-ended iterator with the direction inverted.

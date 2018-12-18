@@ -5,8 +5,7 @@ use super::super::LoopState;
 use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{Flatten, FlatMap};
 use super::super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
-use super::super::{Zip, Sum, Product};
-use super::super::{FromIterator, ZipImpl};
+use super::super::{Zip, Sum, Product, FromIterator};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 
