@@ -72,6 +72,8 @@ impl Pass {
             if Self::is_option(cx, subject);
 
             then {
+                let receiver_str = &Sugg::hir(cx, subject, "..");
+                let mut replacement_str = String::new();
                 if let Some(else_) = else_ {
                     if_chain! {
                         if let ExprKind::Block(block, None) = &else_.node;
@@ -79,37 +81,22 @@ impl Pass {
                         if let Some(block_expr) = &block.expr;
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
                         then {
-                            span_lint_and_then(
-                                cx,
-                                QUESTION_MARK,
-                                expr.span,
-                                "this block may be rewritten with the `?` operator",
-                                |db| {
-                                    db.span_suggestion_with_applicability(
-                                        expr.span,
-                                        "replace_it_with",
-                                        format!("Some({}?)", Sugg::hir(cx, subject, "..")),
-                                        Applicability::MaybeIncorrect, // snippet
-                                    );
-                                }
-                            )
+                            replacement_str = format!("Some({}?)", receiver_str);
                         }
                     }
-                    return;
+                } else {
+                        replacement_str = format!("{}?;", receiver_str);
                 }
-
                 span_lint_and_then(
                     cx,
                     QUESTION_MARK,
                     expr.span,
                     "this block may be rewritten with the `?` operator",
                     |db| {
-                        let receiver_str = &Sugg::hir(cx, subject, "..");
-
                         db.span_suggestion_with_applicability(
                             expr.span,
                             "replace_it_with",
-                            format!("{}?;", receiver_str),
+                            replacement_str,
                             Applicability::MaybeIncorrect, // snippet
                         );
                     }
@@ -132,7 +119,7 @@ impl Pass {
                 }
 
                 false
-            },
+            }
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Def::VariantCtor(def_id, _) = cx.tables.qpath_def(qp, expression.hir_id) {
@@ -140,7 +127,7 @@ impl Pass {
                 }
 
                 false
-            },
+            }
             _ => false,
         }
     }
