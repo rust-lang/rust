@@ -921,4 +921,7 @@ impl<T: UseSpecializedDecodable> Decodable for T {
 impl<'a, T: ?Sized + Encodable> UseSpecializedEncodable for &'a T {}
 impl<T: ?Sized + Encodable> UseSpecializedEncodable for Box<T> {}
 impl<T: Decodable> UseSpecializedDecodable for Box<T> {}
-
+impl<T: ?Sized + Encodable> UseSpecializedEncodable for Rc<T> {}
+impl<T: Decodable> UseSpecializedDecodable for Rc<T> {}
+impl<T: ?Sized + Encodable> UseSpecializedEncodable for Arc<T> {}
+impl<T: Decodable> UseSpecializedDecodable for Arc<T> {}
