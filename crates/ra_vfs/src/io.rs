@@ -4,38 +4,47 @@ use std::{
     thread::JoinHandle,
 };
 
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 use crossbeam_channel::{Sender, Receiver};
-use thread_worker::{WorkerHandle, Worker};
+use thread_worker::{WorkerHandle};
 
-#[derive(Debug)]
-pub struct FileEvent {
-    pub path: PathBuf,
-    pub kind: FileEventKind,
+use crate::VfsRoot;
+
+pub(crate) enum Task {
+    ScanRoot {
+        root: VfsRoot,
+        path: PathBuf,
+        filter: Box<FnMut(&DirEntry) -> bool + Send>,
+    },
 }
 
 #[derive(Debug)]
-pub enum FileEventKind {
+pub(crate) struct FileEvent {
+    pub(crate) path: PathBuf,
+    pub(crate) kind: FileEventKind,
+}
+
+#[derive(Debug)]
+pub(crate) enum FileEventKind {
     Add(String),
 }
 
-pub(crate) type FsWorker = Worker<PathBuf, (PathBuf, Vec<FileEvent>)>;
+pub(crate) type Worker = thread_worker::Worker<Task, (PathBuf, Vec<FileEvent>)>;
 
-pub(crate) fn start() -> (FsWorker, WorkerHandle) {
-    thread_worker::spawn::<PathBuf, (PathBuf, Vec<FileEvent>), _>(
-        "vfs",
-        128,
-        |input_receiver, output_sender| {
-            input_receiver
-                .map(|path| {
-                    log::debug!("loading {} ...", path.as_path().display());
-                    let events = load_root(path.as_path());
-                    log::debug!("... loaded {}", path.as_path().display());
-                    (path, events)
-                })
-                .for_each(|it| output_sender.send(it))
-        },
-    )
+pub(crate) fn start() -> (Worker, WorkerHandle) {
+    thread_worker::spawn("vfs", 128, |input_receiver, output_sender| {
+        input_receiver
+            .map(handle_task)
+            .for_each(|it| output_sender.send(it))
+    })
+}
+
+fn handle_task(task: Task) -> (PathBuf, Vec<FileEvent>) {
+    let Task::ScanRoot { path, .. } = task;
+    log::debug!("loading {} ...", path.as_path().display());
+    let events = load_root(path.as_path());
+    log::debug!("... loaded {}", path.as_path().display());
+    (path, events)
 }
 
 fn load_root(path: &Path) -> Vec<FileEvent> {

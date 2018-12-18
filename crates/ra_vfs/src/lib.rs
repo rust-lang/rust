@@ -2,8 +2,8 @@
 //!
 //! When doing analysis, we don't want to do any IO, we want to keep all source
 //! code in memory. However, the actual source code is stored on disk, so you
-//! need to get it into the memory in the first place somehow. VFS is the
 //! component which does this.
+//! need to get it into the memory in the first place somehow. VFS is the
 //!
 //! It also is responsible for watching the disk for changes, and for merging
 //! editor state (modified, unsaved files) with disk state.
@@ -23,11 +23,10 @@ use std::{
 };
 
 use relative_path::RelativePathBuf;
-use thread_worker::{WorkerHandle, Worker};
+use thread_worker::{WorkerHandle};
 
 use crate::{
     arena::{ArenaId, Arena},
-    io::{FileEvent, FsWorker},
 };
 
 /// `RootFilter` is a predicate that checks if a file can belong to a root. If
@@ -87,7 +86,7 @@ struct Vfs {
     roots: Arena<VfsRoot, RootFilter>,
     files: Arena<VfsFile, VfsFileData>,
     // pending_changes: Vec<PendingChange>,
-    worker: FsWorker,
+    worker: io::Worker,
     worker_handle: WorkerHandle,
 }
 
