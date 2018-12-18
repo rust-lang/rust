@@ -83,7 +83,7 @@ mod generator_interior;
 mod intrinsic;
 mod op;
 
-use astconv::AstConv;
+use astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
 use rustc::hir::def::{CtorKind, Def};
@@ -506,9 +506,6 @@ impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
         &mut self.stack[ix]
     }
 }
-
-#[derive(Debug)]
-struct PathSeg(DefId, usize);
 
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     body_id: ast::NodeId,
@@ -5060,131 +5057,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Applicability::MachineApplicable);
     }
 
-    fn def_ids_for_path_segments(&self,
-                                 segments: &[hir::PathSegment],
-                                 self_ty: Option<Ty<'tcx>>,
-                                 def: Def)
-                                 -> Vec<PathSeg> {
-        // We need to extract the type parameters supplied by the user in
-        // the path `path`. Due to the current setup, this is a bit of a
-        // tricky-process; the problem is that resolve only tells us the
-        // end-point of the path resolution, and not the intermediate steps.
-        // Luckily, we can (at least for now) deduce the intermediate steps
-        // just from the end-point.
-        //
-        // There are basically five cases to consider:
-        //
-        // 1. Reference to a constructor of a struct:
-        //
-        //        struct Foo<T>(...)
-        //
-        //    In this case, the parameters are declared in the type space.
-        //
-        // 2. Reference to a constructor of an enum variant:
-        //
-        //        enum E<T> { Foo(...) }
-        //
-        //    In this case, the parameters are defined in the type space,
-        //    but may be specified either on the type or the variant.
-        //
-        // 3. Reference to a fn item or a free constant:
-        //
-        //        fn foo<T>() { }
-        //
-        //    In this case, the path will again always have the form
-        //    `a::b::foo::<T>` where only the final segment should have
-        //    type parameters. However, in this case, those parameters are
-        //    declared on a value, and hence are in the `FnSpace`.
-        //
-        // 4. Reference to a method or an associated constant:
-        //
-        //        impl<A> SomeStruct<A> {
-        //            fn foo<B>(...)
-        //        }
-        //
-        //    Here we can have a path like
-        //    `a::b::SomeStruct::<A>::foo::<B>`, in which case parameters
-        //    may appear in two places. The penultimate segment,
-        //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
-        //    final segment, `foo::<B>` contains parameters in fn space.
-        //
-        // 5. Reference to a local variable
-        //
-        //    Local variables can't have any type parameters.
-        //
-        // The first step then is to categorize the segments appropriately.
-
-        assert!(!segments.is_empty());
-        let last = segments.len() - 1;
-
-        let mut path_segs = vec![];
-
-        match def {
-            // Case 1. Reference to a struct constructor.
-            Def::StructCtor(def_id, ..) |
-            Def::SelfCtor(.., def_id) => {
-                // Everything but the final segment should have no
-                // parameters at all.
-                let generics = self.tcx.generics_of(def_id);
-                // Variant and struct constructors use the
-                // generics of their parent type definition.
-                let generics_def_id = generics.parent.unwrap_or(def_id);
-                path_segs.push(PathSeg(generics_def_id, last));
-            }
-
-            // Case 2. Reference to a variant constructor.
-            Def::VariantCtor(def_id, ..) => {
-                let adt_def = self_ty.and_then(|t| t.ty_adt_def());
-                let (generics_def_id, index) = if let Some(adt_def) = adt_def {
-                    debug_assert!(adt_def.is_enum());
-                    (adt_def.did, last)
-                } else if last >= 1 && segments[last - 1].args.is_some() {
-                    // Everything but the penultimate segment should have no
-                    // parameters at all.
-                    let enum_def_id = self.tcx.parent_def_id(def_id).unwrap();
-                    (enum_def_id, last - 1)
-                } else {
-                    // FIXME: lint here suggesting `Enum::<...>::Variant` form
-                    // instead of `Enum::Variant::<...>` form.
-
-                    // Everything but the final segment should have no
-                    // parameters at all.
-                    let generics = self.tcx.generics_of(def_id);
-                    // Variant and struct constructors use the
-                    // generics of their parent type definition.
-                    (generics.parent.unwrap_or(def_id), last)
-                };
-                path_segs.push(PathSeg(generics_def_id, index));
-            }
-
-            // Case 3. Reference to a top-level value.
-            Def::Fn(def_id) |
-            Def::Const(def_id) |
-            Def::Static(def_id, _) => {
-                path_segs.push(PathSeg(def_id, last));
-            }
-
-            // Case 4. Reference to a method or associated const.
-            Def::Method(def_id) |
-            Def::AssociatedConst(def_id) => {
-                if segments.len() >= 2 {
-                    let generics = self.tcx.generics_of(def_id);
-                    path_segs.push(PathSeg(generics.parent.unwrap(), last - 1));
-                }
-                path_segs.push(PathSeg(def_id, last));
-            }
-
-            // Case 5. Local variable, no generics.
-            Def::Local(..) | Def::Upvar(..) => {}
-
-            _ => bug!("unexpected definition: {:?}", def),
-        }
-
-        debug!("path_segs = {:?}", path_segs);
-
-        path_segs
-    }
-
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
@@ -5204,7 +5076,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
 
-        let path_segs = self.def_ids_for_path_segments(segments, self_ty, def);
+        let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
 
         let mut user_self_ty = None;
         match def {

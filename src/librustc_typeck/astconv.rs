@@ -32,6 +32,10 @@ use std::iter;
 use std::slice;
 
 use super::{check_type_alias_enum_variants_enabled};
+use rustc_data_structures::fx::FxHashSet;
+
+#[derive(Debug)]
+pub struct PathSeg(pub DefId, pub usize);
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
@@ -1470,6 +1474,134 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         err.span_label(span, "associated type not allowed here").emit();
     }
 
+    pub fn def_ids_for_path_segments(&self,
+                                     segments: &[hir::PathSegment],
+                                     self_ty: Option<Ty<'tcx>>,
+                                     def: Def)
+                                     -> Vec<PathSeg> {
+        // We need to extract the type parameters supplied by the user in
+        // the path `path`. Due to the current setup, this is a bit of a
+        // tricky-process; the problem is that resolve only tells us the
+        // end-point of the path resolution, and not the intermediate steps.
+        // Luckily, we can (at least for now) deduce the intermediate steps
+        // just from the end-point.
+        //
+        // There are basically five cases to consider:
+        //
+        // 1. Reference to a constructor of a struct:
+        //
+        //        struct Foo<T>(...)
+        //
+        //    In this case, the parameters are declared in the type space.
+        //
+        // 2. Reference to a constructor of an enum variant:
+        //
+        //        enum E<T> { Foo(...) }
+        //
+        //    In this case, the parameters are defined in the type space,
+        //    but may be specified either on the type or the variant.
+        //
+        // 3. Reference to a fn item or a free constant:
+        //
+        //        fn foo<T>() { }
+        //
+        //    In this case, the path will again always have the form
+        //    `a::b::foo::<T>` where only the final segment should have
+        //    type parameters. However, in this case, those parameters are
+        //    declared on a value, and hence are in the `FnSpace`.
+        //
+        // 4. Reference to a method or an associated constant:
+        //
+        //        impl<A> SomeStruct<A> {
+        //            fn foo<B>(...)
+        //        }
+        //
+        //    Here we can have a path like
+        //    `a::b::SomeStruct::<A>::foo::<B>`, in which case parameters
+        //    may appear in two places. The penultimate segment,
+        //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
+        //    final segment, `foo::<B>` contains parameters in fn space.
+        //
+        // 5. Reference to a local variable
+        //
+        //    Local variables can't have any type parameters.
+        //
+        // The first step then is to categorize the segments appropriately.
+
+        let tcx = self.tcx();
+
+        assert!(!segments.is_empty());
+        let last = segments.len() - 1;
+
+        let mut path_segs = vec![];
+
+        match def {
+            // Case 1. Reference to a struct constructor.
+            Def::StructCtor(def_id, ..) |
+            Def::SelfCtor(.., def_id) => {
+                // Everything but the final segment should have no
+                // parameters at all.
+                let generics = tcx.generics_of(def_id);
+                // Variant and struct constructors use the
+                // generics of their parent type definition.
+                let generics_def_id = generics.parent.unwrap_or(def_id);
+                path_segs.push(PathSeg(generics_def_id, last));
+            }
+
+            // Case 2. Reference to a variant constructor.
+            Def::Variant(def_id) |
+            Def::VariantCtor(def_id, ..) => {
+                let adt_def = self_ty.and_then(|t| t.ty_adt_def());
+                let (generics_def_id, index) = if let Some(adt_def) = adt_def {
+                    debug_assert!(adt_def.is_enum());
+                    (adt_def.did, last)
+                } else if last >= 1 && segments[last - 1].args.is_some() {
+                    // Everything but the penultimate segment should have no
+                    // parameters at all.
+                    let enum_def_id = tcx.parent_def_id(def_id).unwrap();
+                    (enum_def_id, last - 1)
+                } else {
+                    // FIXME: lint here recommending `Enum::<...>::Variant` form
+                    // instead of `Enum::Variant::<...>` form.
+
+                    // Everything but the final segment should have no
+                    // parameters at all.
+                    let generics = tcx.generics_of(def_id);
+                    // Variant and struct constructors use the
+                    // generics of their parent type definition.
+                    (generics.parent.unwrap_or(def_id), last)
+                };
+                path_segs.push(PathSeg(generics_def_id, index));
+            }
+
+            // Case 3. Reference to a top-level value.
+            Def::Fn(def_id) |
+            Def::Const(def_id) |
+            Def::Static(def_id, _) => {
+                path_segs.push(PathSeg(def_id, last));
+            }
+
+            // Case 4. Reference to a method or associated const.
+            Def::Method(def_id) |
+            Def::AssociatedConst(def_id) => {
+                if segments.len() >= 2 {
+                    let generics = tcx.generics_of(def_id);
+                    path_segs.push(PathSeg(generics.parent.unwrap(), last - 1));
+                }
+                path_segs.push(PathSeg(def_id, last));
+            }
+
+            // Case 5. Local variable, no generics.
+            Def::Local(..) | Def::Upvar(..) => {}
+
+            _ => bug!("unexpected definition: {:?}", def),
+        }
+
+        debug!("path_segs = {:?}", path_segs);
+
+        path_segs
+    }
+
     // Check a type `Path` and convert it to a `Ty`.
     pub fn def_to_ty(&self,
                      opt_self_ty: Option<Ty<'tcx>>,
@@ -1500,14 +1632,24 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
             }
-            Def::Variant(did) if permit_variants => {
+            Def::Variant(_) if permit_variants => {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_generics(path.segments.split_last().unwrap().1);
-                self.ast_path_to_ty(span,
-                                    tcx.parent_def_id(did).unwrap(),
-                                    path.segments.last().unwrap())
+
+                let path_segs = self.def_ids_for_path_segments(&path.segments, None, path.def);
+                let generic_segs: FxHashSet<_> =
+                    path_segs.iter().map(|PathSeg(_, index)| index).collect();
+                self.prohibit_generics(path.segments.iter().enumerate().filter_map(|(index, seg)| {
+                    if !generic_segs.contains(&index) {
+                        Some(seg)
+                    } else {
+                        None
+                    }
+                }));
+
+                let PathSeg(def_id, index) = path_segs.last().unwrap();
+                self.ast_path_to_ty(span, *def_id, &path.segments[*index])
             }
             Def::TyParam(did) => {
                 assert_eq!(opt_self_ty, None);
