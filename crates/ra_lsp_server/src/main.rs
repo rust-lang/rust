@@ -6,11 +6,11 @@ use ra_lsp_server::Result;
 
 fn main() -> Result<()> {
     ::std::env::set_var("RUST_BACKTRACE", "short");
-    Logger::with_env_or_str("error")
-        .duplicate_to_stderr(Duplicate::All)
-        .log_to_file()
-        .directory("log")
-        .start()?;
+    let logger = Logger::with_env_or_str("error").duplicate_to_stderr(Duplicate::All);
+    match ::std::env::var("RA_INTERNAL_MODE") {
+        Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
+        _ => logger.start()?,
+    };
     log::info!("lifecycle: server started");
     match ::std::panic::catch_unwind(main_inner) {
         Ok(res) => {
