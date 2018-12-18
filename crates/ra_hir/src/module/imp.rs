@@ -4,9 +4,9 @@ use ra_syntax::{
     ast::{self, NameOwner},
     SmolStr,
 };
-use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
-use ra_db::{SourceRoot, SourceRootId, FileResolverImp, Cancelable, FileId,};
+use arrayvec::ArrayVec;
+use ra_db::{SourceRoot, SourceRootId, Cancelable, FileId};
 
 use crate::{
     HirDatabase,
@@ -110,8 +110,7 @@ fn build_subtree(
 
         let (points_to, problem) = match sub {
             Submodule::Declaration(name) => {
-                let (points_to, problem) =
-                    resolve_submodule(source, &name, &source_root.file_resolver);
+                let (points_to, problem) = resolve_submodule(db, source, &name);
                 let points_to = points_to
                     .into_iter()
                     .map(|file_id| match roots.remove(&file_id) {
@@ -153,30 +152,32 @@ fn build_subtree(
 }
 
 fn resolve_submodule(
+    db: &impl HirDatabase,
     source: ModuleSource,
     name: &SmolStr,
-    file_resolver: &FileResolverImp,
 ) -> (Vec<FileId>, Option<Problem>) {
-    // TODO: handle submodules of inline modules properly
+    // FIXME: handle submodules of inline modules properly
     let file_id = source.file_id();
-    let mod_name = file_resolver.file_stem(file_id);
+    let source_root_id = db.file_source_root(file_id);
+    let path = db.file_relative_path(file_id);
+    let dir_path = path.parent().unwrap();
+    let mod_name = path.file_stem().unwrap_or("unknown");
     let is_dir_owner = mod_name == "mod" || mod_name == "lib" || mod_name == "main";
 
-    let file_mod = RelativePathBuf::from(format!("../{}.rs", name));
-    let dir_mod = RelativePathBuf::from(format!("../{}/mod.rs", name));
-    let file_dir_mod = RelativePathBuf::from(format!("../{}/{}.rs", mod_name, name));
-    let tmp1;
-    let tmp2;
-    let candidates = if is_dir_owner {
-        tmp1 = [&file_mod, &dir_mod];
-        tmp1.iter()
+    let file_mod = dir_path.join(format!("{}.rs", name));
+    let dir_mod = dir_path.join(format!("{}/mod.rs", name));
+    let file_dir_mod = dir_path.join(format!("{}/{}.rs", mod_name, name));
+    let mut candidates = ArrayVec::<[_; 2]>::new();
+    if is_dir_owner {
+        candidates.push(file_mod.clone());
+        candidates.push(dir_mod);
     } else {
-        tmp2 = [&file_dir_mod];
-        tmp2.iter()
+        candidates.push(file_dir_mod.clone());
     };
 
     let points_to = candidates
-        .filter_map(|path| file_resolver.resolve(file_id, path))
+        .into_iter()
+        .filter_map(|path| db.source_root_file_by_path(source_root_id, path))
         .collect::<Vec<_>>();
     let problem = if points_to.is_empty() {
         Some(Problem::UnresolvedModule {

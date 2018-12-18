@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rustc_hash::{FxHashSet, FxHashMap};
+use relative_path::RelativePathBuf;
 use ra_syntax::SmolStr;
 use salsa;
 
@@ -85,8 +86,21 @@ salsa::query_group! {
             type FileTextQuery;
             storage input;
         }
+        /// Path to a file, relative to the root of its source root.
+        fn file_relative_path(file_id: FileId) -> RelativePathBuf {
+            type FileRelativePathQuery;
+            storage input;
+        }
         fn file_source_root(file_id: FileId) -> SourceRootId {
             type FileSourceRootQuery;
+            storage input;
+        }
+        fn source_root_files(id: SourceRootId) -> Arc<FxHashSet<FileId>> {
+            type SourceRootFilesQuery;
+            storage input;
+        }
+        fn source_root_file_by_path(id: SourceRootId, path: RelativePathBuf) -> Option<FileId> {
+            type SourceRootFilesByPathQuery;
             storage input;
         }
         fn source_root(id: SourceRootId) -> Arc<SourceRoot> {
