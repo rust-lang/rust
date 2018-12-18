@@ -121,7 +121,11 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // Second argument (argc): 1
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-    ecx.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+    let argc = Scalar::from_int(1, dest.layout.size);
+    ecx.write_scalar(argc, dest)?;
+    let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
+    ecx.write_scalar(argc, argc_place.into())?;
+    ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
 
     // FIXME: extract main source file path
     // Third argument (argv): &[b"foo"]
@@ -132,7 +136,11 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
     ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
     ecx.memory_mut().mark_immutable(foo_place.to_ptr()?.alloc_id)?;
-    ecx.write_scalar(foo_place.ptr, dest)?;
+    let argv = foo_place.ptr;
+    ecx.write_scalar(argv, dest)?;
+    let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
+    ecx.write_scalar(argv, argv_place.into())?;
+    ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
 
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
@@ -253,6 +261,11 @@ pub struct Evaluator<'tcx> {
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, Pointer<Borrow>>,
 
+    /// Program arguments (`Option` because we can only initialize them after creating the ecx).
+    /// These are *pointers* to argc/argv because macOS.
+    pub(crate) argc: Option<Pointer<Borrow>>,
+    pub(crate) argv: Option<Pointer<Borrow>>,
+
     /// TLS state
     pub(crate) tls: TlsData<'tcx>,
 
@@ -267,6 +280,8 @@ impl<'tcx> Evaluator<'tcx> {
     fn new(validate: bool) -> Self {
         Evaluator {
             env_vars: HashMap::default(),
+            argc: None,
+            argv: None,
             tls: TlsData::default(),
             validate,
             stacked_borrows: stacked_borrows::State::default(),

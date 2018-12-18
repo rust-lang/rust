@@ -426,6 +426,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let paths = &[
                     (&["libc", "_SC_PAGESIZE"], Scalar::from_int(4096, dest.layout.size)),
                     (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
+                    (&["libc", "_SC_NPROCESSORS_ONLN"], Scalar::from_int(1, dest.layout.size)),
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
@@ -450,6 +451,10 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                         format!("Unimplemented sysconf name: {}", name),
                     ));
                 }
+            }
+
+            "isatty" => {
+                this.write_null(dest)?;
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
@@ -508,10 +513,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_null(dest)?;
             }
 
-            "_tlv_atexit" => {
-                // FIXME: Register the dtor
-            },
-
             // Determining stack base address
             "pthread_attr_init" | "pthread_attr_destroy" | "pthread_attr_get_np" |
             "pthread_getattr_np" | "pthread_self" | "pthread_get_stacksize_np" => {
@@ -549,7 +550,18 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_null(dest)?;
             }
 
-            // Windows API subs
+            // macOS API stubs
+            "_tlv_atexit" => {
+                // FIXME: Register the dtor
+            },
+            "_NSGetArgc" => {
+                this.write_scalar(Scalar::Ptr(this.machine.argc.unwrap()), dest)?;
+            },
+            "_NSGetArgv" => {
+                this.write_scalar(Scalar::Ptr(this.machine.argv.unwrap()), dest)?;
+            },
+
+            // Windows API stubs
             "AddVectoredExceptionHandler" => {
                 // any non zero value works for the stdlib. This is just used for stackoverflows anyway
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
@@ -571,8 +583,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 // this is c::ERROR_CALL_NOT_IMPLEMENTED
                 this.write_scalar(Scalar::from_int(120, dest.layout.size), dest)?;
             },
-
-            // Windows TLS
             "TlsAlloc" => {
                 // This just creates a key; Windows does not natively support TLS dtors.
 

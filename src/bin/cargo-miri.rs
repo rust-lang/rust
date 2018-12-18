@@ -171,8 +171,7 @@ fn setup(ask_user: bool) {
         } else {
             println!("Installing xargo: `cargo install xargo -f`");
         }
-        // FIXME: Go back to using releases, once a 0.3.13 got released.
-        if !Command::new("cargo").args(&["install", "xargo", "-f", "--git", "https://github.com/japaric/xargo"]).status().unwrap().success() {
+        if !Command::new("cargo").args(&["install", "xargo", "-f"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
         }
     }
@@ -310,9 +309,8 @@ fn main() {
                 (MiriCommand::Test, "lib") => {
                     // For libraries we call `cargo rustc -- --test <rustc args>`
                     // Notice now that `--test` is a rustc arg rather than a cargo arg. This tells
-                    // rustc to build a test harness which calls all #[test] functions. We don't
-                    // use the harness since we execute each #[test] function's MIR ourselves before
-                    // compilation even completes, but this option is necessary to build the library.
+                    // rustc to build a test harness which calls all #[test] functions.
+                    // We then execute that harness just like any other binary.
                     if let Err(code) = process(
                         vec!["--".to_string(), "--test".to_string()].into_iter().chain(
                             args,
