@@ -2,7 +2,7 @@ use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, Que
 use traits::query::Fallible;
 use hir::def_id::DefId;
 use mir::ProjectionKind;
-use ty::{self, ParamEnvAnd, Ty, TyCtxt, UserTypeAnnotation};
+use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::UserSubsts;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -66,61 +66,5 @@ BraceStructLiftImpl! {
 impl_stable_hash_for! {
     struct AscribeUserType<'tcx> {
         mir_ty, variance, def_id, user_substs, projs
-    }
-}
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct AscribeUserTypeWellFormed<'tcx> {
-    pub user_type_annotation: UserTypeAnnotation<'tcx>,
-}
-
-impl<'tcx> AscribeUserTypeWellFormed<'tcx> {
-    pub fn new(
-        user_type_annotation: UserTypeAnnotation<'tcx>,
-    ) -> Self {
-        Self { user_type_annotation, }
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for AscribeUserTypeWellFormed<'tcx> {
-    type QueryResponse = ();
-
-    fn try_fast_path(
-        _tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        _key: &ParamEnvAnd<'tcx, Self>,
-    ) -> Option<Self::QueryResponse> {
-        None
-    }
-
-    fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, ()>> {
-        tcx.type_op_ascribe_user_type_well_formed(canonicalized)
-    }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'gcx, ()>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, ()>> {
-        v
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for AscribeUserTypeWellFormed<'tcx> {
-        user_type_annotation
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for AscribeUserTypeWellFormed<'a> {
-        type Lifted = AscribeUserTypeWellFormed<'tcx>;
-        user_type_annotation
-    }
-}
-
-impl_stable_hash_for! {
-    struct AscribeUserTypeWellFormed<'tcx> {
-        user_type_annotation
     }
 }
