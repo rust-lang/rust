@@ -253,10 +253,10 @@ impl f32 {
         unsafe { intrinsics::fmaf32(self, a, b) }
     }
 
-    /// Calculates Euclidean division, the matching method for `mod_euc`.
+    /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
     /// This computes the integer `n` such that
-    /// `self = n * rhs + self.mod_euc(rhs)`.
+    /// `self = n * rhs + self.rem_euclid(rhs)`.
     /// In other words, the result is `self / rhs` rounded to the integer `n`
     /// such that `self >= n * rhs`.
     ///
@@ -266,14 +266,14 @@ impl f32 {
     /// #![feature(euclidean_division)]
     /// let a: f32 = 7.0;
     /// let b = 4.0;
-    /// assert_eq!(a.div_euc(b), 1.0); // 7.0 > 4.0 * 1.0
-    /// assert_eq!((-a).div_euc(b), -2.0); // -7.0 >= 4.0 * -2.0
-    /// assert_eq!(a.div_euc(-b), -1.0); // 7.0 >= -4.0 * -1.0
-    /// assert_eq!((-a).div_euc(-b), 2.0); // -7.0 >= -4.0 * 2.0
+    /// assert_eq!(a.div_euclid(b), 1.0); // 7.0 > 4.0 * 1.0
+    /// assert_eq!((-a).div_euclid(b), -2.0); // -7.0 >= 4.0 * -2.0
+    /// assert_eq!(a.div_euclid(-b), -1.0); // 7.0 >= -4.0 * -1.0
+    /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
     /// ```
     #[inline]
     #[unstable(feature = "euclidean_division", issue = "49048")]
-    pub fn div_euc(self, rhs: f32) -> f32 {
+    pub fn div_euclid(self, rhs: f32) -> f32 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
             return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
@@ -281,7 +281,7 @@ impl f32 {
         q
     }
 
-    /// Calculates the Euclidean modulo (self mod rhs), which is never negative.
+    /// Calculates the least nonnegative remainder of `self (mod rhs)`.
     ///
     /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
     /// most cases. However, due to a floating point round-off error it can
@@ -289,7 +289,7 @@ impl f32 {
     /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
     /// This result is not an element of the function's codomain, but it is the
     /// closest floating point number in the real numbers and thus fulfills the
-    /// property `self == self.div_euc(rhs) * rhs + self.mod_euc(rhs)`
+    /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
     /// approximatively.
     ///
     /// # Examples
@@ -298,16 +298,16 @@ impl f32 {
     /// #![feature(euclidean_division)]
     /// let a: f32 = 7.0;
     /// let b = 4.0;
-    /// assert_eq!(a.mod_euc(b), 3.0);
-    /// assert_eq!((-a).mod_euc(b), 1.0);
-    /// assert_eq!(a.mod_euc(-b), 3.0);
-    /// assert_eq!((-a).mod_euc(-b), 1.0);
+    /// assert_eq!(a.rem_euclid(b), 3.0);
+    /// assert_eq!((-a).rem_euclid(b), 1.0);
+    /// assert_eq!(a.rem_euclid(-b), 3.0);
+    /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-std::f32::EPSILON).mod_euc(3.0) != 0.0);
+    /// assert!((-std::f32::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[inline]
     #[unstable(feature = "euclidean_division", issue = "49048")]
-    pub fn mod_euc(self, rhs: f32) -> f32 {
+    pub fn rem_euclid(self, rhs: f32) -> f32 {
         let r = self % rhs;
         if r < 0.0 {
             r + rhs.abs()
