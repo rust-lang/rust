@@ -1249,7 +1249,7 @@ pub fn format_struct_struct(
     {
         result.push('\n');
         result.push_str(&offset.to_string(context.config));
-        result.push_str(generics_str.trim_left());
+        result.push_str(generics_str.trim_start());
     } else {
         result.push_str(&generics_str);
     }
@@ -1493,7 +1493,7 @@ fn rewrite_type_item<R: Rewrite>(
         result.push_str(suffix);
     } else {
         result.push_str(&indent.to_string_with_newline(context.config));
-        result.push_str(suffix.trim_left());
+        result.push_str(suffix.trim_start());
     }
 
     // 1 = ";"
@@ -1619,7 +1619,7 @@ pub fn rewrite_struct_field(
     let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, shape)?;
     // Remove a leading white-space from `rewrite_assign_rhs()` when rewriting a tuple struct.
     let field_str = if is_prefix_empty {
-        field_str.trim_left()
+        field_str.trim_start()
     } else {
         &field_str
     };
@@ -1986,7 +1986,7 @@ fn rewrite_fn_base(
     let snuggle_angle_bracket = generics_str
         .lines()
         .last()
-        .map_or(false, |l| l.trim_left().len() == 1);
+        .map_or(false, |l| l.trim_start().len() == 1);
 
     // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.

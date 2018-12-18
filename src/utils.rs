@@ -514,7 +514,7 @@ pub fn remove_trailing_white_spaces(text: &str) -> String {
 /// ```
 pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) -> Option<String> {
     let mut lines = LineClasses::new(orig);
-    let first_line = lines.next().map(|(_, s)| s.trim_right().to_owned())?;
+    let first_line = lines.next().map(|(_, s)| s.trim_end().to_owned())?;
     let mut trimmed_lines = Vec::with_capacity(16);
 
     let mut veto_trim = false;

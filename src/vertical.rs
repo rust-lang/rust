@@ -141,14 +141,14 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
         );
 
         let snippet = context.snippet(missing_span);
-        if snippet.trim_left().starts_with("//") {
+        if snippet.trim_start().starts_with("//") {
             let offset = snippet.lines().next().map_or(0, |l| l.len());
             // 2 = "," + "\n"
             init_hi + BytePos(offset as u32 + 2)
-        } else if snippet.trim_left().starts_with("/*") {
+        } else if snippet.trim_start().starts_with("/*") {
             let comment_lines = snippet
                 .lines()
-                .position(|line| line.trim_right().ends_with("*/"))
+                .position(|line| line.trim_end().ends_with("*/"))
                 .unwrap_or(0);
 
             let offset = snippet

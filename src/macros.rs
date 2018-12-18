@@ -1290,7 +1290,7 @@ impl MacroBranch {
 
         // Indent the body since it is in a block.
         let indent_str = body_indent.to_string(&config);
-        let mut new_body = LineClasses::new(new_body.trim_right())
+        let mut new_body = LineClasses::new(new_body.trim_end())
             .enumerate()
             .fold(
                 (String::new(), true),

@@ -107,7 +107,7 @@ pub fn rewrite_string<'a>(
             for (i, grapheme) in graphemes[cur_start..].iter().enumerate() {
                 if is_line_feed(grapheme) {
                     // take care of blank lines
-                    result = trim_right_but_line_feed(fmt.trim_end, result);
+                    result = trim_end_but_line_feed(fmt.trim_end, result);
                     result.push_str("\n");
                     if !is_bareline_ok && cur_start + i + 1 < graphemes.len() {
                         result.push_str(&indent_without_newline);
@@ -117,7 +117,7 @@ pub fn rewrite_string<'a>(
                     result.push_str(grapheme);
                 }
             }
-            result = trim_right_but_line_feed(fmt.trim_end, result);
+            result = trim_end_but_line_feed(fmt.trim_end, result);
             break;
         }
 
@@ -138,7 +138,7 @@ pub fn rewrite_string<'a>(
             }
             SnippetState::EndWithLineFeed(line, len) => {
                 if line == "\n" && fmt.trim_end {
-                    result = result.trim_right().to_string();
+                    result = result.trim_end().to_string();
                 }
                 result.push_str(&line);
                 if is_bareline_ok {
@@ -188,11 +188,11 @@ fn detect_url(s: &[&str], index: usize) -> Option<usize> {
 }
 
 /// Trims whitespaces to the right except for the line feed character.
-fn trim_right_but_line_feed(trim_end: bool, result: String) -> String {
+fn trim_end_but_line_feed(trim_end: bool, result: String) -> String {
     let whitespace_except_line_feed = |c: char| c.is_whitespace() && c != '\n';
     if trim_end && result.ends_with(whitespace_except_line_feed) {
         result
-            .trim_right_matches(whitespace_except_line_feed)
+            .trim_end_matches(whitespace_except_line_feed)
             .to_string()
     } else {
         result
@@ -244,7 +244,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
                 if i <= index_minus_ws {
                     let mut line = &input[0..i].concat()[..];
                     if trim_end {
-                        line = line.trim_right();
+                        line = line.trim_end();
                     }
                     return SnippetState::EndWithLineFeed(format!("{}\n", line), i + 1);
                 }

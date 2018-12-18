@@ -177,11 +177,11 @@ impl ListItem {
     pub fn has_single_line_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
-            .map_or(false, |comment| comment.trim_left().starts_with("//"))
+            .map_or(false, |comment| comment.trim_start().starts_with("//"))
             || self
                 .post_comment
                 .as_ref()
-                .map_or(false, |comment| comment.trim_left().starts_with("//"))
+                .map_or(false, |comment| comment.trim_start().starts_with("//"))
     }
 
     pub fn has_comment(&self) -> bool {
@@ -463,7 +463,7 @@ where
                     || comment.trim().len() > width;
 
                 rewrite_comment(
-                    comment.trim_left(),
+                    comment.trim_start(),
                     block_style,
                     comment_shape,
                     formatting.config,

@@ -50,7 +50,7 @@ impl<'a> FmtVisitor<'a> {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = mk_sp(self.last_pos, source!(self, span).lo());
-                let trimmed_snippet = self.snippet(prev_span).trim_right();
+                let trimmed_snippet = self.snippet(prev_span).trim_end();
                 let span_end = self.last_pos + BytePos(trimmed_snippet.len() as u32);
                 self.format_missing(span_end);
                 // We have an excessive newline from the removed import.

@@ -291,7 +291,7 @@ fn identify_comment(
         let mut hbl = false;
 
         for line in orig.lines() {
-            let trimmed_line = line.trim_left();
+            let trimmed_line = line.trim_start();
             if trimmed_line.is_empty() {
                 hbl = true;
                 break;
@@ -308,22 +308,22 @@ fn identify_comment(
 
     let (has_bare_lines, first_group_ending) = match style {
         CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
-            let line_start = style.line_start().trim_left();
+            let line_start = style.line_start().trim_start();
             consume_same_line_comments(style, orig, line_start)
         }
         CommentStyle::Custom(opener) => {
-            let trimmed_opener = opener.trim_right();
+            let trimmed_opener = opener.trim_end();
             consume_same_line_comments(style, orig, trimmed_opener)
         }
         // for a block comment, search for the closing symbol
         CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
-            let closer = style.closer().trim_left();
+            let closer = style.closer().trim_start();
             let mut closing_symbol_offset = 0;
             let mut hbl = false;
             let mut first = true;
             for line in orig.lines() {
                 closing_symbol_offset += compute_len(&orig[closing_symbol_offset..], line);
-                let mut trimmed_line = line.trim_left();
+                let mut trimmed_line = line.trim_start();
                 if !trimmed_line.starts_with('*')
                     && !trimmed_line.starts_with("//")
                     && !trimmed_line.starts_with("/*")
@@ -333,7 +333,7 @@ fn identify_comment(
 
                 // Remove opener from consideration when searching for closer
                 if first {
-                    let opener = style.opener().trim_right();
+                    let opener = style.opener().trim_end();
                     trimmed_line = &trimmed_line[opener.len()..];
                     first = false;
                 }
@@ -367,22 +367,27 @@ fn identify_comment(
     if rest.is_empty() {
         Some(rewritten_first_group)
     } else {
-        identify_comment(rest.trim_left(), block_style, shape, config, is_doc_comment).map(
-            |rest_str| {
-                format!(
-                    "{}\n{}{}{}",
-                    rewritten_first_group,
-                    // insert back the blank line
-                    if has_bare_lines && style.is_line_comment() {
-                        "\n"
-                    } else {
-                        ""
-                    },
-                    shape.indent.to_string(config),
-                    rest_str
-                )
-            },
+        identify_comment(
+            rest.trim_start(),
+            block_style,
+            shape,
+            config,
+            is_doc_comment,
         )
+        .map(|rest_str| {
+            format!(
+                "{}\n{}{}{}",
+                rewritten_first_group,
+                // insert back the blank line
+                if has_bare_lines && style.is_line_comment() {
+                    "\n"
+                } else {
+                    ""
+                },
+                shape.indent.to_string(config),
+                rest_str
+            )
+        })
     }
 }
 
@@ -427,7 +432,7 @@ struct ItemizedBlock {
 impl ItemizedBlock {
     /// Returns true if the line is formatted as an item
     fn is_itemized_line(line: &str) -> bool {
-        let trimmed = line.trim_left();
+        let trimmed = line.trim_start();
         trimmed.starts_with("* ") || trimmed.starts_with("- ")
     }
 
@@ -537,7 +542,7 @@ impl<'a> CommentRewrite<'a> {
         while let Some(line) = iter.next() {
             result.push_str(line);
             result.push_str(match iter.peek() {
-                Some(next_line) if next_line.is_empty() => sep.trim_right(),
+                Some(next_line) if next_line.is_empty() => sep.trim_end(),
                 Some(..) => &sep,
                 None => "",
             });
@@ -757,15 +762,15 @@ fn rewrite_comment_inner(
 ) -> Option<String> {
     let mut rewriter = CommentRewrite::new(orig, block_style, shape, config);
 
-    let line_breaks = count_newlines(orig.trim_right());
+    let line_breaks = count_newlines(orig.trim_end());
     let lines = orig
         .lines()
         .enumerate()
         .map(|(i, mut line)| {
-            line = trim_right_unless_two_whitespaces(line.trim_left(), is_doc_comment);
+            line = trim_end_unless_two_whitespaces(line.trim_start(), is_doc_comment);
             // Drop old closer.
             if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                line = line[..(line.len() - 2)].trim_right();
+                line = line[..(line.len() - 2)].trim_end();
             }
 
             line
@@ -774,7 +779,7 @@ fn rewrite_comment_inner(
         .map(|(line, has_leading_whitespace)| {
             if orig.starts_with("/*") && line_breaks == 0 {
                 (
-                    line.trim_left(),
+                    line.trim_start(),
                     has_leading_whitespace || config.normalize_comments(),
                 )
             } else {
@@ -794,7 +799,7 @@ fn rewrite_comment_inner(
 const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 
 fn hide_sharp_behind_comment(s: &str) -> Cow<str> {
-    if s.trim_left().starts_with("# ") {
+    if s.trim_start().starts_with("# ") {
         Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
     } else {
         Cow::from(s)
@@ -804,9 +809,9 @@ fn hide_sharp_behind_comment(s: &str) -> Cow<str> {
 fn trim_custom_comment_prefix(s: &str) -> String {
     s.lines()
         .map(|line| {
-            let left_trimmed = line.trim_left();
+            let left_trimmed = line.trim_start();
             if left_trimmed.starts_with(RUSTFMT_CUSTOM_COMMENT_PREFIX) {
-                left_trimmed.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX)
+                left_trimmed.trim_start_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX)
             } else {
                 line
             }
@@ -866,11 +871,11 @@ pub fn recover_missing_comment_in_span(
 }
 
 /// Trim trailing whitespaces unless they consist of two or more whitespaces.
-fn trim_right_unless_two_whitespaces(s: &str, is_doc_comment: bool) -> &str {
+fn trim_end_unless_two_whitespaces(s: &str, is_doc_comment: bool) -> &str {
     if is_doc_comment && s.ends_with("  ") {
         s
     } else {
-        s.trim_right()
+        s.trim_end()
     }
 }
 
@@ -898,7 +903,7 @@ fn light_rewrite_comment(
                 ""
             };
             // Preserve markdown's double-space line break syntax in doc comment.
-            trim_right_unless_two_whitespaces(left_trimmed, is_doc_comment)
+            trim_end_unless_two_whitespaces(left_trimmed, is_doc_comment)
         })
         .collect();
     lines.join(&format!("\n{}", offset.to_string(config)))
@@ -918,7 +923,7 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> (&'a str, 
         if line.starts_with(opener) {
             (&line[opener.len()..], true)
         } else {
-            (&line[opener.trim_right().len()..], false)
+            (&line[opener.trim_end().len()..], false)
         }
     } else if line.starts_with("/* ")
         || line.starts_with("// ")

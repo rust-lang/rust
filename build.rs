@@ -36,7 +36,7 @@ fn main() {
 fn commit_info() -> String {
     match (channel(), commit_hash(), commit_date()) {
         (channel, Some(hash), Some(date)) => {
-            format!("{} ({} {})", channel, hash.trim_right(), date)
+            format!("{} ({} {})", channel, hash.trim_end(), date)
         }
         _ => String::new(),
     }

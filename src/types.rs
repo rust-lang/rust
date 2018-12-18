@@ -399,7 +399,7 @@ where
             "{}\n{}{}",
             args,
             list_shape.indent.to_string(context.config),
-            output.trim_left()
+            output.trim_start()
         ))
     }
 }
@@ -422,7 +422,7 @@ impl Rewrite for ast::WherePredicate {
                 ..
             }) => {
                 let type_str = bounded_ty.rewrite(context, shape)?;
-                let colon = type_bound_colon(context).trim_right();
+                let colon = type_bound_colon(context).trim_end();
                 let lhs = if let Some(lifetime_str) =
                     rewrite_lifetime_param(context, shape, bound_generic_params)
                 {

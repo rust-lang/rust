@@ -184,7 +184,7 @@ where
 {
     let tab_spaces = context.config.tab_spaces();
     let lhs_overhead = match separator_place {
-        SeparatorPlace::Back => shape.used_width() + pp.prefix.len() + pp.infix.trim_right().len(),
+        SeparatorPlace::Back => shape.used_width() + pp.prefix.len() + pp.infix.trim_end().len(),
         SeparatorPlace::Front => shape.used_width(),
     };
     let lhs_shape = Shape {
@@ -238,8 +238,8 @@ where
         }
     };
     let infix = match separator_place {
-        SeparatorPlace::Back => pp.infix.trim_right(),
-        SeparatorPlace::Front => pp.infix.trim_left(),
+        SeparatorPlace::Back => pp.infix.trim_end(),
+        SeparatorPlace::Front => pp.infix.trim_start(),
     };
     if separator_place == SeparatorPlace::Front {
         rhs_shape = rhs_shape.offset_left(infix.len())?;

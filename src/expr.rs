@@ -1252,12 +1252,12 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                         format!(
                             "{}{}",
                             new_indent.to_string(context.config),
-                            line.trim_left()
+                            line.trim_start()
                         )
                     })
                     .collect::<Vec<_>>()
                     .join("\n")
-                    .trim_left(),
+                    .trim_start(),
             );
             return wrap_str(indented_string_lit, context.config.max_width(), shape);
         } else {
