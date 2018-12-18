@@ -3386,11 +3386,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     ty::RawPtr(..) => {
-                        let base = self.tcx.hir().node_to_pretty_string(base.id);
+                        let base = self.tcx.sess.source_map()
+                            .span_to_snippet(base.span)
+                            .unwrap_or_else(|_| self.tcx.hir().node_to_pretty_string(base.id));
                         let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
                         let suggestion = format!("(*{}).{}", base, field);
                         err.span_suggestion_with_applicability(
-                            field.span,
+                            expr.span,
                             &msg,
                             suggestion,
                             Applicability::MaybeIncorrect,

@@ -1,0 +1,12 @@
+error[E0609]: no field `opts` on type `*const Session`
+  --> $DIR/parenthesised-deref-suggestion.rs:7:30
+   |
+LL |     (sess as *const Session).opts; //~ ERROR no field `opts` on type `*const Session`
+   |                              ^^^^
+help: `(sess as *const Session)` is a raw pointer; try dereferencing it
+   |
+LL |     (*(sess as *const Session)).opts; //~ ERROR no field `opts` on type `*const Session`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.
