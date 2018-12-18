@@ -19,11 +19,11 @@ use crate::syntax::symbol::LocalInternedString;
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
-    get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self, is_self_ty,
-    iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method, match_type,
-    match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg, span_lint_and_then,
-    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    get_arg_name, get_parent_expr, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self,
+    is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
+    match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path,
+    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg,
+    span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -859,8 +859,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
             ["next", "skip"] => lint_iter_skip_next(cx, expr),
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
-            ["as_ref", ..] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
-            ["as_mut", ..] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
+            ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
+            ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             _ => {},
@@ -2181,6 +2181,16 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
         let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
+            // allow the `as_ref` or `as_mut` if it is followed by another method call
+            if_chain! {
+                if let Some(parent) = get_parent_expr(cx, expr);
+                if let hir::ExprKind::MethodCall(_, ref span, _) = parent.node;
+                if span != &expr.span;
+                then {
+                    return;
+                }
+            }
+
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
