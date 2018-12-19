@@ -354,6 +354,7 @@ pub use self::adapters::Flatten;
 pub use self::adapters::Copied;
 
 use self::adapters::{flatten_compat, ChainState, ZipImpl};
+pub(crate) use self::adapters::TrustedRandomAccess;
 
 mod range;
 mod sources;

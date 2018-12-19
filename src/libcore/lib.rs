@@ -219,7 +219,6 @@ pub mod task;
 pub mod alloc;
 
 // note: does not need to be public
-mod iter_private;
 mod tuple;
 mod unit;
 

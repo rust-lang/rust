@@ -34,7 +34,6 @@ use result::Result::{Ok, Err};
 use ptr;
 use mem;
 use marker::{Copy, Send, Sync, Sized, self};
-use iter_private::TrustedRandomAccess;
 
 #[unstable(feature = "slice_internals", issue = "0",
            reason = "exposed from core to be reused in std; use the memchr crate")]

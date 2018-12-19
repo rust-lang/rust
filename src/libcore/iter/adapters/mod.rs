@@ -1,6 +1,5 @@
 use cmp;
 use fmt;
-use iter_private::TrustedRandomAccess;
 use ops::Try;
 use usize;
 use intrinsics;
@@ -11,6 +10,7 @@ mod zip;
 
 pub use self::zip::Zip;
 pub(super) use self::zip::ZipImpl;
+pub(crate) use self::zip::TrustedRandomAccess;
 
 /// A double-ended iterator with the direction inverted.
 ///
