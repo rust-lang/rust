@@ -158,19 +158,18 @@ fn current_op(p: &Parser) -> (u8, Op) {
 // Parses expression with binding power of at least bp.
 fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
     let mut lhs = match lhs(p, r) {
-        (Some(lhs), macro_blocklike) => {
+        Some(lhs) => {
             // test stmt_bin_expr_ambiguity
             // fn foo() {
             //     let _ = {1} & 2;
             //     {1} &2;
             // }
-            if r.prefer_stmt && (is_block(lhs.kind()) || macro_blocklike == Some(BlockLike::Block))
-            {
+            if r.prefer_stmt && is_block(lhs.kind()) {
                 return BlockLike::Block;
             }
             lhs
         }
-        (None, _) => return BlockLike::NotBlock,
+        None => return BlockLike::NotBlock,
     };
 
     loop {
@@ -214,7 +213,7 @@ const LHS_FIRST: TokenSet = token_set_union![
     atom::ATOM_EXPR_FIRST,
 ];
 
-fn lhs(p: &mut Parser, r: Restrictions) -> (Option<CompletedMarker>, Option<BlockLike>) {
+fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
     let m;
     let kind = match p.current() {
         // test ref_expr
@@ -247,29 +246,18 @@ fn lhs(p: &mut Parser, r: Restrictions) -> (Option<CompletedMarker>, Option<Bloc
             if p.at_ts(EXPR_FIRST) {
                 expr_bp(p, r, 2);
             }
-            return (Some(m.complete(p, RANGE_EXPR)), None);
+            return Some(m.complete(p, RANGE_EXPR));
         }
         _ => {
-            let (lhs_marker, macro_block_like) = atom::atom_expr(p, r);
-
-            if macro_block_like == Some(BlockLike::Block) {
-                return (lhs_marker, macro_block_like);
-            }
-            if let Some(lhs_marker) = lhs_marker {
-                return (Some(postfix_expr(p, r, lhs_marker)), macro_block_like);
-            } else {
-                return (None, None);
-            }
+            let lhs = atom::atom_expr(p, r)?;
+            return Some(postfix_expr(p, r, lhs));
         }
     };
     expr_bp(p, r, 255);
-    (Some(m.complete(p, kind)), None)
+    Some(m.complete(p, kind))
 }
 
 fn postfix_expr(p: &mut Parser, r: Restrictions, mut lhs: CompletedMarker) -> CompletedMarker {
-    // Calls are disallowed if the type is a block and we prefer statements because the call cannot be disambiguated from a tuple
-    // E.g. `while true {break}();` is parsed as
-    // `while true {break}; ();`
     let mut allow_calls = !r.prefer_stmt || !is_block(lhs.kind());
     loop {
         lhs = match p.current() {
@@ -418,22 +406,21 @@ fn arg_list(p: &mut Parser) {
 //     let _ = ::a::<b>;
 //     let _ = format!();
 // }
-fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, Option<BlockLike>) {
+fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     assert!(paths::is_path_start(p) || p.at(L_ANGLE));
     let m = p.start();
     paths::expr_path(p);
-    let res = match p.current() {
+    match p.current() {
         L_CURLY if !r.forbid_structs => {
             named_field_list(p);
             m.complete(p, STRUCT_LIT)
         }
         EXCL => {
-            let block_like = items::macro_call_after_excl(p); // TODO: Use return type (BlockLike)
-            return (m.complete(p, MACRO_CALL), Some(block_like));
+            items::macro_call_after_excl(p); // TODO: Use return type (BlockLike)
+            m.complete(p, MACRO_CALL)
         }
         _ => m.complete(p, PATH_EXPR),
-    };
-    (res, None)
+    }
 }
 
 // test struct_lit
