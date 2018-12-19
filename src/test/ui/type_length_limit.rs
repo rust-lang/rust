@@ -1,3 +1,5 @@
+// ignore-musl
+// ignore-x86
 // error-pattern: reached the type-length limit while instantiating
 
 // Test that the type length limit can be changed.

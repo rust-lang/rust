@@ -3,7 +3,7 @@ use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::print::PrintCx;
-use crate::ty::subst::{Subst, Substs};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::{keywords, Symbol};
@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn item_path_str_with_substs_and_ns(
         self,
         def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> String {
         debug!("item_path_str: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
@@ -116,7 +116,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
     pub fn default_print_item_path(
         &mut self,
         def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> P::Path {
         debug!("default_print_item_path: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
@@ -169,7 +169,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
     fn default_print_impl_path(
         &mut self,
         impl_def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> P::Path {
         debug!("default_print_impl_path: impl_def_id={:?}", impl_def_id);
@@ -314,7 +314,7 @@ pub trait ItemPathPrinter: Sized {
     fn print_item_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> Self::Path {
         self.default_print_item_path(def_id, substs, ns)
@@ -322,7 +322,7 @@ pub trait ItemPathPrinter: Sized {
     fn print_impl_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         impl_def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> Self::Path {
         self.default_print_impl_path(impl_def_id, substs, ns)
@@ -506,7 +506,7 @@ impl ItemPathPrinter for LocalPathPrinter {
     fn print_item_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> Self::Path {
         self.try_print_visible_item_path(def_id, ns)
@@ -515,7 +515,7 @@ impl ItemPathPrinter for LocalPathPrinter {
     fn print_impl_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         impl_def_id: DefId,
-        substs: Option<&Substs<'tcx>>,
+        substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
     ) -> Self::Path {
         // Always use types for non-local impls, where types are always
