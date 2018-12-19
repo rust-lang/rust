@@ -123,8 +123,14 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
     let line = out.stderr.lines().nth(0)
         .expect("malformed `xargo --version` output: not at least one line")
         .expect("malformed `xargo --version` output: error reading first line");
-    let version = line.split(' ').nth(1)
-        .expect("malformed `xargo --version` output: not at least two words");
+    let (name, version) = {
+        let mut split = line.split(' ');
+        (split.next().expect("malformed `xargo --version` output: empty"),
+         split.next().expect("malformed `xargo --version` output: not at least two words"))
+    };
+    if name != "xargo" {
+        panic!("malformed `xargo --version` output: application name is not `xargo`");
+    }
     let mut version_pieces = version.split('.');
     let major = version_pieces.next()
         .expect("malformed `xargo --version` output: not a major version piece")
