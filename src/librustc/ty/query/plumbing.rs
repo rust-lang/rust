@@ -197,7 +197,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         let r = tls::with_related_context(tcx, move |current_icx| {
             // Update the ImplicitCtxt to point to our new query job
             let new_icx = tls::ImplicitCtxt {
-                tcx,
+                tcx: tcx.global_tcx(),
                 query: Some(self.job.clone()),
                 layout_depth: current_icx.layout_depth,
                 task: current_icx.task,

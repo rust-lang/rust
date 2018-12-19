@@ -151,7 +151,7 @@ fn test_env_with_pool<F>(
         ).expect("phase 2 aborted")
     };
 
-    let arenas = ty::AllArenas::new();
+    let mut arenas = ty::AllArenas::new();
     let hir_map = hir_map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
 
     // Run just enough stuff to build a tcx.
@@ -168,7 +168,7 @@ fn test_env_with_pool<F>(
         &cstore,
         ty::query::Providers::default(),
         ty::query::Providers::default(),
-        &arenas,
+        &mut arenas,
         resolutions,
         hir_map,
         OnDiskCache::new_empty(sess.source_map()),

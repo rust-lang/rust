@@ -202,7 +202,6 @@ impl PpSourceMode {
         hir_map: &hir_map::Map<'tcx>,
         analysis: &ty::CrateAnalysis,
         resolutions: &Resolutions,
-        arenas: &'tcx AllArenas<'tcx>,
         output_filenames: &OutputFilenames,
         id: &str,
         f: F
@@ -228,6 +227,7 @@ impl PpSourceMode {
             PpmTyped => {
                 let control = &driver::CompileController::basic();
                 let codegen_backend = ::get_codegen_backend(sess);
+                let mut arenas = AllArenas::new();
                 abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                                  control,
                                                                  sess,
@@ -235,7 +235,7 @@ impl PpSourceMode {
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
                                                                  resolutions.clone(),
-                                                                 arenas,
+                                                                 &mut arenas,
                                                                  id,
                                                                  output_filenames,
                                                                  |tcx, _, _, _| {
@@ -977,7 +977,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 krate: &ast::Crate,
                                                 crate_name: &str,
                                                 ppm: PpMode,
-                                                arenas: &'tcx AllArenas<'tcx>,
                                                 output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
@@ -988,7 +987,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                             analysis,
                             resolutions,
                             crate_name,
-                            arenas,
                             output_filenames,
                             ppm,
                             opt_uii,
@@ -1026,7 +1024,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arenas,
                                            output_filenames,
                                            crate_name,
                                            move |annotation, krate| {
@@ -1050,7 +1047,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arenas,
                                            output_filenames,
                                            crate_name,
                                            move |_annotation, krate| {
@@ -1066,7 +1062,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arenas,
                                            output_filenames,
                                            crate_name,
                                            move |annotation, _| {
@@ -1100,7 +1095,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arenas,
                                            output_filenames,
                                            crate_name,
                                            move |_annotation, _krate| {
@@ -1130,7 +1124,6 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
-                                       arenas: &'tcx AllArenas<'tcx>,
                                        output_filenames: &OutputFilenames,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
@@ -1147,6 +1140,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
 
     let control = &driver::CompileController::basic();
     let codegen_backend = ::get_codegen_backend(sess);
+    let mut arenas = AllArenas::new();
     abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                      control,
                                                      sess,
@@ -1154,7 +1148,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      hir_map.clone(),
                                                      analysis.clone(),
                                                      resolutions.clone(),
-                                                     arenas,
+                                                     &mut arenas,
                                                      crate_name,
                                                      output_filenames,
                                                      |tcx, _, _, _| {

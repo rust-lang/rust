@@ -37,7 +37,7 @@ use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::{RelateResult, TraitObjectMode};
 use ty::subst::{Kind, Substs};
-use ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
 use ty::{FloatVid, IntVid, TyVid};
 use util::nodemap::FxHashMap;
 
@@ -474,6 +474,7 @@ impl fmt::Display for FixupError {
 pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: SyncDroplessArena,
+    interners: Option<CtxtInterners<'tcx>>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
     trait_object_mode: TraitObjectMode,
 }
@@ -483,6 +484,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
         InferCtxtBuilder {
             global_tcx: self,
             arena: SyncDroplessArena::default(),
+            interners: None,
             fresh_tables: None,
             trait_object_mode: TraitObjectMode::NoSquash,
         }
@@ -531,10 +533,13 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             global_tcx,
             trait_object_mode,
             ref arena,
+            ref mut interners,
             ref fresh_tables,
         } = *self;
         let in_progress_tables = fresh_tables.as_ref();
-        global_tcx.enter_local(arena, |tcx| {
+        // Check that we haven't entered before
+        assert!(interners.is_none());
+        global_tcx.enter_local(arena, interners, |tcx| {
             f(InferCtxt {
                 tcx,
                 in_progress_tables,

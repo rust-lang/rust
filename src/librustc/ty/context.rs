@@ -72,6 +72,7 @@ use std::ops::{Deref, Bound};
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
+use std::marker::PhantomData;
 use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
@@ -86,6 +87,7 @@ use hir;
 pub struct AllArenas<'tcx> {
     pub global: WorkerLocal<GlobalArenas<'tcx>>,
     pub interner: SyncDroplessArena,
+    global_ctxt: Option<GlobalCtxt<'tcx>>,
 }
 
 impl<'tcx> AllArenas<'tcx> {
@@ -93,6 +95,7 @@ impl<'tcx> AllArenas<'tcx> {
         AllArenas {
             global: WorkerLocal::new(|_| GlobalArenas::default()),
             interner: SyncDroplessArena::default(),
+            global_ctxt: None,
         }
     }
 }
@@ -869,12 +872,13 @@ pub struct FreeRegionInfo {
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/ty.html
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    gcx: &'a GlobalCtxt<'gcx>,
-    interners: &'a CtxtInterners<'tcx>
+    gcx: &'gcx GlobalCtxt<'gcx>,
+    interners: &'tcx CtxtInterners<'tcx>,
+    dummy: PhantomData<&'a ()>,
 }
 
-impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
-    type Target = &'a GlobalCtxt<'gcx>;
+impl<'gcx> Deref for TyCtxt<'_, 'gcx, '_> {
+    type Target = &'gcx GlobalCtxt<'gcx>;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.gcx
@@ -964,10 +968,11 @@ pub struct GlobalCtxt<'tcx> {
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Get the global TyCtxt.
     #[inline]
-    pub fn global_tcx(self) -> TyCtxt<'a, 'gcx, 'gcx> {
+    pub fn global_tcx(self) -> TyCtxt<'gcx, 'gcx, 'gcx> {
         TyCtxt {
             gcx: self.gcx,
             interners: &self.gcx.global_interners,
+            dummy: PhantomData,
         }
     }
 
@@ -1105,7 +1110,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   cstore: &'tcx CrateStoreDyn,
                                   local_providers: ty::query::Providers<'tcx>,
                                   extern_providers: ty::query::Providers<'tcx>,
-                                  arenas: &'tcx AllArenas<'tcx>,
+                                  arenas: &'tcx mut AllArenas<'tcx>,
                                   resolutions: ty::Resolutions,
                                   hir: hir_map::Map<'tcx>,
                                   on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1166,7 +1171,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      Lrc::new(StableVec::new(v)));
         }
 
-        let gcx = &GlobalCtxt {
+        arenas.global_ctxt = Some(GlobalCtxt {
             sess: s,
             cstore,
             global_arenas: &arenas.global,
@@ -1209,7 +1214,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
-        };
+        });
+
+        let gcx = arenas.global_ctxt.as_ref().unwrap();
 
         sync::assert_send_val(&gcx);
 
@@ -1609,20 +1616,25 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
+impl<'gcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
-    pub fn enter_local<F, R>(
-        &self,
+    /// `interners` is a slot passed so we can create a CtxtInterners
+    /// with the same lifetime as `arena`.
+    pub fn enter_local<'tcx, F, R>(
+        &'gcx self,
         arena: &'tcx SyncDroplessArena,
+        interners: &'tcx mut Option<CtxtInterners<'tcx>>,
         f: F
     ) -> R
     where
-        F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+        F: FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R,
+        'gcx: 'tcx,
     {
-        let interners = CtxtInterners::new(arena);
+        *interners = Some(CtxtInterners::new(&arena));
         let tcx = TyCtxt {
             gcx: self,
-            interners: &interners,
+            interners: interners.as_ref().unwrap(),
+            dummy: PhantomData,
         };
         ty::tls::with_related_context(tcx.global_tcx(), |icx| {
             let new_icx = ty::tls::ImplicitCtxt {
@@ -1631,8 +1643,8 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
                 layout_depth: icx.layout_depth,
                 task: icx.task,
             };
-            ty::tls::enter_context(&new_icx, |new_icx| {
-                f(new_icx.tcx)
+            ty::tls::enter_context(&new_icx, |_| {
+                f(tcx)
             })
         })
     }
@@ -1872,6 +1884,7 @@ pub mod tls {
 
     use std::fmt;
     use std::mem;
+    use std::marker::PhantomData;
     use syntax_pos;
     use ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
@@ -1891,10 +1904,10 @@ pub mod tls {
     /// you should also have access to an ImplicitCtxt through the functions
     /// in this module.
     #[derive(Clone)]
-    pub struct ImplicitCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub struct ImplicitCtxt<'a, 'gcx: 'tcx, 'tcx> {
         /// The current TyCtxt. Initially created by `enter_global` and updated
         /// by `enter_local` with a new local interner
-        pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 
         /// The current query job, if any. This is updated by start_job in
         /// ty::query::plumbing when executing a query
@@ -2008,8 +2021,8 @@ pub mod tls {
     /// creating a initial TyCtxt and ImplicitCtxt.
     /// This happens once per rustc session and TyCtxts only exists
     /// inside the `f` function.
-    pub fn enter_global<'gcx, F, R>(gcx: &GlobalCtxt<'gcx>, f: F) -> R
-        where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
+    pub fn enter_global<'gcx, F, R>(gcx: &'gcx GlobalCtxt<'gcx>, f: F) -> R
+        where F: FnOnce(TyCtxt<'gcx, 'gcx, 'gcx>) -> R
     {
         with_thread_locals(|| {
             // Update GCX_PTR to indicate there's a GlobalCtxt available
@@ -2024,6 +2037,7 @@ pub mod tls {
             let tcx = TyCtxt {
                 gcx,
                 interners: &gcx.global_interners,
+                dummy: PhantomData,
             };
             let icx = ImplicitCtxt {
                 tcx,
@@ -2053,6 +2067,7 @@ pub mod tls {
         let tcx = TyCtxt {
             gcx,
             interners: &gcx.global_interners,
+            dummy: PhantomData,
         };
         let icx = ImplicitCtxt {
             query: None,

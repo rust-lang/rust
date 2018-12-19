@@ -485,7 +485,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
-        let arenas = AllArenas::new();
+        let mut arenas = AllArenas::new();
         let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
         let output_filenames = driver::build_output_filenames(&input,
                                                             &None,
@@ -501,7 +501,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         hir_map,
                                                         analysis,
                                                         resolutions,
-                                                        &arenas,
+                                                        &mut arenas,
                                                         &name,
                                                         &output_filenames,
                                                         |tcx, analysis, _, result| {
