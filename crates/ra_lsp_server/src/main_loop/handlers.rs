@@ -6,7 +6,7 @@ use languageserver_types::{
     DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
     FoldingRangeParams, InsertTextFormat, Location, MarkupContent, MarkupKind, MarkedString, Position,
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit, ParameterInformation, SignatureInformation, Hover, HoverContents,
+    WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover, HoverContents,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
 use ra_syntax::{TextUnit, text_utils::intersect};
@@ -475,7 +475,7 @@ pub fn handle_signature_help(
             .params
             .iter()
             .map(|param| ParameterInformation {
-                label: param.clone(),
+                label: ParameterLabel::Simple(param.clone()),
                 documentation: None,
             })
             .collect();
