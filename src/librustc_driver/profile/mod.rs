@@ -64,9 +64,7 @@ struct StackFrame {
 }
 
 fn total_duration(traces: &[trace::Rec]) -> Duration {
-    let mut sum : Duration = Duration::new(0, 0);
-    for t in traces.iter() { sum += t.dur_total; }
-    return sum
+    Duration::new(0, 0) + traces.iter().map(|t| t.dur_total).sum()
 }
 
 // profiling thread; retains state (in local variables) and dump traces, upon request.
@@ -93,40 +91,38 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
             ProfileQueriesMsg::Dump(params) => {
                 assert!(stack.is_empty());
                 assert!(frame.parse_st == ParseState::Clear);
-                {
-                    // write log of all messages
-                    if params.dump_profq_msg_log {
-                        let mut log_file =
-                            File::create(format!("{}.log.txt", params.path)).unwrap();
-                        for m in profq_msgs.iter() {
-                            writeln!(&mut log_file, "{:?}", m).unwrap()
-                        };
-                    }
 
-                    // write HTML file, and counts file
-                    let html_path = format!("{}.html", params.path);
-                    let mut html_file = File::create(&html_path).unwrap();
-
-                    let counts_path = format!("{}.counts.txt", params.path);
-                    let mut counts_file = File::create(&counts_path).unwrap();
-
-                    writeln!(html_file,
-                        "<html>\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">",
-                        "profile_queries.css").unwrap();
-                    writeln!(html_file, "<style>").unwrap();
-                    trace::write_style(&mut html_file);
-                    writeln!(html_file, "</style>\n</head>\n<body>").unwrap();
-                    trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
-                    writeln!(html_file, "</body>\n</html>").unwrap();
-
-                    let ack_path = format!("{}.ack", params.path);
-                    let ack_file = File::create(&ack_path).unwrap();
-                    drop(ack_file);
-
-                    // Tell main thread that we are done, e.g., so it can exit
-                    params.ack.send(()).unwrap();
+                // write log of all messages
+                if params.dump_profq_msg_log {
+                    let mut log_file =
+                        File::create(format!("{}.log.txt", params.path)).unwrap();
+                    for m in profq_msgs.iter() {
+                        writeln!(&mut log_file, "{:?}", m).unwrap()
+                    };
                 }
-                continue
+
+                // write HTML file, and counts file
+                let html_path = format!("{}.html", params.path);
+                let mut html_file = File::create(&html_path).unwrap();
+
+                let counts_path = format!("{}.counts.txt", params.path);
+                let mut counts_file = File::create(&counts_path).unwrap();
+
+                writeln!(html_file,
+                    "<html>\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">",
+                    "profile_queries.css").unwrap();
+                writeln!(html_file, "<style>").unwrap();
+                trace::write_style(&mut html_file);
+                writeln!(html_file, "</style>\n</head>\n<body>").unwrap();
+                trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
+                writeln!(html_file, "</body>\n</html>").unwrap();
+
+                let ack_path = format!("{}.ack", params.path);
+                let ack_file = File::create(&ack_path).unwrap();
+                drop(ack_file);
+
+                // Tell main thread that we are done, e.g., so it can exit
+                params.ack.send(()).unwrap();
             }
             // Actual query message:
             msg => {
@@ -134,9 +130,9 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                 profq_msgs.push(msg.clone());
                 // Respond to the message, knowing that we've already handled Halt and Dump, above.
                 match (frame.parse_st.clone(), msg) {
-                    (_,ProfileQueriesMsg::Halt) => unreachable!(),
-                    (_,ProfileQueriesMsg::Dump(_)) => unreachable!(),
-
+                    (_, ProfileQueriesMsg::Halt) | (_, ProfileQueriesMsg::Dump(_)) => {
+                        unreachable!();
+                    },
                     // Parse State: Clear
                     (ParseState::Clear,
                      ProfileQueriesMsg::QueryBegin(span, querymsg)) => {
@@ -163,8 +159,8 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                                     ParseState::HaveQuery(q, start) => {
                                         let duration = start.elapsed();
                                         frame = StackFrame{
-                                            parse_st:ParseState::Clear,
-                                            traces:old_frame.traces
+                                            parse_st: ParseState::Clear,
+                                            traces: old_frame.traces
                                         };
                                         let dur_extent = total_duration(&provider_extent);
                                         let trace = Rec {
@@ -181,18 +177,16 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                             }
                         }
                     },
-
-
                     (ParseState::Clear,
                      ProfileQueriesMsg::TimeBegin(msg)) => {
                         let start = Instant::now();
                         frame.parse_st = ParseState::HaveTimeBegin(msg, start);
                         stack.push(frame);
-                        frame = StackFrame{parse_st:ParseState::Clear, traces:vec![]};
+                        frame = StackFrame{parse_st: ParseState::Clear, traces: vec![]};
                     },
-                    (_, ProfileQueriesMsg::TimeBegin(_)) =>
-                        panic!("parse error; did not expect time begin here"),
-
+                    (_, ProfileQueriesMsg::TimeBegin(_)) => {
+                        panic!("parse error; did not expect time begin here");
+                    },
                     (ParseState::Clear,
                      ProfileQueriesMsg::TimeEnd) => {
                         let provider_extent = frame.traces;
@@ -204,8 +198,8 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                                     ParseState::HaveTimeBegin(msg, start) => {
                                         let duration = start.elapsed();
                                         frame = StackFrame{
-                                            parse_st:ParseState::Clear,
-                                            traces:old_frame.traces
+                                            parse_st: ParseState::Clear,
+                                            traces: old_frame.traces
                                         };
                                         let dur_extent = total_duration(&provider_extent);
                                         let trace = Rec {
@@ -222,18 +216,19 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                             }
                         }
                     },
-                    (_, ProfileQueriesMsg::TimeEnd) => { panic!("parse error") }
-
+                    (_, ProfileQueriesMsg::TimeEnd) => {
+                        panic!("parse error")
+                    },
                     (ParseState::Clear,
                      ProfileQueriesMsg::TaskBegin(key)) => {
                         let start = Instant::now();
                         frame.parse_st = ParseState::HaveTaskBegin(key, start);
                         stack.push(frame);
-                        frame = StackFrame{parse_st:ParseState::Clear, traces:vec![]};
+                        frame = StackFrame{ parse_st: ParseState::Clear, traces: vec![] };
                     },
-                    (_, ProfileQueriesMsg::TaskBegin(_)) =>
-                        panic!("parse error; did not expect time begin here"),
-
+                    (_, ProfileQueriesMsg::TaskBegin(_)) => {
+                        panic!("parse error; did not expect time begin here");
+                    },
                     (ParseState::Clear,
                      ProfileQueriesMsg::TaskEnd) => {
                         let provider_extent = frame.traces;
@@ -245,8 +240,8 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                                     ParseState::HaveTaskBegin(key, start) => {
                                         let duration = start.elapsed();
                                         frame = StackFrame{
-                                            parse_st:ParseState::Clear,
-                                            traces:old_frame.traces
+                                            parse_st: ParseState::Clear,
+                                            traces: old_frame.traces
                                         };
                                         let dur_extent = total_duration(&provider_extent);
                                         let trace = Rec {
@@ -263,8 +258,9 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                             }
                         }
                     },
-                    (_, ProfileQueriesMsg::TaskEnd) => { panic!("parse error") }
-
+                    (_, ProfileQueriesMsg::TaskEnd) => {
+                        panic!("parse error")
+                    },
                     // Parse State: HaveQuery
                     (ParseState::HaveQuery(q,start),
                      ProfileQueriesMsg::CacheHit) => {
@@ -279,26 +275,25 @@ fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
                         frame.traces.push( trace );
                         frame.parse_st = ParseState::Clear;
                     },
-                    (ParseState::HaveQuery(_,_),
+                    (ParseState::HaveQuery(_, _),
                      ProfileQueriesMsg::ProviderBegin) => {
                         stack.push(frame);
-                        frame = StackFrame{parse_st:ParseState::Clear, traces:vec![]};
+                        frame = StackFrame{ parse_st: ParseState::Clear, traces: vec![] };
                     },
 
                     // Parse errors:
 
-                    (ParseState::HaveQuery(q,_),
+                    (ParseState::HaveQuery(q, _),
                      ProfileQueriesMsg::ProviderEnd) => {
                         panic!("parse error: unexpected ProviderEnd; \
                                 expected something else to follow BeginQuery for {:?}", q)
                     },
-                    (ParseState::HaveQuery(q1,_),
-                     ProfileQueriesMsg::QueryBegin(span2,querymsg2)) => {
+                    (ParseState::HaveQuery(q1, _),
+                     ProfileQueriesMsg::QueryBegin(span2, querymsg2)) => {
                         panic!("parse error: unexpected QueryBegin; \
                                 earlier query is unfinished: {:?} and now {:?}",
-                               q1, Query{span:span2, msg:querymsg2})
+                               q1, Query{span:span2, msg: querymsg2})
                     },
-
                     (ParseState::HaveTimeBegin(_, _), _) => {
                         unreachable!()
                     },

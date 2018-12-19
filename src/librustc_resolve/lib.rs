@@ -742,7 +742,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
 }
 
 /// This thing walks the whole crate in DFS manner, visiting each item, resolving names as it goes.
-impl<'a, 'tcx, 'cl> Visitor<'tcx> for Resolver<'a, 'cl> {
+impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
     }
@@ -1476,7 +1476,7 @@ pub struct ExternPreludeEntry<'a> {
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
-pub struct Resolver<'a, 'b: 'a> {
+pub struct Resolver<'a> {
     session: &'a Session,
     cstore: &'a CStore,
 
@@ -1580,7 +1580,7 @@ pub struct Resolver<'a, 'b: 'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: &'a mut CrateLoader<'b>,
+    crate_loader: &'a mut CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
@@ -1654,7 +1654,7 @@ impl<'a> ResolverArenas<'a> {
     }
 }
 
-impl<'a, 'b: 'a, 'cl: 'b> ty::DefIdTree for &'a Resolver<'b, 'cl> {
+impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
@@ -1665,7 +1665,7 @@ impl<'a, 'b: 'a, 'cl: 'b> ty::DefIdTree for &'a Resolver<'b, 'cl> {
 
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
-impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
+impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(
         &mut self,
         path: &ast::Path,
@@ -1711,7 +1711,7 @@ impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
     }
 }
 
-impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
+impl<'a> Resolver<'a> {
     /// Rustdoc uses this to resolve things in a recoverable way. ResolutionError<'a>
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
@@ -1800,15 +1800,15 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     }
 }
 
-impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
+impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
                cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
                make_glob_map: MakeGlobMap,
-               crate_loader: &'a mut CrateLoader<'crateloader>,
+               crate_loader: &'a mut CrateLoader<'a>,
                arenas: &'a ResolverArenas<'a>)
-               -> Resolver<'a, 'crateloader> {
+               -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let root_module_kind = ModuleKind::Def(Def::Mod(root_def_id), keywords::Invalid.name());
         let graph_root = arenas.alloc_module(ModuleData {

@@ -158,28 +158,15 @@ fn parse_args(ecx: &mut ExtCtxt,
         } // accept trailing commas
         if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
             named = true;
-            let ident = match p.token {
-                token::Ident(i, _) => {
-                    p.bump();
-                    i
-                }
-                _ if named => {
-                    ecx.span_err(
-                        p.span,
-                        "expected ident, positional arguments cannot follow named arguments",
-                    );
-                    return None;
-                }
-                _ => {
-                    ecx.span_err(
-                        p.span,
-                        &format!(
-                            "expected ident for named argument, found `{}`",
-                            p.this_token_to_string()
-                        ),
-                    );
-                    return None;
-                }
+            let ident = if let token::Ident(i, _) = p.token {
+                p.bump();
+                i
+            } else {
+                ecx.span_err(
+                    p.span,
+                    "expected ident, positional arguments cannot follow named arguments",
+                );
+                return None;
             };
             let name: &str = &ident.as_str();
 
@@ -286,11 +273,11 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             MultiSpan::from_span(self.fmtsp)
         };
-        let mut refs: Vec<_> = self
+        let refs_len = self.invalid_refs.len();
+        let mut refs = self
             .invalid_refs
             .iter()
-            .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)))
-            .collect();
+            .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)));
 
         if self.names.is_empty() && !numbered_position_args {
             e = self.ecx.mut_span_err(
@@ -303,28 +290,24 @@ impl<'a, 'b> Context<'a, 'b> {
                 ),
             );
         } else {
-            let (arg_list, mut sp) = match refs.len() {
-                1 => {
-                    let (reg, pos) = refs.pop().unwrap();
-                    (
-                        format!("argument {}", reg),
-                        MultiSpan::from_span(*pos.unwrap_or(&self.fmtsp)),
-                    )
-                }
-                _ => {
-                    let pos =
-                        MultiSpan::from_spans(refs.iter().map(|(_, p)| *p.unwrap()).collect());
-                    let mut refs: Vec<String> = refs.iter().map(|(s, _)| s.to_owned()).collect();
-                    let reg = refs.pop().unwrap();
-                    (
-                        format!(
-                            "arguments {head} and {tail}",
-                            tail = reg,
-                            head = refs.join(", ")
-                        ),
-                        pos,
-                    )
-                }
+            let (arg_list, mut sp) = if refs_len == 1 {
+                let (reg, pos) = refs.next().unwrap();
+                (
+                    format!("argument {}", reg),
+                    MultiSpan::from_span(*pos.unwrap_or(&self.fmtsp)),
+                )
+            } else {
+                let (mut refs, spans): (Vec<_>, Vec<_>) = refs.unzip();
+                let pos = MultiSpan::from_spans(spans.into_iter().map(|s| *s.unwrap()).collect());
+                let reg = refs.pop().unwrap();
+                (
+                    format!(
+                        "arguments {head} and {tail}",
+                        head = refs.join(", "),
+                        tail = reg,
+                    ),
+                    pos,
+                )
             };
             if !self.is_literal {
                 sp = MultiSpan::from_span(self.fmtsp);
@@ -353,33 +336,30 @@ impl<'a, 'b> Context<'a, 'b> {
                     Placeholder(_) => {
                         // record every (position, type) combination only once
                         let ref mut seen_ty = self.arg_unique_types[arg];
-                        let i = match seen_ty.iter().position(|x| *x == ty) {
-                            Some(i) => i,
-                            None => {
-                                let i = seen_ty.len();
-                                seen_ty.push(ty);
-                                i
-                            }
-                        };
+                        let i = seen_ty.iter().position(|x| *x == ty).unwrap_or_else(|| {
+                            let i = seen_ty.len();
+                            seen_ty.push(ty);
+                            i
+                        });
                         self.arg_types[arg].push(i);
                     }
                     Count => {
-                        match self.count_positions.entry(arg) {
-                            Entry::Vacant(e) => {
-                                let i = self.count_positions_count;
-                                e.insert(i);
-                                self.count_args.push(Exact(arg));
-                                self.count_positions_count += 1;
-                            }
-                            Entry::Occupied(_) => {}
+                        if let Entry::Vacant(e) = self.count_positions.entry(arg) {
+                            let i = self.count_positions_count;
+                            e.insert(i);
+                            self.count_args.push(Exact(arg));
+                            self.count_positions_count += 1;
                         }
                     }
                 }
             }
 
             Named(name) => {
-                let idx = match self.names.get(&name) {
-                    Some(e) => *e,
+                match self.names.get(&name) {
+                    Some(idx) => {
+                        // Treat as positional arg.
+                        self.verify_arg_type(Exact(*idx), ty)
+                    }
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
                         let sp = if self.is_literal {
@@ -389,11 +369,8 @@ impl<'a, 'b> Context<'a, 'b> {
                         };
                         let mut err = self.ecx.struct_span_err(sp, &msg[..]);
                         err.emit();
-                        return;
                     }
-                };
-                // Treat as positional arg.
-                self.verify_arg_type(Exact(idx), ty)
+                }
             }
         }
     }
@@ -436,12 +413,10 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::CountIs(i) => count("Is", Some(self.ecx.expr_usize(sp, i))),
             parse::CountIsParam(i) => {
                 // This needs mapping too, as `i` is referring to a macro
-                // argument.
-                let i = match self.count_positions.get(&i) {
-                    Some(&i) => i,
-                    None => 0, // error already emitted elsewhere
-                };
-                let i = i + self.count_args_index_offset;
+                // argument. If `i` is not found in `count_positions` then
+                // the error had already been emitted elsewhere.
+                let i = self.count_positions.get(&i).cloned().unwrap_or(0)
+                      + self.count_args_index_offset;
                 count("Param", Some(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => count("Implied", None),
@@ -526,10 +501,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     },
                 };
 
-                let fill = match arg.format.fill {
-                    Some(c) => c,
-                    None => ' ',
-                };
+                let fill = arg.format.fill.unwrap_or(' ');
 
                 if *arg != simple_arg || fill != ' ' {
                     self.all_pieces_simple = false;
@@ -828,8 +800,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
         let sp = fmt.span.from_inner_byte_pos(err.start, err.end);
-        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}",
-                                                        err.description));
+        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
             e.note(&note);

@@ -62,6 +62,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".efi".to_string(),
         allows_weak_linkage: false,
         panic_strategy: PanicStrategy::Abort,
+        stack_probes: true,
         singlethread: true,
         emit_debug_gdb_scripts: false,
 

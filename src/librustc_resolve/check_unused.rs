@@ -31,8 +31,8 @@ use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 
 
-struct UnusedImportCheckVisitor<'a, 'b: 'a, 'd: 'b> {
-    resolver: &'a mut Resolver<'b, 'd>,
+struct UnusedImportCheckVisitor<'a, 'b: 'a> {
+    resolver: &'a mut Resolver<'b>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: NodeMap<NodeMap<Span>>,
     base_id: ast::NodeId,
@@ -40,21 +40,21 @@ struct UnusedImportCheckVisitor<'a, 'b: 'a, 'd: 'b> {
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
-impl<'a, 'b, 'd> Deref for UnusedImportCheckVisitor<'a, 'b, 'd> {
-    type Target = Resolver<'b, 'd>;
+impl<'a, 'b> Deref for UnusedImportCheckVisitor<'a, 'b> {
+    type Target = Resolver<'b>;
 
-    fn deref<'c>(&'c self) -> &'c Resolver<'b, 'd> {
+    fn deref<'c>(&'c self) -> &'c Resolver<'b> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b, 'd> DerefMut for UnusedImportCheckVisitor<'a, 'b, 'd> {
-    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'd> {
+impl<'a, 'b> DerefMut for UnusedImportCheckVisitor<'a, 'b> {
+    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b> {
         &mut *self.resolver
     }
 }
 
-impl<'a, 'b, 'd> UnusedImportCheckVisitor<'a, 'b, 'd> {
+impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     // We have information about whether `use` (import) directives are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, item_id: ast::NodeId, id: ast::NodeId, span: Span) {
@@ -77,7 +77,7 @@ impl<'a, 'b, 'd> UnusedImportCheckVisitor<'a, 'b, 'd> {
     }
 }
 
-impl<'a, 'b, 'cl> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'cl> {
+impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         self.item_span = item.span;
 

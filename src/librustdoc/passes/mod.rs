@@ -361,8 +361,8 @@ impl fold::DocFolder for ImportStripper {
     }
 }
 
-pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx>(
-    cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
+pub fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a>(
+    cx: &'a DocContext<'a, 'tcx, 'rcx>,
     dox: &str,
     item: &Item,
     check_missing_code: bool,

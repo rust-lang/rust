@@ -314,6 +314,7 @@ supported_targets! {
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-musleabi", armv5te_unknown_linux_musleabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
+    ("thumbv7neon-unknown-linux-gnueabihf", thumbv7neon_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
 
@@ -331,6 +332,7 @@ supported_targets! {
     ("x86_64-linux-android", x86_64_linux_android),
     ("arm-linux-androideabi", arm_linux_androideabi),
     ("armv7-linux-androideabi", armv7_linux_androideabi),
+    ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),

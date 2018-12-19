@@ -75,7 +75,7 @@ LL |     for _ in [0..1, 2..3] {}
    |              ^^^^^^^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
    |
    = help: the trait `std::iter::Iterator` is not implemented for `[std::ops::Range<{integer}>; 2]`
-   = note: arrays are not an iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
    = note: required by `std::iter::IntoIterator::into_iter`
 
 error[E0277]: `[std::ops::RangeInclusive<{integer}>; 1]` is not an iterator
