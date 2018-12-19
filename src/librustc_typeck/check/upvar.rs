@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         self.tcx.with_freevars(closure_node_id, |freevars| {
-            let mut freevar_list: Vec<ty::UpvarId> = Vec::new();
+            let mut freevar_list: Vec<ty::UpvarId> = Vec::with_capacity(freevars.len());
             for freevar in freevars {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
@@ -131,6 +131,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
+                // Adding the upvar Id to the list of Upvars, which will be added
+                // to the map for the closure at the end of the for loop.
                 freevar_list.push(upvar_id);
 
                 let capture_kind = match capture_clause {
@@ -151,6 +153,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .upvar_capture_map
                     .insert(upvar_id, capture_kind);
             }
+            // Add the vector of freevars to the map keyed with the closure id.
+            // This gives us an easier access to them without having to call
+            // with_freevars again..
             self.tables
                 .borrow_mut()
                 .upvar_list
