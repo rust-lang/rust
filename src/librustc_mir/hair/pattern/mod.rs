@@ -12,7 +12,7 @@ use hair::util::UserAnnotatedTyHelpers;
 use hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::{ProjectionElem, UserTypeProjection, UserTypeProjections};
+use rustc::mir::{ProjectionElem, UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
 use rustc::ty::{CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, UserTypeAnnotation};
@@ -59,104 +59,12 @@ pub struct Pattern<'tcx> {
 
 
 #[derive(Clone, Debug)]
-pub(crate) struct PatternTypeProjections<'tcx> {
-    contents: Vec<(PatternTypeProjection<'tcx>, Span)>,
-}
-
-impl<'tcx> PatternTypeProjections<'tcx> {
-    pub(crate) fn user_ty(
-        self,
-        annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
-    ) -> UserTypeProjections<'tcx> {
-        UserTypeProjections::from_projections(
-            self.contents
-                .into_iter()
-                .map(|(pat_ty_proj, span)| (pat_ty_proj.user_ty(annotations, span), span))
-        )
-    }
-
-    pub(crate) fn none() -> Self {
-        PatternTypeProjections { contents: vec![] }
-    }
-
-    fn map_projs(&self,
-                 mut f: impl FnMut(&PatternTypeProjection<'tcx>) -> PatternTypeProjection<'tcx>)
-                 -> Self
-    {
-        PatternTypeProjections {
-            contents: self.contents
-                .iter()
-                .map(|(proj, span)| (f(proj), *span))
-                .collect(), }
-    }
-
-    pub(crate) fn index(&self) -> Self { self.map_projs(|pat_ty_proj| pat_ty_proj.index()) }
-
-    pub(crate) fn subslice(&self, from: u32, to: u32) -> Self {
-        self.map_projs(|pat_ty_proj| pat_ty_proj.subslice(from, to))
-    }
-
-    pub(crate) fn deref(&self) -> Self { self.map_projs(|pat_ty_proj| pat_ty_proj.deref()) }
-
-    pub(crate) fn leaf(&self, field: Field) -> Self {
-        self.map_projs(|pat_ty_proj| pat_ty_proj.leaf(field))
-    }
-
-    pub(crate) fn variant(&self,
-                          adt_def: &'tcx AdtDef,
-                          variant_index: VariantIdx,
-                          field: Field) -> Self {
-        self.map_projs(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
-    }
-
-    pub(crate) fn add_user_type(&self, user_ty: &PatternTypeProjection<'tcx>, sp: Span) -> Self {
-        let mut new = self.clone();
-        new.contents.push((user_ty.clone(), sp));
-        new
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct PatternTypeProjection<'tcx> {
     pub base: CanonicalUserTypeAnnotation<'tcx>,
     pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
 
 impl<'tcx> PatternTypeProjection<'tcx> {
-    pub(crate) fn index(&self) -> Self {
-        let mut new = self.clone();
-        new.projs.push(ProjectionElem::Index(()));
-        new
-    }
-
-    pub(crate) fn subslice(&self, from: u32, to: u32) -> Self {
-        let mut new = self.clone();
-        new.projs.push(ProjectionElem::Subslice { from, to });
-        new
-    }
-
-    pub(crate) fn deref(&self) -> Self {
-        let mut new = self.clone();
-        new.projs.push(ProjectionElem::Deref);
-        new
-    }
-
-    pub(crate) fn leaf(&self, field: Field) -> Self {
-        let mut new = self.clone();
-        new.projs.push(ProjectionElem::Field(field, ()));
-        new
-    }
-
-    pub(crate) fn variant(&self,
-                          adt_def: &'tcx AdtDef,
-                          variant_index: VariantIdx,
-                          field: Field) -> Self {
-        let mut new = self.clone();
-        new.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
-        new.projs.push(ProjectionElem::Field(field, ()));
-        new
-    }
-
     pub(crate) fn from_user_type(user_annotation: CanonicalUserTypeAnnotation<'tcx>) -> Self {
         Self {
             base: user_annotation,
@@ -169,9 +77,8 @@ impl<'tcx> PatternTypeProjection<'tcx> {
         annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
         span: Span,
     ) -> UserTypeProjection<'tcx> {
-        let annotation_index = annotations.push((span, self.base));
         UserTypeProjection {
-            base: annotation_index,
+            base: annotations.push((span, self.base)),
             projs: self.projs
         }
     }
