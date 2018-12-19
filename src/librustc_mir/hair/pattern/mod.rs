@@ -969,8 +969,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             ty::Adt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
                 let msg = format!("to use a constant of type `{}` in a pattern, \
                                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                    self.tcx.item_path_str(adt_def.did),
-                                    self.tcx.item_path_str(adt_def.did));
+                                    self.tcx.def_path_str(adt_def.did),
+                                    self.tcx.def_path_str(adt_def.did));
                 self.tcx.sess.span_err(span, &msg);
                 PatternKind::Wild
             }

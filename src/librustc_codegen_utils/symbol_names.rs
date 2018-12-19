@@ -227,7 +227,7 @@ fn get_symbol_hash<'a, 'tcx>(
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     item_path::with_forced_absolute_paths(|| {
         PrintCx::new(tcx, SymbolPathPrinter)
-            .print_item_path(def_id, None, Namespace::ValueNS)
+            .print_def_path(def_id, None, Namespace::ValueNS)
             .into_interned()
     })
 }

@@ -411,7 +411,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             if let Some(def_id) = trait_id {
                                 // A method in a trait impl.
                                 qualname.push_str(" as ");
-                                qualname.push_str(&self.tcx.item_path_str(def_id));
+                                qualname.push_str(&self.tcx.def_path_str(def_id));
                                 self.tcx
                                     .associated_items(def_id)
                                     .find(|item| item.ident.name == ident.name)
@@ -451,7 +451,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         }
 
                         (
-                            format!("::{}", self.tcx.item_path_str(def_id)),
+                            format!("::{}", self.tcx.def_path_str(def_id)),
                             Some(def_id),
                             None,
                             docs,

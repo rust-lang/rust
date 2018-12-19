@@ -6,7 +6,7 @@ mod foo {
 
     impl Foo {
         #[rustc_symbol_name] //~ ERROR _ZN15impl1..foo..Foo3bar
-        #[rustc_item_path] //~ ERROR item-path(foo::Foo::bar)
+        #[rustc_def_path] //~ ERROR def-path(foo::Foo::bar)
         fn bar() { }
     }
 }
@@ -16,7 +16,7 @@ mod bar {
 
     impl Foo {
         #[rustc_symbol_name] //~ ERROR _ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz
-        #[rustc_item_path] //~ ERROR item-path(bar::<impl foo::Foo>::baz)
+        #[rustc_def_path] //~ ERROR def-path(bar::<impl foo::Foo>::baz)
         fn baz() { }
     }
 }

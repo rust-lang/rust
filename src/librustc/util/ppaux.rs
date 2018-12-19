@@ -320,7 +320,7 @@ impl<F: fmt::Write> PrintCx<'a, 'gcx, 'tcx, FmtPrinter<F>> {
             // FIXME(eddyb) recurse through printing a path via `self`, instead
             // instead of using the `tcx` method that produces a `String`.
             print!(self, write("{}",
-                self.tcx.item_path_str_with_substs_and_ns(def_id, Some(substs), ns)))?;
+                self.tcx.def_path_str_with_substs_and_ns(def_id, Some(substs), ns)))?;
 
             // For impls, the above call already prints relevant generics args.
             if let DefPathData::Impl = key.disambiguated_data.data {
@@ -515,7 +515,7 @@ define_print! {
                     if let Tuple(ref args) = principal.substs.type_at(0).sty {
                         let mut projections = self.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
-                            print!(cx, write("{}", cx.tcx.item_path_str(principal.def_id)))?;
+                            print!(cx, write("{}", cx.tcx.def_path_str(principal.def_id)))?;
                             cx.fn_sig(args, false, proj.ty)?;
                             resugared_principal = true;
                         }
@@ -538,7 +538,7 @@ define_print! {
 
             // Builtin bounds.
             let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
-                cx.tcx.item_path_str(did)
+                cx.tcx.def_path_str(did)
             }).collect();
 
             // The auto traits come ordered by `DefPathHash`. While
@@ -582,7 +582,7 @@ impl fmt::Debug for ty::GenericParamDef {
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         PrintCx::with(FmtPrinter { fmt: f }, |cx| {
-            print!(cx, write("{}", cx.tcx.item_path_str(self.def_id)))
+            print!(cx, write("{}", cx.tcx.def_path_str(self.def_id)))
         })
     }
 }
@@ -590,7 +590,7 @@ impl fmt::Debug for ty::TraitDef {
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         PrintCx::with(FmtPrinter { fmt: f }, |cx| {
-            print!(cx, write("{}", cx.tcx.item_path_str(self.did)))
+            print!(cx, write("{}", cx.tcx.def_path_str(self.did)))
         })
     }
 }
@@ -1513,11 +1513,11 @@ define_print! {
                 ty::Predicate::WellFormed(ty) => print!(cx, print(ty), write(" well-formed")),
                 ty::Predicate::ObjectSafe(trait_def_id) => {
                     print!(cx, write("the trait `{}` is object-safe",
-                        cx.tcx.item_path_str(trait_def_id)))
+                        cx.tcx.def_path_str(trait_def_id)))
                 }
                 ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
                     print!(cx, write("the closure `{}` implements the trait `{}`",
-                           cx.tcx.item_path_str(closure_def_id), kind))
+                           cx.tcx.def_path_str(closure_def_id), kind))
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     print!(cx, write("the constant `"))?;

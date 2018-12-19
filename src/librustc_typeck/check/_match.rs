@@ -1001,13 +1001,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                            E0026,
                                            "{} `{}` does not have {}",
                                            kind_name,
-                                           tcx.item_path_str(variant.did),
+                                           tcx.def_path_str(variant.did),
                                            field_names);
             if let Some((span, ident)) = inexistent_fields.last() {
                 err.span_label(*span,
                                format!("{} `{}` does not have {} field{}",
                                        kind_name,
-                                       tcx.item_path_str(variant.did),
+                                       tcx.def_path_str(variant.did),
                                        t,
                                        plural));
                 if plural == "" {

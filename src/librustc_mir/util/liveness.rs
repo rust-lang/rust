@@ -267,7 +267,7 @@ pub fn dump_mir<'a, 'tcx>(
     }
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id())
+        tcx.def_path_str(source.def_id())
     });
     dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
 }

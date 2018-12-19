@@ -1042,7 +1042,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
                                              "rustc_attrs",
                                              "internal rustc attributes will never be stable",
                                              cfg_fn!(rustc_attrs))),
-    ("rustc_item_path", Whitelisted, template!(Word), Gated(Stability::Unstable,
+    ("rustc_def_path", Whitelisted, template!(Word), Gated(Stability::Unstable,
                                            "rustc_attrs",
                                            "internal rustc attributes will never be stable",
                                            cfg_fn!(rustc_attrs))),

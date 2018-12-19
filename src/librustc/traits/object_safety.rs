@@ -133,7 +133,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                         hir::CRATE_HIR_ID,
                         *span,
                         &format!("the trait `{}` cannot be made into an object",
-                                 self.item_path_str(trait_def_id)),
+                                 self.def_path_str(trait_def_id)),
                         &violation.error_msg());
                     false
                 } else {

@@ -922,7 +922,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                      "the value of the associated type `{}` (from the trait `{}`) \
                                       is already specified",
                                      binding.item_name,
-                                     tcx.item_path_str(assoc_ty.container.id()))
+                                     tcx.def_path_str(assoc_ty.container.id()))
                         .span_label(binding.span, "re-bound here")
                         .span_label(*prev_span, format!("`{}` bound here first", binding.item_name))
                         .emit();
@@ -1071,7 +1071,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 format!(
                     "`{}` (from the trait `{}`)",
                     assoc_item.ident,
-                    tcx.item_path_str(trait_def_id),
+                    tcx.def_path_str(trait_def_id),
                 )
             }).collect::<Vec<_>>().join(", ");
             let mut err = struct_span_err!(
@@ -1459,7 +1459,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let self_ty = if let Some(ty) = opt_self_ty {
             ty
         } else {
-            let path_str = tcx.item_path_str(trait_def_id);
+            let path_str = tcx.def_path_str(trait_def_id);
             self.report_ambiguous_associated_type(span,
                                                   "Type",
                                                   &path_str,

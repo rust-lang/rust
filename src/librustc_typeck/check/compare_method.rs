@@ -719,7 +719,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         trait `{}` has {}",
                                        trait_m.ident,
                                        potentially_plural_count(impl_number_args, "parameter"),
-                                       tcx.item_path_str(trait_m.def_id),
+                                       tcx.def_path_str(trait_m.def_id),
                                        trait_number_args);
         if let Some(trait_span) = trait_span {
             err.span_label(trait_span, format!("trait requires {}",

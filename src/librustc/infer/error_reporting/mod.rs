@@ -448,10 +448,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // Only external crates, if either is from a local
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
-                let exp_path = self.tcx.item_path_str(did1);
-                let found_path = self.tcx.item_path_str(did2);
-                let exp_abs_path = self.tcx.absolute_item_path_str(did1);
-                let found_abs_path = self.tcx.absolute_item_path_str(did2);
+                let exp_path = self.tcx.def_path_str(did1);
+                let found_path = self.tcx.def_path_str(did2);
+                let exp_abs_path = self.tcx.absolute_def_path_str(did1);
+                let found_abs_path = self.tcx.absolute_def_path_str(did2);
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
                 if exp_path == found_path || exp_abs_path == found_abs_path {
@@ -658,7 +658,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 return Some(());
             }
             if let &ty::Adt(def, _) = &ta.sty {
-                let path_ = self.tcx.item_path_str(def.did.clone());
+                let path_ = self.tcx.def_path_str(def.did.clone());
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                     return Some(());
@@ -757,8 +757,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
                 let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                let path1 = self.tcx.item_path_str(def1.did.clone());
-                let path2 = self.tcx.item_path_str(def2.did.clone());
+                let path1 = self.tcx.def_path_str(def1.did.clone());
+                let path2 = self.tcx.def_path_str(def2.did.clone());
                 if def1.did == def2.did {
                     // Easy case. Replace same types with `_` to shorten the output and highlight
                     // the differing ones.
@@ -1013,7 +1013,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             if exp_is_struct && &exp_found.expected == ret_ty.skip_binder() {
                                 let message = format!(
                                     "did you mean `{}(/* fields */)`?",
-                                    self.tcx.item_path_str(def_id)
+                                    self.tcx.def_path_str(def_id)
                                 );
                                 diag.span_label(span, message);
                             }

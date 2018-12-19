@@ -193,7 +193,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             cause.span(&self.tcx()),
             &format!(
                 "implementation of `{}` is not general enough",
-                self.tcx().item_path_str(trait_def_id),
+                self.tcx().def_path_str(trait_def_id),
             ),
         );
 
@@ -201,7 +201,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             ObligationCauseCode::ItemObligation(def_id) => {
                 err.note(&format!(
                     "Due to a where-clause on `{}`,",
-                    self.tcx().item_path_str(def_id),
+                    self.tcx().def_path_str(def_id),
                 ));
             }
             _ => (),

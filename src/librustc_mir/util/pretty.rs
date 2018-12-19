@@ -80,7 +80,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
 
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id())
+        tcx.def_path_str(source.def_id())
     });
     dump_matched_mir_node(
         tcx,
@@ -105,7 +105,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
     };
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(source.def_id())
+        tcx.def_path_str(source.def_id())
     });
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
@@ -115,7 +115,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
 }
 
 // #41697 -- we use `with_forced_impl_filename_line()` because
-// `item_path_str()` would otherwise trigger `type_of`, and this can
+// `def_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
 fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
@@ -614,7 +614,7 @@ fn write_mir_sig(
 
     item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, "{}", tcx.item_path_str(src.def_id()))
+        write!(w, " {}", tcx.def_path_str(src.def_id()))
     })?;
 
     if src.promoted.is_none() && is_function {

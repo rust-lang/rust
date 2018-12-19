@@ -142,7 +142,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
-    let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+    let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
     assert!(mir.arg_count == 0);

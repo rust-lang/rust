@@ -93,7 +93,7 @@ impl BorrowExplanation {
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => (
                         "`Drop` code",
-                        format!("type `{}`", tcx.item_path_str(adt.did)),
+                        format!("type `{}`", tcx.def_path_str(adt.did)),
                     ),
 
                     // Otherwise, just report the whole type (and use

@@ -463,7 +463,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         if let Some(def_id) = dep_node.extract_def_id(self.tcx) {
             format!("{:?}({})",
                     dep_node.kind,
-                    self.tcx.item_path_str(def_id))
+                    self.tcx.def_path_str(def_id))
         } else {
             format!("{:?}({:?})", dep_node.kind, dep_node.hash)
         }

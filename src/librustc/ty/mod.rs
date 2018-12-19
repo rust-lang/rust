@@ -2056,7 +2056,7 @@ impl ReprOptions {
         }
 
         // This is here instead of layout because the choice must make it into metadata.
-        if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
+        if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
         }
         ReprOptions { int: size, align: max_align, pack: min_pack, flags: flags }
