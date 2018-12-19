@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     fs,
     path::{Path, PathBuf},
 };
@@ -18,6 +19,12 @@ pub(crate) struct Task {
 pub struct TaskResult {
     pub(crate) root: VfsRoot,
     pub(crate) files: Vec<(RelativePathBuf, String)>,
+}
+
+impl fmt::Debug for TaskResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("TaskResult { ... }")
+    }
 }
 
 pub(crate) type Worker = thread_worker::Worker<Task, TaskResult>;

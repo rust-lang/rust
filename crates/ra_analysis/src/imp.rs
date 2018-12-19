@@ -43,14 +43,17 @@ impl AnalysisHostImpl {
     pub fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
         // self.gc_syntax_trees();
+        for root_id in change.new_roots {
+            self.db
+                .query_mut(ra_db::SourceRootQuery)
+                .set(root_id, Default::default());
+        }
 
         for (root_id, root_change) in change.roots_changed {
             self.apply_root_change(root_id, root_change);
         }
         for (file_id, text) in change.files_changed {
-            self.db
-                .query_mut(ra_db::FileTextQuery)
-                .set(file_id, Arc::new(text))
+            self.db.query_mut(ra_db::FileTextQuery).set(file_id, text)
         }
         if !change.libraries_added.is_empty() {
             let mut libraries = Vec::clone(&self.db.libraries());

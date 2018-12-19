@@ -25,6 +25,7 @@ cargo_metadata = "0.6.0"
 text_unit = { version = "0.1.2", features = ["serde"] }
 smol_str = { version = "0.1.5", features = ["serde"] }
 rustc-hash = "1.0"
+parking_lot = "0.7.0"
 
 thread_worker = { path = "../thread_worker" }
 ra_syntax = { path = "../ra_syntax" }
@@ -32,6 +33,7 @@ ra_editor = { path = "../ra_editor" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_analysis = { path = "../ra_analysis" }
 gen_lsp_server = { path = "../gen_lsp_server" }
+ra_vfs = { path = "../ra_vfs" }
 
 [dev-dependencies]
 tempdir = "0.3.7"

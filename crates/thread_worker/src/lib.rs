@@ -37,6 +37,9 @@ impl<I, O> Worker<I, O> {
     pub fn send(&self, item: I) {
         self.inp.send(item)
     }
+    pub fn recv(&self) -> Option<O> {
+        self.out.recv()
+    }
 }
 
 impl WorkerHandle {

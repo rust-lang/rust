@@ -15,6 +15,7 @@ mod arena;
 mod io;
 
 use std::{
+    fmt,
     mem,
     thread,
     cmp::Reverse,
@@ -33,6 +34,8 @@ use thread_worker::{WorkerHandle};
 use crate::{
     arena::{ArenaId, Arena},
 };
+
+pub use crate::io::TaskResult as VfsTask;
 
 /// `RootFilter` is a predicate that checks if a file can belong to a root. If
 /// several filters match a file (nested dirs), the most nested one wins.
@@ -68,7 +71,7 @@ fn has_rs_extension(p: &Path) -> bool {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub struct VfsRoot(u32);
+pub struct VfsRoot(pub u32);
 
 impl ArenaId for VfsRoot {
     fn from_u32(idx: u32) -> VfsRoot {
@@ -80,7 +83,7 @@ impl ArenaId for VfsRoot {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub struct VfsFile(u32);
+pub struct VfsFile(pub u32);
 
 impl ArenaId for VfsFile {
     fn from_u32(idx: u32) -> VfsFile {
@@ -106,8 +109,14 @@ pub struct Vfs {
     worker_handle: WorkerHandle,
 }
 
+impl fmt::Debug for Vfs {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Vfs { ... }")
+    }
+}
+
 impl Vfs {
-    pub fn new(mut roots: Vec<PathBuf>) -> Vfs {
+    pub fn new(mut roots: Vec<PathBuf>) -> (Vfs, Vec<VfsRoot>) {
         let (worker, worker_handle) = io::start();
 
         let mut res = Vfs {
@@ -142,7 +151,32 @@ impl Vfs {
             };
             res.worker.inp.send(task);
         }
-        res
+        let roots = res.roots.iter().map(|(id, _)| id).collect();
+        (res, roots)
+    }
+
+    pub fn path2file(&self, path: &Path) -> Option<VfsFile> {
+        if let Some((_root, _path, Some(file))) = self.find_root(path) {
+            return Some(file);
+        }
+        None
+    }
+
+    pub fn file2path(&self, file: VfsFile) -> PathBuf {
+        let rel_path = &self.files[file].path;
+        let root_path = &self.roots[self.files[file].root].root;
+        rel_path.to_path(root_path)
+    }
+
+    pub fn file_for_path(&self, path: &Path) -> Option<VfsFile> {
+        if let Some((_root, _path, Some(file))) = self.find_root(path) {
+            return Some(file);
+        }
+        None
+    }
+
+    pub fn load(&mut self, path: &Path) -> Option<VfsFile> {
+        None
     }
 
     pub fn task_receiver(&self) -> &Receiver<io::TaskResult> {
@@ -163,14 +197,17 @@ impl Vfs {
         self.pending_changes.push(change);
     }
 
-    pub fn add_file_overlay(&mut self, path: &Path, text: String) {
+    pub fn add_file_overlay(&mut self, path: &Path, text: String) -> Option<VfsFile> {
+        let mut res = None;
         if let Some((root, path, file)) = self.find_root(path) {
             let text = Arc::new(text);
             let change = if let Some(file) = file {
+                res = Some(file);
                 self.change_file(file, Arc::clone(&text));
                 VfsChange::ChangeFile { file, text }
             } else {
                 let file = self.add_file(root, path.clone(), Arc::clone(&text));
+                res = Some(file);
                 VfsChange::AddFile {
                     file,
                     text,
@@ -180,6 +217,7 @@ impl Vfs {
             };
             self.pending_changes.push(change);
         }
+        res
     }
 
     pub fn change_file_overlay(&mut self, path: &Path, new_text: String) {
@@ -192,9 +230,11 @@ impl Vfs {
         }
     }
 
-    pub fn remove_file_overlay(&mut self, path: &Path) {
+    pub fn remove_file_overlay(&mut self, path: &Path) -> Option<VfsFile> {
+        let mut res = None;
         if let Some((root, path, file)) = self.find_root(path) {
             let file = file.expect("can't remove a file which wasn't added");
+            res = Some(file);
             let full_path = path.to_path(&self.roots[root].root);
             let change = if let Ok(text) = fs::read_to_string(&full_path) {
                 let text = Arc::new(text);
@@ -206,6 +246,7 @@ impl Vfs {
             };
             self.pending_changes.push(change);
         }
+        res
     }
 
     pub fn commit_changes(&mut self) -> Vec<VfsChange> {
