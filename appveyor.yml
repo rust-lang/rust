@@ -25,7 +25,7 @@ install:
 build: false
 
 test_script:
-    - set RUSTFLAGS=-g
+    - set RUST_TEST_NOCAPTURE=1
     - set RUST_BACKTRACE=1
     # Build miri
     - cargo build --release --all-features --all-targets

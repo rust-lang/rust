@@ -38,3 +38,4 @@ branches:
 env:
   global:
   - RUST_TEST_NOCAPTURE=1
+  - RUST_BACKTRACE=1
