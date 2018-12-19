@@ -1302,12 +1302,12 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
-    check_dropless(tcx, span, def_id);
+    check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def_id);
 }
 
-fn check_dropless<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                sp: Span,
+fn check_union_fields<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                _sp: Span,
                                 item_def_id: DefId)
                                 -> bool {
     // Without the feature we check Copy types only later
@@ -1320,11 +1320,14 @@ fn check_dropless<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let fields = &def.non_enum_variant().fields;
             for field in fields {
                 let field_ty = field.ty(tcx, substs);
+                // We are currently checking the type this field came from, so it must be local
+                let field_span = tcx.hir().span_if_local(field.did).unwrap();
                 let param_env = tcx.param_env(field.did);
                 if field_ty.needs_drop(tcx, param_env) {
-                    struct_span_err!(tcx.sess, sp, E0730,
+                    struct_span_err!(tcx.sess, field_span, E0730,
                                      "unions may not contain fields that need dropping")
-                                .span_label(sp, "ManuallyDrop can be used to wrap such fields")
+                                .span_note(field_span,
+                                           "`std::mem::ManuallyDrop` can be used to wrap the type")
                                 .emit();
                     return false;
                 }
