@@ -25,13 +25,6 @@ LL |     assert!({one! two()});
    = note: expected type `bool`
               found type `()`
 
-error[E0600]: cannot apply unary operator `!` to type `!`
-  --> $DIR/issue-10536.rs:31:5
-   |
-LL |     assert!({one! two});
-   |     ^^^^^^^^^^^^^^^^^^^^ cannot apply unary operator `!`
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors occurred: E0308, E0600.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

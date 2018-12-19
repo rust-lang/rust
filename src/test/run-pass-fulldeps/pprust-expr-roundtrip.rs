@@ -105,7 +105,6 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                     id: DUMMY_NODE_ID,
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
-                    recovered: false,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             },
