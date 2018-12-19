@@ -406,7 +406,7 @@ fn remove_cycle<'tcx>(
 
         // Find the queries in the cycle which are
         // connected to queries outside the cycle
-        let entry_points: Vec<_> = stack.iter().filter_map(|(span, query)| {
+        let entry_points = stack.iter().filter_map(|(span, query)| {
             if query.parent.is_none() {
                 // This query is connected to the root (it has no query parent)
                 Some((*span, query.clone(), None))
@@ -431,10 +431,7 @@ fn remove_cycle<'tcx>(
                     Some((*span, query.clone(), Some(waiter)))
                 }
             }
-        }).collect();
-
-        let entry_points: Vec<(Span, Lrc<QueryJob<'tcx>>, Option<(Span, Lrc<QueryJob<'tcx>>)>)>
-         = entry_points;
+        }).collect::<Vec<(Span, Lrc<QueryJob<'tcx>>, Option<(Span, Lrc<QueryJob<'tcx>>)>)>>();
 
         // Deterministically pick an entry point
         let (_, entry_point, usage) = pick_query(tcx, &entry_points, |e| (e.0, e.1.clone()));

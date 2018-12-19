@@ -398,11 +398,7 @@ impl<'sess> OnDiskCache<'sess> {
                              -> Option<T>
         where T: Decodable
     {
-        let pos = if let Some(&pos) = index.get(&dep_node_index) {
-            pos
-        } else {
-            return None
-        };
+        let pos = index.get(&dep_node_index).cloned()?;
 
         // Initialize the cnum_map using the value from the thread which finishes the closure first
         self.cnum_map.init_nonlocking_same(|| {
