@@ -9,3 +9,11 @@ fn bar() {
 fn baz() {
     assert_eq!(5, 5);
 }
+
+// A test that won't work on miri
+#[cfg(not(feature = "cargo-miri"))]
+#[test]
+fn does_not_work_on_miri() {
+    let x = 0u8;
+    assert!(&x as *const _ as usize % 4 < 4);
+}
