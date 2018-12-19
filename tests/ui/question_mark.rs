@@ -15,6 +15,15 @@ fn some_func(a: Option<u32>) -> Option<u32> {
     a
 }
 
+fn some_other_func(a: Option<u32>) -> Option<u32> {
+    if a.is_none() {
+        return None;
+    } else {
+       return Some(0);
+    }
+    unreachable!()
+}
+
 pub enum SeemsOption<T> {
     Some(T),
     None,

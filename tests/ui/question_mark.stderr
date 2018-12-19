@@ -9,54 +9,54 @@ error: this block may be rewritten with the `?` operator
    = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:47:9
+  --> $DIR/question_mark.rs:56:9
    |
-47 | /         if (self.opt).is_none() {
-48 | |             return None;
-49 | |         }
+56 | /         if (self.opt).is_none() {
+57 | |             return None;
+58 | |         }
    | |_________^ help: replace_it_with: `(self.opt)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:51:9
+  --> $DIR/question_mark.rs:60:9
    |
-51 | /         if self.opt.is_none() {
-52 | |             return None
-53 | |         }
+60 | /         if self.opt.is_none() {
+61 | |             return None
+62 | |         }
    | |_________^ help: replace_it_with: `self.opt?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:55:17
+  --> $DIR/question_mark.rs:64:17
    |
-55 |           let _ = if self.opt.is_none() {
+64 |           let _ = if self.opt.is_none() {
    |  _________________^
-56 | |             return None;
-57 | |         } else {
-58 | |             self.opt
-59 | |         };
+65 | |             return None;
+66 | |         } else {
+67 | |             self.opt
+68 | |         };
    | |_________^ help: replace_it_with: `Some(self.opt?)`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:72:9
+  --> $DIR/question_mark.rs:81:9
    |
-72 | /         if self.opt.is_none() {
-73 | |             return None;
-74 | |         }
+81 | /         if self.opt.is_none() {
+82 | |             return None;
+83 | |         }
    | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:80:9
+  --> $DIR/question_mark.rs:89:9
    |
-80 | /         if self.opt.is_none() {
-81 | |             return None;
-82 | |         }
+89 | /         if self.opt.is_none() {
+90 | |             return None;
+91 | |         }
    | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:88:9
+  --> $DIR/question_mark.rs:97:9
    |
-88 | /         if self.opt.is_none() {
-89 | |             return None;
-90 | |         }
+97 | /         if self.opt.is_none() {
+98 | |             return None;
+99 | |         }
    | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
 
 error: aborting due to 7 previous errors
