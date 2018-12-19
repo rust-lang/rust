@@ -466,3 +466,8 @@ static ROOTED_TRACEABLES: RefCell<RootedTraceableSet> =
         RefCell::new(RootedTraceableSet::new(1234)) ;
 
 ] ;
+
+fn issue3004() {
+    foo!(|_| { (  ) });
+    stringify!(( foo+ ));
+}
