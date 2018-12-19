@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use syntax::symbol::InternedString;
 
 use std::cell::Cell;
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::ops::Deref;
 
 thread_local! {
@@ -145,6 +145,7 @@ pub trait Print<'tcx, P> {
 pub trait Printer: Sized {
     type Path;
 
+    #[must_use]
     fn print_def_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         def_id: DefId,
@@ -153,6 +154,7 @@ pub trait Printer: Sized {
     ) -> Self::Path {
         self.default_print_def_path(def_id, substs, ns)
     }
+    #[must_use]
     fn print_impl_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         impl_def_id: DefId,
@@ -162,14 +164,25 @@ pub trait Printer: Sized {
         self.default_print_impl_path(impl_def_id, substs, ns)
     }
 
+    #[must_use]
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path;
+    #[must_use]
     fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path;
+    #[must_use]
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
         path: Self::Path,
         text: &str,
     ) -> Self::Path;
 }
+
+#[must_use]
+pub struct PrettyPath {
+    pub empty: bool,
+}
+
+/// Trait for printers that pretty-print using `fmt::Write` to the printer.
+pub trait PrettyPrinter: Printer<Path = Result<PrettyPath, fmt::Error>> + fmt::Write {}
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
@@ -202,7 +215,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if FORCE_ABSOLUTE.with(|force| force.get()) {
             PrintCx::new(self, AbsolutePathPrinter).print_def_path(def_id, substs, ns)
         } else {
-            PrintCx::new(self, LocalPathPrinter).print_def_path(def_id, substs, ns)
+            let mut s = String::new();
+            let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
+                .print_def_path(def_id, substs, ns);
+            s
         }
     }
 
@@ -442,10 +458,7 @@ pub struct FmtPrinter<F: fmt::Write> {
     pub fmt: F,
 }
 
-// FIXME(eddyb) integrate into `FmtPrinter`.
-struct LocalPathPrinter;
-
-impl LocalPathPrinter {
+impl<F: fmt::Write> FmtPrinter<F> {
     /// If possible, this returns a global path resolving to `def_id` that is visible
     /// from at least one local module and returns true. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
@@ -582,8 +595,14 @@ impl LocalPathPrinter {
     }
 }
 
-impl Printer for LocalPathPrinter {
-    type Path = String;
+impl<F: fmt::Write> fmt::Write for FmtPrinter<F> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.fmt.write_str(s)
+    }
+}
+
+impl<F: fmt::Write> Printer for FmtPrinter<F> {
+    type Path = Result<PrettyPath, fmt::Error>;
 
     fn print_def_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
@@ -612,7 +631,6 @@ impl Printer for LocalPathPrinter {
             // If no type info is available, fall back to
             // pretty printing some span information. This should
             // only occur very early in the compiler pipeline.
-            // FIXME(eddyb) this should just be using `tcx.def_span(impl_def_id)`
             let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
             let path = self.print_def_path(parent_def_id, None, ns);
             let span = self.tcx.def_span(impl_def_id);
@@ -627,26 +645,39 @@ impl Printer for LocalPathPrinter {
             if self.tcx.sess.rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
                 if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
-                    return keywords::Crate.name().to_string();
+                    write!(self.printer, "{}", keywords::Crate.name())?;
+                    return Ok(PrettyPath { empty: false });
                 }
             }
-            String::new()
+            Ok(PrettyPath { empty: true })
         } else {
-            self.tcx.crate_name(cnum).to_string()
+            write!(self.printer, "{}", self.tcx.crate_name(cnum))?;
+            Ok(PrettyPath { empty: false })
         }
     }
     fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
-        text.to_string()
+        write!(self.printer, "{}", text)?;
+        Ok(PrettyPath { empty: false })
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
-        mut path: Self::Path,
+        path: Self::Path,
         text: &str,
     ) -> Self::Path {
-        if !path.is_empty() {
-            path.push_str("::");
+        let path = path?;
+
+        // FIXME(eddyb) this shouldn't happen, but is currently
+        // the case for `extern { ... }` "foreign modules".
+        if text.is_empty() {
+            return Ok(path);
         }
-        path.push_str(text);
-        path
+
+        if !path.empty {
+            write!(self.printer, "::")?;
+        }
+        write!(self.printer, "{}", text)?;
+        Ok(PrettyPath { empty: false })
     }
 }
+
+impl<F: fmt::Write> PrettyPrinter for FmtPrinter<F> {}
