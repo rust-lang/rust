@@ -4831,6 +4831,10 @@ fn make_recursive_type() -> impl Sized {
 ```
 "##,
 
+E0730: r##"
+A `union` can not have fields with destructors.
+"##,
+
 }
 
 register_diagnostics! {

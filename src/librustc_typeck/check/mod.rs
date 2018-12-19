@@ -1302,7 +1302,36 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
+    check_dropless(tcx, span, def_id);
     check_packed(tcx, span, def_id);
+}
+
+fn check_dropless<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                sp: Span,
+                                item_def_id: DefId)
+                                -> bool {
+    // Without the feature we check Copy types only later
+    if !tcx.features().untagged_unions {
+        return true;
+    }
+    let t = tcx.type_of(item_def_id);
+    if let ty::Adt(def, substs) = t.sty {
+        if def.is_union() {
+            let fields = &def.non_enum_variant().fields;
+            for field in fields {
+                let field_ty = field.ty(tcx, substs);
+                let param_env = tcx.param_env(field.did);
+                if field_ty.needs_drop(tcx, param_env) {
+                    struct_span_err!(tcx.sess, sp, E0730,
+                                     "unions may not contain fields that need dropping")
+                                .span_label(sp, "ManuallyDrop can be used to wrap such fields")
+                                .emit();
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 fn check_opaque<'a, 'tcx>(
