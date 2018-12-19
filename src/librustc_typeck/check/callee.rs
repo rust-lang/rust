@@ -57,7 +57,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_overloaded_call_step(call_expr, callee_expr, &autoderef);
         }
-        autoderef.finalize();
+        autoderef.finalize(self);
 
         let output = match result {
             None => {
@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 callee_expr: &'gcx hir::Expr,
                                 autoderef: &Autoderef<'a, 'gcx, 'tcx>)
                                 -> Option<CallStep<'tcx>> {
-        let adjusted_ty = autoderef.unambiguous_final_ty();
+        let adjusted_ty = autoderef.unambiguous_final_ty(self);
         debug!("try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?})",
                call_expr,
                adjusted_ty);
@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match adjusted_ty.sty {
             ty::FnDef(..) | ty::FnPtr(_) => {
-                let adjustments = autoderef.adjust_steps(Needs::None);
+                let adjustments = autoderef.adjust_steps(self, Needs::None);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
             }
@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         infer::FnCall,
                         &closure_ty
                     ).0;
-                    let adjustments = autoderef.adjust_steps(Needs::None);
+                    let adjustments = autoderef.adjust_steps(self, Needs::None);
                     self.record_deferred_call_resolution(def_id, DeferredCallResolution {
                         call_expr,
                         callee_expr,
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.try_overloaded_call_traits(call_expr, adjusted_ty).map(|(autoref, method)| {
-            let mut adjustments = autoderef.adjust_steps(Needs::None);
+            let mut adjustments = autoderef.adjust_steps(self, Needs::None);
             adjustments.extend(autoref);
             self.apply_adjustments(callee_expr, adjustments);
             CallStep::Overloaded(method)

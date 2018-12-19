@@ -1116,6 +1116,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::TypeOpNormalizePolyFnSig |
         DepKind::TypeOpNormalizeFnSig |
         DepKind::SubstituteNormalizeAndTestPredicates |
+        DepKind::MethodAutoderefSteps |
         DepKind::InstanceDefSizeEstimate |
         DepKind::ProgramClausesForEnv |
 

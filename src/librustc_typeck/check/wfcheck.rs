@@ -766,7 +766,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                 potential_self_ty, self_ty);
 
             if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
-                autoderef.finalize();
+                autoderef.finalize(fcx);
                 if let Some(mut err) = fcx.demand_eqtype_with_origin(
                     &cause, self_ty, potential_self_ty) {
                     err.emit();

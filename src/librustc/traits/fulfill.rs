@@ -61,6 +61,16 @@ pub struct FulfillmentContext<'tcx> {
     // type-lives-for-region constraints, and because the type
     // is well-formed, the constraints should hold.
     register_region_obligations: bool,
+    // Is it OK to register obligations into this infcx inside
+    // an infcx snapshot?
+    //
+    // The "primary fulfillment" in many cases in typeck lives
+    // outside of any snapshot, so any use of it inside a snapshot
+    // will lead to trouble and therefore is checked against, but
+    // other fulfillment contexts sometimes do live inside of
+    // a snapshot (they don't *straddle* a snapshot, so there
+    // is no trouble there).
+    usable_in_snapshot: bool
 }
 
 #[derive(Clone, Debug)]
@@ -74,14 +84,24 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
-            register_region_obligations: true
+            register_region_obligations: true,
+            usable_in_snapshot: false,
+        }
+    }
+
+    pub fn new_in_snapshot() -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            register_region_obligations: true,
+            usable_in_snapshot: true,
         }
     }
 
     pub fn new_ignoring_regions() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
-            register_region_obligations: false
+            register_region_obligations: false,
+            usable_in_snapshot: false
         }
     }
 
@@ -195,7 +215,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
         debug!("register_predicate_obligation(obligation={:?})", obligation);
 
-        assert!(!infcx.is_in_snapshot());
+        assert!(!infcx.is_in_snapshot() || self.usable_in_snapshot);
 
         self.predicates.register_obligation(PendingPredicateObligation {
             obligation,

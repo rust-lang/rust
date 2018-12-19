@@ -102,10 +102,11 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use middle::lang_items;
 use namespace::Namespace;
+use rustc::infer::{self, InferCtxt, InferOk, InferResult, RegionVariableOrigin};
+use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
-use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
@@ -2555,7 +2556,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_index_step(expr, base_expr, &autoderef, needs, idx_ty);
         }
-        autoderef.finalize();
+        autoderef.finalize(self);
         result
     }
 
@@ -2572,7 +2573,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       index_ty: Ty<'tcx>)
                       -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
     {
-        let adjusted_ty = autoderef.unambiguous_final_ty();
+        let adjusted_ty = autoderef.unambiguous_final_ty(self);
         debug!("try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
                                index_ty={:?})",
                expr,
@@ -2602,7 +2603,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 debug!("try_index_step: success, using overloaded indexing");
                 let method = self.register_infer_ok_obligations(ok);
 
-                let mut adjustments = autoderef.adjust_steps(needs);
+                let mut adjustments = autoderef.adjust_steps(self, needs);
                 if let ty::Ref(region, _, r_mutbl) = method.sig.inputs()[0].sty {
                     let mutbl = match r_mutbl {
                         hir::MutImmutable => AutoBorrowMutability::Immutable,
@@ -3296,9 +3297,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // of error recovery.
                         self.write_field_index(expr.id, index);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            let adjustments = autoderef.adjust_steps(needs);
+                            let adjustments = autoderef.adjust_steps(self, needs);
                             self.apply_adjustments(base, adjustments);
-                            autoderef.finalize();
+                            autoderef.finalize(self);
 
                             self.tcx.check_stability(field.did, Some(expr.id), expr.span);
                             return field_ty;
@@ -3311,9 +3312,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Ok(index) = fstr.parse::<usize>() {
                         if fstr == index.to_string() {
                             if let Some(field_ty) = tys.get(index) {
-                                let adjustments = autoderef.adjust_steps(needs);
+                                let adjustments = autoderef.adjust_steps(self, needs);
                                 self.apply_adjustments(base, adjustments);
-                                autoderef.finalize();
+                                autoderef.finalize(self);
 
                                 self.write_field_index(expr.id, index);
                                 return field_ty;
@@ -3324,7 +3325,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 _ => {}
             }
         }
-        autoderef.unambiguous_final_ty();
+        autoderef.unambiguous_final_ty(self);
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
@@ -5371,6 +5372,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             enclosing_breakables.stack.pop().expect("missing breakable context")
         };
         (ctxt, result)
+    }
+
+    /// Instantiate a QueryResponse in a probe context, without a
+    /// good ObligationCause.
+    fn probe_instantiate_query_response(
+        &self,
+        span: Span,
+        original_values: &OriginalQueryValues<'tcx>,
+        query_result: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
+    ) -> InferResult<'tcx, Ty<'tcx>>
+    {
+        self.instantiate_query_response_and_region_obligations(
+            &traits::ObligationCause::misc(span, self.body_id),
+            self.param_env,
+            original_values,
+            query_result)
     }
 }
 

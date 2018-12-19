@@ -117,6 +117,31 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         Ok(Lrc::new(canonical_result))
     }
 
+    /// A version of `make_canonicalized_query_response` that does
+    /// not pack in obligations, for contexts that want to drop
+    /// pending obligations instead of treating them as an ambiguity (e.g.
+    /// typeck "probing" contexts).
+    ///
+    /// If you DO want to keep track of pending obligations (which
+    /// include all region obligations, so this includes all cases
+    /// that care about regions) with this function, you have to
+    /// do it yourself, by e.g. having them be a part of the answer.
+    pub fn make_query_response_ignoring_pending_obligations<T>(
+        &self,
+        inference_vars: CanonicalVarValues<'tcx>,
+        answer: T
+    ) -> Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>
+    where
+        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+    {
+        self.canonicalize_response(&QueryResponse {
+            var_values: inference_vars,
+            region_constraints: vec![],
+            certainty: Certainty::Proven, // Ambiguities are OK!
+            value: answer,
+        })
+    }
+
     /// Helper for `make_canonicalized_query_response` that does
     /// everything up until the final canonicalization.
     fn make_query_response<T>(
