@@ -1,6 +1,5 @@
 //! ra_db defines basic database traits. Concrete DB is defined by ra_analysis.
 mod syntax_ptr;
-mod file_resolver;
 mod input;
 mod loc2id;
 pub mod mock;
@@ -24,7 +23,6 @@ impl std::error::Error for Canceled {}
 
 pub use crate::{
     syntax_ptr::LocalSyntaxPtr,
-    file_resolver::{FileResolver, FileResolverImp},
     input::{
         FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, WORKSPACE,
         FileTextQuery, FileSourceRootQuery, SourceRootQuery, LibrariesQuery, CrateGraphQuery,

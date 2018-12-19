@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 use relative_path::{RelativePath, RelativePathBuf};
 
-use crate::{FileId, FileResolver};
+use crate::{FileId};
 
 #[derive(Default, Debug, Clone)]
 pub struct FileMap(Vec<(FileId, RelativePathBuf)>);
@@ -26,20 +26,5 @@ impl FileMap {
         self.0
             .iter()
             .map(|(id, path)| (*id, path.as_relative_path()))
-    }
-
-    fn path(&self, id: FileId) -> &RelativePath {
-        self.iter().find(|&(it, _)| it == id).unwrap().1
-    }
-}
-
-impl FileResolver for FileMap {
-    fn file_stem(&self, id: FileId) -> String {
-        self.path(id).file_stem().unwrap().to_string()
-    }
-    fn resolve(&self, id: FileId, rel: &RelativePath) -> Option<FileId> {
-        let path = self.path(id).join(rel).normalize();
-        let id = self.iter().find(|&(_, p)| path == p)?.0;
-        Some(id)
     }
 }
