@@ -1,0 +1,39 @@
+error[E0730]: unions may not contain fields that need dropping
+  --> $DIR/union-with-drop-fields.rs:9:5
+   |
+LL |     a: String, //~ ERROR unions may not contain fields that need dropping
+   |     ^^^^^^^^^
+   |
+note: ManuallyDrop can be used to wrap the type
+  --> $DIR/union-with-drop-fields.rs:9:5
+   |
+LL |     a: String, //~ ERROR unions may not contain fields that need dropping
+   |     ^^^^^^^^^
+
+error[E0730]: unions may not contain fields that need dropping
+  --> $DIR/union-with-drop-fields.rs:17:5
+   |
+LL |     a: S, //~ ERROR unions may not contain fields that need dropping
+   |     ^^^^
+   |
+note: ManuallyDrop can be used to wrap the type
+  --> $DIR/union-with-drop-fields.rs:17:5
+   |
+LL |     a: S, //~ ERROR unions may not contain fields that need dropping
+   |     ^^^^
+
+error[E0730]: unions may not contain fields that need dropping
+  --> $DIR/union-with-drop-fields.rs:22:5
+   |
+LL |     a: T, //~ ERROR unions may not contain fields that need dropping
+   |     ^^^^
+   |
+note: ManuallyDrop can be used to wrap the type
+  --> $DIR/union-with-drop-fields.rs:22:5
+   |
+LL |     a: T, //~ ERROR unions may not contain fields that need dropping
+   |     ^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0730`.
