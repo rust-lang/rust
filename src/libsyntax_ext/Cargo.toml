@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "syntax_ext"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 fmt_macros = { path = "../libfmt_macros" }

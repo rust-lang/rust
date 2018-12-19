@@ -39,6 +39,7 @@ extern crate rustc_incremental;
 extern crate rustc_codegen_utils;
 extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;
+extern crate rustc_driver as _;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
