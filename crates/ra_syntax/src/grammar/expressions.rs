@@ -73,6 +73,10 @@ pub(crate) fn block(p: &mut Parser) {
                             //     for _ in () {}
                             //     {}
                             //     {}
+                            //     macro_rules! test {
+                            //          () => {}
+                            //     }
+                            //     test!{}
                             // }
                             if is_blocklike {
                                 p.eat(SEMI);
@@ -168,13 +172,13 @@ fn current_op(p: &Parser) -> (u8, Op) {
 // Parses expression with binding power of at least bp.
 fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
     let mut lhs = match lhs(p, r) {
-        Some((lhs, macro_blocklike)) => {
+        Some((lhs, blocklike)) => {
             // test stmt_bin_expr_ambiguity
             // fn foo() {
             //     let _ = {1} & 2;
             //     {1} &2;
             // }
-            if r.prefer_stmt && macro_blocklike.is_block() {
+            if r.prefer_stmt && blocklike.is_block() {
                 return BlockLike::Block;
             }
             lhs

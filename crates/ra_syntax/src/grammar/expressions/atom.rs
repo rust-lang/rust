@@ -353,6 +353,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 // fn foo() {
 //     match () {
 //         _ => (),
+//         _ if Test>{field: 0} => (),
 //         X | Y if Z => (),
 //         | X | Y if Z => (),
 //         | X => (),

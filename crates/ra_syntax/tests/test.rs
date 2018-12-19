@@ -41,8 +41,10 @@ fn parser_fuzz_tests() {
 /// TODO: Use this as a benchmark
 #[test]
 fn self_hosting_parsing() {
+    use std::ffi::OsStr;
     let empty_vec = vec![];
-    let dir = project_dir();
+    let dir = project_dir().join("crates");
+    let mut count = 0;
     for entry in walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
@@ -52,17 +54,16 @@ fn self_hosting_parsing() {
                 // TODO: this more neatly
                 .any(|component| {
                     // Get all files which are not in the crates/ra_syntax/tests/data folder
-                    (component == Component::Normal(std::ffi::OsStr::new("data"))
-                    // or the .git folder
-                        || component == Component::Normal(std::ffi::OsStr::new(".git")))
+                    component == Component::Normal(OsStr::new("data"))
                 })
         })
         .map(|e| e.unwrap())
         .filter(|entry| {
             // Get all `.rs ` files
-            !entry.path().is_dir() && (entry.path().extension() == Some(std::ffi::OsStr::new("rs")))
+            !entry.path().is_dir() && (entry.path().extension() == Some(OsStr::new("rs")))
         })
     {
+        count += 1;
         let text = read_text(entry.path());
         let node = SourceFileNode::parse(&text);
         let errors = node.errors();
@@ -72,6 +73,10 @@ fn self_hosting_parsing() {
             entry
         );
     }
+    assert!(
+        count > 30,
+        "self_hosting_parsing found too few files - is it running in the right directory?"
+    )
 }
 /// Read file and normalize newlines.
 ///
