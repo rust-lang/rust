@@ -1,3 +1,4 @@
+use clone::TryClone;
 use fmt;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, Ipv4Addr, Ipv6Addr};
@@ -784,6 +785,14 @@ impl UdpSocket {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
+    }
+}
+
+#[unstable(feature = "try_clone", issue = "0")]
+impl TryClone for UdpSocket {
+    type Error = io::Error;
+    fn try_clone(&self) -> io::Result<UdpSocket> {
+        UdpSocket::try_clone(self)
     }
 }
 

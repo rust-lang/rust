@@ -7,6 +7,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use clone::TryClone;
 use fmt;
 use ffi::OsString;
 use io::{self, SeekFrom, Seek, Read, Initializer, Write};
@@ -569,6 +570,14 @@ impl File {
     #[stable(feature = "set_permissions_atomic", since = "1.16.0")]
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
+    }
+}
+
+#[unstable(feature = "try_clone", issue = "0")]
+impl TryClone for File {
+    type Error = io::Error;
+    fn try_clone(&self) -> io::Result<File> {
+        File::try_clone(self)
     }
 }
 

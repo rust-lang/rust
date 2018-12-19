@@ -1,5 +1,6 @@
 use io::prelude::*;
 
+use clone::TryClone;
 use fmt;
 use io::{self, Initializer};
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
@@ -565,6 +566,14 @@ impl TcpStream {
     }
 }
 
+#[unstable(feature = "try_clone", issue = "0")]
+impl TryClone for TcpStream {
+    type Error = io::Error;
+    fn try_clone(&self) -> io::Result<TcpStream> {
+        TcpStream::try_clone(self)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
@@ -877,6 +886,14 @@ impl TcpListener {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
+    }
+}
+
+#[unstable(feature = "try_clone", issue = "0")]
+impl TryClone for TcpListener {
+    type Error = io::Error;
+    fn try_clone(&self) -> io::Result<TcpListener> {
+        TcpListener::try_clone(self)
     }
 }
 

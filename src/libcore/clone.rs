@@ -133,6 +133,29 @@ pub trait Clone : Sized {
     }
 }
 
+/// Falliable version of [`Clone`].
+#[unstable(feature = "try_clone", issue = "0")]
+pub trait TryClone : Sized {
+    /// The type returned when cloning fails.
+    type Error;
+
+    /// Returns a copy of the value, or an error if the value could not be cloned.
+    #[unstable(feature = "try_clone", issue = "0")]
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
+    fn try_clone(&self) -> Result<Self, Self::Error>;
+}
+
+// Infallible clones are semantically equivalent to fallible clones
+// with an uninhabited error type.
+#[unstable(feature = "try_clone", issue = "0")]
+impl<T> TryClone for T where T: Clone {
+    type Error = !;
+
+    fn try_clone(&self) -> Result<Self, Self::Error> {
+        Ok(self.clone())
+    }
+}
+
 // FIXME(aburka): these structs are used solely by #[derive] to
 // assert that every component of a type implements Clone or Copy.
 //
