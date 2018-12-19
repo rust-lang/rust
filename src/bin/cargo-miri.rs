@@ -420,8 +420,6 @@ where
         args.push("--".to_owned());
     }
     args.push("--emit=dep-info,metadata".to_owned());
-    args.push("--cfg".to_owned());
-    args.push(r#"feature="cargo-miri""#.to_owned());
 
     let path = std::env::current_exe().expect("current executable path invalid");
     let exit_status = Command::new("cargo")
