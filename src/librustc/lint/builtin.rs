@@ -315,19 +315,19 @@ declare_lint! {
 declare_lint! {
     pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
     Warn,
-    "warn about documentation intra links resolution failure"
+    "failures in resolving intra-doc link targets"
 }
 
 declare_lint! {
     pub MISSING_DOC_CODE_EXAMPLES,
     Allow,
-    "warn about missing code example in an item's documentation"
+    "detects publicly-exported items without code samples in their documentation"
 }
 
 declare_lint! {
     pub PRIVATE_DOC_TESTS,
     Allow,
-    "warn about doc test in private item"
+    "detects code samples in docs of private items not documented by rustdoc"
 }
 
 declare_lint! {
