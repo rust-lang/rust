@@ -47,6 +47,7 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_codegen_utils;
 extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;
+extern crate rustc_driver;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

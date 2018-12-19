@@ -24,10 +24,6 @@ extern crate serialize;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
-
 #[macro_use]
 extern crate rustc_data_structures;
 

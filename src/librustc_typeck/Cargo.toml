@@ -6,8 +6,8 @@ version = "0.0.0"
 [lib]
 name = "rustc_typeck"
 path = "lib.rs"
-crate-type = ["dylib"]
 test = false
+doctest = false
 
 [dependencies]
 arena = { path = "../libarena" }

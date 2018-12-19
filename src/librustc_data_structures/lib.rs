@@ -43,10 +43,6 @@ extern crate serialize;
 extern crate graphviz;
 extern crate smallvec;
 
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
-
 pub use rustc_serialize::hex::ToHex;
 
 #[macro_export]

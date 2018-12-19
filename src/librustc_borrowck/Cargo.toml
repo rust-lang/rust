@@ -6,8 +6,8 @@ version = "0.0.0"
 [lib]
 name = "rustc_borrowck"
 path = "lib.rs"
-crate-type = ["dylib"]
 test = false
+doctest = false
 
 [dependencies]
 log = "0.4"

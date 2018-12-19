@@ -6,7 +6,6 @@ version = "0.0.0"
 [lib]
 name = "rustc_passes"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [dependencies]
 log = "0.4"

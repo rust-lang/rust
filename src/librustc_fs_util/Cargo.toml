@@ -6,6 +6,5 @@ version = "0.0.0"
 [lib]
 name = "rustc_fs_util"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [dependencies]

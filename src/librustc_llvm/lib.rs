@@ -5,10 +5,6 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
-
 // NOTE: This crate only exists to allow linking on mingw targets.
 
 /// Initialize targets enabled by the build script via `cfg(llvm_component = "...")`.

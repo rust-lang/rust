@@ -2288,7 +2288,6 @@ name = "rustc_apfloat"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_cratesio_shim 0.0.0",
  "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2372,15 +2371,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_cratesio_shim"
-version = "0.0.0"
-dependencies = [
- "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
@@ -2392,7 +2382,6 @@ dependencies = [
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_cratesio_shim 0.0.0",
  "serialize 0.0.0",
  "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2439,7 +2428,6 @@ version = "0.0.0"
 dependencies = [
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
  "syntax_pos 0.0.0",
@@ -2626,7 +2614,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
 ]
