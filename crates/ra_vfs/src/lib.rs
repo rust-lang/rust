@@ -202,7 +202,7 @@ impl Vfs {
                 VfsChange::ChangeFile { file, text }
             } else {
                 self.remove_file(file);
-                VfsChange::RemoveFile { file }
+                VfsChange::RemoveFile { root, file, path }
             };
             self.pending_changes.push(change);
         }
@@ -260,13 +260,15 @@ pub enum VfsChange {
         files: Vec<(VfsFile, RelativePathBuf, Arc<String>)>,
     },
     AddFile {
-        file: VfsFile,
         root: VfsRoot,
+        file: VfsFile,
         path: RelativePathBuf,
         text: Arc<String>,
     },
     RemoveFile {
+        root: VfsRoot,
         file: VfsFile,
+        path: RelativePathBuf,
     },
     ChangeFile {
         file: VfsFile,
