@@ -390,11 +390,9 @@ fn remove_cycle<'tcx>(
                                       DUMMY_SP,
                                       &mut stack,
                                       &mut visited) {
-        // Reverse the stack so earlier entries require later entries
-        stack.reverse();
-
-        // The stack is a vector of pairs of spans and queries
-        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().unzip();
+        // The stack is a vector of pairs of spans and queries; reverse it so that
+        // the earlier entries require later entries
+        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
 
         // Shift the spans so that queries are matched with the span for their waitee
         spans.rotate_right(1);
