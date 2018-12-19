@@ -38,10 +38,6 @@ extern crate libc;
 #[macro_use]
 extern crate cfg_if;
 
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
-
 pub use rustc_serialize::hex::ToHex;
 
 #[inline(never)]

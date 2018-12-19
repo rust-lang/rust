@@ -46,7 +46,6 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(non_exhaustive)]
-#![feature(proc_macro_internals)]
 #![feature(optin_builtin_traits)]
 #![feature(range_is_empty)]
 #![feature(rustc_diagnostic_macros)]

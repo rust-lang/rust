@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "syntax_pos"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 serialize = { path = "../libserialize" }

@@ -7,4 +7,3 @@ edition = "2018"
 [lib]
 name = "graphviz"
 path = "lib.rs"
-crate-type = ["dylib"]

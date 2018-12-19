@@ -35,9 +35,6 @@
 #![deny(rust_2018_idioms)]
 
 #![feature(nll)]
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
 
 use std::cmp::Ordering;
 use std::fmt;
