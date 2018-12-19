@@ -295,7 +295,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
             // We detected a query cycle, fix up the initial span and return Some
 
             // Remove previous stack entries
-            stack.splice(0..p, iter::empty());
+            stack.drain(0..p);
             // Replace the span for the first query with the cycle cause
             stack[0].0 = span;
             Some(None)
