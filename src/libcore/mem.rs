@@ -614,7 +614,8 @@ pub unsafe fn zeroed<T>() -> T {
 ///     }
 /// }
 /// // Forget the data. If this is allowed to drop, you may see a crash such as:
-/// // 'mem_uninit_test(2457,0x7fffb55dd380) malloc: *** error for object 0x7ff3b8402920: pointer being freed was not allocated'
+/// // 'mem_uninit_test(2457,0x7fffb55dd380) malloc: *** error for object
+/// // 0x7ff3b8402920: pointer being freed was not allocated'
 /// mem::forget(data);
 /// ```
 ///
