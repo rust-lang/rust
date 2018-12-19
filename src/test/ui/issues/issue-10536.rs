@@ -30,5 +30,4 @@ pub fn main() {
     // least throw a conventional error.
     assert!({one! two});
     //~^ ERROR expected `(` or `{`, found `}`
-    //~| ERROR cannot apply unary operator `!` to type `!`
 }

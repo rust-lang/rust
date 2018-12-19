@@ -420,7 +420,6 @@ impl_stable_hash_for!(struct hir::Block {
     rules,
     span,
     targeted_by_break,
-    recovered,
 });
 
 impl_stable_hash_for!(struct hir::Pat {

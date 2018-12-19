@@ -751,7 +751,6 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
         fn stmt_to_block(rules: ast::BlockCheckMode,
-                         recovered: bool,
                          s: Option<ast::Stmt>,
                          sess: &Session) -> ast::Block {
             ast::Block {
@@ -759,7 +758,6 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
                 rules,
                 id: sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
-                recovered,
             }
         }
 
@@ -778,7 +776,7 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
             }
         }
 
-        let empty_block = stmt_to_block(BlockCheckMode::Default, false, None, self.sess);
+        let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.sess);
         let loop_expr = P(ast::Expr {
             node: ast::ExprKind::Loop(P(empty_block), None),
             id: self.sess.next_node_id(),
@@ -819,7 +817,7 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
                         old_blocks.push(new_block);
                     }
 
-                    stmt_to_block(b.rules, b.recovered, Some(loop_stmt), self.sess)
+                    stmt_to_block(b.rules, Some(loop_stmt), self.sess)
                 } else {
                     //push `loop {}` onto the end of our fresh block and yield that
                     new_block.stmts.push(loop_stmt);
