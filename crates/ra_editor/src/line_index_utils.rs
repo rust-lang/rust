@@ -1,6 +1,7 @@
 use ra_text_edit::{AtomTextEdit};
 use ra_syntax::{TextUnit, TextRange};
 use crate::{LineIndex, LineCol};
+use superslice::Ext;
 
 #[derive(Debug)]
 struct OffsetNewlineIter<'a> {
@@ -56,6 +57,136 @@ trait TranslatedNewlineIterator {
     {
         Box::new(self)
     }
+}
+
+#[derive(Debug)]
+struct AltEdit<'a> {
+    insert_newlines: OffsetNewlineIter<'a>,
+    delete: TextRange,
+    diff: i64,
+}
+
+fn translate_range_by(range: TextRange, diff: i64) -> TextRange {
+    if diff == 0 {
+        range
+    } else {
+        let start = translate_by(range.start(), diff);
+        let end = translate_by(range.end(), diff);
+        TextRange::from_to(start, end)
+    }
+}
+
+fn translate_by(x: TextUnit, diff: i64) -> TextUnit {
+    if diff == 0 {
+        x
+    } else {
+        TextUnit::from((x.to_usize() as i64 + diff) as u32)
+    }
+}
+
+fn to_alt_edits<'a>(offset: TextUnit, edits: &'a [AtomTextEdit]) -> Vec<AltEdit<'a>> {
+    let mut xs: Vec<AltEdit<'a>> = Vec::with_capacity(edits.len());
+    // collect and sort edits
+    for edit in edits {
+        // TODO discard after translating?
+        // if edit.delete.start() >= offset {
+        //     continue;
+        // }
+        let insert_index = xs.upper_bound_by_key(&edit.delete.start(), |x| x.delete.start());
+        let diff = edit.insert.len() as i64 - edit.delete.len().to_usize() as i64;
+        xs.insert(
+            insert_index,
+            AltEdit {
+                insert_newlines: OffsetNewlineIter {
+                    offset: edit.delete.start(),
+                    text: &edit.insert,
+                },
+                delete: edit.delete,
+                diff: diff,
+            },
+        );
+    }
+    // translate edits by previous edits
+    for i in 1..xs.len() {
+        let (x, prevs) = xs[0..=i].split_last_mut().unwrap();
+        for prev in prevs {
+            x.delete = translate_range_by(x.delete, prev.diff);
+            x.insert_newlines.offset = translate_by(x.insert_newlines.offset, prev.diff);
+        }
+    }
+    xs
+}
+
+#[derive(Debug)]
+enum NextNewline {
+    Use,
+    Discard,
+    Replace(TextUnit),
+    New(TextUnit),
+}
+
+fn next_newline(candidate: Option<TextUnit>, edits: &mut [AltEdit]) -> NextNewline {
+    let mut candidate = match candidate {
+        None => {
+            for edit in edits {
+                if let Some(inserted) = edit.insert_newlines.next() {
+                    return NextNewline::New(inserted);
+                }
+            }
+            return NextNewline::Use; // END
+        }
+        Some(x) => x,
+    };
+
+    for edit in edits {
+        if candidate <= edit.delete.start() {
+            return NextNewline::Replace(candidate);
+        } else if candidate <= edit.delete.end() {
+            return match edit.insert_newlines.next() {
+                Some(x) => NextNewline::Replace(x),
+                None => NextNewline::Discard,
+            };
+        } else {
+            if let Some(inserted) = edit.insert_newlines.next() {
+                return NextNewline::New(inserted);
+            }
+            candidate = translate_by(candidate, edit.diff);
+        }
+    }
+    return NextNewline::Replace(candidate);
+}
+
+fn count_newlines(offset: TextUnit, line_index: &LineIndex, edits: &[AtomTextEdit]) -> u32 {
+    let mut edits = to_alt_edits(offset, edits);
+    let mut orig_newlines = line_index.newlines().iter().map(|x| *x).peekable();
+
+    let mut count = 0;
+
+    loop {
+        let res = next_newline(orig_newlines.peek().map(|x| *x), &mut edits);
+        let next = match res {
+            NextNewline::Use => orig_newlines.next(),
+            NextNewline::Discard => {
+                orig_newlines.next();
+                continue;
+            }
+            NextNewline::Replace(new) => {
+                orig_newlines.next();
+                Some(new)
+            }
+            NextNewline::New(new) => Some(new),
+        };
+        match next {
+            Some(n) if n <= offset => {
+                count += 1;
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+
+    count
 }
 
 struct TranslatedAtomEdit<'a> {
@@ -255,6 +386,14 @@ mod test {
             let expected = translate_after_edit(&x.text, x.offset, x.edits.clone());
             let actual = translate_offset_with_edit(&line_index, x.offset, &x.edits);
             assert_eq!(actual.line, expected.line);
+        }
+
+        #[test]
+        fn test_translate_offset_with_edit_alt(x in arb_text_with_offset_and_edits()) {
+            let line_index = LineIndex::new(&x.text);
+            let expected = translate_after_edit(&x.text, x.offset, x.edits.clone());
+            let actual_lines = count_newlines(x.offset, &line_index, &x.edits);
+            assert_eq!(actual_lines, expected.line);
         }
     }
 }
