@@ -98,5 +98,7 @@ fn eq() {
 
 #[test]
 fn to_nonnull() {
-    let _: std::ptr::NonNull<i32> = Rc::new(0).into();
+    let ptr: std::ptr::NonNull<i32> = Rc::new(0).into();
+    let deref = unsafe { *ptr.as_ref() };
+    assert_eq!(deref, 0);
 }
