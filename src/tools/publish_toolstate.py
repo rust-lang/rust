@@ -46,11 +46,11 @@ def read_current_status(current_commit, path):
     return {}
 
 def issue(
-    title,
     tool,
     maintainers,
     relevant_pr_number,
     relevant_pr_user,
+    msg,
 ):
     # Open an issue about the toolstate failure.
     gh_url = 'https://api.github.com/repos/rust-lang/rust/issues'
@@ -64,8 +64,11 @@ def issue(
 
             If you have the time it would be great if you could open a PR against {} that
             fixes the fallout from your PR.
-            '''.format(relevant_pr_user, relevant_pr_number, tool, tool),
-            'title': title,
+
+            {}
+
+            '''.format(relevant_pr_user, relevant_pr_number, tool, tool, msg),
+            'title': '💔 {}'.format(tool),
             'assignees': assignees,
             'labels': ['T-compiler', 'I-nominated'],
         }),
@@ -105,6 +108,7 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
+            failures = ''
 
             for os, s in current_status.items():
                 old = status[os]
@@ -120,7 +124,11 @@ def update_latest(
                         .format(tool, os, old, new)
                     message += '{} (cc {}, @rust-lang/infra).\n' \
                         .format(title, MAINTAINERS.get(tool))
-                    issue(title, tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user)
+                    failures += title
+                    failures += '\n'
+
+            if failures != '':
+                issue(tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user, failures)
 
             if changed:
                 status['commit'] = current_commit
