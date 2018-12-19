@@ -61,16 +61,12 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
-pub(super) fn atom_expr(
-    p: &mut Parser,
-    r: Restrictions,
-) -> (Option<CompletedMarker>, Option<BlockLike>) {
+pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {
-        return (Some(m), None);
+        return Some((m, BlockLike::NotBlock));
     }
     if paths::is_path_start(p) || p.at(L_ANGLE) {
-        let path_expr = path_expr(p, r);
-        return (Some(path_expr.0), path_expr.1);
+        return Some(path_expr(p, r));
     }
     let la = p.nth(1);
     let done = match p.current() {
@@ -98,7 +94,7 @@ pub(super) fn atom_expr(
                     // }
                     p.error("expected a loop");
                     m.complete(p, ERROR);
-                    return (None, None);
+                    return None;
                 }
             }
         }
@@ -115,10 +111,14 @@ pub(super) fn atom_expr(
         BREAK_KW => break_expr(p),
         _ => {
             p.err_recover("expected expression", EXPR_RECOVERY_SET);
-            return (None, None);
+            return None;
         }
     };
-    (Some(done), None)
+    let blocklike = match done.kind() {
+        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => BlockLike::Block,
+        _ => BlockLike::NotBlock,
+    };
+    Some((done, blocklike))
 }
 
 // test tuple_expr
