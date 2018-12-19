@@ -6,7 +6,7 @@ use std::{
 
 use languageserver_types::Url;
 use ra_analysis::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FileResolver, LibraryData,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData,
 };
 use rustc_hash::FxHashMap;
 use failure::{bail, format_err};
