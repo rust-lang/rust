@@ -2914,7 +2914,7 @@ impl<'a> Parser<'a> {
                 TokenTree::Delimited(
                     frame.span,
                     frame.delim,
-                    frame.tree_cursor.original_stream().into(),
+                    frame.tree_cursor.stream.into(),
                 )
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),

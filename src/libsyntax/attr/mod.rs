@@ -472,7 +472,7 @@ impl MetaItem {
                                          Token::from_ast_ident(segment.ident)).into());
             last_pos = segment.ident.span.hi();
         }
-        idents.push(self.node.tokens(self.span));
+        self.node.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);
         TokenStream::new(idents)
     }
 
@@ -529,7 +529,9 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
             MetaItemKind::NameValue(ref lit) => {
-                TokenStream::new(vec![TokenTree::Token(span, Token::Eq).into(), lit.tokens()])
+                let mut vec = vec![TokenTree::Token(span, Token::Eq).into()];
+                lit.tokens().append_to_tree_and_joint_vec(&mut vec);
+                TokenStream::new(vec)
             }
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
@@ -537,7 +539,7 @@ impl MetaItemKind {
                     if i > 0 {
                         tokens.push(TokenTree::Token(span, Token::Comma).into());
                     }
-                    tokens.push(item.node.tokens());
+                    item.node.tokens().append_to_tree_and_joint_vec(&mut tokens);
                 }
                 TokenTree::Delimited(
                     DelimSpan::from_single(span),
