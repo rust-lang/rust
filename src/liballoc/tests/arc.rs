@@ -95,3 +95,8 @@ fn eq() {
     assert!(!(x != x));
     assert_eq!(*x.0.borrow(), 0);
 }
+
+#[test]
+fn to_nonnull() {
+    let _: std::ptr::NonNull<i32> = Arc::new(0).into();
+}

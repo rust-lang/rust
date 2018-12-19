@@ -1179,6 +1179,14 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     }
 }
 
+#[unstable(feature = "rc_into_nonnull", reason = "newly added", issue = "0")]
+impl<T: ?Sized> Into<NonNull<T>> for Rc<T> {
+    #[inline]
+    fn into(self) -> NonNull<T> {
+        unsafe { NonNull::new_unchecked(Rc::into_raw(self) as *mut _) }
+    }
+}
+
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
 /// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an [`Option`]`<`[`Rc`]`<T>>`.

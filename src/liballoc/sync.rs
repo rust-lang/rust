@@ -1574,6 +1574,14 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     }
 }
 
+#[unstable(feature = "arc_into_nonnull", reason = "newly added", issue = "0")]
+impl<T: ?Sized> Into<NonNull<T>> for Arc<T> {
+    #[inline]
+    fn into(self) -> NonNull<T> {
+        unsafe { NonNull::new_unchecked(Arc::into_raw(self) as *mut _) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::boxed::Box;
