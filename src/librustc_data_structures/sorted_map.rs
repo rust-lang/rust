@@ -30,9 +30,9 @@ pub struct SortedMap<K: Ord, V> {
 
 impl<K: Ord, V> SortedMap<K, V> {
     #[inline]
-    pub fn new() -> SortedMap<K, V> {
+    pub const fn new() -> SortedMap<K, V> {
         SortedMap {
-            data: vec![]
+            data: Vec::new()
         }
     }
 
@@ -144,7 +144,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.data.is_empty()
     }
 
     #[inline]
