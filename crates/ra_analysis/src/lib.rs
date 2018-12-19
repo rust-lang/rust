@@ -73,6 +73,7 @@ struct RemoveFile {
 impl fmt::Debug for AnalysisChange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("AnalysisChange")
+            .field("new_roots", &self.new_roots)
             .field("roots_changed", &self.roots_changed)
             .field("files_changed", &self.files_changed.len())
             .field("libraries_added", &self.libraries_added.len())

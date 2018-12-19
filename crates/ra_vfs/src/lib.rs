@@ -132,6 +132,7 @@ impl Vfs {
         roots.sort_by_key(|it| Reverse(it.as_os_str().len()));
         for (i, path) in roots.iter().enumerate() {
             let root = res.roots.alloc(RootFilter::new(path.clone()));
+            res.root2files.insert(root, Default::default());
             let nested = roots[..i]
                 .iter()
                 .filter(|it| it.starts_with(path))
@@ -155,6 +156,10 @@ impl Vfs {
         (res, roots)
     }
 
+    pub fn root2path(&self, root: VfsRoot) -> PathBuf {
+        self.roots[root].root.clone()
+    }
+
     pub fn path2file(&self, path: &Path) -> Option<VfsFile> {
         if let Some((_root, _path, Some(file))) = self.find_root(path) {
             return Some(file);
@@ -176,6 +181,23 @@ impl Vfs {
     }
 
     pub fn load(&mut self, path: &Path) -> Option<VfsFile> {
+        if let Some((root, rel_path, file)) = self.find_root(path) {
+            return if let Some(file) = file {
+                Some(file)
+            } else {
+                let text = fs::read_to_string(path).unwrap_or_default();
+                let text = Arc::new(text);
+                let file = self.add_file(root, rel_path.clone(), Arc::clone(&text));
+                let change = VfsChange::AddFile {
+                    file,
+                    text,
+                    root,
+                    path: rel_path,
+                };
+                self.pending_changes.push(change);
+                Some(file)
+            };
+        }
         None
     }
 
@@ -262,10 +284,7 @@ impl Vfs {
     fn add_file(&mut self, root: VfsRoot, path: RelativePathBuf, text: Arc<String>) -> VfsFile {
         let data = VfsFileData { root, path, text };
         let file = self.files.alloc(data);
-        self.root2files
-            .entry(root)
-            .or_insert_with(FxHashSet::default)
-            .insert(file);
+        self.root2files.get_mut(&root).unwrap().insert(file);
         file
     }
 

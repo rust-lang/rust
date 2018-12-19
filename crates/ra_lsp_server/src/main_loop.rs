@@ -143,6 +143,7 @@ fn main_loop_inner(
             }
             recv(libdata_receiver, data) => Event::Lib(data.unwrap())
         };
+        log::info!("{:?}", event);
         let mut state_changed = false;
         match event {
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
@@ -191,6 +192,9 @@ fn main_loop_inner(
                 log::info!("indexed {:?} {:?}", start.elapsed(), root);
                 sender.send(data);
             });
+        }
+        if state.roots_to_scan == 0 {
+            feedback(internal_mode, "workspace loaded", msg_sender);
         }
 
         if state_changed {

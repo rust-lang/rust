@@ -21,6 +21,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct ServerWorldState {
+    pub roots_to_scan: usize,
+    pub root: PathBuf,
     pub workspaces: Arc<Vec<CargoWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
@@ -37,12 +39,13 @@ impl ServerWorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
-        roots.push(root);
+        roots.push(root.clone());
         for ws in workspaces.iter() {
             for pkg in ws.packages() {
                 roots.push(pkg.root(&ws).to_path_buf());
             }
         }
+        let roots_to_scan = roots.len();
         let (mut vfs, roots) = Vfs::new(roots);
         for r in roots {
             change.add_root(SourceRootId(r.0));
@@ -83,6 +86,8 @@ impl ServerWorldState {
         let mut analysis_host = AnalysisHost::default();
         analysis_host.apply_change(change);
         ServerWorldState {
+            roots_to_scan,
+            root,
             workspaces: Arc::new(workspaces),
             analysis_host,
             vfs: Arc::new(RwLock::new(vfs)),
@@ -94,16 +99,29 @@ impl ServerWorldState {
     pub fn process_changes(
         &mut self,
     ) -> Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)> {
+        let changes = self.vfs.write().commit_changes();
+        if changes.is_empty() {
+            return Vec::new();
+        }
         let mut libs = Vec::new();
         let mut change = AnalysisChange::new();
-        for c in self.vfs.write().commit_changes() {
+        for c in changes {
+            log::info!("vfs change {:?}", c);
             match c {
                 VfsChange::AddRoot { root, files } => {
-                    let files = files
-                        .into_iter()
-                        .map(|(vfsfile, path, text)| (FileId(vfsfile.0), path, text))
-                        .collect();
-                    libs.push((SourceRootId(root.0), files));
+                    let root_path = self.vfs.read().root2path(root);
+                    if root_path.starts_with(&self.root) {
+                        self.roots_to_scan -= 1;
+                        for (file, path, text) in files {
+                            change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
+                        }
+                    } else {
+                        let files = files
+                            .into_iter()
+                            .map(|(vfsfile, path, text)| (FileId(vfsfile.0), path, text))
+                            .collect();
+                        libs.push((SourceRootId(root.0), files));
+                    }
                 }
                 VfsChange::AddFile {
                     root,
@@ -126,6 +144,7 @@ impl ServerWorldState {
     }
 
     pub fn add_lib(&mut self, data: LibraryData) {
+        self.roots_to_scan -= 1;
         let mut change = AnalysisChange::new();
         change.add_library(data);
         self.analysis_host.apply_change(change);
