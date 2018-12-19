@@ -39,7 +39,7 @@ example above), overriding it in your project directory as well, or use `rustup
 default nightly` (or `rustup default nightly-YYYY-MM-DD`) to globally make
 `nightly` the default toolchain.
 
-Now you can run your project in miri:
+Now you can run your project in Miri:
 
 1. Run `cargo clean` to eliminate any cached dependencies.  Miri needs your
    dependencies to be compiled the right way, that would not happen if they have
@@ -47,6 +47,19 @@ Now you can run your project in miri:
 2. To run all tests in your project through Miri, use `cargo +nightly miri test`.
 3. If you have a binary project, you can run it through Miri using `cargo
    +nightly miri run`.
+
+When running code via `cargo miri`, the `cargo-miri` feature is set.  You can
+use this to exclude test cases that will fail under Miri because they do things
+Miri does not support:
+
+```rust
+#[cfg(not(feature = "cargo-miri"))]
+#[test]
+fn does_not_work_on_miri() {
+    let x = 0u8;
+    assert!(&x as *const _ as usize % 4 < 4);
+}
+```
 
 ### Common Problems
 
