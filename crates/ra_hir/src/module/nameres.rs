@@ -32,7 +32,7 @@ use crate::{
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
     HirDatabase, Crate,
-    module::{ModuleId, ModuleTree},
+    module::{Module, ModuleId, ModuleTree},
 };
 
 /// Item map is the result of the name resolution. Item map contains, for each
@@ -357,14 +357,27 @@ where
                 curr = match def_id.loc(self.db) {
                     DefLoc {
                         kind: DefKind::Module,
-                        module_id,
+                        module_id: target_module_id,
                         source_root_id,
                         ..
                     } => {
                         if source_root_id == self.source_root {
-                            module_id
+                            target_module_id
                         } else {
-                            // FIXME: across crates resolve
+                            let module = Module::new(self.db, source_root_id, target_module_id)?;
+                            let path = Path {
+                                segments: import.path.segments[i + 1..].iter().cloned().collect(),
+                                kind: PathKind::Crate,
+                            };
+                            if let Some(def_id) = module.resolve_path(self.db, path)? {
+                                self.update(module_id, |items| {
+                                    let res = Resolution {
+                                        def_id: Some(def_id),
+                                        import: Some(ptr),
+                                    };
+                                    items.items.insert(name.clone(), res);
+                                })
+                            }
                             return Ok(());
                         }
                     }
