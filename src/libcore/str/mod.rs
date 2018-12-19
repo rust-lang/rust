@@ -3767,6 +3767,7 @@ impl str {
     /// ```
     /// assert_eq!("11foo1bar11".trim_start_matches('1'), "foo1bar11");
     /// assert_eq!("123foo1bar123".trim_start_matches(char::is_numeric), "foo1bar123");
+    /// assert_eq!("1foo1foo2bar2bar".trim_start_matches("1foo"), "2bar2bar");
     ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_start_matches(x), "foo1bar12");
