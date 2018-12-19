@@ -37,6 +37,7 @@ use crate::{
 
 /// Item map is the result of the name resolution. Item map contains, for each
 /// module, the set of visible items.
+// FIXME: currenty we compute item map per source-root. We should do it per crate instead.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
     pub per_module: FxHashMap<ModuleId, ModuleScope>,
