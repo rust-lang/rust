@@ -22,7 +22,7 @@ use crate::utils::{match_type, paths, span_lint};
 ///
 /// **Why is this bad?** Using a mutex just to make access to a plain bool or
 /// reference sequential is shooting flies with cannons.
-/// `std::atomic::AtomicBool` and `std::atomic::AtomicPtr` are leaner and
+/// `std::sync::atomic::AtomicBool` and `std::sync::atomic::AtomicPtr` are leaner and
 /// faster.
 ///
 /// **Known problems:** This lint cannot detect if the mutex is actually used
@@ -43,7 +43,7 @@ declare_clippy_lint! {
 ///
 /// **Why is this bad?** Using a mutex just to make access to a plain integer
 /// sequential is
-/// shooting flies with cannons. `std::atomic::usize` is leaner and faster.
+/// shooting flies with cannons. `std::sync::atomic::AtomicUsize` is leaner and faster.
 ///
 /// **Known problems:** This lint cannot detect if the mutex is actually used
 /// for waiting before a critical section.
