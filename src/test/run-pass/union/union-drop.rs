@@ -21,12 +21,6 @@ union Y {
     a: S,
 }
 
-impl Drop for S {
-    fn drop(&mut self) {
-        unsafe { CHECK += 10; }
-    }
-}
-
 impl Drop for U {
     fn drop(&mut self) {
         unsafe { CHECK += 1; }
@@ -51,10 +45,10 @@ fn main() {
         {
             let w = W { a: S };
         }
-        assert_eq!(CHECK, 2); // 2, not 11, dtor of S is not called
+        assert_eq!(CHECK, 2); // 2, dtor of W is called
         {
             let y = Y { a: S };
         }
-        assert_eq!(CHECK, 2); // 2, not 12, dtor of S is not called
+        assert_eq!(CHECK, 2); // 2, dtor of Y is called
     }
 }
