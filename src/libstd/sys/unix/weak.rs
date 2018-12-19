@@ -77,3 +77,55 @@ unsafe fn fetch(name: &str) -> usize {
     };
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }
+
+#[cfg(not(target_os = "linux"))]
+macro_rules! syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name: $t),*) -> $ret {
+            use libc;
+
+            weak! { fn $name($($t),*) -> $ret }
+
+            if let Some(fun) = $name.get() {
+                fun($($arg_name),*)
+            } else {
+                libc::ENOSYS
+            }
+        }
+    )
+}
+
+#[cfg(target_os = "linux")]
+macro_rules! syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name:$t),*) -> $ret {
+            // This like a hack, but concat_idents only accepts idents
+            // (not paths).
+            use libc::*;
+
+            syscall(
+                concat_idents!(SYS_, $name),
+                $(::sys::weak::SyscallParam::to_param($arg_name)),*
+            ) as $ret
+        }
+    )
+}
+
+#[cfg(target_os = "linux")]
+pub trait SyscallParam {
+    fn to_param(self) -> libc::c_long;
+}
+
+#[cfg(target_os = "linux")]
+impl SyscallParam for libc::c_int {
+    fn to_param(self) -> libc::c_long {
+        self as libc::c_long
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl<T> SyscallParam for *mut T {
+    fn to_param(self) -> libc::c_long {
+        unsafe { mem::transmute(self) }
+    }
+}

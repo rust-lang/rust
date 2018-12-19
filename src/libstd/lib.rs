@@ -250,6 +250,7 @@
 #![feature(cfg_target_vendor)]
 #![feature(char_error_internals)]
 #![feature(compiler_builtins_lib)]
+#![feature(concat_idents)]
 #![feature(const_int_ops)]
 #![feature(const_ip)]
 #![feature(const_raw_ptr_deref)]
