@@ -14,6 +14,12 @@ struct Timespec {
 }
 
 impl Timespec {
+    const fn zero() -> Timespec {
+        Timespec {
+            t: libc::timespec { tv_sec: 0, tv_nsec: 0 },
+        }
+    }
+
     fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         if self >= other {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
@@ -128,17 +134,20 @@ mod inner {
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime {
-        t: Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-        },
+        t: Timespec::zero(),
     };
 
     impl Instant {
         pub fn now() -> Instant {
             Instant { t: unsafe { libc::mach_absolute_time() } }
+        }
+
+        pub const fn zero() -> Instant {
+            Instant { t: 0 }
+        }
+
+        pub fn actually_monotonic() -> bool {
+            true
         }
 
         pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -258,17 +267,24 @@ mod inner {
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime {
-        t: Timespec {
-            t: libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            },
-        },
+        t: Timespec::zero(),
     };
 
     impl Instant {
         pub fn now() -> Instant {
             Instant { t: now(libc::CLOCK_MONOTONIC) }
+        }
+
+        pub const fn zero() -> Instant {
+            Instant {
+                t: Timespec::zero(),
+            }
+        }
+
+        pub fn actually_monotonic() -> bool {
+            (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64")) ||
+            (cfg!(target_os = "linux") && cfg!(target_arch = "x86")) ||
+            false // last clause, used so `||` is always trailing above
         }
 
         pub fn sub_instant(&self, other: &Instant) -> Duration {

@@ -25,6 +25,14 @@ impl Instant {
         }
     }
 
+    pub fn actually_monotonic() -> bool {
+        true
+    }
+
+    pub const fn zero() -> Instant {
+        Instant { t: 0 }
+    }
+
     pub fn sub_instant(&self, other: &Instant) -> Duration {
         let diff = self.t
             .checked_sub(other.t)
