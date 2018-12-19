@@ -132,7 +132,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // FIXME: extract main source file path
     // Third argument (argv): &[b"foo"]
-    const CMD: &str = "running-in-miri";
+    const CMD: &str = "running-in-miri\0";
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
     let cmd = ecx.memory_mut().allocate_static_bytes(CMD.as_bytes()).with_default_tag();
     let raw_str_layout = ecx.layout_of(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8))?;
@@ -150,9 +150,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     // Store cmdline as UTF-16 for Windows GetCommandLineW
     {
         let tcx = &{ecx.tcx.tcx};
-        let cmd_utf16: Vec<u16> = CMD.encode_utf16()
-            .chain(Some(0)) // add 0-terminator
-            .collect();
+        let cmd_utf16: Vec<u16> = CMD.encode_utf16().collect();
         let cmd_ptr = ecx.memory_mut().allocate(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
             Align::from_bytes(2).unwrap(),
