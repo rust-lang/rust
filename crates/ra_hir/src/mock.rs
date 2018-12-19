@@ -2,11 +2,13 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase, FilePosition, FileId, WORKSPACE, CrateGraph, SourceRoot};
+use ra_db::{LocationIntener, BaseDatabase, FilePosition, FileId, CrateGraph, SourceRoot, SourceRootId};
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
 use crate::{db, DefId, DefLoc};
+
+const WORKSPACE: SourceRootId = SourceRootId(0);
 
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
@@ -106,11 +108,11 @@ impl Default for MockDatabase {
             runtime: salsa::Runtime::default(),
             id_maps: Default::default(),
         };
-        db.query_mut(ra_db::SourceRootQuery)
-            .set(ra_db::WORKSPACE, Default::default());
         db.query_mut(ra_db::CrateGraphQuery)
             .set((), Default::default());
-        db.query_mut(ra_db::LibrariesQuery)
+        db.query_mut(ra_db::LocalRootsQuery)
+            .set((), Default::default());
+        db.query_mut(ra_db::LibraryRootsQuery)
             .set((), Default::default());
         db
     }
@@ -163,7 +165,8 @@ salsa::database_storage! {
             fn file_relative_path() for ra_db::FileRelativePathQuery;
             fn file_source_root() for ra_db::FileSourceRootQuery;
             fn source_root() for ra_db::SourceRootQuery;
-            fn libraries() for ra_db::LibrariesQuery;
+            fn local_roots() for ra_db::LocalRootsQuery;
+            fn library_roots() for ra_db::LibraryRootsQuery;
             fn crate_graph() for ra_db::CrateGraphQuery;
         }
         impl ra_db::SyntaxDatabase {

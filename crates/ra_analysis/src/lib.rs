@@ -44,7 +44,7 @@ pub use ra_db::{
 
 #[derive(Default)]
 pub struct AnalysisChange {
-    new_roots: Vec<SourceRootId>,
+    new_roots: Vec<(SourceRootId, bool)>,
     roots_changed: FxHashMap<SourceRootId, RootChange>,
     files_changed: Vec<(FileId, Arc<String>)>,
     libraries_added: Vec<LibraryData>,
@@ -95,8 +95,8 @@ impl AnalysisChange {
     pub fn new() -> AnalysisChange {
         AnalysisChange::default()
     }
-    pub fn add_root(&mut self, root_id: SourceRootId) {
-        self.new_roots.push(root_id);
+    pub fn add_root(&mut self, root_id: SourceRootId, is_local: bool) {
+        self.new_roots.push((root_id, is_local));
     }
     pub fn add_file(
         &mut self,

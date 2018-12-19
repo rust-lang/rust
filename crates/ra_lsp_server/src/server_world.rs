@@ -48,7 +48,8 @@ impl ServerWorldState {
         let roots_to_scan = roots.len();
         let (mut vfs, roots) = Vfs::new(roots);
         for r in roots {
-            change.add_root(SourceRootId(r.0));
+            let is_local = vfs.root2path(r).starts_with(&root);
+            change.add_root(SourceRootId(r.0), is_local);
         }
 
         let mut crate_graph = CrateGraph::default();

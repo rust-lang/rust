@@ -80,7 +80,7 @@ impl MockAnalysis {
         let mut file_map = FileMap::default();
         let source_root = SourceRootId(0);
         let mut change = AnalysisChange::new();
-        change.add_root(source_root);
+        change.add_root(source_root, true);
         for (path, contents) in self.files.into_iter() {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();

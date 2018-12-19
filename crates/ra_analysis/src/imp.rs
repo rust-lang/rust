@@ -43,10 +43,19 @@ impl AnalysisHostImpl {
     pub fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
         // self.gc_syntax_trees();
-        for root_id in change.new_roots {
+        if !change.new_roots.is_empty() {
+            let mut local_roots = Vec::clone(&self.db.local_roots());
+            for (root_id, is_local) in change.new_roots {
+                self.db
+                    .query_mut(ra_db::SourceRootQuery)
+                    .set(root_id, Default::default());
+                if is_local {
+                    local_roots.push(root_id);
+                }
+            }
             self.db
-                .query_mut(ra_db::SourceRootQuery)
-                .set(root_id, Default::default());
+                .query_mut(ra_db::LocalRootsQuery)
+                .set((), Arc::new(local_roots));
         }
 
         for (root_id, root_change) in change.roots_changed {
