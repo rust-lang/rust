@@ -121,7 +121,7 @@ fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKi
     candidate.is_none() || requirement.is_none() || candidate == requirement
 }
 
-impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
+impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
     }
@@ -139,11 +139,11 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
     }
 
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> {
-        struct EliminateCrateVar<'b, 'a: 'b, 'crateloader: 'a>(
-            &'b mut Resolver<'a, 'crateloader>, Span
+        struct EliminateCrateVar<'b, 'a: 'b>(
+            &'b mut Resolver<'a>, Span
         );
 
-        impl<'a, 'b, 'crateloader> Folder for EliminateCrateVar<'a, 'b, 'crateloader> {
+        impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, path: ast::Path) -> ast::Path {
                 match self.fold_qpath(None, path) {
                     (None, path) => path,
@@ -290,7 +290,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
     }
 }
 
-impl<'a, 'cl> Resolver<'a, 'cl> {
+impl<'a> Resolver<'a> {
     pub fn dummy_parent_scope(&self) -> ParentScope<'a> {
         self.invoc_parent_scope(Mark::root(), Vec::new())
     }

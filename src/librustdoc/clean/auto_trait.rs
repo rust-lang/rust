@@ -17,13 +17,13 @@ use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
 
 use super::*;
 
-pub struct AutoTraitFinder<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>,
+pub struct AutoTraitFinder<'a, 'tcx: 'a, 'rcx: 'a> {
+    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
     pub f: auto::AutoTraitFinder<'a, 'tcx>,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>) -> Self {
+impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> Self {
         let f = auto::AutoTraitFinder::new(&cx.tcx);
 
         AutoTraitFinder { cx, f }

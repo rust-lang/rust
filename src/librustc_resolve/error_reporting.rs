@@ -17,7 +17,7 @@ use syntax_pos::Span;
 use resolve_imports::ImportResolver;
 use std::cmp::Reverse;
 
-impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
+impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     /// Add suggestions for a path that cannot be resolved.
     pub(crate) fn make_path_suggestion(
         &mut self,

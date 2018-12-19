@@ -21,12 +21,12 @@ use super::*;
 
 use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
 
-pub struct BlanketImplFinder<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>,
+pub struct BlanketImplFinder<'a, 'tcx: 'a, 'rcx: 'a> {
+    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>) -> Self {
+impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> Self {
         BlanketImplFinder { cx }
     }
 

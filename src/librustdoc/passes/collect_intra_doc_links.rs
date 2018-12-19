@@ -53,14 +53,14 @@ enum PathKind {
     Type,
 }
 
-struct LinkCollector<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
-    cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>,
+struct LinkCollector<'a, 'tcx: 'a, 'rcx: 'a> {
+    cx: &'a DocContext<'a, 'tcx, 'rcx>,
     mod_ids: Vec<NodeId>,
     is_nightly_build: bool,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
-    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx, 'cstore>) -> Self {
+impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
+    fn new(cx: &'a DocContext<'a, 'tcx, 'rcx>) -> Self {
         LinkCollector {
             cx,
             mod_ids: Vec::new(),
@@ -213,7 +213,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
     }
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstore> {
+impl<'a, 'tcx, 'rcx> DocFolder for LinkCollector<'a, 'tcx, 'rcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_node_id = if item.is_mod() {
             if let Some(id) = self.cx.tcx.hir().as_local_node_id(item.def_id) {

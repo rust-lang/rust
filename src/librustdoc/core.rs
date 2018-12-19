@@ -55,9 +55,9 @@ pub use rustc::session::search_paths::SearchPath;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
+pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub resolver: &'a RefCell<resolve::Resolver<'rcx, 'cstore>>,
+    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
@@ -88,7 +88,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub all_traits: Vec<DefId>,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
+impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
     }
