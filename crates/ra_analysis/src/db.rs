@@ -61,7 +61,10 @@ salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
         impl ra_db::FilesDatabase {
             fn file_text() for ra_db::FileTextQuery;
+            fn file_relative_path() for ra_db::FileRelativePathQuery;
             fn file_source_root() for ra_db::FileSourceRootQuery;
+            fn source_root_files() for ra_db::SourceRootFilesQuery;
+            fn source_root_file_by_path() for ra_db::SourceRootFileByPathQuery;
             fn source_root() for ra_db::SourceRootQuery;
             fn libraries() for ra_db::LibrariesQuery;
             fn crate_graph() for ra_db::CrateGraphQuery;

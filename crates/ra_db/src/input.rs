@@ -98,7 +98,7 @@ salsa::query_group! {
             storage input;
         }
         fn source_root_file_by_path(id: SourceRootId, path: RelativePathBuf) -> Option<FileId> {
-            type SourceRootFilesByPathQuery;
+            type SourceRootFileByPathQuery;
             storage input;
         }
         fn source_root(id: SourceRootId) -> Arc<SourceRoot> {

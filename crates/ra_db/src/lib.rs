@@ -28,6 +28,7 @@ pub use crate::{
     input::{
         FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, WORKSPACE,
         FileTextQuery, FileSourceRootQuery, SourceRootQuery, LibrariesQuery, CrateGraphQuery,
+        FileRelativePathQuery, SourceRootFilesQuery, SourceRootFileByPathQuery,
     },
     loc2id::{LocationIntener, NumericId},
 };

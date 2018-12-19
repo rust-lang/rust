@@ -51,9 +51,6 @@ impl AnalysisHostImpl {
                 .set(file_id, Arc::new(text))
         }
         if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
-            let file_resolver = change
-                .file_resolver
-                .expect("change resolver when changing set of files");
             let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
             for (file_id, text) in change.files_added {
                 self.db
@@ -70,7 +67,6 @@ impl AnalysisHostImpl {
                     .set(file_id, Arc::new(String::new()));
                 source_root.files.remove(&file_id);
             }
-            source_root.file_resolver = file_resolver;
             self.db
                 .query_mut(ra_db::SourceRootQuery)
                 .set(WORKSPACE, Arc::new(source_root))
@@ -95,10 +91,7 @@ impl AnalysisHostImpl {
                         .query_mut(ra_db::FileTextQuery)
                         .set_constant(file_id, Arc::new(text));
                 }
-                let source_root = SourceRoot {
-                    files,
-                    file_resolver: library.file_resolver,
-                };
+                let source_root = SourceRoot { files };
                 self.db
                     .query_mut(ra_db::SourceRootQuery)
                     .set(source_root_id, Arc::new(source_root));
