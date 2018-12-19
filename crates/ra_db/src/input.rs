@@ -8,8 +8,6 @@ use salsa;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);
 
-pub const WORKSPACE: SourceRootId = SourceRootId(0);
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
 
@@ -102,8 +100,12 @@ salsa::query_group! {
             type SourceRootQuery;
             storage input;
         }
-        fn libraries() -> Arc<Vec<SourceRootId>> {
-            type LibrariesQuery;
+        fn local_roots() -> Arc<Vec<SourceRootId>> {
+            type LocalRootsQuery;
+            storage input;
+        }
+        fn library_roots() -> Arc<Vec<SourceRootId>> {
+            type LibraryRootsQuery;
             storage input;
         }
         fn crate_graph() -> Arc<CrateGraph> {

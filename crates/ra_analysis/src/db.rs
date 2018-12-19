@@ -30,11 +30,11 @@ impl Default for RootDatabase {
             runtime: salsa::Runtime::default(),
             id_maps: Default::default(),
         };
-        db.query_mut(ra_db::SourceRootQuery)
-            .set(ra_db::WORKSPACE, Default::default());
         db.query_mut(ra_db::CrateGraphQuery)
             .set((), Default::default());
-        db.query_mut(ra_db::LibrariesQuery)
+        db.query_mut(ra_db::LocalRootsQuery)
+            .set((), Default::default());
+        db.query_mut(ra_db::LibraryRootsQuery)
             .set((), Default::default());
         db
     }
@@ -64,7 +64,8 @@ salsa::database_storage! {
             fn file_relative_path() for ra_db::FileRelativePathQuery;
             fn file_source_root() for ra_db::FileSourceRootQuery;
             fn source_root() for ra_db::SourceRootQuery;
-            fn libraries() for ra_db::LibrariesQuery;
+            fn local_roots() for ra_db::LocalRootsQuery;
+            fn library_roots() for ra_db::LibraryRootsQuery;
             fn crate_graph() for ra_db::CrateGraphQuery;
         }
         impl ra_db::SyntaxDatabase {

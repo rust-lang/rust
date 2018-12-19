@@ -10,7 +10,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
-use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase};
+use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use rayon::prelude::*;
 use salsa::{Database, ParallelDatabase};
 use hir::{
@@ -56,7 +56,7 @@ impl AnalysisHostImpl {
             self.db.query_mut(ra_db::FileTextQuery).set(file_id, text)
         }
         if !change.libraries_added.is_empty() {
-            let mut libraries = Vec::clone(&self.db.libraries());
+            let mut libraries = Vec::clone(&self.db.library_roots());
             for library in change.libraries_added {
                 libraries.push(library.root_id);
                 self.db
@@ -65,7 +65,7 @@ impl AnalysisHostImpl {
                 self.apply_root_change(library.root_id, library.root_change);
             }
             self.db
-                .query_mut(ra_db::LibrariesQuery)
+                .query_mut(ra_db::LibraryRootsQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
@@ -142,27 +142,26 @@ impl AnalysisImpl {
         self.db.file_lines(file_id)
     }
     pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
+        struct Snap(salsa::Snapshot<db::RootDatabase>);
+        impl Clone for Snap {
+            fn clone(&self) -> Snap {
+                Snap(self.0.snapshot())
+            }
+        }
+
         let buf: Vec<Arc<SymbolIndex>> = if query.libs {
+            let snap = Snap(self.db.snapshot());
             self.db
-                .libraries()
-                .iter()
-                .map(|&lib_id| self.db.library_symbols(lib_id))
+                .library_roots()
+                .par_iter()
+                .map_with(snap, |db, &lib_id| db.0.library_symbols(lib_id))
                 .collect()
         } else {
-            let files: Vec<FileId> = self
-                .db
-                .source_root(WORKSPACE)
-                .files
-                .values()
-                .map(|&it| it)
-                .collect();
-
-            /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-            struct Snap(salsa::Snapshot<db::RootDatabase>);
-            impl Clone for Snap {
-                fn clone(&self) -> Snap {
-                    Snap(self.0.snapshot())
-                }
+            let mut files = Vec::new();
+            for &root in self.db.local_roots().iter() {
+                let sr = self.db.source_root(root);
+                files.extend(sr.files.values().map(|&it| it))
             }
 
             let snap = Snap(self.db.snapshot());

@@ -4,7 +4,7 @@ use relative_path::{RelativePathBuf};
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 use ra_db::mock::FileMap;
 
-use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FilePosition, WORKSPACE};
+use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FilePosition, SourceRootId};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
@@ -78,12 +78,14 @@ impl MockAnalysis {
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
         let mut file_map = FileMap::default();
+        let source_root = SourceRootId(0);
         let mut change = AnalysisChange::new();
+        change.add_root(source_root);
         for (path, contents) in self.files.into_iter() {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let file_id = file_map.add(path.clone());
-            change.add_file(WORKSPACE, file_id, path, Arc::new(contents));
+            change.add_file(source_root, file_id, path, Arc::new(contents));
         }
         // change.set_file_resolver(Arc::new(file_map));
         host.apply_change(change);

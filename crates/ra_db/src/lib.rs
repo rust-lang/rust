@@ -24,8 +24,8 @@ impl std::error::Error for Canceled {}
 pub use crate::{
     syntax_ptr::LocalSyntaxPtr,
     input::{
-        FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, WORKSPACE,
-        FileTextQuery, FileSourceRootQuery, SourceRootQuery, LibrariesQuery, CrateGraphQuery,
+        FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph,
+        FileTextQuery, FileSourceRootQuery, SourceRootQuery, LocalRootsQuery, LibraryRootsQuery, CrateGraphQuery,
         FileRelativePathQuery
     },
     loc2id::{LocationIntener, NumericId},
