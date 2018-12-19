@@ -2744,6 +2744,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
         match self_ty.sty {
             ty::Infer(ty::TyVar(found_vid)) => {
+                // FIXME: consider using `sub_root_var` here so we
+                // can see through subtyping.
                 let found_vid = self.root_var(found_vid);
                 debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
                 expected_vid == found_vid
@@ -2756,6 +2758,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         -> impl Iterator<Item=(ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
            + Captures<'gcx> + 'b
     {
+        // FIXME: consider using `sub_root_var` here so we
+        // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
         debug!("obligations_for_self_ty: self_ty={:?} ty_var_root={:?} pending_obligations={:?}",
                self_ty, ty_var_root,
