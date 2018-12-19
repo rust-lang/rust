@@ -17,7 +17,7 @@ use rustc_macros::HashStable;
 use syntax::source_map;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use crate::ty::TyCtxt;
+use crate::ty::{DefIdTree, TyCtxt};
 use crate::ty::query::Providers;
 
 use crate::hir;
@@ -650,7 +650,7 @@ impl<'tcx> ScopeTree {
     pub fn early_free_scope<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                       br: &ty::EarlyBoundRegion)
                                       -> Scope {
-        let param_owner = tcx.parent_def_id(br.def_id).unwrap();
+        let param_owner = tcx.parent(br.def_id).unwrap();
 
         let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
         let scope = tcx.hir().maybe_body_owned_by_by_hir_id(param_owner_id).map(|body_id| {
@@ -679,7 +679,7 @@ impl<'tcx> ScopeTree {
                                  -> Scope {
         let param_owner = match fr.bound_region {
             ty::BoundRegion::BrNamed(def_id, _) => {
-                tcx.parent_def_id(def_id).unwrap()
+                tcx.parent(def_id).unwrap()
             }
             _ => fr.scope
         };

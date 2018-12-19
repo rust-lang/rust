@@ -154,13 +154,13 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
             data @ DefPathData::ClosureExpr |
             data @ DefPathData::ImplTrait |
             data @ DefPathData::GlobalMetaData(..) => {
-                let parent_did = self.tcx.parent_def_id(def_id).unwrap();
+                let parent_did = self.tcx.parent(def_id).unwrap();
                 let path = self.print_item_path(parent_did, None, ns);
                 self.path_append(path, &data.as_interned_str().as_symbol().as_str())
             },
 
             DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
-                let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                let parent_def_id = self.tcx.parent(def_id).unwrap();
                 self.print_item_path(parent_def_id, substs, ns)
             }
         }
@@ -173,7 +173,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         ns: Namespace,
     ) -> P::Path {
         debug!("default_print_impl_path: impl_def_id={:?}", impl_def_id);
-        let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
+        let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
 
         // Decide whether to print the parent path for the impl.
         // Logically, since impls are global, it's never needed, but
@@ -186,7 +186,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         }
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
-            Some(ty_def_id) => self.tcx.parent_def_id(ty_def_id) == Some(parent_def_id),
+            Some(ty_def_id) => self.tcx.parent(ty_def_id) == Some(parent_def_id),
         };
 
         let mut impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
@@ -195,7 +195,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         }
         let in_trait_mod = match impl_trait_ref {
             None => false,
-            Some(trait_ref) => self.tcx.parent_def_id(trait_ref.def_id) == Some(parent_def_id),
+            Some(trait_ref) => self.tcx.parent(trait_ref.def_id) == Some(parent_def_id),
         };
 
         if !in_self_mod && !in_trait_mod {
@@ -245,16 +245,6 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
                 self.path_impl(&format!("<{}>", self_ty))
             }
         }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Returns the `DefId` of `def_id`'s parent in the def tree. If
-    /// this returns `None`, then `def_id` represents a crate root or
-    /// inlined root.
-    pub fn parent_def_id(self, def_id: DefId) -> Option<DefId> {
-        let key = self.def_key(def_id);
-        key.parent.map(|index| DefId { krate: def_id.krate, index: index })
     }
 }
 
@@ -531,7 +521,7 @@ impl ItemPathPrinter for LocalPathPrinter {
             // pretty printing some span information. This should
             // only occur very early in the compiler pipeline.
             // FIXME(eddyb) this should just be using `tcx.def_span(impl_def_id)`
-            let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
+            let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
             let path = self.print_item_path(parent_def_id, None, ns);
             let span = self.tcx.def_span(impl_def_id);
             return self.path_append(path, &format!("<impl at {:?}>", span));

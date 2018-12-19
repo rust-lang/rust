@@ -2893,14 +2893,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
             Def::Variant(did) | Def::VariantCtor(did, ..) => {
-                let enum_did = self.parent_def_id(did).unwrap();
+                let enum_did = self.parent(did).unwrap();
                 self.adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
                 self.adt_def(did).non_enum_variant()
             }
             Def::StructCtor(ctor_did, ..) => {
-                let did = self.parent_def_id(ctor_did).expect("struct ctor has no parent");
+                let did = self.parent(ctor_did).expect("struct ctor has no parent");
                 self.adt_def(did).non_enum_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)

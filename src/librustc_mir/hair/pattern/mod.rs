@@ -13,7 +13,7 @@ use crate::hair::constant::*;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
+use rustc::ty::{self, DefIdTree, Region, TyCtxt, AdtDef, Ty, Lift, UserType};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
@@ -735,7 +735,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     ) -> PatternKind<'tcx> {
         let mut kind = match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
-                let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let substs = match ty.sty {

@@ -21,7 +21,7 @@ use rustc::hir::{self, GenericArg, HirVec};
 use rustc::hir::def::{self, Def, CtorKind, Namespace};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -3971,7 +3971,7 @@ pub fn register_def(cx: &DocContext<'_>, def: Def) -> DefId {
         Def::ForeignTy(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
-        Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),
+        Def::Variant(i) => (cx.tcx.parent(i).expect("cannot get parent def id"),
                             TypeKind::Enum),
         Def::Macro(i, mac_kind) => match mac_kind {
             MacroKind::Bang => (i, TypeKind::Macro),

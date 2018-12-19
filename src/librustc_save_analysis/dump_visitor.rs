@@ -17,7 +17,7 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::Input;
 use rustc::span_bug;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 use std::path::Path;
@@ -1201,7 +1201,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // The parent def id of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
-            .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
+            .and_then(|id| self.save_ctxt.tcx.parent(id))
             .map(id_from_def_id);
 
         match use_tree.kind {
@@ -1350,7 +1350,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
                     let parent = self.save_ctxt.tcx.hir().opt_local_def_id(item.id)
-                        .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
+                        .and_then(|id| self.save_ctxt.tcx.parent(id))
                         .map(id_from_def_id);
                     self.dumper.import(
                         &Access {

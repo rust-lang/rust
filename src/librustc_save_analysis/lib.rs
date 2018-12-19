@@ -20,7 +20,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::{CrateType, Input, OutputType};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_typeck::hir_ty_to_ty;
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
@@ -763,7 +763,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.
-                let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                let parent_def_id = self.tcx.parent(def_id).unwrap();
                 Some(Ref {
                     kind: RefKind::Type,
                     span,

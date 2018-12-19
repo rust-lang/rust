@@ -64,7 +64,7 @@ use crate::hir::Node;
 use crate::infer::InferCtxt;
 use crate::hir::def::{Def, CtorKind};
 use crate::ty::adjustment;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::layout::VariantIdx;
 
@@ -1133,7 +1133,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                              variant_did: DefId)
                                              -> cmt<'tcx> {
         // univariant enums do not need downcasts
-        let base_did = self.tcx.parent_def_id(variant_did).unwrap();
+        let base_did = self.tcx.parent(variant_did).unwrap();
         if self.tcx.adt_def(base_did).variants.len() != 1 {
             let base_ty = base_cmt.ty;
             let ret = Rc::new(cmt_ {
@@ -1275,7 +1275,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         return Err(())
                     }
                     Def::VariantCtor(def_id, CtorKind::Fn) => {
-                        let enum_def = self.tcx.parent_def_id(def_id).unwrap();
+                        let enum_def = self.tcx.parent(def_id).unwrap();
                         (self.cat_downcast_if_needed(pat, cmt, def_id),
                         self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len())
                     }
