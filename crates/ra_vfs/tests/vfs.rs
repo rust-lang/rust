@@ -25,7 +25,7 @@ fn test_vfs_works() -> std::io::Result<()> {
     let a_root = dir.path().join("a");
     let b_root = dir.path().join("a/b");
 
-    let mut vfs = Vfs::new(vec![a_root, b_root]);
+    let (mut vfs, _) = Vfs::new(vec![a_root, b_root]);
     for _ in 0..2 {
         let task = vfs.task_receiver().recv().unwrap();
         vfs.handle_task(task);
