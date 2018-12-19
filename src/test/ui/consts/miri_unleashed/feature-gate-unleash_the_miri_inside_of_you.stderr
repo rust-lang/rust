@@ -4,7 +4,7 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL |     const F: u32 = (U::X, 42).1;
    |                    ^^^^^^^^^^ constants cannot evaluate destructors
 
-error: `<std::vec::Vec<T>>::new` is not yet stable as a const fn
+error: `std::vec::Vec::<T>::new` is not yet stable as a const fn
   --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:18:25
    |
 LL |     const X: Vec<u32> = Vec::new();

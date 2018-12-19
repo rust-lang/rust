@@ -1,8 +1,10 @@
+use crate::hir::def::Namespace;
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
+use crate::ty::print::PrintCx;
+use crate::ty::subst::{Subst, Substs};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use ty::print::PrintCx;
 use syntax::ast;
 use syntax::symbol::{keywords, Symbol};
 
@@ -54,16 +56,46 @@ pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    // HACK(eddyb) get rid of `item_path_str` and/or pass `Namespace` explicitly always
+    // (but also some things just print a `DefId` generally so maybe we need this?)
+    fn guess_def_namespace(self, def_id: DefId) -> Namespace {
+        match self.def_key(def_id).disambiguated_data.data {
+            DefPathData::ValueNs(..) |
+            DefPathData::EnumVariant(..) |
+            DefPathData::Field(..) |
+            DefPathData::AnonConst |
+            DefPathData::ClosureExpr |
+            DefPathData::StructCtor => Namespace::ValueNS,
+
+            DefPathData::MacroDef(..) => Namespace::MacroNS,
+
+            _ => Namespace::TypeNS,
+        }
+    }
+
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output. It is relative to the current crate
     /// root, unless with_forced_absolute_paths was used.
-    pub fn item_path_str(self, def_id: DefId) -> String {
-        debug!("item_path_str: def_id={:?}", def_id);
+    pub fn item_path_str_with_substs_and_ns(
+        self,
+        def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> String {
+        debug!("item_path_str: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
         if FORCE_ABSOLUTE.with(|force| force.get()) {
-            PrintCx::new(self, AbsolutePathPrinter).print_item_path(def_id)
+            PrintCx::new(self, AbsolutePathPrinter).print_item_path(def_id, substs, ns)
         } else {
-            PrintCx::new(self, LocalPathPrinter).print_item_path(def_id)
+            PrintCx::new(self, LocalPathPrinter).print_item_path(def_id, substs, ns)
         }
+    }
+
+    /// Returns a string identifying this def-id. This string is
+    /// suitable for user output. It is relative to the current crate
+    /// root, unless with_forced_absolute_paths was used.
+    pub fn item_path_str(self, def_id: DefId) -> String {
+        let ns = self.guess_def_namespace(def_id);
+        self.item_path_str_with_substs_and_ns(def_id, None, ns)
     }
 
     /// Returns a string identifying this local node-id.
@@ -75,13 +107,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// suitable for user output. It always begins with a crate identifier.
     pub fn absolute_item_path_str(self, def_id: DefId) -> String {
         debug!("absolute_item_path_str: def_id={:?}", def_id);
-        PrintCx::new(self, AbsolutePathPrinter).print_item_path(def_id)
+        let ns = self.guess_def_namespace(def_id);
+        PrintCx::new(self, AbsolutePathPrinter).print_item_path(def_id, None, ns)
     }
 }
 
 impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
-    pub fn default_print_item_path(&mut self, def_id: DefId) -> P::Path {
-        debug!("default_print_item_path: def_id={:?}", def_id);
+    pub fn default_print_item_path(
+        &mut self,
+        def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> P::Path {
+        debug!("default_print_item_path: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
         let key = self.tcx.def_key(def_id);
         debug!("default_print_item_path: key={:?}", key);
         match key.disambiguated_data.data {
@@ -91,7 +129,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
             }
 
             DefPathData::Impl => {
-                self.print_impl_path(def_id)
+                self.print_impl_path(def_id, substs, ns)
             }
 
             // Unclear if there is any value in distinguishing these.
@@ -117,18 +155,23 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
             data @ DefPathData::ImplTrait |
             data @ DefPathData::GlobalMetaData(..) => {
                 let parent_did = self.tcx.parent_def_id(def_id).unwrap();
-                let path = self.print_item_path(parent_did);
+                let path = self.print_item_path(parent_did, None, ns);
                 self.path_append(path, &data.as_interned_str().as_symbol().as_str())
             },
 
             DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
                 let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
-                self.print_item_path(parent_def_id)
+                self.print_item_path(parent_def_id, substs, ns)
             }
         }
     }
 
-    fn default_print_impl_path(&mut self, impl_def_id: DefId) -> P::Path {
+    fn default_print_impl_path(
+        &mut self,
+        impl_def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> P::Path {
         debug!("default_print_impl_path: impl_def_id={:?}", impl_def_id);
         let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
 
@@ -137,13 +180,19 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         // users may find it useful. Currently, we omit the parent if
         // the impl is either in the same module as the self-type or
         // as the trait.
-        let self_ty = self.tcx.type_of(impl_def_id);
+        let mut self_ty = self.tcx.type_of(impl_def_id);
+        if let Some(substs) = substs {
+            self_ty = self_ty.subst(self.tcx, substs);
+        }
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
             Some(ty_def_id) => self.tcx.parent_def_id(ty_def_id) == Some(parent_def_id),
         };
 
-        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        let mut impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        if let Some(substs) = substs {
+            impl_trait_ref = impl_trait_ref.subst(self.tcx, substs);
+        }
         let in_trait_mod = match impl_trait_ref {
             None => false,
             Some(trait_ref) => self.tcx.parent_def_id(trait_ref.def_id) == Some(parent_def_id),
@@ -153,7 +202,7 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
-            let path = self.print_item_path(parent_def_id);
+            let path = self.print_item_path(parent_def_id, None, ns);
             if let Some(trait_ref) = impl_trait_ref {
                 return self.path_append(path, &format!("<impl {} for {}>", trait_ref, self_ty));
             } else {
@@ -174,15 +223,14 @@ impl<P: ItemPathPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         // anything other than a simple path.
         match self_ty.sty {
             ty::Adt(adt_def, substs) => {
-                // FIXME(eddyb) always print without <> here.
-                if substs.types().next().is_none() { // ignore regions
-                    self.print_item_path(adt_def.did)
-                } else {
-                    self.path_impl(&format!("<{}>", self_ty))
-                }
+                // FIXME(eddyb) this should recurse to build the path piecewise.
+                // self.print_item_path(adt_def.did, Some(substs), ns)
+                let mut s = String::new();
+                crate::util::ppaux::parameterized(&mut s, adt_def.did, substs, ns).unwrap();
+                self.path_impl(&s)
             }
 
-            ty::Foreign(did) => self.print_item_path(did),
+            ty::Foreign(did) => self.print_item_path(did, None, ns),
 
             ty::Bool |
             ty::Char |
@@ -263,11 +311,21 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
 pub trait ItemPathPrinter: Sized {
     type Path;
 
-    fn print_item_path(self: &mut PrintCx<'_, '_, '_, Self>, def_id: DefId) -> Self::Path {
-        self.default_print_item_path(def_id)
+    fn print_item_path(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> Self::Path {
+        self.default_print_item_path(def_id, substs, ns)
     }
-    fn print_impl_path(self: &mut PrintCx<'_, '_, '_, Self>, impl_def_id: DefId) -> Self::Path {
-        self.default_print_impl_path(impl_def_id)
+    fn print_impl_path(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        impl_def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> Self::Path {
+        self.default_print_impl_path(impl_def_id, substs, ns)
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path;
@@ -312,6 +370,7 @@ impl LocalPathPrinter {
     fn try_print_visible_item_path(
         self: &mut PrintCx<'_, '_, '_, Self>,
         def_id: DefId,
+        ns: Namespace,
     ) -> Option<<Self as ItemPathPrinter>::Path> {
         debug!("try_print_visible_item_path: def_id={:?}", def_id);
 
@@ -343,7 +402,7 @@ impl LocalPathPrinter {
                 }) => {
                     debug!("try_print_visible_item_path: def_id={:?}", def_id);
                     let path = if !span.is_dummy() {
-                        self.print_item_path(def_id)
+                        self.print_item_path(def_id, None, ns)
                     } else {
                         self.path_crate(cnum)
                     };
@@ -376,7 +435,7 @@ impl LocalPathPrinter {
         }
 
         let visible_parent = visible_parent_map.get(&def_id).cloned()?;
-        let path = self.try_print_visible_item_path(visible_parent)?;
+        let path = self.try_print_visible_item_path(visible_parent, ns)?;
         let actual_parent = self.tcx.parent(def_id);
 
         let data = cur_def_key.disambiguated_data.data;
@@ -444,11 +503,21 @@ impl LocalPathPrinter {
 impl ItemPathPrinter for LocalPathPrinter {
     type Path = String;
 
-    fn print_item_path(self: &mut PrintCx<'_, '_, '_, Self>, def_id: DefId) -> Self::Path {
-        self.try_print_visible_item_path(def_id)
-            .unwrap_or_else(|| self.default_print_item_path(def_id))
+    fn print_item_path(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> Self::Path {
+        self.try_print_visible_item_path(def_id, ns)
+            .unwrap_or_else(|| self.default_print_item_path(def_id, substs, ns))
     }
-    fn print_impl_path(self: &mut PrintCx<'_, '_, '_, Self>, impl_def_id: DefId) -> Self::Path {
+    fn print_impl_path(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        impl_def_id: DefId,
+        substs: Option<&Substs<'tcx>>,
+        ns: Namespace,
+    ) -> Self::Path {
         // Always use types for non-local impls, where types are always
         // available, and filename/line-number is mostly uninteresting.
         let use_types = !impl_def_id.is_local() || {
@@ -463,12 +532,12 @@ impl ItemPathPrinter for LocalPathPrinter {
             // only occur very early in the compiler pipeline.
             // FIXME(eddyb) this should just be using `tcx.def_span(impl_def_id)`
             let parent_def_id = self.tcx.parent_def_id(impl_def_id).unwrap();
-            let path = self.print_item_path(parent_def_id);
+            let path = self.print_item_path(parent_def_id, None, ns);
             let span = self.tcx.def_span(impl_def_id);
             return self.path_append(path, &format!("<impl at {:?}>", span));
         }
 
-        self.default_print_impl_path(impl_def_id)
+        self.default_print_impl_path(impl_def_id, substs, ns)
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {

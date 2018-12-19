@@ -87,6 +87,7 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
+use rustc::hir::def::Namespace;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
@@ -225,7 +226,9 @@ fn get_symbol_hash<'a, 'tcx>(
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     item_path::with_forced_absolute_paths(|| {
-        PrintCx::new(tcx, SymbolPathPrinter).print_item_path(def_id).into_interned()
+        PrintCx::new(tcx, SymbolPathPrinter)
+            .print_item_path(def_id, None, Namespace::ValueNS)
+            .into_interned()
     })
 }
 

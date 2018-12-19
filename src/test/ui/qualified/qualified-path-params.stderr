@@ -11,7 +11,7 @@ LL |         0 ..= <S as Tr>::A::f::<u8> => {}
    |               ^^^^^^^^^^^^^^^^^^^^^ ranges require char or numeric types
    |
    = note: start type: {integer}
-   = note: end type: fn() {<S>::f::<u8>}
+   = note: end type: fn() {S::f::<u8>}
 
 error: aborting due to 2 previous errors
 

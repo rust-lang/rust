@@ -13,7 +13,7 @@ fn func() -> Ret {
 
 fn main() {
     Obj::func.x();
-    //~^ ERROR no method named `x` found for type `fn() -> Ret {<Obj>::func}` in the current scope
+    //~^ ERROR no method named `x` found for type `fn() -> Ret {Obj::func}` in the current scope
     func.x();
     //~^ ERROR no method named `x` found for type `fn() -> Ret {func}` in the current scope
 }

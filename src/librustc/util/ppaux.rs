@@ -317,23 +317,15 @@ impl<F: fmt::Write> PrintCx<'a, 'gcx, 'tcx, FmtPrinter<F>> {
                 }
             }
         } else {
-            // Try to print `impl`s more like how you'd refer to their associated items.
-            if let DefPathData::Impl = key.disambiguated_data.data {
-                if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
-                    // HACK(eddyb) this is in lieu of more specific disambiguation.
-                    print!(self, write("{}", self.tcx.item_path_str(def_id)))?;
+            // FIXME(eddyb) recurse through printing a path via `self`, instead
+            // instead of using the `tcx` method that produces a `String`.
+            print!(self, write("{}",
+                self.tcx.item_path_str_with_substs_and_ns(def_id, Some(substs), ns)))?;
 
-                    let trait_ref = trait_ref.subst(self.tcx, substs);
-                    print!(self, print_debug(trait_ref))?;
-                } else {
-                    let self_ty = self.tcx.type_of(def_id).subst(self.tcx, substs);
-                    // FIXME(eddyb) omit the <> where possible.
-                    print!(self, write("<"), print(self_ty), write(">"))?;
-                }
+            // For impls, the above call already prints relevant generics args.
+            if let DefPathData::Impl = key.disambiguated_data.data {
                 return Ok(());
             }
-
-            print!(self, write("{}", self.tcx.item_path_str(def_id)))?;
         }
 
         let mut empty = true;
