@@ -346,7 +346,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::Cast(kind, ref operand, _) => {
                 let (op, span) = self.eval_operand(operand, source_info)?;
                 self.use_ecx(source_info, |this| {
-                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack)?;
+                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack);
                     this.ecx.cast(op, kind, dest.into())?;
                     Ok((dest.into(), span))
                 })
