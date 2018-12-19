@@ -73,7 +73,7 @@ impl Pass {
 
             then {
                 let receiver_str = &Sugg::hir(cx, subject, "..");
-                let mut replacement_str = String::new();
+                let mut replacement: Option<String> = None;
                 if let Some(else_) = else_ {
                     if_chain! {
                         if let ExprKind::Block(block, None) = &else_.node;
@@ -81,28 +81,31 @@ impl Pass {
                         if let Some(block_expr) = &block.expr;
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
                         then {
-                            replacement_str = format!("Some({}?)", receiver_str);
+                            replacement = Some(format!("Some({}?)", receiver_str));
                         }
                     }
                 } else if Self::moves_by_default(cx, subject) {
-                        replacement_str = format!("{}.as_ref()?;", receiver_str);
+                        replacement = Some(format!("{}.as_ref()?;", receiver_str));
                 } else {
-                        replacement_str = format!("{}?;", receiver_str);
+                        replacement = Some(format!("{}?;", receiver_str));
                 }
-                span_lint_and_then(
-                    cx,
-                    QUESTION_MARK,
-                    expr.span,
-                    "this block may be rewritten with the `?` operator",
-                    |db| {
-                        db.span_suggestion_with_applicability(
-                            expr.span,
-                            "replace_it_with",
-                            replacement_str,
-                            Applicability::MaybeIncorrect, // snippet
-                        );
-                    }
-                )
+
+                if let Some(replacement_str) = replacement {
+                    span_lint_and_then(
+                        cx,
+                        QUESTION_MARK,
+                        expr.span,
+                        "this block may be rewritten with the `?` operator",
+                        |db| {
+                            db.span_suggestion_with_applicability(
+                                expr.span,
+                                "replace_it_with",
+                                replacement_str,
+                                Applicability::MaybeIncorrect, // snippet
+                            );
+                        }
+                    )
+               }
             }
         }
     }
