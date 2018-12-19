@@ -79,7 +79,7 @@ To have cargo compile your crate with Clippy without Clippy installation
 in your code, you can use:
 
 ```terminal
-cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
+RUSTFLAGS=--sysroot=`rustc --print sysroot` cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 ```
 
 *[Note](https://github.com/rust-lang/rust-clippy/wiki#a-word-of-warning):*
