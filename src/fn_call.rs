@@ -562,6 +562,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             },
 
             // Windows API stubs
+            "SetLastError" => {
+                let err = this.read_scalar(args[0])?.to_u32()?;
+                this.machine.last_error = err;
+            }
+            "GetLastError" => {
+                this.write_scalar(Scalar::from_uint(this.machine.last_error, Size::from_bits(32)), dest)?;
+            }
+
             "AddVectoredExceptionHandler" => {
                 // any non zero value works for the stdlib. This is just used for stackoverflows anyway
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
@@ -569,20 +577,35 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "InitializeCriticalSection" |
             "EnterCriticalSection" |
             "LeaveCriticalSection" |
-            "DeleteCriticalSection" |
-            "SetLastError" => {
-                // Function does not return anything, nothing to do
+            "DeleteCriticalSection" => {
+                // Nothing to do, not even a return value
             },
             "GetModuleHandleW" |
             "GetProcAddress" |
-            "TryEnterCriticalSection" => {
+            "TryEnterCriticalSection" |
+            "GetConsoleScreenBufferInfo" |
+            "SetConsoleTextAttribute" => {
                 // pretend these do not exist/nothing happened, by returning zero
                 this.write_null(dest)?;
             },
-            "GetLastError" => {
-                // this is c::ERROR_CALL_NOT_IMPLEMENTED
-                this.write_scalar(Scalar::from_int(120, dest.layout.size), dest)?;
-            },
+            "GetSystemInfo" => {
+                let system_info = this.deref_operand(args[0])?;
+                let system_info_ptr = system_info.ptr.to_ptr()?;
+                // initialize with 0
+                this.memory_mut().get_mut(system_info_ptr.alloc_id)?
+                    .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
+                // set number of processors to 1
+                let dword_size = Size::from_bytes(4);
+                let offset = 2*dword_size + 3*tcx.pointer_size();
+                this.memory_mut().get_mut(system_info_ptr.alloc_id)?
+                    .write_scalar(
+                        tcx,
+                        system_info_ptr.offset(offset, tcx)?,
+                        Scalar::from_int(1, dword_size).into(),
+                        dword_size,
+                    )?;
+            }
+
             "TlsAlloc" => {
                 // This just creates a key; Windows does not natively support TLS dtors.
 
@@ -596,17 +619,66 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.read_scalar(args[0])?.to_u32()? as u128;
                 let ptr = this.machine.tls.load_tls(key)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
-                let key = this.read_scalar(args[0])?.to_bits(args[0].layout.size)?;
+                let key = this.read_scalar(args[0])?.to_u32()? as u128;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
                 this.machine.tls.store_tls(key, new_ptr)?;
 
                 // Return success (1)
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+            }
+            "GetStdHandle" => {
+                let which = this.read_scalar(args[0])?.to_i32()?;
+                // We just make this the identity function, so we know later in "WriteFile"
+                // which one it is.
+                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
+            }
+            "WriteFile" => {
+                let handle = this.read_scalar(args[0])?.to_isize(this)?;
+                let buf = this.read_scalar(args[1])?.not_undef()?;
+                let n = this.read_scalar(args[2])?.to_u32()?;
+                let written_place = this.deref_operand(args[3])?;
+                this.write_null(written_place.into())?; // spec says we always write 0 first
+                let written = if handle == -11 || handle == -12 {
+                    // stdout/stderr
+                    use std::io::{self, Write};
+
+                    let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(u64::from(n)))?;
+                    let res = if handle == -11 {
+                        io::stdout().write(buf_cont)
+                    } else {
+                        io::stderr().write(buf_cont)
+                    };
+                    res.ok().map(|n| n as u32)
+                } else {
+                    eprintln!("Miri: Ignored output to handle {}", handle);
+                    Some(n) // pretend it all went well
+                };
+                // If there was no error, write back how much was written
+                if let Some(n) = written {
+                    this.write_scalar(Scalar::from_uint(n, Size::from_bits(32)), written_place.into())?;
+                }
+                // Return whether this was a success
+                this.write_scalar(
+                    Scalar::from_int(if written.is_some() { 1 } else { 0 }, dest.layout.size),
+                    dest,
+                )?;
+            }
+            "GetConsoleMode" => {
+                // Everything is a pipe
+                this.write_null(dest)?;
+            }
+            "GetEnvironmentVariableW" => {
+                // This is not the env var you are looking for
+                this.machine.last_error = 203; // ERROR_ENVVAR_NOT_FOUND
+                this.write_null(dest)?;
+            }
+            "GetCommandLineW" => {
+                this.write_scalar(Scalar::Ptr(this.machine.cmd_line.unwrap()), dest)?;
             }
 
             // We can't execute anything else
