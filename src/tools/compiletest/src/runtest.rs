@@ -168,7 +168,10 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 
 pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
     match &*config.target {
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
+        "arm-linux-androideabi"
+        | "armv7-linux-androideabi"
+        | "thumbv7neon-linux-androideabi"
+        | "aarch64-linux-android" => {
             if !config.adb_device_status {
                 panic!("android device not available");
             }
