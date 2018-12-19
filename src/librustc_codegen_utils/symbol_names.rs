@@ -93,8 +93,7 @@ use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::item_path::{self, ItemPathPrinter};
-use rustc::ty::print::PrintCx;
+use rustc::ty::print::{PrintCx, Printer};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -225,7 +224,7 @@ fn get_symbol_hash<'a, 'tcx>(
 }
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
-    item_path::with_forced_absolute_paths(|| {
+    ty::print::with_forced_absolute_paths(|| {
         PrintCx::new(tcx, SymbolPathPrinter)
             .print_def_path(def_id, None, Namespace::ValueNS)
             .into_interned()
@@ -400,7 +399,7 @@ impl SymbolPath {
 
 struct SymbolPathPrinter;
 
-impl ItemPathPrinter for SymbolPathPrinter {
+impl Printer for SymbolPathPrinter {
     type Path = SymbolPath;
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {

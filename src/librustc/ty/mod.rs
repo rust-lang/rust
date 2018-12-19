@@ -95,7 +95,6 @@ mod erase_regions;
 pub mod fast_reject;
 pub mod fold;
 pub mod inhabitedness;
-pub mod item_path;
 pub mod layout;
 pub mod _match;
 pub mod outlives;

@@ -15,7 +15,7 @@ use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::Obligation;
 use rustc::ty::{self, Adt, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
-use rustc::ty::item_path::with_crate_prefix;
+use rustc::ty::print::with_crate_prefix;
 use syntax_pos::{Span, FileName};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;

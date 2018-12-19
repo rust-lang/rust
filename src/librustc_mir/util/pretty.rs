@@ -2,7 +2,6 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Display;
@@ -78,7 +77,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
         return;
     }
 
-    let node_path = item_path::with_forced_impl_filename_line(|| {
+    let node_path = ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
         tcx.def_path_str(source.def_id())
     });
@@ -103,7 +102,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
         None => return false,
         Some(ref filters) => filters,
     };
-    let node_path = item_path::with_forced_impl_filename_line(|| {
+    let node_path = ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
         tcx.def_path_str(source.def_id())
     });
@@ -612,7 +611,7 @@ fn write_mir_sig(
         _ => bug!("Unexpected def description {:?}", descr),
     }
 
-    item_path::with_forced_impl_filename_line(|| {
+    ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
         write!(w, " {}", tcx.def_path_str(src.def_id()))
     })?;
