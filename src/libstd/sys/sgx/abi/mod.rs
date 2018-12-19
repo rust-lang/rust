@@ -13,10 +13,10 @@ use io::Write;
 
 // runtime features
 mod reloc;
-mod mem;
 pub(super) mod panic;
 
 // library features
+pub mod mem;
 pub mod thread;
 pub mod tls;
 #[macro_use]
