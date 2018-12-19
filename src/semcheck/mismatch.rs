@@ -8,7 +8,7 @@ use rustc::{
     hir::def_id::DefId,
     ty::{
         self,
-        relate::{Relate, RelateResult, TypeRelation},
+        relate::{Relate, RelateResult, TraitObjectMode, TypeRelation},
         subst::Substs,
         Ty, TyCtxt,
         Visibility::Public,
@@ -92,6 +92,10 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
 
     fn tag(&self) -> &'static str {
         "Mismatch"
+    }
+
+    fn trait_object_mode(&self) -> TraitObjectMode {
+        TraitObjectMode::NoSquash
     }
 
     fn a_is_expected(&self) -> bool {
