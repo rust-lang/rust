@@ -91,6 +91,31 @@ Please try to avoid leaving `TODO`s in the code. There are a few around, but I
 wish there weren't. You can leave `FIXME`s, preferably with an issue number.
 
 
+### Version-gate formatting changes
+
+A change that introduces a different code-formatting should be gated on the
+`version` configuration. This is to ensure the formatting of the current major
+release is preserved, while allowing fixes to be implemented for the next
+release.
+
+This is done by conditionally guarding the change like so:
+
+```rust
+if config.version() == Version::One { // if the current major release is 1.x
+    // current formatting
+} else {
+    // new formatting
+}
+```
+
+This allows the user to apply the next formatting explicitly via the
+configuration, while being stable by default.
+
+When the next major release is done, the code block of the previous formatting
+can be deleted, e.g., the first block in the example above when going from `1.x`
+to `2.x`.
+
+
 ### A quick tour of Rustfmt
 
 Rustfmt is basically a pretty printer - that is, its mode of operation is to
