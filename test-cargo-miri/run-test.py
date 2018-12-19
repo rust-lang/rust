@@ -7,6 +7,10 @@ and the working directory to contain the cargo-miri-test project.
 
 import sys, subprocess
 
+def fail(msg):
+    print("TEST FAIL: {}".format(msg))
+    sys.exit(1)
+
 def test(name, cmd, stdout_ref, stderr_ref):
     print("==> Testing `{}` <==".format(name))
     ## Call `cargo miri`, capture all output
@@ -25,13 +29,11 @@ def test(name, cmd, stdout_ref, stderr_ref):
     print(stderr, end="")
     # Test for failures
     if p.returncode != 0:
-        sys.exit(1)
+        fail("Non-zero exit status")
     if stdout != open(stdout_ref).read():
-        print("stdout does not match reference")
-        sys.exit(1)
+        fail("stdout does not match reference")
     if stderr != open(stderr_ref).read():
-        print("stderr does not match reference")
-        sys.exit(1)
+        fail("stderr does not match reference")
 
 def test_cargo_miri_run():
     test("cargo miri run", ["cargo", "miri", "run", "-q"], "stdout.ref", "stderr.ref")
