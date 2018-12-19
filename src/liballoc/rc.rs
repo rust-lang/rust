@@ -901,10 +901,45 @@ impl<T: Default> Default for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+trait RcEqIdent<T: ?Sized + PartialEq> {
+    fn eq(&self, other: &Rc<T>) -> bool;
+    fn ne(&self, other: &Rc<T>) -> bool;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
+    #[inline]
+    default fn eq(&self, other: &Rc<T>) -> bool {
+        **self == **other
+    }
+
+    #[inline]
+    default fn ne(&self, other: &Rc<T>) -> bool {
+        **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Eq> RcEqIdent<T> for Rc<T> {
+    #[inline]
+    fn eq(&self, other: &Rc<T>) -> bool {
+        Rc::ptr_eq(self, other) || **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &Rc<T>) -> bool {
+        !Rc::ptr_eq(self, other) && **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// Equality for two `Rc`s.
     ///
     /// Two `Rc`s are equal if their inner values are equal.
+    ///
+    /// If `T` also implements `Eq`, two `Rc`s that point to the same value are
+    /// always equal.
     ///
     /// # Examples
     ///
@@ -915,14 +950,17 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     ///
     /// assert!(five == Rc::new(5));
     /// ```
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &Rc<T>) -> bool {
-        **self == **other
+        RcEqIdent::eq(self, other)
     }
 
     /// Inequality for two `Rc`s.
     ///
     /// Two `Rc`s are unequal if their inner values are unequal.
+    ///
+    /// If `T` also implements `Eq`, two `Rc`s that point to the same value are
+    /// never unequal.
     ///
     /// # Examples
     ///
@@ -933,9 +971,9 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     ///
     /// assert!(five != Rc::new(6));
     /// ```
-    #[inline(always)]
+    #[inline]
     fn ne(&self, other: &Rc<T>) -> bool {
-        **self != **other
+        RcEqIdent::ne(self, other)
     }
 }
 

@@ -1288,10 +1288,44 @@ impl<T: ?Sized> Drop for Weak<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+trait ArcEqIdent<T: ?Sized + PartialEq> {
+    fn eq(&self, other: &Arc<T>) -> bool;
+    fn ne(&self, other: &Arc<T>) -> bool;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
+    #[inline]
+    default fn eq(&self, other: &Arc<T>) -> bool {
+        **self == **other
+    }
+    #[inline]
+    default fn ne(&self, other: &Arc<T>) -> bool {
+        **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Eq> ArcEqIdent<T> for Arc<T> {
+    #[inline]
+    fn eq(&self, other: &Arc<T>) -> bool {
+        Arc::ptr_eq(self, other) || **self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &Arc<T>) -> bool {
+        !Arc::ptr_eq(self, other) && **self != **other
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// Equality for two `Arc`s.
     ///
     /// Two `Arc`s are equal if their inner values are equal.
+    ///
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// always equal.
     ///
     /// # Examples
     ///
@@ -1302,13 +1336,17 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// assert!(five == Arc::new(5));
     /// ```
+    #[inline]
     fn eq(&self, other: &Arc<T>) -> bool {
-        *(*self) == *(*other)
+        ArcEqIdent::eq(self, other)
     }
 
     /// Inequality for two `Arc`s.
     ///
     /// Two `Arc`s are unequal if their inner values are unequal.
+    ///
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// never unequal.
     ///
     /// # Examples
     ///
@@ -1319,10 +1357,12 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// assert!(five != Arc::new(6));
     /// ```
+    #[inline]
     fn ne(&self, other: &Arc<T>) -> bool {
-        *(*self) != *(*other)
+        ArcEqIdent::ne(self, other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     /// Partial comparison for two `Arc`s.
