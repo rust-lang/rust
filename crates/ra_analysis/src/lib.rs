@@ -39,8 +39,7 @@ pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
     Canceled, Cancelable, FilePosition,
-    CrateGraph, CrateId, SourceRootId, FileId, FileResolver,
-    WORKSPACE
+    CrateGraph, CrateId, SourceRootId, FileId, WORKSPACE
 };
 
 #[derive(Default)]
