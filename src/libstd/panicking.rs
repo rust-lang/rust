@@ -16,7 +16,7 @@ use cell::RefCell;
 use core::panic::{PanicInfo, Location};
 use fmt;
 use intrinsics;
-use mem;
+use mem::{self, ManuallyDrop};
 use ptr;
 use raw;
 use sys::stdio::panic_output;
@@ -238,8 +238,8 @@ pub use realstd::rt::update_panic_count;
 pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     #[allow(unions_with_drop_fields)]
     union Data<F, R> {
-        f: F,
-        r: R,
+        f: ManuallyDrop<F>,
+        r: ManuallyDrop<R>,
     }
 
     // We do some sketchy operations with ownership here for the sake of
@@ -270,7 +270,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     let mut any_data = 0;
     let mut any_vtable = 0;
     let mut data = Data {
-        f,
+        f: ManuallyDrop::new(f)
     };
 
     let r = __rust_maybe_catch_panic(do_call::<F, R>,
@@ -280,7 +280,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 
     return if r == 0 {
         debug_assert!(update_panic_count(0) == 0);
-        Ok(data.r)
+        Ok(ManuallyDrop::into_inner(data.r))
     } else {
         update_panic_count(-1);
         debug_assert!(update_panic_count(0) == 0);
@@ -293,8 +293,8 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
         unsafe {
             let data = data as *mut Data<F, R>;
-            let f = ptr::read(&mut (*data).f);
-            ptr::write(&mut (*data).r, f());
+            let f = ptr::read(&mut *(*data).f);
+            ptr::write(&mut *(*data).r, f());
         }
     }
 }

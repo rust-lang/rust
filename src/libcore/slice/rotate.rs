@@ -8,7 +8,7 @@ use ptr;
 union RawArray<T> {
     /// Ensure this is appropriately aligned for T, and is big
     /// enough for two elements even if T is enormous.
-    typed: [T; 2],
+    typed: [MaybeUninit<T>; 2],
     /// For normally-sized types, especially things like u8, having more
     /// than 2 in the buffer is necessary for usefulness, so pad it out
     /// enough to be helpful, but not so big as to risk overflow.
@@ -73,7 +73,8 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
     }
 
     let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
-    let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
+    let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [MaybeUninit<T>; 2]
+              as *mut [T; 2] as *mut T;
 
     let dim = mid.sub(left).add(right);
     if left <= right {
