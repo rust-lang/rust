@@ -61,9 +61,9 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
-pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
+pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {
-        return Some(m);
+        return Some((m, BlockLike::NotBlock));
     }
     if paths::is_path_start(p) || p.at(L_ANGLE) {
         return Some(path_expr(p, r));
@@ -114,7 +114,11 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
             return None;
         }
     };
-    Some(done)
+    let blocklike = match done.kind() {
+        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => BlockLike::Block,
+        _ => BlockLike::NotBlock,
+    };
+    Some((done, blocklike))
 }
 
 // test tuple_expr
@@ -349,6 +353,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 // fn foo() {
 //     match () {
 //         _ => (),
+//         _ if Test>{field: 0} => (),
 //         X | Y if Z => (),
 //         | X | Y if Z => (),
 //         | X => (),
@@ -362,7 +367,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
         patterns::pattern(p);
     }
     if p.eat(IF_KW) {
-        expr_no_struct(p);
+        expr(p);
     }
     p.expect(FAT_ARROW);
     let ret = expr_stmt(p);

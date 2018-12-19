@@ -14,9 +14,13 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
     if let Some(lhs) = atom_pat(p, recovery_set) {
         // test range_pat
         // fn main() {
-        //     match 92 { 0 ... 100 => () }
+        //     match 92 {
+        //         0 ... 100 => (),
+        //         101 ..= 200 => (),
+        //         200 .. 301=> (),
+        //     }
         // }
-        if p.at(DOTDOTDOT) {
+        if p.at(DOTDOTDOT) || p.at(DOTDOTEQ) || p.at(DOTDOT) {
             let m = lhs.precede(p);
             p.bump();
             atom_pat(p, recovery_set);

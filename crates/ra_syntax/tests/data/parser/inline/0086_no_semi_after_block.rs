@@ -6,4 +6,8 @@ fn foo() {
     for _ in () {}
     {}
     {}
+    macro_rules! test {
+         () => {}
+    }
+    test!{}
 }

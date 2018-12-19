@@ -36,7 +36,7 @@ impl<'t> Parser<'t> {
         self.current() == kind
     }
 
-    /// Checks if the current token is `kind`.
+    /// Checks if the current token is in `kinds`.
     pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
         kinds.contains(self.current())
     }

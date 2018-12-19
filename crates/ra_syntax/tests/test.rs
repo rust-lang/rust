@@ -6,7 +6,7 @@ extern crate walkdir;
 use std::{
     fmt::Write,
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, Component},
 };
 
 use ra_syntax::{
@@ -37,6 +37,47 @@ fn parser_fuzz_tests() {
     }
 }
 
+/// Test that Rust-analyzer can parse and validate the rust-analyser
+/// TODO: Use this as a benchmark
+#[test]
+fn self_hosting_parsing() {
+    use std::ffi::OsStr;
+    let empty_vec = vec![];
+    let dir = project_dir().join("crates");
+    let mut count = 0;
+    for entry in walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_entry(|entry| {
+            !entry
+                .path()
+                .components()
+                // TODO: this more neatly
+                .any(|component| {
+                    // Get all files which are not in the crates/ra_syntax/tests/data folder
+                    component == Component::Normal(OsStr::new("data"))
+                })
+        })
+        .map(|e| e.unwrap())
+        .filter(|entry| {
+            // Get all `.rs ` files
+            !entry.path().is_dir() && (entry.path().extension() == Some(OsStr::new("rs")))
+        })
+    {
+        count += 1;
+        let text = read_text(entry.path());
+        let node = SourceFileNode::parse(&text);
+        let errors = node.errors();
+        assert_eq!(
+            errors, empty_vec,
+            "There should be no errors in the file {:?}",
+            entry
+        );
+    }
+    assert!(
+        count > 30,
+        "self_hosting_parsing found too few files - is it running in the right directory?"
+    )
+}
 /// Read file and normalize newlines.
 ///
 /// `rustc` seems to always normalize `\r\n` newlines to `\n`:
@@ -49,7 +90,9 @@ fn parser_fuzz_tests() {
 ///
 /// so this should always be correct.
 fn read_text(path: &Path) -> String {
-    fs::read_to_string(path).unwrap().replace("\r\n", "\n")
+    fs::read_to_string(path)
+        .expect(&format!("File at {:?} should be valid", path))
+        .replace("\r\n", "\n")
 }
 
 pub fn dir_tests<F>(paths: &[&str], f: F)
