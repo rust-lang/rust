@@ -23,6 +23,14 @@ extern {}
 
 extern crate rustc_driver;
 
+// Note that the linkage here should be all that we need, on Linux we're not
+// prefixing the symbols here so this should naturally override our default
+// allocator. On OSX it should override via the zone allocator. We shouldn't
+// enable this by default on other platforms, so other platforms aren't handled
+// here yet.
+#[cfg(feature = "jemalloc-sys")]
+extern crate jemalloc_sys;
+
 fn main() {
     rustc_driver::set_sigpipe_handler();
     rustc_driver::main()
