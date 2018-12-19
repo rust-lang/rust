@@ -14,6 +14,9 @@
 // ignore-emscripten
 // ignore-mips
 // ignore-mips64
+// ignore-powerpc
+// ignore-powerpc64
+// ignore-powerpc64le
 // gate-test-sse4a_target_feature
 // gate-test-powerpc_target_feature
 // gate-test-avx512_target_feature
