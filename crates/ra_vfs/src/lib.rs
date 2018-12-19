@@ -207,11 +207,23 @@ impl Vfs {
 
     pub fn handle_task(&mut self, task: io::TaskResult) {
         let mut files = Vec::new();
+        // While we were scanning the root in the backgound, a file might have
+        // been open in the editor, so we need to account for that.
+        let exising = self.root2files[&task.root]
+            .iter()
+            .map(|&file| (self.files[file].path.clone(), file))
+            .collect::<FxHashMap<_, _>>();
         for (path, text) in task.files {
+            if let Some(&file) = exising.get(&path) {
+                let text = Arc::clone(&self.files[file].text);
+                files.push((file, path, text));
+                continue;
+            }
             let text = Arc::new(text);
             let file = self.add_file(task.root, path.clone(), Arc::clone(&text));
             files.push((file, path, text));
         }
+
         let change = VfsChange::AddRoot {
             root: task.root,
             files,
