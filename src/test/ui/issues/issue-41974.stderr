@@ -1,13 +1,13 @@
-error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `std::boxed::Box<_>`:
+error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `std::sync::Arc<_>`:
   --> $DIR/issue-41974.rs:17:1
    |
 LL | impl<T> Drop for T where T: A { //~ ERROR E0119
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
-           - impl<T> std::ops::Drop for std::boxed::Box<T>
+           - impl<T> std::ops::Drop for std::sync::Arc<T>
              where T: ?Sized;
-   = note: downstream crates may implement trait `A` for type `std::boxed::Box<_>`
+   = note: downstream crates may implement trait `A` for type `std::sync::Arc<_>`
 
 error[E0120]: the Drop trait may only be implemented on structures
   --> $DIR/issue-41974.rs:17:18
