@@ -8,7 +8,6 @@ use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
-use hair::pattern::PatternTypeProjections;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -412,7 +411,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("declare_bindings: patterns={:?}", patterns);
         self.visit_bindings(
             &patterns[0],
-            &PatternTypeProjections::none(),
+            UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
                     visibility_scope =
@@ -488,7 +487,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub(super) fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        pattern_user_ty: &PatternTypeProjections<'tcx>,
+        pattern_user_ty: UserTypeProjections<'tcx>,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -497,7 +496,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             NodeId,
             Span,
             Ty<'tcx>,
-            &PatternTypeProjections<'tcx>,
+            UserTypeProjections<'tcx>,
         ),
     ) {
         debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
@@ -511,7 +510,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref subpattern,
                 ..
             } => {
-                f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty);
+                f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_bindings(subpattern, pattern_user_ty, f);
                 }
@@ -529,18 +528,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let from = u32::try_from(prefix.len()).unwrap();
                 let to = u32::try_from(suffix.len()).unwrap();
                 for subpattern in prefix {
-                    self.visit_bindings(subpattern, &pattern_user_ty.index(), f);
+                    self.visit_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
                 for subpattern in slice {
-                    self.visit_bindings(subpattern, &pattern_user_ty.subslice(from, to), f);
+                    self.visit_bindings(subpattern, pattern_user_ty.clone().subslice(from, to), f);
                 }
                 for subpattern in suffix {
-                    self.visit_bindings(subpattern, &pattern_user_ty.index(), f);
+                    self.visit_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
             PatternKind::Deref { ref subpattern } => {
-                self.visit_bindings(subpattern, &pattern_user_ty.deref(), f);
+                self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
             }
             PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
                 // This corresponds to something like
@@ -548,23 +547,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // ```
                 // let A::<'a>(_): A<'static> = ...;
                 // ```
-                let subpattern_user_ty = pattern_user_ty.add_user_type(user_ty, user_ty_span);
-                self.visit_bindings(subpattern, &subpattern_user_ty, f)
+                let annotation = (user_ty_span, user_ty.base);
+                let projection = UserTypeProjection {
+                    base: self.canonical_user_type_annotations.push(annotation),
+                    projs: user_ty.projs.clone(),
+                };
+                let subpattern_user_ty = pattern_user_ty.push_projection(&projection, user_ty_span);
+                self.visit_bindings(subpattern, subpattern_user_ty, f)
             }
 
             PatternKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty = pattern_user_ty.leaf(subpattern.field);
+                    let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
                     debug!("visit_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
-                    self.visit_bindings(&subpattern.pattern, &subpattern_user_ty, f);
+                    self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
 
             PatternKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty = pattern_user_ty.variant(
+                    let subpattern_user_ty = pattern_user_ty.clone().variant(
                         adt_def, variant_index, subpattern.field);
-                    self.visit_bindings(&subpattern.pattern, &subpattern_user_ty, f);
+                    self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
         }
@@ -1465,7 +1469,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         num_patterns: usize,
         var_id: NodeId,
         var_ty: Ty<'tcx>,
-        user_var_ty: &PatternTypeProjections<'tcx>,
+        user_ty: UserTypeProjections<'tcx>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
@@ -1481,7 +1485,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
             BindingMode::ByRef { .. } => ty::BindingMode::BindByReference(mutability.into()),
         };
-        let user_ty = user_var_ty.clone().user_ty(&mut self.canonical_user_type_annotations);
         debug!("declare_binding: user_ty={:?}", user_ty);
         let local = LocalDecl::<'tcx> {
             mutability,

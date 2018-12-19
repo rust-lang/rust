@@ -2519,6 +2519,48 @@ impl<'tcx> UserTypeProjections<'tcx> {
     pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection<'tcx>> {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
+
+    pub fn push_projection(
+        mut self,
+        user_ty: &UserTypeProjection<'tcx>,
+        span: Span,
+    ) -> Self {
+        self.contents.push((user_ty.clone(), span));
+        self
+    }
+
+    fn map_projections(
+        mut self,
+        mut f: impl FnMut(UserTypeProjection<'tcx>) -> UserTypeProjection<'tcx>
+    ) -> Self {
+        self.contents = self.contents.drain(..).map(|(proj, span)| (f(proj), span)).collect();
+        self
+    }
+
+    pub fn index(self) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.index())
+    }
+
+    pub fn subslice(self, from: u32, to: u32) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
+    }
+
+    pub fn deref(self) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.deref())
+    }
+
+    pub fn leaf(self, field: Field) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
+    }
+
+    pub fn variant(
+        self,
+        adt_def: &'tcx AdtDef,
+        variant_index: VariantIdx,
+        field: Field,
+    ) -> Self {
+        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
+    }
 }
 
 /// Encodes the effect of a user-supplied type annotation on the
@@ -2543,6 +2585,39 @@ pub struct UserTypeProjection<'tcx> {
 }
 
 impl<'tcx> Copy for ProjectionKind<'tcx> { }
+
+impl<'tcx> UserTypeProjection<'tcx> {
+    pub(crate) fn index(mut self) -> Self {
+        self.projs.push(ProjectionElem::Index(()));
+        self
+    }
+
+    pub(crate) fn subslice(mut self, from: u32, to: u32) -> Self {
+        self.projs.push(ProjectionElem::Subslice { from, to });
+        self
+    }
+
+    pub(crate) fn deref(mut self) -> Self {
+        self.projs.push(ProjectionElem::Deref);
+        self
+    }
+
+    pub(crate) fn leaf(mut self, field: Field) -> Self {
+        self.projs.push(ProjectionElem::Field(field, ()));
+        self
+    }
+
+    pub(crate) fn variant(
+        mut self,
+        adt_def: &'tcx AdtDef,
+        variant_index: VariantIdx,
+        field: Field,
+    ) -> Self {
+        self.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
+        self.projs.push(ProjectionElem::Field(field, ()));
+        self
+    }
+}
 
 CloneTypeFoldableAndLiftImpls! { ProjectionKind<'tcx>, }
 
