@@ -34,6 +34,17 @@ MAINTAINERS = {
     'rust-by-example': '@steveklabnik @marioidival @projektir',
 }
 
+REPOS = {
+    'miri': 'https://github.com/solson/miri',
+    'clippy-driver': 'https://github.com/rust-lang/rust-clippy',
+    'rls': 'https://github.com/rust-lang/rls',
+    'rustfmt': 'https://github.com/rust-lang/rustfmt',
+    'book': 'https://github.com/rust-lang/book',
+    'nomicon': 'https://github.com/rust-lang-nursery/nomicon',
+    'reference': 'https://github.com/rust-lang-nursery/reference',
+    'rust-by-example': 'https://github.com/rust-lang/rust-by-example',
+}
+
 
 def read_current_status(current_commit, path):
     '''Reads build status of `current_commit` from content of `history/*.tsv`
@@ -50,7 +61,7 @@ def issue(
     maintainers,
     relevant_pr_number,
     relevant_pr_user,
-    msg,
+    pr_reviewer,
 ):
     # Open an issue about the toolstate failure.
     gh_url = 'https://api.github.com/repos/rust-lang/rust/issues'
@@ -60,15 +71,16 @@ def issue(
         gh_url,
         json.dumps({
             'body': '''\
-            @{}: your PR ({}) broke {}
+            Hello, this is your friendly neighborhood mergebot.
+            After merging PR {}, I observed that the tool {} no longer builds.
+            A follow-up PR to the repository {} is needed to fix the fallout.
 
-            If you have the time it would be great if you could open a PR against {} that
-            fixes the fallout from your PR.
+            cc @{}, do you think you would have time to do the follow-up work? If so, that would be great!
 
-            {}
+            cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
 
-            '''.format(relevant_pr_user, relevant_pr_number, tool, tool, msg),
-            'title': '💔 {}'.format(tool),
+            '''.format(relevant_pr_number, tool, REPOS[tool], relevant_pr_user, pr_reviewer),
+            'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
             'assignees': assignees,
             'labels': ['T-compiler', 'I-nominated'],
         }),
@@ -84,6 +96,7 @@ def update_latest(
     relevant_pr_number,
     relevant_pr_url,
     relevant_pr_user,
+    pr_reviewer,
     current_datetime
 ):
     '''Updates `_data/latest.json` to match build result of the given commit.
@@ -108,7 +121,7 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
-            failures = ''
+            build_failed = False
 
             for os, s in current_status.items():
                 old = status[os]
@@ -128,11 +141,10 @@ def update_latest(
                         .format(title, MAINTAINERS.get(tool))
                     # only create issues for build failures. Other failures can be spurious
                     if new == 'build-fail':
-                        failures += title
-                        failures += '\n'
+                        build_failed = True
 
-            if failures != '':
-                issue(tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user, failures)
+            if build_failed:
+                issue(tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user, pr_reviewer)
 
             if changed:
                 status['commit'] = current_commit
@@ -156,23 +168,26 @@ if __name__ == '__main__':
     github_token = sys.argv[4]
 
     # assume that PR authors are also owners of the repo where the branch lives
-    relevant_pr_match = re.search('Auto merge of #([0-9]+) - ([^:]+)', cur_commit_msg)
+    relevant_pr_match = re.search('Auto merge of #([0-9]+) - ([^:]+):[^,]+ r=([^\s]+)', cur_commit_msg)
     if relevant_pr_match:
         number = relevant_pr_match.group(1)
         relevant_pr_user = relevant_pr_match.group(2)
         relevant_pr_number = 'rust-lang/rust#' + number
         relevant_pr_url = 'https://github.com/rust-lang/rust/pull/' + number
+        pr_reviewer = relevant_pr_match.group(3)
     else:
         number = '-1'
         relevant_pr_user = '<unknown user>'
         relevant_pr_number = '<unknown PR>'
         relevant_pr_url = '<unknown>'
+        pr_reviewer = '<unknown reviewer>'
 
     message = update_latest(
         cur_commit,
         relevant_pr_number,
         relevant_pr_url,
         relevant_pr_user,
+        pr_reviewer,
         cur_datetime
     )
     if not message:
