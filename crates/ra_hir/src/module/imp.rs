@@ -4,6 +4,7 @@ use ra_syntax::{
     ast::{self, NameOwner},
     SmolStr,
 };
+use relative_path::{RelativePathBuf, RelativePath};
 use rustc_hash::{FxHashMap, FxHashSet};
 use arrayvec::ArrayVec;
 use ra_db::{SourceRoot, SourceRootId, Cancelable, FileId};
@@ -65,7 +66,7 @@ fn create_module_tree<'a>(
     let mut visited = FxHashSet::default();
 
     let source_root = db.source_root(source_root);
-    for &file_id in source_root.files.iter() {
+    for &file_id in source_root.files.values() {
         let source = ModuleSource::new_file(file_id);
         if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
@@ -160,7 +161,8 @@ fn resolve_submodule(
     let file_id = source.file_id();
     let source_root_id = db.file_source_root(file_id);
     let path = db.file_relative_path(file_id);
-    let dir_path = path.parent().unwrap();
+    let root = RelativePathBuf::default();
+    let dir_path = path.parent().unwrap_or(&root);
     let mod_name = path.file_stem().unwrap_or("unknown");
     let is_dir_owner = mod_name == "mod" || mod_name == "lib" || mod_name == "main";
 
@@ -174,14 +176,19 @@ fn resolve_submodule(
     } else {
         candidates.push(file_dir_mod.clone());
     };
-
+    let sr = db.source_root(source_root_id);
     let points_to = candidates
         .into_iter()
-        .filter_map(|path| db.source_root_file_by_path(source_root_id, path))
+        .filter_map(|path| sr.files.get(&path))
+        .map(|&it| it)
         .collect::<Vec<_>>();
     let problem = if points_to.is_empty() {
         Some(Problem::UnresolvedModule {
-            candidate: if is_dir_owner { file_mod } else { file_dir_mod },
+            candidate: RelativePath::new("../").join(&if is_dir_owner {
+                file_mod
+            } else {
+                file_dir_mod
+            }),
         })
     } else {
         None

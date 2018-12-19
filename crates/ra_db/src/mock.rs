@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 use relative_path::{RelativePath, RelativePathBuf};
 
-use crate::{FileId, FileResolver, SourceRoot};
+use crate::{FileId, FileResolver};
 
 #[derive(Default, Debug, Clone)]
 pub struct FileMap(Vec<(FileId, RelativePathBuf)>);
@@ -11,11 +11,6 @@ impl FileMap {
         let file_id = FileId((self.0.len() + 1) as u32);
         self.0.push((file_id, path));
         file_id
-    }
-
-    pub fn into_source_root(self) -> SourceRoot {
-        let files = self.files();
-        SourceRoot { files }
     }
 
     pub fn files(&self) -> FxHashSet<FileId> {

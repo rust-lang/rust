@@ -18,9 +18,9 @@ pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
 
+use rustc_hash::FxHashMap;
 use ra_syntax::{SourceFileNode, TextRange, TextUnit};
 use ra_text_edit::AtomTextEdit;
-use ra_db::FileResolverImp;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
@@ -39,28 +39,53 @@ pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
     Canceled, Cancelable, FilePosition,
-    CrateGraph, CrateId, FileId, FileResolver
+    CrateGraph, CrateId, SourceRootId, FileId, FileResolver,
+    WORKSPACE
 };
 
 #[derive(Default)]
 pub struct AnalysisChange {
-    files_added: Vec<(FileId, String)>,
+    roots_changed: FxHashMap<SourceRootId, RootChange>,
     files_changed: Vec<(FileId, String)>,
-    files_removed: Vec<(FileId)>,
     libraries_added: Vec<LibraryData>,
     crate_graph: Option<CrateGraph>,
-    file_resolver: Option<FileResolverImp>,
+}
+
+#[derive(Default)]
+struct RootChange {
+    added: Vec<AddFile>,
+    removed: Vec<RemoveFile>,
+}
+
+#[derive(Debug)]
+struct AddFile {
+    file_id: FileId,
+    path: RelativePathBuf,
+    text: Arc<String>,
+}
+
+#[derive(Debug)]
+struct RemoveFile {
+    file_id: FileId,
+    path: RelativePathBuf,
 }
 
 impl fmt::Debug for AnalysisChange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("AnalysisChange")
-            .field("files_added", &self.files_added.len())
+            .field("roots_changed", &self.roots_changed)
             .field("files_changed", &self.files_changed.len())
-            .field("files_removed", &self.files_removed.len())
             .field("libraries_added", &self.libraries_added.len())
             .field("crate_graph", &self.crate_graph)
-            .field("file_resolver", &self.file_resolver)
+            .finish()
+    }
+}
+
+impl fmt::Debug for RootChange {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("AnalysisChange")
+            .field("added", &self.added.len())
+            .field("removed", &self.removed.len())
             .finish()
     }
 }
@@ -69,23 +94,40 @@ impl AnalysisChange {
     pub fn new() -> AnalysisChange {
         AnalysisChange::default()
     }
-    pub fn add_file(&mut self, file_id: FileId, text: String) {
-        self.files_added.push((file_id, text))
+    pub fn add_file(
+        &mut self,
+        root_id: SourceRootId,
+        file_id: FileId,
+        path: RelativePathBuf,
+        text: Arc<String>,
+    ) {
+        let file = AddFile {
+            file_id,
+            path,
+            text,
+        };
+        self.roots_changed
+            .entry(root_id)
+            .or_default()
+            .added
+            .push(file);
     }
     pub fn change_file(&mut self, file_id: FileId, new_text: String) {
         self.files_changed.push((file_id, new_text))
     }
-    pub fn remove_file(&mut self, file_id: FileId) {
-        self.files_removed.push(file_id)
+    pub fn remove_file(&mut self, root_id: SourceRootId, file_id: FileId, path: RelativePathBuf) {
+        let file = RemoveFile { file_id, path };
+        self.roots_changed
+            .entry(root_id)
+            .or_default()
+            .removed
+            .push(file);
     }
     pub fn add_library(&mut self, data: LibraryData) {
         self.libraries_added.push(data)
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.crate_graph = Some(graph);
-    }
-    pub fn set_file_resolver(&mut self, file_resolver: Arc<FileResolver>) {
-        self.file_resolver = Some(FileResolverImp::new(file_resolver));
     }
 }
 
@@ -313,20 +355,32 @@ impl Analysis {
 
 #[derive(Debug)]
 pub struct LibraryData {
-    files: Vec<(FileId, String)>,
-    file_resolver: FileResolverImp,
+    root_id: SourceRootId,
+    root_change: RootChange,
     symbol_index: SymbolIndex,
 }
 
 impl LibraryData {
-    pub fn prepare(files: Vec<(FileId, String)>, file_resolver: Arc<FileResolver>) -> LibraryData {
-        let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, text)| {
+    pub fn prepare(
+        root_id: SourceRootId,
+        files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
+    ) -> LibraryData {
+        let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, _, text)| {
             let file = SourceFileNode::parse(text);
             (*file_id, file)
         }));
+        let mut root_change = RootChange::default();
+        root_change.added = files
+            .into_iter()
+            .map(|(file_id, path, text)| AddFile {
+                file_id,
+                path,
+                text,
+            })
+            .collect();
         LibraryData {
-            files,
-            file_resolver: FileResolverImp::new(file_resolver),
+            root_id,
+            root_change,
             symbol_index,
         }
     }

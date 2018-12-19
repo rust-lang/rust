@@ -12,7 +12,6 @@ use ra_syntax::{
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase};
 use rayon::prelude::*;
-use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
 use hir::{
     self,
@@ -25,7 +24,7 @@ use crate::{
     completion::{completions, CompletionItem},
     db,
     symbol_index::{SymbolIndex, SymbolsDatabase},
-    AnalysisChange, Cancelable, CrateId, Diagnostic, FileId,
+    AnalysisChange, RootChange, Cancelable, CrateId, Diagnostic, FileId,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
     ReferenceResolution,
 };
@@ -45,59 +44,22 @@ impl AnalysisHostImpl {
         log::info!("apply_change {:?}", change);
         // self.gc_syntax_trees();
 
+        for (root_id, root_change) in change.roots_changed {
+            self.apply_root_change(root_id, root_change);
+        }
         for (file_id, text) in change.files_changed {
             self.db
                 .query_mut(ra_db::FileTextQuery)
                 .set(file_id, Arc::new(text))
         }
-        if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
-            let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
-            for (file_id, text) in change.files_added {
-                self.db
-                    .query_mut(ra_db::FileTextQuery)
-                    .set(file_id, Arc::new(text));
-                self.db
-                    .query_mut(ra_db::FileSourceRootQuery)
-                    .set(file_id, ra_db::WORKSPACE);
-                source_root.files.insert(file_id);
-            }
-            for file_id in change.files_removed {
-                self.db
-                    .query_mut(ra_db::FileTextQuery)
-                    .set(file_id, Arc::new(String::new()));
-                source_root.files.remove(&file_id);
-            }
-            self.db
-                .query_mut(ra_db::SourceRootQuery)
-                .set(WORKSPACE, Arc::new(source_root))
-        }
         if !change.libraries_added.is_empty() {
             let mut libraries = Vec::clone(&self.db.libraries());
             for library in change.libraries_added {
-                let source_root_id = SourceRootId(1 + libraries.len() as u32);
-                libraries.push(source_root_id);
-                let mut files = FxHashSet::default();
-                for (file_id, text) in library.files {
-                    files.insert(file_id);
-                    log::debug!(
-                        "library file: {:?} {:?}",
-                        file_id,
-                        library.file_resolver.debug_path(file_id)
-                    );
-                    self.db
-                        .query_mut(ra_db::FileSourceRootQuery)
-                        .set_constant(file_id, source_root_id);
-                    self.db
-                        .query_mut(ra_db::FileTextQuery)
-                        .set_constant(file_id, Arc::new(text));
-                }
-                let source_root = SourceRoot { files };
+                libraries.push(library.root_id);
                 self.db
                     .query_mut(ra_db::SourceRootQuery)
-                    .set(source_root_id, Arc::new(source_root));
-                self.db
-                    .query_mut(crate::symbol_index::LibrarySymbolsQuery)
-                    .set(source_root_id, Arc::new(library.symbol_index));
+                    .set(library.root_id, Default::default());
+                self.apply_root_change(library.root_id, library.root_change);
             }
             self.db
                 .query_mut(ra_db::LibrariesQuery)
@@ -108,6 +70,34 @@ impl AnalysisHostImpl {
                 .query_mut(ra_db::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
+    }
+
+    fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
+        let mut source_root = SourceRoot::clone(&self.db.source_root(root_id));
+        for add_file in root_change.added {
+            self.db
+                .query_mut(ra_db::FileTextQuery)
+                .set(add_file.file_id, add_file.text);
+            self.db
+                .query_mut(ra_db::FileRelativePathQuery)
+                .set(add_file.file_id, add_file.path.clone());
+            self.db
+                .query_mut(ra_db::FileSourceRootQuery)
+                .set(add_file.file_id, root_id);
+            source_root.files.insert(add_file.path, add_file.file_id);
+        }
+        for remove_file in root_change.removed {
+            self.db
+                .query_mut(ra_db::FileTextQuery)
+                .set(remove_file.file_id, Default::default());
+            self.db
+                .query_mut(ra_db::FileRelativePathQuery)
+                .set(remove_file.file_id, Default::default());
+            source_root.files.remove(&remove_file.path);
+        }
+        self.db
+            .query_mut(ra_db::SourceRootQuery)
+            .set(root_id, Arc::new(source_root));
     }
 
     #[allow(unused)]
@@ -156,7 +146,13 @@ impl AnalysisImpl {
                 .map(|&lib_id| self.db.library_symbols(lib_id))
                 .collect()
         } else {
-            let files = &self.db.source_root(WORKSPACE).files;
+            let files: Vec<FileId> = self
+                .db
+                .source_root(WORKSPACE)
+                .files
+                .values()
+                .map(|&it| it)
+                .collect();
 
             /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
             struct Snap(salsa::Snapshot<db::RootDatabase>);
