@@ -398,7 +398,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                         Err(_) => -1,
                     }
                 } else {
-                    warn!("Ignored output to FD {}", fd);
+                    eprintln!("Miri: Ignored output to FD {}", fd);
                     n as i64 // pretend it all went well
                 }; // now result is the value we return back to the program
                 this.write_scalar(
