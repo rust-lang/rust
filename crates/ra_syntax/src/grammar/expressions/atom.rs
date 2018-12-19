@@ -362,7 +362,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
         patterns::pattern(p);
     }
     if p.eat(IF_KW) {
-        expr_no_struct(p);
+        expr(p);
     }
     p.expect(FAT_ARROW);
     let ret = expr_stmt(p);
