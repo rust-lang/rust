@@ -43,7 +43,6 @@ fn parser_fuzz_tests() {
 fn self_hosting_parsing() {
     let empty_vec = vec![];
     let dir = project_dir();
-    let mut count = 0u32;
     for entry in walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
@@ -64,7 +63,6 @@ fn self_hosting_parsing() {
             !entry.path().is_dir() && (entry.path().extension() == Some(std::ffi::OsStr::new("rs")))
         })
     {
-        count += 1;
         let text = read_text(entry.path());
         let node = SourceFileNode::parse(&text);
         let errors = node.errors();
@@ -74,7 +72,6 @@ fn self_hosting_parsing() {
             entry
         );
     }
-    panic!("{}", count)
 }
 /// Read file and normalize newlines.
 ///

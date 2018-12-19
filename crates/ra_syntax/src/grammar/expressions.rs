@@ -158,13 +158,14 @@ fn current_op(p: &Parser) -> (u8, Op) {
 // Parses expression with binding power of at least bp.
 fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
     let mut lhs = match lhs(p, r) {
-        (Some(lhs), blocklike) => {
+        (Some(lhs), macro_blocklike) => {
             // test stmt_bin_expr_ambiguity
             // fn foo() {
             //     let _ = {1} & 2;
             //     {1} &2;
             // }
-            if r.prefer_stmt && (is_block(lhs.kind()) || blocklike == Some(BlockLike::Block)) {
+            if r.prefer_stmt && (is_block(lhs.kind()) || macro_blocklike == Some(BlockLike::Block))
+            {
                 return BlockLike::Block;
             }
             lhs
@@ -251,11 +252,11 @@ fn lhs(p: &mut Parser, r: Restrictions) -> (Option<CompletedMarker>, Option<Bloc
         _ => {
             let (lhs_marker, macro_block_like) = atom::atom_expr(p, r);
 
+            if macro_block_like == Some(BlockLike::Block) {
+                return (lhs_marker, macro_block_like);
+            }
             if let Some(lhs_marker) = lhs_marker {
-                return (
-                    Some(postfix_expr(p, r, lhs_marker, macro_block_like)),
-                    macro_block_like,
-                );
+                return (Some(postfix_expr(p, r, lhs_marker)), macro_block_like);
             } else {
                 return (None, None);
             }
@@ -265,14 +266,11 @@ fn lhs(p: &mut Parser, r: Restrictions) -> (Option<CompletedMarker>, Option<Bloc
     (Some(m.complete(p, kind)), None)
 }
 
-fn postfix_expr(
-    p: &mut Parser,
-    r: Restrictions,
-    mut lhs: CompletedMarker,
-    macro_block_like: Option<BlockLike>,
-) -> CompletedMarker {
-    let mut allow_calls =
-        !r.prefer_stmt || !is_block(lhs.kind()) || macro_block_like != Some(BlockLike::Block);
+fn postfix_expr(p: &mut Parser, r: Restrictions, mut lhs: CompletedMarker) -> CompletedMarker {
+    // Calls are disallowed if the type is a block and we prefer statements because the call cannot be disambiguated from a tuple
+    // E.g. `while true {break}();` is parsed as
+    // `while true {break}; ();`
+    let mut allow_calls = !r.prefer_stmt || !is_block(lhs.kind());
     loop {
         lhs = match p.current() {
             // test stmt_postfix_expr_ambiguity
