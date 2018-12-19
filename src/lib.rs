@@ -18,7 +18,7 @@ use std::borrow::Cow;
 use std::env;
 
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{TyLayout, LayoutOf, Size};
+use rustc::ty::layout::{TyLayout, LayoutOf, Size, Align};
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 
@@ -123,24 +123,56 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
     let argc = Scalar::from_int(1, dest.layout.size);
     ecx.write_scalar(argc, dest)?;
-    let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
-    ecx.write_scalar(argc, argc_place.into())?;
-    ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
+    // Store argc for macOS _NSGetArgc
+    {
+        let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
+        ecx.write_scalar(argc, argc_place.into())?;
+        ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
+    }
 
     // FIXME: extract main source file path
     // Third argument (argv): &[b"foo"]
+    const CMD: &str = "running-in-miri";
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-    let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0").with_default_tag();
-    let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
-    let foo_layout = ecx.layout_of(foo_ty)?;
-    let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
-    ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
-    ecx.memory_mut().mark_immutable(foo_place.to_ptr()?.alloc_id)?;
-    let argv = foo_place.ptr;
-    ecx.write_scalar(argv, dest)?;
-    let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
-    ecx.write_scalar(argv, argv_place.into())?;
-    ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
+    let cmd = ecx.memory_mut().allocate_static_bytes(CMD.as_bytes()).with_default_tag();
+    let raw_str_layout = ecx.layout_of(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8))?;
+    let cmd_place = ecx.allocate(raw_str_layout, MiriMemoryKind::Env.into())?;
+    ecx.write_scalar(Scalar::Ptr(cmd), cmd_place.into())?;
+    ecx.memory_mut().mark_immutable(cmd_place.to_ptr()?.alloc_id)?;
+    // Store argv for macOS _NSGetArgv
+    {
+        let argv = cmd_place.ptr;
+        ecx.write_scalar(argv, dest)?;
+        let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
+        ecx.write_scalar(argv, argv_place.into())?;
+        ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
+    }
+    // Store cmdline as UTF-16 for Windows GetCommandLineW
+    {
+        let tcx = &{ecx.tcx.tcx};
+        let cmd_utf16: Vec<u16> = CMD.encode_utf16()
+            .chain(Some(0)) // add 0-terminator
+            .collect();
+        let cmd_ptr = ecx.memory_mut().allocate(
+            Size::from_bytes(cmd_utf16.len() as u64 * 2),
+            Align::from_bytes(2).unwrap(),
+            MiriMemoryKind::Env.into(),
+        )?.with_default_tag();
+        ecx.machine.cmd_line = Some(cmd_ptr);
+        // store the UTF-16 string
+        let char_size = Size::from_bytes(2);
+        let cmd_alloc = ecx.memory_mut().get_mut(cmd_ptr.alloc_id)?;
+        let mut cur_ptr = cmd_ptr;
+        for &c in cmd_utf16.iter() {
+            cmd_alloc.write_scalar(
+                tcx,
+                cur_ptr,
+                Scalar::from_uint(c, char_size).into(),
+                char_size,
+            )?;
+            cur_ptr = cur_ptr.offset(char_size, tcx)?;
+        }
+    }
 
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
@@ -263,8 +295,13 @@ pub struct Evaluator<'tcx> {
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
+    /// We also need the full cmdline as one string because Window.
     pub(crate) argc: Option<Pointer<Borrow>>,
     pub(crate) argv: Option<Pointer<Borrow>>,
+    pub(crate) cmd_line: Option<Pointer<Borrow>>,
+
+    /// Last OS error
+    pub(crate) last_error: u32,
 
     /// TLS state
     pub(crate) tls: TlsData<'tcx>,
@@ -282,6 +319,8 @@ impl<'tcx> Evaluator<'tcx> {
             env_vars: HashMap::default(),
             argc: None,
             argv: None,
+            cmd_line: None,
+            last_error: 0,
             tls: TlsData::default(),
             validate,
             stacked_borrows: stacked_borrows::State::default(),

@@ -562,6 +562,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             },
 
             // Windows API stubs
+            "SetLastError" => {
+                let err = this.read_scalar(args[0])?.to_u32()?;
+                this.machine.last_error = err;
+            }
+            "GetLastError" => {
+                this.write_scalar(Scalar::from_uint(this.machine.last_error, Size::from_bits(32)), dest)?;
+            }
+
             "AddVectoredExceptionHandler" => {
                 // any non zero value works for the stdlib. This is just used for stackoverflows anyway
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
@@ -569,20 +577,35 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "InitializeCriticalSection" |
             "EnterCriticalSection" |
             "LeaveCriticalSection" |
-            "DeleteCriticalSection" |
-            "SetLastError" => {
-                // Function does not return anything, nothing to do
+            "DeleteCriticalSection" => {
+                // Nothing to do, not even a return value
             },
             "GetModuleHandleW" |
             "GetProcAddress" |
-            "TryEnterCriticalSection" => {
+            "TryEnterCriticalSection" |
+            "GetConsoleScreenBufferInfo" |
+            "SetConsoleTextAttribute" => {
                 // pretend these do not exist/nothing happened, by returning zero
                 this.write_null(dest)?;
             },
-            "GetLastError" => {
-                // this is c::ERROR_CALL_NOT_IMPLEMENTED
-                this.write_scalar(Scalar::from_int(120, dest.layout.size), dest)?;
-            },
+            "GetSystemInfo" => {
+                let system_info = this.deref_operand(args[0])?;
+                let system_info_ptr = system_info.ptr.to_ptr()?;
+                // initialize with 0
+                this.memory_mut().get_mut(system_info_ptr.alloc_id)?
+                    .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
+                // set number of processors to 1
+                let dword_size = Size::from_bytes(4);
+                let offset = 2*dword_size + 3*tcx.pointer_size();
+                this.memory_mut().get_mut(system_info_ptr.alloc_id)?
+                    .write_scalar(
+                        tcx,
+                        system_info_ptr.offset(offset, tcx)?,
+                        Scalar::from_int(1, dword_size).into(),
+                        dword_size,
+                    )?;
+            }
+
             "TlsAlloc" => {
                 // This just creates a key; Windows does not natively support TLS dtors.
 
@@ -648,6 +671,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "GetConsoleMode" => {
                 // Everything is a pipe
                 this.write_null(dest)?;
+            }
+            "GetEnvironmentVariableW" => {
+                // This is not the env var you are looking for
+                this.machine.last_error = 203; // ERROR_ENVVAR_NOT_FOUND
+                this.write_null(dest)?;
+            }
+            "GetCommandLineW" => {
+                this.write_scalar(Scalar::Ptr(this.machine.cmd_line.unwrap()), dest)?;
             }
 
             // We can't execute anything else
