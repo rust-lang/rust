@@ -32,12 +32,13 @@ impl<T> From<Foo<T>> for Box<T> {
 }
 */
 
-impl<T> Into<Box<T>> for Foo<T> {
-    fn into(self) -> Box<T> {
-        Box::new(self.t)
+impl<T> Into<Vec<T>> for Foo<T> {
+    fn into(self) -> Vec<T> {
+        vec![self.t]
     }
 }
 
 pub fn main() {
-    let _: Result<Box<i32>, !> = Foo { t: 10 }.try_into();
+    let _: Result<Vec<i32>, !> = Foo { t: 10 }.try_into();
 }
+
