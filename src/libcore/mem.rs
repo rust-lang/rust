@@ -531,9 +531,9 @@ pub unsafe fn zeroed<T>() -> T {
 /// includes a `panic` occurring and unwinding the stack suddenly.
 ///
 /// If you partially initialize an array, you may need to use
-/// [`ptr::drop_in_place`][drop_in_place] to remove the set you have created
-/// followed by [`mem::forget`][mem_forget] to prevent drop running on the
-/// array. If a partially allocated array is dropped this may lead to
+/// [`ptr::drop_in_place`][drop_in_place] to remove the elements you have fully
+/// initialized followed by [`mem::forget`][mem_forget] to prevent drop running
+/// on the array. If a partially allocated array is dropped this will lead to
 /// undefined behaviour.
 ///
 /// # Examples
@@ -589,7 +589,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// println!("{:?}", &data[0]);
 /// ```
 ///
-/// This example shows how to handle partially allocated arrays, which could
+/// This example shows how to handle partially initialized arrays, which could
 /// be found in low-level datastructures.
 ///
 /// ```
@@ -617,10 +617,6 @@ pub unsafe fn zeroed<T>() -> T {
 /// // 'mem_uninit_test(2457,0x7fffb55dd380) malloc: *** error for object 0x7ff3b8402920: pointer being freed was not allocated'
 /// mem::forget(data);
 /// ```
-///
-/// An alternate strategy is to use [`mem::zeroed`][mem_zeroed] with ptr
-/// comparison. This is a very error prone strategy and may only be relevant
-/// for FFI.
 ///
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 /// [`vec!`]: ../../std/macro.vec.html
