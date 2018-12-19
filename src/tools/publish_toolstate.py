@@ -115,17 +115,21 @@ def update_latest(
                 new = s.get(tool, old)
                 status[os] = new
                 if new > old:
+                    # things got fixed or at least the status quo improved
                     changed = True
                     message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
                         .format(tool, os, old, new, MAINTAINERS.get(tool))
                 elif new < old:
+                    # tests or builds are failing and were not failing before
                     changed = True
                     title = '💔 {} on {}: {} → {}' \
                         .format(tool, os, old, new)
                     message += '{} (cc {}, @rust-lang/infra).\n' \
                         .format(title, MAINTAINERS.get(tool))
-                    failures += title
-                    failures += '\n'
+                    # only create issues for build failures. Other failures can be spurious
+                    if new == 'build-fail':
+                        failures += title
+                        failures += '\n'
 
             if failures != '':
                 issue(tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user, failures)
@@ -151,6 +155,7 @@ if __name__ == '__main__':
     save_message_to_path = sys.argv[3]
     github_token = sys.argv[4]
 
+    # assume that PR authors are also owners of the repo where the branch lives
     relevant_pr_match = re.search('Auto merge of #([0-9]+) - ([^:]+)', cur_commit_msg)
     if relevant_pr_match:
         number = relevant_pr_match.group(1)
