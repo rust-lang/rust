@@ -1343,8 +1343,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.cstore.crate_data_as_rc_any(cnum)
     }
 
+    #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'a> {
-        let krate = self.dep_graph.with_ignore(|| self.hir().krate());
+        let krate = self.gcx.hir_map.forest.untracked_krate();
 
         StableHashingContext::new(self.sess,
                                   krate,

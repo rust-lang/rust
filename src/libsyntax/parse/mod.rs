@@ -81,6 +81,7 @@ impl ParseSess {
         }
     }
 
+    #[inline]
     pub fn source_map(&self) -> &SourceMap {
         &self.source_map
     }
