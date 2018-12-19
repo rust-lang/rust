@@ -1417,7 +1417,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::MaybeUnusedExternCrates => { force!(maybe_unused_extern_crates, LOCAL_CRATE); }
         DepKind::StabilityIndex => { force!(stability_index, LOCAL_CRATE); }
         DepKind::AllSuggestibleTraits => { force!(all_suggestible_traits, LOCAL_CRATE); }
-        DepKind::AllCrateNums => { force!(all_crate_nums, LOCAL_CRATE); }
         DepKind::ExportedSymbols => { force!(exported_symbols, krate!()); }
         DepKind::CollectAndPartitionMonoItems => {
             force!(collect_and_partition_mono_items, LOCAL_CRATE);

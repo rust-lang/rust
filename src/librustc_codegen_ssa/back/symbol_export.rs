@@ -286,7 +286,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 {
     debug_assert!(cnum == LOCAL_CRATE);
 
-    let cnums = tcx.all_crate_nums(LOCAL_CRATE);
+    let cnums = tcx.crates();
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 

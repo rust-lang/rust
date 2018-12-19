@@ -1334,8 +1334,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.stability_index(LOCAL_CRATE)
     }
 
-    pub fn crates(self) -> Lrc<Vec<CrateNum>> {
-        self.all_crate_nums(LOCAL_CRATE)
+    pub fn crates(self) -> Vec<CrateNum> {
+        self.cstore.crates_untracked()
     }
 
     pub fn features(self) -> Lrc<feature_gate::Features> {
@@ -3030,10 +3030,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.extern_mod_stmt_cnum = |tcx, id| {
         let id = tcx.hir().as_local_node_id(id).unwrap();
         tcx.cstore.extern_mod_stmt_cnum_untracked(id)
-    };
-    providers.all_crate_nums = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.cstore.crates_untracked())
     };
     providers.postorder_cnums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

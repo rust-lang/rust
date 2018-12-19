@@ -429,7 +429,7 @@ impl<'sess> OnDiskCache<'sess> {
                         -> IndexVec<CrateNum, Option<CrateNum>>
     {
         tcx.dep_graph.with_ignore(|| {
-            let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
+            let current_cnums = tcx.crates().iter().map(|&cnum| {
                 let crate_name = tcx.original_crate_name(cnum)
                                     .to_string();
                 let crate_disambiguator = tcx.crate_disambiguator(cnum);

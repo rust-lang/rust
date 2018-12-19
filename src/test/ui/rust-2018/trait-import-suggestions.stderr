@@ -25,6 +25,12 @@ error[E0599]: no method named `extern_baz` found for type `u32` in the current s
    |
 LL |     x.extern_baz(); //~ ERROR no method named `extern_baz`
    |       ^^^^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope, perhaps add a `use` for it:
+   |
+LL | use baz::BazTrait;
+   |
 
 error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:33:18

@@ -9,7 +9,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::map as hir_map;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -775,8 +775,6 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
         }
     }
 
-    let mut cnums: FxHashSet<CrateNum> = FxHashSet::default();
-
     // Attempt to load all crates that we have `--extern` flags for, this means
     // we will be able to make suggestions for traits they define. Particularly useful
     // in Rust 2018 as there aren't `extern crate` lines that import a crate even if it isn't
@@ -784,20 +782,12 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     for name in tcx.extern_prelude.keys() {
         let cnum = tcx.maybe_load_extern_crate(*name);
         debug!("compute_all_traits: (attempt load) name={:?} cnum={:?}", name, cnum);
-        if let Some(cnum) = cnum {
-            let _ = cnums.insert(cnum);
-        }
     }
 
-    // Add all crates that we already know about.
-    for &cnum in tcx.crates().iter() {
-        let _ = cnums.insert(cnum);
-    }
-
-    for cnum in cnums {
-        debug!("compute_all_traits: cnum={:?} name={:?}", cnum, tcx.crate_name(cnum));
+    for cnum in tcx.crates().iter() {
+        debug!("compute_all_traits: cnum={:?} name={:?}", cnum, tcx.crate_name(*cnum));
         let def_id = DefId {
-            krate: cnum,
+            krate: *cnum,
             index: CRATE_DEF_INDEX,
         };
         handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));

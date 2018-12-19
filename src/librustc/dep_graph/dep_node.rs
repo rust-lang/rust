@@ -639,7 +639,6 @@ define_dep_nodes!( <'tcx>
     [input] NamesImportedByGlobUse(DefId),
     [eval_always] StabilityIndex,
     [eval_always] AllSuggestibleTraits,
-    [input] AllCrateNums,
     [] ExportedSymbols(CrateNum),
     [eval_always] CollectAndPartitionMonoItems,
     [] IsCodegenedItem(DefId),

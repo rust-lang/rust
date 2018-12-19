@@ -844,12 +844,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::all_suggestible_traits<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::all_crate_nums<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
-        "fetching all foreign CrateNum instances".into()
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::exported_symbols<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "exported_symbols".into()
