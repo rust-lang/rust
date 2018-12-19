@@ -290,7 +290,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
                      stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
                      visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> Option<Option<Waiter<'tcx>>> {
-    if visited.contains(&query.as_ptr()) {
+    if !visited.insert(query.as_ptr()) {
         return if let Some(p) = stack.iter().position(|q| q.1.as_ptr() == query.as_ptr()) {
             // We detected a query cycle, fix up the initial span and return Some
 
@@ -304,8 +304,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
         }
     }
 
-    // Mark this query is visited and add it to the stack
-    visited.insert(query.as_ptr());
+    // Query marked as visited is added it to the stack
     stack.push((span, query.clone()));
 
     // Visit all the waiters
@@ -330,7 +329,7 @@ fn connected_to_root<'tcx>(
     visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
-    if visited.contains(&query.as_ptr()) {
+    if !visited.insert(query.as_ptr()) {
         return false;
     }
 
@@ -338,8 +337,6 @@ fn connected_to_root<'tcx>(
     if query.parent.is_none() {
         return true;
     }
-
-    visited.insert(query.as_ptr());
 
     visit_waiters(query, |_, successor| {
         if connected_to_root(successor, visited) {
