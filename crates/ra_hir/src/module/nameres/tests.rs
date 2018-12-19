@@ -3,6 +3,7 @@ use std::sync::Arc;
 use salsa::Database;
 use ra_db::{FilesDatabase, CrateGraph};
 use ra_syntax::SmolStr;
+use relative_path::RelativePath;
 
 use crate::{
     self as hir,
@@ -44,7 +45,7 @@ fn item_map_smoke_test() {
 
 #[test]
 fn item_map_across_crates() {
-    let (mut db, files) = MockDatabase::with_files(
+    let (mut db, sr) = MockDatabase::with_files(
         "
         //- /main.rs
         use test_crate::Baz;
@@ -53,8 +54,8 @@ fn item_map_across_crates() {
         pub struct Baz;
     ",
     );
-    let main_id = files.file_id("/main.rs");
-    let lib_id = files.file_id("/lib.rs");
+    let main_id = sr.files[RelativePath::new("/main.rs")];
+    let lib_id = sr.files[RelativePath::new("/lib.rs")];
 
     let mut crate_graph = CrateGraph::default();
     let main_crate = crate_graph.add_crate_root(main_id);

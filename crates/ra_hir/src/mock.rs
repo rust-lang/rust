@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use salsa::{self, Database};
-use ra_db::{LocationIntener, BaseDatabase, FilePosition, mock::FileMap, FileId, WORKSPACE, CrateGraph};
+use ra_db::{LocationIntener, BaseDatabase, FilePosition, FileId, WORKSPACE, CrateGraph, SourceRoot};
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
@@ -16,10 +16,10 @@ pub(crate) struct MockDatabase {
 }
 
 impl MockDatabase {
-    pub(crate) fn with_files(fixture: &str) -> (MockDatabase, FileMap) {
-        let (db, file_map, position) = MockDatabase::from_fixture(fixture);
+    pub(crate) fn with_files(fixture: &str) -> (MockDatabase, SourceRoot) {
+        let (db, source_root, position) = MockDatabase::from_fixture(fixture);
         assert!(position.is_none());
-        (db, file_map)
+        (db, source_root)
     }
 
     pub(crate) fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
@@ -33,48 +33,50 @@ impl MockDatabase {
             .set((), Arc::new(crate_graph));
     }
 
-    fn from_fixture(fixture: &str) -> (MockDatabase, FileMap, Option<FilePosition>) {
+    fn from_fixture(fixture: &str) -> (MockDatabase, SourceRoot, Option<FilePosition>) {
         let mut db = MockDatabase::default();
 
         let mut position = None;
-        let mut file_map = FileMap::default();
+        let mut source_root = SourceRoot::default();
         for entry in parse_fixture(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(
                     position.is_none(),
                     "only one marker (<|>) per fixture is allowed"
                 );
-                position = Some(db.add_file_with_position(&mut file_map, &entry.meta, &entry.text));
+                position =
+                    Some(db.add_file_with_position(&mut source_root, &entry.meta, &entry.text));
             } else {
-                db.add_file(&mut file_map, &entry.meta, &entry.text);
+                db.add_file(&mut source_root, &entry.meta, &entry.text);
             }
         }
-        let source_root = file_map.clone().into_source_root();
         db.query_mut(ra_db::SourceRootQuery)
-            .set(WORKSPACE, Arc::new(source_root));
-        (db, file_map, position)
+            .set(WORKSPACE, Arc::new(source_root.clone()));
+        (db, source_root, position)
     }
 
-    fn add_file(&mut self, file_map: &mut FileMap, path: &str, text: &str) -> FileId {
+    fn add_file(&mut self, source_root: &mut SourceRoot, path: &str, text: &str) -> FileId {
         assert!(path.starts_with('/'));
         let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-
-        let file_id = file_map.add(path);
+        let file_id = FileId(source_root.files.len() as u32);
         let text = Arc::new(text.to_string());
         self.query_mut(ra_db::FileTextQuery).set(file_id, text);
+        self.query_mut(ra_db::FileRelativePathQuery)
+            .set(file_id, path.clone());
         self.query_mut(ra_db::FileSourceRootQuery)
             .set(file_id, WORKSPACE);
+        source_root.files.insert(path, file_id);
         file_id
     }
 
     fn add_file_with_position(
         &mut self,
-        file_map: &mut FileMap,
+        source_root: &mut SourceRoot,
         path: &str,
         text: &str,
     ) -> FilePosition {
         let (offset, text) = extract_offset(text);
-        let file_id = self.add_file(file_map, path, &text);
+        let file_id = self.add_file(source_root, path, &text);
         FilePosition { file_id, offset }
     }
 }
@@ -158,6 +160,7 @@ salsa::database_storage! {
     pub(crate) struct MockDatabaseStorage for MockDatabase {
         impl ra_db::FilesDatabase {
             fn file_text() for ra_db::FileTextQuery;
+            fn file_relative_path() for ra_db::FileRelativePathQuery;
             fn file_source_root() for ra_db::FileSourceRootQuery;
             fn source_root() for ra_db::SourceRootQuery;
             fn libraries() for ra_db::LibrariesQuery;
