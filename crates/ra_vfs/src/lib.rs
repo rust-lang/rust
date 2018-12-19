@@ -212,6 +212,7 @@ impl Vfs {
         mem::replace(&mut self.pending_changes, Vec::new())
     }
 
+    /// Sutdown the VFS and terminate the background watching thread.
     pub fn shutdown(self) -> thread::Result<()> {
         let _ = self.worker.shutdown();
         self.worker_handle.shutdown()
