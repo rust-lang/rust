@@ -73,8 +73,8 @@ impl AnalysisHostImpl {
                     .set(library.root_id, Default::default());
                 self.db
                     .query_mut(LibrarySymbolsQuery)
-                    .set(library.root_id, Arc::new(library.symbol_index));
-                self.apply_root_change(library.root_id, library.root_change);
+                    .set_constant(library.root_id, Arc::new(library.symbol_index));
+                self.apply_root_change_constant(library.root_id, library.root_change);
             }
             self.db
                 .query_mut(ra_db::LibraryRootsQuery)
@@ -113,6 +113,34 @@ impl AnalysisHostImpl {
         self.db
             .query_mut(ra_db::SourceRootQuery)
             .set(root_id, Arc::new(source_root));
+    }
+
+    fn apply_root_change_constant(&mut self, root_id: SourceRootId, root_change: RootChange) {
+        let mut source_root = SourceRoot::clone(&self.db.source_root(root_id));
+        for add_file in root_change.added {
+            self.db
+                .query_mut(ra_db::FileTextQuery)
+                .set_constant(add_file.file_id, add_file.text);
+            self.db
+                .query_mut(ra_db::FileRelativePathQuery)
+                .set_constant(add_file.file_id, add_file.path.clone());
+            self.db
+                .query_mut(ra_db::FileSourceRootQuery)
+                .set_constant(add_file.file_id, root_id);
+            source_root.files.insert(add_file.path, add_file.file_id);
+        }
+        for remove_file in root_change.removed {
+            self.db
+                .query_mut(ra_db::FileTextQuery)
+                .set_constant(remove_file.file_id, Default::default());
+            self.db
+                .query_mut(ra_db::FileRelativePathQuery)
+                .set_constant(remove_file.file_id, Default::default());
+            source_root.files.remove(&remove_file.path);
+        }
+        self.db
+            .query_mut(ra_db::SourceRootQuery)
+            .set_constant(root_id, Arc::new(source_root));
     }
 
     #[allow(unused)]
