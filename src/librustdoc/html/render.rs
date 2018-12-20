@@ -143,6 +143,9 @@ struct SharedContext {
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
     pub static_root_path: Option<String>,
+    /// If false, the `select` element to have search filtering by crates on rendered docs
+    /// won't be generated.
+    pub generate_search_filter: bool,
 }
 
 impl SharedContext {
@@ -510,6 +513,7 @@ pub fn run(mut krate: clean::Crate,
         extern_html_root_urls,
         resource_suffix,
         static_root_path,
+        generate_search_filter,
         ..
     } = options;
 
@@ -538,6 +542,7 @@ pub fn run(mut krate: clean::Crate,
         themes,
         resource_suffix,
         static_root_path,
+        generate_search_filter,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -1109,7 +1114,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             try_err!(layout::render(&mut w, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes), &dst);
+                                    &cx.shared.themes,
+                                    cx.shared.generate_search_filter), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1384,7 +1390,8 @@ impl<'a> SourceCollector<'a> {
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes)?;
+                       &self.scx.themes,
+                       self.scx.generate_search_filter)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1986,7 +1993,8 @@ impl Context {
         try_err!(layout::render(&mut w, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
-                                &self.shared.themes),
+                                &self.shared.themes,
+                                self.shared.generate_search_filter),
                  &final_file);
 
         // Generating settings page.
@@ -2006,7 +2014,8 @@ impl Context {
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
-                                &themes),
+                                &themes,
+                                self.shared.generate_search_filter),
                  &settings_file);
 
         Ok(())
@@ -2067,7 +2076,8 @@ impl Context {
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
-                           &self.shared.themes)?;
+                           &self.shared.themes,
+                           self.shared.generate_search_filter)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
