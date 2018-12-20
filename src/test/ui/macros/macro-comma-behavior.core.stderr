@@ -1,41 +1,41 @@
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:27:23
+  --> $DIR/macro-comma-behavior.rs:29:23
    |
 LL |     assert_eq!(1, 1, "{}",);
    |                       ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:30:23
+  --> $DIR/macro-comma-behavior.rs:32:23
    |
 LL |     assert_ne!(1, 2, "{}",);
    |                       ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:36:29
+  --> $DIR/macro-comma-behavior.rs:38:29
    |
 LL |     debug_assert_eq!(1, 1, "{}",);
    |                             ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:39:29
+  --> $DIR/macro-comma-behavior.rs:41:29
    |
 LL |     debug_assert_ne!(1, 2, "{}",);
    |                             ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:60:19
+  --> $DIR/macro-comma-behavior.rs:62:19
    |
 LL |     format_args!("{}",);
    |                   ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:78:21
+  --> $DIR/macro-comma-behavior.rs:80:21
    |
 LL |     unimplemented!("{}",);
    |                     ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:87:24
+  --> $DIR/macro-comma-behavior.rs:89:24
    |
 LL |             write!(f, "{}",)?;
    |                        ^^
@@ -44,7 +44,5 @@ error: `#[panic_handler]` function required, but not found
 
 error: language item required, but not found: `eh_personality`
 
-error: language item required, but not found: `eh_unwind_resume`
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 

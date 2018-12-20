@@ -2881,6 +2881,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
                 err.span_label(self.span, "unknown macro variable");
                 err.emit();
+                self.bump();
                 return
             }
             token::Interpolated(ref nt) => {
