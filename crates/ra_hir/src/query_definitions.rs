@@ -19,6 +19,7 @@ use crate::{
         imp::Submodule,
         nameres::{InputModuleItems, ItemMap, Resolver},
     },
+    ty::{self, InferenceResult}
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`
@@ -32,6 +33,13 @@ pub(super) fn fn_syntax(db: &impl HirDatabase, fn_id: FnId) -> FnDefNode {
 pub(super) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
     let syntax = db.fn_syntax(fn_id);
     let res = FnScopes::new(syntax.borrowed());
+    Arc::new(res)
+}
+
+pub(super) fn infer(db: &impl HirDatabase, fn_id: FnId) -> Arc<InferenceResult> {
+    let syntax = db.fn_syntax(fn_id);
+    let scopes = db.fn_scopes(fn_id);
+    let res = ty::infer(db, syntax.borrowed(), scopes);
     Arc::new(res)
 }
 

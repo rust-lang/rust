@@ -25,6 +25,7 @@ pub mod source_binder;
 mod krate;
 mod module;
 mod function;
+mod ty;
 
 use std::ops::Index;
 

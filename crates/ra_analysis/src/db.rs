@@ -93,6 +93,7 @@ salsa::database_storage! {
             fn item_map() for hir::db::ItemMapQuery;
             fn fn_syntax() for hir::db::FnSyntaxQuery;
             fn submodules() for hir::db::SubmodulesQuery;
+            fn infer() for hir::db::InferQuery;
         }
     }
 }

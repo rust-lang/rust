@@ -10,7 +10,7 @@ use ra_syntax::{
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
 };
 
-use crate::{ DefId, HirDatabase };
+use crate::{ DefId, HirDatabase, ty::InferenceResult };
 
 pub use self::scope::FnScopes;
 
@@ -34,6 +34,10 @@ impl Function {
     pub fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
         let syntax = db.fn_syntax(self.fn_id);
         FnSignatureInfo::new(syntax.borrowed())
+    }
+
+    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self.fn_id)
     }
 }
 

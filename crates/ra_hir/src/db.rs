@@ -14,6 +14,7 @@ use crate::{
     function::FnId,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
+    ty::InferenceResult,
 };
 
 salsa::query_group! {
@@ -28,6 +29,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn fn_syntax(fn_id: FnId) -> FnDefNode {
         type FnSyntaxQuery;
         use fn query_definitions::fn_syntax;
+    }
+
+    fn infer(fn_id: FnId) -> Arc<InferenceResult> {
+        type InferQuery;
+        use fn query_definitions::infer;
     }
 
     fn file_items(file_id: FileId) -> Arc<SourceFileItems> {

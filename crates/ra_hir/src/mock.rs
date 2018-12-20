@@ -8,7 +8,7 @@ use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
 use crate::{db, DefId, DefLoc};
 
-const WORKSPACE: SourceRootId = SourceRootId(0);
+pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
@@ -182,6 +182,7 @@ salsa::database_storage! {
             fn item_map() for db::ItemMapQuery;
             fn fn_syntax() for db::FnSyntaxQuery;
             fn submodules() for db::SubmodulesQuery;
+            fn infer() for db::InferQuery;
         }
     }
 }
