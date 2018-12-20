@@ -186,7 +186,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             Ok((def, ext)) => (def, ext),
             Err(Determinacy::Determined) if kind == MacroKind::Attr => {
                 // Replace unresolved attributes with used inert attributes for better recovery.
-                return Ok(Some(self.get_macro(Def::NonMacroAttr(NonMacroAttrKind::Tool))));
+                return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr { mark_used: true })));
             }
             Err(determinacy) => return Err(determinacy),
         };
