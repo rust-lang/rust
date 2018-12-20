@@ -13,4 +13,3 @@ fn test_use_tree_merge() {
         );
     }
 }
-

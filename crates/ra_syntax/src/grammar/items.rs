@@ -89,7 +89,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
     // modifiers
     has_mods |= p.eat(CONST_KW);
 
-    // test unsafe_block_in_mod
+    // test_err unsafe_block_in_mod
     // fn foo(){} unsafe { } fn bar(){}
     if p.at(UNSAFE_KW) && p.nth(1) != L_CURLY {
         p.eat(UNSAFE_KW);

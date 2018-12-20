@@ -21,6 +21,7 @@ const TOOLCHAIN: &str = "1.31.0";
 pub struct Test {
     pub name: String,
     pub text: String,
+    pub ok: bool,
 }
 
 pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
@@ -38,10 +39,15 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
         }
         let mut block = block.map(|(idx, line)| (idx, &line[prefix.len()..]));
 
+        let mut ok = true;
         let (start_line, name) = loop {
             match block.next() {
                 Some((idx, line)) if line.starts_with("test ") => {
                     break (idx, line["test ".len()..].to_string());
+                }
+                Some((idx, line)) if line.starts_with("test_err ") => {
+                    ok = false;
+                    break (idx, line["test_err ".len()..].to_string());
                 }
                 Some(_) => (),
                 None => continue 'outer,
@@ -52,7 +58,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
             "\n",
         );
         assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        res.push((start_line, Test { name, text }))
+        res.push((start_line, Test { name, text, ok }))
     }
     res
 }

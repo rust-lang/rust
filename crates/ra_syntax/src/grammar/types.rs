@@ -97,7 +97,7 @@ fn pointer_type(p: &mut Parser) {
         // type C = *mut ();
         MUT_KW | CONST_KW => p.bump(),
         _ => {
-            // test pointer_type_no_mutability
+            // test_err pointer_type_no_mutability
             // type T = *();
             p.error(
                 "expected mut or const in raw pointer type \
@@ -132,7 +132,7 @@ fn array_or_slice_type(p: &mut Parser) {
             p.expect(R_BRACK);
             ARRAY_TYPE
         }
-        // test array_type_missing_semi
+        // test_err array_type_missing_semi
         // type T = [() 92];
         _ => {
             p.error("expected `;` or `]`");
@@ -175,7 +175,7 @@ fn fn_pointer_type(p: &mut Parser) {
     if p.at(EXTERN_KW) {
         abi(p);
     }
-    // test fn_pointer_type_missing_fn
+    // test_err fn_pointer_type_missing_fn
     // type F = unsafe ();
     if !p.eat(FN_KW) {
         m.abandon(p);

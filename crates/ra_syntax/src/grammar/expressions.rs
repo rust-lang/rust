@@ -206,7 +206,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
 }
 
 const LHS_FIRST: TokenSet = token_set_union![
-    token_set![AMP, STAR, EXCL, DOTDOT, MINUS],
+    token_set![AMP, STAR, EXCL, DOTDOT, DOTDOTEQ, MINUS],
     atom::ATOM_EXPR_FIRST,
 ];
 
@@ -237,7 +237,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
         }
         // test full_range_expr
         // fn foo() { xs[..]; }
-        DOTDOT => {
+        DOTDOT | DOTDOTEQ => {
             m = p.start();
             p.bump();
             if p.at_ts(EXPR_FIRST) {
@@ -287,7 +287,7 @@ fn postfix_expr(
             DOT if p.nth(1) == INT_NUMBER => field_expr(p, lhs),
             // test postfix_range
             // fn foo() { let x = 1..; }
-            DOTDOT if !EXPR_FIRST.contains(p.nth(1)) => {
+            DOTDOT | DOTDOTEQ if !EXPR_FIRST.contains(p.nth(1)) => {
                 let m = lhs.precede(p);
                 p.bump();
                 m.complete(p, RANGE_EXPR)

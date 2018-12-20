@@ -7,10 +7,11 @@ use std::{
 use clap::{App, Arg, SubCommand};
 use failure::bail;
 
-use tools::{collect_tests, generate, install_format_hook, run, run_rustfmt, Mode, Overwrite, Result, Test, Verify};
+use tools::{collect_tests, generate, install_format_hook, run, run_rustfmt, Mode, Overwrite, Result, Test, Verify, project_root};
 
-const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
-const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
+const GRAMMAR_DIR: &str = "crates/ra_syntax/src/grammar";
+const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/ok";
+const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/err";
 
 fn main() -> Result<()> {
     let matches = App::new("tasks")
@@ -48,34 +49,43 @@ fn main() -> Result<()> {
 
 fn gen_tests(mode: Mode) -> Result<()> {
     let tests = tests_from_dir(Path::new(GRAMMAR_DIR))?;
+    fn install_tests(tests: &HashMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
+        let tests_dir = project_root().join(into);
+        if !tests_dir.is_dir() {
+            fs::create_dir_all(&tests_dir)?;
+        }
+        // ok is never actually read, but it needs to be specified to create a Test in existing_tests
+        let existing = existing_tests(&tests_dir, true)?;
+        for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
+            panic!("Test is deleted: {}", t);
+        }
 
-    let inline_tests_dir = Path::new(INLINE_TESTS_DIR);
-    if !inline_tests_dir.is_dir() {
-        fs::create_dir_all(inline_tests_dir)?;
+        let mut new_idx = existing.len() + 1;
+        for (name, test) in tests {
+            let path = match existing.get(name) {
+                Some((path, _test)) => path.clone(),
+                None => {
+                    let file_name = format!("{:04}_{}.rs", new_idx, name);
+                    new_idx += 1;
+                    tests_dir.join(file_name)
+                }
+            };
+            teraron::update(&path, &test.text, mode)?;
+        }
+        Ok(())
     }
-    let existing = existing_tests(inline_tests_dir)?;
-
-    for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
-        panic!("Test is deleted: {}", t);
-    }
-
-    let mut new_idx = existing.len() + 2;
-    for (name, test) in tests {
-        let path = match existing.get(&name) {
-            Some((path, _test)) => path.clone(),
-            None => {
-                let file_name = format!("{:04}_{}.rs", new_idx, name);
-                new_idx += 1;
-                inline_tests_dir.join(file_name)
-            }
-        };
-        teraron::update(&path, &test.text, mode)?;
-    }
-    Ok(())
+    install_tests(&tests.ok, OK_INLINE_TESTS_DIR, mode)?;
+    install_tests(&tests.err, ERR_INLINE_TESTS_DIR, mode)
 }
 
-fn tests_from_dir(dir: &Path) -> Result<HashMap<String, Test>> {
-    let mut res = HashMap::new();
+#[derive(Default, Debug)]
+struct Tests {
+    pub ok: HashMap<String, Test>,
+    pub err: HashMap<String, Test>,
+}
+
+fn tests_from_dir(dir: &Path) -> Result<Tests> {
+    let mut res = Tests::default();
     for entry in ::walkdir::WalkDir::new(dir) {
         let entry = entry.unwrap();
         if !entry.file_type().is_file() {
@@ -89,19 +99,25 @@ fn tests_from_dir(dir: &Path) -> Result<HashMap<String, Test>> {
     let grammar_rs = dir.parent().unwrap().join("grammar.rs");
     process_file(&mut res, &grammar_rs)?;
     return Ok(res);
-    fn process_file(res: &mut HashMap<String, Test>, path: &Path) -> Result<()> {
+    fn process_file(res: &mut Tests, path: &Path) -> Result<()> {
         let text = fs::read_to_string(path)?;
 
         for (_, test) in collect_tests(&text) {
-            if let Some(old_test) = res.insert(test.name.clone(), test) {
-                bail!("Duplicate test: {}", old_test.name)
+            if test.ok {
+                if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
+                    bail!("Duplicate test: {}", old_test.name)
+                }
+            } else {
+                if let Some(old_test) = res.err.insert(test.name.clone(), test) {
+                    bail!("Duplicate test: {}", old_test.name)
+                }
             }
         }
         Ok(())
     }
 }
 
-fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
+fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test)>> {
     let mut res = HashMap::new();
     for file in fs::read_dir(dir)? {
         let file = file?;
@@ -117,6 +133,7 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
         let test = Test {
             name: name.clone(),
             text,
+            ok,
         };
         if let Some(old) = res.insert(name, (path, test)) {
             println!("Duplicate test: {:?}", old);

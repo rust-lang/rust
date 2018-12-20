@@ -108,7 +108,7 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
             break;
         }
         where_predicate(p);
-        if p.current() != L_CURLY && p.current() != SEMI {
+        if p.current() != L_CURLY && p.current() != SEMI && p.current() != EQ {
             p.expect(COMMA);
         }
     }
