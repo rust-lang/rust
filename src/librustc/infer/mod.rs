@@ -1275,6 +1275,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.inlined_shallow_resolve(typ)
     }
 
+    pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.type_variables.borrow_mut().root_var(var)
+    }
+
     pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,

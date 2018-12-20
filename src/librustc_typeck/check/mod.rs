@@ -114,8 +114,8 @@ use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
                        UserSelfTy, UserSubsts};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, AdtKind, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate,
-                RegionKind};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt, GenericParamDefKind, RegionKind, Visibility,
+                ToPolyTraitRef, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
@@ -143,6 +143,7 @@ use require_c_abi_if_variadic;
 use session::{CompileIncomplete, config, Session};
 use TypeAndSubsts;
 use lint;
+use util::captures::Captures;
 use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
 
@@ -2730,6 +2731,72 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   args_no_rcvr, method.sig.variadic, tuple_arguments,
                                   self.tcx.hir().span_if_local(method.def_id));
         method.sig.output()
+    }
+
+    fn self_type_matches_expected_vid(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        expected_vid: ty::TyVid,
+    ) -> bool {
+        let self_ty = self.shallow_resolve(trait_ref.self_ty());
+        debug!(
+            "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
+            trait_ref, self_ty, expected_vid
+        );
+        match self_ty.sty {
+            ty::Infer(ty::TyVar(found_vid)) => {
+                // FIXME: consider using `sub_root_var` here so we
+                // can see through subtyping.
+                let found_vid = self.root_var(found_vid);
+                debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
+                expected_vid == found_vid
+            }
+            _ => false
+        }
+    }
+
+    fn obligations_for_self_ty<'b>(&'b self, self_ty: ty::TyVid)
+        -> impl Iterator<Item=(ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
+           + Captures<'gcx> + 'b
+    {
+        // FIXME: consider using `sub_root_var` here so we
+        // can see through subtyping.
+        let ty_var_root = self.root_var(self_ty);
+        debug!("obligations_for_self_ty: self_ty={:?} ty_var_root={:?} pending_obligations={:?}",
+               self_ty, ty_var_root,
+               self.fulfillment_cx.borrow().pending_obligations());
+
+        self.fulfillment_cx
+            .borrow()
+            .pending_obligations()
+            .into_iter()
+            .filter_map(move |obligation| match obligation.predicate {
+                ty::Predicate::Projection(ref data) =>
+                    Some((data.to_poly_trait_ref(self.tcx), obligation)),
+                ty::Predicate::Trait(ref data) =>
+                    Some((data.to_poly_trait_ref(), obligation)),
+                ty::Predicate::Subtype(..) => None,
+                ty::Predicate::RegionOutlives(..) => None,
+                ty::Predicate::TypeOutlives(..) => None,
+                ty::Predicate::WellFormed(..) => None,
+                ty::Predicate::ObjectSafe(..) => None,
+                ty::Predicate::ConstEvaluatable(..) => None,
+                // N.B., this predicate is created by breaking down a
+                // `ClosureType: FnFoo()` predicate, where
+                // `ClosureType` represents some `Closure`. It can't
+                // possibly be referring to the current closure,
+                // because we haven't produced the `Closure` for
+                // this closure yet; this is exactly why the other
+                // code is looking for a self type of a unresolved
+                // inference variable.
+                ty::Predicate::ClosureKind(..) => None,
+            }).filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
+    }
+
+    fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
+        self.obligations_for_self_ty(self_ty).any(|(tr, _)| {
+            Some(tr.def_id()) == self.tcx.lang_items().sized_trait()
+        })
     }
 
     /// Generic function that factors out common logic from function calls,

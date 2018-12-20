@@ -20,7 +20,7 @@ use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
-use rustc::ty::{self, ToPolyTraitRef, Ty, GenericParamDefKind};
+use rustc::ty::{self, Ty, GenericParamDefKind};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 use std::cmp;
@@ -219,13 +219,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         expected_vid: ty::TyVid,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
-        let fulfillment_cx = self.fulfillment_cx.borrow();
-        // Here `expected_ty` is known to be a type inference variable.
-
-        let expected_sig = fulfillment_cx
-            .pending_obligations()
-            .iter()
-            .filter_map(|obligation| {
+        let expected_sig = self.obligations_for_self_ty(expected_vid)
+            .find_map(|(_, obligation)| {
                 debug!(
                     "deduce_expectations_from_obligations: obligation.predicate={:?}",
                     obligation.predicate
@@ -234,52 +229,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
-                    let trait_ref = proj_predicate.to_poly_trait_ref(self.tcx);
-                    self.self_type_matches_expected_vid(trait_ref, expected_vid)
-                        .and_then(|_| {
-                            self.deduce_sig_from_projection(
-                                Some(obligation.cause.span),
-                                proj_predicate
-                            )
-                        })
+                    self.deduce_sig_from_projection(
+                        Some(obligation.cause.span),
+                        proj_predicate
+                    )
                 } else {
                     None
                 }
-            })
-            .next();
+            });
 
         // Even if we can't infer the full signature, we may be able to
         // infer the kind. This can occur if there is a trait-reference
         // like `F : Fn<A>`. Note that due to subtyping we could encounter
         // many viable options, so pick the most restrictive.
-        let expected_kind = fulfillment_cx
-            .pending_obligations()
-            .iter()
-            .filter_map(|obligation| {
-                let opt_trait_ref = match obligation.predicate {
-                    ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref(self.tcx)),
-                    ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
-                    ty::Predicate::Subtype(..) => None,
-                    ty::Predicate::RegionOutlives(..) => None,
-                    ty::Predicate::TypeOutlives(..) => None,
-                    ty::Predicate::WellFormed(..) => None,
-                    ty::Predicate::ObjectSafe(..) => None,
-                    ty::Predicate::ConstEvaluatable(..) => None,
-
-                    // N.B., this predicate is created by breaking down a
-                    // `ClosureType: FnFoo()` predicate, where
-                    // `ClosureType` represents some `Closure`. It can't
-                    // possibly be referring to the current closure,
-                    // because we haven't produced the `Closure` for
-                    // this closure yet; this is exactly why the other
-                    // code is looking for a self type of a unresolved
-                    // inference variable.
-                    ty::Predicate::ClosureKind(..) => None,
-                };
-                opt_trait_ref
-                    .and_then(|tr| self.self_type_matches_expected_vid(tr, expected_vid))
-                    .and_then(|tr| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
-            })
+        let expected_kind = self.obligations_for_self_ty(expected_vid)
+            .filter_map(|(tr, _)| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
             .fold(None, |best, cur| {
                 Some(best.map_or(cur, |best| cmp::min(best, cur)))
             });
@@ -337,22 +301,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("deduce_sig_from_projection: sig {:?}", sig);
 
         Some(ExpectedSig { cause_span, sig })
-    }
-
-    fn self_type_matches_expected_vid(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        expected_vid: ty::TyVid,
-    ) -> Option<ty::PolyTraitRef<'tcx>> {
-        let self_ty = self.shallow_resolve(trait_ref.self_ty());
-        debug!(
-            "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?})",
-            trait_ref, self_ty
-        );
-        match self_ty.sty {
-            ty::Infer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
-            _ => None,
-        }
     }
 
     fn sig_of_closure(
