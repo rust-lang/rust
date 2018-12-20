@@ -35,10 +35,10 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     Some(m.complete(p, LITERAL))
 }
 
-pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
+// E.g. for after the break in `if break {}`, this should not match
+pub(super) const ATOM_EXPR_FIRST_NO_BLOCK: TokenSet = token_set_union![
     LITERAL_FIRST,
     token_set![
-        L_CURLY,
         L_PAREN,
         L_BRACK,
         PIPE,
@@ -58,6 +58,9 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
         LIFETIME
     ],
 ];
+
+pub(super) const ATOM_EXPR_FIRST: TokenSet =
+    token_set_union![ATOM_EXPR_FIRST_NO_BLOCK, token_set![L_CURLY],];
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
@@ -108,7 +111,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         L_CURLY => block_expr(p, None),
         RETURN_KW => return_expr(p),
         CONTINUE_KW => continue_expr(p),
-        BREAK_KW => break_expr(p),
+        BREAK_KW => break_expr(p, r),
         _ => {
             p.err_recover("expected expression", EXPR_RECOVERY_SET);
             return None;
@@ -427,12 +430,20 @@ fn continue_expr(p: &mut Parser) -> CompletedMarker {
 //         break 'l 92;
 //     }
 // }
-fn break_expr(p: &mut Parser) -> CompletedMarker {
+fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     assert!(p.at(BREAK_KW));
     let m = p.start();
     p.bump();
     p.eat(LIFETIME);
-    if p.at_ts(EXPR_FIRST) {
+    // test break_ambiguity
+    // fn foo(){
+    //     if break {}
+    //     while break {}
+    //     for i in break {}
+    //     match break {}
+    // }
+    if r.forbid_structs && p.at_ts(EXPR_FIRST_NO_BLOCK) || !r.forbid_structs && p.at_ts(EXPR_FIRST)
+    {
         expr(p);
     }
     m.complete(p, BREAK_EXPR)
