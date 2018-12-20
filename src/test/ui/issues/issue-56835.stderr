@@ -2,7 +2,7 @@ error: the `Self` constructor can only be used with tuple or unit structs
   --> $DIR/issue-56835.rs:4:12
    |
 LL |     fn bar(Self(foo): Self) {}
-   |            ^^^^^^^^^ did you mean `Self { /* fields */ }`?
+   |            ^^^^^^^^^ help: use curly brackets: `Self { /* fields */ }`
 
 error[E0164]: expected tuple struct/variant, found self constructor `Self`
   --> $DIR/issue-56835.rs:4:12
