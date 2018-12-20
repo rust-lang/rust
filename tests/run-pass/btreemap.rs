@@ -1,6 +1,3 @@
-// FIXME: Validation disabled due to https://github.com/rust-lang/rust/issues/54957
-// compile-flags: -Zmiri-disable-validation
-
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Foo {
     A(&'static str),

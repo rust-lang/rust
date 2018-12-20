@@ -1,6 +1,3 @@
-// FIXME: Validation disabled until https://github.com/rust-lang/rust/pull/56161 lands
-// compile-flags: -Zmiri-disable-validation
-
 use std::collections::VecDeque;
 
 fn main() {

@@ -7,11 +7,15 @@ and the working directory to contain the cargo-miri-test project.
 
 import sys, subprocess
 
-def test_cargo_miri():
-    print("==> Testing `cargo miri run` <==")
+def fail(msg):
+    print("TEST FAIL: {}".format(msg))
+    sys.exit(1)
+
+def test(name, cmd, stdout_ref, stderr_ref):
+    print("==> Testing `{}` <==".format(name))
     ## Call `cargo miri`, capture all output
     p = subprocess.Popen(
-        ["cargo", "miri", "run", "-q"],
+        cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
@@ -25,18 +29,18 @@ def test_cargo_miri():
     print(stderr, end="")
     # Test for failures
     if p.returncode != 0:
-        sys.exit(1)
-    if stdout != open('stdout.ref').read():
-        print("stdout does not match reference")
-        sys.exit(1)
-    if stderr != open('stderr.ref').read():
-        print("stderr does not match reference")
-        sys.exit(1)
+        fail("Non-zero exit status")
+    if stdout != open(stdout_ref).read():
+        fail("stdout does not match reference")
+    if stderr != open(stderr_ref).read():
+        fail("stderr does not match reference")
+
+def test_cargo_miri_run():
+    test("cargo miri run", ["cargo", "miri", "run", "-q"], "stdout.ref", "stderr.ref")
 
 def test_cargo_miri_test():
-    print("==> Testing `cargo miri test` <==")
-    subprocess.check_call(["cargo", "miri", "test"])
+    test("cargo miri test", ["cargo", "miri", "test", "-q"], "test.stdout.ref", "test.stderr.ref")
 
-test_cargo_miri()
+test_cargo_miri_run()
 test_cargo_miri_test()
 sys.exit(0)

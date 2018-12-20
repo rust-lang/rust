@@ -25,15 +25,19 @@ install:
 build: false
 
 test_script:
-    - set RUSTFLAGS=-g
+    - set RUST_TEST_NOCAPTURE=1
     - set RUST_BACKTRACE=1
-    # Build miri
+    # Build and install miri
     - cargo build --release --all-features --all-targets
+    - cargo install --all-features --force --path .
     # Get ourselves a MIR-full libstd, and use it henceforth
-    - cargo run --release --all-features --bin cargo-miri -- miri setup
+    - cargo miri setup
     - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\miri\miri\cache\HOST
     # Test miri
     - cargo test --release --all-features
+    # Test cargo integration
+    - cd test-cargo-miri
+    - python3 run-test.py
 
 notifications:
     - provider: Email
