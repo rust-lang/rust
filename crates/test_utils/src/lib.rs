@@ -66,15 +66,39 @@ pub fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     Some((TextRange::from_to(start, end), text))
 }
 
-pub fn extract_ranges(text: &str) -> (Vec<TextRange>, String) {
+/// Extracts ranges, marked with `<tag> </tag>` paris from the `text`
+pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
+    let open = format!("<{}>", tag);
+    let close = format!("</{}>", tag);
     let mut ranges = Vec::new();
-    let mut text = String::from(text);
-    while let Some((range, new_text)) = try_extract_range(&text) {
-        text = new_text;
-        ranges.push(range);
+    let mut res = String::new();
+    let mut stack = Vec::new();
+    loop {
+        match text.find('<') {
+            None => {
+                res.push_str(text);
+                break;
+            }
+            Some(i) => {
+                res.push_str(&text[..i]);
+                text = &text[i..];
+                if text.starts_with(&open) {
+                    text = &text[open.len()..];
+                    let from = TextUnit::of_str(&res);
+                    stack.push(from);
+                } else if text.starts_with(&close) {
+                    text = &text[close.len()..];
+                    let from = stack
+                        .pop()
+                        .unwrap_or_else(|| panic!("unmatched </{}>", tag));
+                    let to = TextUnit::of_str(&res);
+                    ranges.push(TextRange::from_to(from, to));
+                }
+            }
+        }
     }
-
-    (ranges, text)
+    assert!(stack.is_empty(), "unmatched <{}>", tag);
+    (ranges, res)
 }
 
 pub fn add_cursor(text: &str, offset: TextUnit) -> String {
