@@ -1551,7 +1551,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // Case 2. Reference to a variant constructor.
             Def::Variant(def_id) |
             Def::VariantCtor(def_id, ..) => {
-                let adt_def = self_ty.and_then(|t| t.ty_adt_def());
+                let adt_def = self_ty.map(|t| t.ty_adt_def().unwrap());
                 let (generics_def_id, index) = if let Some(adt_def) = adt_def {
                     debug_assert!(adt_def.is_enum());
                     (adt_def.did, last)

@@ -3,6 +3,7 @@
 
 #![allow(irrefutable_let_patterns)]
 
+#[allow(dead_code)]
 enum Enum<T> { TSVariant(T), SVariant { v: T } }
 type Alias<T> = Enum<T>;
 type AliasFixed = Enum<()>;
@@ -14,16 +15,6 @@ macro_rules! is_variant {
         assert!(if let Enum::$variant::<()> $matcher = $expr { true } else { false },
                 "expr does not have correct type");
     );
-}
-
-impl<T> Enum<T> {
-    fn ts_variant() {
-        is_variant!(TSVariant, Self::TSVariant(()));
-    }
-
-    fn s_variant() {
-        is_variant!(SVariant, Self::SVariant { v: () });
-    }
 }
 
 fn main() {
@@ -38,8 +29,6 @@ fn main() {
 
     is_variant!(TSVariant, AliasFixed::TSVariant(()));
 
-    Enum::<()>::ts_variant();
-
     // Struct variant
 
     is_variant!(SVariant, Enum::SVariant { v: () });
@@ -50,6 +39,4 @@ fn main() {
     is_variant!(SVariant, Alias::<()>::SVariant { v: () });
 
     is_variant!(SVariant, AliasFixed::SVariant { v: () });
-
-    Enum::<()>::s_variant();
 }

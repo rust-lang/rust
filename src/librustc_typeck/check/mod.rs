@@ -5079,7 +5079,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
 
         let mut user_self_ty = None;
+        let mut is_alias_variant_ctor = false;
         match def {
+            Def::VariantCtor(_, _) => {
+                if let Some(self_ty) = self_ty {
+                    let adt_def = self_ty.ty_adt_def().unwrap();
+                    user_self_ty = Some(UserSelfTy {
+                        impl_def_id: adt_def.did,
+                        self_ty,
+                    });
+                    is_alias_variant_ctor = true;
+                }
+            }
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
                 let container = tcx.associated_item(def_id).container;
@@ -5110,12 +5121,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // segment belong to, let's sort out the parameters that the user
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
-
-        let is_alias_variant_ctor =
-            match def {
-                Def::VariantCtor(_, _) if self_ty.is_some() => true,
-                _ => false,
-            };
 
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
         AstConv::prohibit_generics(self, segments.iter().enumerate().filter_map(|(index, seg)| {
