@@ -1431,7 +1431,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment>>(&self, segments: T) {
+    pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment>>(
+            &self, segments: T) -> bool {
+        let mut has_err = false;
         for segment in segments {
             segment.with_generic_args(|generic_args| {
                 let (mut err_for_lt, mut err_for_ty) = (false, false);
@@ -1440,6 +1442,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                         hir::GenericArg::Lifetime(lt) => {
                             if err_for_lt { continue }
                             err_for_lt = true;
+                            has_err = true;
                             (struct_span_err!(self.tcx().sess, lt.span, E0110,
                                               "lifetime arguments are not allowed on this entity"),
                              lt.span,
@@ -1448,6 +1451,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                         hir::GenericArg::Type(ty) => {
                             if err_for_ty { continue }
                             err_for_ty = true;
+                            has_err = true;
                             (struct_span_err!(self.tcx().sess, ty.span, E0109,
                                               "type arguments are not allowed on this entity"),
                              ty.span,
@@ -1461,11 +1465,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     }
                 }
                 for binding in &generic_args.bindings {
+                    has_err = true;
                     Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
                     break;
                 }
             })
         }
+        has_err
     }
 
     pub fn prohibit_assoc_ty_binding(tcx: TyCtxt, span: Span) {

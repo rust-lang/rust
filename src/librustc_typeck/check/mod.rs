@@ -5123,13 +5123,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
 
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
-        AstConv::prohibit_generics(self, segments.iter().enumerate().filter_map(|(index, seg)| {
+        let generics_has_err = AstConv::prohibit_generics(
+                self, segments.iter().enumerate().filter_map(|(index, seg)| {
             if !generic_segs.contains(&index) || is_alias_variant_ctor {
                 Some(seg)
             } else {
                 None
             }
         }));
+        if generics_has_err {
+            // Don't try to infer type parameters when prohibited generic arguments were given.
+            user_self_ty = None;
+        }
 
         match def {
             Def::Local(nid) | Def::Upvar(nid, ..) => {
@@ -5301,9 +5306,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
-            // is inherent, there is no `Self` parameter, instead, the impl needs
+            // is inherent, there is no `Self` parameter; instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
+            // This also occurs for an enum variant on a type alias.
             let ty = tcx.type_of(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
