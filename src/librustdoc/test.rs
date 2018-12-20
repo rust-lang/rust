@@ -394,7 +394,7 @@ pub fn make_test(s: &str,
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
-    let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
+    let (already_has_main, already_has_extern_crate, found_macro) = crate::syntax::with_globals(|| {
         use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
         use crate::syntax_pos::FileName;
         use errors::emitter::EmitterWriter;
@@ -412,6 +412,7 @@ pub fn make_test(s: &str,
 
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();
+        let mut found_macro = false;
 
         let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
             Ok(p) => p,
@@ -420,7 +421,7 @@ pub fn make_test(s: &str,
                     err.cancel();
                 }
 
-                return (found_main, found_extern_crate);
+                return (found_main, found_extern_crate, found_macro);
             }
         };
 
@@ -448,6 +449,12 @@ pub fn make_test(s: &str,
                         }
                     }
 
+                    if !found_macro {
+                        if let ast::ItemKind::Mac(..) = item.node {
+                            found_macro = true;
+                        }
+                    }
+
                     if found_main && found_extern_crate {
                         break;
                     }
@@ -460,8 +467,27 @@ pub fn make_test(s: &str,
             }
         }
 
-        (found_main, found_extern_crate)
+        (found_main, found_extern_crate, found_macro)
     });
+
+    // If a doctest's `fn main` is being masked by a wrapper macro, the parsing loop above won't
+    // see it. In that case, run the old text-based scan to see if they at least have a main
+    // function written inside a macro invocation. See
+    // https://github.com/rust-lang/rust/issues/56898
+    let already_has_main = if found_macro && !already_has_main {
+        s.lines()
+            .map(|line| {
+                let comment = line.find("//");
+                if let Some(comment_begins) = comment {
+                    &line[0..comment_begins]
+                } else {
+                    line
+                }
+            })
+            .any(|code| code.contains("fn main"))
+    } else {
+        already_has_main
+    };
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
@@ -1142,5 +1168,24 @@ assert_eq!(asdf::foo, 4);
 
         let output = make_test(input, Some("asdf"), false, &opts);
         assert_eq!(output, (expected, 3));
+    }
+
+    #[test]
+    fn make_test_main_in_macro() {
+        let opts = TestOptions::default();
+        let input =
+"#[macro_use] extern crate my_crate;
+test_wrapper! {
+    fn main() {}
+}";
+        let expected =
+"#![allow(unused)]
+#[macro_use] extern crate my_crate;
+test_wrapper! {
+    fn main() {}
+}".to_string();
+
+        let output = make_test(input, Some("my_crate"), false, &opts);
+        assert_eq!(output, (expected, 1));
     }
 }
