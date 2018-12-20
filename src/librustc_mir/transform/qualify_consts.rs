@@ -518,7 +518,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                    if context.is_mutating_use() {
+                    if self.mode == Mode::Static && context.is_mutating_use() {
                         // this is not strictly necessary as miri will also bail out
                         // For interior mutability we can't really catch this statically as that
                         // goes through raw pointers and intermediate temporaries, so miri has
