@@ -42,7 +42,7 @@ use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use std::cmp;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -660,7 +660,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
-            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
+            let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
             debug!(
                 "evaluate_predicate_recursively({:?}) = {:?}",
                 obligation, eval
@@ -682,13 +682,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         debug!("evaluate_predicate_recursively({:?})", obligation);
-        self.check_recursion_limit(obligation)?;
+        self.check_recursion_limit(&obligation)?;
 
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 debug_assert!(!t.has_escaping_bound_vars());
                 let mut obligation = obligation.with(t.clone());
-                obligation.recursion_depth += 1
+                obligation.recursion_depth += 1;
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
@@ -697,11 +697,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 match self.infcx
                     .subtype_predicate(&obligation.cause, obligation.param_env, p)
                 {
-                    Some(Ok(InferOk { obligations, .. })) => {
-                        for o in obligations.iter_mut() {
-                            o.recursion_depth += 1
-                        }
-                        self.evaluate_predicates_recursively(previous_stack, obligation.into_iter())
+                    Some(Ok(InferOk { mut obligations, .. })) => {
+                        self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                        self.evaluate_predicates_recursively(previous_stack, obligations.into_iter())
                     }
                     Some(Err(_)) => Ok(EvaluatedToErr),
                     None => Ok(EvaluatedToAmbig),
@@ -715,11 +713,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 ty,
                 obligation.cause.span,
             ) {
-                Some(obligations) => {
-                    for o in obligations.iter_mut() {
-                        o.recursion_depth += 1
-                    }
-                    self.evaluate_predicates_recursively(previous_stack, obligations.iter())
+                Some(mut obligations) => {
+                    self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                    self.evaluate_predicates_recursively(previous_stack, obligations.into_iter())
                 }
                 None => Ok(EvaluatedToAmbig),
             },
@@ -741,10 +737,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Predicate::Projection(ref data) => {
                 let project_obligation = obligation.with(data.clone());
                 match project::poly_project_and_unify_type(self, &project_obligation) {
-                    Ok(Some(subobligations)) => {
-                        for o in subobligations.iter_mut() {
-                            o.recursion_depth += 1
-                        }
+                    Ok(Some(mut subobligations)) => {
+                        self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
                         let result = self.evaluate_predicates_recursively(
                             previous_stack,
                             subobligations.into_iter(),
@@ -1016,7 +1010,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             match this.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => this.evaluate_predicates_recursively(
                     stack.list(),
-                    selection.nested_obligations().iter(),
+                    selection.nested_obligations().into_iter(),
                 ),
                 Err(..) => Ok(EvaluatedToErr),
             }
@@ -1091,6 +1085,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .insert(trait_ref, WithDepNode::new(dep_node, result));
     }
 
+    // Due to caching of projection results, it's possible for a subobligation
+    // to have a *lower* recursion_depth than the obligation used to create it.
+    // To ensure that obligation_depth never decreasees, we force all subobligations
+    // to have at least the depth of the original obligation.
+    fn add_depth<T: 'cx, I: Iterator<Item = &'cx mut Obligation<'tcx, T>>>(&self, it: I,
+                                                                           min_depth: usize) {
+        it.for_each(|o| o.recursion_depth = cmp::max(min_depth, o.recursion_depth) + 1);
+    }
+
     // Check that the recursion limit has not been exceeded.
     //
     // The weird return type of this function allows it to be used with the 'try' (?)
@@ -1098,7 +1101,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn check_recursion_limit<T: Display + TypeFoldable<'tcx>>(&self, obligation: &Obligation<'tcx, T>,
     ) -> Result<(), OverflowError>  {
         let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
-        if obligaton.recursion_depth >= recursion_limit {
+        if obligation.recursion_depth >= recursion_limit {
             match self.query_mode {
                 TraitQueryMode::Standard => {
                     self.infcx().report_overflow_error(obligation, true);
@@ -1796,7 +1799,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.evaluation_probe(|this| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
-                    this.evaluate_predicates_recursively(stack.list(), obligations.iter())
+                    this.evaluate_predicates_recursively(stack.list(), obligations.into_iter())
                 }
                 Err(()) => Ok(EvaluatedToErr),
             }
