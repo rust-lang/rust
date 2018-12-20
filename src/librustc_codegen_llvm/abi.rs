@@ -489,12 +489,6 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     attrs.pointee_size = pointee.size;
                     attrs.pointee_align = Some(pointee.align);
 
-                    // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
-                    // with align attributes, and those calls later block optimizations.
-                    if !is_return && !cx.tcx.sess.opts.debugging_opts.arg_align_attributes {
-                        attrs.pointee_align = None;
-                    }
-
                     // `Box` pointer parameters never alias because ownership is transferred
                     // `&mut` pointer parameters never alias other parameters,
                     // or mutable global data

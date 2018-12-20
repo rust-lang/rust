@@ -74,6 +74,10 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-mergefunc-use-aliases");
         }
 
+        // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
+        // during inlining. Unfortunately these may block other optimizations.
+        add("-preserve-alignment-assumptions-during-inlining=false");
+
         for arg in &sess.opts.cg.llvm_args {
             add(&(*arg));
         }
