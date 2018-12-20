@@ -42,6 +42,11 @@ pub(crate) fn block(p: &mut Parser) {
     }
     let m = p.start();
     p.bump();
+    // test nocontentexpr
+    // fn foo(){
+    //     ;;;some_expr();;;;{;;;};;;;Ok(())
+    // }
+    while p.eat(SEMI) {}
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
             LET_KW => let_stmt(p),
@@ -89,6 +94,7 @@ pub(crate) fn block(p: &mut Parser) {
                 }
             }
         }
+        while p.eat(SEMI) {}
     }
     p.expect(R_CURLY);
     m.complete(p, BLOCK);
