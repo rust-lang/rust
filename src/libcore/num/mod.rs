@@ -1781,7 +1781,7 @@ assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
         doc_comment! {
             concat!("Calculates the least nonnegative remainder of `self (mod rhs)`.
 
-This is done as if by the euclidean division algorithm.
+This is done as if by the Euclidean division algorithm.
 
 # Panics
 
