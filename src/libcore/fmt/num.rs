@@ -1,7 +1,5 @@
 //! Integer and floating-point number formatting
 
-#![allow(deprecated)]
-
 
 use fmt;
 use ops::{Div, Rem, Sub};
