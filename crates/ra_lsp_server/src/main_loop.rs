@@ -417,7 +417,7 @@ impl<'a> PoolDispatcher<'a> {
                                 if is_canceled(&e) {
                                     RawResponse::err(
                                         id,
-                                        ErrorCode::RequestCancelled as i32,
+                                        ErrorCode::ContentModified as i32,
                                         e.to_string(),
                                     )
                                 } else {
