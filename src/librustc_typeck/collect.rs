@@ -2220,7 +2220,6 @@ fn from_target_feature(
                     feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
                 );
-                return None;
             }
             Some(Symbol::intern(feature))
         }));
