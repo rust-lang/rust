@@ -140,6 +140,9 @@ struct SharedContext {
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
     pub resource_suffix: String,
+    /// Optional path string to be used to load static files on output pages. If not set, uses
+    /// combinations of `../` to reach the documentation root.
+    pub static_root_path: Option<String>,
 }
 
 impl SharedContext {
@@ -506,6 +509,7 @@ pub fn run(mut krate: clean::Crate,
         extension_css,
         extern_html_root_urls,
         resource_suffix,
+        static_root_path,
         ..
     } = options;
 
@@ -533,6 +537,7 @@ pub fn run(mut krate: clean::Crate,
         sort_modules_alphabetically,
         themes,
         resource_suffix,
+        static_root_path,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -1080,6 +1085,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
+                static_root_path: cx.shared.static_root_path.deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
@@ -1366,6 +1372,7 @@ impl<'a> SourceCollector<'a> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
+            static_root_path: self.scx.static_root_path.deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
@@ -1956,6 +1963,7 @@ impl Context {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
+            static_root_path: self.shared.static_root_path.deref(),
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
@@ -2035,6 +2043,7 @@ impl Context {
         let page = layout::Page {
             css_class: tyname,
             root_path: &self.root_path(),
+            static_root_path: self.shared.static_root_path.deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
