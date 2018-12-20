@@ -1,9 +1,7 @@
 mod support;
 
 use serde_json::json;
-
 use ra_lsp_server::req::{Runnables, RunnablesParams, CodeActionRequest, CodeActionParams};
-
 use languageserver_types::{Position, Range, CodeActionContext};
 
 use crate::support::project;
@@ -20,6 +18,7 @@ fn foo() {
 }
 ",
     );
+    server.wait_for_feedback("workspace loaded");
     server.request::<Runnables>(
         RunnablesParams {
             text_document: server.doc_id("lib.rs"),

@@ -174,11 +174,11 @@ impl Server {
 impl Drop for Server {
     fn drop(&mut self) {
         self.send_request::<Shutdown>(666, ());
-        let receiver = self.worker.take().unwrap().stop();
+        let receiver = self.worker.take().unwrap().shutdown();
         while let Some(msg) = recv_timeout(&receiver) {
             drop(msg);
         }
-        self.watcher.take().unwrap().stop().unwrap();
+        self.watcher.take().unwrap().shutdown().unwrap();
     }
 }
 

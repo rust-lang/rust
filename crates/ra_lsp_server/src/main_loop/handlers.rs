@@ -326,9 +326,9 @@ pub fn handle_runnables(
                 None => return Ok(None),
             };
             let file_id = world.analysis().crate_root(crate_id)?;
-            let path = world.path_map.get_path(file_id);
+            let path = world.vfs.read().file2path(ra_vfs::VfsFile(file_id.0));
             let res = world.workspaces.iter().find_map(|ws| {
-                let tgt = ws.target_by_root(path)?;
+                let tgt = ws.target_by_root(&path)?;
                 let res = CargoTargetSpec {
                     package: tgt.package(ws).name(ws).to_string(),
                     target: tgt.name(ws).to_string(),

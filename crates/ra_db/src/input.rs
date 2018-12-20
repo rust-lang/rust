@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
-use rustc_hash::{FxHashSet, FxHashMap};
+use rustc_hash::{FxHashMap};
+use relative_path::RelativePathBuf;
 use ra_syntax::SmolStr;
 use salsa;
 
-use crate::file_resolver::FileResolverImp;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SourceRootId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
@@ -85,6 +87,11 @@ salsa::query_group! {
             type FileTextQuery;
             storage input;
         }
+        /// Path to a file, relative to the root of its source root.
+        fn file_relative_path(file_id: FileId) -> RelativePathBuf {
+            type FileRelativePathQuery;
+            storage input;
+        }
         fn file_source_root(file_id: FileId) -> SourceRootId {
             type FileSourceRootQuery;
             storage input;
@@ -93,8 +100,12 @@ salsa::query_group! {
             type SourceRootQuery;
             storage input;
         }
-        fn libraries() -> Arc<Vec<SourceRootId>> {
-            type LibrariesQuery;
+        fn local_roots() -> Arc<Vec<SourceRootId>> {
+            type LocalRootsQuery;
+            storage input;
+        }
+        fn library_roots() -> Arc<Vec<SourceRootId>> {
+            type LibraryRootsQuery;
             storage input;
         }
         fn crate_graph() -> Arc<CrateGraph> {
@@ -104,13 +115,7 @@ salsa::query_group! {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct SourceRootId(pub u32);
-
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
-    pub file_resolver: FileResolverImp,
-    pub files: FxHashSet<FileId>,
+    pub files: FxHashMap<RelativePathBuf, FileId>,
 }
-
-pub const WORKSPACE: SourceRootId = SourceRootId(0);

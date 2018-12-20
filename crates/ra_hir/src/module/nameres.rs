@@ -32,11 +32,12 @@ use crate::{
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
     HirDatabase, Crate,
-    module::{ModuleId, ModuleTree},
+    module::{Module, ModuleId, ModuleTree},
 };
 
 /// Item map is the result of the name resolution. Item map contains, for each
 /// module, the set of visible items.
+// FIXME: currenty we compute item map per source-root. We should do it per crate instead.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ItemMap {
     pub per_module: FxHashMap<ModuleId, ModuleScope>,
@@ -252,7 +253,8 @@ where
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db)? {
-                        self.add_module_item(&mut module_items, dep.name, module.module_id);
+                        let def_id = module.def_id(self.db);
+                        self.add_module_item(&mut module_items, dep.name, def_id);
                     }
                 }
             };
@@ -294,21 +296,21 @@ where
 
         // Populate modules
         for (name, module_id) in module_id.children(&self.module_tree) {
-            self.add_module_item(&mut module_items, name, module_id);
+            let def_loc = DefLoc {
+                kind: DefKind::Module,
+                source_root_id: self.source_root,
+                module_id,
+                source_item_id: module_id.source(&self.module_tree).0,
+            };
+            let def_id = def_loc.id(self.db);
+            self.add_module_item(&mut module_items, name, def_id);
         }
 
         self.result.per_module.insert(module_id, module_items);
         Ok(())
     }
 
-    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, module_id: ModuleId) {
-        let def_loc = DefLoc {
-            kind: DefKind::Module,
-            source_root_id: self.source_root,
-            module_id,
-            source_item_id: module_id.source(&self.module_tree).0,
-        };
-        let def_id = def_loc.id(self.db);
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, def_id: DefId) {
         let resolution = Resolution {
             def_id: Some(def_id),
             import: None,
@@ -329,7 +331,7 @@ where
             ImportKind::Named(ptr) => ptr,
         };
 
-        let mut curr = match import.path.kind {
+        let mut curr: ModuleId = match import.path.kind {
             PathKind::Plain | PathKind::Self_ => module_id,
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {
@@ -356,9 +358,30 @@ where
                 curr = match def_id.loc(self.db) {
                     DefLoc {
                         kind: DefKind::Module,
-                        module_id,
+                        module_id: target_module_id,
+                        source_root_id,
                         ..
-                    } => module_id,
+                    } => {
+                        if source_root_id == self.source_root {
+                            target_module_id
+                        } else {
+                            let module = Module::new(self.db, source_root_id, target_module_id)?;
+                            let path = Path {
+                                segments: import.path.segments[i + 1..].iter().cloned().collect(),
+                                kind: PathKind::Crate,
+                            };
+                            if let Some(def_id) = module.resolve_path(self.db, path)? {
+                                self.update(module_id, |items| {
+                                    let res = Resolution {
+                                        def_id: Some(def_id),
+                                        import: Some(ptr),
+                                    };
+                                    items.items.insert(name.clone(), res);
+                                })
+                            }
+                            return Ok(());
+                        }
+                    }
                     _ => return Ok(()),
                 }
             } else {

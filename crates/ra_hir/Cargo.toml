@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+arrayvec = "0.4.9"
 log = "0.4.5"
 relative-path = "0.4.0"
 salsa = "0.8.0"

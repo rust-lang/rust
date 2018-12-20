@@ -69,6 +69,7 @@ impl Package {
     pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
         ws.pkg(self).targets.iter().cloned()
     }
+    #[allow(unused)]
     pub fn is_member(self, ws: &CargoWorkspace) -> bool {
         ws.pkg(self).is_member
     }

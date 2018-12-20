@@ -1,0 +1,17 @@
+[package]
+edition = "2018"
+name = "ra_vfs"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+
+[dependencies]
+walkdir = "2.2.7"
+relative-path = "0.4.0"
+rustc-hash = "1.0"
+crossbeam-channel = "0.2.4"
+log = "0.4.6"
+
+thread_worker = { path = "../thread_worker" }
+
+[dev-dependencies]
+tempfile = "3"
