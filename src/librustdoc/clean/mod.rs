@@ -1674,6 +1674,12 @@ impl Clean<Item> for doctree::Function {
             (self.generics.clean(cx), (&self.decl, self.body).clean(cx))
         });
 
+        let did = cx.tcx.hir().local_def_id(self.id);
+        let constness = if cx.tcx.is_min_const_fn(did) {
+            hir::Constness::Const
+        } else {
+            hir::Constness::NotConst
+        };
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1681,11 +1687,11 @@ impl Clean<Item> for doctree::Function {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
-            def_id: cx.tcx.hir().local_def_id(self.id),
+            def_id: did,
             inner: FunctionItem(Function {
                 decl,
                 generics,
-                header: self.header,
+                header: hir::FnHeader { constness, ..self.header },
             }),
         }
     }
@@ -2009,7 +2015,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     ty::TraitContainer(_) => self.defaultness.has_value()
                 };
                 if provided {
-                    let constness = if cx.tcx.is_const_fn(self.def_id) {
+                    let constness = if cx.tcx.is_min_const_fn(self.def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
