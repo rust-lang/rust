@@ -46,7 +46,7 @@ pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     elements: &Rc<RegionValueElements>,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     liveness_map: &NllLivenessMap,
     location_table: &LocationTable,
@@ -99,7 +99,7 @@ where
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
+    flow_inits: &'me mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.

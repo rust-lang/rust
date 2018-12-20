@@ -68,6 +68,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
             borrowed.kind,
             place,
             access,
+            places_conflict::PlaceConflictBias::Overlap,
         ) {
             debug!(
                 "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",

@@ -25,19 +25,19 @@ use super::DataflowBuilder;
 use super::DebugFormatted;
 
 pub trait MirWithFlowState<'tcx> {
-    type BD: BitDenotation;
+    type BD: BitDenotation<'tcx>;
     fn node_id(&self) -> NodeId;
     fn mir(&self) -> &Mir<'tcx>;
-    fn flow_state(&self) -> &DataflowState<Self::BD>;
+    fn flow_state(&self) -> &DataflowState<'tcx, Self::BD>;
 }
 
 impl<'a, 'tcx, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
-    where BD: BitDenotation
+    where BD: BitDenotation<'tcx>
 {
     type BD = BD;
     fn node_id(&self) -> NodeId { self.node_id }
     fn mir(&self) -> &Mir<'tcx> { self.flow_state.mir() }
-    fn flow_state(&self) -> &DataflowState<Self::BD> { &self.flow_state.flow_state }
+    fn flow_state(&self) -> &DataflowState<'tcx, Self::BD> { &self.flow_state.flow_state }
 }
 
 struct Graph<'a, 'tcx, MWF:'a, P> where
@@ -53,8 +53,8 @@ pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     path: &Path,
     render_idx: P)
     -> io::Result<()>
-    where BD: BitDenotation,
-          P: Fn(&BD, BD::Idx) -> DebugFormatted
+    where BD: BitDenotation<'tcx>,
+          P: Fn(&BD, BD::Idx) -> DebugFormatted,
 {
     let g = Graph { mbcx, phantom: PhantomData, render_idx };
     let mut v = Vec::new();
@@ -76,7 +76,7 @@ fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
 
 impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     where MWF: MirWithFlowState<'tcx>,
-          P: Fn(&MWF::BD, <MWF::BD as BitDenotation>::Idx) -> DebugFormatted,
+          P: Fn(&MWF::BD, <MWF::BD as BitDenotation<'tcx>>::Idx) -> DebugFormatted,
 {
     type Node = Node;
     type Edge = Edge;
@@ -128,7 +128,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
 
 impl<'a, 'tcx, MWF, P> Graph<'a, 'tcx, MWF, P>
 where MWF: MirWithFlowState<'tcx>,
-      P: Fn(&MWF::BD, <MWF::BD as BitDenotation>::Idx) -> DebugFormatted,
+      P: Fn(&MWF::BD, <MWF::BD as BitDenotation<'tcx>>::Idx) -> DebugFormatted,
 {
     /// Generate the node label
     fn node_label_internal<W: io::Write>(&self,

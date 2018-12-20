@@ -39,7 +39,7 @@ pub(super) fn generate<'gcx, 'tcx>(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     elements: &Rc<RegionValueElements>,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_table: &LocationTable,
 ) {
