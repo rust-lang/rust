@@ -25,7 +25,7 @@ use stdsimd_test::assert_instr;
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32b))]
-pub unsafe fn crc32b(crc: u32, data: u8) -> u32 {
+pub unsafe fn __crc32b(crc: u32, data: u8) -> u32 {
     crc32b_(crc, data as u32)
 }
 
@@ -33,7 +33,7 @@ pub unsafe fn crc32b(crc: u32, data: u8) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32h))]
-pub unsafe fn crc32h(crc: u32, data: u16) -> u32 {
+pub unsafe fn __crc32h(crc: u32, data: u16) -> u32 {
     crc32h_(crc, data as u32)
 }
 
@@ -41,7 +41,7 @@ pub unsafe fn crc32h(crc: u32, data: u16) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32w))]
-pub unsafe fn crc32w(crc: u32, data: u32) -> u32 {
+pub unsafe fn __crc32w(crc: u32, data: u32) -> u32 {
     crc32w_(crc, data)
 }
 
@@ -49,7 +49,7 @@ pub unsafe fn crc32w(crc: u32, data: u32) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32x))]
-pub unsafe fn crc32x(crc: u32, data: u64) -> u32 {
+pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
     crc32x_(crc, data)
 }
 
@@ -57,7 +57,7 @@ pub unsafe fn crc32x(crc: u32, data: u64) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32cb))]
-pub unsafe fn crc32cb(crc: u32, data: u8) -> u32 {
+pub unsafe fn __crc32cb(crc: u32, data: u8) -> u32 {
     crc32cb_(crc, data as u32)
 }
 
@@ -65,7 +65,7 @@ pub unsafe fn crc32cb(crc: u32, data: u8) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32ch))]
-pub unsafe fn crc32ch(crc: u32, data: u16) -> u32 {
+pub unsafe fn __crc32ch(crc: u32, data: u16) -> u32 {
     crc32ch_(crc, data as u32)
 }
 
@@ -73,7 +73,7 @@ pub unsafe fn crc32ch(crc: u32, data: u16) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32cw))]
-pub unsafe fn crc32cw(crc: u32, data: u32) -> u32 {
+pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
     crc32cw_(crc, data)
 }
 
@@ -81,7 +81,7 @@ pub unsafe fn crc32cw(crc: u32, data: u32) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32cx))]
-pub unsafe fn crc32cx(crc: u32, data: u64) -> u32 {
+pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
     crc32cx_(crc, data)
 }
 
@@ -94,50 +94,50 @@ mod tests {
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32b() {
-        assert_eq!(crc32b(0, 0), 0);
-        assert_eq!(crc32b(0, 255), 755167117);
+        assert_eq!(__crc32b(0, 0), 0);
+        assert_eq!(__crc32b(0, 255), 755167117);
     }
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32h() {
-        assert_eq!(crc32h(0, 0), 0);
-        assert_eq!(crc32h(0, 16384), 1994146192);
+        assert_eq!(__crc32h(0, 0), 0);
+        assert_eq!(__crc32h(0, 16384), 1994146192);
     }
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32w() {
-        assert_eq!(crc32w(0, 0), 0);
-        assert_eq!(crc32w(0, 4294967295), 3736805603);
+        assert_eq!(__crc32w(0, 0), 0);
+        assert_eq!(__crc32w(0, 4294967295), 3736805603);
     }
 
     #[simd_test(enable = "crc")]
-    unsafe fn test_crc32x() {
-        assert_eq!(crc32x(0, 0), 0);
-        assert_eq!(crc32x(0, 18446744073709551615), 1147535477);
+    unsafe fn test_crc32d() {
+        assert_eq!(__crc32d(0, 0), 0);
+        assert_eq!(__crc32d(0, 18446744073709551615), 1147535477);
     }
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32cb() {
-        assert_eq!(crc32cb(0, 0), 0);
-        assert_eq!(crc32cb(0, 255), 2910671697);
+        assert_eq!(__crc32cb(0, 0), 0);
+        assert_eq!(__crc32cb(0, 255), 2910671697);
     }
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32ch() {
-        assert_eq!(crc32ch(0, 0), 0);
-        assert_eq!(crc32ch(0, 16384), 1098587580);
+        assert_eq!(__crc32ch(0, 0), 0);
+        assert_eq!(__crc32ch(0, 16384), 1098587580);
     }
 
     #[simd_test(enable = "crc")]
     unsafe fn test_crc32cw() {
-        assert_eq!(crc32cw(0, 0), 0);
-        assert_eq!(crc32cw(0, 4294967295), 3080238136);
+        assert_eq!(__crc32cw(0, 0), 0);
+        assert_eq!(__crc32cw(0, 4294967295), 3080238136);
     }
 
     #[simd_test(enable = "crc")]
-    unsafe fn test_crc32cx() {
-        assert_eq!(crc32cx(0, 0), 0);
-        assert_eq!(crc32cx(0, 18446744073709551615), 3293575501);
+    unsafe fn test_crc32cd() {
+        assert_eq!(__crc32cd(0, 0), 0);
+        assert_eq!(__crc32cd(0, 18446744073709551615), 3293575501);
     }
 
 }

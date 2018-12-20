@@ -13,12 +13,22 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn x86_functions(input: TokenStream) -> TokenStream {
+    functions(input, &["../coresimd/x86", "../coresimd/x86_64"])
+}
+
+#[proc_macro]
+pub fn arm_functions(input: TokenStream) -> TokenStream {
+    functions(input, &["../coresimd/arm", "../coresimd/aarch64"])
+}
+
+fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let root = dir.parent().unwrap();
 
     let mut files = Vec::new();
-    walk(&root.join("../coresimd/x86"), &mut files);
-    walk(&root.join("../coresimd/x86_64"), &mut files);
+    for dir in dirs {
+        walk(&root.join(dir), &mut files);
+    }
     assert!(!files.is_empty());
 
     let mut functions = Vec::new();
@@ -92,6 +102,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
     match *t {
         syn::Type::Path(ref p) => match extract_path_ident(&p.path).to_string().as_ref() {
+            // x86 ...
             "__m128" => quote! { &M128 },
             "__m128d" => quote! { &M128D },
             "__m128i" => quote! { &M128I },
@@ -115,6 +126,55 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "u64" => quote! { &U64 },
             "u8" => quote! { &U8 },
             "CpuidResult" => quote! { &CPUID },
+
+            // arm ...
+            "int8x4_t" => quote! { &I8X4 },
+            "int8x8_t" => quote! { &I8X8 },
+            "int8x8x2_t" => quote! { &I8X8X2 },
+            "int8x8x3_t" => quote! { &I8X8X3 },
+            "int8x8x4_t" => quote! { &I8X8X4 },
+            "int8x16x2_t" => quote! { &I8X16X2 },
+            "int8x16x3_t" => quote! { &I8X16X3 },
+            "int8x16x4_t" => quote! { &I8X16X4 },
+            "int8x16_t" => quote! { &I8X16 },
+            "int16x2_t" => quote! { &I16X2 },
+            "int16x4_t" => quote! { &I16X4 },
+            "int16x8_t" => quote! { &I16X8 },
+            "int32x2_t" => quote! { &I32X2 },
+            "int32x4_t" => quote! { &I32X4 },
+            "int64x1_t" => quote! { &I64X1 },
+            "int64x2_t" => quote! { &I64X2 },
+            "uint8x8_t" => quote! { &U8X8 },
+            "uint8x8x2_t" => quote! { &U8X8X2 },
+            "uint8x16x2_t" => quote! { &U8X16X2 },
+            "uint8x16x3_t" => quote! { &U8X16X3 },
+            "uint8x16x4_t" => quote! { &U8X16X4 },
+            "uint8x8x3_t" => quote! { &U8X8X3 },
+            "uint8x8x4_t" => quote! { &U8X8X4 },
+            "uint8x16_t" => quote! { &U8X16 },
+            "uint16x4_t" => quote! { &U16X4 },
+            "uint16x8_t" => quote! { &U16X8 },
+            "uint32x2_t" => quote! { &U32X2 },
+            "uint32x4_t" => quote! { &U32X4 },
+            "uint64x1_t" => quote! { &U64X1 },
+            "uint64x2_t" => quote! { &U64X2 },
+            "float32x2_t" => quote! { &F32X2 },
+            "float32x4_t" => quote! { &F32X4 },
+            "float64x1_t" => quote! { &F64X1 },
+            "float64x2_t" => quote! { &F64X2 },
+            "poly8x8_t" => quote! { &POLY8X8 },
+            "poly8x8x2_t" => quote! { &POLY8X8X2 },
+            "poly8x8x3_t" => quote! { &POLY8X8X3 },
+            "poly8x8x4_t" => quote! { &POLY8X8X4 },
+            "poly8x16x2_t" => quote! { &POLY8X16X2 },
+            "poly8x16x3_t" => quote! { &POLY8X16X3 },
+            "poly8x16x4_t" => quote! { &POLY8X16X4 },
+            "poly64x1_t" => quote! { &POLY64X1 },
+            "poly64x2_t" => quote! { &POLY64X2 },
+            "poly8x16_t" => quote! { &POLY8X16 },
+            "poly16x4_t" => quote! { &POLY16X4 },
+            "poly16x8_t" => quote! { &POLY16X8 },
+
             s => panic!("unspported type: \"{}\"", s),
         },
         syn::Type::Ptr(syn::TypePtr { ref elem, .. })

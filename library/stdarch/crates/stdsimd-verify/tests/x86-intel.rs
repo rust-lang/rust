@@ -1,26 +1,18 @@
 #![allow(bad_style)]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(
-        clippy::shadow_reuse,
-        clippy::cast_lossless,
-        clippy::match_same_arms,
-        clippy::nonminimal_bool,
-        clippy::print_stdout,
-        clippy::use_debug,
-        clippy::eq_op,
-        clippy::useless_format
-    )
+#![allow(
+    clippy::shadow_reuse,
+    clippy::cast_lossless,
+    clippy::match_same_arms,
+    clippy::nonminimal_bool,
+    clippy::print_stdout,
+    clippy::use_debug,
+    clippy::eq_op,
+    clippy::useless_format
 )]
-
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_xml_rs;
-extern crate stdsimd_verify;
 
 use std::collections::{BTreeMap, HashMap};
 
-use stdsimd_verify::x86_functions;
+use serde::Deserialize;
 
 const PRINT_INSTRUCTION_VIOLATIONS: bool = false;
 const PRINT_MISSING_LISTS: bool = false;
@@ -85,7 +77,7 @@ enum Type {
     Never,
 }
 
-x86_functions!(static FUNCTIONS);
+stdsimd_verify::x86_functions!(static FUNCTIONS);
 
 #[derive(Deserialize)]
 struct Data {

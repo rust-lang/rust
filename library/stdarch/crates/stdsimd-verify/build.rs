@@ -3,8 +3,10 @@ use std::path::Path;
 fn main() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let root = dir.parent().unwrap();
-    let root = root.join("../coresimd/x86");
-    walk(&root);
+    walk(&root.join("../coresimd/x86"));
+    walk(&root.join("../coresimd/x86_64"));
+    walk(&root.join("../coresimd/arm"));
+    walk(&root.join("../coresimd/aarch64"));
 }
 
 fn walk(root: &Path) {

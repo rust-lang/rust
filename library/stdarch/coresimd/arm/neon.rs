@@ -702,7 +702,7 @@ pub unsafe fn vtbl1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vtbl))]
-pub unsafe fn vtbl1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+pub unsafe fn vtbl1_p8(a: poly8x8_t, b: uint8x8_t) -> poly8x8_t {
     ::mem::transmute(vtbl1(::mem::transmute(a), ::mem::transmute(b)))
 }
 

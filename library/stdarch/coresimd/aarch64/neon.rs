@@ -9,6 +9,8 @@ use coresimd::simd_llvm::*;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use mem;
+
 types! {
     /// ARM-specific 64-bit wide vector of one packed `f64`.
     pub struct float64x1_t(f64); // FIXME: check this!
@@ -250,16 +252,20 @@ pub unsafe fn vaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
-pub unsafe fn vaddd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    simd_add(a, b)
+pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
+    let a: int64x1_t = mem::transmute(a);
+    let b: int64x1_t = mem::transmute(b);
+    simd_extract(simd_add(a, b), 0)
 }
 
 /// Vector add.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
-pub unsafe fn vaddd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
-    simd_add(a, b)
+pub unsafe fn vaddd_u64(a: u64, b: u64) -> u64 {
+    let a: uint64x1_t = mem::transmute(a);
+    let b: uint64x1_t = mem::transmute(b);
+    simd_extract(simd_add(a, b), 0)
 }
 
 /// Horizontal vector max.
