@@ -1089,6 +1089,8 @@ themePicker.onblur = handleThemeButtonsBlur;
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
+                extra_scripts: &[],
+                static_extra_scripts: &[],
             };
             krates.push(krate.name.clone());
             krates.sort();
@@ -1107,7 +1109,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             try_err!(layout::render(&mut w, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes, &[]), &dst);
+                                    &cx.shared.themes), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1376,12 +1378,13 @@ impl<'a> SourceCollector<'a> {
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
+            extra_scripts: &["source-files"],
+            static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes, &["source-files",
-                                           &format!("source-script{}", page.resource_suffix)])?;
+                       &self.scx.themes)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1967,6 +1970,8 @@ impl Context {
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
         };
         let sidebar = if let Some(ref version) = cache().crate_version {
             format!("<p class='location'>Crate {}</p>\
@@ -1981,7 +1986,7 @@ impl Context {
         try_err!(layout::render(&mut w, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
-                                &self.shared.themes, &[]),
+                                &self.shared.themes),
                  &final_file);
 
         // Generating settings page.
@@ -2001,7 +2006,7 @@ impl Context {
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
-                                &themes, &[]),
+                                &themes),
                  &settings_file);
 
         Ok(())
@@ -2048,6 +2053,8 @@ impl Context {
             description: &desc,
             keywords: &keywords,
             resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
         };
 
         {
@@ -2060,7 +2067,7 @@ impl Context {
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
-                           &self.shared.themes, &[])?;
+                           &self.shared.themes)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {

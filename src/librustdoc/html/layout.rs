@@ -30,11 +30,13 @@ pub struct Page<'a> {
     pub description: &'a str,
     pub keywords: &'a str,
     pub resource_suffix: &'a str,
+    pub extra_scripts: &'a [&'a str],
+    pub static_extra_scripts: &'a [&'a str],
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut dyn io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
-    css_file_extension: bool, themes: &[PathBuf], extra_scripts: &[&str])
+    css_file_extension: bool, themes: &[PathBuf])
     -> io::Result<()>
 {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
@@ -164,6 +166,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     </script>\
     <script src=\"{root_path}aliases.js\"></script>\
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
+    {static_extra_scripts}\
     {extra_scripts}\
     <script defer src=\"{root_path}search-index.js\"></script>\
 </body>\
@@ -211,9 +214,12 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                                     page.resource_suffix))
                    .collect::<String>(),
     suffix=page.resource_suffix,
-    // TODO: break out a separate `static_extra_scripts` that uses `static_root_path` instead,
-    // then leave `source-files.js` here and move `source-script.js` to the static version
-    extra_scripts=extra_scripts.iter().map(|e| {
+    static_extra_scripts=page.static_extra_scripts.iter().map(|e| {
+        format!("<script src=\"{static_root_path}{extra_script}.js\"></script>",
+                static_root_path=static_root_path,
+                extra_script=e)
+    }).collect::<String>(),
+    extra_scripts=page.extra_scripts.iter().map(|e| {
         format!("<script src=\"{root_path}{extra_script}.js\"></script>",
                 root_path=page.root_path,
                 extra_script=e)
