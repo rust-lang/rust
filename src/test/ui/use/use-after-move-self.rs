@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//compile-flags: -Z borrowck=mir
 #![feature(box_syntax)]
 
 struct S {
@@ -17,7 +18,7 @@ struct S {
 impl S {
     pub fn foo(self) -> isize {
         self.bar();
-        return *self.x;  //~ ERROR use of moved value: `*self.x`
+        return *self.x;  //~ ERROR use of moved value: `self`
     }
 
     pub fn bar(self) {}
