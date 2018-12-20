@@ -23,7 +23,7 @@ use hir::{
 use crate::{
     completion::{completions, CompletionItem},
     db,
-    symbol_index::{SymbolIndex, SymbolsDatabase},
+    symbol_index::{SymbolIndex, SymbolsDatabase, LibrarySymbolsQuery},
     AnalysisChange, RootChange, Cancelable, CrateId, Diagnostic, FileId,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
     ReferenceResolution,
@@ -71,6 +71,9 @@ impl AnalysisHostImpl {
                 self.db
                     .query_mut(ra_db::SourceRootQuery)
                     .set(library.root_id, Default::default());
+                self.db
+                    .query_mut(LibrarySymbolsQuery)
+                    .set(library.root_id, Arc::new(library.symbol_index));
                 self.apply_root_change(library.root_id, library.root_change);
             }
             self.db
