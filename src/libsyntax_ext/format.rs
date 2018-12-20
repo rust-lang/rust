@@ -713,7 +713,6 @@ pub fn expand_format_args_nl<'cx>(
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_FORMAT_ARGS_NL);
-        return DummyResult::expr(sp);
     }
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {

@@ -20,7 +20,6 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_CONCAT_IDENTS);
-        return base::DummyResult::expr(sp);
     }
 
     if tts.is_empty() {

@@ -29,7 +29,6 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_GLOBAL_ASM);
-        return DummyResult::any(sp);
     }
 
     let mut p = cx.new_parser_from_tts(tts);

@@ -31,8 +31,6 @@ pub fn expand(
                                        attr_sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_CUSTOM_TEST_FRAMEWORKS);
-
-        return vec![anno_item];
     }
 
     if !ecx.ecfg.should_test { return vec![]; }

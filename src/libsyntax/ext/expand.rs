@@ -722,7 +722,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     emit_feature_err(this.cx.parse_sess, &*feature.as_str(), span,
                                      GateIssue::Library(Some(issue)), &explain);
                     this.cx.trace_macros_diag();
-                    return Err(kind.dummy(span));
                 }
             }
 

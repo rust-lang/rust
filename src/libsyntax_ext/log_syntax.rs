@@ -14,7 +14,6 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_LOG_SYNTAX);
-        return base::DummyResult::any(sp);
     }
 
     println!("{}", print::pprust::tts_to_string(tts));

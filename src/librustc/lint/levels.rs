@@ -222,14 +222,13 @@ impl<'a> LintLevelsBuilder<'a> {
                 match item.node {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
-                        let gate_reasons = !self.sess.features_untracked().lint_reasons;
                         if item.ident == "reason" {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
                             // don't have any lint names (`#[level(reason = "foo")]`)
                             if let ast::LitKind::Str(rationale, _) = name_value.node {
-                                if gate_reasons {
+                                if !self.sess.features_untracked().lint_reasons {
                                     feature_gate::emit_feature_err(
                                         &self.sess.parse_sess,
                                         "lint_reasons",
@@ -237,9 +236,8 @@ impl<'a> LintLevelsBuilder<'a> {
                                         feature_gate::GateIssue::Language,
                                         "lint reasons are experimental"
                                     );
-                                } else {
-                                    reason = Some(rationale);
                                 }
+                                reason = Some(rationale);
                             } else {
                                 let mut err = bad_attr(name_value.span);
                                 err.help("reason must be a string literal");
