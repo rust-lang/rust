@@ -10,6 +10,7 @@ use ra_syntax::{
 pub enum FoldKind {
     Comment,
     Imports,
+    Block,
 }
 
 #[derive(Debug)]
@@ -62,6 +63,8 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
+        NAMED_FIELD_DEF_LIST | FIELD_PAT_LIST | ITEM_LIST | EXTERN_ITEM_LIST | USE_TREE_LIST
+        | BLOCK | ENUM_VARIANT_LIST => Some(FoldKind::Block),
         _ => None,
     }
 }
@@ -205,7 +208,7 @@ mod tests {
 
 // But this is not
 
-fn main() {
+fn main() <fold>{
     <fold>// We should
     // also
     // fold
@@ -214,10 +217,11 @@ fn main() {
     //! because it has another flavor</fold>
     <fold>/* As does this
     multiline comment */</fold>
-}"#;
+}</fold>"#;
 
         let fold_kinds = &[
             FoldKind::Comment,
+            FoldKind::Block,
             FoldKind::Comment,
             FoldKind::Comment,
             FoldKind::Comment,
@@ -228,16 +232,16 @@ fn main() {
     #[test]
     fn test_fold_imports() {
         let text = r#"
-<fold>use std::{
+<fold>use std::<fold>{
     str,
     vec,
     io as iop
-};</fold>
+}</fold>;</fold>
 
-fn main() {
-}"#;
+fn main() <fold>{
+}</fold>"#;
 
-        let folds = &[FoldKind::Imports];
+        let folds = &[FoldKind::Imports, FoldKind::Block, FoldKind::Block];
         do_check(text, folds);
     }
 
@@ -255,10 +259,10 @@ use std::collections::HashMap;
 // Some random comment
 use std::collections::VecDeque;
 
-fn main() {
-}"#;
+fn main() <fold>{
+}</fold>"#;
 
-        let folds = &[FoldKind::Imports, FoldKind::Imports];
+        let folds = &[FoldKind::Imports, FoldKind::Imports, FoldKind::Block];
         do_check(text, folds);
     }
 
@@ -272,16 +276,22 @@ use std::io as iop;</fold>
 <fold>use std::mem;
 use std::f64;</fold>
 
-<fold>use std::collections::{
+<fold>use std::collections::<fold>{
     HashMap,
     VecDeque,
-};</fold>
+}</fold>;</fold>
 // Some random comment
 
-fn main() {
-}"#;
+fn main() <fold>{
+}</fold>"#;
 
-        let folds = &[FoldKind::Imports, FoldKind::Imports, FoldKind::Imports];
+        let folds = &[
+            FoldKind::Imports,
+            FoldKind::Imports,
+            FoldKind::Imports,
+            FoldKind::Block,
+            FoldKind::Block,
+        ];
         do_check(text, folds);
     }
 

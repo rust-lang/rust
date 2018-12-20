@@ -98,6 +98,7 @@ pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
         }
     }
     assert!(stack.is_empty(), "unmatched <{}>", tag);
+    ranges.sort_by_key(|r| (r.start(), r.end()));
     (ranges, res)
 }
 
