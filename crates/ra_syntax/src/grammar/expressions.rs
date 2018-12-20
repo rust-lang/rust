@@ -42,9 +42,15 @@ pub(crate) fn block(p: &mut Parser) {
     }
     let m = p.start();
     p.bump();
+
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
             LET_KW => let_stmt(p),
+            // test nocontentexpr
+            // fn foo(){
+            //     ;;;some_expr();;;;{;;;};;;;Ok(())
+            // }
+            SEMI => p.bump(),
             _ => {
                 // test block_items
                 // fn a() { fn b() {} }
