@@ -89,7 +89,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 WHILE_KW => while_expr(p, Some(m)),
                 L_CURLY => block_expr(p, Some(m)),
                 _ => {
-                    // test misplaced_label_err
+                    // test_err misplaced_label_err
                     // fn main() {
                     //     'loop: impl
                     // }
@@ -354,7 +354,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 // fn foo() {
 //     match () {
 //         _ => (),
-//         _ if Test>{field: 0} => (),
+//         _ if Test > Test{field: 0} => (),
 //         X | Y if Z => (),
 //         | X | Y if Z => (),
 //         | X => (),

@@ -14,13 +14,14 @@ fn update_staged() -> Result<()> {
     let root = project_root();
     let output = Command::new("git")
         .arg("diff")
+        .arg("--diff-filter=MAR")
         .arg("--name-only")
         .arg("--cached")
         .current_dir(&root)
         .output()?;
     if !output.status.success() {
         bail!(
-            "`git diff --name-only --cached` exited with {}",
+            "`git diff --diff-filter=MAR --name-only --cached` exited with {}",
             output.status
         );
     }

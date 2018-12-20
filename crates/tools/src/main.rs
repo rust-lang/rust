@@ -54,13 +54,13 @@ fn gen_tests(mode: Mode) -> Result<()> {
         if !tests_dir.is_dir() {
             fs::create_dir_all(&tests_dir)?;
         }
-        // ok is never is actually read, but it needs to be specified to create a Test in existing_tests
+        // ok is never actually read, but it needs to be specified to create a Test in existing_tests
         let existing = existing_tests(&tests_dir, true)?;
         for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
-            panic!("Test is deleted: {}", t);
+            // panic!("Test is deleted: {}", t);
         }
 
-        let mut new_idx = existing.len() + 2;
+        let mut new_idx = existing.len() + 1;
         for (name, test) in tests {
             let path = match existing.get(name) {
                 Some((path, _test)) => path.clone(),

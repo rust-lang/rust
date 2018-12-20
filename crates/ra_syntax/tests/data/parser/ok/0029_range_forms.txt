@@ -79,34 +79,28 @@ SOURCE_FILE@[0; 153)
           DOTDOT@[73; 75)
         SEMI@[75; 76)
       WHITESPACE@[76; 86)
-      err: `expected expression`
-      EXPR_STMT@[86; 89)
-        ERROR@[86; 89)
+      EXPR_STMT@[86; 95)
+        RANGE_EXPR@[86; 94)
           DOTDOTEQ@[86; 89)
-          err: `expected SEMI`
-      EXPR_STMT@[89; 95)
-        BIN_EXPR@[89; 94)
-          LITERAL@[89; 90)
-            INT_NUMBER@[89; 90) "1"
-          WHITESPACE@[90; 91)
-          PLUS@[91; 92)
-          WHITESPACE@[92; 93)
-          LITERAL@[93; 94)
-            INT_NUMBER@[93; 94) "1"
+          BIN_EXPR@[89; 94)
+            LITERAL@[89; 90)
+              INT_NUMBER@[89; 90) "1"
+            WHITESPACE@[90; 91)
+            PLUS@[91; 92)
+            WHITESPACE@[92; 93)
+            LITERAL@[93; 94)
+              INT_NUMBER@[93; 94) "1"
         SEMI@[94; 95)
       WHITESPACE@[95; 100)
-      err: `expected expression`
-      EXPR_STMT@[100; 103)
-        ERROR@[100; 103)
-          DOTDOTEQ@[100; 103)
-          err: `expected SEMI`
-      EXPR_STMT@[103; 109)
-        BIN_EXPR@[103; 108)
-          PATH_EXPR@[103; 104)
-            PATH@[103; 104)
-              PATH_SEGMENT@[103; 104)
-                NAME_REF@[103; 104)
-                  IDENT@[103; 104) "z"
+      EXPR_STMT@[100; 109)
+        BIN_EXPR@[100; 108)
+          RANGE_EXPR@[100; 104)
+            DOTDOTEQ@[100; 103)
+            PATH_EXPR@[103; 104)
+              PATH@[103; 104)
+                PATH_SEGMENT@[103; 104)
+                  NAME_REF@[103; 104)
+                    IDENT@[103; 104) "z"
           WHITESPACE@[104; 105)
           EQ@[105; 106)
           WHITESPACE@[106; 107)

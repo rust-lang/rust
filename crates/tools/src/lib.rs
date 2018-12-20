@@ -47,7 +47,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
                 }
                 Some((idx, line)) if line.starts_with("test_err ") => {
                     ok = false;
-                    break (idx, line["test_fail ".len()..].to_string());
+                    break (idx, line["test_err ".len()..].to_string());
                 }
                 Some(_) => (),
                 None => continue 'outer,

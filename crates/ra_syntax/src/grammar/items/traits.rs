@@ -116,7 +116,7 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
         && (p.nth(2) == R_ANGLE || p.nth(2) == COMMA || p.nth(2) == COLON || p.nth(2) == EQ)
 }
 
-// test impl_type
+// test_err impl_type
 // impl Type {}
 // impl Trait1 for T {}
 // impl impl NotType {}

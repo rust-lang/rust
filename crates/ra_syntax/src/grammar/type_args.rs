@@ -26,7 +26,7 @@ pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
 }
 
 // test type_arg
-// type A = B<'static, i32, Item=u64>
+// type A = B<'static, i32, Item=u64>;
 fn type_arg(p: &mut Parser) {
     let m = p.start();
     match p.current() {

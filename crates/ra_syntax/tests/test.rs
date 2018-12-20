@@ -124,7 +124,7 @@ where
             println!("\nfile: {}", path.display());
             println!("No .txt file with expected result, creating...\n");
             println!("{}\n{}", input_code, parse_tree);
-            fs::write(&path, parse_tree).unwrap();
+            fs::write(&path, &parse_tree).unwrap();
             panic!("No expected result")
         }
         let expected = read_text(&path);
