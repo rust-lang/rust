@@ -230,7 +230,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
-                    self.conservative_is_uninhabited(pat_ty)
+                    match pat_ty.sty {
+                        ty::Never => true,
+                        ty::Adt(def, _) => def.variants.is_empty(),
+                        _ => false
+                    }
                 };
                 if !scrutinee_is_uninhabited {
                     // We know the type is inhabited, so this must be wrong
@@ -256,15 +260,6 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
-    }
-
-    fn conservative_is_uninhabited(&self, scrutinee_ty: Ty<'tcx>) -> bool {
-        // "rustc-1.0-style" uncontentious uninhabitableness check
-        match scrutinee_ty.sty {
-            ty::Never => true,
-            ty::Adt(def, _) => def.variants.is_empty(),
-            _ => false
-        }
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {

@@ -1545,8 +1545,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             None => {
-                // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                if !sig.output().is_never() {
+                if !sig.output().conservative_is_privately_uninhabited(self.tcx()) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }

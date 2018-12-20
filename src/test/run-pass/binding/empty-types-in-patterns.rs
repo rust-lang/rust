@@ -14,6 +14,7 @@
 #![feature(slice_patterns)]
 #![allow(unreachable_patterns)]
 #![allow(unreachable_code)]
+#![allow(unused_variables)]
 
 #[allow(dead_code)]
 fn foo(z: !) {

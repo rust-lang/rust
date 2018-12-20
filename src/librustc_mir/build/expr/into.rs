@@ -275,8 +275,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
-                // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                let diverges = expr.ty.is_never();
                 let intrinsic = match ty.sty {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
@@ -332,7 +330,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             func: fun,
                             args,
                             cleanup: Some(cleanup),
-                            destination: if diverges {
+                            // FIXME(varkor): replace this with an uninhabitedness-based check.
+                            // This requires getting access to the current module to call
+                            // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
+                            destination: if expr.ty.is_never() {
                                 None
                             } else {
                                 Some((destination.clone(), success))
@@ -421,8 +422,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
-                this.cfg
-                    .push_assign(block, source_info, destination, rvalue);
+                this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
         };
