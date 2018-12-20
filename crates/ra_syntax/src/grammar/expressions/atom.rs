@@ -36,10 +36,11 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 }
 
 // E.g. for after the break in `if break {}`, this should not match
-pub(super) const ATOM_EXPR_FIRST_NO_BLOCK: TokenSet = token_set_union![
+pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
     LITERAL_FIRST,
     token_set![
         L_PAREN,
+        L_CURLY,
         L_BRACK,
         PIPE,
         MOVE_KW,
@@ -58,9 +59,6 @@ pub(super) const ATOM_EXPR_FIRST_NO_BLOCK: TokenSet = token_set_union![
         LIFETIME
     ],
 ];
-
-pub(super) const ATOM_EXPR_FIRST: TokenSet =
-    token_set_union![ATOM_EXPR_FIRST_NO_BLOCK, token_set![L_CURLY],];
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
@@ -442,8 +440,7 @@ fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     //     for i in break {}
     //     match break {}
     // }
-    if r.forbid_structs && p.at_ts(EXPR_FIRST_NO_BLOCK) || !r.forbid_structs && p.at_ts(EXPR_FIRST)
-    {
+    if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(L_CURLY)) {
         expr(p);
     }
     m.complete(p, BREAK_EXPR)

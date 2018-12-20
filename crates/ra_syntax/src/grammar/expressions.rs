@@ -5,7 +5,6 @@ pub(super) use self::atom::{literal, LITERAL_FIRST};
 use super::*;
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
-const EXPR_FIRST_NO_BLOCK: TokenSet = LHS_FIRST_NO_BLOCK;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
     let r = Restrictions {
@@ -209,10 +208,6 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
 const LHS_FIRST: TokenSet = token_set_union![
     token_set![AMP, STAR, EXCL, DOTDOT, MINUS],
     atom::ATOM_EXPR_FIRST,
-];
-const LHS_FIRST_NO_BLOCK: TokenSet = token_set_union![
-    token_set![AMP, STAR, EXCL, DOTDOT, MINUS],
-    atom::ATOM_EXPR_FIRST_NO_BLOCK,
 ];
 
 fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
