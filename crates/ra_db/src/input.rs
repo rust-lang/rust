@@ -1,6 +1,10 @@
 /// This modules specifies the input to rust-analyzer. In some sense, this is
-/// **the** most important module, because all other fancy stuff is strickly
+/// **the** most important module, because all other fancy stuff is strictly
 /// derived from this input.
+///
+/// Note that neither this module, nor any other part of the analyzer's core do
+/// actual IO. See `vfs` and `project_model` in `ra_lsp_server` crate for how
+/// actual IO is done and lowered to input.
 use std::sync::Arc;
 
 use rustc_hash::{FxHashMap};
