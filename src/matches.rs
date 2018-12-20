@@ -413,12 +413,15 @@ fn rewrite_match_body(
             } else {
                 ""
             };
-            let semicolon =
-                if context.config.version() == Version::Two && semicolon_for_expr(context, body) {
+            let semicolon = if context.config.version() == Version::One {
+                ""
+            } else {
+                if semicolon_for_expr(context, body) {
                     ";"
                 } else {
                     ""
-                };
+                }
+            };
             ("{", format!("{}{}}}{}", semicolon, indent_str, comma))
         } else {
             ("", String::from(","))
