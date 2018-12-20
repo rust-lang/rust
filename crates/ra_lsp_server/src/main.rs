@@ -27,7 +27,7 @@ fn main() -> Result<()> {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InitializationOptions {
-    publish_decorations: bool,
+    highlighting_on: bool,
 }
 
 fn main_inner() -> Result<()> {
@@ -45,7 +45,7 @@ fn main_inner() -> Result<()> {
             let publish_decorations = params
                 .initialization_options
                 .and_then(|v| InitializationOptions::deserialize(v).ok())
-                .map(|it| it.publish_decorations)
+                .map(|it| it.highlighting_on)
                 == Some(true);
             ra_lsp_server::main_loop(false, root, publish_decorations, r, s)
         },
