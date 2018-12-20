@@ -20,7 +20,7 @@ memory and never does any IO. Because the input data is source code, which
 typically measures in tens of megabytes at most, keeping all input data in
 memory is OK.
 
-A "structured semantic model" is basically an object-oriented representations of
+A "structured semantic model" is basically an object-oriented representation of
 modules, functions and types which appear in the source code. This representation
 is fully "resolved": all expressions have types, all references are bound to
 declarations, etc.
@@ -90,29 +90,29 @@ fixes a bug in the grammar.
 We use [salsa][https://github.com/salsa-rs/salsa] crate for incremental and
 on-demand computation. Roughly, you can think of salsa as a key-value store, but
 it also can compute derived values using specified functions. The `ra_db` crate
-provides a basic infrastructure for interracting with salsa. Crucially, it
+provides a basic infrastructure for interacting with salsa. Crucially, it
 defines most of the "input" queries: facts supplied by the client of the
 analyzer. Reading the docs of the `ra_db::input` module should be useful:
-everithing else is strictly derived from thouse inputs.
+everything else is strictly derived from those inputs.
 
 ### `crates/ra_hir`
 
-HIR provides a high-level "object oriented" acess to Rust code.
+HIR provides high-level "object oriented" access to Rust code.
 
 The principal difference between HIR and syntax trees is that HIR is bound to a
 particular crate instance. That is, it has cfg flags and features applied (in
-theory, in practice this is to be implemented). So, there relation between
+theory, in practice this is to be implemented). So, the relation between
 syntax and HIR is many-to-one. The `source_binder` modules is responsible for
-guessing a hir for a particular source position.
+guessing a HIR for a particular source position.
 
-Underneath, hir works on top of salsa, using a `HirDatabase` trait.
+Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
 ### `crates/ra_analysis`
 
 A stateful library for analyzing many Rust files as they change.
-`AnalysisHost` is a mutable entity (clojure's atom) which holds
+`AnalysisHost` is a mutable entity (clojure's atom) which holds the
 current state, incorporates changes and handles out `Analysis` --- an
-immutable consistent snapshot of world state at a point in time, which
+immutable and consistent snapshot of world state at a point in time, which
 actually powers analysis.
 
 One interesting aspect of analysis is its support for cancellation. When a change
@@ -137,7 +137,7 @@ without the need to fiddle with build-systems, file
 synchronization and such.
 
 In a sense, `ra_editor` is just a bunch of pure functions which take a
-syntax tree as an input.
+syntax tree as input.
 
 The tests for `ra_editor` are `#[cfg(test)] mod tests` unit-tests spread
 throughout its modules.
