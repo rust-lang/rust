@@ -99,7 +99,7 @@ macro_rules! syscall {
 macro_rules! syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name:$t),*) -> $ret {
-            // This like a hack, but concat_idents only accepts idents
+            // This looks like a hack, but concat_idents only accepts idents
             // (not paths).
             use libc::*;
 
