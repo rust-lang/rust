@@ -216,8 +216,8 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
         // in question.)
         for &(ref name, ref new_name, kind) in &self.tcx.sess.opts.libs {
             // If we've already added any native libraries with the same
-            // name, they will be pulled out into `moved`, so that we can
-            // move them to the end of the list below.
+            // name, they will be pulled out into `existing`, so that we
+            // can move them to the end of the list below.
             let mut existing = self.libs.drain_filter(|lib| {
                 if let Some(lib_name) = lib.name {
                     if lib_name == name as &str {
