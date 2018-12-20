@@ -207,7 +207,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
 fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
     let sig = cx.tcx.fn_sig(did);
 
-    let constness = if cx.tcx.is_const_fn(did) {
+    let constness = if cx.tcx.is_min_const_fn(did) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
