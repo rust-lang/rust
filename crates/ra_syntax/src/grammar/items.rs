@@ -202,7 +202,7 @@ fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
             }
             STRUCT_DEF
         }
-        IDENT if p.at_contextual_kw("union") => {
+        IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
             // union Foo {}
             // union Foo {
