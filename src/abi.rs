@@ -484,11 +484,26 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
         .map(|&(ref place, bb)| (trans_place(fx, place), bb));
 
     if let ty::FnDef(def_id, substs) = fn_ty.sty {
-        let sig = ty_fn_sig(fx.tcx, fn_ty);
+        let instance = ty::Instance::resolve(
+            fx.tcx,
+            ty::ParamEnv::reveal_all(),
+            def_id,
+            substs,
+        ).unwrap();
 
-        if sig.abi == Abi::RustIntrinsic {
-            crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
-            return;
+        match instance.def {
+            InstanceDef::Intrinsic(_) => {
+                crate::intrinsics::codegen_intrinsic_call(fx, def_id, substs, args, destination);
+                return;
+            }
+            InstanceDef::DropGlue(_, None) => {
+                // empty drop glue - a nop.
+                let (_, dest) = destination.expect("Non terminating drop_in_place_real???");
+                let ret_ebb = fx.get_ebb(dest);
+                fx.bcx.ins().jump(ret_ebb, &[]);
+                return;
+            }
+            _ => {}
         }
     }
 
