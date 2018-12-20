@@ -1740,7 +1740,7 @@ $EndFeature, "
             concat!("Calculates the quotient of Euclidean division of `self` by `rhs`.
 
 This computes the integer `n` such that `self = n * rhs + self.rem_euclid(rhs)`,
-with the `0 <= self.rem_euclid(rhs) < rhs`.
+with `0 <= self.rem_euclid(rhs) < rhs`.
 
 In other words, the result is `self / rhs` rounded to the integer `n`
 such that `self >= n * rhs`.
@@ -1781,7 +1781,9 @@ assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
         doc_comment! {
             concat!("Calculates the least nonnegative remainder of `self (mod rhs)`.
 
-This is done as if by the Euclidean division algorithm.
+This is done as if by the Euclidean division algorithm -- given
+`r = self.rem_euclid(rhs)`, `self = rhs * self.div_euclid(rhs) + r`, and
+`0 <= r < abs(rhs)`.
 
 # Panics
 
