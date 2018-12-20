@@ -16,7 +16,7 @@ use ra_syntax::{
 
 #[test]
 fn lexer_tests() {
-    dir_tests(&["lexer"], |text| {
+    dir_tests(&["lexer"], |text, _| {
         let tokens = ra_syntax::tokenize(text);
         dump_tokens(&tokens, text)
     })
@@ -24,10 +24,28 @@ fn lexer_tests() {
 
 #[test]
 fn parser_tests() {
-    dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
+    dir_tests(&["parser/inline", "parser/ok"], |text, path| {
         let file = SourceFileNode::parse(text);
+        let errors = file.errors();
+        assert_eq!(
+            &*errors,
+            &[] as &[ra_syntax::SyntaxError],
+            "There should be no errors in the file {:?}",
+            path.display()
+        );
         dump_tree(file.syntax())
-    })
+    });
+    dir_tests(&["parser/err"], |text, path| {
+        let file = SourceFileNode::parse(text);
+        let errors = file.errors();
+        assert_ne!(
+            &*errors,
+            &[] as &[ra_syntax::SyntaxError],
+            "There should be errors in the file {:?}",
+            path.display()
+        );
+        dump_tree(file.syntax())
+    });
 }
 
 #[test]
@@ -42,7 +60,6 @@ fn parser_fuzz_tests() {
 #[test]
 fn self_hosting_parsing() {
     use std::ffi::OsStr;
-    let empty_vec = vec![];
     let dir = project_dir().join("crates");
     let mut count = 0;
     for entry in walkdir::WalkDir::new(dir)
@@ -68,7 +85,8 @@ fn self_hosting_parsing() {
         let node = SourceFileNode::parse(&text);
         let errors = node.errors();
         assert_eq!(
-            errors, empty_vec,
+            &*errors,
+            &[],
             "There should be no errors in the file {:?}",
             entry
         );
@@ -95,12 +113,12 @@ fn read_text(path: &Path) -> String {
         .replace("\r\n", "\n")
 }
 
-pub fn dir_tests<F>(paths: &[&str], f: F)
+fn dir_tests<F>(paths: &[&str], f: F)
 where
-    F: Fn(&str) -> String,
+    F: Fn(&str, &Path) -> String,
 {
     for (path, input_code) in collect_tests(paths) {
-        let parse_tree = f(&input_code);
+        let parse_tree = f(&input_code, &path);
         let path = path.with_extension("txt");
         if !path.exists() {
             println!("\nfile: {}", path.display());
