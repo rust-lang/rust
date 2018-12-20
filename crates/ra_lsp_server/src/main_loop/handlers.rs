@@ -446,8 +446,9 @@ pub fn handle_folding_range(
             .into_iter()
             .map(|fold| {
                 let kind = match fold.kind {
-                    FoldKind::Comment => FoldingRangeKind::Comment,
-                    FoldKind::Imports => FoldingRangeKind::Imports,
+                    FoldKind::Comment => Some(FoldingRangeKind::Comment),
+                    FoldKind::Imports => Some(FoldingRangeKind::Imports),
+                    FoldKind::Block => None,
                 };
                 let range = fold.range.conv_with(&line_index);
                 FoldingRange {
@@ -455,7 +456,7 @@ pub fn handle_folding_range(
                     start_character: Some(range.start.character),
                     end_line: range.end.line,
                     end_character: Some(range.start.character),
-                    kind: Some(kind),
+                    kind,
                 }
             })
             .collect(),

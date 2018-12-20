@@ -10,6 +10,7 @@ use ra_syntax::{
 pub enum FoldKind {
     Comment,
     Imports,
+    Block,
 }
 
 #[derive(Debug)]
@@ -62,6 +63,8 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
+        NAMED_FIELD_DEF_LIST | FIELD_PAT_LIST | ITEM_LIST | EXTERN_ITEM_LIST | USE_TREE_LIST
+        | BLOCK | ENUM_VARIANT_LIST => Some(FoldKind::Block),
         _ => None,
     }
 }
@@ -170,7 +173,7 @@ mod tests {
     use test_utils::extract_ranges;
 
     fn do_check(text: &str, fold_kinds: &[FoldKind]) {
-        let (ranges, text) = extract_ranges(text);
+        let (ranges, text) = extract_ranges(text, "fold");
         let file = SourceFileNode::parse(&text);
         let folds = folding_ranges(&file);
 
@@ -198,26 +201,27 @@ mod tests {
     #[test]
     fn test_fold_comments() {
         let text = r#"
-<|>// Hello
+<fold>// Hello
 // this is a multiline
 // comment
-//<|>
+//</fold>
 
 // But this is not
 
-fn main() {
-    <|>// We should
+fn main() <fold>{
+    <fold>// We should
     // also
     // fold
-    // this one.<|>
-    <|>//! But this one is different
-    //! because it has another flavor<|>
-    <|>/* As does this
-    multiline comment */<|>
-}"#;
+    // this one.</fold>
+    <fold>//! But this one is different
+    //! because it has another flavor</fold>
+    <fold>/* As does this
+    multiline comment */</fold>
+}</fold>"#;
 
         let fold_kinds = &[
             FoldKind::Comment,
+            FoldKind::Block,
             FoldKind::Comment,
             FoldKind::Comment,
             FoldKind::Comment,
@@ -228,60 +232,66 @@ fn main() {
     #[test]
     fn test_fold_imports() {
         let text = r#"
-<|>use std::{
+<fold>use std::<fold>{
     str,
     vec,
     io as iop
-};<|>
+}</fold>;</fold>
 
-fn main() {
-}"#;
+fn main() <fold>{
+}</fold>"#;
 
-        let folds = &[FoldKind::Imports];
+        let folds = &[FoldKind::Imports, FoldKind::Block, FoldKind::Block];
         do_check(text, folds);
     }
 
     #[test]
     fn test_fold_import_groups() {
         let text = r#"
-<|>use std::str;
+<fold>use std::str;
 use std::vec;
-use std::io as iop;<|>
+use std::io as iop;</fold>
 
-<|>use std::mem;
-use std::f64;<|>
+<fold>use std::mem;
+use std::f64;</fold>
 
 use std::collections::HashMap;
 // Some random comment
 use std::collections::VecDeque;
 
-fn main() {
-}"#;
+fn main() <fold>{
+}</fold>"#;
 
-        let folds = &[FoldKind::Imports, FoldKind::Imports];
+        let folds = &[FoldKind::Imports, FoldKind::Imports, FoldKind::Block];
         do_check(text, folds);
     }
 
     #[test]
     fn test_fold_import_and_groups() {
         let text = r#"
-<|>use std::str;
+<fold>use std::str;
 use std::vec;
-use std::io as iop;<|>
+use std::io as iop;</fold>
 
-<|>use std::mem;
-use std::f64;<|>
+<fold>use std::mem;
+use std::f64;</fold>
 
-<|>use std::collections::{
+<fold>use std::collections::<fold>{
     HashMap,
     VecDeque,
-};<|>
+}</fold>;</fold>
 // Some random comment
 
-fn main() {
-}"#;
+fn main() <fold>{
+}</fold>"#;
 
-        let folds = &[FoldKind::Imports, FoldKind::Imports, FoldKind::Imports];
+        let folds = &[
+            FoldKind::Imports,
+            FoldKind::Imports,
+            FoldKind::Imports,
+            FoldKind::Block,
+            FoldKind::Block,
+        ];
         do_check(text, folds);
     }
 
