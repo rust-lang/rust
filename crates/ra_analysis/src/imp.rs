@@ -105,9 +105,6 @@ impl AnalysisHostImpl {
             self.db
                 .query_mut(ra_db::FileTextQuery)
                 .set(remove_file.file_id, Default::default());
-            self.db
-                .query_mut(ra_db::FileRelativePathQuery)
-                .set(remove_file.file_id, Default::default());
             source_root.files.remove(&remove_file.path);
         }
         self.db

@@ -91,7 +91,9 @@ We use [salsa][https://github.com/salsa-rs/salsa] crate for incremental and
 on-demand computation. Roughly, you can think of salsa as a key-value store, but
 it also can compute derived values using specified functions. The `ra_db` crate
 provides a basic infrastructure for interracting with salsa. Crucially, it
-defines most of the "input" queries: facts supplied by the client of the analyzer.
+defines most of the "input" queries: facts supplied by the client of the
+analyzer. Reading the docs of the `ra_db::input` module should be useful:
+everithing else is strictly derived from thouse inputs.
 
 ### `crates/ra_hir`
 
