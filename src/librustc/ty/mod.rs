@@ -3158,7 +3158,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let unnormalized_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
         traits::Reveal::UserFacing,
-        Some(def_id)
+        if tcx.sess.opts.debugging_opts.chalk { Some(def_id) } else { None }
     );
 
     let body_id = tcx.hir().as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
