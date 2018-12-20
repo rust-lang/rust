@@ -16,7 +16,6 @@ use util::parser::{self, AssocOp, Fixity};
 use attr;
 use source_map::{self, SourceMap, Spanned};
 use syntax_pos::{self, BytePos};
-use syntax_pos::hygiene::{Mark, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse::{self, ParseSess};
@@ -724,12 +723,12 @@ pub trait PrintState<'a> {
             if i > 0 {
                 self.writer().word("::")?
             }
-            if segment.ident.name != keywords::PathRoot.name() &&
-               segment.ident.name != keywords::DollarCrate.name()
-            {
-                self.writer().word(segment.ident.as_str().get())?;
-            } else if segment.ident.name == keywords::DollarCrate.name() {
-                self.print_dollar_crate(segment.ident.span.ctxt())?;
+            if segment.ident.name != keywords::PathRoot.name() {
+                if segment.ident.name == keywords::DollarCrate.name() {
+                    self.print_dollar_crate(segment.ident)?;
+                } else {
+                    self.writer().word(segment.ident.as_str().get())?;
+                }
             }
         }
         Ok(())
@@ -843,17 +842,19 @@ pub trait PrintState<'a> {
 
     fn nbsp(&mut self) -> io::Result<()> { self.writer().word(" ") }
 
-    fn print_dollar_crate(&mut self, mut ctxt: SyntaxContext) -> io::Result<()> {
-        if let Some(mark) = ctxt.adjust(Mark::root()) {
-            // Make a best effort to print something that complies
-            if mark.is_builtin() {
-                if let Some(name) = std_inject::injected_crate_name() {
-                    self.writer().word("::")?;
-                    self.writer().word(name)?;
-                }
-            }
+    // AST pretty-printer is used as a fallback for turning AST structures into token streams for
+    // proc macros. Additionally, proc macros may stringify their input and expect it survive the
+    // stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
+    // So we need to somehow pretty-print `$crate` in paths in a way preserving at least some of
+    // its hygiene data, most importantly name of the crate it refers to.
+    // As a result we print `$crate` as `crate` if it refers to the local crate
+    // and as `::other_crate_name` if it refers to some other crate.
+    fn print_dollar_crate(&mut self, ident: ast::Ident) -> io::Result<()> {
+        let name = ident.span.ctxt().dollar_crate_name();
+        if !ast::Ident::with_empty_ctxt(name).is_path_segment_keyword() {
+            self.writer().word("::")?;
         }
-        Ok(())
+        self.writer().word(name.as_str().get())
     }
 }
 
@@ -2463,14 +2464,15 @@ impl<'a> State<'a> {
                           colons_before_params: bool)
                           -> io::Result<()>
     {
-        if segment.ident.name != keywords::PathRoot.name() &&
-           segment.ident.name != keywords::DollarCrate.name() {
-            self.print_ident(segment.ident)?;
+        if segment.ident.name != keywords::PathRoot.name() {
+            if segment.ident.name == keywords::DollarCrate.name() {
+                self.print_dollar_crate(segment.ident)?;
+            } else {
+                self.print_ident(segment.ident)?;
+            }
             if let Some(ref args) = segment.args {
                 self.print_generic_args(args, colons_before_params)?;
             }
-        } else if segment.ident.name == keywords::DollarCrate.name() {
-            self.print_dollar_crate(segment.ident.span.ctxt())?;
         }
         Ok(())
     }

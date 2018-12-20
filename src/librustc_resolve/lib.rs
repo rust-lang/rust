@@ -1173,10 +1173,6 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn is_local(&self) -> bool {
-        self.normal_ancestor_id.is_local()
-    }
-
     fn nearest_item_scope(&'a self) -> Module<'a> {
         if self.is_trait() { self.parent.unwrap() } else { self }
     }

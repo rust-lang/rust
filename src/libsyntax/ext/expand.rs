@@ -203,10 +203,7 @@ fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
         if i != 0 {
             path_str.push_str("::");
         }
-
-        if segment.ident.name != keywords::PathRoot.name() &&
-            segment.ident.name != keywords::DollarCrate.name()
-        {
+        if segment.ident.name != keywords::PathRoot.name() {
             path_str.push_str(&segment.ident.as_str())
         }
     }

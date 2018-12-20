@@ -10,7 +10,7 @@
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
 use {CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use {Module, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
 use {is_known_tool, resolve_error};
 use ModuleOrUniformRoot;
 use Namespace::*;
@@ -30,8 +30,6 @@ use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{feature_err, is_builtin_attr_name, GateIssue};
-use syntax::fold::{self, Folder};
-use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
@@ -138,58 +136,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         mark
     }
 
-    fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> {
-        struct EliminateCrateVar<'b, 'a: 'b>(
-            &'b mut Resolver<'a>, Span
-        );
-
-        impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
-            fn fold_path(&mut self, path: ast::Path) -> ast::Path {
-                match self.fold_qpath(None, path) {
-                    (None, path) => path,
-                    _ => unreachable!(),
-                }
-            }
-
-            fn fold_qpath(&mut self, mut qself: Option<ast::QSelf>, mut path: ast::Path)
-                          -> (Option<ast::QSelf>, ast::Path) {
-                qself = qself.map(|ast::QSelf { ty, path_span, position }| {
-                    ast::QSelf {
-                        ty: self.fold_ty(ty),
-                        path_span: self.new_span(path_span),
-                        position,
-                    }
-                });
-
-                if path.segments[0].ident.name == keywords::DollarCrate.name() {
-                    let module = self.0.resolve_crate_root(path.segments[0].ident);
-                    path.segments[0].ident.name = keywords::PathRoot.name();
-                    if !module.is_local() {
-                        let span = path.segments[0].ident.span;
-                        path.segments.insert(1, match module.kind {
-                            ModuleKind::Def(_, name) => ast::PathSegment::from_ident(
-                                ast::Ident::with_empty_ctxt(name).with_span_pos(span)
-                            ),
-                            _ => unreachable!(),
-                        });
-                        if let Some(qself) = &mut qself {
-                            qself.position += 1;
-                        }
-                    }
-                }
-                (qself, path)
-            }
-
-            fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-                fold::noop_fold_mac(mac, self)
-            }
-        }
-
-        let ret = EliminateCrateVar(self, item.span).fold_item(item);
-        assert!(ret.len() == 1);
-        ret.into_iter().next().unwrap()
-    }
-
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]) {
         let invocation = self.invocations[&mark];
@@ -259,7 +205,6 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
                                                             normal_module_def_id);
             invoc.expansion_data.mark.set_default_transparency(ext.default_transparency());
-            invoc.expansion_data.mark.set_is_builtin(def_id.krate == CrateNum::BuiltinMacros);
         }
 
         Ok(Some(ext))

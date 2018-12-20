@@ -348,7 +348,9 @@ impl TokenStream {
                 | TokenTree::Token(_, Token::Semi)
                 // The pretty printer collapses whitespace arbitrarily and can
                 // introduce whitespace from `NoDelim`.
-                | TokenTree::Token(_, Token::Whitespace) => false,
+                | TokenTree::Token(_, Token::Whitespace)
+                // The pretty printer can turn `$crate` into `::crate_name`
+                | TokenTree::Token(_, Token::ModSep) => false,
                 _ => true
             }
         }
