@@ -24,7 +24,7 @@ fn lexer_tests() {
 
 #[test]
 fn parser_tests() {
-    dir_tests(&["parser/inline", "parser/ok"], |text, path| {
+    dir_tests(&["parser/inline/ok", "parser/ok"], |text, path| {
         let file = SourceFileNode::parse(text);
         let errors = file.errors();
         assert_eq!(
@@ -35,7 +35,7 @@ fn parser_tests() {
         );
         dump_tree(file.syntax())
     });
-    dir_tests(&["parser/err"], |text, path| {
+    dir_tests(&["parser/err", "parser/inline/err"], |text, path| {
         let file = SourceFileNode::parse(text);
         let errors = file.errors();
         assert_ne!(
