@@ -37,11 +37,6 @@ python2.7 "$X_PY" test --no-fail-fast \
     src/tools/rls \
     src/tools/rustfmt \
     src/tools/miri \
-    src/tools/compiletest
-
-# Note that compiletest here is an exception from the other tools.
-# We are only executing the unit tests of it. We don't need to track the
-# toolstate because it's not distributed as a tool like the other items.
 
 set -e
 
