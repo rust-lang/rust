@@ -10,28 +10,29 @@
 
 use std::iter;
 
-use super::{LinkerFlavor, Target, TargetOptions, PanicStrategy};
+use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     const PRE_LINK_ARGS: &[&str] = &[
         "-Wl,--as-needed",
         "-Wl,-z,noexecstack",
         "-m64",
-         "-fuse-ld=gold",
-         "-nostdlib",
-         "-shared",
-         "-Wl,-e,sgx_entry",
-         "-Wl,-Bstatic",
-         "-Wl,--gc-sections",
-         "-Wl,-z,text",
-         "-Wl,-z,norelro",
-         "-Wl,--rosegment",
-         "-Wl,--no-undefined",
-         "-Wl,--error-unresolved-symbols",
-         "-Wl,--no-undefined-version",
-         "-Wl,-Bsymbolic",
-         "-Wl,--export-dynamic",
+        "-fuse-ld=gold",
+        "-nostdlib",
+        "-shared",
+        "-Wl,-e,sgx_entry",
+        "-Wl,-Bstatic",
+        "-Wl,--gc-sections",
+        "-Wl,-z,text",
+        "-Wl,-z,norelro",
+        "-Wl,--rosegment",
+        "-Wl,--no-undefined",
+        "-Wl,--error-unresolved-symbols",
+        "-Wl,--no-undefined-version",
+        "-Wl,-Bsymbolic",
+        "-Wl,--export-dynamic",
     ];
+
     const EXPORT_SYMBOLS: &[&str] = &[
         "sgx_entry",
         "HEAP_BASE",
@@ -41,19 +42,26 @@ pub fn target() -> Result<Target, String> {
         "ENCLAVE_SIZE",
         "CFGDATA_BASE",
         "DEBUG",
+        "EH_FRM_HDR_BASE",
+        "EH_FRM_HDR_SIZE",
+        "TEXT_BASE",
+        "TEXT_SIZE",
     ];
     let opts = TargetOptions {
         dynamic_linking: false,
         executables: true,
         linker_is_gnu: true,
         max_atomic_width: Some(64),
-        panic_strategy: PanicStrategy::Abort,
+        panic_strategy: PanicStrategy::Unwind,
         cpu: "x86-64".into(),
         features: "+rdrnd,+rdseed".into(),
         position_independent_executables: true,
-        pre_link_args: iter::once(
-                (LinkerFlavor::Gcc, PRE_LINK_ARGS.iter().cloned().map(String::from).collect())
-        ).collect(),
+        pre_link_args: iter::once((
+            LinkerFlavor::Gcc,
+            PRE_LINK_ARGS.iter().cloned().map(String::from).collect(),
+        ))
+        .collect(),
+        post_link_objects: vec!["libunwind.a".into()],
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(String::from).collect()),
         ..Default::default()
     };
