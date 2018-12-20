@@ -118,7 +118,7 @@ impl MirPass for AddRetag {
             basic_blocks[START_BLOCK].statements.splice(0..0,
                 places.into_iter().map(|place| Statement {
                     source_info,
-                    kind: StatementKind::Retag { fn_entry: true, two_phase: false, place },
+                    kind: StatementKind::Retag(RetagKind::FnEntry, place),
                 })
             );
         }
@@ -154,7 +154,7 @@ impl MirPass for AddRetag {
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(0, Statement {
                 source_info,
-                kind: StatementKind::Retag { fn_entry: false, two_phase: false, place: dest_place },
+                kind: StatementKind::Retag(RetagKind::Default, dest_place),
             });
         }
 
@@ -164,9 +164,9 @@ impl MirPass for AddRetag {
             // We want to insert statements as we iterate.  To this end, we
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
-                match block_data.statements[i].kind {
-                    // If we are casting *from* a reference, we may have to escape-to-raw.
-                    StatementKind::Assign(_, box Rvalue::Cast(
+                let (retag_kind, place) = match block_data.statements[i].kind {
+                    // If we are casting *from* a reference, we may have to retag-as-raw.
+                    StatementKind::Assign(ref place, box Rvalue::Cast(
                         CastKind::Misc,
                         ref src,
                         dest_ty,
@@ -175,42 +175,35 @@ impl MirPass for AddRetag {
                         if src_ty.is_region_ptr() {
                             // The only `Misc` casts on references are those creating raw pointers.
                             assert!(dest_ty.is_unsafe_ptr());
-                            // Insert escape-to-raw before the cast.  We are not concerned
-                            // with stability here: Our EscapeToRaw will not change the value
-                            // that the cast will then use.
-                            // `src` might be a "move", but we rely on this not actually moving
-                            // but just doing a memcpy.  It is crucial that we do EscapeToRaw
-                            // on the src because we need it with its original type.
-                            let source_info = block_data.statements[i].source_info;
-                            block_data.statements.insert(i, Statement {
-                                source_info,
-                                kind: StatementKind::EscapeToRaw(src.clone()),
-                            });
+                            (RetagKind::Raw, place)
+                        } else {
+                            // Some other cast, no retag
+                            continue
                         }
                     }
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
                     // we also retag after taking a reference!
                     StatementKind::Assign(ref place, box ref rvalue) if needs_retag(place) => {
-                        let two_phase = match rvalue {
-                            Rvalue::Ref(_, borrow_kind, _) =>
-                                borrow_kind.allows_two_phase_borrow(),
-                            _ => false
+                        let kind = match rvalue {
+                            Rvalue::Ref(_, borrow_kind, _)
+                                if borrow_kind.allows_two_phase_borrow()
+                            =>
+                                RetagKind::TwoPhase,
+                            _ =>
+                                RetagKind::Default,
                         };
-                        // Insert a retag after the assignment.
-                        let source_info = block_data.statements[i].source_info;
-                        block_data.statements.insert(i+1, Statement {
-                            source_info,
-                            kind: StatementKind::Retag {
-                                fn_entry: false,
-                                two_phase,
-                                place: place.clone(),
-                            },
-                        });
+                        (kind, place)
                     }
                     // Do nothing for the rest
-                    _ => {},
+                    _ => continue,
                 };
+                // Insert a retag after the statement.
+                let source_info = block_data.statements[i].source_info;
+                block_data.statements.insert(i+1, Statement {
+                    source_info,
+                    kind: StatementKind::Retag(retag_kind, place.clone()),
+                });
             }
         }
     }

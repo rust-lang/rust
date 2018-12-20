@@ -689,7 +689,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         // Alias tracking must know we changed the type
         mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::EscapeToRaw(Operand::Copy(Place::Local(self_arg()))),
+            kind: StatementKind::Retag(RetagKind::Raw, Place::Local(self_arg())),
         })
     }
 

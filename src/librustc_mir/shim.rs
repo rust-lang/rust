@@ -227,20 +227,11 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::Local(Local::new(1+0));
         if tcx.sess.opts.debugging_opts.mir_emit_retag {
-            // Function arguments should be retagged
+            // Function arguments should be retagged, and we make this one raw.
             mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
                 source_info,
-                kind: StatementKind::Retag {
-                    fn_entry: true,
-                    two_phase: false,
-                    place: dropee_ptr.clone(),
-                },
+                kind: StatementKind::Retag(RetagKind::Raw, dropee_ptr.clone()),
             });
-            // We use raw ptr operations, better prepare the alias tracking for that
-            mir.basic_blocks_mut()[START_BLOCK].statements.insert(1, Statement {
-                source_info,
-                kind: StatementKind::EscapeToRaw(Operand::Copy(dropee_ptr.clone())),
-            })
         }
         let patch = {
             let param_env = tcx.param_env(def_id).with_reveal_all();

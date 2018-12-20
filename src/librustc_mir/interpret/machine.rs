@@ -203,18 +203,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     #[inline]
     fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _fn_entry: bool,
-        _two_phase: bool,
+        _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    /// Execute an escape-to-raw operation
-    #[inline]
-    fn escape_to_raw(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _ptr: OpTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }

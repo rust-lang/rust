@@ -200,13 +200,13 @@ impl_stable_hash_for!(impl<'gcx> for enum mir::StatementKind<'gcx> [ mir::Statem
     SetDiscriminant { place, variant_index },
     StorageLive(place),
     StorageDead(place),
-    EscapeToRaw(place),
-    Retag { fn_entry, two_phase, place },
+    Retag(retag_kind, place),
     AscribeUserType(place, variance, c_ty),
     Nop,
     InlineAsm { asm, outputs, inputs },
 });
 
+impl_stable_hash_for!(enum mir::RetagKind { FnEntry, TwoPhase, Raw, Default });
 impl_stable_hash_for!(enum mir::FakeReadCause { ForMatchGuard, ForMatchedPlace, ForLet });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Place<'gcx> {
