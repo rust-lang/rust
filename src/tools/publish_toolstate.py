@@ -75,7 +75,8 @@ def issue(
             After merging PR {}, I observed that the tool {} no longer builds.
             A follow-up PR to the repository {} is needed to fix the fallout.
 
-            cc @{}, do you think you would have time to do the follow-up work? If so, that would be great!
+            cc @{}, do you think you would have time to do the follow-up work?
+            If so, that would be great!
 
             cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
 
@@ -144,7 +145,10 @@ def update_latest(
                         build_failed = True
 
             if build_failed:
-                issue(tool, MAINTAINERS.get(tool), relevant_pr_number, relevant_pr_user, pr_reviewer)
+                issue(
+                    tool, MAINTAINERS.get(tool),
+                    relevant_pr_number, relevant_pr_user, pr_reviewer,
+                )
 
             if changed:
                 status['commit'] = current_commit
@@ -168,7 +172,10 @@ if __name__ == '__main__':
     github_token = sys.argv[4]
 
     # assume that PR authors are also owners of the repo where the branch lives
-    relevant_pr_match = re.search('Auto merge of #([0-9]+) - ([^:]+):[^,]+ r=([^\s]+)', cur_commit_msg)
+    relevant_pr_match = re.search(
+        'Auto merge of #([0-9]+) - ([^:]+):[^,]+ r=([^\s]+)',
+        cur_commit_msg,
+    )
     if relevant_pr_match:
         number = relevant_pr_match.group(1)
         relevant_pr_user = relevant_pr_match.group(2)
