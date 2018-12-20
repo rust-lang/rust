@@ -4974,7 +4974,7 @@ impl<'a> Parser<'a> {
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(Stmt {
                         id: ast::DUMMY_NODE_ID,
-                        node: StmtKind::Expr(DummyResult::raw_expr(self.span)),
+                        node: StmtKind::Expr(DummyResult::raw_expr(self.span, true)),
                         span: self.span,
                     })
                 }

@@ -28,5 +28,5 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),
     }
 
-    base::DummyResult::any(sp)
+    base::DummyResult::any_valid(sp)
 }

@@ -69,7 +69,7 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
             span_err!(cx, trait_span, E0665,
                       "`Default` cannot be derived for enums, only structs");
             // let compilation continue
-            DummyResult::raw_expr(trait_span)
+            DummyResult::raw_expr(trait_span, true)
         }
         _ => cx.span_bug(trait_span, "Non-static method in `derive(Default)`"),
     };
