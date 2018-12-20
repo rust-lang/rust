@@ -1979,6 +1979,15 @@ pub enum FunctionRetTy {
     Return(P<Ty>),
 }
 
+impl fmt::Display for FunctionRetTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
+            DefaultReturn(_) => "()".fmt(f),
+        }
+    }
+}
+
 impl FunctionRetTy {
     pub fn span(&self) -> Span {
         match *self {

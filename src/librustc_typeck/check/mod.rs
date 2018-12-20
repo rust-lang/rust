@@ -4103,7 +4103,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
                     let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-                    coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                    if let Some((fn_decl, _)) = self.get_fn_decl(expr.id) {
+                        coercion.coerce_forced_unit(
+                            self,
+                            &cause,
+                            &mut |db| {
+                                db.span_label(
+                                    fn_decl.output.span(),
+                                    format!(
+                                        "expected `{}` because of this return type",
+                                        fn_decl.output,
+                                    ),
+                                );
+                            },
+                            true,
+                        );
+                    } else {
+                        coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                    }
                 }
                 tcx.types.never
             }
