@@ -4239,6 +4239,7 @@ where F: Fn(DefId) -> Def {
             self: &mut PrintCx<'_, '_, 'tcx, Self>,
             self_ty: Ty<'tcx>,
             trait_ref: Option<ty::TraitRef<'tcx>>,
+            _ns: Namespace,
         ) -> Self::Path {
             // This shouldn't ever be needed, but just in case:
             if let Some(trait_ref) = trait_ref {
@@ -4246,9 +4247,6 @@ where F: Fn(DefId) -> Def {
             } else {
                 vec![format!("<{}>", self_ty)]
             }
-        }
-        fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
-            vec![text.to_string()]
         }
         fn path_append(
             self: &mut PrintCx<'_, '_, '_, Self>,

@@ -416,15 +416,23 @@ impl Printer for SymbolPath {
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
+        ns: Namespace,
     ) -> Self::Path {
+        // HACK(eddyb) avoid `keep_within_component` for the cases
+        // that print without `<...>` around `self_ty`.
+        match self_ty.sty {
+            ty::Adt(..) | ty::Foreign(_) |
+            ty::Bool | ty::Char | ty::Str |
+            ty::Int(_) | ty::Uint(_) | ty::Float(_) if trait_ref.is_none() => {
+                return self.pretty_path_qualified(self_ty, trait_ref, ns);
+            }
+            _ => {}
+        }
+
         let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
-        let r = self.pretty_path_qualified(self_ty, trait_ref);
+        let r = self.pretty_path_qualified(self_ty, trait_ref, ns);
         self.printer.keep_within_component = kept_within_component;
         r
-    }
-    fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
-        self.printer.write_str(text)?;
-        Ok(PrettyPath { empty: false })
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,

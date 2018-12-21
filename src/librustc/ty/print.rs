@@ -173,9 +173,8 @@ pub trait Printer: Sized {
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
+        ns: Namespace,
     ) -> Self::Path;
-    #[must_use]
-    fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path;
     #[must_use]
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
@@ -291,7 +290,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                         parent_generics.has_self && parent_generics.parent_count == 0;
                     if let (Some(substs), true) = (substs, parent_has_own_self) {
                         let trait_ref = ty::TraitRef::new(parent_def_id, substs);
-                        self.path_qualified(trait_ref.self_ty(), Some(trait_ref))
+                        self.path_qualified(trait_ref.self_ty(), Some(trait_ref), ns)
                     } else {
                         self.print_def_path(parent_def_id, substs, ns, iter::empty())
                     }
@@ -367,35 +366,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
 
         // Otherwise, try to give a good form that would be valid language
         // syntax. Preferably using associated item notation.
-
-        if let Some(trait_ref) = impl_trait_ref {
-            // Trait impls.
-            return self.path_qualified(self_ty, Some(trait_ref));
-        }
-
-        // Inherent impls. Try to print `Foo::bar` for an inherent
-        // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
-        // anything other than a simple path.
-        match self_ty.sty {
-            ty::Adt(adt_def, substs) => {
-                self.print_def_path(adt_def.did, Some(substs), ns, iter::empty())
-            }
-
-            ty::Foreign(did) => self.print_def_path(did, None, ns, iter::empty()),
-
-            ty::Bool |
-            ty::Char |
-            ty::Int(_) |
-            ty::Uint(_) |
-            ty::Float(_) |
-            ty::Str => {
-                self.path_impl(&self_ty.to_string())
-            }
-
-            _ => {
-                self.path_qualified(self_ty, None)
-            }
-        }
+        self.path_qualified(self_ty, impl_trait_ref, ns)
     }
 }
 
@@ -587,7 +558,30 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
+        ns: Namespace,
     ) -> P::Path {
+        if trait_ref.is_none() {
+            // Inherent impls. Try to print `Foo::bar` for an inherent
+            // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
+            // anything other than a simple path.
+            match self_ty.sty {
+                ty::Adt(adt_def, substs) => {
+                    return self.print_def_path(adt_def.did, Some(substs), ns, iter::empty());
+                }
+                ty::Foreign(did) => {
+                    return self.print_def_path(did, None, ns, iter::empty());
+                }
+
+                ty::Bool | ty::Char | ty::Str |
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
+                    self_ty.print_display(self)?;
+                    return Ok(PrettyPath { empty: false });
+                }
+
+                _ => {}
+            }
+        }
+
         write!(self.printer, "<")?;
         self_ty.print_display(self)?;
         if let Some(trait_ref) = trait_ref {
@@ -781,12 +775,9 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
+        ns: Namespace,
     ) -> Self::Path {
-        self.pretty_path_qualified(self_ty, trait_ref)
-    }
-    fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
-        write!(self.printer, "{}", text)?;
-        Ok(PrettyPath { empty: false })
+        self.pretty_path_qualified(self_ty, trait_ref, ns)
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
