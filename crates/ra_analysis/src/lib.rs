@@ -20,7 +20,7 @@ use std::{fmt, sync::Arc};
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{SourceFileNode, TextRange, TextUnit};
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
@@ -167,18 +167,19 @@ pub struct SourceChange {
 #[derive(Debug)]
 pub struct SourceFileEdit {
     pub file_id: FileId,
-    pub edits: Vec<AtomTextEdit>,
+    pub edit: TextEdit,
 }
 
 #[derive(Debug)]
 pub enum FileSystemEdit {
     CreateFile {
-        anchor: FileId,
+        source_root: SourceRootId,
         path: RelativePathBuf,
     },
     MoveFile {
-        file: FileId,
-        path: RelativePathBuf,
+        src: FileId,
+        dst_source_root: SourceRootId,
+        dst_path: RelativePathBuf,
     },
 }
 

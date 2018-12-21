@@ -368,10 +368,11 @@ impl AnalysisImpl {
             .collect::<Vec<_>>();
         if let Some(m) = source_binder::module_from_file_id(&*self.db, file_id)? {
             for (name_node, problem) in m.problems(&*self.db) {
+                let source_root = self.db.file_source_root(file_id);
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {
-                            anchor: file_id,
+                            source_root,
                             path: candidate.clone(),
                         };
                         let fix = SourceChange {
@@ -388,11 +389,12 @@ impl AnalysisImpl {
                     }
                     Problem::NotDirOwner { move_to, candidate } => {
                         let move_file = FileSystemEdit::MoveFile {
-                            file: file_id,
-                            path: move_to.clone(),
+                            src: file_id,
+                            dst_source_root: source_root,
+                            dst_path: move_to.clone(),
                         };
                         let create_file = FileSystemEdit::CreateFile {
-                            anchor: file_id,
+                            source_root,
                             path: move_to.join(candidate),
                         };
                         let fix = SourceChange {
@@ -520,7 +522,7 @@ impl SourceChange {
     pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
         let file_edit = SourceFileEdit {
             file_id,
-            edits: edit.edit.into_atoms(),
+            edit: edit.edit,
         };
         SourceChange {
             label: label.to_string(),

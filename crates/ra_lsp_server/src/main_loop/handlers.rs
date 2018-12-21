@@ -107,9 +107,16 @@ pub fn handle_on_type_formatting(
     };
     let edits = match world.analysis().on_eq_typed(position) {
         None => return Ok(None),
-        Some(mut action) => action.source_file_edits.pop().unwrap().edits,
+        Some(mut action) => action
+            .source_file_edits
+            .pop()
+            .unwrap()
+            .edit
+            .as_atoms()
+            .iter()
+            .map_conv_with(&line_index)
+            .collect(),
     };
-    let edits = edits.into_iter().map_conv_with(&line_index).collect();
     Ok(Some(edits))
 }
 

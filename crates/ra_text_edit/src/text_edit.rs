@@ -41,8 +41,8 @@ impl TextEditBuilder {
 }
 
 impl TextEdit {
-    pub fn into_atoms(self) -> Vec<AtomTextEdit> {
-        self.atoms
+    pub fn as_atoms(&self) -> &[AtomTextEdit] {
+        &self.atoms
     }
 
     pub fn apply(&self, text: &str) -> String {
