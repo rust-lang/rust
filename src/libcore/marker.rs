@@ -621,7 +621,6 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
 /// ```rust
-/// #![feature(pin)]
 /// use std::mem::replace;
 /// use std::pin::Pin;
 ///
@@ -637,23 +636,23 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`replace`]: ../../std/mem/fn.replace.html
 /// [`Pin`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 pub auto trait Unpin {}
 
 /// A marker type which does not implement `Unpin`.
 ///
 /// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhantomPinned;
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl !Unpin for PhantomPinned {}
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 
 /// Implementations of `Copy` for primitive types.

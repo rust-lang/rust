@@ -120,7 +120,7 @@ impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
 
 impl<P> Future for Pin<P>
 where
-    P: ops::DerefMut,
+    P: Unpin + ops::DerefMut,
     P::Target: Future,
 {
     type Output = <<P as ops::Deref>::Target as Future>::Output;

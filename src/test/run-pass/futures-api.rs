@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(arbitrary_self_types, futures_api, pin)]
+#![feature(arbitrary_self_types, futures_api)]
 #![allow(unused)]
 
 use std::future::Future;
