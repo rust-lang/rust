@@ -32,8 +32,6 @@ pub(super) fn completions(
             if let Some(fn_def) = enclosing_fn {
                 let scopes = FnScopes::new(fn_def);
                 complete_fn(name_ref, &scopes, acc);
-                // complete_expr_keywords(&file, fn_def, name_ref, acc);
-                complete_expr_snippets(acc);
             }
 
             let module_scope = module.scope(db)?;
@@ -56,19 +54,7 @@ pub(super) fn completions(
                 });
         }
         NameRefKind::Path(path) => complete_path(acc, db, module, path)?,
-        NameRefKind::BareIdentInMod => {
-            let name_range = name_ref.syntax().range();
-            let top_node = name_ref
-                .syntax()
-                .ancestors()
-                .take_while(|it| it.range() == name_range)
-                .last()
-                .unwrap();
-            match top_node.parent().map(|it| it.kind()) {
-                Some(SOURCE_FILE) | Some(ITEM_LIST) => complete_mod_item_snippets(acc),
-                _ => (),
-            }
-        }
+        NameRefKind::BareIdentInMod => (),
     }
     Ok(())
 }
@@ -162,45 +148,12 @@ fn complete_path(
     Ok(())
 }
 
-fn complete_mod_item_snippets(acc: &mut Completions) {
-    CompletionItem::new("Test function")
-        .lookup_by("tfn")
-        .snippet(
-            "\
-#[test]
-fn ${1:feature}() {
-    $0
-}",
-        )
-        .kind(Snippet)
-        .add_to(acc);
-    CompletionItem::new("pub(crate)")
-        .snippet("pub(crate) $0")
-        .kind(Snippet)
-        .add_to(acc);
-}
-
-fn complete_expr_snippets(acc: &mut Completions) {
-    CompletionItem::new("pd")
-        .snippet("eprintln!(\"$0 = {:?}\", $0);")
-        .kind(Snippet)
-        .add_to(acc);
-    CompletionItem::new("ppd")
-        .snippet("eprintln!(\"$0 = {:#?}\", $0);")
-        .kind(Snippet)
-        .add_to(acc);
-}
-
 #[cfg(test)]
 mod tests {
     use crate::completion::{CompletionKind, check_completion};
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);
-    }
-
-    fn check_snippet_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Snippet);
     }
 
     #[test]
@@ -378,37 +331,4 @@ mod tests {
             "Spam",
         );
     }
-
-    #[test]
-    fn completes_snippets_in_expressions() {
-        check_snippet_completion(
-            r"fn foo(x: i32) { <|> }",
-            r##"
-            pd "eprintln!(\"$0 = {:?}\", $0);"
-            ppd "eprintln!(\"$0 = {:#?}\", $0);"
-            "##,
-        );
-    }
-
-    #[test]
-    fn completes_snippets_in_items() {
-        // check_snippet_completion(r"
-        //     <|>
-        //     ",
-        //     r##"[CompletionItem { label: "Test function", lookup: None, snippet: Some("#[test]\nfn test_${1:feature}() {\n$0\n}"##,
-        // );
-        check_snippet_completion(
-            r"
-            #[cfg(test)]
-            mod tests {
-                <|>
-            }
-            ",
-            r##"
-            tfn "Test function" "#[test]\nfn ${1:feature}() {\n    $0\n}"
-            pub(crate) "pub(crate) $0"
-            "##,
-        );
-    }
-
 }

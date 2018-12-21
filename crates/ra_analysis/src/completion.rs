@@ -2,7 +2,8 @@ mod completion_item;
 mod reference_completion;
 
 mod complete_fn_param;
-mod complete_keywords;
+mod complete_keyword;
+mod complete_snippet;
 
 use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
@@ -49,7 +50,9 @@ pub(crate) fn completions(
 
     let ctx = ctry!(SyntaxContext::new(&original_file, position.offset));
     complete_fn_param::complete_fn_param(&mut acc, &ctx);
-    complete_keywords::complete_expr_keyword(&mut acc, &ctx);
+    complete_keyword::complete_expr_keyword(&mut acc, &ctx);
+    complete_snippet::complete_expr_snippet(&mut acc, &ctx);
+    complete_snippet::complete_item_snippet(&mut acc, &ctx);
 
     Ok(Some(acc))
 }
@@ -61,10 +64,12 @@ pub(super) struct SyntaxContext<'a> {
     leaf: SyntaxNodeRef<'a>,
     enclosing_fn: Option<ast::FnDef<'a>>,
     is_param: bool,
-    /// a single-indent path, like `foo`.
+    /// A single-indent path, like `foo`.
     is_trivial_path: bool,
     after_if: bool,
     is_stmt: bool,
+    /// Something is typed at the "top" level, in module or impl/trait.
+    is_new_item: bool,
 }
 
 impl SyntaxContext<'_> {
@@ -77,6 +82,7 @@ impl SyntaxContext<'_> {
             is_trivial_path: false,
             after_if: false,
             is_stmt: false,
+            is_new_item: false,
         };
         ctx.fill(original_file, offset);
         Some(ctx)
@@ -112,17 +118,22 @@ impl SyntaxContext<'_> {
         }
     }
     fn classify_name_ref(&mut self, file: &SourceFileNode, name_ref: ast::NameRef) {
-        // let name_range = name_ref.syntax().range();
-        // let top_node = name_ref
-        //     .syntax()
-        //     .ancestors()
-        //     .take_while(|it| it.range() == name_range)
-        //     .last()
-        //     .unwrap();
-        // match top_node.parent().map(|it| it.kind()) {
-        //     Some(SOURCE_FILE) | Some(ITEM_LIST) => return Some(NameRefKind::BareIdentInMod),
-        //     _ => (),
-        // }
+        let name_range = name_ref.syntax().range();
+        let top_node = name_ref
+            .syntax()
+            .ancestors()
+            .take_while(|it| it.range() == name_range)
+            .last()
+            .unwrap();
+
+        match top_node.parent().map(|it| it.kind()) {
+            Some(SOURCE_FILE) | Some(ITEM_LIST) => {
+                self.is_new_item = true;
+                return;
+            }
+            _ => (),
+        }
+
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,
             None => return,
