@@ -24,7 +24,7 @@ pub use crate::completion::completion_item::{CompletionItem, InsertText};
 pub(crate) fn completions(
     db: &db::RootDatabase,
     position: FilePosition,
-) -> Cancelable<Option<Vec<CompletionItem>>> {
+) -> Cancelable<Option<Completions>> {
     let original_file = db.source_file(position.file_id);
     // Insert a fake ident to get a valid parse tree
     let file = {
@@ -53,12 +53,10 @@ pub(crate) fn completions(
             param_completions(&mut acc, name.syntax());
         }
     }
-    let res = if has_completions {
-        Some(acc.into())
-    } else {
-        None
-    };
-    Ok(res)
+    if !has_completions {
+        return Ok(None);
+    }
+    Ok(Some(acc))
 }
 
 /// Complete repeated parametes, both name and type. For example, if all
