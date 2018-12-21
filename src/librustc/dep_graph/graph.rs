@@ -39,12 +39,153 @@ pub struct DepGraph {
     fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
-newtype_index! {
-    pub struct DepNodeIndex { .. }
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Ord, PartialOrd, Debug)]
+pub struct DepNodeIndex {
+    idx: usize,
 }
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = DepNodeIndex::MAX;
+    pub const MAX_AS_U32: u32 = 0xFFFF_FF00;
+
+    pub const MAX: DepNodeIndex = DepNodeIndex::from_u32_const(DepNodeIndex::MAX_AS_U32);
+
+    #[inline]
+    pub fn from_usize(value: usize) -> Self {
+        assert!(value <= (DepNodeIndex::MAX_AS_U32 as usize));
+        unsafe {
+            DepNodeIndex::from_u32_unchecked(value as u32)
+        }
+    }
+
+    #[inline]
+    pub fn from_u32(value: u32) -> Self {
+        assert!(value <= DepNodeIndex::MAX_AS_U32);
+        unsafe {
+            DepNodeIndex::from_u32_unchecked(value)
+        }
+    }
+
+    /// Hacky variant of `from_u32` for use in constants.
+    /// This version checks the "max" constraint by using an
+    /// invalid array dereference.
+    #[inline]
+    pub const fn from_u32_const(value: u32) -> Self {
+        // This will fail at const eval time unless `value <=
+        // max` is true (in which case we get the index 0).
+        // It will also fail at runtime, of course, but in a
+        // kind of wacky way.
+        let _ = ["out of range value used"][
+            !(value <= DepNodeIndex::MAX_AS_U32) as usize
+        ];
+
+        unsafe {
+            DepNodeIndex { idx: value as usize }
+        }
+    }
+
+    #[inline]
+    pub const unsafe fn from_u32_unchecked(value: u32) -> Self {
+        unsafe { DepNodeIndex { idx: value as usize } }
+    }
+
+    /// Extract value of this index as an integer.
+    #[inline]
+    pub fn index(self) -> usize {
+        self.as_usize()
+    }
+
+    /// Extract value of this index as a usize.
+    #[inline]
+    pub fn as_u32(self) -> u32 {
+        self.idx as u32
+    }
+
+    /// Extract value of this index as a u32.
+    #[inline]
+    pub fn as_usize(self) -> usize {
+        self.as_u32() as usize
+    }
+}
+
+impl Idx for DepNodeIndex {
+    #[inline]
+    fn new(value: usize) -> Self {
+        Self::from(value)
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        usize::from(self)
+    }
+}
+/*
+impl ::std::iter::Step for DepNodeIndex<'_> {
+    #[inline]
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        <usize as ::std::iter::Step>::steps_between(
+            &Idx::index(*start),
+            &Idx::index(*end),
+        )
+    }
+
+    #[inline]
+    fn replace_one(&mut self) -> Self {
+        ::std::mem::replace(self, Self::new(1))
+    }
+
+    #[inline]
+    fn replace_zero(&mut self) -> Self {
+        ::std::mem::replace(self, Self::new(0))
+    }
+
+    #[inline]
+    fn add_one(&self) -> Self {
+        Self::new(Idx::index(*self) + 1)
+    }
+
+    #[inline]
+    fn sub_one(&self) -> Self {
+        Self::new(Idx::index(*self) - 1)
+    }
+
+    #[inline]
+    fn add_usize(&self, u: usize) -> Option<Self> {
+        Idx::index(*self).checked_add(u).map(Self::new)
+    }
+}
+*/
+impl From<DepNodeIndex> for u32 {
+    #[inline]
+    fn from(v: DepNodeIndex) -> u32 {
+        v.as_u32()
+    }
+}
+
+impl From<DepNodeIndex> for usize {
+    #[inline]
+    fn from(v: DepNodeIndex) -> usize {
+        v.as_usize()
+    }
+}
+
+impl From<usize> for DepNodeIndex {
+    #[inline]
+    fn from(value: usize) -> Self {
+        DepNodeIndex::from_usize(value)
+    }
+}
+
+impl From<u32> for DepNodeIndex {
+    #[inline]
+    fn from(value: u32) -> Self {
+        DepNodeIndex::from_u32(value)
+    }
+}
+
+impl DepNodeIndex {
+    const INVALID: DepNodeIndex = DepNodeIndex {
+        idx: -1i8 as usize,
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
