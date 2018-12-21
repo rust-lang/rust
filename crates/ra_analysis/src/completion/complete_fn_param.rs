@@ -1,15 +1,11 @@
 use ra_syntax::{
-    algo::{
-        visit::{visitor_ctx, VisitorCtx}
-    },
+    algo::visit::{visitor_ctx, VisitorCtx},
     ast,
     AstNode,
 };
-use rustc_hash::{FxHashMap};
+use rustc_hash::FxHashMap;
 
-use crate::{
-    completion::{CompletionContext, Completions, CompletionKind, CompletionItem},
-};
+use crate::completion::{CompletionContext, Completions, CompletionKind, CompletionItem};
 
 /// Complete repeated parametes, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with

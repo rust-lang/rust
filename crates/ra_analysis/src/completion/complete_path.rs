@@ -1,6 +1,6 @@
 use crate::{
-    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
     Cancelable,
+    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
 };
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {

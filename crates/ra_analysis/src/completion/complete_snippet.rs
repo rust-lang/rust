@@ -1,6 +1,4 @@
-use crate::{
-    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
-};
+use crate::completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext};
 
 pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path && ctx.enclosing_fn.is_some()) {

@@ -5,9 +5,7 @@ use ra_syntax::{
     SyntaxKind::*, SyntaxNodeRef,
 };
 
-use crate::{
-    completion::{CompletionContext, CompletionItem, Completions, CompletionKind::*},
-};
+use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind::*};
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
