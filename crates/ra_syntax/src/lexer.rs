@@ -160,7 +160,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                 // if we find one, then this is an invalid character literal
                 if ptr.at('\'') {
                     ptr.bump();
-                    return CHAR; // TODO: error reporting
+                    return CHAR;
                 }
                 LIFETIME
             } else {
