@@ -6,11 +6,9 @@ use ra_syntax::{
     ast::{self, LoopBodyOwner},
     SyntaxKind::*,
 };
-use     hir::{
-        self,
-        FnScopes,
-        Def,
-        Path,
+use hir::{
+    self,
+    FnScopes, Def, Path
 };
 
 use crate::{

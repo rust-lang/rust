@@ -1,3 +1,4 @@
+mod completion_item;
 mod reference_completion;
 
 use ra_editor::find_node_at_offset;
@@ -17,15 +18,7 @@ use crate::{
     Cancelable, FilePosition
 };
 
-#[derive(Debug)]
-pub struct CompletionItem {
-    /// What user sees in pop-up
-    pub label: String,
-    /// What string is used for filtering, defaults to label
-    pub lookup: Option<String>,
-    /// What is inserted, defaults to label
-    pub snippet: Option<String>,
-}
+pub use crate::completion::completion_item::CompletionItem;
 
 pub(crate) fn completions(
     db: &db::RootDatabase,
@@ -63,6 +56,10 @@ pub(crate) fn completions(
     Ok(res)
 }
 
+/// Complete repeated parametes, both name and type. For example, if all
+/// functions in a file have a `spam: &mut Spam` parameter, a completion with
+/// `spam: &mut Spam` insert text/label and `spam` lookup string will be
+/// suggested.
 fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
     let mut params = FxHashMap::default();
     for node in ctx.ancestors() {
@@ -81,13 +78,7 @@ fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
                 Some((label, lookup))
             }
         })
-        .for_each(|(label, lookup)| {
-            acc.push(CompletionItem {
-                label,
-                lookup: Some(lookup),
-                snippet: None,
-            })
-        });
+        .for_each(|(label, lookup)| CompletionItem::new(label).lookup_by(lookup).add_to(acc));
 
     fn process<'a, N: ast::FnDefOwner<'a>>(
         node: N,
