@@ -164,6 +164,16 @@ fn remove_newline(
     if join_single_expr_block(edit, node).is_some() {
         return;
     }
+    // ditto for
+    //
+    // ```
+    // use foo::{<|>
+    //    bar
+    // };
+    // ```
+    if join_single_use_tree(edit, node).is_some() {
+        return;
+    }
 
     // The node is between two other nodes
     let prev = node.prev_sibling().unwrap();
@@ -221,6 +231,36 @@ fn single_expr(block: ast::Block) -> Option<ast::Expr> {
         } else {
             match child.kind() {
                 WHITESPACE | L_CURLY | R_CURLY => (),
+                _ => return None,
+            }
+        }
+    }
+    res
+}
+
+fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Option<()> {
+    let use_tree_list = ast::UseTreeList::cast(node.parent()?)?;
+    let tree = single_use_tree(use_tree_list)?;
+    edit.replace(
+        use_tree_list.syntax().range(),
+        tree.syntax().text().to_string(),
+    );
+    Some(())
+}
+
+fn single_use_tree(tree_list: ast::UseTreeList) -> Option<ast::UseTree> {
+    let mut res = None;
+    for child in tree_list.syntax().children() {
+        if let Some(tree) = ast::UseTree::cast(child) {
+            if tree.syntax().text().contains('\n') {
+                return None;
+            }
+            if mem::replace(&mut res, Some(tree)).is_some() {
+                return None;
+            }
+        } else {
+            match child.kind() {
+                WHITESPACE | L_CURLY | R_CURLY | COMMA => (),
                 _ => return None,
             }
         }
@@ -302,6 +342,24 @@ fn foo() {
 fn foo() {
     foo(<|>92)
 }",
+        );
+    }
+
+    #[test]
+    fn test_join_lines_use_tree() {
+        check_join_lines(
+            r"
+use ra_syntax::{
+    algo::<|>{
+        find_leaf_at_offset,
+    },
+    ast,
+};",
+            r"
+use ra_syntax::{
+    algo::<|>find_leaf_at_offset,
+    ast,
+};",
         );
     }
 
