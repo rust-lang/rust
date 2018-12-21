@@ -24,6 +24,10 @@ pub fn arb_offset(text: &str) -> BoxedStrategy<TextUnit> {
 }
 
 pub fn arb_edits(text: &str) -> BoxedStrategy<Vec<AtomTextEdit>> {
+    arb_edits_custom(&text, 0, 7)
+}
+
+pub fn arb_edits_custom(text: &str, min: usize, max: usize) -> BoxedStrategy<Vec<AtomTextEdit>> {
     if text.is_empty() {
         // only valid edits
         return Just(vec![])
@@ -37,9 +41,10 @@ pub fn arb_edits(text: &str) -> BoxedStrategy<Vec<AtomTextEdit>> {
     }
 
     let offsets = text_offsets(text);
-    let max_cuts = offsets.len().min(7);
+    let max_cuts = max.min(offsets.len());
+    let min_cuts = min.min(offsets.len() - 1);
 
-    proptest::sample::subsequence(offsets, 0..max_cuts)
+    proptest::sample::subsequence(offsets, min_cuts..max_cuts)
         .prop_flat_map(|cuts| {
             let strategies: Vec<_> = cuts
                 .chunks(2)

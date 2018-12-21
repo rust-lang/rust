@@ -18,3 +18,11 @@ proptest = "0.8.7"
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
+criterion = "0.2"
+rand = "*"
+rand_xorshift = "*"
+lazy_static = "*"
+
+[[bench]]
+name = "translate_offset_with_edit_benchmark"
+harness = false
