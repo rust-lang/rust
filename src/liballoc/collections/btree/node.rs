@@ -95,8 +95,8 @@ struct LeafNode<K, V> {
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
-    keys: MaybeUninit<[K; CAPACITY]>,
-    vals: MaybeUninit<[V; CAPACITY]>,
+    keys: [MaybeUninit<K>; CAPACITY],
+    vals: [MaybeUninit<V>; CAPACITY],
 }
 
 impl<K, V> LeafNode<K, V> {
@@ -106,8 +106,11 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            keys: MaybeUninit::uninitialized(),
-            vals: MaybeUninit::uninitialized(),
+            // Creating a `[MaybeUninit; N]` array by first creating a
+            // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
+            // array does not require initialization.
+            keys: MaybeUninit::uninitialized().into_inner(),
+            vals: MaybeUninit::uninitialized().into_inner(),
             parent: ptr::null(),
             parent_idx: MaybeUninit::uninitialized(),
             len: 0
@@ -626,7 +629,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
         // We cannot be the root, so `as_leaf` is okay
         unsafe {
             slice::from_raw_parts(
-                self.as_leaf().vals.as_ptr() as *const V,
+                MaybeUninit::first_ptr(&self.as_leaf().vals),
                 self.len()
             )
         }
@@ -653,7 +656,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         } else {
             unsafe {
                 slice::from_raw_parts_mut(
-                    (*self.as_leaf_mut()).keys.as_mut_ptr() as *mut K,
+                    MaybeUninit::first_mut_ptr(&mut (*self.as_leaf_mut()).keys),
                     self.len()
                 )
             }
@@ -664,7 +667,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts_mut(
-                (*self.as_leaf_mut()).vals.as_mut_ptr() as *mut V,
+                MaybeUninit::first_mut_ptr(&mut (*self.as_leaf_mut()).vals),
                 self.len()
             )
         }
