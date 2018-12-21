@@ -1,18 +1,23 @@
 mod completion_item;
 mod reference_completion;
 
+mod complete_fn_param;
+mod complete_keywords;
+
 use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
-    algo::visit::{visitor_ctx, VisitorCtx},
+    algo::{
+        find_leaf_at_offset,
+    },
     ast,
     AstNode,
     SyntaxNodeRef,
     SourceFileNode,
     TextUnit,
+    SyntaxKind::*,
 };
 use ra_db::SyntaxDatabase;
-use rustc_hash::{FxHashMap};
 use hir::source_binder;
 
 use crate::{
@@ -29,99 +34,133 @@ pub(crate) fn completions(
 ) -> Cancelable<Option<Completions>> {
     let original_file = db.source_file(position.file_id);
     // Insert a fake ident to get a valid parse tree
+    let file = {
+        let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
+        original_file.reparse(&edit)
+    };
     let module = ctry!(source_binder::module_from_position(db, position)?);
 
     let mut acc = Completions::default();
-    let mut has_completions = false;
+
     // First, let's try to complete a reference to some declaration.
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        has_completions = true;
         reference_completion::completions(&mut acc, db, &module, &file, name_ref)?;
-        // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
-        if is_node::<ast::Param>(name_ref.syntax()) {
-            param_completions(&mut acc, name_ref.syntax());
-        }
     }
 
-    // Otherwise, if this is a declaration, use heuristics to suggest a name.
-    if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
-        if is_node::<ast::Param>(name.syntax()) {
-            has_completions = true;
-            param_completions(&mut acc, name.syntax());
-        }
-    }
-    if !has_completions {
-        return Ok(None);
-    }
+    let ctx = ctry!(SyntaxContext::new(&original_file, position.offset));
+    complete_fn_param::complete_fn_param(&mut acc, &ctx);
+    complete_keywords::complete_expr_keyword(&mut acc, &ctx);
+
     Ok(Some(acc))
 }
 
 /// `SyntaxContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
-pub(super) enum SyntaxContext<'a> {
-    ParameterName(SyntaxNodeRef<'a>),
-    Other,
+pub(super) struct SyntaxContext<'a> {
+    leaf: SyntaxNodeRef<'a>,
+    enclosing_fn: Option<ast::FnDef<'a>>,
+    is_param: bool,
+    /// a single-indent path, like `foo`.
+    is_trivial_path: bool,
+    after_if: bool,
+    is_stmt: bool,
 }
 
-impl SyntaxContext {
-    pub(super) fn new(original_file: &SourceFileNode, offset: TextUnit) -> SyntaxContext {
+impl SyntaxContext<'_> {
+    pub(super) fn new(original_file: &SourceFileNode, offset: TextUnit) -> Option<SyntaxContext> {
+        let leaf = find_leaf_at_offset(original_file.syntax(), offset).left_biased()?;
+        let mut ctx = SyntaxContext {
+            leaf,
+            enclosing_fn: None,
+            is_param: false,
+            is_trivial_path: false,
+            after_if: false,
+            is_stmt: false,
+        };
+        ctx.fill(original_file, offset);
+        Some(ctx)
+    }
+
+    fn fill(&mut self, original_file: &SourceFileNode, offset: TextUnit) {
+        // Insert a fake ident to get a valid parse tree. We will use this file
+        // to determine context, though the original_file will be used for
+        // actual completion.
         let file = {
             let edit = AtomTextEdit::insert(offset, "intellijRulezz".to_string());
             original_file.reparse(&edit)
         };
+
+        // First, let's try to complete a reference to some declaration.
+        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), offset) {
+            // Special case, `trait T { fn foo(i_am_a_name_ref) {} }`.
+            // See RFC#1685.
+            if is_node::<ast::Param>(name_ref.syntax()) {
+                self.is_param = true;
+                return;
+            }
+            self.classify_name_ref(&file, name_ref);
+        }
+
+        // Otherwise, see if this is a declaration. We can use heuristics to
+        // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
             if is_node::<ast::Param>(name.syntax()) {
-                if let Some(node) = find_leaf_at_offset(original_file, offset).left_biased() {
-                    return SyntaxContext::ParameterName(node);
+                self.is_param = true;
+                return;
+            }
+        }
+    }
+    fn classify_name_ref(&mut self, file: &SourceFileNode, name_ref: ast::NameRef) {
+        // let name_range = name_ref.syntax().range();
+        // let top_node = name_ref
+        //     .syntax()
+        //     .ancestors()
+        //     .take_while(|it| it.range() == name_range)
+        //     .last()
+        //     .unwrap();
+        // match top_node.parent().map(|it| it.kind()) {
+        //     Some(SOURCE_FILE) | Some(ITEM_LIST) => return Some(NameRefKind::BareIdentInMod),
+        //     _ => (),
+        // }
+        let parent = match name_ref.syntax().parent() {
+            Some(it) => it,
+            None => return,
+        };
+        if let Some(segment) = ast::PathSegment::cast(parent) {
+            let path = segment.parent_path();
+            // if let Some(path) = Path::from_ast(path) {
+            //     if !path.is_ident() {
+            //         return Some(NameRefKind::Path(path));
+            //     }
+            // }
+            if path.qualifier().is_none() {
+                self.is_trivial_path = true;
+                self.enclosing_fn = self
+                    .leaf
+                    .ancestors()
+                    .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+                    .find_map(ast::FnDef::cast);
+
+                self.is_stmt = match name_ref
+                    .syntax()
+                    .ancestors()
+                    .filter_map(ast::ExprStmt::cast)
+                    .next()
+                {
+                    None => false,
+                    Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range(),
+                };
+
+                if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
+                    if let Some(if_expr) = find_node_at_offset::<ast::IfExpr>(file.syntax(), off) {
+                        if if_expr.syntax().range().end() < name_ref.syntax().range().start() {
+                            self.after_if = true;
+                        }
+                    }
                 }
             }
         }
-
-        SyntaxContext::Other
-    }
-}
-
-/// Complete repeated parametes, both name and type. For example, if all
-/// functions in a file have a `spam: &mut Spam` parameter, a completion with
-/// `spam: &mut Spam` insert text/label and `spam` lookup string will be
-/// suggested.
-fn param_completions(acc: &mut Completions, ctx: SyntaxNodeRef) {
-    let mut params = FxHashMap::default();
-    for node in ctx.ancestors() {
-        let _ = visitor_ctx(&mut params)
-            .visit::<ast::SourceFile, _>(process)
-            .visit::<ast::ItemList, _>(process)
-            .accept(node);
-    }
-    params
-        .into_iter()
-        .filter_map(|(label, (count, param))| {
-            let lookup = param.pat()?.syntax().text().to_string();
-            if count < 2 {
-                None
-            } else {
-                Some((label, lookup))
-            }
-        })
-        .for_each(|(label, lookup)| {
-            CompletionItem::new(label)
-                .lookup_by(lookup)
-                .kind(CompletionKind::Magic)
-                .add_to(acc)
-        });
-
-    fn process<'a, N: ast::FnDefOwner<'a>>(
-        node: N,
-        params: &mut FxHashMap<String, (u32, ast::Param<'a>)>,
-    ) {
-        node.functions()
-            .filter_map(|it| it.param_list())
-            .flat_map(|it| it.params())
-            .for_each(|param| {
-                let text = param.syntax().text().to_string();
-                params.entry(text).or_insert((0, param)).0 += 1;
-            })
     }
 }
 
@@ -142,52 +181,4 @@ fn check_completion(code: &str, expected_completions: &str, kind: CompletionKind
     };
     let completions = completions(&analysis.imp.db, position).unwrap().unwrap();
     completions.assert_match(expected_completions, kind);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn check_magic_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Magic);
-    }
-
-    #[test]
-    fn test_param_completion_last_param() {
-        check_magic_completion(
-            r"
-            fn foo(file_id: FileId) {}
-            fn bar(file_id: FileId) {}
-            fn baz(file<|>) {}
-            ",
-            r#"file_id "file_id: FileId""#,
-        );
-    }
-
-    #[test]
-    fn test_param_completion_nth_param() {
-        check_magic_completion(
-            r"
-            fn foo(file_id: FileId) {}
-            fn bar(file_id: FileId) {}
-            fn baz(file<|>, x: i32) {}
-            ",
-            r#"file_id "file_id: FileId""#,
-        );
-    }
-
-    #[test]
-    fn test_param_completion_trait_param() {
-        check_magic_completion(
-            r"
-            pub(crate) trait SourceRoot {
-                pub fn contains(&self, file_id: FileId) -> bool;
-                pub fn module_map(&self) -> &ModuleMap;
-                pub fn lines(&self, file_id: FileId) -> &LineIndex;
-                pub fn syntax(&self, file<|>)
-            }
-            ",
-            r#"file_id "file_id: FileId""#,
-        );
-    }
 }

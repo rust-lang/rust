@@ -1,9 +1,7 @@
 use rustc_hash::{FxHashSet};
-use ra_editor::find_node_at_offset;
 use ra_syntax::{
-    algo::visit::{visitor, Visitor},
     SourceFileNode, AstNode,
-    ast::{self, LoopBodyOwner},
+    ast,
     SyntaxKind::*,
 };
 use hir::{
@@ -21,7 +19,7 @@ pub(super) fn completions(
     acc: &mut Completions,
     db: &RootDatabase,
     module: &hir::Module,
-    file: &SourceFileNode,
+    _file: &SourceFileNode,
     name_ref: ast::NameRef,
 ) -> Cancelable<()> {
     let kind = match classify_name_ref(name_ref) {
@@ -34,7 +32,7 @@ pub(super) fn completions(
             if let Some(fn_def) = enclosing_fn {
                 let scopes = FnScopes::new(fn_def);
                 complete_fn(name_ref, &scopes, acc);
-                complete_expr_keywords(&file, fn_def, name_ref, acc);
+                // complete_expr_keywords(&file, fn_def, name_ref, acc);
                 complete_expr_snippets(acc);
             }
 
@@ -182,91 +180,6 @@ fn ${1:feature}() {
         .add_to(acc);
 }
 
-fn complete_expr_keywords(
-    file: &SourceFileNode,
-    fn_def: ast::FnDef,
-    name_ref: ast::NameRef,
-    acc: &mut Completions,
-) {
-    acc.add(keyword("if", "if $0 {}"));
-    acc.add(keyword("match", "match $0 {}"));
-    acc.add(keyword("while", "while $0 {}"));
-    acc.add(keyword("loop", "loop {$0}"));
-
-    if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
-        if let Some(if_expr) = find_node_at_offset::<ast::IfExpr>(file.syntax(), off) {
-            if if_expr.syntax().range().end() < name_ref.syntax().range().start() {
-                acc.add(keyword("else", "else {$0}"));
-                acc.add(keyword("else if", "else if $0 {}"));
-            }
-        }
-    }
-    if is_in_loop_body(name_ref) {
-        acc.add(keyword("continue", "continue"));
-        acc.add(keyword("break", "break"));
-    }
-    acc.add_all(complete_return(fn_def, name_ref));
-}
-
-fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
-    for node in name_ref.syntax().ancestors() {
-        if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
-            break;
-        }
-        let loop_body = visitor()
-            .visit::<ast::ForExpr, _>(LoopBodyOwner::loop_body)
-            .visit::<ast::WhileExpr, _>(LoopBodyOwner::loop_body)
-            .visit::<ast::LoopExpr, _>(LoopBodyOwner::loop_body)
-            .accept(node);
-        if let Some(Some(body)) = loop_body {
-            if name_ref
-                .syntax()
-                .range()
-                .is_subrange(&body.syntax().range())
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<CompletionItem> {
-    // let is_last_in_block = name_ref.syntax().ancestors().filter_map(ast::Expr::cast)
-    //     .next()
-    //     .and_then(|it| it.syntax().parent())
-    //     .and_then(ast::Block::cast)
-    //     .is_some();
-
-    // if is_last_in_block {
-    //     return None;
-    // }
-
-    let is_stmt = match name_ref
-        .syntax()
-        .ancestors()
-        .filter_map(ast::ExprStmt::cast)
-        .next()
-    {
-        None => false,
-        Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range(),
-    };
-    let snip = match (is_stmt, fn_def.ret_type().is_some()) {
-        (true, true) => "return $0;",
-        (true, false) => "return;",
-        (false, true) => "return $0",
-        (false, false) => "return",
-    };
-    Some(keyword("return", snip))
-}
-
-fn keyword(kw: &str, snippet: &str) -> CompletionItem {
-    CompletionItem::new(kw)
-        .kind(Keyword)
-        .snippet(snippet)
-        .build()
-}
-
 fn complete_expr_snippets(acc: &mut Completions) {
     CompletionItem::new("pd")
         .snippet("eprintln!(\"$0 = {:?}\", $0);")
@@ -284,10 +197,6 @@ mod tests {
 
     fn check_reference_completion(code: &str, expected_completions: &str) {
         check_completion(code, expected_completions, CompletionKind::Reference);
-    }
-
-    fn check_keyword_completion(code: &str, expected_completions: &str) {
-        check_completion(code, expected_completions, CompletionKind::Keyword);
     }
 
     fn check_snippet_completion(code: &str, expected_completions: &str) {
@@ -467,134 +376,6 @@ mod tests {
             use crate::{bar::{baz::Sp<|>}};
             ",
             "Spam",
-        );
-    }
-
-    #[test]
-    fn test_completion_kewords() {
-        check_keyword_completion(
-            r"
-            fn quux() {
-                <|>
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            return "return"
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_completion_else() {
-        check_keyword_completion(
-            r"
-            fn quux() {
-                if true {
-                    ()
-                } <|>
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            else "else {$0}"
-            else if "else if $0 {}"
-            return "return"
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_completion_return_value() {
-        check_keyword_completion(
-            r"
-            fn quux() -> i32 {
-                <|>
-                92
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            return "return $0;"
-            "#,
-        );
-        check_keyword_completion(
-            r"
-            fn quux() {
-                <|>
-                92
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            return "return;"
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_completion_return_no_stmt() {
-        check_keyword_completion(
-            r"
-            fn quux() -> i32 {
-                match () {
-                    () => <|>
-                }
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            return "return $0"
-            "#,
-        );
-    }
-
-    #[test]
-    fn test_continue_break_completion() {
-        check_keyword_completion(
-            r"
-            fn quux() -> i32 {
-                loop { <|> }
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            continue "continue"
-            break "break"
-            return "return $0"
-            "#,
-        );
-        check_keyword_completion(
-            r"
-            fn quux() -> i32 {
-                loop { || { <|> } }
-            }
-            ",
-            r#"
-            if "if $0 {}"
-            match "match $0 {}"
-            while "while $0 {}"
-            loop "loop {$0}"
-            return "return $0"
-            "#,
         );
     }
 
