@@ -397,9 +397,6 @@ declare_features! (
     // Multiple patterns with `|` in `if let` and `while let`.
     (active, if_while_or_patterns, "1.26.0", Some(48215), None),
 
-    // Allows `#[repr(packed)]` attribute on structs.
-    (active, repr_packed, "1.26.0", Some(33158), None),
-
     // Allows macro invocations in `extern {}` blocks.
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
@@ -695,6 +692,8 @@ declare_features! (
     (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
     // `use path as _;` and `extern crate c as _;`
     (accepted, underscore_imports, "1.33.0", Some(48216), None),
+    // Allows `#[repr(packed(N))]` attribute on structs.
+    (accepted, repr_packed, "1.33.0", Some(33158), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -1587,13 +1586,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
-                        }
-                        if let Some((name, _)) = item.name_value_literal() {
-                            if name == "packed" {
-                                gate_feature_post!(&self, repr_packed, attr.span,
-                                                   "the `#[repr(packed(n))]` attribute \
-                                                    is experimental");
-                            }
                         }
                     }
                 }
