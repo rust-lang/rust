@@ -10,22 +10,20 @@ pub const CURSOR_MARKER: &str = "<|>";
 
 #[macro_export]
 macro_rules! assert_eq_text {
-    ($expected:expr, $actual:expr) => {{
-        let expected = $expected;
-        let actual = $actual;
-        if expected != actual {
-            let changeset = $crate::__Changeset::new(actual, expected, "\n");
-            println!("Expected:\n{}\n\nActual:\n{}\nDiff:{}\n", expected, actual, changeset);
-            panic!("text differs");
-        }
-    }};
+    ($expected:expr, $actual:expr) => {
+        assert_eq_text!($expected, $actual,)
+    };
     ($expected:expr, $actual:expr, $($tt:tt)*) => {{
         let expected = $expected;
         let actual = $actual;
         if expected != actual {
-            let changeset = $crate::__Changeset::new(actual, expected, "\n");
-            println!("Expected:\n{}\n\nActual:\n{}\n\nDiff:\n{}\n", expected, actual, changeset);
-            println!($($tt)*);
+            if expected.trim() == actual.trim() {
+                eprintln!("Expected:\n{:?}\n\nActual:\n{:?}\n\nWhitespace difference\n", expected, actual);
+            } else {
+                let changeset = $crate::__Changeset::new(actual, expected, "\n");
+                eprintln!("Expected:\n{}\n\nActual:\n{}\n\nDiff:\n{}\n", expected, actual, changeset);
+            }
+            eprintln!($($tt)*);
             panic!("text differs");
         }
     }};

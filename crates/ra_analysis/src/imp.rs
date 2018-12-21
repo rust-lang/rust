@@ -219,7 +219,8 @@ impl AnalysisImpl {
         self.db.crate_graph().crate_root(crate_id)
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        completions(&self.db, position)
+        let completions = completions(&self.db, position)?;
+        Ok(completions.map(|it| it.into()))
     }
     pub fn approximately_resolve_symbol(
         &self,

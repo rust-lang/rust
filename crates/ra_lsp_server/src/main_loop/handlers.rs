@@ -8,7 +8,7 @@ use languageserver_types::{
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
     WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover, HoverContents,
 };
-use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
+use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition, InsertText};
 use ra_syntax::{TextUnit, text_utils::intersect};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
@@ -423,15 +423,21 @@ pub fn handle_completion(
         .into_iter()
         .map(|item| {
             let mut res = CompletionItem {
-                label: item.label,
-                filter_text: item.lookup,
+                label: item.label().to_string(),
+                filter_text: Some(item.lookup().to_string()),
                 ..Default::default()
             };
-            if let Some(snip) = item.snippet {
-                res.insert_text = Some(snip);
-                res.insert_text_format = Some(InsertTextFormat::Snippet);
-                res.kind = Some(CompletionItemKind::Keyword);
-            };
+            match item.insert_text() {
+                InsertText::PlainText { text } => {
+                    res.insert_text = Some(text);
+                    res.insert_text_format = Some(InsertTextFormat::PlainText);
+                }
+                InsertText::Snippet { text } => {
+                    res.insert_text = Some(text);
+                    res.insert_text_format = Some(InsertTextFormat::Snippet);
+                    res.kind = Some(CompletionItemKind::Keyword);
+                }
+            }
             res
         })
         .collect();
