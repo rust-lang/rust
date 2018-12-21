@@ -13,11 +13,12 @@
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(pattern)]
+#![feature(repeat_generic_slice)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(str_escape)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(repeat_generic_slice)]
+#![feature(vecdeque_rotate)]
 
 extern crate core;
 extern crate rand;
