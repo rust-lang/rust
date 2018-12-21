@@ -1,7 +1,7 @@
 use std::io::{BufRead, Write};
 
 use languageserver_types::{notification::Notification, request::Request};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::{from_str, from_value, to_string, to_value, Value};
 use failure::{bail, format_err};
 

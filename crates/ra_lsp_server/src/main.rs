@@ -1,7 +1,7 @@
-use serde_derive::Deserialize;
-use serde::Deserialize as _D;
+use serde::Deserialize;
 use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
+
 use ra_lsp_server::Result;
 
 fn main() -> Result<()> {
