@@ -8,7 +8,7 @@ use ra_analysis::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData,
     SourceRootId
 };
-use ra_vfs::{Vfs, VfsChange, VfsFile};
+use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
 use rustc_hash::FxHashMap;
 use relative_path::RelativePathBuf;
 use parking_lot::RwLock;
@@ -179,6 +179,14 @@ impl ServerWorld {
 
     pub fn file_id_to_uri(&self, id: FileId) -> Result<Url> {
         let path = self.vfs.read().file2path(VfsFile(id.0));
+        let url = Url::from_file_path(&path)
+            .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
+        Ok(url)
+    }
+
+    pub fn path_to_uri(&self, root: SourceRootId, path: &RelativePathBuf) -> Result<Url> {
+        let base = self.vfs.read().root2path(VfsRoot(root.0));
+        let path = path.to_path(base);
         let url = Url::from_file_path(&path)
             .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
         Ok(url)

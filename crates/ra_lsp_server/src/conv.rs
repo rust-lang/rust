@@ -283,16 +283,17 @@ impl TryConvWith for FileSystemEdit {
     type Output = req::FileSystemEdit;
     fn try_conv_with(self, world: &ServerWorld) -> Result<req::FileSystemEdit> {
         let res = match self {
-            FileSystemEdit::CreateFile { anchor, path } => {
-                let uri = world.file_id_to_uri(anchor)?;
-                let path = &path.as_str()[3..]; // strip `../` b/c url is weird
-                let uri = uri.join(path)?;
+            FileSystemEdit::CreateFile { source_root, path } => {
+                let uri = world.path_to_uri(source_root, &path)?;
                 req::FileSystemEdit::CreateFile { uri }
             }
-            FileSystemEdit::MoveFile { file, path } => {
-                let src = world.file_id_to_uri(file)?;
-                let path = &path.as_str()[3..]; // strip `../` b/c url is weird
-                let dst = src.join(path)?;
+            FileSystemEdit::MoveFile {
+                src,
+                dst_source_root,
+                dst_path,
+            } => {
+                let src = world.file_id_to_uri(src)?;
+                let dst = world.path_to_uri(dst_source_root, &dst_path)?;
                 req::FileSystemEdit::MoveFile { src, dst }
             }
         };

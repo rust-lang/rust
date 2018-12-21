@@ -173,12 +173,13 @@ pub struct SourceFileEdit {
 #[derive(Debug)]
 pub enum FileSystemEdit {
     CreateFile {
-        anchor: FileId,
+        source_root: SourceRootId,
         path: RelativePathBuf,
     },
     MoveFile {
-        file: FileId,
-        path: RelativePathBuf,
+        src: FileId,
+        dst_source_root: SourceRootId,
+        dst_path: RelativePathBuf,
     },
 }
 
