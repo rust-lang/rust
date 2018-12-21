@@ -20,6 +20,13 @@ fn assert_traits() {
     f::<SmolStr>();
 }
 
+#[test]
+fn conversions() {
+    let s: SmolStr = "Hello, World!".into();
+    let s: String = s.into();
+    assert_eq!(s, "Hello, World!")
+}
+
 fn check_props(s: &str) -> Result<(), proptest::test_runner::TestCaseError> {
     let smol = SmolStr::new(s);
     prop_assert_eq!(smol.as_str(), s);

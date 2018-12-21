@@ -136,6 +136,12 @@ where
     }
 }
 
+impl From<SmolStr> for String {
+    fn from(text: SmolStr) -> Self {
+        text.to_string()
+    }
+}
+
 const INLINE_CAP: usize = 22;
 const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
