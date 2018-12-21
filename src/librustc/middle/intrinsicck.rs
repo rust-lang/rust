@@ -113,8 +113,12 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
         let mut err = struct_span_err!(self.tcx.sess, span, E0512,
                                        "cannot transmute between types of different sizes, \
                                         or dependently-sized types");
+        if from == to {
+            err.note(&format!("`{}` does not have a fixed size", from));
+        } else {
             err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
+        }
         err.emit()
     }
 }
