@@ -3,7 +3,7 @@ use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionI
 fn snippet(label: &str, snippet: &str) -> Builder {
     CompletionItem::new(CompletionKind::Snippet, label)
         .snippet(snippet)
-        .kind(CompletionItemKind::Keyword)
+        .kind(CompletionItemKind::Snippet)
 }
 
 pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
