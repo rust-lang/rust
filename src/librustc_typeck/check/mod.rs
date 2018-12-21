@@ -535,6 +535,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     err_count_on_creation: usize,
 
     ret_coercion: Option<RefCell<DynamicCoerceMany<'gcx, 'tcx>>>,
+    ret_coercion_span: RefCell<Option<Span>>,
 
     yield_ty: Option<Ty<'tcx>>,
 
@@ -1984,6 +1985,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
+            ret_coercion_span: RefCell::new(None),
             yield_ty: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
@@ -4099,9 +4101,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     struct_span_err!(self.tcx.sess, expr.span, E0572,
                                      "return statement outside of function body").emit();
                 } else if let Some(ref e) = *expr_opt {
+                    *self.ret_coercion_span.borrow_mut() = Some(e.span);
                     self.check_return_expr(e);
                 } else {
                     let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
+                    *self.ret_coercion_span.borrow_mut() = Some(expr.span);
                     let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
                     if let Some((fn_decl, _)) = self.get_fn_decl(expr.id) {
                         coercion.coerce_forced_unit(

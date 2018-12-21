@@ -1183,6 +1183,11 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
+                let reason_label = if label_expression_as_expected {
+                    "found because of this statement"
+                } else {
+                    "expected because of this statement"
+                };
                 let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
@@ -1207,9 +1212,19 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             cause.span,
                             blk_id,
                         );
+                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                            if !sp.overlaps(cause.span) {
+                                db.span_label(*sp, reason_label);
+                            }
+                        }
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
+                        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+                            if !sp.overlaps(cause.span) {
+                                db.span_label(*sp, reason_label);
+                            }
+                        }
                     }
                 }
 
