@@ -15,7 +15,8 @@ use hir::source_binder;
 
 use crate::{
     db,
-    Cancelable, FilePosition
+    Cancelable, FilePosition,
+    completion::completion_item::Completions,
 };
 
 pub use crate::completion::completion_item::{CompletionItem, InsertText};
@@ -33,15 +34,15 @@ pub(crate) fn completions(
 
     let module = ctry!(source_binder::module_from_position(db, position)?);
 
-    let mut res = Vec::new();
+    let mut acc = Completions::default();
     let mut has_completions = false;
     // First, let's try to complete a reference to some declaration.
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         has_completions = true;
-        reference_completion::completions(&mut res, db, &module, &file, name_ref)?;
+        reference_completion::completions(&mut acc, db, &module, &file, name_ref)?;
         // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
         if is_node::<ast::Param>(name_ref.syntax()) {
-            param_completions(&mut res, name_ref.syntax());
+            param_completions(&mut acc, name_ref.syntax());
         }
     }
 
@@ -49,10 +50,14 @@ pub(crate) fn completions(
     if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
         if is_node::<ast::Param>(name.syntax()) {
             has_completions = true;
-            param_completions(&mut res, name.syntax());
+            param_completions(&mut acc, name.syntax());
         }
     }
-    let res = if has_completions { Some(res) } else { None };
+    let res = if has_completions {
+        Some(acc.into())
+    } else {
+        None
+    };
     Ok(res)
 }
 
@@ -60,7 +65,7 @@ pub(crate) fn completions(
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
-fn param_completions(acc: &mut Vec<CompletionItem>, ctx: SyntaxNodeRef) {
+fn param_completions(acc: &mut Completions, ctx: SyntaxNodeRef) {
     let mut params = FxHashMap::default();
     for node in ctx.ancestors() {
         let _ = visitor_ctx(&mut params)

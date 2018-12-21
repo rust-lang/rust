@@ -53,8 +53,8 @@ pub(crate) struct Builder {
 }
 
 impl Builder {
-    pub fn add_to(self, acc: &mut Vec<CompletionItem>) {
-        acc.push(self.build())
+    pub fn add_to(self, acc: &mut Completions) {
+        acc.add(self.build())
     }
 
     pub fn build(self) -> CompletionItem {
@@ -81,7 +81,7 @@ impl Into<CompletionItem> for Builder {
 }
 
 /// Represents an in-progress set of completions being built.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Completions {
     buf: Vec<CompletionItem>,
 }
@@ -89,6 +89,13 @@ pub(crate) struct Completions {
 impl Completions {
     pub(crate) fn add(&mut self, item: impl Into<CompletionItem>) {
         self.buf.push(item.into())
+    }
+    pub(crate) fn add_all<I>(&mut self, items: I)
+    where
+        I: IntoIterator,
+        I::Item: Into<CompletionItem>,
+    {
+        items.into_iter().for_each(|item| self.add(item.into()))
     }
 }
 

@@ -13,12 +13,12 @@ use hir::{
 
 use crate::{
     db::RootDatabase,
-    completion::CompletionItem,
+    completion::{CompletionItem, Completions},
     Cancelable
 };
 
 pub(super) fn completions(
-    acc: &mut Vec<CompletionItem>,
+    acc: &mut Completions,
     db: &RootDatabase,
     module: &hir::Module,
     file: &SourceFileNode,
@@ -117,7 +117,7 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
     None
 }
 
-fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
+fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Completions) {
     let mut shadowed = FxHashSet::default();
     scopes
         .scope_chain(name_ref.syntax())
@@ -130,7 +130,7 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 }
 
 fn complete_path(
-    acc: &mut Vec<CompletionItem>,
+    acc: &mut Completions,
     db: &RootDatabase,
     module: &hir::Module,
     mut path: Path,
@@ -154,7 +154,7 @@ fn complete_path(
     Ok(())
 }
 
-fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
+fn complete_mod_item_snippets(acc: &mut Completions) {
     CompletionItem::new("Test function")
         .lookup_by("tfn")
         .snippet(
@@ -174,26 +174,26 @@ fn complete_expr_keywords(
     file: &SourceFileNode,
     fn_def: ast::FnDef,
     name_ref: ast::NameRef,
-    acc: &mut Vec<CompletionItem>,
+    acc: &mut Completions,
 ) {
-    acc.push(keyword("if", "if $0 {}"));
-    acc.push(keyword("match", "match $0 {}"));
-    acc.push(keyword("while", "while $0 {}"));
-    acc.push(keyword("loop", "loop {$0}"));
+    acc.add(keyword("if", "if $0 {}"));
+    acc.add(keyword("match", "match $0 {}"));
+    acc.add(keyword("while", "while $0 {}"));
+    acc.add(keyword("loop", "loop {$0}"));
 
     if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
         if let Some(if_expr) = find_node_at_offset::<ast::IfExpr>(file.syntax(), off) {
             if if_expr.syntax().range().end() < name_ref.syntax().range().start() {
-                acc.push(keyword("else", "else {$0}"));
-                acc.push(keyword("else if", "else if $0 {}"));
+                acc.add(keyword("else", "else {$0}"));
+                acc.add(keyword("else if", "else if $0 {}"));
             }
         }
     }
     if is_in_loop_body(name_ref) {
-        acc.push(keyword("continue", "continue"));
-        acc.push(keyword("break", "break"));
+        acc.add(keyword("continue", "continue"));
+        acc.add(keyword("break", "break"));
     }
-    acc.extend(complete_return(fn_def, name_ref));
+    acc.add_all(complete_return(fn_def, name_ref));
 }
 
 fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
@@ -252,7 +252,7 @@ fn keyword(kw: &str, snippet: &str) -> CompletionItem {
     CompletionItem::new(kw).snippet(snippet).build()
 }
 
-fn complete_expr_snippets(acc: &mut Vec<CompletionItem>) {
+fn complete_expr_snippets(acc: &mut Completions) {
     CompletionItem::new("pd")
         .snippet("eprintln!(\"$0 = {:?}\", $0);")
         .add_to(acc);
