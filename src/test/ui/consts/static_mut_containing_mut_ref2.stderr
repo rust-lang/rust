@@ -4,6 +4,13 @@ error[E0017]: references in statics may only refer to immutable values
 LL | pub static mut STDERR_BUFFER: () = unsafe { *(&mut STDERR_BUFFER_SPACE) = 42; };
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ statics require immutable values
 
-error: aborting due to previous error
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/static_mut_containing_mut_ref2.rs:5:45
+   |
+LL | pub static mut STDERR_BUFFER: () = unsafe { *(&mut STDERR_BUFFER_SPACE) = 42; };
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0017`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0017, E0019.
+For more information about an error, try `rustc --explain E0017`.
