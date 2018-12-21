@@ -97,21 +97,21 @@ impl ConvWith for TextEdit {
     type Output = Vec<languageserver_types::TextEdit>;
 
     fn conv_with(self, line_index: &LineIndex) -> Vec<languageserver_types::TextEdit> {
-        self.into_atoms()
+        self.as_atoms()
             .into_iter()
             .map_conv_with(line_index)
             .collect()
     }
 }
 
-impl ConvWith for AtomTextEdit {
+impl<'a> ConvWith for &'a AtomTextEdit {
     type Ctx = LineIndex;
     type Output = languageserver_types::TextEdit;
 
     fn conv_with(self, line_index: &LineIndex) -> languageserver_types::TextEdit {
         languageserver_types::TextEdit {
             range: self.delete.conv_with(line_index),
-            new_text: self.insert,
+            new_text: self.insert.clone(),
         }
     }
 }
@@ -199,7 +199,7 @@ impl TryConvWith for SourceChange {
                     .source_file_edits
                     .iter()
                     .find(|it| it.file_id == pos.file_id)
-                    .map(|it| it.edits.as_slice())
+                    .map(|it| it.edit.as_atoms())
                     .unwrap_or(&[]);
                 let line_col = translate_offset_with_edit(&*line_index, pos.offset, edits);
                 let position =
@@ -265,7 +265,12 @@ impl TryConvWith for SourceFileEdit {
             version: None,
         };
         let line_index = world.analysis().file_line_index(self.file_id);
-        let edits = self.edits.into_iter().map_conv_with(&line_index).collect();
+        let edits = self
+            .edit
+            .as_atoms()
+            .iter()
+            .map_conv_with(&line_index)
+            .collect();
         Ok(TextDocumentEdit {
             text_document,
             edits,

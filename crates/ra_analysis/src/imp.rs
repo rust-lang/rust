@@ -520,7 +520,7 @@ impl SourceChange {
     pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
         let file_edit = SourceFileEdit {
             file_id,
-            edits: edit.edit.into_atoms(),
+            edit: edit.edit,
         };
         SourceChange {
             label: label.to_string(),
