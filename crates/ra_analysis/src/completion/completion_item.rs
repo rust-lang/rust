@@ -1,11 +1,13 @@
 #[derive(Debug)]
 pub struct CompletionItem {
-    /// What user sees in pop-up in the UI.
-    pub label: String,
-    /// What string is used for filtering, defaults to label.
-    pub lookup: Option<String>,
-    /// What is inserted, defaults to label.
-    pub snippet: Option<String>,
+    label: String,
+    lookup: Option<String>,
+    snippet: Option<String>,
+}
+
+pub enum InsertText {
+    PlainText { text: String },
+    Snippet { text: String },
 }
 
 impl CompletionItem {
@@ -15,6 +17,26 @@ impl CompletionItem {
             label,
             lookup: None,
             snippet: None,
+        }
+    }
+    /// What user sees in pop-up in the UI.
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+    /// What string is used for filtering.
+    pub fn lookup(&self) -> &str {
+        self.lookup
+            .as_ref()
+            .map(|it| it.as_str())
+            .unwrap_or(self.label())
+    }
+    /// What is inserted.
+    pub fn insert_text(&self) -> InsertText {
+        match &self.snippet {
+            None => InsertText::PlainText {
+                text: self.label.clone(),
+            },
+            Some(it) => InsertText::Snippet { text: it.clone() },
         }
     }
 }

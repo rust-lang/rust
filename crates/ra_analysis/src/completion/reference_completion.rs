@@ -39,25 +39,19 @@ pub(super) fn completions(
             }
 
             let module_scope = module.scope(db)?;
-            acc.extend(
-                module_scope
-                    .entries()
-                    .filter(|(_name, res)| {
-                        // Don't expose this item
-                        match res.import {
-                            None => true,
-                            Some(import) => {
-                                let range = import.range(db, module.source().file_id());
-                                !range.is_subrange(&name_ref.syntax().range())
-                            }
+            module_scope
+                .entries()
+                .filter(|(_name, res)| {
+                    // Don't expose this item
+                    match res.import {
+                        None => true,
+                        Some(import) => {
+                            let range = import.range(db, module.source().file_id());
+                            !range.is_subrange(&name_ref.syntax().range())
                         }
-                    })
-                    .map(|(name, _res)| CompletionItem {
-                        label: name.to_string(),
-                        lookup: None,
-                        snippet: None,
-                    }),
-            );
+                    }
+                })
+                .for_each(|(name, _res)| CompletionItem::new(name.to_string()).add_to(acc));
         }
         NameRefKind::Path(path) => complete_path(acc, db, module, path)?,
         NameRefKind::BareIdentInMod => {

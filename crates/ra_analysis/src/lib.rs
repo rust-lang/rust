@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub use crate::{
-    completion::CompletionItem,
+    completion::{CompletionItem, InsertText},
 };
 pub use ra_editor::{
     FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,

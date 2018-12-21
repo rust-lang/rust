@@ -18,7 +18,7 @@ use crate::{
     Cancelable, FilePosition
 };
 
-pub use crate::completion::completion_item::CompletionItem;
+pub use crate::completion::completion_item::{CompletionItem, InsertText};
 
 pub(crate) fn completions(
     db: &db::RootDatabase,
@@ -109,13 +109,20 @@ mod tests {
 
     use super::*;
 
+    fn is_snippet(completion_item: &CompletionItem) -> bool {
+        match completion_item.insert_text() {
+            InsertText::Snippet { .. } => true,
+            _ => false,
+        }
+    }
+
     fn check_scope_completion(code: &str, expected_completions: &str) {
         let (analysis, position) = single_file_with_position(code);
         let completions = completions(&analysis.imp.db, position)
             .unwrap()
             .unwrap()
             .into_iter()
-            .filter(|c| c.snippet.is_none())
+            .filter(|c| !is_snippet(c))
             .collect::<Vec<_>>();
         assert_eq_dbg(expected_completions, &completions);
     }
@@ -126,7 +133,7 @@ mod tests {
             .unwrap()
             .unwrap()
             .into_iter()
-            .filter(|c| c.snippet.is_some())
+            .filter(is_snippet)
             .collect::<Vec<_>>();
         assert_eq_dbg(expected_completions, &completions);
     }
