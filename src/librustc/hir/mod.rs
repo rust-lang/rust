@@ -2119,7 +2119,7 @@ impl StructField {
 /// Id of the whole enum lives in `Item`.
 ///
 /// For structs: `NodeId` represents an Id of the structure's constructor, so it is not actually
-/// used for `Struct`-structs (but still presents). Structures don't have an analogue of "Id of
+/// used for `Struct`-structs (but still present). Structures don't have an analogue of "Id of
 /// the variant itself" from enum variants.
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
