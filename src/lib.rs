@@ -526,36 +526,10 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         }
     }
 
-    #[inline]
-    fn escape_to_raw(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: OpTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx> {
-        // It is tempting to check the type here, but drop glue does EscapeToRaw
-        // on a raw pointer.
-        // This is deliberately NOT `deref_operand` as we do not want `tag_dereference`
-        // to be called!  That would kill the original tag if we got a raw ptr.
-        let place = ecx.ref_to_mplace(ecx.read_immediate(ptr)?)?;
-        let size = ecx.size_and_align_of_mplace(place)?.map(|(size, _)| size)
-            // for extern types, just cover what we can
-            .unwrap_or_else(|| place.layout.size);
-        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag ||
-            !ecx.machine.validate || size == Size::ZERO
-        {
-            // No tracking, or no retagging. The latter is possible because a dependency of ours
-            // might be called with different flags than we are, so there are `Retag`
-            // statements but we do not want to execute them.
-            Ok(())
-        } else {
-            ecx.escape_to_raw(place, size)
-        }
-    }
-
     #[inline(always)]
     fn retag(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        fn_entry: bool,
-        two_phase: bool,
+        kind: mir::RetagKind,
         place: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
@@ -566,7 +540,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // uninitialized data.
              Ok(())
         } else {
-            ecx.retag(fn_entry, two_phase, place)
+            ecx.retag(kind, place)
         }
     }
 

@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use rustc::ty::{self, layout::Size};
 use rustc::hir::{Mutability, MutMutable, MutImmutable};
+use rustc::mir::RetagKind;
 
 use crate::{
     EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
@@ -550,10 +551,11 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
     }
 
     /// Retag an indidual pointer, returning the retagged version.
+    /// `mutbl` can be `None` to make this a raw pointer.
     fn retag_reference(
         &mut self,
         val: ImmTy<'tcx, Borrow>,
-        mutbl: Mutability,
+        mutbl: Option<Mutability>,
         fn_barrier: bool,
         two_phase: bool,
     ) -> EvalResult<'tcx, Immediate<Borrow>> {
@@ -571,8 +573,9 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // Compute new borrow.
         let time = this.machine.stacked_borrows.increment_clock();
         let new_bor = match mutbl {
-            MutMutable => Borrow::Uniq(time),
-            MutImmutable => Borrow::Shr(Some(time)),
+            Some(MutMutable) => Borrow::Uniq(time),
+            Some(MutImmutable) => Borrow::Shr(Some(time)),
+            None => Borrow::default(),
         };
 
         // Reborrow.
@@ -580,7 +583,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let new_place = place.with_tag(new_bor);
         // Handle two-phase borrows.
         if two_phase {
-            assert!(mutbl == MutMutable, "two-phase shared borrows make no sense");
+            assert!(mutbl == Some(MutMutable), "two-phase shared borrows make no sense");
             // We immediately share it, to allow read accesses
             let two_phase_time = this.machine.stacked_borrows.increment_clock();
             let two_phase_bor = Borrow::Shr(Some(two_phase_time));
@@ -665,35 +668,24 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         Ok(())
     }
 
-    /// The given place may henceforth be accessed through raw pointers.
-    #[inline(always)]
-    fn escape_to_raw(
-        &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.reborrow(place, size, /*fn_barrier*/ false, Borrow::default())?;
-        Ok(())
-    }
-
     fn retag(
         &mut self,
-        fn_entry: bool,
-        two_phase: bool,
+        kind: RetagKind,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
         // Determine mutability and whether to add a barrier.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
-        fn qualify(ty: ty::Ty<'_>, fn_entry: bool) -> Option<(Mutability, bool)> {
+        fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(Option<Mutability>, bool)> {
             match ty.sty {
                 // References are simple
-                ty::Ref(_, _, mutbl) => Some((mutbl, fn_entry)),
+                ty::Ref(_, _, mutbl) => Some((Some(mutbl), kind == RetagKind::FnEntry)),
+                // Raw pointers need to be enabled
+                ty::RawPtr(..) if kind == RetagKind::Raw => Some((None, false)),
                 // Boxes do not get a barrier: Barriers reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
-                ty::Adt(..) if ty.is_box() => Some((MutMutable, false)),
+                ty::Adt(..) if ty.is_box() => Some((Some(MutMutable), false)),
                 _ => None,
             }
         }
@@ -701,23 +693,22 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // We need a visitor to visit all references.  However, that requires
         // a `MemPlace`, so we have a fast path for reference types that
         // avoids allocating.
-        if let Some((mutbl, barrier)) = qualify(place.layout.ty, fn_entry) {
+        if let Some((mutbl, barrier)) = qualify(place.layout.ty, kind) {
             // fast path
             let val = this.read_immediate(this.place_to_op(place)?)?;
-            let val = this.retag_reference(val, mutbl, barrier, two_phase)?;
+            let val = this.retag_reference(val, mutbl, barrier, kind == RetagKind::TwoPhase)?;
             this.write_immediate(val, place)?;
             return Ok(());
         }
         let place = this.force_allocation(place)?;
 
-        let mut visitor = RetagVisitor { ecx: this, fn_entry, two_phase };
+        let mut visitor = RetagVisitor { ecx: this, kind };
         visitor.visit_value(place)?;
 
         // The actual visitor
         struct RetagVisitor<'ecx, 'a, 'mir, 'tcx> {
             ecx: &'ecx mut MiriEvalContext<'a, 'mir, 'tcx>,
-            fn_entry: bool,
-            two_phase: bool,
+            kind: RetagKind,
         }
         impl<'ecx, 'a, 'mir, 'tcx>
             MutValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
@@ -736,9 +727,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             {
                 // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
                 // making it useless.
-                if let Some((mutbl, barrier)) = qualify(place.layout.ty, self.fn_entry) {
+                if let Some((mutbl, barrier)) = qualify(place.layout.ty, self.kind) {
                     let val = self.ecx.read_immediate(place.into())?;
-                    let val = self.ecx.retag_reference(val, mutbl, barrier, self.two_phase)?;
+                    let val = self.ecx.retag_reference(
+                        val,
+                        mutbl,
+                        barrier,
+                        self.kind == RetagKind::TwoPhase
+                    )?;
                     self.ecx.write_immediate(val, place.into())?;
                 }
                 Ok(())
