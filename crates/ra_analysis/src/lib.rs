@@ -72,13 +72,23 @@ struct RemoveFile {
 
 impl fmt::Debug for AnalysisChange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("AnalysisChange")
-            .field("new_roots", &self.new_roots)
-            .field("roots_changed", &self.roots_changed)
-            .field("files_changed", &self.files_changed.len())
-            .field("libraries_added", &self.libraries_added.len())
-            .field("crate_graph", &self.crate_graph)
-            .finish()
+        let mut d = fmt.debug_struct("AnalysisChange");
+        if !self.new_roots.is_empty() {
+            d.field("new_roots", &self.new_roots);
+        }
+        if !self.roots_changed.is_empty() {
+            d.field("roots_changed", &self.roots_changed);
+        }
+        if !self.files_changed.is_empty() {
+            d.field("files_changed", &self.files_changed.len());
+        }
+        if !self.libraries_added.is_empty() {
+            d.field("libraries_added", &self.libraries_added.len());
+        }
+        if !self.crate_graph.is_some() {
+            d.field("crate_graph", &self.crate_graph);
+        }
+        d.finish()
     }
 }
 

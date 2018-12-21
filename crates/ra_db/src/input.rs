@@ -98,6 +98,9 @@ impl CrateGraph {
     pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
         self.arena.get_mut(&from).unwrap().add_dep(name, to)
     }
+    pub fn is_empty(&self) -> bool {
+        self.arena.is_empty()
+    }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.arena[&crate_id].file_id
     }
