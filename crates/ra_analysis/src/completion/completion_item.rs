@@ -7,7 +7,7 @@ pub struct CompletionItem {
     lookup: Option<String>,
     snippet: Option<String>,
     /// Used only internally in test, to check only specific kind of completion.
-    kind: CompletionKind,
+    completion_kind: CompletionKind,
 }
 
 pub enum InsertText {
@@ -34,7 +34,7 @@ impl CompletionItem {
             label,
             lookup: None,
             snippet: None,
-            kind: CompletionKind::Unspecified,
+            completion_kind: CompletionKind::Unspecified,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -65,7 +65,7 @@ pub(crate) struct Builder {
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
-    kind: CompletionKind,
+    completion_kind: CompletionKind,
 }
 
 impl Builder {
@@ -78,7 +78,7 @@ impl Builder {
             label: self.label,
             lookup: self.lookup,
             snippet: self.snippet,
-            kind: self.kind,
+            completion_kind: self.completion_kind,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -90,7 +90,7 @@ impl Builder {
         self
     }
     pub(crate) fn kind(mut self, kind: CompletionKind) -> Builder {
-        self.kind = kind;
+        self.completion_kind = kind;
         self
     }
 }
@@ -154,7 +154,7 @@ impl Completions {
     fn debug_render(&self, kind: CompletionKind) -> String {
         let mut res = String::new();
         for c in self.buf.iter() {
-            if c.kind == kind {
+            if c.completion_kind == kind {
                 if let Some(lookup) = &c.lookup {
                     res.push_str(lookup);
                     res.push_str(&format!(" {:?}", c.label));
