@@ -98,6 +98,9 @@ pub use self::on_disk_cache::OnDiskCache;
 define_queries! { <'tcx>
     Other {
         /// Records the type of every item.
+        [] fn hir_query: HirQuery(CrateNum) -> &'tcx hir::map::Map<'tcx>,
+
+        /// Records the type of every item.
         [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
         /// Maps from the def-id of an item (trait/struct/enum/fn) to its

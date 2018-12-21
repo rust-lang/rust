@@ -133,7 +133,7 @@ impl<'hir> Entry<'hir> {
 
 /// Stores a crate and any number of inlined items from other crates.
 pub struct Forest {
-    krate: Crate,
+    pub(crate) krate: Crate,
     pub dep_graph: DepGraph,
 }
 

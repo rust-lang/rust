@@ -602,6 +602,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::crate_disambiguator<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::hir_query<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "hir_query".into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::crate_hash<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "looking up the hash a crate".into()

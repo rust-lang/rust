@@ -11,6 +11,14 @@ use std::mem;
 use syntax::ast;
 use syntax::attr;
 
+impl<'a> HashStable<StableHashingContext<'a>> for hir::map::Map<'_> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _hcx: &mut StableHashingContext<'a>,
+                                          _hasher: &mut StableHasher<W>) {
+    }
+}
+
 impl<'a> HashStable<StableHashingContext<'a>> for DefId {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,

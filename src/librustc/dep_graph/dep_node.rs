@@ -480,6 +480,7 @@ define_dep_nodes!( <'tcx>
     // table in the tcx (or elsewhere) maps to one of these
     // nodes.
     [] AssociatedItems(DefId),
+    [] HirQuery(CrateNum),
     [] TypeOfItem(DefId),
     [] GenericsOfItem(DefId),
     [] PredicatesOfItem(DefId),

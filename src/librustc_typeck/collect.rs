@@ -63,6 +63,7 @@ pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
+        hir_query,
         type_of,
         generics_of,
         predicates_of,
@@ -1109,6 +1110,11 @@ fn report_assoc_ty_on_inherent_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span:
         E0202,
         "associated types are not allowed in inherent impls"
     );
+}
+
+fn hir_query<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, _: hir::def_id::CrateNum
+) -> &'tcx hir::map::Map<'tcx> {
+    &tcx.hir_map
 }
 
 fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
