@@ -96,6 +96,7 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
 //    'a: 'b + 'c,
 //    T: Clone + Copy + 'static,
 //    Iterator::Item: 'a,
+//    <T as Iterator>::Item: 'a
 // {}
 pub(super) fn opt_where_clause(p: &mut Parser) {
     if !p.at(WHERE_KW) {
@@ -104,7 +105,11 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     let m = p.start();
     p.bump();
     loop {
-        if !(paths::is_path_start(p) || p.current() == LIFETIME || p.current() == FOR_KW) {
+        if !(paths::is_path_start(p)
+            || p.current() == LIFETIME
+            || p.current() == FOR_KW
+            || p.current() == L_ANGLE)
+        {
             break;
         }
         where_predicate(p);
