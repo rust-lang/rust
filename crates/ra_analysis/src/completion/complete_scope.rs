@@ -2,11 +2,11 @@ use rustc_hash::FxHashSet;
 use ra_syntax::TextUnit;
 
 use crate::{
-    completion::{CompletionItem, Completions, CompletionKind::*, SyntaxContext},
+    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
     Cancelable
 };
 
-pub(super) fn complete_scope(acc: &mut Completions, ctx: &SyntaxContext) -> Cancelable<()> {
+pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
     if !ctx.is_trivial_path {
         return Ok(());
     }

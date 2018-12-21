@@ -6,10 +6,10 @@ use ra_syntax::{
 };
 
 use crate::{
-    completion::{SyntaxContext, CompletionItem, Completions, CompletionKind::*},
+    completion::{CompletionContext, CompletionItem, Completions, CompletionKind::*},
 };
 
-pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &SyntaxContext) {
+pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
         return;
     }

@@ -8,14 +8,14 @@ use ra_syntax::{
 use rustc_hash::{FxHashMap};
 
 use crate::{
-    completion::{SyntaxContext, Completions, CompletionKind, CompletionItem},
+    completion::{CompletionContext, Completions, CompletionKind, CompletionItem},
 };
 
 /// Complete repeated parametes, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
-pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &SyntaxContext) {
+pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_param {
         return;
     }

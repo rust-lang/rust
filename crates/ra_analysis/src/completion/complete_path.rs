@@ -1,9 +1,9 @@
 use crate::{
-    completion::{CompletionItem, Completions, CompletionKind::*, SyntaxContext},
+    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
     Cancelable,
 };
 
-pub(super) fn complete_path(acc: &mut Completions, ctx: &SyntaxContext) -> Cancelable<()> {
+pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
     let (path, module) = match (&ctx.path_prefix, &ctx.module) {
         (Some(path), Some(module)) => (path.clone(), module),
         _ => return Ok(()),

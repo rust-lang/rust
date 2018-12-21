@@ -1,8 +1,8 @@
 use crate::{
-    completion::{CompletionItem, Completions, CompletionKind::*, SyntaxContext},
+    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
 };
 
-pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &SyntaxContext) {
+pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path && ctx.enclosing_fn.is_some()) {
         return;
     }
@@ -16,7 +16,7 @@ pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &SyntaxContext) 
         .add_to(acc);
 }
 
-pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &SyntaxContext) {
+pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_new_item {
         return;
     }
