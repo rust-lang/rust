@@ -216,14 +216,21 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     let mut block_l = BLOCK;
     let mut start_l = ptr::null_mut();
     let mut end_l = ptr::null_mut();
-    let mut offsets_l = MaybeUninit::<[u8; BLOCK]>::uninitialized();
+    // Creating a `[MaybeUninit; N]` array by first creating a
+    // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
+    // array does not require initialization.
+    let mut offsets_l: [MaybeUninit<u8>; BLOCK] = unsafe {
+        MaybeUninit::uninitialized().into_inner()
+    };
 
     // The current block on the right side (from `r.sub(block_r)` to `r`).
     let mut r = unsafe { l.add(v.len()) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
     let mut end_r = ptr::null_mut();
-    let mut offsets_r = MaybeUninit::<[u8; BLOCK]>::uninitialized();
+    let mut offsets_r: [MaybeUninit<u8>; BLOCK] = unsafe {
+        MaybeUninit::uninitialized().into_inner()
+    };
 
     // FIXME: When we get VLAs, try creating one array of length `min(v.len(), 2 * BLOCK)` rather
     // than two fixed-size arrays of length `BLOCK`. VLAs might be more cache-efficient.
@@ -262,8 +269,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
-            start_l = offsets_l.as_mut_ptr() as *mut u8;
-            end_l = offsets_l.as_mut_ptr() as *mut u8;
+            start_l = MaybeUninit::first_mut_ptr(&mut offsets_l);
+            end_l = MaybeUninit::first_mut_ptr(&mut offsets_l);
             let mut elem = l;
 
             for i in 0..block_l {
@@ -278,8 +285,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
-            start_r = offsets_r.as_mut_ptr() as *mut u8;
-            end_r = offsets_r.as_mut_ptr() as *mut u8;
+            start_r = MaybeUninit::first_mut_ptr(&mut offsets_r);
+            end_r = MaybeUninit::first_mut_ptr(&mut offsets_r);
             let mut elem = r;
 
             for i in 0..block_r {

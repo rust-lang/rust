@@ -60,6 +60,7 @@
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![no_core]
+#![warn(deprecated_in_future)]
 #![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]

@@ -6,7 +6,7 @@ use ops::{Div, Rem, Sub};
 use str;
 use slice;
 use ptr;
-use mem;
+use mem::MaybeUninit;
 
 #[doc(hidden)]
 trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
@@ -51,7 +51,12 @@ trait GenericRadix {
         // characters for a base 2 number.
         let zero = T::zero();
         let is_nonnegative = x >= zero;
-        let mut buf: [u8; 128] = unsafe { mem::uninitialized() };
+        // Creating a `[MaybeUninit; N]` array by first creating a
+        // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
+        // array does not require initialization.
+        let mut buf: [MaybeUninit<u8>; 128] = unsafe {
+            MaybeUninit::uninitialized().into_inner()
+        };
         let mut curr = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {
@@ -60,7 +65,7 @@ trait GenericRadix {
             for byte in buf.iter_mut().rev() {
                 let n = x % base;               // Get the current place value.
                 x = x / base;                   // Deaccumulate the number.
-                *byte = Self::digit(n.to_u8()); // Store the digit in the buffer.
+                byte.set(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -72,7 +77,7 @@ trait GenericRadix {
             for byte in buf.iter_mut().rev() {
                 let n = zero - (x % base);      // Get the current place value.
                 x = x / base;                   // Deaccumulate the number.
-                *byte = Self::digit(n.to_u8()); // Store the digit in the buffer.
+                byte.set(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -80,7 +85,11 @@ trait GenericRadix {
                 };
             }
         }
-        let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
+        let buf = &buf[curr..];
+        let buf = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(
+            MaybeUninit::first_ptr(buf),
+            buf.len()
+        )) };
         f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
 }
@@ -194,9 +203,14 @@ macro_rules! impl_Display {
                 // convert the negative num to positive by summing 1 to it's 2 complement
                 (!self.$conv_fn()).wrapping_add(1)
             };
-            let mut buf: [u8; 39] = unsafe { mem::uninitialized() };
+            // Creating a `[MaybeUninit; N]` array by first creating a
+            // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
+            // array does not require initialization.
+            let mut buf: [MaybeUninit<u8>; 39] = unsafe {
+                MaybeUninit::uninitialized().into_inner()
+            };
             let mut curr = buf.len() as isize;
-            let buf_ptr = buf.as_mut_ptr();
+            let buf_ptr = MaybeUninit::first_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             unsafe {
