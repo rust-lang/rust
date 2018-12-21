@@ -1,7 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
-    AstNode, SmolStr, SyntaxNodeRef, TextRange,
+    AstNode, SmolStr, SyntaxNodeRef, TextUnit, TextRange,
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
 };
@@ -57,6 +57,48 @@ impl FnScopes {
             self.scopes[scope].parent
         })
     }
+    pub fn scope_chain_for_offset<'a>(
+        &'a self,
+        offset: TextUnit,
+    ) -> impl Iterator<Item = ScopeId> + 'a {
+        let scope = self
+            .scope_for
+            .iter()
+            // find containin scope
+            .min_by_key(|(ptr, _scope)| {
+                (
+                    !(ptr.range().start() <= offset && offset <= ptr.range().end()),
+                    ptr.range().len(),
+                )
+            })
+            .map(|(ptr, scope)| self.adjust(*ptr, *scope, offset));
+
+        generate(scope, move |&scope| self.scopes[scope].parent)
+    }
+    // XXX: during completion, cursor might be outside of any particular
+    // expression. Try to figure out the correct scope...
+    fn adjust(&self, ptr: LocalSyntaxPtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
+        let r = ptr.range();
+        let child_scopes = self
+            .scope_for
+            .iter()
+            .map(|(ptr, scope)| (ptr.range(), scope))
+            .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
+
+        child_scopes
+            .max_by(|(r1, _), (r2, _)| {
+                if r2.is_subrange(&r1) {
+                    std::cmp::Ordering::Greater
+                } else if r1.is_subrange(&r2) {
+                    std::cmp::Ordering::Less
+                } else {
+                    r1.start().cmp(&r2.start())
+                }
+            })
+            .map(|(ptr, scope)| *scope)
+            .unwrap_or(original_scope)
+    }
+
     pub fn resolve_local_name<'a>(&'a self, name_ref: ast::NameRef) -> Option<&'a ScopeEntry> {
         let mut shadowed = FxHashSet::default();
         let ret = self
@@ -144,6 +186,8 @@ impl ScopeEntry {
 }
 
 fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: ScopeId) {
+    // A hack for completion :(
+    scopes.set_scope(block.syntax(), scope);
     for stmt in block.statements() {
         match stmt {
             ast::Stmt::LetStmt(stmt) => {
@@ -165,6 +209,7 @@ fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: Sco
         }
     }
     if let Some(expr) = block.expr() {
+        eprintln!("{:?}", expr);
         scopes.set_scope(expr.syntax(), scope);
         compute_expr_scopes(expr, scopes, scope);
     }
