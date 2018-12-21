@@ -235,59 +235,63 @@ pub unsafe extern "aapcs" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
 }
 
 #[no_mangle]
-#[cfg(any(target_pointer_width = "16", target_pointer_width = "32", target_pointer_width = "64"))]
+#[cfg(any(
+    target_pointer_width = "16",
+    target_pointer_width = "32",
+    target_pointer_width = "64"
+))]
 pub extern "C" fn __clzsi2(mut x: usize) -> usize {
-  // TODO: const this? Requires const if
-  let mut y: usize;
-  let mut n: usize = {
+    // TODO: const this? Requires const if
+    let mut y: usize;
+    let mut n: usize = {
+        #[cfg(target_pointer_width = "64")]
+        {
+            64
+        }
+        #[cfg(target_pointer_width = "32")]
+        {
+            32
+        }
+        #[cfg(target_pointer_width = "16")]
+        {
+            16
+        }
+    };
     #[cfg(target_pointer_width = "64")]
     {
-      64
+        y = x >> 32;
+        if y != 0 {
+            n -= 32;
+            x = y;
+        }
     }
-    #[cfg(target_pointer_width = "32")]
+    #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
     {
-      32
+        y = x >> 16;
+        if y != 0 {
+            n -= 16;
+            x = y;
+        }
     }
-    #[cfg(target_pointer_width = "16")]
-    {
-      16
-    }
-  };
-  #[cfg(target_pointer_width = "64")]
-  {
-    y = x >> 32;
+    y = x >> 8;
     if y != 0 {
-      n -= 32;
-      x = y;
+        n -= 8;
+        x = y;
     }
-  }
-  #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
-  {
-    y = x >> 16;
+    y = x >> 4;
     if y != 0 {
-      n -= 16;
-      x = y;
+        n -= 4;
+        x = y;
     }
-  }
-  y = x >> 8;
-  if y != 0 {
-    n -= 8;
-    x = y;
-  }
-  y = x >> 4;
-  if y != 0 {
-    n -= 4;
-    x = y;
-  }
-  y = x >> 2;
-  if y != 0 {
-    n -= 2;
-    x = y;
-  }
-  y = x >> 1;
-  if y != 0 {
-    n - 2
-  } else {
-    n - x
-  }
+    y = x >> 2;
+    if y != 0 {
+        n -= 2;
+        x = y;
+    }
+    y = x >> 1;
+    if y != 0 {
+        n - 2
+    } else {
+        n - x
+    }
 }
