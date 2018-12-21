@@ -1,11 +1,11 @@
-error[E0512]: transmute called with types of different sizes
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-from-fn-item-types-error.rs:4:13
    |
 LL |     let i = mem::transmute(bar);
    |             ^^^^^^^^^^^^^^
    |
-   = note: source type: unsafe fn() {bar} (0 bits)
-   = note: target type: i8 (8 bits)
+   = note: source type: `unsafe fn() {bar}` (0 bits)
+   = note: target type: `i8` (8 bits)
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:8:13
@@ -27,14 +27,14 @@ LL |     let of = mem::transmute(main);
    = note: target type: std::option::Option<fn()>
    = help: cast with `as` to a pointer instead
 
-error[E0512]: transmute called with types of different sizes
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-from-fn-item-types-error.rs:21:5
    |
 LL |     mem::transmute::<_, u8>(main);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: fn() {main} (0 bits)
-   = note: target type: u8 (8 bits)
+   = note: source type: `fn() {main}` (0 bits)
+   = note: target type: `u8` (8 bits)
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:25:5

@@ -5,7 +5,7 @@ trait Trait<'a> {
 
 fn foo<'a, T: Trait<'a>>(value: T::A) {
     let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: transmute called with types of different sizes
+//~^ ERROR: cannot transmute between types of different sizes, or dependently-sized types
 }
 
 fn main() { }

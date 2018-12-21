@@ -9,7 +9,7 @@ struct ArrayPeano<T: Bar> {
 }
 
 fn foo<T>(a: &ArrayPeano<T>) -> &[T] where T: Bar {
-    unsafe { std::mem::transmute(a) } //~ ERROR transmute called with types of different sizes
+    unsafe { std::mem::transmute(a) } //~ ERROR cannot transmute between types of different sizes
 }
 
 impl Bar for () {

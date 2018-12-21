@@ -1,11 +1,11 @@
-error[E0512]: transmute called with types of different sizes
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/packed-struct-generic-transmute.rs:24:38
    |
 LL |         let oof: Oof<[u8; 5], i32> = mem::transmute(foo);
    |                                      ^^^^^^^^^^^^^^
    |
-   = note: source type: Foo<[u8; 5], i32> (72 bits)
-   = note: target type: Oof<[u8; 5], i32> (96 bits)
+   = note: source type: `Foo<[u8; 5], i32>` (72 bits)
+   = note: target type: `Oof<[u8; 5], i32>` (96 bits)
 
 error: aborting due to previous error
 

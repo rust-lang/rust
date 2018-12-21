@@ -1552,7 +1552,8 @@ fn takes_u8(_: u8) {}
 
 fn main() {
     unsafe { takes_u8(::std::mem::transmute(0u16)); }
-    // error: transmute called with types of different sizes
+    // error: cannot transmute between types of different sizes,
+    //        or dependently-sized types
 }
 ```
 
