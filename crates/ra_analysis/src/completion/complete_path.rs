@@ -9,8 +9,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &SyntaxContext) -> Cance
         _ => return Ok(()),
     };
     let def_id = match module.resolve_path(ctx.db, path)? {
-        None => return Ok(()),
         Some(it) => it,
+        None => return Ok(()),
     };
     let target_module = match def_id.resolve(ctx.db)? {
         hir::Def::Module(it) => it,

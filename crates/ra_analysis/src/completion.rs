@@ -1,10 +1,10 @@
 mod completion_item;
-mod reference_completion;
 
 mod complete_fn_param;
 mod complete_keyword;
 mod complete_snippet;
 mod complete_path;
+mod complete_scope;
 
 use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
@@ -33,26 +33,16 @@ pub(crate) fn completions(
     position: FilePosition,
 ) -> Cancelable<Option<Completions>> {
     let original_file = db.source_file(position.file_id);
-    // Insert a fake ident to get a valid parse tree
-    let file = {
-        let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
-        original_file.reparse(&edit)
-    };
-    let module = ctry!(source_binder::module_from_position(db, position)?);
+    let ctx = ctry!(SyntaxContext::new(db, &original_file, position)?);
 
     let mut acc = Completions::default();
 
-    // First, let's try to complete a reference to some declaration.
-    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        reference_completion::completions(&mut acc, db, &module, &file, name_ref)?;
-    }
-
-    let ctx = ctry!(SyntaxContext::new(db, &original_file, position)?);
     complete_fn_param::complete_fn_param(&mut acc, &ctx);
     complete_keyword::complete_expr_keyword(&mut acc, &ctx);
     complete_snippet::complete_expr_snippet(&mut acc, &ctx);
     complete_snippet::complete_item_snippet(&mut acc, &ctx);
     complete_path::complete_path(&mut acc, &ctx)?;
+    complete_scope::complete_scope(&mut acc, &ctx)?;
 
     Ok(Some(acc))
 }
@@ -62,6 +52,7 @@ pub(crate) fn completions(
 #[derive(Debug)]
 pub(super) struct SyntaxContext<'a> {
     db: &'a db::RootDatabase,
+    offset: TextUnit,
     leaf: SyntaxNodeRef<'a>,
     module: Option<hir::Module>,
     enclosing_fn: Option<ast::FnDef<'a>>,
@@ -88,6 +79,7 @@ impl<'a> SyntaxContext<'a> {
         let mut ctx = SyntaxContext {
             db,
             leaf,
+            offset: position.offset,
             module,
             enclosing_fn: None,
             is_param: false,
