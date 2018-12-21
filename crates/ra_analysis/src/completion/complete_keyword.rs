@@ -5,10 +5,11 @@ use ra_syntax::{
     SyntaxKind::*, SyntaxNodeRef,
 };
 
-use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind};
+use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind, CompletionItemKind};
 
 fn keyword(kw: &str, snippet: &str) -> CompletionItem {
     CompletionItem::new(CompletionKind::Keyword, kw)
+        .kind(CompletionItemKind::Keyword)
         .snippet(snippet)
         .build()
 }

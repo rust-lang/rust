@@ -1,7 +1,9 @@
-use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext, completion_item::Builder};
+use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionItemKind, CompletionContext, completion_item::Builder};
 
 fn snippet(label: &str, snippet: &str) -> Builder {
-    CompletionItem::new(CompletionKind::Snippet, label).snippet(snippet)
+    CompletionItem::new(CompletionKind::Snippet, label)
+        .snippet(snippet)
+        .kind(CompletionItemKind::Keyword)
 }
 
 pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {

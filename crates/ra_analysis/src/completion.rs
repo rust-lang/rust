@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-pub use crate::completion::completion_item::{CompletionItem, InsertText};
+pub use crate::completion::completion_item::{CompletionItem, InsertText, CompletionItemKind};
 
 /// Main entry point for copmletion. We run comletion as a two-phase process.
 ///

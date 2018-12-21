@@ -3,13 +3,13 @@
 /// `CompletionItem`, use `new` method and the `Builder` struct.
 #[derive(Debug)]
 pub struct CompletionItem {
+    /// Used only internally in tests, to check only specific kind of
+    /// completion.
+    completion_kind: CompletionKind,
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
     kind: Option<CompletionItemKind>,
-    /// Used only internally in tests, to check only specific kind of
-    /// completion.
-    completion_kind: CompletionKind,
 }
 
 pub enum InsertText {
@@ -38,10 +38,11 @@ impl CompletionItem {
     pub(crate) fn new(completion_kind: CompletionKind, label: impl Into<String>) -> Builder {
         let label = label.into();
         Builder {
+            completion_kind,
             label,
             lookup: None,
             snippet: None,
-            completion_kind,
+            kind: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -73,10 +74,11 @@ impl CompletionItem {
 /// A helper to make `CompletionItem`s.
 #[must_use]
 pub(crate) struct Builder {
+    completion_kind: CompletionKind,
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
-    completion_kind: CompletionKind,
+    kind: Option<CompletionItemKind>,
 }
 
 impl Builder {
@@ -89,7 +91,7 @@ impl Builder {
             label: self.label,
             lookup: self.lookup,
             snippet: self.snippet,
-            kind: None,
+            kind: self.kind,
             completion_kind: self.completion_kind,
         }
     }
@@ -101,8 +103,8 @@ impl Builder {
         self.snippet = Some(snippet.into());
         self
     }
-    pub(crate) fn kind(mut self, kind: CompletionKind) -> Builder {
-        self.completion_kind = kind;
+    pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
+        self.kind = Some(kind);
         self
     }
 }
