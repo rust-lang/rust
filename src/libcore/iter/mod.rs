@@ -429,6 +429,9 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<<I as Iterator>::Item> { self.iter.nth_back(n) }
+
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
@@ -460,6 +463,9 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
 impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> { self.iter.nth(n) }
 
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
