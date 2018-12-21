@@ -55,6 +55,7 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::Snippet => Snippet,
             CompletionItemKind::Module => Module,
             CompletionItemKind::Function => Function,
+            CompletionItemKind::Binding => Variable,
         }
     }
 }

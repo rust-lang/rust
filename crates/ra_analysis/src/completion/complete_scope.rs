@@ -3,7 +3,7 @@ use ra_syntax::TextUnit;
 
 use crate::{
     Cancelable,
-    completion::{CompletionItem, Completions, CompletionKind, CompletionContext},
+    completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
@@ -46,7 +46,9 @@ fn complete_fn(acc: &mut Completions, scopes: &hir::FnScopes, offset: TextUnit) 
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
         .for_each(|entry| {
-            CompletionItem::new(CompletionKind::Reference, entry.name().to_string()).add_to(acc)
+            CompletionItem::new(CompletionKind::Reference, entry.name().to_string())
+                .kind(CompletionItemKind::Binding)
+                .add_to(acc)
         });
     if scopes.self_param.is_some() {
         CompletionItem::new(CompletionKind::Reference, "self").add_to(acc);

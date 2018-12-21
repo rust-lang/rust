@@ -25,6 +25,7 @@ pub enum CompletionItemKind {
     Keyword,
     Module,
     Function,
+    Binding,
 }
 
 #[derive(Debug, PartialEq, Eq)]
