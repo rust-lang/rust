@@ -81,7 +81,7 @@ fn test_unresolved_module_diagnostic() {
             fix: Some(SourceChange {
                 label: "create module",
                 source_file_edits: [],
-                file_system_edits: [CreateFile { anchor: FileId(1), path: "../foo.rs" }],
+                file_system_edits: [CreateFile { source_root: SourceRootId(0), path: "foo.rs" }],
                 cursor_position: None }) }]"#,
         &diagnostics,
     );

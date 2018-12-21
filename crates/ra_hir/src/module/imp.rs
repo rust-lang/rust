@@ -4,7 +4,7 @@ use ra_syntax::{
     ast::{self, NameOwner},
     SmolStr,
 };
-use relative_path::{RelativePathBuf, RelativePath};
+use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
 use arrayvec::ArrayVec;
 use ra_db::{SourceRoot, SourceRootId, Cancelable, FileId};
@@ -184,11 +184,7 @@ fn resolve_submodule(
         .collect::<Vec<_>>();
     let problem = if points_to.is_empty() {
         Some(Problem::UnresolvedModule {
-            candidate: RelativePath::new("../").join(&if is_dir_owner {
-                file_mod
-            } else {
-                file_dir_mod
-            }),
+            candidate: if is_dir_owner { file_mod } else { file_dir_mod },
         })
     } else {
         None
