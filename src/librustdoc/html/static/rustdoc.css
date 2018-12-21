@@ -611,7 +611,7 @@ a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink {
+.invisible > .srclink, h4 > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
