@@ -4,13 +4,12 @@ mod reference_completion;
 mod complete_fn_param;
 mod complete_keyword;
 mod complete_snippet;
+mod complete_path;
 
 use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
-    algo::{
-        find_leaf_at_offset,
-    },
+    algo::find_leaf_at_offset,
     ast,
     AstNode,
     SyntaxNodeRef,
@@ -48,11 +47,12 @@ pub(crate) fn completions(
         reference_completion::completions(&mut acc, db, &module, &file, name_ref)?;
     }
 
-    let ctx = ctry!(SyntaxContext::new(&original_file, position.offset));
+    let ctx = ctry!(SyntaxContext::new(db, &original_file, position)?);
     complete_fn_param::complete_fn_param(&mut acc, &ctx);
     complete_keyword::complete_expr_keyword(&mut acc, &ctx);
     complete_snippet::complete_expr_snippet(&mut acc, &ctx);
     complete_snippet::complete_item_snippet(&mut acc, &ctx);
+    complete_path::complete_path(&mut acc, &ctx)?;
 
     Ok(Some(acc))
 }
@@ -61,31 +61,44 @@ pub(crate) fn completions(
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
 pub(super) struct SyntaxContext<'a> {
+    db: &'a db::RootDatabase,
     leaf: SyntaxNodeRef<'a>,
+    module: Option<hir::Module>,
     enclosing_fn: Option<ast::FnDef<'a>>,
     is_param: bool,
     /// A single-indent path, like `foo`.
     is_trivial_path: bool,
+    /// If not a trivial, path, the prefix (qualifier).
+    path_prefix: Option<hir::Path>,
     after_if: bool,
     is_stmt: bool,
     /// Something is typed at the "top" level, in module or impl/trait.
     is_new_item: bool,
 }
 
-impl SyntaxContext<'_> {
-    pub(super) fn new(original_file: &SourceFileNode, offset: TextUnit) -> Option<SyntaxContext> {
-        let leaf = find_leaf_at_offset(original_file.syntax(), offset).left_biased()?;
+impl<'a> SyntaxContext<'a> {
+    pub(super) fn new(
+        db: &'a db::RootDatabase,
+        original_file: &'a SourceFileNode,
+        position: FilePosition,
+    ) -> Cancelable<Option<SyntaxContext<'a>>> {
+        let module = source_binder::module_from_position(db, position)?;
+        let leaf =
+            ctry!(find_leaf_at_offset(original_file.syntax(), position.offset).left_biased());
         let mut ctx = SyntaxContext {
+            db,
             leaf,
+            module,
             enclosing_fn: None,
             is_param: false,
             is_trivial_path: false,
+            path_prefix: None,
             after_if: false,
             is_stmt: false,
             is_new_item: false,
         };
-        ctx.fill(original_file, offset);
-        Some(ctx)
+        ctx.fill(original_file, position.offset);
+        Ok(Some(ctx))
     }
 
     fn fill(&mut self, original_file: &SourceFileNode, offset: TextUnit) {
@@ -140,11 +153,13 @@ impl SyntaxContext<'_> {
         };
         if let Some(segment) = ast::PathSegment::cast(parent) {
             let path = segment.parent_path();
-            // if let Some(path) = Path::from_ast(path) {
-            //     if !path.is_ident() {
-            //         return Some(NameRefKind::Path(path));
-            //     }
-            // }
+            if let Some(mut path) = hir::Path::from_ast(path) {
+                if !path.is_ident() {
+                    path.segments.pop().unwrap();
+                    self.path_prefix = Some(path);
+                    return;
+                }
+            }
             if path.qualifier().is_none() {
                 self.is_trivial_path = true;
                 self.enclosing_fn = self

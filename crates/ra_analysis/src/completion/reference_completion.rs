@@ -1,4 +1,4 @@
-use rustc_hash::{FxHashSet};
+use rustc_hash::FxHashSet;
 use ra_syntax::{
     SourceFileNode, AstNode,
     ast,
@@ -6,7 +6,7 @@ use ra_syntax::{
 };
 use hir::{
     self,
-    FnScopes, Def, Path
+    FnScopes, Path
 };
 
 use crate::{
@@ -53,7 +53,7 @@ pub(super) fn completions(
                         .add_to(acc)
                 });
         }
-        NameRefKind::Path(path) => complete_path(acc, db, module, path)?,
+        NameRefKind::Path(_) => (),
         NameRefKind::BareIdentInMod => (),
     }
     Ok(())
@@ -119,33 +119,6 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Completions)
     if scopes.self_param.is_some() {
         CompletionItem::new("self").kind(Reference).add_to(acc);
     }
-}
-
-fn complete_path(
-    acc: &mut Completions,
-    db: &RootDatabase,
-    module: &hir::Module,
-    mut path: Path,
-) -> Cancelable<()> {
-    if path.segments.is_empty() {
-        return Ok(());
-    }
-    path.segments.pop();
-    let def_id = match module.resolve_path(db, path)? {
-        None => return Ok(()),
-        Some(it) => it,
-    };
-    let target_module = match def_id.resolve(db)? {
-        Def::Module(it) => it,
-        _ => return Ok(()),
-    };
-    let module_scope = target_module.scope(db)?;
-    module_scope.entries().for_each(|(name, _res)| {
-        CompletionItem::new(name.to_string())
-            .kind(Reference)
-            .add_to(acc)
-    });
-    Ok(())
 }
 
 #[cfg(test)]
