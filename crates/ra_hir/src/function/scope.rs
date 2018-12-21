@@ -209,7 +209,6 @@ fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: Sco
         }
     }
     if let Some(expr) = block.expr() {
-        eprintln!("{:?}", expr);
         scopes.set_scope(expr.syntax(), scope);
         compute_expr_scopes(expr, scopes, scope);
     }
