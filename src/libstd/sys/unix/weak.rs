@@ -77,3 +77,38 @@ unsafe fn fetch(name: &str) -> usize {
     };
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }
+
+#[cfg(not(target_os = "linux"))]
+macro_rules! syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name: $t),*) -> $ret {
+            use libc;
+            use super::os;
+
+            weak! { fn $name($($t),*) -> $ret }
+
+            if let Some(fun) = $name.get() {
+                fun($($arg_name),*)
+            } else {
+                os::set_errno(libc::ENOSYS);
+                -1
+            }
+        }
+    )
+}
+
+#[cfg(target_os = "linux")]
+macro_rules! syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name:$t),*) -> $ret {
+            // This looks like a hack, but concat_idents only accepts idents
+            // (not paths).
+            use libc::*;
+
+            syscall(
+                concat_idents!(SYS_, $name),
+                $($arg_name as c_long),*
+            ) as $ret
+        }
+    )
+}

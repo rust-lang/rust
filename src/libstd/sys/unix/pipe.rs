@@ -22,7 +22,7 @@ use sys::{cvt, cvt_r};
 pub struct AnonPipe(FileDesc);
 
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
-    weak! { fn pipe2(*mut c_int, c_int) -> c_int }
+    syscall! { fn pipe2(fds: *mut c_int, flags: c_int) -> c_int }
     static INVALID: AtomicBool = ATOMIC_BOOL_INIT;
 
     let mut fds = [0; 2];
@@ -39,22 +39,20 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
        !INVALID.load(Ordering::SeqCst)
     {
 
-        if let Some(pipe) = pipe2.get() {
-            // Note that despite calling a glibc function here we may still
-            // get ENOSYS. Glibc has `pipe2` since 2.9 and doesn't try to
-            // emulate on older kernels, so if you happen to be running on
-            // an older kernel you may see `pipe2` as a symbol but still not
-            // see the syscall.
-            match cvt(unsafe { pipe(fds.as_mut_ptr(), libc::O_CLOEXEC) }) {
-                Ok(_) => {
-                    return Ok((AnonPipe(FileDesc::new(fds[0])),
-                               AnonPipe(FileDesc::new(fds[1]))));
-                }
-                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {
-                    INVALID.store(true, Ordering::SeqCst);
-                }
-                Err(e) => return Err(e),
+        // Note that despite calling a glibc function here we may still
+        // get ENOSYS. Glibc has `pipe2` since 2.9 and doesn't try to
+        // emulate on older kernels, so if you happen to be running on
+        // an older kernel you may see `pipe2` as a symbol but still not
+        // see the syscall.
+        match cvt(unsafe { pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) }) {
+            Ok(_) => {
+                return Ok((AnonPipe(FileDesc::new(fds[0])),
+                            AnonPipe(FileDesc::new(fds[1]))));
             }
+            Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {
+                INVALID.store(true, Ordering::SeqCst);
+            }
+            Err(e) => return Err(e),
         }
     }
     cvt(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
