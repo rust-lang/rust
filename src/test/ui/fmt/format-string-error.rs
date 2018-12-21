@@ -31,7 +31,7 @@ fn main() {
 	{
 
 "###);
-    //~^^ ERROR invalid format string
+    //~^ ERROR invalid format string
     let _ = format!(r###"
 
 

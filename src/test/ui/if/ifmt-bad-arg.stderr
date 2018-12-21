@@ -168,7 +168,9 @@ error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/ifmt-bad-arg.rs:51:15
    |
 LL |     format!("{"); //~ ERROR: expected `'}'` but string was terminated
-   |               ^ expected `'}'` in format string
+   |              -^ expected `'}'` in format string
+   |              |
+   |              because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -207,8 +209,12 @@ LL |         {foo}
 error: invalid format string: expected `'}'`, found `'t'`
   --> $DIR/ifmt-bad-arg.rs:75:1
    |
+LL | ninth number: {
+   |               - because of this opening brace
 LL | tenth number: {}",
    | ^ expected `}` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
 
 error: aborting due to 28 previous errors
 

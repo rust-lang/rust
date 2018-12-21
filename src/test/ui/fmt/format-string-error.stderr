@@ -2,7 +2,9 @@ error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/format-string-error.rs:4:16
    |
 LL |     println!("{");
-   |                ^ expected `'}'` in format string
+   |               -^ expected `'}'` in format string
+   |               |
+   |               because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -34,7 +36,9 @@ error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/format-string-error.rs:13:23
    |
 LL |     let _ = format!("{");
-   |                       ^ expected `'}'` in format string
+   |                      -^ expected `'}'` in format string
+   |                      |
+   |                      because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -50,13 +54,19 @@ error: invalid format string: expected `'}'`, found `'/'`
   --> $DIR/format-string-error.rs:17:23
    |
 LL |     let _ = format!("{/}");
-   |                       ^ expected `}` in format string
+   |                      -^ expected `}` in format string
+   |                      |
+   |                      because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error.rs:19:29
+  --> $DIR/format-string-error.rs:19:35
    |
 LL |     let _ = format!("/n/n/n{/n/n/n");
-   |                             ^ expected `'}'` in format string
+   |                            -      ^ expected `'}'` in format string
+   |                            |
+   |                            because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -64,14 +74,19 @@ error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/format-string-error.rs:25:3
    |
 LL |     {"###);
-   |      ^ expected `'}'` in format string
+   |     -^ expected `'}'` in format string
+   |     |
+   |     because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error.rs:32:1
+  --> $DIR/format-string-error.rs:33:1
    |
+LL |     {
+   |     - because of this opening brace
 LL | 
+LL | "###);
    | ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
