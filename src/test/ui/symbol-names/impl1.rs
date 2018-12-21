@@ -5,7 +5,7 @@ mod foo {
     pub struct Foo { x: u32 }
 
     impl Foo {
-        #[rustc_symbol_name] //~ ERROR _ZN15impl1..foo..Foo3bar
+        #[rustc_symbol_name] //~ ERROR _ZN5impl13foo3Foo3bar
         #[rustc_def_path] //~ ERROR def-path(foo::Foo::bar)
         fn bar() { }
     }

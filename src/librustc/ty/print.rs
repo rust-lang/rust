@@ -2,7 +2,7 @@ use crate::hir::def::Namespace;
 use crate::hir::map::DefPathData;
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
-use crate::ty::subst::{Subst, SubstsRef};
+use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::{keywords, Symbol};
@@ -12,6 +12,7 @@ use syntax::symbol::InternedString;
 
 use std::cell::Cell;
 use std::fmt::{self, Write as _};
+use std::iter;
 use std::ops::Deref;
 
 thread_local! {
@@ -151,8 +152,9 @@ pub trait Printer: Sized {
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Self::Path {
-        self.default_print_def_path(def_id, substs, ns)
+        self.default_print_def_path(def_id, substs, ns, projections)
     }
     #[must_use]
     fn print_impl_path(
@@ -167,12 +169,27 @@ pub trait Printer: Sized {
     #[must_use]
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path;
     #[must_use]
+    fn path_qualified(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Self::Path;
+    #[must_use]
     fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path;
     #[must_use]
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
         path: Self::Path,
         text: &str,
+    ) -> Self::Path;
+    #[must_use]
+    fn path_generic_args(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        path: Self::Path,
+        params: &[ty::GenericParamDef],
+        substs: SubstsRef<'tcx>,
+        ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Self::Path;
 }
 
@@ -193,6 +210,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             DefPathData::EnumVariant(..) |
             DefPathData::Field(..) |
             DefPathData::AnonConst |
+            DefPathData::ConstParam(..) |
             DefPathData::ClosureExpr |
             DefPathData::StructCtor => Namespace::ValueNS,
 
@@ -212,14 +230,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ns: Namespace,
     ) -> String {
         debug!("def_path_str: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
-        if FORCE_ABSOLUTE.with(|force| force.get()) {
-            PrintCx::new(self, AbsolutePathPrinter).print_def_path(def_id, substs, ns)
-        } else {
-            let mut s = String::new();
-            let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
-                .print_def_path(def_id, substs, ns);
-            s
-        }
+        let mut s = String::new();
+        let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
+            .print_def_path(def_id, substs, ns, iter::empty());
+        s
     }
 
     /// Returns a string identifying this `DefId`. This string is
@@ -227,21 +241,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// root, unless with_forced_absolute_paths was used.
     pub fn def_path_str(self, def_id: DefId) -> String {
         let ns = self.guess_def_namespace(def_id);
-        self.def_path_str_with_substs_and_ns(def_id, None, ns)
+        debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
+        let mut s = String::new();
+        let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
+            .print_def_path(def_id, None, ns, iter::empty());
+        s
     }
 
     /// Returns a string identifying this local node-id.
     // FIXME(eddyb) remove in favor of calling `def_path_str` directly.
     pub fn node_path_str(self, id: ast::NodeId) -> String {
         self.def_path_str(self.hir().local_def_id(id))
-    }
-
-    /// Returns a string identifying this `DefId`. This string is
-    /// suitable for user output. It always begins with a crate identifier.
-    pub fn absolute_def_path_str(self, def_id: DefId) -> String {
-        debug!("absolute_def_path_str: def_id={:?}", def_id);
-        let ns = self.guess_def_namespace(def_id);
-        PrintCx::new(self, AbsolutePathPrinter).print_def_path(def_id, None, ns)
     }
 }
 
@@ -251,10 +261,12 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> P::Path {
         debug!("default_print_def_path: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
         let key = self.tcx.def_key(def_id);
         debug!("default_print_def_path: key={:?}", key);
+
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {
                 assert!(key.parent.is_none());
@@ -265,36 +277,46 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                 self.print_impl_path(def_id, substs, ns)
             }
 
-            // Unclear if there is any value in distinguishing these.
-            // Probably eventually (and maybe we would even want
-            // finer-grained distinctions, e.g., between enum/struct).
-            data @ DefPathData::Misc |
-            data @ DefPathData::TypeNs(..) |
-            data @ DefPathData::Trait(..) |
-            data @ DefPathData::TraitAlias(..) |
-            data @ DefPathData::AssocTypeInTrait(..) |
-            data @ DefPathData::AssocTypeInImpl(..) |
-            data @ DefPathData::AssocExistentialInImpl(..) |
-            data @ DefPathData::ValueNs(..) |
-            data @ DefPathData::Module(..) |
-            data @ DefPathData::TypeParam(..) |
-            data @ DefPathData::LifetimeParam(..) |
-            data @ DefPathData::ConstParam(..) |
-            data @ DefPathData::EnumVariant(..) |
-            data @ DefPathData::Field(..) |
-            data @ DefPathData::AnonConst |
-            data @ DefPathData::MacroDef(..) |
-            data @ DefPathData::ClosureExpr |
-            data @ DefPathData::ImplTrait |
-            data @ DefPathData::GlobalMetaData(..) => {
-                let parent_did = self.tcx.parent(def_id).unwrap();
-                let path = self.print_def_path(parent_did, None, ns);
-                self.path_append(path, &data.as_interned_str().as_symbol().as_str())
-            },
+            _ => {
+                let generics = substs.map(|_| self.tcx.generics_of(def_id));
+                let generics_parent = generics.as_ref().and_then(|g| g.parent);
+                let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
+                let path = if let Some(generics_parent_def_id) = generics_parent {
+                    assert_eq!(parent_def_id, generics_parent_def_id);
 
-            DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
-                let parent_def_id = self.tcx.parent(def_id).unwrap();
-                self.print_def_path(parent_def_id, substs, ns)
+                    // FIXME(eddyb) try to move this into the parent's printing
+                    // logic, instead of doing it when printing the child.
+                    let parent_generics = self.tcx.generics_of(parent_def_id);
+                    let parent_has_own_self =
+                        parent_generics.has_self && parent_generics.parent_count == 0;
+                    if let (Some(substs), true) = (substs, parent_has_own_self) {
+                        let trait_ref = ty::TraitRef::new(parent_def_id, substs);
+                        self.path_qualified(trait_ref.self_ty(), Some(trait_ref))
+                    } else {
+                        self.print_def_path(parent_def_id, substs, ns, iter::empty())
+                    }
+                } else {
+                    self.print_def_path(parent_def_id, None, ns, iter::empty())
+                };
+                let path = match key.disambiguated_data.data {
+                    // Skip `::{{constructor}}` on tuple/unit structs.
+                    DefPathData::StructCtor => path,
+
+                    _ => {
+                        self.path_append(
+                            path,
+                            &key.disambiguated_data.data.as_interned_str().as_str(),
+                        )
+                    }
+                };
+
+                if let (Some(generics), Some(substs)) = (generics, substs) {
+                    let has_own_self = generics.has_self && generics.parent_count == 0;
+                    let params = &generics.params[has_own_self as usize..];
+                    self.path_generic_args(path, params, substs, ns, projections)
+                } else {
+                    path
+                }
             }
         }
     }
@@ -335,7 +357,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
-            let path = self.print_def_path(parent_def_id, None, ns);
+            let path = self.print_def_path(parent_def_id, None, ns, iter::empty());
             if let Some(trait_ref) = impl_trait_ref {
                 return self.path_append(path, &format!("<impl {} for {}>", trait_ref, self_ty));
             } else {
@@ -348,7 +370,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
 
         if let Some(trait_ref) = impl_trait_ref {
             // Trait impls.
-            return self.path_impl(&format!("<{} as {}>", self_ty, trait_ref));
+            return self.path_qualified(self_ty, Some(trait_ref));
         }
 
         // Inherent impls. Try to print `Foo::bar` for an inherent
@@ -356,14 +378,10 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
         // anything other than a simple path.
         match self_ty.sty {
             ty::Adt(adt_def, substs) => {
-                // FIXME(eddyb) this should recurse to build the path piecewise.
-                // self.print_def_path(adt_def.did, Some(substs), ns)
-                let mut s = String::new();
-                crate::util::ppaux::parameterized(&mut s, adt_def.did, substs, ns).unwrap();
-                self.path_impl(&s)
+                self.print_def_path(adt_def.did, Some(substs), ns, iter::empty())
             }
 
-            ty::Foreign(did) => self.print_def_path(did, None, ns),
+            ty::Foreign(did) => self.print_def_path(did, None, ns, iter::empty()),
 
             ty::Bool |
             ty::Char |
@@ -375,7 +393,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
             }
 
             _ => {
-                self.path_impl(&format!("<{}>", self_ty))
+                self.path_qualified(self_ty, None)
             }
         }
     }
@@ -429,44 +447,15 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     }
 }
 
-// FIXME(eddyb) remove, alongside `FORCE_ABSOLUTE` and `absolute_def_path_str`.
-struct AbsolutePathPrinter;
-
-impl Printer for AbsolutePathPrinter {
-    type Path = String;
-
-    fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
-        self.tcx.original_crate_name(cnum).to_string()
-    }
-    fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
-        text.to_string()
-    }
-    fn path_append(
-        self: &mut PrintCx<'_, '_, '_, Self>,
-        mut path: Self::Path,
-        text: &str,
-    ) -> Self::Path {
-        if !path.is_empty() {
-            path.push_str("::");
-        }
-        path.push_str(text);
-        path
-    }
-}
-
 pub struct FmtPrinter<F: fmt::Write> {
     pub fmt: F,
 }
 
-impl<F: fmt::Write> FmtPrinter<F> {
+impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
     /// If possible, this returns a global path resolving to `def_id` that is visible
     /// from at least one local module and returns true. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
-    fn try_print_visible_def_path(
-        self: &mut PrintCx<'_, '_, '_, Self>,
-        def_id: DefId,
-        ns: Namespace,
-    ) -> Option<<Self as Printer>::Path> {
+    fn try_print_visible_def_path(&mut self, def_id: DefId) -> Option<P::Path> {
         debug!("try_print_visible_def_path: def_id={:?}", def_id);
 
         // If `def_id` is a direct or injected extern crate, return the
@@ -497,7 +486,7 @@ impl<F: fmt::Write> FmtPrinter<F> {
                 }) => {
                     debug!("try_print_visible_def_path: def_id={:?}", def_id);
                     let path = if !span.is_dummy() {
-                        self.print_def_path(def_id, None, ns)
+                        self.print_def_path(def_id, None, Namespace::TypeNS, iter::empty())
                     } else {
                         self.path_crate(cnum)
                     };
@@ -530,7 +519,7 @@ impl<F: fmt::Write> FmtPrinter<F> {
         }
 
         let visible_parent = visible_parent_map.get(&def_id).cloned()?;
-        let path = self.try_print_visible_def_path(visible_parent, ns)?;
+        let path = self.try_print_visible_def_path(visible_parent)?;
         let actual_parent = self.tcx.parent(def_id);
 
         let data = cur_def_key.disambiguated_data.data;
@@ -593,6 +582,114 @@ impl<F: fmt::Write> FmtPrinter<F> {
         debug!("try_print_visible_def_path: symbol={:?}", symbol);
         Some(self.path_append(path, &symbol))
     }
+
+    pub fn pretty_path_qualified(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> P::Path {
+        write!(self.printer, "<")?;
+        self_ty.print_display(self)?;
+        if let Some(trait_ref) = trait_ref {
+            write!(self.printer, " as ")?;
+            let _ = self.print_def_path(
+                trait_ref.def_id,
+                Some(trait_ref.substs),
+                Namespace::TypeNS,
+                iter::empty(),
+            )?;
+        }
+        write!(self.printer, ">")?;
+        Ok(PrettyPath { empty: false })
+    }
+
+    pub fn pretty_path_generic_args(
+        &mut self,
+        path: P::Path,
+        params: &[ty::GenericParamDef],
+        substs: SubstsRef<'tcx>,
+        ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+    ) -> P::Path {
+        let path = path?;
+
+        let mut empty = true;
+        let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
+            if empty {
+                empty = false;
+                write!(cx.printer, "{}", start)
+            } else {
+                write!(cx.printer, "{}", cont)
+            }
+        };
+
+        let start = if ns == Namespace::ValueNS { "::<" } else { "<" };
+
+        // Don't print any regions if they're all erased.
+        let print_regions = params.iter().any(|param| {
+            match substs[param.index as usize].unpack() {
+                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                _ => false,
+            }
+        });
+
+        // Don't print args that are the defaults of their respective parameters.
+        let num_supplied_defaults = if self.is_verbose {
+            0
+        } else {
+            params.iter().rev().take_while(|param| {
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => false,
+                    ty::GenericParamDefKind::Type { has_default, .. } => {
+                        has_default && substs[param.index as usize] == Kind::from(
+                            self.tcx.type_of(param.def_id).subst(self.tcx, substs)
+                        )
+                    }
+                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
+                }
+            }).count()
+        };
+
+        for param in &params[..params.len() - num_supplied_defaults] {
+            match substs[param.index as usize].unpack() {
+                UnpackedKind::Lifetime(region) => {
+                    if !print_regions {
+                        continue;
+                    }
+                    start_or_continue(self, start, ", ")?;
+                    if !region.display_outputs_anything(self) {
+                        // This happens when the value of the region
+                        // parameter is not easily serialized. This may be
+                        // because the user omitted it in the first place,
+                        // or because it refers to some block in the code,
+                        // etc. I'm not sure how best to serialize this.
+                        write!(self.printer, "'_")?;
+                    } else {
+                        region.print_display(self)?;
+                    }
+                }
+                UnpackedKind::Type(ty) => {
+                    start_or_continue(self, start, ", ")?;
+                    ty.print_display(self)?;
+                }
+                UnpackedKind::Const(ct) => {
+                    start_or_continue(self, start, ", ")?;
+                    ct.print_display(self)?;
+                }
+            }
+        }
+
+        for projection in projections {
+            start_or_continue(self, start, ", ")?;
+            write!(self.printer, "{}=",
+                   self.tcx.associated_item(projection.item_def_id).ident)?;
+            projection.ty.print_display(self)?;
+        }
+
+        start_or_continue(self, "", ">")?;
+
+        Ok(path)
+    }
 }
 
 impl<F: fmt::Write> fmt::Write for FmtPrinter<F> {
@@ -609,9 +706,27 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Self::Path {
-        self.try_print_visible_def_path(def_id, ns)
-            .unwrap_or_else(|| self.default_print_def_path(def_id, substs, ns))
+        // FIXME(eddyb) avoid querying `tcx.generics_of`
+        // both here and in `default_print_def_path`.
+        let generics = substs.map(|_| self.tcx.generics_of(def_id));
+        if // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
+            !FORCE_ABSOLUTE.with(|force| force.get()) &&
+            generics.as_ref().and_then(|g| g.parent).is_none() {
+            if let Some(path) = self.try_print_visible_def_path(def_id) {
+                let path = if let (Some(generics), Some(substs)) = (generics, substs) {
+                    let has_own_self = generics.has_self && generics.parent_count == 0;
+                    let params = &generics.params[has_own_self as usize..];
+                    self.path_generic_args(path, params, substs, ns, projections)
+                } else {
+                    path
+                };
+                return path;
+            }
+        }
+
+        self.default_print_def_path(def_id, substs, ns, projections)
     }
     fn print_impl_path(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
@@ -621,7 +736,9 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
     ) -> Self::Path {
         // Always use types for non-local impls, where types are always
         // available, and filename/line-number is mostly uninteresting.
-        let use_types = !impl_def_id.is_local() || {
+        let use_types = // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
+            FORCE_ABSOLUTE.with(|force| force.get()) ||
+            !impl_def_id.is_local() || {
             // Otherwise, use filename/line-number if forced.
             let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
             !force_no_types
@@ -632,7 +749,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             // pretty printing some span information. This should
             // only occur very early in the compiler pipeline.
             let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
-            let path = self.print_def_path(parent_def_id, None, ns);
+            let path = self.print_def_path(parent_def_id, None, ns, iter::empty());
             let span = self.tcx.def_span(impl_def_id);
             return self.path_append(path, &format!("<impl at {:?}>", span));
         }
@@ -641,6 +758,11 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
+        // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
+        if FORCE_ABSOLUTE.with(|force| force.get()) {
+            write!(self.printer, "{}", self.tcx.original_crate_name(cnum))?;
+            return Ok(PrettyPath { empty: false });
+        }
         if cnum == LOCAL_CRATE {
             if self.tcx.sess.rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
@@ -654,6 +776,13 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             write!(self.printer, "{}", self.tcx.crate_name(cnum))?;
             Ok(PrettyPath { empty: false })
         }
+    }
+    fn path_qualified(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Self::Path {
+        self.pretty_path_qualified(self_ty, trait_ref)
     }
     fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
         write!(self.printer, "{}", text)?;
@@ -677,6 +806,16 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         }
         write!(self.printer, "{}", text)?;
         Ok(PrettyPath { empty: false })
+    }
+    fn path_generic_args(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        path: Self::Path,
+        params: &[ty::GenericParamDef],
+        substs: SubstsRef<'tcx>,
+        ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+    ) -> Self::Path {
+        self.pretty_path_generic_args(path, params, substs, ns, projections)
     }
 }
 

@@ -450,8 +450,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
                 let exp_path = self.tcx.def_path_str(did1);
                 let found_path = self.tcx.def_path_str(did2);
-                let exp_abs_path = self.tcx.absolute_def_path_str(did1);
-                let found_abs_path = self.tcx.absolute_def_path_str(did2);
+                // HACK(eddyb) switch form `with_forced_absolute_paths`
+                // to a custom implementation of `ty::print::Printer`.
+                let (exp_abs_path, found_abs_path) = ty::print::with_forced_absolute_paths(|| {
+                    (self.tcx.def_path_str(did1), self.tcx.def_path_str(did2))
+                });
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
                 if exp_path == found_path || exp_abs_path == found_abs_path {

@@ -1,4 +1,4 @@
-error: symbol-name(_ZN15impl1..foo..Foo3bar17hc487d6ec13fe9124E)
+error: symbol-name(_ZN5impl13foo3Foo3bar17hc487d6ec13fe9124E)
   --> $DIR/impl1.rs:8:9
    |
 LL |         #[rustc_symbol_name]

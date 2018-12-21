@@ -39,7 +39,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
-use std::iter::{FromIterator, once};
+use std::iter::{self, FromIterator, once};
 use std::rc::Rc;
 use std::str::FromStr;
 use std::cell::RefCell;
@@ -4235,6 +4235,18 @@ where F: Fn(DefId) -> Def {
         fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
             vec![self.tcx.original_crate_name(cnum).to_string()]
         }
+        fn path_qualified(
+            self: &mut PrintCx<'_, '_, 'tcx, Self>,
+            self_ty: Ty<'tcx>,
+            trait_ref: Option<ty::TraitRef<'tcx>>,
+        ) -> Self::Path {
+            // This shouldn't ever be needed, but just in case:
+            if let Some(trait_ref) = trait_ref {
+                vec![format!("{:?}", trait_ref)]
+            } else {
+                vec![format!("<{}>", self_ty)]
+            }
+        }
         fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
             vec![text.to_string()]
         }
@@ -4246,10 +4258,20 @@ where F: Fn(DefId) -> Def {
             path.push(text.to_string());
             path
         }
+        fn path_generic_args(
+            self: &mut PrintCx<'_, '_, 'tcx, Self>,
+            path: Self::Path,
+            _params: &[ty::GenericParamDef],
+            _substs: SubstsRef<'tcx>,
+            _ns: Namespace,
+            _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+        ) -> Self::Path {
+            path
+        }
     }
 
     let names = PrintCx::new(tcx, AbsolutePathPrinter)
-        .print_def_path(def_id, None, Namespace::TypeNS);
+        .print_def_path(def_id, None, Namespace::TypeNS, iter::empty());
 
     hir::Path {
         span: DUMMY_SP,

@@ -93,7 +93,7 @@ use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::print::{PrintCx, Printer};
+use rustc::ty::print::{PrettyPath, PrettyPrinter, PrintCx, Printer};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -106,8 +106,9 @@ use syntax_pos::symbol::Symbol;
 
 use log::debug;
 
-use std::fmt::Write;
-use std::mem::discriminant;
+use std::fmt::{self, Write};
+use std::iter;
+use std::mem::{self, discriminant};
 
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
@@ -225,9 +226,9 @@ fn get_symbol_hash<'a, 'tcx>(
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     ty::print::with_forced_absolute_paths(|| {
-        PrintCx::new(tcx, SymbolPathPrinter)
-            .print_def_path(def_id, None, Namespace::ValueNS)
-            .into_interned()
+        let mut cx = PrintCx::new(tcx, SymbolPath::new(tcx));
+        let _ = cx.print_def_path(def_id, None, Namespace::ValueNS, iter::empty());
+        cx.printer.into_interned()
     })
 }
 
@@ -323,7 +324,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     let mut buf = SymbolPath::from_interned(tcx.def_symbol_name(def_id), tcx);
 
     if instance.is_vtable_shim() {
-        buf.push("{{vtable-shim}}");
+        let _ = buf.write_str("{{vtable-shim}}");
     }
 
     buf.finish(hash)
@@ -347,6 +348,12 @@ struct SymbolPath {
     result: String,
     temp_buf: String,
     strict_naming: bool,
+
+    // When `true`, `finalize_pending_component` is a noop.
+    // This is needed when recursing into `path_qualified`,
+    // or `path_generic_args`, as any nested paths are
+    // logically within one component.
+    keep_within_component: bool,
 }
 
 impl SymbolPath {
@@ -355,6 +362,7 @@ impl SymbolPath {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
             strict_naming: tcx.has_strict_asm_symbol_naming(),
+            keep_within_component: false,
         };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
@@ -365,109 +373,139 @@ impl SymbolPath {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
             strict_naming: tcx.has_strict_asm_symbol_naming(),
+            keep_within_component: false,
         };
         result.result.push_str(&symbol.as_str());
         result
     }
 
-    fn into_interned(self) -> ty::SymbolName {
+    fn into_interned(mut self) -> ty::SymbolName {
+        self.finalize_pending_component();
         ty::SymbolName {
             name: Symbol::intern(&self.result).as_interned_str(),
         }
     }
 
-    fn push(&mut self, text: &str) {
-        self.temp_buf.clear();
-        let need_underscore = sanitize(&mut self.temp_buf, text, self.strict_naming);
-        let _ = write!(
-            self.result,
-            "{}",
-            self.temp_buf.len() + (need_underscore as usize)
-        );
-        if need_underscore {
-            self.result.push('_');
+    fn finalize_pending_component(&mut self) {
+        if !self.keep_within_component && !self.temp_buf.is_empty() {
+            let _ = write!(self.result, "{}{}", self.temp_buf.len(), self.temp_buf);
+            self.temp_buf.clear();
         }
-        self.result.push_str(&self.temp_buf);
     }
 
     fn finish(mut self, hash: u64) -> String {
+        self.finalize_pending_component();
         // E = end name-sequence
         let _ = write!(self.result, "17h{:016x}E", hash);
         self.result
     }
 }
 
-struct SymbolPathPrinter;
+// HACK(eddyb) this relies on using the `fmt` interface to get
+// `PrettyPrinter` aka pretty printing of e.g. types in paths,
+// symbol names should have their own printing machinery.
 
-impl Printer for SymbolPathPrinter {
-    type Path = SymbolPath;
+impl Printer for SymbolPath {
+    type Path = Result<PrettyPath, fmt::Error>;
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
-        let mut path = SymbolPath::new(self.tcx);
-        path.push(&self.tcx.original_crate_name(cnum).as_str());
-        path
+        self.printer.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
+        Ok(PrettyPath { empty: false })
+    }
+    fn path_qualified(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Self::Path {
+        let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
+        let r = self.pretty_path_qualified(self_ty, trait_ref);
+        self.printer.keep_within_component = kept_within_component;
+        r
     }
     fn path_impl(self: &mut PrintCx<'_, '_, '_, Self>, text: &str) -> Self::Path {
-        let mut path = SymbolPath::new(self.tcx);
-        path.push(text);
-        path
+        self.printer.write_str(text)?;
+        Ok(PrettyPath { empty: false })
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
-        mut path: Self::Path,
+        _: Self::Path,
         text: &str,
     ) -> Self::Path {
-        path.push(text);
-        path
+        self.printer.finalize_pending_component();
+        self.printer.write_str(text)?;
+        Ok(PrettyPath { empty: false })
+    }
+    fn path_generic_args(
+        self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        path: Self::Path,
+        params: &[ty::GenericParamDef],
+        substs: SubstsRef<'tcx>,
+        ns: Namespace,
+        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+    ) -> Self::Path {
+        let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
+        let r = self.pretty_path_generic_args(path, params, substs, ns, projections);
+        self.printer.keep_within_component = kept_within_component;
+        r
     }
 }
 
-// Name sanitation. LLVM will happily accept identifiers with weird names, but
-// gas doesn't!
-// gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
-// NVPTX assembly has more strict naming rules than gas, so additionally, dots
-// are replaced with '$' there.
-//
-// returns true if an underscore must be added at the start
-fn sanitize(result: &mut String, s: &str, strict_naming: bool) -> bool {
-    for c in s.chars() {
-        match c {
-            // Escape these with $ sequences
-            '@' => result.push_str("$SP$"),
-            '*' => result.push_str("$BP$"),
-            '&' => result.push_str("$RF$"),
-            '<' => result.push_str("$LT$"),
-            '>' => result.push_str("$GT$"),
-            '(' => result.push_str("$LP$"),
-            ')' => result.push_str("$RP$"),
-            ',' => result.push_str("$C$"),
+impl PrettyPrinter for SymbolPath {}
 
-            '-' | ':' | '.' if strict_naming => {
-                // NVPTX doesn't support these characters in symbol names.
-                result.push('$')
+impl fmt::Write for SymbolPath {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        // Name sanitation. LLVM will happily accept identifiers with weird names, but
+        // gas doesn't!
+        // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
+        // NVPTX assembly has more strict naming rules than gas, so additionally, dots
+        // are replaced with '$' there.
+
+        for c in s.chars() {
+            if self.temp_buf.is_empty() {
+                match c {
+                    'a'..='z' | 'A'..='Z' | '_' => {}
+                    _ => {
+                        // Underscore-qualify anything that didn't start as an ident.
+                        self.temp_buf.push('_');
+                    }
+                }
             }
+            match c {
+                // Escape these with $ sequences
+                '@' => self.temp_buf.push_str("$SP$"),
+                '*' => self.temp_buf.push_str("$BP$"),
+                '&' => self.temp_buf.push_str("$RF$"),
+                '<' => self.temp_buf.push_str("$LT$"),
+                '>' => self.temp_buf.push_str("$GT$"),
+                '(' => self.temp_buf.push_str("$LP$"),
+                ')' => self.temp_buf.push_str("$RP$"),
+                ',' => self.temp_buf.push_str("$C$"),
 
-            // '.' doesn't occur in types and functions, so reuse it
-            // for ':' and '-'
-            '-' | ':' => result.push('.'),
+                '-' | ':' | '.' if self.strict_naming => {
+                    // NVPTX doesn't support these characters in symbol names.
+                    self.temp_buf.push('$')
+                }
 
-            // These are legal symbols
-            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => result.push(c),
+                // '.' doesn't occur in types and functions, so reuse it
+                // for ':' and '-'
+                '-' | ':' => self.temp_buf.push('.'),
 
-            _ => {
-                result.push('$');
-                for c in c.escape_unicode().skip(1) {
-                    match c {
-                        '{' => {}
-                        '}' => result.push('$'),
-                        c => result.push(c),
+                // These are legal symbols
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => self.temp_buf.push(c),
+
+                _ => {
+                    self.temp_buf.push('$');
+                    for c in c.escape_unicode().skip(1) {
+                        match c {
+                            '{' => {}
+                            '}' => self.temp_buf.push('$'),
+                            c => self.temp_buf.push(c),
+                        }
                     }
                 }
             }
         }
-    }
 
-    // Underscore-qualify anything that didn't start as an ident.
-    !result.is_empty() && result.as_bytes()[0] != '_' as u8
-        && !(result.as_bytes()[0] as char).is_xid_start()
+        Ok(())
+    }
 }

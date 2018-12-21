@@ -1,8 +1,7 @@
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
-use crate::hir::map::definitions::DefPathData;
 use crate::middle::region;
-use crate::ty::subst::{self, Kind, Subst, SubstsRef, UnpackedKind};
+use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
 use crate::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use crate::ty::{Bool, Char, Adt};
 use crate::ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
@@ -10,7 +9,7 @@ use crate::ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use crate::ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use crate::ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
 use crate::ty::{self, ParamConst, Ty, TypeFoldable};
-use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print};
+use crate::ty::print::{FmtPrinter, PrettyPrinter, PrintCx, Print, Printer};
 use crate::mir::interpret::ConstValue;
 
 use std::cell::Cell;
@@ -284,130 +283,6 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
         Ok(())
     }
 
-    fn parameterized(
-        &mut self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
-        ns: Namespace,
-        projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
-    ) -> fmt::Result {
-        let key = self.tcx.def_key(def_id);
-        let generics = self.tcx.generics_of(def_id);
-
-        if let Some(parent_def_id) = generics.parent {
-            assert_eq!(parent_def_id, DefId { index: key.parent.unwrap(), ..def_id });
-
-            let parent_generics = self.tcx.generics_of(parent_def_id);
-            let parent_has_own_self =
-                parent_generics.has_self && parent_generics.parent_count == 0;
-            if parent_has_own_self {
-                print!(self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
-                self.parameterized(parent_def_id, substs, Namespace::TypeNS, iter::empty())?;
-                print!(self, write(">"))?;
-            } else {
-                self.parameterized(parent_def_id, substs, ns, iter::empty())?;
-            }
-
-            // Skip `::{{constructor}}` on tuple/unit structs.
-            match key.disambiguated_data.data {
-                DefPathData::StructCtor => {}
-
-                _ => {
-                    print!(self, write("::{}", key.disambiguated_data.data.as_interned_str()))?;
-                }
-            }
-        } else {
-            // FIXME(eddyb) recurse through printing a path via `self`, instead
-            // instead of using the `tcx` method that produces a `String`.
-            print!(self, write("{}",
-                self.tcx.def_path_str_with_substs_and_ns(def_id, Some(substs), ns)))?;
-
-            // For impls, the above call already prints relevant generics args.
-            if let DefPathData::Impl = key.disambiguated_data.data {
-                return Ok(());
-            }
-        }
-
-        let mut empty = true;
-        let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
-            if empty {
-                empty = false;
-                print!(cx, write("{}", start))
-            } else {
-                print!(cx, write("{}", cont))
-            }
-        };
-
-        let start = if ns == Namespace::ValueNS { "::<" } else { "<" };
-
-        let has_own_self = generics.has_self && generics.parent_count == 0;
-        let params = &generics.params[has_own_self as usize..];
-
-        // Don't print any regions if they're all erased.
-        let print_regions = params.iter().any(|param| {
-            match substs[param.index as usize].unpack() {
-                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
-                _ => false,
-            }
-        });
-
-        // Don't print args that are the defaults of their respective parameters.
-        let num_supplied_defaults = if self.is_verbose {
-            0
-        } else {
-            params.iter().rev().take_while(|param| {
-                match param.kind {
-                    ty::GenericParamDefKind::Lifetime => false,
-                    ty::GenericParamDefKind::Type { has_default, .. } => {
-                        has_default && substs[param.index as usize] == Kind::from(
-                            self.tcx.type_of(param.def_id).subst(self.tcx, substs)
-                        )
-                    }
-                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
-                }
-            }).count()
-        };
-
-        for param in &params[..params.len() - num_supplied_defaults] {
-            match substs[param.index as usize].unpack() {
-                UnpackedKind::Lifetime(region) => {
-                    if !print_regions {
-                        continue;
-                    }
-                    start_or_continue(self, start, ", ")?;
-                    if !region.display_outputs_anything(self) {
-                        // This happens when the value of the region
-                        // parameter is not easily serialized. This may be
-                        // because the user omitted it in the first place,
-                        // or because it refers to some block in the code,
-                        // etc. I'm not sure how best to serialize this.
-                        print!(self, write("'_"))?;
-                    } else {
-                        region.print_display(self)?;
-                    }
-                }
-                UnpackedKind::Type(ty) => {
-                    start_or_continue(self, start, ", ")?;
-                    ty.print_display(self)?;
-                }
-                UnpackedKind::Const(ct) => {
-                    start_or_continue(self, start, ", ")?;
-                    ct.print_display(self)?;
-                }
-            }
-        }
-
-        for projection in projections {
-            start_or_continue(self, start, ", ")?;
-            print!(self,
-                    write("{}=",
-                            self.tcx.associated_item(projection.item_def_id).ident),
-                    print_display(projection.ty))?;
-        }
-
-        start_or_continue(self, "", ">")
-    }
-
     fn in_binder<T>(&mut self, value: &ty::Binder<T>) -> fmt::Result
         where T: Print<'tcx, P, Output = fmt::Result> + TypeFoldable<'tcx>
     {
@@ -490,7 +365,8 @@ pub fn parameterized<F: fmt::Write>(
 ) -> fmt::Result {
     PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
         let substs = cx.tcx.lift(&substs).expect("could not lift for printing");
-        cx.parameterized(did, substs, ns, iter::empty())
+        let _ = cx.print_def_path(did, Some(substs), ns, iter::empty())?;
+        Ok(())
     })
 }
 
@@ -508,7 +384,12 @@ define_print! {
                     if let Tuple(ref args) = principal.substs.type_at(0).sty {
                         let mut projections = self.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
-                            print!(cx, write("{}", cx.tcx.def_path_str(principal.def_id)))?;
+                            let _ = cx.print_def_path(
+                                principal.def_id,
+                                None,
+                                Namespace::TypeNS,
+                                iter::empty(),
+                            )?;
                             cx.fn_sig(args, false, proj.ty)?;
                             resugared_principal = true;
                         }
@@ -519,9 +400,9 @@ define_print! {
                     // Use a type that can't appear in defaults of type parameters.
                     let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
                     let principal = principal.with_self_ty(cx.tcx, dummy_self);
-                    cx.parameterized(
+                    let _ = cx.print_def_path(
                         principal.def_id,
-                        principal.substs,
+                        Some(principal.substs),
                         Namespace::TypeNS,
                         self.projection_bounds(),
                     )?;
@@ -530,8 +411,10 @@ define_print! {
             }
 
             // Builtin bounds.
+            // FIXME(eddyb) avoid printing twice (needed to ensure
+            // that the auto traits are sorted *and* printed via cx).
             let mut auto_traits: Vec<_> = self.auto_traits().map(|did| {
-                cx.tcx.def_path_str(did)
+                (cx.tcx.def_path_str(did), did)
             }).collect();
 
             // The auto traits come ordered by `DefPathHash`. While
@@ -543,13 +426,18 @@ define_print! {
             // output, sort the auto-traits alphabetically.
             auto_traits.sort();
 
-            for auto_trait in auto_traits {
+            for (_, def_id) in auto_traits {
                 if !first {
                     print!(cx, write(" + "))?;
                 }
                 first = false;
 
-                print!(cx, write("{}", auto_trait))?;
+                let _ = cx.print_def_path(
+                    def_id,
+                    None,
+                    Namespace::TypeNS,
+                    iter::empty(),
+                )?;
             }
 
             Ok(())
@@ -575,7 +463,13 @@ impl fmt::Debug for ty::GenericParamDef {
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
-            print!(cx, write("{}", cx.tcx.def_path_str(self.def_id)))
+            let _ = cx.print_def_path(
+                self.def_id,
+                None,
+                Namespace::TypeNS,
+                iter::empty(),
+            )?;
+            Ok(())
         })
     }
 }
@@ -583,7 +477,13 @@ impl fmt::Debug for ty::TraitDef {
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         PrintCx::with(FmtPrinter { fmt: f }, |mut cx| {
-            print!(cx, write("{}", cx.tcx.def_path_str(self.did)))
+            let _ = cx.print_def_path(
+                self.did,
+                None,
+                Namespace::TypeNS,
+                iter::empty(),
+            )?;
+            Ok(())
         })
     }
 }
@@ -645,10 +545,10 @@ define_print! {
         display {
             let dummy_self = cx.tcx.mk_infer(ty::FreshTy(0));
 
-            let trait_ref = *ty::Binder::bind(*self)
+            ty::Binder::bind(*self)
                 .with_self_ty(cx.tcx, dummy_self)
-                .skip_binder();
-            cx.parameterized(trait_ref.def_id, trait_ref.substs, Namespace::TypeNS, iter::empty())
+                .skip_binder()
+                .print_display(cx)
         }
         debug {
             self.print_display(cx)
@@ -874,7 +774,8 @@ define_print! {
 //
 // NB: this must be kept in sync with the printing logic above.
 impl ty::RegionKind {
-    fn display_outputs_anything<P>(&self, cx: &mut PrintCx<'_, '_, '_, P>) -> bool {
+    // HACK(eddyb) `pub(crate)` only for `ty::print`.
+    pub(crate) fn display_outputs_anything<P>(&self, cx: &mut PrintCx<'_, '_, '_, P>) -> bool {
         if cx.is_verbose {
             return true;
         }
@@ -1097,16 +998,17 @@ define_print_multi! {
 define_print! {
     ('tcx) ty::TraitRef<'tcx>, (self, cx) {
         display {
-            cx.parameterized(self.def_id, self.substs, Namespace::TypeNS, iter::empty())
+            let _ = cx.print_def_path(
+                self.def_id,
+                Some(self.substs),
+                Namespace::TypeNS,
+                iter::empty(),
+            )?;
+            Ok(())
         }
         debug {
-            print!(cx,
-                write("<"),
-                print(self.self_ty()),
-                write(" as "),
-                print_display(self),
-                write(">")
-            )
+            let _ = cx.path_qualified(self.self_ty(), Some(*self))?;
+            Ok(())
         }
     }
 }
@@ -1152,7 +1054,12 @@ define_print! {
                 FnDef(def_id, substs) => {
                     let sig = cx.tcx.fn_sig(def_id).subst(cx.tcx, substs);
                     print!(cx, print(sig), write(" {{"))?;
-                    cx.parameterized(def_id, substs, Namespace::ValueNS, iter::empty())?;
+                    let _ = cx.print_def_path(
+                        def_id,
+                        Some(substs),
+                        Namespace::ValueNS,
+                        iter::empty(),
+                    )?;
                     print!(cx, write("}}"))
                 }
                 FnPtr(ref bare_fn) => {
@@ -1175,7 +1082,13 @@ define_print! {
                     }
                 }
                 Adt(def, substs) => {
-                    cx.parameterized(def.did, substs, Namespace::TypeNS, iter::empty())
+                    let _ = cx.print_def_path(
+                        def.did,
+                        Some(substs),
+                        Namespace::TypeNS,
+                        iter::empty(),
+                    )?;
+                    Ok(())
                 }
                 Dynamic(data, r) => {
                     let print_r = r.display_outputs_anything(cx);
@@ -1190,12 +1103,13 @@ define_print! {
                     Ok(())
                 }
                 Foreign(def_id) => {
-                    cx.parameterized(
+                    let _ = cx.print_def_path(
                         def_id,
-                        subst::InternalSubsts::empty(),
+                        None,
                         Namespace::TypeNS,
                         iter::empty(),
-                    )
+                    )?;
+                    Ok(())
                 }
                 Projection(ref data) => data.print(cx),
                 UnnormalizedProjection(ref data) => {
@@ -1215,7 +1129,7 @@ define_print! {
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         print!(cx, write("{}", name))?;
                         let mut substs = substs.iter();
-                        // FIXME(eddyb) print this with `parameterized`.
+                        // FIXME(eddyb) print this with `print_def_path`.
                         if let Some(first) = substs.next() {
                             print!(cx, write("::<"))?;
                             print!(cx, write("{}", first))?;
@@ -1477,7 +1391,13 @@ define_print! {
 define_print! {
     ('tcx) ty::ProjectionTy<'tcx>, (self, cx) {
         display {
-            cx.parameterized(self.item_def_id, self.substs, Namespace::TypeNS, iter::empty())
+            let _ = cx.print_def_path(
+                self.item_def_id,
+                Some(self.substs),
+                Namespace::TypeNS,
+                iter::empty(),
+            )?;
+            Ok(())
         }
     }
 }
@@ -1505,16 +1425,33 @@ define_print! {
                 ty::Predicate::Projection(ref predicate) => predicate.print(cx),
                 ty::Predicate::WellFormed(ty) => print!(cx, print(ty), write(" well-formed")),
                 ty::Predicate::ObjectSafe(trait_def_id) => {
-                    print!(cx, write("the trait `{}` is object-safe",
-                        cx.tcx.def_path_str(trait_def_id)))
+                    print!(cx, write("the trait `"))?;
+                    let _ = cx.print_def_path(
+                        trait_def_id,
+                        None,
+                        Namespace::TypeNS,
+                        iter::empty(),
+                    )?;
+                    print!(cx, write("` is object-safe"))
                 }
                 ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                    print!(cx, write("the closure `{}` implements the trait `{}`",
-                           cx.tcx.def_path_str(closure_def_id), kind))
+                    print!(cx, write("the closure `"))?;
+                    let _ = cx.print_def_path(
+                        closure_def_id,
+                        None,
+                        Namespace::ValueNS,
+                        iter::empty(),
+                    )?;
+                    print!(cx, write("` implements the trait `{}`", kind))
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     print!(cx, write("the constant `"))?;
-                    cx.parameterized(def_id, substs, Namespace::ValueNS, iter::empty())?;
+                    let _ = cx.print_def_path(
+                        def_id,
+                        Some(substs),
+                        Namespace::ValueNS,
+                        iter::empty(),
+                    )?;
                     print!(cx, write("` can be evaluated"))
                 }
             }

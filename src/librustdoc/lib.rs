@@ -8,6 +8,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(set_stdio)]
 #![feature(test)]
