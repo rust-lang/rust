@@ -78,14 +78,12 @@ impl DepNodeIndex {
             !(value <= DepNodeIndex::MAX_AS_U32) as usize
         ];
 
-        unsafe {
-            DepNodeIndex { idx: value as usize }
-        }
+        DepNodeIndex { idx: value as usize }
     }
 
     #[inline]
     pub const unsafe fn from_u32_unchecked(value: u32) -> Self {
-        unsafe { DepNodeIndex { idx: value as usize } }
+        DepNodeIndex { idx: value as usize }
     }
 
     /// Extract value of this index as an integer.
