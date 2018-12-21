@@ -44,6 +44,25 @@ fn item_map_smoke_test() {
 }
 
 #[test]
+fn test_self() {
+    let (item_map, module_id) = item_map(
+        "
+            //- /lib.rs
+            mod foo;
+            use crate::foo::bar::Baz::{self};
+            <|>
+            //- /foo/mod.rs
+            pub mod bar;
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+    );
+    let name = SmolStr::from("Baz");
+    let resolution = &item_map.per_module[&module_id].items[&name];
+    assert!(resolution.def_id.is_some());
+}
+
+#[test]
 fn item_map_across_crates() {
     let (mut db, sr) = MockDatabase::with_files(
         "

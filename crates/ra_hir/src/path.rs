@@ -76,17 +76,32 @@ fn expand_use_tree(
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
+            // E.g. use something::{{{inner}}};
             None => prefix,
+            // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
+            // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
             Some(path) => match convert_path(prefix, path) {
                 Some(it) => Some(it),
                 None => return, // TODO: report errors somewhere
             },
         };
-        for tree in use_tree_list.use_trees() {
-            expand_use_tree(prefix.clone(), tree, cb);
+        for child_tree in use_tree_list.use_trees() {
+            expand_use_tree(prefix.clone(), child_tree, cb);
         }
     } else {
         if let Some(ast_path) = tree.path() {
+            // Handle self in a path.
+            // E.g. `use something::{self, <...>}`
+            if ast_path.qualifier().is_none() {
+                if let Some(segment) = ast_path.segment() {
+                    if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
+                        if let Some(prefix) = prefix {
+                            cb(prefix, Some(segment.syntax().range()));
+                            return;
+                        }
+                    }
+                }
+            }
             if let Some(path) = convert_path(prefix, ast_path) {
                 let range = if tree.has_star() {
                     None
@@ -96,6 +111,8 @@ fn expand_use_tree(
                 };
                 cb(path, range)
             }
+            // TODO: report errors somewhere
+            // We get here if we do
         }
     }
 }
