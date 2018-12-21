@@ -70,7 +70,7 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     }
 }
 
-pub fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
+fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn_ty: Ty<'tcx>,
 ) -> Signature {
@@ -129,7 +129,7 @@ pub fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
     }
 }
 
-fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'tcx> {
+pub fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'tcx> {
     let sig = match ty.sty {
         ty::FnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
@@ -329,7 +329,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     fx.bcx.switch_to_block(start_ebb);
 
-    fx.top_nop = Some(fx.bcx.ins().nop());
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
     for local in fx.mir.args_iter() {

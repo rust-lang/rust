@@ -82,6 +82,8 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 
     // Step 5. Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
+    let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
+
     let mut fx = FunctionCx {
         tcx,
         module: cx.module,
@@ -94,11 +96,9 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         ebb_map,
         local_map: HashMap::new(),
 
-        comments: HashMap::new(),
+        clif_comments,
         constants: &mut cx.ccx,
         caches: &mut cx.caches,
-
-        top_nop: None,
     };
 
     // Step 6. Codegen function
@@ -108,25 +108,12 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     });
 
     // Step 7. Write function to file for debugging
-    let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
-
-    let mut clif = String::new();
     if cfg!(debug_assertions) {
-        ::cranelift::codegen::write::decorate_function(&mut writer, &mut clif, &func, None)
-            .unwrap();
-        let clif_file_name = format!(
-            "{}/{}__{}.clif",
-            concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif"),
-            tcx.crate_name(LOCAL_CRATE),
-            tcx.symbol_name(instance).as_str(),
-        );
-        if let Err(e) = ::std::fs::write(clif_file_name, clif.as_bytes()) {
-            tcx.sess.warn(&format!("err writing clif file: {:?}", e));
-        }
+        fx.write_clif_file();
     }
 
     // Step 8. Verify function
-    verify_func(tcx, writer, &func);
+    verify_func(tcx, fx.clif_comments, &func);
 
     // Step 9. Define function
     cx.caches.context.func = func;
@@ -145,7 +132,7 @@ fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Fu
             let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(
                 &func,
                 None,
-                Some(Box::new(writer)),
+                Some(Box::new(&writer)),
                 err,
             );
             tcx.sess

@@ -623,12 +623,9 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
 
-    pub comments: HashMap<Inst, String>,
+    pub clif_comments: crate::pretty_clif::CommentWriter,
     pub constants: &'a mut crate::constant::ConstantCx,
     pub caches: &'a mut Caches<'tcx>,
-
-    /// add_global_comment inserts a comment here
-    pub top_nop: Option<Inst>,
 }
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
@@ -637,9 +634,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
         writeln!(f, "{:?}", self.local_map)?;
 
         let mut clif = String::new();
-        let mut writer = crate::pretty_clif::CommentWriter(self.comments.clone());
         ::cranelift::codegen::write::decorate_function(
-            &mut writer,
+            &mut &self.clif_comments,
             &mut clif,
             &self.bcx.func,
             None,
