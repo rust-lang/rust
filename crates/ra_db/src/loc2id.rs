@@ -42,6 +42,10 @@ where
     ID: NumericId,
     LOC: Clone + Eq + Hash,
 {
+    pub fn len(&self) -> usize {
+        self.loc2id.len()
+    }
+
     pub fn loc2id(&mut self, loc: &LOC) -> ID {
         match self.loc2id.get(loc) {
             Some(id) => return id.clone(),
@@ -91,6 +95,9 @@ where
     ID: NumericId,
     LOC: Clone + Eq + Hash,
 {
+    pub fn len(&self) -> usize {
+        self.map.lock().len()
+    }
     pub fn loc2id(&self, loc: &LOC) -> ID {
         self.map.lock().loc2id(loc)
     }

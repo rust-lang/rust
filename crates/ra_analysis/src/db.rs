@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 use salsa::{self, Database};
 use ra_db::{LocationIntener, BaseDatabase};
 use hir::{self, DefId, DefLoc};
@@ -13,9 +13,17 @@ pub(crate) struct RootDatabase {
     id_maps: Arc<IdMaps>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct IdMaps {
     defs: LocationIntener<DefLoc, DefId>,
+}
+
+impl fmt::Debug for IdMaps {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("IdMaps")
+            .field("n_defs", &self.defs.len())
+            .finish()
+    }
 }
 
 impl salsa::Database for RootDatabase {
