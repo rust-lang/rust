@@ -1,3 +1,6 @@
+/// `CompletionItem` describes a single completion variant in the editor pop-up.
+/// It is basically a POD with various properties. To construct a
+/// `CompletionItem`, use `new` method and the `Builder` struct.
 #[derive(Debug)]
 pub struct CompletionItem {
     label: String,
@@ -41,6 +44,7 @@ impl CompletionItem {
     }
 }
 
+/// A helper to make `CompletionItem`s.
 #[must_use]
 pub(crate) struct Builder {
     label: String,
@@ -76,6 +80,7 @@ impl Into<CompletionItem> for Builder {
     }
 }
 
+/// Represents an in-progress set of completions being built.
 #[derive(Debug)]
 pub(crate) struct Completions {
     buf: Vec<CompletionItem>,
