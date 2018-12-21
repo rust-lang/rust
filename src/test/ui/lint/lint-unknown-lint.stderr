@@ -1,23 +1,20 @@
-warning: unknown lint: `not_a_real_lint`
-  --> $DIR/lint-unknown-lint.rs:11:10
+error: unknown lint: `not_a_real_lint`
+  --> $DIR/lint-unknown-lint.rs:13:10
    |
-LL | #![allow(not_a_real_lint)] //~ WARN unknown lint
+LL | #![allow(not_a_real_lint)] //~ ERROR unknown lint
    |          ^^^^^^^^^^^^^^^
    |
-   = note: #[warn(unknown_lints)] on by default
-
-error: unused variable: `unused`
-  --> $DIR/lint-unknown-lint.rs:13:17
-   |
-LL | fn main() { let unused = (); } //~ ERROR unused variable
-   |                 ^^^^^^ help: consider using `_unused` instead
-   |
 note: lint level defined here
-  --> $DIR/lint-unknown-lint.rs:12:9
+  --> $DIR/lint-unknown-lint.rs:11:9
    |
-LL | #![deny(unused)]
-   |         ^^^^^^
-   = note: #[deny(unused_variables)] implied by #[deny(unused)]
+LL | #![deny(unknown_lints)]
+   |         ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unknown lint: `dead_cod`
+  --> $DIR/lint-unknown-lint.rs:15:9
+   |
+LL | #![deny(dead_cod)] //~ ERROR unknown lint
+   |         ^^^^^^^^ help: did you mean: `dead_code`
+
+error: aborting due to 2 previous errors
 
