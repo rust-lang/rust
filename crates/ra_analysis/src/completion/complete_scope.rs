@@ -29,11 +29,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
                     }
                 }
             })
-            .for_each(|(name, _res)| {
-                CompletionItem::new(name.to_string())
-                    .kind(Reference)
-                    .add_to(acc)
-            });
+            .for_each(|(name, _res)| CompletionItem::new(Reference, name.to_string()).add_to(acc));
     }
 
     Ok(())
@@ -45,13 +41,9 @@ fn complete_fn(acc: &mut Completions, scopes: &hir::FnScopes, offset: TextUnit) 
         .scope_chain_for_offset(offset)
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
-        .for_each(|entry| {
-            CompletionItem::new(entry.name().to_string())
-                .kind(Reference)
-                .add_to(acc)
-        });
+        .for_each(|entry| CompletionItem::new(Reference, entry.name().to_string()).add_to(acc));
     if scopes.self_param.is_some() {
-        CompletionItem::new("self").kind(Reference).add_to(acc);
+        CompletionItem::new(Reference, "self").add_to(acc);
     }
 }
 

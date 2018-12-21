@@ -61,10 +61,7 @@ fn complete_return(fn_def: ast::FnDef, is_stmt: bool) -> Option<CompletionItem> 
 }
 
 fn keyword(kw: &str, snippet: &str) -> CompletionItem {
-    CompletionItem::new(kw)
-        .kind(Keyword)
-        .snippet(snippet)
-        .build()
+    CompletionItem::new(Keyword, kw).snippet(snippet).build()
 }
 
 #[cfg(test)]

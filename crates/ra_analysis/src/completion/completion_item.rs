@@ -6,13 +6,21 @@ pub struct CompletionItem {
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
-    /// Used only internally in test, to check only specific kind of completion.
+    kind: Option<CompletionItemKind>,
+    /// Used only internally in tests, to check only specific kind of
+    /// completion.
     completion_kind: CompletionKind,
 }
 
 pub enum InsertText {
     PlainText { text: String },
     Snippet { text: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionItemKind {
+    Snippet,
+    Keyword,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -24,17 +32,16 @@ pub(crate) enum CompletionKind {
     /// "Secret sauce" completions.
     Magic,
     Snippet,
-    Unspecified,
 }
 
 impl CompletionItem {
-    pub(crate) fn new(label: impl Into<String>) -> Builder {
+    pub(crate) fn new(completion_kind: CompletionKind, label: impl Into<String>) -> Builder {
         let label = label.into();
         Builder {
             label,
             lookup: None,
             snippet: None,
-            completion_kind: CompletionKind::Unspecified,
+            completion_kind,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -57,6 +64,10 @@ impl CompletionItem {
             Some(it) => InsertText::Snippet { text: it.clone() },
         }
     }
+
+    pub fn kind(&self) -> Option<CompletionItemKind> {
+        self.kind
+    }
 }
 
 /// A helper to make `CompletionItem`s.
@@ -78,6 +89,7 @@ impl Builder {
             label: self.label,
             lookup: self.lookup,
             snippet: self.snippet,
+            kind: None,
             completion_kind: self.completion_kind,
         }
     }

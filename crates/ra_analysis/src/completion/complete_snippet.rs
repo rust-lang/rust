@@ -4,13 +4,11 @@ pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     if !(ctx.is_trivial_path && ctx.enclosing_fn.is_some()) {
         return;
     }
-    CompletionItem::new("pd")
+    CompletionItem::new(Snippet, "pd")
         .snippet("eprintln!(\"$0 = {:?}\", $0);")
-        .kind(Snippet)
         .add_to(acc);
-    CompletionItem::new("ppd")
+    CompletionItem::new(Snippet, "ppd")
         .snippet("eprintln!(\"$0 = {:#?}\", $0);")
-        .kind(Snippet)
         .add_to(acc);
 }
 
@@ -18,7 +16,7 @@ pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
     if !ctx.is_new_item {
         return;
     }
-    CompletionItem::new("Test function")
+    CompletionItem::new(Snippet, "Test function")
         .lookup_by("tfn")
         .snippet(
             "\
@@ -27,11 +25,9 @@ fn ${1:feature}() {
     $0
 }",
         )
-        .kind(Snippet)
         .add_to(acc);
-    CompletionItem::new("pub(crate)")
+    CompletionItem::new(Snippet, "pub(crate)")
         .snippet("pub(crate) $0")
-        .kind(Snippet)
         .add_to(acc);
 }
 
