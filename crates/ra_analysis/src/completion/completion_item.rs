@@ -69,3 +69,26 @@ impl Builder {
         self
     }
 }
+
+impl Into<CompletionItem> for Builder {
+    fn into(self) -> CompletionItem {
+        self.build()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct Completions {
+    buf: Vec<CompletionItem>,
+}
+
+impl Completions {
+    pub(crate) fn add(&mut self, item: impl Into<CompletionItem>) {
+        self.buf.push(item.into())
+    }
+}
+
+impl Into<Vec<CompletionItem>> for Completions {
+    fn into(self) -> Vec<CompletionItem> {
+        self.buf
+    }
+}
