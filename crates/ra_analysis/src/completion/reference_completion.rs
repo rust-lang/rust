@@ -599,7 +599,18 @@ mod tests {
     }
 
     #[test]
-    fn test_item_snippets() {
+    fn completes_snippets_in_expressions() {
+        check_snippet_completion(
+            r"fn foo(x: i32) { <|> }",
+            r##"
+            pd "eprintln!(\"$0 = {:?}\", $0);"
+            ppd "eprintln!(\"$0 = {:#?}\", $0);"
+            "##,
+        );
+    }
+
+    #[test]
+    fn completes_snippets_in_items() {
         // check_snippet_completion(r"
         //     <|>
         //     ",
@@ -615,7 +626,7 @@ mod tests {
             r##"
             tfn "Test function" "#[test]\nfn ${1:feature}() {\n    $0\n}"
             pub(crate) "pub(crate) $0"
-        "##,
+            "##,
         );
     }
 
