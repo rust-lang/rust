@@ -83,13 +83,15 @@ macro_rules! syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name: $t),*) -> $ret {
             use libc;
+            use super::os;
 
             weak! { fn $name($($t),*) -> $ret }
 
             if let Some(fun) = $name.get() {
                 fun($($arg_name),*)
             } else {
-                libc::ENOSYS
+                os::set_errno(libc::ENOSYS);
+                -1
             }
         }
     )
@@ -105,27 +107,8 @@ macro_rules! syscall {
 
             syscall(
                 concat_idents!(SYS_, $name),
-                $(::sys::weak::SyscallParam::to_param($arg_name)),*
+                $($arg_name as c_long),*
             ) as $ret
         }
     )
-}
-
-#[cfg(target_os = "linux")]
-pub trait SyscallParam {
-    fn to_param(self) -> libc::c_long;
-}
-
-#[cfg(target_os = "linux")]
-impl SyscallParam for libc::c_int {
-    fn to_param(self) -> libc::c_long {
-        self as libc::c_long
-    }
-}
-
-#[cfg(target_os = "linux")]
-impl<T> SyscallParam for *mut T {
-    fn to_param(self) -> libc::c_long {
-        unsafe { mem::transmute(self) }
-    }
 }

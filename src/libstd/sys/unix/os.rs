@@ -67,7 +67,8 @@ pub fn errno() -> i32 {
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(any(target_os = "solaris", target_os = "fuchsia"))] // only needed for readdir so far
+#[cfg(all(not(target_os = "linux"),
+          not(target_os = "dragonfly")))] // needed for readdir and syscall!
 pub fn set_errno(e: i32) {
     unsafe {
         *errno_location() = e as c_int
@@ -82,6 +83,18 @@ pub fn errno() -> i32 {
     }
 
     unsafe { errno as i32 }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn set_errno(e: i32) {
+    extern {
+        #[thread_local]
+        static mut errno: c_int;
+    }
+
+    unsafe {
+        errno = e;
+    }
 }
 
 /// Gets a detailed string description for the given error number.
