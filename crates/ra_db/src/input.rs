@@ -132,7 +132,8 @@ impl CrateGraph {
 }
 
 
-mod test {
+#[cfg(test)]
+mod tests {
     use super::{CrateGraph, FxHashMap, FileId, SmolStr};
     #[test]
     #[should_panic]
