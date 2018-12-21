@@ -284,7 +284,7 @@ impl<'a> IfExpr<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathSegmentKind<'a> {
     Name(NameRef<'a>),
     SelfKw,

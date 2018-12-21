@@ -76,14 +76,32 @@ fn expand_use_tree(
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
+            // E.g. use something::{{{inner}}};
             None => prefix,
+            // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
+            // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
             Some(path) => match convert_path(prefix, path) {
                 Some(it) => Some(it),
                 None => return, // TODO: report errors somewhere
             },
         };
-        for tree in use_tree_list.use_trees() {
-            expand_use_tree(prefix.clone(), tree, cb);
+        for child_tree in use_tree_list.use_trees() {
+            // Handle self in a path.
+            // E.g. `use something::{self, <...>}`
+            if let Some(path) = child_tree.path() {
+                if path.qualifier().is_none() {
+                    if let Some(segment) = path.segment() {
+                        if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
+                            /* TODO: Work out what on earth range means in this callback */
+                            if let Some(prefix) = prefix.clone() {
+                                cb(prefix, Some(segment.syntax().range()));
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+            expand_use_tree(prefix.clone(), child_tree, cb);
         }
     } else {
         if let Some(ast_path) = tree.path() {
