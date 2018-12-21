@@ -65,14 +65,10 @@ fn self_hosting_parsing() {
     for entry in walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
-            !entry
-                .path()
-                .components()
-                // TODO: this more neatly
-                .any(|component| {
-                    // Get all files which are not in the crates/ra_syntax/tests/data folder
-                    component == Component::Normal(OsStr::new("data"))
-                })
+            !entry.path().components().any(|component| {
+                // Get all files which are not in the crates/ra_syntax/tests/data folder
+                component == Component::Normal(OsStr::new("data"))
+            })
         })
         .map(|e| e.unwrap())
         .filter(|entry| {
