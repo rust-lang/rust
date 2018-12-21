@@ -39,7 +39,7 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     krate::Crate,
-    module::{Module, ModuleId, Problem, nameres::ItemMap},
+    module::{Module, ModuleId, Problem, nameres::ItemMap, ModuleScope, Resolution},
     function::{Function, FnScopes},
 };
 

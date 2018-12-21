@@ -17,8 +17,10 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         _ => return Ok(()),
     };
     let module_scope = target_module.scope(ctx.db)?;
-    module_scope.entries().for_each(|(name, _res)| {
-        CompletionItem::new(CompletionKind::Reference, name.to_string()).add_to(acc)
+    module_scope.entries().for_each(|(name, res)| {
+        CompletionItem::new(CompletionKind::Reference, name.to_string())
+            .from_resolution(ctx.db, res)
+            .add_to(acc)
     });
     Ok(())
 }

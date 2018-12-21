@@ -53,6 +53,8 @@ impl Conv for CompletionItemKind {
         match self {
             CompletionItemKind::Keyword => Keyword,
             CompletionItemKind::Snippet => Snippet,
+            CompletionItemKind::Module => Module,
+            CompletionItemKind::Function => Function,
         }
     }
 }

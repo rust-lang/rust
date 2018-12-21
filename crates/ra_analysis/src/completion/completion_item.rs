@@ -1,3 +1,5 @@
+use crate::db;
+
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
@@ -21,6 +23,8 @@ pub enum InsertText {
 pub enum CompletionItemKind {
     Snippet,
     Keyword,
+    Module,
+    Function,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -105,6 +109,23 @@ impl Builder {
     }
     pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
         self.kind = Some(kind);
+        self
+    }
+    pub(crate) fn from_resolution(
+        mut self,
+        db: &db::RootDatabase,
+        resolution: &hir::Resolution,
+    ) -> Builder {
+        if let Some(def_id) = resolution.def_id {
+            if let Ok(def) = def_id.resolve(db) {
+                let kind = match def {
+                    hir::Def::Module(..) => CompletionItemKind::Module,
+                    hir::Def::Function(..) => CompletionItemKind::Function,
+                    _ => return self,
+                };
+                self.kind = Some(kind);
+            }
+        }
         self
     }
 }
