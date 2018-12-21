@@ -69,7 +69,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
-#![feature(const_nonzero_methods)]
 
 #![recursion_limit="512"]
 
