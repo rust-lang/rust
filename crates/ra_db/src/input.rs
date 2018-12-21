@@ -94,7 +94,7 @@ impl CrateGraph {
         crate_id
     }
     pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
-        if self.dfs(from, to) {
+        if self.dfs_find(from, to) {
            panic!("Cycle dependencies found.")
         }
         self.arena.get_mut(&from).unwrap().add_dep(name, to)
@@ -115,14 +115,14 @@ impl CrateGraph {
     ) -> impl Iterator<Item=&'a Dependency> + 'a {
         self.arena[&crate_id].dependencies.iter()
     }
-    fn dfs(&self, target: CrateId, from: CrateId) -> bool {
+    fn dfs_find(&self, target: CrateId, from: CrateId) -> bool {
         for dep in self.dependencies(from) {
             let crate_id = dep.crate_id();
             if crate_id == target {
                 return true;
             }
             if self.arena.contains_key(&crate_id) {
-                if self.dfs(target, crate_id) {
+                if self.dfs_find(target, crate_id) {
                     return true;
                 }
             }
