@@ -1,18 +1,31 @@
+use crate::db;
+
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
 #[derive(Debug)]
 pub struct CompletionItem {
+    /// Used only internally in tests, to check only specific kind of
+    /// completion.
+    completion_kind: CompletionKind,
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
-    /// Used only internally in test, to check only specific kind of completion.
-    kind: CompletionKind,
+    kind: Option<CompletionItemKind>,
 }
 
 pub enum InsertText {
     PlainText { text: String },
     Snippet { text: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionItemKind {
+    Snippet,
+    Keyword,
+    Module,
+    Function,
+    Binding,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -24,17 +37,17 @@ pub(crate) enum CompletionKind {
     /// "Secret sauce" completions.
     Magic,
     Snippet,
-    Unspecified,
 }
 
 impl CompletionItem {
-    pub(crate) fn new(label: impl Into<String>) -> Builder {
+    pub(crate) fn new(completion_kind: CompletionKind, label: impl Into<String>) -> Builder {
         let label = label.into();
         Builder {
+            completion_kind,
             label,
             lookup: None,
             snippet: None,
-            kind: CompletionKind::Unspecified,
+            kind: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -57,15 +70,20 @@ impl CompletionItem {
             Some(it) => InsertText::Snippet { text: it.clone() },
         }
     }
+
+    pub fn kind(&self) -> Option<CompletionItemKind> {
+        self.kind
+    }
 }
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
 pub(crate) struct Builder {
+    completion_kind: CompletionKind,
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
-    kind: CompletionKind,
+    kind: Option<CompletionItemKind>,
 }
 
 impl Builder {
@@ -79,6 +97,7 @@ impl Builder {
             lookup: self.lookup,
             snippet: self.snippet,
             kind: self.kind,
+            completion_kind: self.completion_kind,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -89,8 +108,25 @@ impl Builder {
         self.snippet = Some(snippet.into());
         self
     }
-    pub(crate) fn kind(mut self, kind: CompletionKind) -> Builder {
-        self.kind = kind;
+    pub(crate) fn kind(mut self, kind: CompletionItemKind) -> Builder {
+        self.kind = Some(kind);
+        self
+    }
+    pub(crate) fn from_resolution(
+        mut self,
+        db: &db::RootDatabase,
+        resolution: &hir::Resolution,
+    ) -> Builder {
+        if let Some(def_id) = resolution.def_id {
+            if let Ok(def) = def_id.resolve(db) {
+                let kind = match def {
+                    hir::Def::Module(..) => CompletionItemKind::Module,
+                    hir::Def::Function(..) => CompletionItemKind::Function,
+                    _ => return self,
+                };
+                self.kind = Some(kind);
+            }
+        }
         self
     }
 }
@@ -154,7 +190,7 @@ impl Completions {
     fn debug_render(&self, kind: CompletionKind) -> String {
         let mut res = String::new();
         for c in self.buf.iter() {
-            if c.kind == kind {
+            if c.completion_kind == kind {
                 if let Some(lookup) = &c.lookup {
                     res.push_str(lookup);
                     res.push_str(&format!(" {:?}", c.label));

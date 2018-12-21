@@ -16,7 +16,7 @@ use crate::{
     arena::{Arena, Id},
 };
 
-pub use self::nameres::ModuleScope;
+pub use self::nameres::{ModuleScope, Resolution};
 
 /// `Module` is API entry point to get all the information
 /// about a particular module.

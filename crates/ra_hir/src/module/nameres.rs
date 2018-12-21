@@ -49,7 +49,7 @@ pub struct ModuleScope {
 }
 
 impl ModuleScope {
-    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a SmolStr, &Resolution)> + 'a {
+    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a SmolStr, &'a Resolution)> + 'a {
         self.items.iter()
     }
     pub fn get(&self, name: &SmolStr) -> Option<&Resolution> {

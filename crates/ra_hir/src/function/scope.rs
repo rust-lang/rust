@@ -95,7 +95,7 @@ impl FnScopes {
                     r1.start().cmp(&r2.start())
                 }
             })
-            .map(|(ptr, scope)| *scope)
+            .map(|(_ptr, scope)| *scope)
             .unwrap_or(original_scope)
     }
 
@@ -209,7 +209,6 @@ fn compute_block_scopes(block: ast::Block, scopes: &mut FnScopes, mut scope: Sco
         }
     }
     if let Some(expr) = block.expr() {
-        eprintln!("{:?}", expr);
         scopes.set_scope(expr.syntax(), scope);
         compute_expr_scopes(expr, scopes, scope);
     }

@@ -3,7 +3,7 @@ use ra_syntax::TextUnit;
 
 use crate::{
     Cancelable,
-    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
+    completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
@@ -29,9 +29,9 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
                     }
                 }
             })
-            .for_each(|(name, _res)| {
-                CompletionItem::new(name.to_string())
-                    .kind(Reference)
+            .for_each(|(name, res)| {
+                CompletionItem::new(CompletionKind::Reference, name.to_string())
+                    .from_resolution(ctx.db, res)
                     .add_to(acc)
             });
     }
@@ -46,12 +46,12 @@ fn complete_fn(acc: &mut Completions, scopes: &hir::FnScopes, offset: TextUnit) 
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
         .for_each(|entry| {
-            CompletionItem::new(entry.name().to_string())
-                .kind(Reference)
+            CompletionItem::new(CompletionKind::Reference, entry.name().to_string())
+                .kind(CompletionItemKind::Binding)
                 .add_to(acc)
         });
     if scopes.self_param.is_some() {
-        CompletionItem::new("self").kind(Reference).add_to(acc);
+        CompletionItem::new(CompletionKind::Reference, "self").add_to(acc);
     }
 }
 
