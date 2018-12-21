@@ -13,7 +13,7 @@ use hir::{
 
 use crate::{
     db::RootDatabase,
-    completion::{CompletionItem, Completions},
+    completion::{CompletionItem, Completions, CompletionKind::*},
     Cancelable
 };
 
@@ -51,7 +51,11 @@ pub(super) fn completions(
                         }
                     }
                 })
-                .for_each(|(name, _res)| CompletionItem::new(name.to_string()).add_to(acc));
+                .for_each(|(name, _res)| {
+                    CompletionItem::new(name.to_string())
+                        .kind(Reference)
+                        .add_to(acc)
+                });
         }
         NameRefKind::Path(path) => complete_path(acc, db, module, path)?,
         NameRefKind::BareIdentInMod => {
@@ -123,9 +127,13 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Completions)
         .scope_chain(name_ref.syntax())
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
-        .for_each(|entry| CompletionItem::new(entry.name().to_string()).add_to(acc));
+        .for_each(|entry| {
+            CompletionItem::new(entry.name().to_string())
+                .kind(Reference)
+                .add_to(acc)
+        });
     if scopes.self_param.is_some() {
-        CompletionItem::new("self").add_to(acc);
+        CompletionItem::new("self").kind(Reference).add_to(acc);
     }
 }
 
@@ -148,9 +156,11 @@ fn complete_path(
         _ => return Ok(()),
     };
     let module_scope = target_module.scope(db)?;
-    module_scope
-        .entries()
-        .for_each(|(name, _res)| CompletionItem::new(name.to_string()).add_to(acc));
+    module_scope.entries().for_each(|(name, _res)| {
+        CompletionItem::new(name.to_string())
+            .kind(Reference)
+            .add_to(acc)
+    });
     Ok(())
 }
 
@@ -164,9 +174,11 @@ fn ${1:feature}() {
     $0
 }",
         )
+        .kind(Snippet)
         .add_to(acc);
     CompletionItem::new("pub(crate)")
         .snippet("pub(crate) $0")
+        .kind(Snippet)
         .add_to(acc);
 }
 
@@ -249,14 +261,362 @@ fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<Complet
 }
 
 fn keyword(kw: &str, snippet: &str) -> CompletionItem {
-    CompletionItem::new(kw).snippet(snippet).build()
+    CompletionItem::new(kw)
+        .kind(Keyword)
+        .snippet(snippet)
+        .build()
 }
 
 fn complete_expr_snippets(acc: &mut Completions) {
     CompletionItem::new("pd")
         .snippet("eprintln!(\"$0 = {:?}\", $0);")
+        .kind(Snippet)
         .add_to(acc);
     CompletionItem::new("ppd")
         .snippet("eprintln!(\"$0 = {:#?}\", $0);")
+        .kind(Snippet)
         .add_to(acc);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::completion::{CompletionKind, check_completion};
+
+    fn check_reference_completion(code: &str, expected_completions: &str) {
+        check_completion(code, expected_completions, CompletionKind::Reference);
+    }
+
+    fn check_keyword_completion(code: &str, expected_completions: &str) {
+        check_completion(code, expected_completions, CompletionKind::Keyword);
+    }
+
+    fn check_snippet_completion(code: &str, expected_completions: &str) {
+        check_completion(code, expected_completions, CompletionKind::Snippet);
+    }
+
+    #[test]
+    fn test_completion_let_scope() {
+        check_reference_completion(
+            r"
+            fn quux(x: i32) {
+                let y = 92;
+                1 + <|>;
+                let z = ();
+            }
+            ",
+            "y;x;quux",
+        );
+    }
+
+    #[test]
+    fn test_completion_if_let_scope() {
+        check_reference_completion(
+            r"
+            fn quux() {
+                if let Some(x) = foo() {
+                    let y = 92;
+                };
+                if let Some(a) = bar() {
+                    let b = 62;
+                    1 + <|>
+                }
+            }
+            ",
+            "b;a;quux",
+        );
+    }
+
+    #[test]
+    fn test_completion_for_scope() {
+        check_reference_completion(
+            r"
+            fn quux() {
+                for x in &[1, 2, 3] {
+                    <|>
+                }
+            }
+            ",
+            "x;quux",
+        );
+    }
+
+    #[test]
+    fn test_completion_mod_scope() {
+        check_reference_completion(
+            r"
+            struct Foo;
+            enum Baz {}
+            fn quux() {
+                <|>
+            }
+            ",
+            "quux;Foo;Baz",
+        );
+    }
+
+    #[test]
+    fn test_completion_mod_scope_no_self_use() {
+        check_reference_completion(
+            r"
+            use foo<|>;
+            ",
+            "",
+        );
+    }
+
+    #[test]
+    fn test_completion_self_path() {
+        check_reference_completion(
+            r"
+            use self::m::<|>;
+
+            mod m {
+                struct Bar;
+            }
+            ",
+            "Bar",
+        );
+    }
+
+    #[test]
+    fn test_completion_mod_scope_nested() {
+        check_reference_completion(
+            r"
+            struct Foo;
+            mod m {
+                struct Bar;
+                fn quux() { <|> }
+            }
+            ",
+            "quux;Bar",
+        );
+    }
+
+    #[test]
+    fn test_complete_type() {
+        check_reference_completion(
+            r"
+            struct Foo;
+            fn x() -> <|>
+            ",
+            "Foo;x",
+        )
+    }
+
+    #[test]
+    fn test_complete_shadowing() {
+        check_reference_completion(
+            r"
+            fn foo() -> {
+                let bar = 92;
+                {
+                    let bar = 62;
+                    <|>
+                }
+            }
+            ",
+            "bar;foo",
+        )
+    }
+
+    #[test]
+    fn test_complete_self() {
+        check_reference_completion(r"impl S { fn foo(&self) { <|> } }", "self")
+    }
+
+    #[test]
+    fn test_complete_crate_path() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            mod foo;
+            struct Spam;
+            //- /foo.rs
+            use crate::Sp<|>
+            ",
+            "Spam;foo",
+        );
+    }
+
+    #[test]
+    fn test_complete_crate_path_with_braces() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            mod foo;
+            struct Spam;
+            //- /foo.rs
+            use crate::{Sp<|>};
+            ",
+            "Spam;foo",
+        );
+    }
+
+    #[test]
+    fn test_complete_crate_path_in_nested_tree() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            mod foo;
+            pub mod bar {
+                pub mod baz {
+                    pub struct Spam;
+                }
+            }
+            //- /foo.rs
+            use crate::{bar::{baz::Sp<|>}};
+            ",
+            "Spam",
+        );
+    }
+
+    #[test]
+    fn test_completion_kewords() {
+        check_keyword_completion(
+            r"
+            fn quux() {
+                <|>
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return"
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_completion_else() {
+        check_keyword_completion(
+            r"
+            fn quux() {
+                if true {
+                    ()
+                } <|>
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            else "else {$0}"
+            else if "else if $0 {}"
+            return "return"
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_completion_return_value() {
+        check_keyword_completion(
+            r"
+            fn quux() -> i32 {
+                <|>
+                92
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return $0;"
+            "#,
+        );
+        check_keyword_completion(
+            r"
+            fn quux() {
+                <|>
+                92
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return;"
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_completion_return_no_stmt() {
+        check_keyword_completion(
+            r"
+            fn quux() -> i32 {
+                match () {
+                    () => <|>
+                }
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return $0"
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_continue_break_completion() {
+        check_keyword_completion(
+            r"
+            fn quux() -> i32 {
+                loop { <|> }
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            continue "continue"
+            break "break"
+            return "return $0"
+            "#,
+        );
+        check_keyword_completion(
+            r"
+            fn quux() -> i32 {
+                loop { || { <|> } }
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return $0"
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_item_snippets() {
+        // check_snippet_completion(r"
+        //     <|>
+        //     ",
+        //     r##"[CompletionItem { label: "Test function", lookup: None, snippet: Some("#[test]\nfn test_${1:feature}() {\n$0\n}"##,
+        // );
+        check_snippet_completion(
+            r"
+            #[cfg(test)]
+            mod tests {
+                <|>
+            }
+            ",
+            r##"
+            tfn "Test function" "#[test]\nfn ${1:feature}() {\n    $0\n}"
+            pub(crate) "pub(crate) $0"
+        "##,
+        );
+    }
+
 }

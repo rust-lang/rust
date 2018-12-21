@@ -6,11 +6,25 @@ pub struct CompletionItem {
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
+    /// Used only internally in test, to check only specific kind of completion.
+    kind: CompletionKind,
 }
 
 pub enum InsertText {
     PlainText { text: String },
     Snippet { text: String },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum CompletionKind {
+    /// Parser-based keyword completion.
+    Keyword,
+    /// Your usual "complete all valid identifiers".
+    Reference,
+    /// "Secret sauce" completions.
+    Magic,
+    Snippet,
+    Unspecified,
 }
 
 impl CompletionItem {
@@ -20,6 +34,7 @@ impl CompletionItem {
             label,
             lookup: None,
             snippet: None,
+            kind: CompletionKind::Unspecified,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -50,26 +65,32 @@ pub(crate) struct Builder {
     label: String,
     lookup: Option<String>,
     snippet: Option<String>,
+    kind: CompletionKind,
 }
 
 impl Builder {
-    pub fn add_to(self, acc: &mut Completions) {
+    pub(crate) fn add_to(self, acc: &mut Completions) {
         acc.add(self.build())
     }
 
-    pub fn build(self) -> CompletionItem {
+    pub(crate) fn build(self) -> CompletionItem {
         CompletionItem {
             label: self.label,
             lookup: self.lookup,
             snippet: self.snippet,
+            kind: self.kind,
         }
     }
-    pub fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
+    pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
         self.lookup = Some(lookup.into());
         self
     }
-    pub fn snippet(mut self, snippet: impl Into<String>) -> Builder {
+    pub(crate) fn snippet(mut self, snippet: impl Into<String>) -> Builder {
         self.snippet = Some(snippet.into());
+        self
+    }
+    pub(crate) fn kind(mut self, kind: CompletionKind) -> Builder {
+        self.kind = kind;
         self
     }
 }
@@ -96,6 +117,57 @@ impl Completions {
         I::Item: Into<CompletionItem>,
     {
         items.into_iter().for_each(|item| self.add(item.into()))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn assert_match(&self, expected: &str, kind: CompletionKind) {
+        let expected = normalize(expected);
+        let actual = self.debug_render(kind);
+        test_utils::assert_eq_text!(expected.as_str(), actual.as_str(),);
+
+        /// Normalize the textual representation of `Completions`:
+        /// replace `;` with newlines, normalize whitespace
+        fn normalize(expected: &str) -> String {
+            use ra_syntax::{tokenize, TextUnit, TextRange, SyntaxKind::SEMI};
+            let mut res = String::new();
+            for line in expected.trim().lines() {
+                let line = line.trim();
+                let mut start_offset: TextUnit = 0.into();
+                // Yep, we use rust tokenize in completion tests :-)
+                for token in tokenize(line) {
+                    let range = TextRange::offset_len(start_offset, token.len);
+                    start_offset += token.len;
+                    if token.kind == SEMI {
+                        res.push('\n');
+                    } else {
+                        res.push_str(&line[range]);
+                    }
+                }
+
+                res.push('\n');
+            }
+            res
+        }
+    }
+
+    #[cfg(test)]
+    fn debug_render(&self, kind: CompletionKind) -> String {
+        let mut res = String::new();
+        for c in self.buf.iter() {
+            if c.kind == kind {
+                if let Some(lookup) = &c.lookup {
+                    res.push_str(lookup);
+                    res.push_str(&format!(" {:?}", c.label));
+                } else {
+                    res.push_str(&c.label);
+                }
+                if let Some(snippet) = &c.snippet {
+                    res.push_str(&format!(" {:?}", snippet));
+                }
+                res.push('\n');
+            }
+        }
+        res
     }
 }
 
