@@ -162,8 +162,10 @@ pub trait Printer: Sized {
         impl_def_id: DefId,
         substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
+        self_ty: Ty<'tcx>,
+        trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Self::Path {
-        self.default_print_impl_path(impl_def_id, substs, ns)
+        self.default_print_impl_path(impl_def_id, substs, ns, self_ty, trait_ref)
     }
 
     #[must_use]
@@ -273,7 +275,16 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
             }
 
             DefPathData::Impl => {
-                self.print_impl_path(def_id, substs, ns)
+                let mut self_ty = self.tcx.type_of(def_id);
+                if let Some(substs) = substs {
+                    self_ty = self_ty.subst(self.tcx, substs);
+                }
+
+                let mut impl_trait_ref = self.tcx.impl_trait_ref(def_id);
+                if let Some(substs) = substs {
+                    impl_trait_ref = impl_trait_ref.subst(self.tcx, substs);
+                }
+                self.print_impl_path(def_id, substs, ns, self_ty, impl_trait_ref)
             }
 
             _ => {
@@ -323,30 +334,24 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
     fn default_print_impl_path(
         &mut self,
         impl_def_id: DefId,
-        substs: Option<SubstsRef<'tcx>>,
+        _substs: Option<SubstsRef<'tcx>>,
         ns: Namespace,
+        self_ty: Ty<'tcx>,
+        impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> P::Path {
-        debug!("default_print_impl_path: impl_def_id={:?}", impl_def_id);
-        let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
+        debug!("default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
+               impl_def_id, self_ty, impl_trait_ref);
 
         // Decide whether to print the parent path for the impl.
         // Logically, since impls are global, it's never needed, but
         // users may find it useful. Currently, we omit the parent if
         // the impl is either in the same module as the self-type or
         // as the trait.
-        let mut self_ty = self.tcx.type_of(impl_def_id);
-        if let Some(substs) = substs {
-            self_ty = self_ty.subst(self.tcx, substs);
-        }
+        let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
             Some(ty_def_id) => self.tcx.parent(ty_def_id) == Some(parent_def_id),
         };
-
-        let mut impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
-        if let Some(substs) = substs {
-            impl_trait_ref = impl_trait_ref.subst(self.tcx, substs);
-        }
         let in_trait_mod = match impl_trait_ref {
             None => false,
             Some(trait_ref) => self.tcx.parent(trait_ref.def_id) == Some(parent_def_id),
@@ -702,7 +707,7 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         ns: Namespace,
         projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
     ) -> Self::Path {
-        // FIXME(eddyb) avoid querying `tcx.generics_of`
+        // FIXME(eddyb) avoid querying `tcx.generics_of` and `tcx.def_key`
         // both here and in `default_print_def_path`.
         let generics = substs.map(|_| self.tcx.generics_of(def_id));
         if // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
@@ -720,35 +725,31 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             }
         }
 
-        self.default_print_def_path(def_id, substs, ns, projections)
-    }
-    fn print_impl_path(
-        self: &mut PrintCx<'_, '_, 'tcx, Self>,
-        impl_def_id: DefId,
-        substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
-    ) -> Self::Path {
-        // Always use types for non-local impls, where types are always
-        // available, and filename/line-number is mostly uninteresting.
-        let use_types = // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
-            FORCE_ABSOLUTE.with(|force| force.get()) ||
-            !impl_def_id.is_local() || {
-            // Otherwise, use filename/line-number if forced.
-            let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
-            !force_no_types
-        };
+        let key = self.tcx.def_key(def_id);
+        if let DefPathData::Impl = key.disambiguated_data.data {
+            // Always use types for non-local impls, where types are always
+            // available, and filename/line-number is mostly uninteresting.
+            let use_types =
+                // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
+                FORCE_ABSOLUTE.with(|force| force.get()) ||
+                !def_id.is_local() || {
+                    // Otherwise, use filename/line-number if forced.
+                    let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
+                    !force_no_types
+                };
 
-        if !use_types {
-            // If no type info is available, fall back to
-            // pretty printing some span information. This should
-            // only occur very early in the compiler pipeline.
-            let parent_def_id = self.tcx.parent(impl_def_id).unwrap();
-            let path = self.print_def_path(parent_def_id, None, ns, iter::empty());
-            let span = self.tcx.def_span(impl_def_id);
-            return self.path_append(path, &format!("<impl at {:?}>", span));
+            if !use_types {
+                // If no type info is available, fall back to
+                // pretty printing some span information. This should
+                // only occur very early in the compiler pipeline.
+                let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
+                let path = self.print_def_path(parent_def_id, None, ns, iter::empty());
+                let span = self.tcx.def_span(def_id);
+                return self.path_append(path, &format!("<impl at {:?}>", span));
+            }
         }
 
-        self.default_print_impl_path(impl_def_id, substs, ns)
+        self.default_print_def_path(def_id, substs, ns, projections)
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
