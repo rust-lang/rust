@@ -5,7 +5,13 @@ use ra_syntax::{
     SyntaxKind::*, SyntaxNodeRef,
 };
 
-use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind::*};
+use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind};
+
+fn keyword(kw: &str, snippet: &str) -> CompletionItem {
+    CompletionItem::new(CompletionKind::Keyword, kw)
+        .snippet(snippet)
+        .build()
+}
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
@@ -58,10 +64,6 @@ fn complete_return(fn_def: ast::FnDef, is_stmt: bool) -> Option<CompletionItem> 
         (false, false) => "return",
     };
     Some(keyword("return", snip))
-}
-
-fn keyword(kw: &str, snippet: &str) -> CompletionItem {
-    CompletionItem::new(Keyword, kw).snippet(snippet).build()
 }
 
 #[cfg(test)]

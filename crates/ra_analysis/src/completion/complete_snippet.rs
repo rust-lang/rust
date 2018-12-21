@@ -1,34 +1,33 @@
-use crate::completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext};
+use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext, completion_item::Builder};
+
+fn snippet(label: &str, snippet: &str) -> Builder {
+    CompletionItem::new(CompletionKind::Snippet, label).snippet(snippet)
+}
 
 pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path && ctx.enclosing_fn.is_some()) {
         return;
     }
-    CompletionItem::new(Snippet, "pd")
-        .snippet("eprintln!(\"$0 = {:?}\", $0);")
-        .add_to(acc);
-    CompletionItem::new(Snippet, "ppd")
-        .snippet("eprintln!(\"$0 = {:#?}\", $0);")
-        .add_to(acc);
+    snippet("pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
+    snippet("ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
 }
 
 pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_new_item {
         return;
     }
-    CompletionItem::new(Snippet, "Test function")
-        .lookup_by("tfn")
-        .snippet(
-            "\
+    snippet(
+        "Test function",
+        "\
 #[test]
 fn ${1:feature}() {
     $0
 }",
-        )
-        .add_to(acc);
-    CompletionItem::new(Snippet, "pub(crate)")
-        .snippet("pub(crate) $0")
-        .add_to(acc);
+    )
+    .lookup_by("tfn")
+    .add_to(acc);
+
+    snippet("pub(crate)", "pub(crate) $0").add_to(acc);
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use crate::{
     Cancelable,
-    completion::{CompletionItem, Completions, CompletionKind::*, CompletionContext},
+    completion::{CompletionItem, Completions, CompletionKind, CompletionContext},
 };
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
@@ -17,9 +17,9 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         _ => return Ok(()),
     };
     let module_scope = target_module.scope(ctx.db)?;
-    module_scope
-        .entries()
-        .for_each(|(name, _res)| CompletionItem::new(Reference, name.to_string()).add_to(acc));
+    module_scope.entries().for_each(|(name, _res)| {
+        CompletionItem::new(CompletionKind::Reference, name.to_string()).add_to(acc)
+    });
     Ok(())
 }
 
