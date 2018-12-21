@@ -1461,7 +1461,7 @@ impl From<String> for PathBuf {
     }
 }
 
-#[stable(feature = "path_from_str", since = "1.26.0")]
+#[stable(feature = "path_from_str", since = "1.32.0")]
 impl FromStr for PathBuf {
     type Err = ParseError;
 
