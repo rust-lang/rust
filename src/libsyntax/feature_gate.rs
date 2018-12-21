@@ -684,7 +684,7 @@ declare_features! (
     // `extern crate foo as bar;` puts `bar` into extern prelude.
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the `:literal` macro fragment specifier (RFC 1576).
-    (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
+    (accepted, macro_literal_matcher, "1.32.0", Some(35625), None),
     // Integer match exhaustiveness checking (RFC 2591)
     (accepted, exhaustive_integer_patterns, "1.32.0", Some(50907), None),
     // Use `?` as the Kleene "at most one" operator.
