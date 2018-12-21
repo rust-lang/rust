@@ -15,7 +15,7 @@ pub type Cancelable<T> = Result<T, Canceled>;
 
 impl std::fmt::Display for Canceled {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.write_str("Canceled")
+        fmt.write_str("canceled")
     }
 }
 
