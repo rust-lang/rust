@@ -19,6 +19,7 @@ impl CompletionItem {
     }
 }
 
+#[must_use]
 pub(crate) struct Builder {
     label: String,
     lookup: Option<String>,
@@ -39,6 +40,10 @@ impl Builder {
     }
     pub fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
         self.lookup = Some(lookup.into());
+        self
+    }
+    pub fn snippet(mut self, snippet: impl Into<String>) -> Builder {
+        self.snippet = Some(snippet.into());
         self
     }
 }

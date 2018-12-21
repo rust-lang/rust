@@ -125,23 +125,13 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
     let mut shadowed = FxHashSet::default();
-    acc.extend(
-        scopes
-            .scope_chain(name_ref.syntax())
-            .flat_map(|scope| scopes.entries(scope).iter())
-            .filter(|entry| shadowed.insert(entry.name()))
-            .map(|entry| CompletionItem {
-                label: entry.name().to_string(),
-                lookup: None,
-                snippet: None,
-            }),
-    );
+    scopes
+        .scope_chain(name_ref.syntax())
+        .flat_map(|scope| scopes.entries(scope).iter())
+        .filter(|entry| shadowed.insert(entry.name()))
+        .for_each(|entry| CompletionItem::new(entry.name().to_string()).add_to(acc));
     if scopes.self_param.is_some() {
-        acc.push(CompletionItem {
-            label: "self".to_string(),
-            lookup: None,
-            snippet: None,
-        })
+        CompletionItem::new("self").add_to(acc);
     }
 }
 
@@ -164,32 +154,26 @@ fn complete_path(
         _ => return Ok(()),
     };
     let module_scope = target_module.scope(db)?;
-    let completions = module_scope.entries().map(|(name, _res)| CompletionItem {
-        label: name.to_string(),
-        lookup: None,
-        snippet: None,
-    });
-    acc.extend(completions);
+    module_scope
+        .entries()
+        .for_each(|(name, _res)| CompletionItem::new(name.to_string()).add_to(acc));
     Ok(())
 }
 
 fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
-    acc.push(CompletionItem {
-        label: "Test function".to_string(),
-        lookup: Some("tfn".to_string()),
-        snippet: Some(
-            "#[test]\n\
-             fn ${1:feature}() {\n\
-             $0\n\
-             }"
-            .to_string(),
-        ),
-    });
-    acc.push(CompletionItem {
-        label: "pub(crate)".to_string(),
-        lookup: None,
-        snippet: Some("pub(crate) $0".to_string()),
-    })
+    CompletionItem::new("Test function")
+        .lookup_by("tfn")
+        .snippet(
+            "\
+#[test]
+fn ${1:feature}() {
+    $0
+}",
+        )
+        .add_to(acc);
+    CompletionItem::new("pub(crate)")
+        .snippet("pub(crate) $0")
+        .add_to(acc);
 }
 
 fn complete_expr_keywords(
@@ -270,23 +254,15 @@ fn complete_return(fn_def: ast::FnDef, name_ref: ast::NameRef) -> Option<Complet
     Some(keyword("return", snip))
 }
 
-fn keyword(kw: &str, snip: &str) -> CompletionItem {
-    CompletionItem {
-        label: kw.to_string(),
-        lookup: None,
-        snippet: Some(snip.to_string()),
-    }
+fn keyword(kw: &str, snippet: &str) -> CompletionItem {
+    CompletionItem::new(kw).snippet(snippet).build()
 }
 
 fn complete_expr_snippets(acc: &mut Vec<CompletionItem>) {
-    acc.push(CompletionItem {
-        label: "pd".to_string(),
-        lookup: None,
-        snippet: Some("eprintln!(\"$0 = {:?}\", $0);".to_string()),
-    });
-    acc.push(CompletionItem {
-        label: "ppd".to_string(),
-        lookup: None,
-        snippet: Some("eprintln!(\"$0 = {:#?}\", $0);".to_string()),
-    });
+    CompletionItem::new("pd")
+        .snippet("eprintln!(\"$0 = {:?}\", $0);")
+        .add_to(acc);
+    CompletionItem::new("ppd")
+        .snippet("eprintln!(\"$0 = {:#?}\", $0);")
+        .add_to(acc);
 }
