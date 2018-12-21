@@ -199,9 +199,8 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                                               |temporary value created here
    |                                                               returns a reference to data owned by the current function
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:147:41

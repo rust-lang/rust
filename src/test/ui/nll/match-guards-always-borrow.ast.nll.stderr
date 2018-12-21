@@ -4,9 +4,8 @@ warning[E0507]: cannot move out of borrowed content
 LL |             (|| { let bar = foo; bar.take() })();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error: compilation successful
   --> $DIR/match-guards-always-borrow.rs:57:1

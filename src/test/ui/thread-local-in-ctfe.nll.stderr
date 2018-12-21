@@ -18,9 +18,8 @@ LL | static C: &u32 = &A;
    |                  |
    |                  thread-local variables cannot be borrowed beyond the end of the function
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
   --> $DIR/thread-local-in-ctfe.rs:22:16
@@ -42,9 +41,8 @@ LL | const E: &u32 = &A;
    |                 |
    |                 thread-local variables cannot be borrowed beyond the end of the function
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
   --> $DIR/thread-local-in-ctfe.rs:29:5
