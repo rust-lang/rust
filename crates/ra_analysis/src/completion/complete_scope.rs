@@ -64,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_let_scope() {
+    fn completes_bindings_from_let() {
         check_reference_completion(
             r"
             fn quux(x: i32) {
@@ -78,7 +78,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_if_let_scope() {
+    fn completes_bindings_from_if_let() {
         check_reference_completion(
             r"
             fn quux() {
@@ -96,7 +96,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_for_scope() {
+    fn completes_bindings_from_for() {
         check_reference_completion(
             r"
             fn quux() {
@@ -110,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_mod_scope() {
+    fn completes_module_items() {
         check_reference_completion(
             r"
             struct Foo;
@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_mod_scope_nested() {
+    fn completes_module_items_in_nested_modules() {
         check_reference_completion(
             r"
             struct Foo;
@@ -138,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    fn test_complete_type() {
+    fn completes_return_type() {
         check_reference_completion(
             r"
             struct Foo;
@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn test_complete_shadowing() {
+    fn dont_show_to_completions_for_shadowing() {
         check_reference_completion(
             r"
             fn foo() -> {
@@ -165,7 +165,7 @@ mod tests {
     }
 
     #[test]
-    fn test_complete_self() {
+    fn completes_self_in_methods() {
         check_reference_completion(r"impl S { fn foo(&self) { <|> } }", "self")
     }
 }
