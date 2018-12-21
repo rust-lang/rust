@@ -25,7 +25,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
-#![feature(rustc_stack_internals)]
 #![feature(no_debug)]
 
 #![recursion_limit="256"]
@@ -1481,69 +1480,13 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
     where F: FnOnce() -> R + Send + 'static,
           R: Send + 'static,
 {
-    #[cfg(all(unix, not(target_os = "haiku")))]
-    let spawn_thread = unsafe {
-        // Fetch the current resource limits
-        let mut rlim = libc::rlimit {
-            rlim_cur: 0,
-            rlim_max: 0,
-        };
-        if libc::getrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
-            let err = io::Error::last_os_error();
-            error!("in_rustc_thread: error calling getrlimit: {}", err);
-            true
-        } else if rlim.rlim_max < STACK_SIZE as libc::rlim_t {
-            true
-        } else if rlim.rlim_cur < STACK_SIZE as libc::rlim_t {
-            std::rt::deinit_stack_guard();
-            rlim.rlim_cur = STACK_SIZE as libc::rlim_t;
-            if libc::setrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
-                let err = io::Error::last_os_error();
-                error!("in_rustc_thread: error calling setrlimit: {}", err);
-                std::rt::update_stack_guard();
-                true
-            } else {
-                std::rt::update_stack_guard();
-                false
-            }
-        } else {
-            false
-        }
-    };
-
-    // We set the stack size at link time. See src/rustc/rustc.rs.
-    #[cfg(windows)]
-    let spawn_thread = false;
-
-    #[cfg(target_os = "haiku")]
-    let spawn_thread = unsafe {
-        // Haiku does not have setrlimit implemented for the stack size.
-        // By default it does have the 16 MB stack limit, but we check this in
-        // case the minimum STACK_SIZE changes or Haiku's defaults change.
-        let mut rlim = libc::rlimit {
-            rlim_cur: 0,
-            rlim_max: 0,
-        };
-        if libc::getrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
-            let err = io::Error::last_os_error();
-            error!("in_rustc_thread: error calling getrlimit: {}", err);
-            true
-        } else if rlim.rlim_cur >= STACK_SIZE {
-            false
-        } else {
-            true
-        }
-    };
-
-    #[cfg(not(any(windows, unix)))]
-    let spawn_thread = true;
-
-    // The or condition is added from backward compatibility.
-    if spawn_thread || env::var_os("RUST_MIN_STACK").is_some() {
+    // We need a thread for soundness of thread local storage in rustc. For debugging purposes
+    // we allow an escape hatch where everything runs on the main thread.
+    if env::var_os("RUSTC_UNSTABLE_NO_MAIN_THREAD").is_none() {
         let mut cfg = thread::Builder::new().name(name);
 
-        // FIXME: Hacks on hacks. If the env is trying to override the stack size
-        // then *don't* set it explicitly.
+        // If the env is trying to override the stack size then *don't* set it explicitly.
+        // The libstd thread impl will fetch the `RUST_MIN_STACK` env var itself.
         if env::var_os("RUST_MIN_STACK").is_none() {
             cfg = cfg.stack_size(STACK_SIZE);
         }

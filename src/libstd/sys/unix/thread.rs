@@ -211,7 +211,6 @@ pub mod guard {
     pub type Guard = Range<usize>;
     pub unsafe fn current() -> Option<Guard> { None }
     pub unsafe fn init() -> Option<Guard> { None }
-    pub unsafe fn deinit() {}
 }
 
 
@@ -352,26 +351,6 @@ pub mod guard {
             };
 
             Some(guardaddr..guardaddr + offset * PAGE_SIZE)
-        }
-    }
-
-    pub unsafe fn deinit() {
-        if !cfg!(target_os = "linux") {
-            if let Some(stackaddr) = get_stack_start_aligned() {
-                // Remove the protection on the guard page.
-                // FIXME: we cannot unmap the page, because when we mmap()
-                // above it may be already mapped by the OS, which we can't
-                // detect from mmap()'s return value. If we unmap this page,
-                // it will lead to failure growing stack size on platforms like
-                // macOS. Instead, just restore the page to a writable state.
-                // This ain't Linux, so we probably don't need to care about
-                // execstack.
-                let result = mprotect(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE);
-
-                if result != 0 {
-                    panic!("unable to reset the guard page");
-                }
-            }
         }
     }
 

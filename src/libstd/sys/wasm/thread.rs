@@ -68,7 +68,6 @@ pub mod guard {
     pub type Guard = !;
     pub unsafe fn current() -> Option<Guard> { None }
     pub unsafe fn init() -> Option<Guard> { None }
-    pub unsafe fn deinit() {}
 }
 
 cfg_if! {
