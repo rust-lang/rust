@@ -1,8 +1,8 @@
 use languageserver_types::{
     self, Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, InsertTextFormat,
 };
-use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition};
+use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition, CompletionItem, InsertText};
 use ra_editor::{LineCol, LineIndex};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
@@ -42,6 +42,30 @@ impl Conv for SyntaxKind {
             SyntaxKind::IMPL_ITEM => SymbolKind::Object,
             _ => SymbolKind::Variable,
         }
+    }
+}
+
+impl Conv for CompletionItem {
+    type Output = ::languageserver_types::CompletionItem;
+
+    fn conv(self) -> <Self as Conv>::Output {
+        let mut res = ::languageserver_types::CompletionItem {
+            label: self.label().to_string(),
+            filter_text: Some(self.lookup().to_string()),
+            ..Default::default()
+        };
+        match self.insert_text() {
+            InsertText::PlainText { text } => {
+                res.insert_text = Some(text);
+                res.insert_text_format = Some(InsertTextFormat::PlainText);
+            }
+            InsertText::Snippet { text } => {
+                res.insert_text = Some(text);
+                res.insert_text_format = Some(InsertTextFormat::Snippet);
+                res.kind = Some(languageserver_types::CompletionItemKind::Keyword);
+            }
+        }
+        res
     }
 }
 

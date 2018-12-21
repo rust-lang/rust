@@ -95,7 +95,7 @@ impl FnScopes {
                     r1.start().cmp(&r2.start())
                 }
             })
-            .map(|(ptr, scope)| *scope)
+            .map(|(_ptr, scope)| *scope)
             .unwrap_or(original_scope)
     }
 

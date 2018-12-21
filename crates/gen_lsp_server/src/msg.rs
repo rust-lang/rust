@@ -7,7 +7,7 @@ use failure::{bail, format_err};
 
 use crate::Result;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum RawMessage {
     Request(RawRequest),
