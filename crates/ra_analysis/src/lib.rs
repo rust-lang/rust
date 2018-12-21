@@ -159,13 +159,13 @@ impl AnalysisHost {
 #[derive(Debug)]
 pub struct SourceChange {
     pub label: String,
-    pub source_file_edits: Vec<SourceFileNodeEdit>,
+    pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub cursor_position: Option<FilePosition>,
 }
 
 #[derive(Debug)]
-pub struct SourceFileNodeEdit {
+pub struct SourceFileEdit {
     pub file_id: FileId,
     pub edits: Vec<AtomTextEdit>,
 }

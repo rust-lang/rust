@@ -25,7 +25,7 @@ use crate::{
     db,
     symbol_index::{SymbolIndex, SymbolsDatabase, LibrarySymbolsQuery},
     AnalysisChange, RootChange, Cancelable, CrateId, Diagnostic, FileId,
-    FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
+    FileSystemEdit, FilePosition, Query, SourceChange, SourceFileEdit,
     ReferenceResolution,
 };
 
@@ -518,7 +518,7 @@ impl AnalysisImpl {
 
 impl SourceChange {
     pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileNodeEdit {
+        let file_edit = SourceFileEdit {
             file_id,
             edits: edit.edit.into_atoms(),
         };

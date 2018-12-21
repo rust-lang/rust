@@ -2,7 +2,7 @@ use languageserver_types::{
     self, Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier,
 };
-use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileNodeEdit, FilePosition};
+use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition};
 use ra_editor::{LineCol, LineIndex};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
@@ -256,7 +256,7 @@ fn translate_offset_with_edit(
     }
 }
 
-impl TryConvWith for SourceFileNodeEdit {
+impl TryConvWith for SourceFileEdit {
     type Ctx = ServerWorld;
     type Output = TextDocumentEdit;
     fn try_conv_with(self, world: &ServerWorld) -> Result<TextDocumentEdit> {
