@@ -41,7 +41,7 @@ pub(crate) fn completions(
         reference_completion::completions(&mut res, db, &module, &file, name_ref)?;
         // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
         if is_node::<ast::Param>(name_ref.syntax()) {
-            param_completions(name_ref.syntax(), &mut res);
+            param_completions(&mut res, name_ref.syntax());
         }
     }
 
@@ -49,7 +49,7 @@ pub(crate) fn completions(
     if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
         if is_node::<ast::Param>(name.syntax()) {
             has_completions = true;
-            param_completions(name.syntax(), &mut res);
+            param_completions(&mut res, name.syntax());
         }
     }
     let res = if has_completions { Some(res) } else { None };
@@ -60,7 +60,7 @@ pub(crate) fn completions(
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
-fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
+fn param_completions(acc: &mut Vec<CompletionItem>, ctx: SyntaxNodeRef) {
     let mut params = FxHashMap::default();
     for node in ctx.ancestors() {
         let _ = visitor_ctx(&mut params)
