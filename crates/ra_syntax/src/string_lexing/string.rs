@@ -35,7 +35,7 @@ impl<'a> Iterator for StringComponentIterator<'a> {
 
         assert!(
             self.parser.peek() == None,
-            "string literal should leave no unparsed input: src = {}, pos = {}, length = {}",
+            "string literal should leave no unparsed input: src = {:?}, pos = {}, length = {}",
             self.parser.src,
             self.parser.pos,
             self.parser.src.len()

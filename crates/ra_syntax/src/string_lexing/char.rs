@@ -35,7 +35,7 @@ impl<'a> Iterator for CharComponentIterator<'a> {
 
         assert!(
             self.parser.peek() == None,
-            "char literal should leave no unparsed input: src = {}, pos = {}, length = {}",
+            "char literal should leave no unparsed input: src = {:?}, pos = {}, length = {}",
             self.parser.src,
             self.parser.pos,
             self.parser.src.len()

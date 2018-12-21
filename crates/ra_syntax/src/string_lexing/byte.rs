@@ -40,7 +40,7 @@ impl<'a> Iterator for ByteComponentIterator<'a> {
 
         assert!(
             self.parser.peek() == None,
-            "byte literal should leave no unparsed input: src = {}, pos = {}, length = {}",
+            "byte literal should leave no unparsed input: src = {:?}, pos = {}, length = {}",
             self.parser.src,
             self.parser.pos,
             self.parser.src.len()
