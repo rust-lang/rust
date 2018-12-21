@@ -58,8 +58,8 @@
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
-
 #![no_core]
+
 #![warn(deprecated_in_future)]
 #![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]

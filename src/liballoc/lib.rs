@@ -63,6 +63,7 @@
 #![no_std]
 #![needs_allocator]
 
+#![warn(deprecated_in_future)]
 #![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 

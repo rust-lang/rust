@@ -145,7 +145,7 @@ struct InternalNode<K, V> {
 
     /// The pointers to the children of this node. `len + 1` of these are considered
     /// initialized and valid.
-    edges: [BoxedNode<K, V>; 2 * B],
+    edges: [MaybeUninit<BoxedNode<K, V>>; 2 * B],
 }
 
 impl<K, V> InternalNode<K, V> {
@@ -159,7 +159,10 @@ impl<K, V> InternalNode<K, V> {
     unsafe fn new() -> Self {
         InternalNode {
             data: LeafNode::new(),
-            edges: mem::uninitialized()
+            // Creating a `[MaybeUninit; N]` array by first creating a
+            // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
+            // array does not require initialization.
+            edges: MaybeUninit::uninitialized().into_inner(),
         }
     }
 }
@@ -261,7 +264,7 @@ impl<K, V> Root<K, V> {
             -> NodeRef<marker::Mut, K, V, marker::Internal> {
         debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0] = unsafe { BoxedNode::from_ptr(self.node.as_ptr()) };
+        new_node.edges[0].set(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
         self.node = BoxedNode::from_internal(new_node);
         self.height += 1;
@@ -718,7 +721,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         unsafe {
             ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
             ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
-            ptr::write(self.as_internal_mut().edges.get_unchecked_mut(idx + 1), edge.node);
+            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).set(edge.node);
 
             (*self.as_leaf_mut()).len += 1;
 
@@ -749,7 +752,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             slice_insert(self.vals_mut(), 0, val);
             slice_insert(
                 slice::from_raw_parts_mut(
-                    self.as_internal_mut().edges.as_mut_ptr(),
+                    MaybeUninit::first_mut_ptr(&mut self.as_internal_mut().edges),
                     self.len()+1
                 ),
                 0,
@@ -778,7 +781,9 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(internal) => {
-                    let edge = ptr::read(internal.as_internal().edges.get_unchecked(idx + 1));
+                    let edge = ptr::read(
+                        internal.as_internal().edges.get_unchecked(idx + 1).as_ptr()
+                    );
                     let mut new_root = Root { node: edge, height: internal.height - 1 };
                     (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
                     Some(new_root)
@@ -806,7 +811,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(mut internal) => {
                     let edge = slice_remove(
                         slice::from_raw_parts_mut(
-                            internal.as_internal_mut().edges.as_mut_ptr(),
+                            MaybeUninit::first_mut_ptr(&mut internal.as_internal_mut().edges),
                             old_len+1
                         ),
                         0
@@ -1085,7 +1090,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             slice_insert(
                 slice::from_raw_parts_mut(
-                    self.node.as_internal_mut().edges.as_mut_ptr(),
+                    MaybeUninit::first_mut_ptr(&mut self.node.as_internal_mut().edges),
                     self.node.len()
                 ),
                 self.idx + 1,
@@ -1140,7 +1145,9 @@ impl<BorrowType, K, V>
     pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.node.height - 1,
-            node: unsafe { self.node.as_internal().edges.get_unchecked(self.idx).as_ptr() },
+            node: unsafe {
+                self.node.as_internal().edges.get_unchecked(self.idx).get_ref().as_ptr()
+            },
             root: self.node.root,
             _marker: PhantomData
         }
