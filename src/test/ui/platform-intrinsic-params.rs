@@ -9,8 +9,9 @@
 // except according to those terms.
 
 #![feature(platform_intrinsics)]
+
 extern "platform-intrinsic" {
-    fn x86_mm_movemask_ps() -> i32; //~ERROR found 0, expected 1
+    fn aarch64_vld2_s8() -> i32; //~ERROR found 0, expected 1
 }
 
 fn main() { }

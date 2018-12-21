@@ -15,7 +15,7 @@
 struct f64x2(f64, f64);
 
 extern "platform-intrinsic" {
-    fn x86_mm_movemask_pd<T>(x: f64x2) -> i32; //~ ERROR E0440
+    fn x86_rdrand16_step<T>(x: f64x2) -> i32; //~ ERROR E0440
 }
 
 fn main () {

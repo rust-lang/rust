@@ -1,8 +1,8 @@
 error[E0444]: platform-specific intrinsic has invalid number of arguments: found 0, expected 1
-  --> $DIR/platform-intrinsic-params.rs:13:5
+  --> $DIR/platform-intrinsic-params.rs:14:5
    |
-LL |     fn x86_mm_movemask_ps() -> i32; //~ERROR found 0, expected 1
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn aarch64_vld2_s8() -> i32; //~ERROR found 0, expected 1
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

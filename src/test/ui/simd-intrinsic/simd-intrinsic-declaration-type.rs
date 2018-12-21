@@ -21,48 +21,38 @@ struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
 #[repr(simd)]
 struct i32x4(i32, i32, i32, i32);
 #[repr(simd)]
+struct i32x8(i32, i32, i32, i32, i32, i32, i32, i32);
+#[repr(simd)]
+struct u32x4(u32, u32, u32, u32);
+#[repr(simd)]
 struct f32x4(f32, f32, f32, f32);
 #[repr(simd)]
 struct i64x2(i64, i64);
 
-// correct signatures work well
-mod right {
-    use {i16x8, u16x8};
-    extern "platform-intrinsic" {
-        fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8;
-        fn x86_mm_adds_epu16(x: u16x8, y: u16x8) -> u16x8;
-    }
-}
-// but incorrect ones don't.
-
 mod signedness {
-    use {i16x8, u16x8};
     // signedness matters
     extern "platform-intrinsic" {
-        fn x86_mm_adds_epi16(x: u16x8, y: u16x8) -> u16x8;
+        fn aarch64_vld2q_dup_s32(x: *const u32) -> (::u32x4, ::u32x4);
         //~^ ERROR intrinsic argument 1 has wrong type
-        //~^^ ERROR intrinsic argument 2 has wrong type
-        //~^^^ ERROR intrinsic return value has wrong type
-        fn x86_mm_adds_epu16(x: i16x8, y: i16x8) -> i16x8;
-        //~^ ERROR intrinsic argument 1 has wrong type
-        //~^^ ERROR intrinsic argument 2 has wrong type
-        //~^^^ ERROR intrinsic return value has wrong type
+        //~| ERROR intrinsic return value has wrong type
     }
 }
-// as do lengths
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
-    //~^ ERROR intrinsic argument 1 has wrong type
-    //~^^ ERROR intrinsic argument 2 has wrong type
-    //~^^^ ERROR intrinsic return value has wrong type
-}
-// and so does int vs. float:
-extern "platform-intrinsic" {
-    fn x86_mm_max_ps(x: i32x4, y: i32x4) -> i32x4;
-    //~^ ERROR intrinsic argument 1 has wrong type
-    //~^^ ERROR intrinsic argument 2 has wrong type
-    //~^^^ ERROR intrinsic return value has wrong type
+
+mod lengths {
+    // as do lengths
+    extern "platform-intrinsic" {
+        fn aarch64_vld2q_dup_s32(x: *const i32) -> (::i32x8, ::i32x4);
+        //~^ ERROR intrinsic return value has wrong type
+    }
 }
 
+
+mod float_and_int {
+    // and so does int vs. float:
+    extern "platform-intrinsic" {
+        fn aarch64_vld2q_dup_s32(x: *const i32) -> (::f32x4, ::f32x4);
+        //~^ ERROR intrinsic return value has wrong type
+    }
+}
 
 fn main() {}

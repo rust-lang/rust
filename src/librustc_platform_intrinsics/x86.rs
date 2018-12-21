@@ -44,5 +44,25 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &Type::Aggregate(false, &[&::U64, &::I32]),
             definition: Named("llvm.x86.rdseed.64")
         },
+        "_addcarry_u32" => Intrinsic {
+            inputs: &[&::I8, &::I32, &::I32],
+            output: &Type::Aggregate(false, &[&::I8, &::I32]),
+            definition: Named("llvm.x86.addcarry.32"),
+        },
+        "_addcarry_u64" => Intrinsic {
+            inputs: &[&::I8, &::I64, &::I64],
+            output: &Type::Aggregate(false, &[&::I8, &::I64]),
+            definition: Named("llvm.x86.addcarry.64"),
+        },
+        "_subborrow_u32" => Intrinsic {
+            inputs: &[&::I8, &::I32, &::I32],
+            output: &Type::Aggregate(false, &[&::I8, &::I32]),
+            definition: Named("llvm.x86.subborrow.32"),
+        },
+        "_subborrow_u64" => Intrinsic {
+            inputs: &[&::I8, &::I64, &::I64],
+            output: &Type::Aggregate(false, &[&::I8, &::I64]),
+            definition: Named("llvm.x86.subborrow.64"),
+        },
     }
 }
