@@ -8,6 +8,8 @@ use ra_syntax::{
     ast,
     AstNode,
     SyntaxNodeRef,
+    SourceFileNode,
+    TextUnit,
 };
 use ra_db::SyntaxDatabase;
 use rustc_hash::{FxHashMap};
@@ -27,11 +29,6 @@ pub(crate) fn completions(
 ) -> Cancelable<Option<Completions>> {
     let original_file = db.source_file(position.file_id);
     // Insert a fake ident to get a valid parse tree
-    let file = {
-        let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
-        original_file.reparse(&edit)
-    };
-
     let module = ctry!(source_binder::module_from_position(db, position)?);
 
     let mut acc = Completions::default();
@@ -57,6 +54,32 @@ pub(crate) fn completions(
         return Ok(None);
     }
     Ok(Some(acc))
+}
+
+/// `SyntaxContext` is created early during completion to figure out, where
+/// exactly is the cursor, syntax-wise.
+#[derive(Debug)]
+pub(super) enum SyntaxContext<'a> {
+    ParameterName(SyntaxNodeRef<'a>),
+    Other,
+}
+
+impl SyntaxContext {
+    pub(super) fn new(original_file: &SourceFileNode, offset: TextUnit) -> SyntaxContext {
+        let file = {
+            let edit = AtomTextEdit::insert(offset, "intellijRulezz".to_string());
+            original_file.reparse(&edit)
+        };
+        if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
+            if is_node::<ast::Param>(name.syntax()) {
+                if let Some(node) = find_leaf_at_offset(original_file, offset).left_biased() {
+                    return SyntaxContext::ParameterName(node);
+                }
+            }
+        }
+
+        SyntaxContext::Other
+    }
 }
 
 /// Complete repeated parametes, both name and type. For example, if all
