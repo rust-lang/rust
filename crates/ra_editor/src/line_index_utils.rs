@@ -143,35 +143,33 @@ pub fn count_newlines(offset: TextUnit, line_index: &LineIndex, edits: &[AtomTex
 
     let mut lines: u32 = 0;
 
+    macro_rules! test_newline {
+        ($x:ident) => {
+            if offset < $x {
+                return lines;
+            } else {
+                lines += 1;
+            }
+        };
+    }
+
     for &orig_newline in line_index.newlines() {
         loop {
             let translated_newline = state.translate(orig_newline);
             match state.next_newlines(translated_newline) {
                 NextNewlines::Use => {
-                    if offset < translated_newline {
-                        return lines;
-                    } else {
-                        lines += 1;
-                    }
+                    test_newline!(translated_newline);
                     break;
                 }
                 NextNewlines::ReplaceMany(ns) => {
                     for n in ns {
-                        if offset < n {
-                            return lines;
-                        } else {
-                            lines += 1;
-                        }
+                        test_newline!(n);
                     }
                     break;
                 }
                 NextNewlines::AddMany(ns) => {
                     for n in ns {
-                        if offset < n {
-                            return lines;
-                        } else {
-                            lines += 1;
-                        }
+                        test_newline!(n);
                     }
                 }
             }
@@ -183,11 +181,7 @@ pub fn count_newlines(offset: TextUnit, line_index: &LineIndex, edits: &[AtomTex
             None => break,
             Some(ns) => {
                 for n in ns {
-                    if offset < n {
-                        return lines;
-                    } else {
-                        lines += 1;
-                    }
+                    test_newline!(n);
                 }
             }
         }
