@@ -8,6 +8,8 @@ LL |         _ if { (|| { let bar = b; *bar = false; })();
 LL |                      false } => { },
 LL |         &mut true => { println!("You might think we should get here"); },
    |              ^^^^ value used here after move
+   |
+   = note: move occurs because `b` has type `&mut bool`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 
