@@ -187,7 +187,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     }
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
-    let ret = ecx.allocate(layout, MemoryKind::Stack)?;
+    let ret = ecx.allocate(layout, MemoryKind::Stack);
 
     let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
@@ -490,8 +490,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         _kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
-        Ok(ptr)
+    ) -> Pointer {
+        ptr
     }
 
     #[inline(always)]

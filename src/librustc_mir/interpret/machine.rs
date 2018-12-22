@@ -185,7 +185,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
+    ) -> Pointer<Self::PointerTag>;
 
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the chance to adjust the tag.  It should not change anything else!

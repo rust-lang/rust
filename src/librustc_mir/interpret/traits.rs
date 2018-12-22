@@ -54,7 +54,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ptr_size * (3 + methods.len() as u64),
             ptr_align,
             MemoryKind::Vtable,
-        )?.with_default_tag();
+        ).with_default_tag();
         let tcx = &*self.tcx;
 
         let drop = ::monomorphize::resolve_drop_in_place(*tcx, ty);
