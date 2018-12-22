@@ -422,7 +422,7 @@ pub struct TypeckTables<'tcx> {
     /// The upvarID contains the HIR node ID and it also contains the full path
     /// leading to the member of the struct or tuple that is used instead of the
     /// entire variable.
-    pub upvar_list: ty::UpvarListMap<'tcx>,
+    pub upvar_list: ty::UpvarListMap,
 }
 
 impl<'tcx> TypeckTables<'tcx> {

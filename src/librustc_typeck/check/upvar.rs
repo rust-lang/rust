@@ -156,10 +156,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Add the vector of freevars to the map keyed with the closure id.
             // This gives us an easier access to them without having to call
             // with_freevars again..
-            self.tables
-                .borrow_mut()
-                .upvar_list
-                .insert(closure_node_id, freevar_list);
+            if !freevar_list.is_empty() {
+                self.tables
+                    .borrow_mut()
+                    .upvar_list
+                    .insert(closure_def_id, freevar_list);
+            }
         });
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());

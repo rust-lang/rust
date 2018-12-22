@@ -4,7 +4,7 @@ use hair::cx::Cx;
 use hair::{LintLevel, BindingMode, PatternKind};
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::hir::def_id::{DefId, LocalDefId};
+use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
@@ -640,47 +640,49 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let arguments: Vec<_> = arguments.collect();
 
     let tcx = hir.tcx();
-    let span = tcx.hir().span(fn_id);
+    let tcx_hir = tcx.hir();
+    let span = tcx_hir.span(fn_id);
 
-    // hir.tables().upvar_list[fn_id].
+    let hir_tables = hir.tables();
+    let fn_def_id = tcx_hir.local_def_id(fn_id);
+
     // Gather the upvars of a closure, if any.
-    let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
-        freevars.iter().map(|fv| {
-            let var_id = fv.var_id();
-            let var_hir_id = tcx.hir().node_to_hir_id(var_id);
-            let closure_expr_id = tcx.hir().local_def_id(fn_id);
-            let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_path: ty::UpvarPath {hir_id: var_hir_id},
-                closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
-            });
-            let by_ref = match capture {
-                ty::UpvarCapture::ByValue => false,
-                ty::UpvarCapture::ByRef(..) => true
-            };
-            let mut decl = UpvarDecl {
-                debug_name: keywords::Invalid.name(),
-                var_hir_id: ClearCrossCrate::Set(var_hir_id),
-                by_ref,
-                mutability: Mutability::Not,
-            };
-            if let Some(Node::Binding(pat)) = tcx.hir().find(var_id) {
-                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
-                    decl.debug_name = ident.name;
-
-                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                        if bm == ty::BindByValue(hir::MutMutable) {
-                            decl.mutability = Mutability::Mut;
+    let upvar_decls: Vec<_> = match hir_tables.upvar_list.get(&fn_def_id) {
+        Some(upvars) => upvars
+            .iter()
+            .map(|upvar_id| {
+                let var_hir_id = upvar_id.var_path.hir_id;
+                let var_node_id = tcx_hir.hir_to_node_id(var_hir_id);
+                let capture = hir_tables.upvar_capture(*upvar_id);
+                let by_ref = match capture {
+                    ty::UpvarCapture::ByValue => false,
+                    ty::UpvarCapture::ByRef(..) => true,
+                };
+                let mut decl = UpvarDecl {
+                    debug_name: keywords::Invalid.name(),
+                    var_hir_id: ClearCrossCrate::Set(var_hir_id),
+                    by_ref,
+                    mutability: Mutability::Not,
+                };
+                if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
+                    if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                        decl.debug_name = ident.name;
+                        if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
+                            if bm == ty::BindByValue(hir::MutMutable) {
+                                decl.mutability = Mutability::Mut;
+                            } else {
+                                decl.mutability = Mutability::Not;
+                            }
                         } else {
-                            decl.mutability = Mutability::Not;
+                            tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                         }
-                    } else {
-                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                     }
                 }
-            }
-            decl
-        }).collect()
-    });
+                decl
+            })
+            .collect(),
+        _ => vec![],
+    };
 
     let mut builder = Builder::new(hir,
         span,
@@ -690,7 +692,6 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         return_ty_span,
         upvar_decls);
 
-    let fn_def_id = tcx.hir().local_def_id(fn_id);
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,
         data: region::ScopeData::CallSite
@@ -733,7 +734,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         // RustCall pseudo-ABI untuples the last argument.
         spread_arg = Some(Local::new(arguments.len()));
     }
-    let closure_expr_id = tcx.hir().local_def_id(fn_id);
+    let closure_expr_id = tcx_hir.local_def_id(fn_id);
     info!("fn_id {:?} has attrs {:?}", closure_expr_id,
           tcx.get_attrs(closure_expr_id));
 
