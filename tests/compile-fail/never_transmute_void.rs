@@ -2,6 +2,7 @@
 // compile-flags: -Zmiri-disable-validation
 
 #![feature(never_type)]
+#![allow(unused)]
 
 enum Void {}
 
