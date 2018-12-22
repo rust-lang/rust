@@ -777,10 +777,12 @@ fn main() {
     }
     
     // count leading zeros
-    gen(|(a): (usize)| {
-            Some(a.leading_zeros())
+    gen(|a: MyU128| {
+            Some((a as usize).leading_zeros())
         },
-        "builtins::int::__clzsi2(a)");
+        "{
+            builtins::int::__clzsi2(a as usize)
+        }");
 }
 
 macro_rules! gen_float {
