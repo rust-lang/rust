@@ -12,7 +12,7 @@
 // var, but we do not permit you to use the complete var afterwards.
 // We hope to fix this at some point.
 //
-// FIXME(#21232)
+// FIXME(#54987)
 
 fn assign_both_fields_and_use() {
     let mut x: (u32, u32);

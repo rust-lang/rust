@@ -220,7 +220,7 @@ LL |         };
    |         - first borrow ends here
 
 error[E0499]: cannot borrow `**x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:307:25
+  --> $DIR/borrowck-describe-lvalue.rs:306:25
    |
 LL |                    let y = &mut x;
    |                                 - first mutable borrow occurs here
@@ -231,7 +231,7 @@ LL |                 }
    |                 - first borrow ends here
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-describe-lvalue.rs:318:22
+  --> $DIR/borrowck-describe-lvalue.rs:317:22
    |
 LL |                 drop(x);
    |                      - value moved here
