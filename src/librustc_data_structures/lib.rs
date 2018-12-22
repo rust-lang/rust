@@ -28,7 +28,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
-#![feature(vec_resize_with)]
 #![feature(hash_raw_entry)]
 #![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]

@@ -1897,8 +1897,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_resize_with)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1917,7 +1915,7 @@ impl<T> VecDeque<T> {
     /// buf.resize_with(5, || { state += 1; state });
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
-    #[unstable(feature = "vec_resize_with", issue = "41758")]
+    #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut()->T) {
         let len = self.len();
 
