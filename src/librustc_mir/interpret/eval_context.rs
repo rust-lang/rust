@@ -422,7 +422,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
-            debug!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
 
@@ -491,7 +491,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
 
         if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
-            debug!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
         if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
@@ -503,7 +503,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         if self.stack.len() > 1 { // FIXME no check should be needed, but some instances ICE
-            debug!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
@@ -557,7 +557,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
 
         if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
-            debug!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
         Ok(())
