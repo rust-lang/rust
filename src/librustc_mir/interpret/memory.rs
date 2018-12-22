@@ -131,10 +131,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &mut self,
         alloc: Allocation<M::PointerTag, M::AllocExtra>,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, AllocId> {
+    ) -> AllocId {
         let id = self.tcx.alloc_map.lock().reserve();
         self.alloc_map.insert(id, (kind, alloc));
-        Ok(id)
+        id
     }
 
     pub fn allocate(
@@ -142,9 +142,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> Pointer {
         let extra = AllocationExtra::memory_allocated(size, &self.extra);
-        Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind)?))
+        Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind))
     }
 
     pub fn reallocate(
@@ -162,7 +162,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate(new_size, new_align, kind)?;
+        let new_ptr = self.allocate(new_size, new_align, kind);
         self.copy(
             ptr.into(),
             old_align,
