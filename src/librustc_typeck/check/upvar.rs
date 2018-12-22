@@ -159,7 +159,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tables
                 .borrow_mut()
                 .upvar_list
-                .insert(closure_def_id, freevar_list);
+                .insert(closure_node_id, freevar_list);
         });
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());

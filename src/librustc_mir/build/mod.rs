@@ -642,6 +642,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let tcx = hir.tcx();
     let span = tcx.hir().span(fn_id);
 
+    // hir.tables().upvar_list[fn_id].
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {

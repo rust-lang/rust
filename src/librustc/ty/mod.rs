@@ -589,8 +589,6 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::TyS<'gcx> {
 
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
-pub type UpvarListMap<'tcx> = FxHashMap<DefId, Vec<UpvarId>>;
-
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
 
@@ -810,6 +808,7 @@ pub struct UpvarBorrow<'tcx> {
     pub region: ty::Region<'tcx>,
 }
 
+pub type UpvarListMap<'tcx> = FxHashMap<ast::NodeId, Vec<UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 #[derive(Copy, Clone)]
