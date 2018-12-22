@@ -778,10 +778,10 @@ fn main() {
     
     // count leading zeros
     gen(|a: MyU64| {
-            Some((a.0 as usize).leading_zeros() as usize)
+            Some((a.0 as usize).leading_zeros())
         },
         "{
-            builtins::int::__clzsi2(a as usize)
+            builtins::int::__clzsi2(a as usize) as u32
         }");
 }
 
