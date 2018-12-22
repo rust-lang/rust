@@ -107,7 +107,6 @@ impl ServerWorldState {
         let mut libs = Vec::new();
         let mut change = AnalysisChange::new();
         for c in changes {
-            log::info!("vfs change {:?}", c);
             match c {
                 VfsChange::AddRoot { root, files } => {
                     let root_path = self.vfs.read().root2path(root);

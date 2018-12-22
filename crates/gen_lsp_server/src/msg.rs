@@ -152,12 +152,18 @@ impl RawNotification {
             params: to_value(params).unwrap(),
         }
     }
+    pub fn is<N>(&self) -> bool
+    where
+        N: Notification,
+    {
+        self.method == N::METHOD
+    }
     pub fn cast<N>(self) -> ::std::result::Result<N::Params, RawNotification>
     where
         N: Notification,
         N::Params: serde::de::DeserializeOwned,
     {
-        if self.method != N::METHOD {
+        if !self.is::<N>() {
             return Err(self);
         }
         Ok(from_value(self.params).unwrap())

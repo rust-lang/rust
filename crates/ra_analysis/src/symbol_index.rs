@@ -56,6 +56,10 @@ impl Hash for SymbolIndex {
 }
 
 impl SymbolIndex {
+    pub(crate) fn len(&self) -> usize {
+        self.symbols.len()
+    }
+
     pub(crate) fn for_files(
         files: impl ParallelIterator<Item = (FileId, SourceFileNode)>,
     ) -> SymbolIndex {
