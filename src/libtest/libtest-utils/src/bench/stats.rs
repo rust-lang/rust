@@ -122,7 +122,7 @@ pub trait Stats {
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Debug)]
 #[allow(missing_docs)]
 pub struct Summary {
     pub sum: f64,
@@ -329,11 +329,10 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
 
 #[cfg(test)]
 mod tests {
-    use stats::Stats;
-    use stats::Summary;
+    use super::{Stats, Summary};
     use std::f64;
-    use std::io::prelude::*;
     use std::io;
+    use std::io::prelude::*;
 
     macro_rules! assert_approx_eq {
         ($a: expr, $b: expr) => {{
@@ -903,30 +902,4 @@ mod tests {
     fn test_sum_f64_between_ints_that_sum_to_0() {
         assert_eq!([1e30f64, 1.2f64, -1e30f64].sum(), 1.2);
     }
-}
-
-#[cfg(test)]
-mod bench {
-    extern crate test;
-    use self::test::Bencher;
-    use stats::Stats;
-
-    #[bench]
-    pub fn sum_three_items(b: &mut Bencher) {
-        b.iter(|| {
-            [1e20f64, 1.5f64, -1e20f64].sum();
-        })
-    }
-    #[bench]
-    pub fn sum_many_f64(b: &mut Bencher) {
-        let nums = [-1e30f64, 1e60, 1e30, 1.0, -1e60];
-        let v = (0..500).map(|i| nums[i % 5]).collect::<Vec<_>>();
-
-        b.iter(|| {
-            v.sum();
-        })
-    }
-
-    #[bench]
-    pub fn no_iter(_: &mut Bencher) {}
 }

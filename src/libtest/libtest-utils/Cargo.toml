@@ -1,0 +1,9 @@
+[package]
+name = "libtest-utils"
+version = "0.1.0"
+authors = ["gnzlbg <gonzalobg88@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+term = "0.5.1"
+libc = "0.2"

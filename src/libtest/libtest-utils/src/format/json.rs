@@ -8,18 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::*;
+use crate::{
+    bench,
+    format::{io, ConsoleTestState, OutputFormatter, OutputLocation},
+    test,
+};
 
-pub(crate) struct JsonFormatter<T> {
+pub struct JsonFormatter<T> {
     out: OutputLocation<T>,
 }
 
-impl<T: Write> JsonFormatter<T> {
+impl<T: io::Write> JsonFormatter<T> {
     pub fn new(out: OutputLocation<T>) -> Self {
         Self { out }
     }
 
     fn write_message(&mut self, s: &str) -> io::Result<()> {
+        use io::Write;
         assert!(!s.contains('\n'));
 
         self.out.write_all(s.as_ref())?;
@@ -47,7 +52,7 @@ impl<T: Write> JsonFormatter<T> {
     }
 }
 
-impl<T: Write> OutputFormatter for JsonFormatter<T> {
+impl<T: io::Write> OutputFormatter for JsonFormatter<T> {
     fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
         self.write_message(&*format!(
             r#"{{ "type": "suite", "event": "started", "test_count": {} }}"#,
@@ -55,23 +60,23 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         ))
     }
 
-    fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
+    fn write_test_start(&mut self, desc: &test::Desc) -> io::Result<()> {
         self.write_message(&*format!(
             r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
             desc.name
         ))
     }
 
-    fn write_result(
+    fn write_test_result(
         &mut self,
-        desc: &TestDesc,
-        result: &TestResult,
+        desc: &test::Desc,
+        result: &test::Result,
         stdout: &[u8],
     ) -> io::Result<()> {
         match *result {
-            TrOk => self.write_event("test", desc.name.as_slice(), "ok", None),
+            test::Result::Ok => self.write_event("test", desc.name.as_slice(), "ok", None),
 
-            TrFailed => {
+            test::Result::Failed => {
                 let extra_data = if stdout.len() > 0 {
                     Some(format!(
                         r#""stdout": "{}""#,
@@ -84,20 +89,31 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 self.write_event("test", desc.name.as_slice(), "failed", extra_data)
             }
 
-            TrFailedMsg(ref m) => self.write_event(
+            test::Result::FailedMsg(ref m) => self.write_event(
                 "test",
                 desc.name.as_slice(),
                 "failed",
                 Some(format!(r#""message": "{}""#, EscapedString(m))),
             ),
 
-            TrIgnored => self.write_event("test", desc.name.as_slice(), "ignored", None),
-
-            TrAllowedFail => {
-                self.write_event("test", desc.name.as_slice(), "allowed_failure", None)
+            test::Result::Ignored => {
+                self.write_event("test", desc.name.as_slice(), "ignored", None)
             }
 
-            TrBench(ref bs) => {
+            test::Result::AllowedFail => {
+                self.write_event("test", desc.name.as_slice(), "allowed_failure", None)
+            }
+        }
+    }
+
+    fn write_bench_result(
+        &mut self,
+        desc: &bench::Desc,
+        result: &bench::Result,
+        stdout: &[u8],
+    ) -> io::Result<()> {
+        match *result {
+            bench::Result::Ok(ref bs) => {
                 let median = bs.ns_iter_summ.median as usize;
                 let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 
@@ -117,10 +133,22 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 
                 self.write_message(&*line)
             }
+            bench::Result::Failed => {
+                let extra_data = if stdout.len() > 0 {
+                    Some(format!(
+                        r#""stdout": "{}""#,
+                        EscapedString(String::from_utf8_lossy(stdout))
+                    ))
+                } else {
+                    None
+                };
+
+                self.write_event("benchmark", desc.name.as_slice(), "failed", extra_data)
+            }
         }
     }
 
-    fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+    fn write_timeout(&mut self, desc: &test::Desc) -> io::Result<()> {
         self.write_message(&*format!(
             r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
             desc.name

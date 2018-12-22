@@ -1,16 +1,12 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+//! Pretty format
 
-use super::*;
+use crate::{
+    bench,
+    format::{io, ConsoleTestState, OutputFormatter, OutputLocation},
+    test, TEST_WARN_TIMEOUT_S,
+};
 
-pub(crate) struct PrettyFormatter<T> {
+pub struct PrettyFormatter<T> {
     out: OutputLocation<T>,
     use_color: bool,
 
@@ -20,7 +16,7 @@ pub(crate) struct PrettyFormatter<T> {
     is_multithreaded: bool,
 }
 
-impl<T: Write> PrettyFormatter<T> {
+impl<T: io::Write> PrettyFormatter<T> {
     pub fn new(
         out: OutputLocation<T>,
         use_color: bool,
@@ -35,7 +31,6 @@ impl<T: Write> PrettyFormatter<T> {
         }
     }
 
-    #[cfg(test)]
     pub fn output_location(&self) -> &OutputLocation<T> {
         &self.out
     }
@@ -71,7 +66,7 @@ impl<T: Write> PrettyFormatter<T> {
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self.out {
-            Pretty(ref mut term) => {
+            OutputLocation::Pretty(ref mut term) => {
                 if self.use_color {
                     term.fg(color)?;
                 }
@@ -81,7 +76,7 @@ impl<T: Write> PrettyFormatter<T> {
                 }
                 term.flush()
             }
-            Raw(ref mut stdout) => {
+            OutputLocation::Raw(ref mut stdout) => {
                 stdout.write_all(word.as_bytes())?;
                 stdout.flush()
             }
@@ -89,6 +84,7 @@ impl<T: Write> PrettyFormatter<T> {
     }
 
     pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        use io::Write;
         let s = s.as_ref();
         self.out.write_all(s.as_bytes())?;
         self.out.flush()
@@ -146,7 +142,7 @@ impl<T: Write> PrettyFormatter<T> {
         Ok(())
     }
 
-    fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
+    fn write_test_name(&mut self, desc: &test::Desc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
         self.write_plain(&format!("test {} ... ", name))?;
 
@@ -154,13 +150,13 @@ impl<T: Write> PrettyFormatter<T> {
     }
 }
 
-impl<T: Write> OutputFormatter for PrettyFormatter<T> {
+impl<T: io::Write> OutputFormatter for PrettyFormatter<T> {
     fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
         let noun = if test_count != 1 { "tests" } else { "test" };
         self.write_plain(&format!("\nrunning {} {}\n", test_count, noun))
     }
 
-    fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
+    fn write_test_start(&mut self, desc: &test::Desc) -> io::Result<()> {
         // When running tests concurrently, we should not print
         // the test's name as the result will be mis-aligned.
         // When running the tests serially, we print the name here so
@@ -172,24 +168,44 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         Ok(())
     }
 
-    fn write_result(&mut self, desc: &TestDesc, result: &TestResult, _: &[u8]) -> io::Result<()> {
+    fn write_test_result(
+        &mut self,
+        desc: &test::Desc,
+        result: &test::Result,
+        _: &[u8],
+    ) -> io::Result<()> {
         if self.is_multithreaded {
             self.write_test_name(desc)?;
         }
 
         match *result {
-            TrOk => self.write_ok(),
-            TrFailed | TrFailedMsg(_) => self.write_failed(),
-            TrIgnored => self.write_ignored(),
-            TrAllowedFail => self.write_allowed_fail(),
-            TrBench(ref bs) => {
-                self.write_bench()?;
-                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
-            }
+            test::Result::Ok => self.write_ok(),
+            test::Result::Failed | test::Result::FailedMsg(_) => self.write_failed(),
+            test::Result::Ignored => self.write_ignored(),
+            test::Result::AllowedFail => self.write_allowed_fail(),
         }
     }
 
-    fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+    fn write_bench_result(
+        &mut self,
+        desc: &bench::Desc,
+        result: &bench::Result,
+        _: &[u8],
+    ) -> io::Result<()> {
+        match *result {
+            bench::Result::Ok(ref samples) => {
+                if self.is_multithreaded {
+                    self.write_test_name(desc)?;
+                }
+
+                self.write_bench()?;
+                self.write_plain(&format!(": {}\n", samples))
+            }
+            bench::Result::Failed => self.write_failed(),
+        }
+    }
+
+    fn write_timeout(&mut self, desc: &test::Desc) -> io::Result<()> {
         if self.is_multithreaded {
             self.write_test_name(desc)?;
         }
