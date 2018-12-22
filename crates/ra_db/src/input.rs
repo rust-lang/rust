@@ -12,6 +12,7 @@ use rustc_hash::FxHashMap;
 use salsa;
 
 use ra_syntax::SmolStr;
+use rustc_hash::FxHashSet;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -94,8 +95,9 @@ impl CrateGraph {
         crate_id
     }
     pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
-        if self.dfs_find(from, to) {
-           panic!("Cycle dependencies found.")
+        let mut visited = FxHashSet::default();
+        if self.dfs_find(from, to, &mut visited) {
+            panic!("Cycle dependencies found.")
         }
         self.arena.get_mut(&from).unwrap().add_dep(name, to)
     }
@@ -112,35 +114,36 @@ impl CrateGraph {
     pub fn dependencies<'a>(
         &'a self,
         crate_id: CrateId,
-    ) -> impl Iterator<Item=&'a Dependency> + 'a {
+    ) -> impl Iterator<Item = &'a Dependency> + 'a {
         self.arena[&crate_id].dependencies.iter()
     }
-    fn dfs_find(&self, target: CrateId, from: CrateId) -> bool {
+    fn dfs_find(&self, target: CrateId, from: CrateId, visited: &mut FxHashSet<CrateId>) -> bool {
+        if visited.contains(&from) {
+            return false;
+        }
         for dep in self.dependencies(from) {
             let crate_id = dep.crate_id();
             if crate_id == target {
                 return true;
             }
-            if self.arena.contains_key(&crate_id) {
-                if self.dfs_find(target, crate_id) {
-                    return true;
-                }
+
+            if self.dfs_find(target, crate_id, visited) {
+                return true;
             }
         }
+        visited.insert(from);
         return false;
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::{CrateGraph, FxHashMap, FileId, SmolStr};
+
     #[test]
     #[should_panic]
     fn it_should_painc_because_of_cycle_dependencies() {
-        let mut graph = CrateGraph {
-            arena: FxHashMap::default()
-        };
+        let mut graph = CrateGraph::default();
         let crate1 = graph.add_crate_root(FileId(1u32));
         let crate2 = graph.add_crate_root(FileId(2u32));
         let crate3 = graph.add_crate_root(FileId(3u32));
@@ -152,7 +155,7 @@ mod tests {
     #[test]
     fn it_works() {
         let mut graph = CrateGraph {
-            arena: FxHashMap::default()
+            arena: FxHashMap::default(),
         };
         let crate1 = graph.add_crate_root(FileId(1u32));
         let crate2 = graph.add_crate_root(FileId(2u32));
@@ -161,7 +164,6 @@ mod tests {
         graph.add_dep(crate2, SmolStr::new("crate3"), crate3);
     }
 }
-
 
 salsa::query_group! {
     pub trait FilesDatabase: salsa::Database {
