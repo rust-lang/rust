@@ -47,7 +47,6 @@ impl_stable_hash_for!(enum mir::BorrowKind {
 impl_stable_hash_for!(enum mir::UnsafetyViolationKind {
     General,
     GeneralAndConstFn,
-    GatedConstFnCall,
     ExternStatic(lint_node_id),
     BorrowPacked(lint_node_id),
 });
