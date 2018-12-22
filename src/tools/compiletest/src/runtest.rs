@@ -1082,7 +1082,7 @@ impl<'test> TestCx<'test> {
             match line {
                 Ok(line) => {
                     let line = if line.starts_with("//") {
-                        line[2..].trim_left()
+                        line[2..].trim_start()
                     } else {
                         line.as_str()
                     };
@@ -2146,8 +2146,8 @@ impl<'test> TestCx<'test> {
             .lines()
             .enumerate()
             .filter_map(|(line_nb, line)| {
-                if (line.trim_left().starts_with("pub mod ")
-                    || line.trim_left().starts_with("mod "))
+                if (line.trim_start().starts_with("pub mod ")
+                    || line.trim_start().starts_with("mod "))
                     && line.ends_with(';')
                 {
                     if let Some(ref mut other_files) = other_files {
@@ -2156,7 +2156,7 @@ impl<'test> TestCx<'test> {
                     None
                 } else {
                     let sline = line.split("///").last().unwrap_or("");
-                    let line = sline.trim_left();
+                    let line = sline.trim_start();
                     if line.starts_with("```") {
                         if ignore {
                             ignore = false;
@@ -3287,7 +3287,7 @@ fn normalize_mir_line(line: &str) -> String {
 fn nocomment_mir_line(line: &str) -> &str {
     if let Some(idx) = line.find("//") {
         let (l, _) = line.split_at(idx);
-        l.trim_right()
+        l.trim_end()
     } else {
         line
     }
