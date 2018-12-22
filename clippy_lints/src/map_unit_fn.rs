@@ -199,7 +199,6 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
 
 fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr, map_args: &[hir::Expr]) {
     let var_arg = &map_args[0];
-    let fn_arg = &map_args[1];
 
     let (map_type, variant, lint) = if match_type(cx, cx.tables.expr_ty(var_arg), &paths::OPTION) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
@@ -208,6 +207,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
     } else {
         return;
     };
+    let fn_arg = &map_args[1];
 
     if is_unit_function(cx, fn_arg) {
         let msg = suggestion_msg("function", map_type);
