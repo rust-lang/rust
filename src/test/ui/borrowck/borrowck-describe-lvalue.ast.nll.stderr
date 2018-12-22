@@ -350,9 +350,8 @@ LL |             let p: &'a u8 = &*block.current;
 LL |             drop(x);
    |                  - mutable borrow later used here
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 warning[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:260:33
@@ -365,9 +364,8 @@ LL |             let p : *const u8 = &*(*block).current;
 LL |             drop(x);
    |                  - mutable borrow later used here
    |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-describe-lvalue.rs:318:22
