@@ -3,6 +3,7 @@
 // substitutions.
 
 use check::FnCtxt;
+use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -357,6 +358,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
+        let mut errors_buffer = Vec::new();
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,
@@ -382,8 +384,21 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     // This is a unit-testing mechanism.
                     let node_id = self.tcx().hir().hir_to_node_id(hir_id);
                     let span = self.tcx().hir().span(node_id);
-                    self.tcx().sess.span_err(span, &format!("user substs: {:?}", user_substs));
+                    // We need to buffer the errors in order to guarantee a consistent
+                    // order when emitting them.
+                    let err = self.tcx().sess.struct_span_err(
+                        span,
+                        &format!("user substs: {:?}", user_substs)
+                    );
+                    err.buffer(&mut errors_buffer);
                 }
+            }
+        }
+
+        if !errors_buffer.is_empty() {
+            errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+            for diag in errors_buffer.drain(..) {
+                DiagnosticBuilder::new_diagnostic(self.tcx().sess.diagnostic(), diag).emit();
             }
         }
     }
