@@ -129,19 +129,17 @@ macro_rules! from_str_float_impl {
             ///
             /// # Grammar
             ///
-            /// All strings that adhere to the following regular expression
+            /// All strings that adhere to the following EBNF grammar
             /// will result in an [`Ok`] being returned:
             ///
             /// ```txt
-            /// (\+|-)?
-            /// (inf|
-            ///  NaN|
-            ///  ([0-9]+|
-            ///   [0-9]+\.[0-9]*|
-            ///   [0-9]*\.[0-9]+)
-            ///  ((e|E)
-            ///   (\+|-)?
-            ///   [0-9]+)?)
+            /// Float  ::= Sign? ( 'inf' | 'NaN' | Number )
+            /// Number ::= ( Digit+ |
+            ///              Digit+ '.' Digit* |
+            ///              Digit* '.' Digit+ ) Exp?
+            /// Exp    ::= [eE] Sign? Digit+
+            /// Sign   ::= [+-]
+            /// Digit  ::= [0-9]
             /// ```
             ///
             /// # Known bugs
