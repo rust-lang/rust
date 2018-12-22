@@ -775,6 +775,12 @@ fn main() {
                 (builtins::int::udiv::__udivmodti4(a, b, Some(&mut r)), r)
             }");
     }
+    
+    // count leading zeros
+    gen(|(a): (usize)| {
+            Some(a.leading_zeros())
+        },
+        "builtins::int::__clzsi2(a)");
 }
 
 macro_rules! gen_float {
