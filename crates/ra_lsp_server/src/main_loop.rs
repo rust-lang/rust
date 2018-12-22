@@ -143,7 +143,8 @@ fn main_loop_inner(
             }
             recv(libdata_receiver, data) => Event::Lib(data.unwrap())
         };
-        log::info!("{:?}", event);
+        log::info!("loop_turn = {:?}", event);
+        let start = std::time::Instant::now();
         let mut state_changed = false;
         match event {
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
@@ -206,6 +207,7 @@ fn main_loop_inner(
                 subs.subscriptions(),
             )
         }
+        log::info!("loop_turn = {:?}", start.elapsed());
     }
 }
 
