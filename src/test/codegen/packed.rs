@@ -13,7 +13,6 @@
 // min-llvm-version 7.0
 
 #![crate_type = "lib"]
-#![feature(repr_packed)]
 
 #[repr(packed)]
 pub struct Packed1 {

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![feature(repr_packed)]
 
 #[repr(packed)]
 struct Foo1 {

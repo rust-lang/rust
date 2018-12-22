@@ -12,8 +12,6 @@
 #![allow(dead_code)]
 // ignore-emscripten weird assertion?
 
-#![feature(repr_packed)]
-
 #[repr(packed)]
 struct Foo1 {
     bar: u8,
