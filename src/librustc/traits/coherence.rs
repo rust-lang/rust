@@ -397,7 +397,7 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>, in_crate: InCrate)
                        -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         vec![]
-    } else if fundamental_ty(tcx, ty) {
+    } else if fundamental_ty(ty) {
         ty.walk_shallow()
           .flat_map(|t| uncovered_tys(tcx, t, in_crate))
           .collect()
@@ -415,14 +415,13 @@ fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
 
 fn ty_is_local(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     ty_is_local_constructor(ty, in_crate) ||
-        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
+        fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
-fn fundamental_ty(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
+fn fundamental_ty(ty: Ty<'_>) -> bool {
     match ty.sty {
         ty::Ref(..) => true,
         ty::Adt(def, _) => def.is_fundamental(),
-        ty::Dynamic(ref data, ..) => tcx.has_attr(data.principal().def_id(), "fundamental"),
         _ => false
     }
 }
