@@ -33,6 +33,18 @@ impl IntTy {
             IntTy::I128 => "i128",
         }
     }
+
+    pub fn from_string(s: &str) -> Option<IntTy> {
+        match s {
+            "isize" => Some(IntTy::Isize),
+            "i8" => Some(IntTy::I8),
+            "i16" => Some(IntTy::I16),
+            "i32" => Some(IntTy::I32),
+            "i64" => Some(IntTy::I64),
+            "i128" => Some(IntTy::I128),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
@@ -54,6 +66,18 @@ impl UintTy {
             UintTy::U32 => "u32",
             UintTy::U64 => "u64",
             UintTy::U128 => "u128",
+        }
+    }
+
+    pub fn from_string(s: &str) -> Option<UintTy> {
+        match s {
+            "usize" => Some(UintTy::Usize),
+            "u8" => Some(UintTy::U8),
+            "u16" => Some(UintTy::U16),
+            "u32" => Some(UintTy::U32),
+            "u64" => Some(UintTy::U64),
+            "u128" => Some(UintTy::U128),
+            _ => None,
         }
     }
 }
@@ -93,6 +117,14 @@ impl FloatTy {
         match self {
             FloatTy::F32 => "f32",
             FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn from_string(s: &str) -> Option<FloatTy> {
+        match s {
+            "f32" => Some(FloatTy::F32),
+            "f64" => Some(FloatTy::F64),
+            _ => None,
         }
     }
 }

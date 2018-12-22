@@ -2697,7 +2697,11 @@ impl<R: TreeRoot<RaTypes>> PathTypeNode<R> {
 }
 
 
-impl<'a> PathType<'a> {}
+impl<'a> PathType<'a> {
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // PlaceholderPat
 #[derive(Debug, Clone, Copy,)]

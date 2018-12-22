@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
-    TextRange, TextUnit,
+    TextRange, TextUnit, SmolStr,
     algo::visit::{visitor, Visitor},
     ast::{self, AstNode, DocCommentsOwner, NameOwner, LoopBodyOwner, ArgListOwner},
     SyntaxNodeRef
@@ -148,7 +148,25 @@ impl Ty {
             ParenType(_inner) => Ty::Unknown, // TODO
             TupleType(_inner) => Ty::Unknown, // TODO
             NeverType(..) => Ty::Never,
-            PathType(_inner) => Ty::Unknown, // TODO
+            PathType(inner) => {
+                let path = if let Some(p) = inner.path() { p } else { return Ty::Unknown };
+                if path.qualifier().is_none() {
+                    let name = path.segment().and_then(|s| s.name_ref()).map(|n| n.text()).unwrap_or(SmolStr::new(""));
+                    if let Some(int_ty) = primitive::IntTy::from_string(&name) {
+                        Ty::Int(int_ty)
+                    } else if let Some(uint_ty) = primitive::UintTy::from_string(&name) {
+                        Ty::Uint(uint_ty)
+                    } else if let Some(float_ty) = primitive::FloatTy::from_string(&name) {
+                        Ty::Float(float_ty)
+                    } else {
+                        // TODO
+                        Ty::Unknown
+                    }
+                } else {
+                    // TODO
+                    Ty::Unknown
+                }
+            },
             PointerType(_inner) => Ty::Unknown, // TODO
             ArrayType(_inner) => Ty::Unknown, // TODO
             SliceType(_inner) => Ty::Unknown, // TODO

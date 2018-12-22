@@ -304,7 +304,7 @@ Grammar(
         "ParenType": (),
         "TupleType": (),
         "NeverType": (),
-        "PathType": (),
+        "PathType": (options: ["Path"]),
         "PointerType": (),
         "ArrayType": (),
         "SliceType": (),
