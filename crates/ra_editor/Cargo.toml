@@ -23,6 +23,10 @@ rand = "*"
 rand_xorshift = "*"
 lazy_static = "*"
 
+[lib]
+# so that criterion arguments work, see: https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
+bench = false
+
 [[bench]]
 name = "translate_offset_with_edit_benchmark"
 harness = false

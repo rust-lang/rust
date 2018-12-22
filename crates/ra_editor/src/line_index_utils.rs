@@ -270,9 +270,6 @@ pub fn translate_offset_with_edit(
                 Step::Newline(n) => {
                     if offset < *n {
                         return res.to_line_col(offset);
-                    } else if offset == *n {
-                        res.add_line(*n);
-                        return res.to_line_col(offset);
                     } else {
                         res.add_line(*n);
                     }

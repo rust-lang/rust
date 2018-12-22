@@ -65,21 +65,20 @@ lazy_static! {
 }
 
 fn compare_translates(c: &mut Criterion) {
-    let f1 = Fun::new("translate_after_edit", |b, _| {
-        b.iter(|| {
-            let d = &*DATA;
-            line_index_utils::translate_after_edit(&d.text, d.offset, d.edits.clone());
-        })
-    });
-
-    let f2 = Fun::new("translate_offset_with_edit", |b, _| {
-        b.iter(|| {
-            let d = &*DATA;
-            line_index_utils::translate_offset_with_edit(&d.line_index, d.offset, &d.edits);
-        })
-    });
-
-    let functions = vec![f1, f2];
+    let functions = vec![
+        Fun::new("translate_after_edit", |b, _| {
+            b.iter(|| {
+                let d = &*DATA;
+                line_index_utils::translate_after_edit(&d.text, d.offset, d.edits.clone());
+            })
+        }),
+        Fun::new("translate_offset_with_edit", |b, _| {
+            b.iter(|| {
+                let d = &*DATA;
+                line_index_utils::translate_offset_with_edit(&d.line_index, d.offset, &d.edits);
+            })
+        }),
+    ];
 
     c.bench_functions("translate", functions, ());
 }
