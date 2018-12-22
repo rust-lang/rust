@@ -7,10 +7,12 @@
 /// actual IO is done and lowered to input.
 use std::sync::Arc;
 
-use rustc_hash::{FxHashMap};
 use relative_path::RelativePathBuf;
-use ra_syntax::SmolStr;
+use rustc_hash::FxHashMap;
 use salsa;
+
+use ra_syntax::SmolStr;
+use rustc_hash::FxHashSet;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -92,10 +94,11 @@ impl CrateGraph {
         assert!(prev.is_none());
         crate_id
     }
-    // FIXME: check that we don't have cycles here.
-    // Just a simple depth first search from `to` should work,
-    // the graph is small.
     pub fn add_dep(&mut self, from: CrateId, name: SmolStr, to: CrateId) {
+        let mut visited = FxHashSet::default();
+        if self.dfs_find(from, to, &mut visited) {
+            panic!("Cycle dependencies found.")
+        }
         self.arena.get_mut(&from).unwrap().add_dep(name, to)
     }
     pub fn is_empty(&self) -> bool {
@@ -116,6 +119,52 @@ impl CrateGraph {
         crate_id: CrateId,
     ) -> impl Iterator<Item = &'a Dependency> + 'a {
         self.arena[&crate_id].dependencies.iter()
+    }
+    fn dfs_find(&self, target: CrateId, from: CrateId, visited: &mut FxHashSet<CrateId>) -> bool {
+        if !visited.insert(from) {
+            return false;
+        }
+
+        for dep in self.dependencies(from) {
+            let crate_id = dep.crate_id();
+            if crate_id == target {
+                return true;
+            }
+
+            if self.dfs_find(target, crate_id, visited) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CrateGraph, FxHashMap, FileId, SmolStr};
+
+    #[test]
+    #[should_panic]
+    fn it_should_painc_because_of_cycle_dependencies() {
+        let mut graph = CrateGraph::default();
+        let crate1 = graph.add_crate_root(FileId(1u32));
+        let crate2 = graph.add_crate_root(FileId(2u32));
+        let crate3 = graph.add_crate_root(FileId(3u32));
+        graph.add_dep(crate1, SmolStr::new("crate2"), crate2);
+        graph.add_dep(crate2, SmolStr::new("crate3"), crate3);
+        graph.add_dep(crate3, SmolStr::new("crate1"), crate1);
+    }
+
+    #[test]
+    fn it_works() {
+        let mut graph = CrateGraph {
+            arena: FxHashMap::default(),
+        };
+        let crate1 = graph.add_crate_root(FileId(1u32));
+        let crate2 = graph.add_crate_root(FileId(2u32));
+        let crate3 = graph.add_crate_root(FileId(3u32));
+        graph.add_dep(crate1, SmolStr::new("crate2"), crate2);
+        graph.add_dep(crate2, SmolStr::new("crate3"), crate3);
     }
 }
 
