@@ -1,6 +1,6 @@
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{TextUnit, TextRange};
-use crate::{LineIndex, LineCol, line_index::Utf16Char};
+use crate::{LineIndex, LineCol, line_index::Utf16Char, line_index};
 use superslice::Ext;
 
 #[derive(Debug, Clone)]
@@ -154,7 +154,7 @@ impl<'a, 'b> Edits<'a, 'b> {
     fn next_step(&mut self, step: &Step) -> NextNewlines {
         let step_pos = match step {
             &Step::Newline(n) => n,
-            &Step::Utf16Char(r) => r.start(),
+            &Step::Utf16Char(r) => r.end(),
         };
         let res = match &mut self.current {
             Some(edit) => {
@@ -214,6 +214,40 @@ impl<'a, 'b> Edits<'a, 'b> {
     }
 }
 
+#[derive(Debug)]
+struct RunningLineCol {
+    line: u32,
+    last_newline: TextUnit,
+    col_adjust: TextUnit,
+}
+
+impl RunningLineCol {
+    fn new() -> RunningLineCol {
+        RunningLineCol {
+            line: 0,
+            last_newline: TextUnit::from(0),
+            col_adjust: TextUnit::from(0),
+        }
+    }
+
+    fn to_line_col(&self, offset: TextUnit) -> LineCol {
+        LineCol {
+            line: self.line,
+            col_utf16: ((offset - self.last_newline) - self.col_adjust).into(),
+        }
+    }
+
+    fn add_line(&mut self, newline: TextUnit) {
+        self.line += 1;
+        self.last_newline = newline;
+        self.col_adjust = TextUnit::from(0);
+    }
+
+    fn adjust_col(&mut self, range: &TextRange) {
+        self.col_adjust += range.len() - TextUnit::from(1);
+    }
+}
+
 pub fn translate_offset_with_edit(
     line_index: &LineIndex,
     offset: TextUnit,
@@ -228,46 +262,32 @@ pub fn translate_offset_with_edit(
 
     let mut state = Edits::new(&sorted_edits);
 
-    let mut pos: LineCol = LineCol {
-        line: 0,
-        col_utf16: 0,
-    };
-
-    let mut last_newline: TextUnit = TextUnit::from(0);
-    let mut col_adjust: TextUnit = TextUnit::from(0);
+    let mut res = RunningLineCol::new();
 
     macro_rules! test_step {
         ($x:ident) => {
             match &$x {
                 Step::Newline(n) => {
                     if offset < *n {
-                        return_pos!();
+                        return res.to_line_col(offset);
                     } else if offset == *n {
-                        pos.line += 1;
-                        pos.col_utf16 = 0;
-                        return pos;
+                        res.add_line(*n);
+                        return res.to_line_col(offset);
                     } else {
-                        pos.line += 1;
-                        pos.col_utf16 = 0;
-                        last_newline = *n;
-                        col_adjust = TextUnit::from(0);
+                        res.add_line(*n);
                     }
                 }
                 Step::Utf16Char(x) => {
                     if offset < x.end() {
-                        return_pos!();
+                        // if the offset is inside a multibyte char it's invalid
+                        // clamp it to the start of the char
+                        let clamp = offset.min(x.start());
+                        return res.to_line_col(clamp);
                     } else {
-                        col_adjust += x.len() - TextUnit::from(1);
+                        res.adjust_col(x);
                     }
                 }
             }
-        };
-    }
-
-    macro_rules! return_pos {
-        () => {
-            pos.col_utf16 = ((offset - last_newline) - col_adjust).into();
-            return pos;
         };
     }
 
@@ -305,7 +325,7 @@ pub fn translate_offset_with_edit(
         }
     }
 
-    return_pos!();
+    res.to_line_col(offset)
 }
 
 // for bench
@@ -315,8 +335,7 @@ pub fn translate_after_edit(
     edits: Vec<AtomTextEdit>,
 ) -> LineCol {
     let text = edit_text(pre_edit_text, edits);
-    let line_index = LineIndex::new(&text);
-    line_index.line_col(offset)
+    line_index::to_line_col(&text, offset)
 }
 
 fn edit_text(pre_edit_text: &str, mut edits: Vec<AtomTextEdit>) -> String {
@@ -343,6 +362,7 @@ mod test {
     #[derive(Debug)]
     struct ArbTextWithOffsetAndEdits {
         text: String,
+        edited_text: String,
         offset: TextUnit,
         edits: Vec<AtomTextEdit>,
     }
@@ -350,13 +370,18 @@ mod test {
     fn arb_text_with_offset_and_edits() -> BoxedStrategy<ArbTextWithOffsetAndEdits> {
         arb_text()
             .prop_flat_map(|text| {
-                (arb_offset(&text), arb_edits(&text), Just(text)).prop_map(
-                    |(offset, edits, text)| ArbTextWithOffsetAndEdits {
-                        text,
-                        offset,
-                        edits,
-                    },
-                )
+                (arb_edits(&text), Just(text)).prop_flat_map(|(edits, text)| {
+                    let edited_text = edit_text(&text, edits.clone());
+                    let arb_offset = arb_offset(&edited_text);
+                    (Just(text), Just(edited_text), Just(edits), arb_offset).prop_map(
+                        |(text, edited_text, edits, offset)| ArbTextWithOffsetAndEdits {
+                            text,
+                            edits,
+                            edited_text,
+                            offset,
+                        },
+                    )
+                })
             })
             .boxed()
     }
@@ -364,11 +389,11 @@ mod test {
     proptest! {
         #[test]
         fn test_translate_offset_with_edit(x in arb_text_with_offset_and_edits()) {
+            let expected = line_index::to_line_col(&x.edited_text, x.offset);
             let line_index = LineIndex::new(&x.text);
-            let expected = translate_after_edit(&x.text, x.offset, x.edits.clone());
             let actual = translate_offset_with_edit(&line_index, x.offset, &x.edits);
-            // assert_eq!(actual, expected);
-            assert_eq!(actual.line, expected.line);
+
+            assert_eq!(actual, expected);
         }
     }
 }

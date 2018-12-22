@@ -62,6 +62,12 @@ impl LineIndex {
 
             curr_col += char_len;
         }
+
+        // Save any utf-16 characters seen in the last line
+        if utf16_chars.len() > 0 {
+            utf16_lines.insert(line, utf16_chars);
+        }
+
         LineIndex {
             newlines,
             utf16_lines,
@@ -120,6 +126,28 @@ impl LineIndex {
 
         col
     }
+}
+
+// for bench and test
+pub fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
+    let mut res = LineCol {
+        line: 0,
+        col_utf16: 0,
+    };
+    for (i, c) in text.char_indices() {
+        if i + c.len_utf8() > offset.to_usize() {
+            // if it's an invalid offset, inside a multibyte char
+            // return as if it was at the start of the char
+            break;
+        }
+        if c == '\n' {
+            res.line += 1;
+            res.col_utf16 = 0;
+        } else {
+            res.col_utf16 += 1;
+        }
+    }
+    res
 }
 
 #[test]
