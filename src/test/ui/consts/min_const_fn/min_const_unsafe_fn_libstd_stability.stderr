@@ -1,23 +1,23 @@
 error: can only call other `min_const_fn` within a `min_const_fn`
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:26:41
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:25:41
    |
 LL | const unsafe fn bar() -> u32 { unsafe { foo() } } //~ ERROR can only call other `min_const_fn`
    |                                         ^^^^^
 
 error: can only call other `min_const_fn` within a `min_const_fn`
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:33:42
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:32:42
    |
 LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } } //~ ERROR can only call other `min_const_fn`
    |                                          ^^^^^^
 
 error: only int, `bool` and `char` operations are stable in const fn
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:37:33
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:36:33
    |
 LL | const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 } //~ ERROR only int, `bool` and `char` op
    |                                 ^^^^^^^^^^^^^
 
 error: can only call other `min_const_fn` within a `min_const_fn`
-  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:45:48
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:44:48
    |
 LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } } //~ ERROR can only call other
    |                                                ^^^^^^^^^^^^
