@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::iter;
 
 use rustc::hir;
@@ -270,6 +271,41 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     }
 }
 
+fn add_local_comment<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    msg: &str,
+    local: mir::Local,
+    local_field: Option<usize>,
+    param: Option<Value>,
+    pass_mode: Option<PassMode>,
+    ssa: crate::analyze::Flags,
+    ty: Ty<'tcx>,
+) {
+    let local_field = if let Some(local_field) = local_field {
+        Cow::Owned(format!(".{}", local_field))
+    } else {
+        Cow::Borrowed("")
+    };
+    let param = if let Some(param) = param {
+        Cow::Owned(format!("= {:?}", param))
+    } else {
+        Cow::Borrowed("-")
+    };
+    let pass_mode = if let Some(pass_mode) = pass_mode {
+        Cow::Owned(format!("{:?}", pass_mode))
+    } else {
+        Cow::Borrowed("-")
+    };
+    fx.add_global_comment(format!(
+        "{msg:5} {local:>3}{local_field:<5} {param:10} {pass_mode:20} {ssa:10} {ty:?}",
+        msg=msg, local=format!("{:?}", local), local_field=local_field, param=param, pass_mode=pass_mode, ssa=format!("{:?}", ssa), ty=ty,
+    ));
+}
+
+fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
+    fx.add_global_comment(format!("msg   loc.idx    param    pass mode            ssa flags  ty"));
+}
+
 pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     start_ebb: Ebb,
@@ -331,12 +367,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
-    for local in fx.mir.args_iter() {
-        let arg_ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
-        let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
-        fx.add_global_comment(format!("pass {:?}: {:?} {:?}", local, arg_ty, pass_mode));
-    }
-
     match output_pass_mode {
         PassMode::NoPass => {
             let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
@@ -359,8 +389,25 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         }
     }
 
+    add_local_header_comment(fx);
+    add_local_comment(fx, "ret", RETURN_PLACE, None, ret_param, Some(output_pass_mode), ssa_analyzed[&RETURN_PLACE], ret_layout.ty);
+
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
+
+        match arg_kind {
+            ArgKind::Normal(ebb_param) => {
+                let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false);
+                add_local_comment(fx, "arg", local, None, Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], ty);
+            }
+            ArgKind::Spread(ref ebb_params) => {
+                for (i, &ebb_param) in ebb_params.iter().enumerate() {
+                    let sub_layout = layout.field(fx, i);
+                    let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, sub_layout.ty, false);
+                    add_local_comment(fx, "arg", local, Some(i), Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], sub_layout.ty);
+                }
+            }
+        }
 
         if let ArgKind::Normal(ebb_param) = arg_kind {
             if !ssa_analyzed
@@ -421,6 +468,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     for local in fx.mir.vars_and_temps_iter() {
         let ty = fx.mir.local_decls[local].ty;
         let layout = fx.layout_of(ty);
+
+        add_local_comment(fx, "local", local, None, None, None, ssa_analyzed[&local], ty);
 
         let place = if ssa_analyzed
             .get(&local)
