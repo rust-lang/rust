@@ -1017,6 +1017,33 @@ fn test_iterator_nth() {
 }
 
 #[test]
+fn test_iterator_nth_back() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+    for i in 0..v.len() {
+        assert_eq!(v.iter().nth_back(i).unwrap(), &v[v.len() - 1 - i]);
+    }
+    assert_eq!(v.iter().nth_back(v.len()), None);
+}
+
+#[test]
+fn test_iterator_rev_nth_back() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+    for i in 0..v.len() {
+        assert_eq!(v.iter().rev().nth_back(i).unwrap(), &v[i]);
+    }
+    assert_eq!(v.iter().rev().nth_back(v.len()), None);
+}
+
+#[test]
+fn test_iterator_rev_nth() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+    for i in 0..v.len() {
+        assert_eq!(v.iter().rev().nth(i).unwrap(), &v[v.len() - 1 - i]);
+    }
+    assert_eq!(v.iter().rev().nth(v.len()), None);
+}
+
+#[test]
 fn test_iterator_last() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     assert_eq!(v.iter().last().unwrap(), &4);
