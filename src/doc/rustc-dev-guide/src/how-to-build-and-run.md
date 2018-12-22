@@ -45,10 +45,10 @@ debuginfo-lines = true
 
 ### What is x.py?
 
-x.py is the script used to orchestrate the tooling in the rustc repository. 
-It is the script that can build docs, run tests, and compile rustc. 
-It is the now preferred way to build rustc and it replaces the old makefiles 
-from before. Below are the different ways to utilize x.py in order to 
+x.py is the script used to orchestrate the tooling in the rustc repository.
+It is the script that can build docs, run tests, and compile rustc.
+It is the now preferred way to build rustc and it replaces the old makefiles
+from before. Below are the different ways to utilize x.py in order to
 effectively deal with the repo for various common tasks.
 
 ### Running x.py and building a stage1 compiler
@@ -86,8 +86,8 @@ compiling `rustc` is done in stages:
 
 #### Build Flags
 
-There are other flags you can pass to the build portion of x.py that can be 
-beneficial to cutting down compile times or fitting other things you might 
+There are other flags you can pass to the build portion of x.py that can be
+beneficial to cutting down compile times or fitting other things you might
 need to change. They are:
 
 ```bash
@@ -180,9 +180,9 @@ build`) has quite a few more steps:
 > ./x.py build src/libcore --stage 1
 ```
 
-Sometimes you might just want to test if the part you’re working on can 
-compile. Using these commands you can test that it compiles before doing 
-a bigger build to make sure it works with the compiler. As shown before 
+Sometimes you might just want to test if the part you’re working on can
+compile. Using these commands you can test that it compiles before doing
+a bigger build to make sure it works with the compiler. As shown before
 you can also pass flags at the end such as --stage.
 
 
@@ -260,7 +260,7 @@ The sequence of commands you want is as follows:
     stage1 compiler
 - Subsequent builds: `./x.py build -i --stage 1 src/libstd --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
-  
+
 The effect of `--keep-stage 1` is that we just *assume* that the old
 standard library can be re-used. If you are editing the compiler, this
 is almost always true: you haven't changed the standard library, after
@@ -300,9 +300,7 @@ in other sections:
 
 ### ctags
 
-One of the challenges with rustc is that the RLS can't handle it, making code
-navigation difficult. One solution is to use `ctags`. The following script can
-be used to set it up: [https://github.com/nikomatsakis/rust-etags][etags].
+One of the challenges with rustc is that the RLS can't handle it, making code navigation difficult. One solution is to use ctags. The following script can be used to set it up: https://github.com/nikomatsakis/rust-etags.
 
 CTAGS integrates into emacs and vim quite easily. The following can then be
 used to build and generate tags:
@@ -318,9 +316,9 @@ you last built, which is ridiculously useful.
 
 ### Cleaning out build directories
 
-Sometimes you need to start fresh, but this is normally not the case. 
-If you need to run this then rustbuild is most likely not acting right and 
-you should file a bug as to what is going wrong. If you do need to clean 
+Sometimes you need to start fresh, but this is normally not the case.
+If you need to run this then rustbuild is most likely not acting right and
+you should file a bug as to what is going wrong. If you do need to clean
 everything up then you only need to run one command!
 
    ```bash
