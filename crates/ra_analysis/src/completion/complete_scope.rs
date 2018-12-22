@@ -10,32 +10,34 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
     if !ctx.is_trivial_path {
         return Ok(());
     }
+    let module = match &ctx.module {
+        Some(it) => it,
+        None => return Ok(()),
+    };
     if let Some(fn_def) = ctx.enclosing_fn {
-        let scopes = hir::FnScopes::new(fn_def);
+        let function = hir::source_binder::function_from_module(ctx.db, module, fn_def);
+        let scopes = function.scopes(ctx.db);
         complete_fn(acc, &scopes, ctx.offset);
     }
 
-    if let Some(module) = &ctx.module {
-        let module_scope = module.scope(ctx.db)?;
-        module_scope
-            .entries()
-            .filter(|(_name, res)| {
-                // Don't expose this item
-                match res.import {
-                    None => true,
-                    Some(import) => {
-                        let range = import.range(ctx.db, module.source().file_id());
-                        !range.is_subrange(&ctx.leaf.range())
-                    }
+    let module_scope = module.scope(ctx.db)?;
+    module_scope
+        .entries()
+        .filter(|(_name, res)| {
+            // Don't expose this item
+            match res.import {
+                None => true,
+                Some(import) => {
+                    let range = import.range(ctx.db, module.source().file_id());
+                    !range.is_subrange(&ctx.leaf.range())
                 }
-            })
-            .for_each(|(name, res)| {
-                CompletionItem::new(CompletionKind::Reference, name.to_string())
-                    .from_resolution(ctx.db, res)
-                    .add_to(acc)
-            });
-    }
-
+            }
+        })
+        .for_each(|(name, res)| {
+            CompletionItem::new(CompletionKind::Reference, name.to_string())
+                .from_resolution(ctx.db, res)
+                .add_to(acc)
+        });
     Ok(())
 }
 

@@ -74,6 +74,16 @@ pub fn function_from_source(
     fn_def: ast::FnDef,
 ) -> Cancelable<Option<Function>> {
     let module = ctry!(module_from_child_node(db, file_id, fn_def.syntax())?);
+    let res = function_from_module(db, &module, fn_def);
+    Ok(Some(res))
+}
+
+pub fn function_from_module(
+    db: &impl HirDatabase,
+    module: &Module,
+    fn_def: ast::FnDef,
+) -> Function {
+    let file_id = module.source().file_id();
     let file_items = db.file_items(file_id);
     let item_id = file_items.id_of(file_id, fn_def.syntax());
     let source_item_id = SourceItemId {
@@ -86,7 +96,7 @@ pub fn function_from_source(
         module_id: module.module_id,
         source_item_id,
     };
-    Ok(Some(Function::new(def_loc.id(db))))
+    Function::new(def_loc.id(db))
 }
 
 pub fn function_from_child_node(
