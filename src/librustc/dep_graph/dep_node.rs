@@ -423,17 +423,6 @@ impl DefId {
     }
 }
 
-impl DepKind {
-    #[inline]
-    pub fn fingerprint_needed_for_crate_hash(self) -> bool {
-        match self {
-            DepKind::HirBody |
-            DepKind::Krate => true,
-            _ => false,
-        }
-    }
-}
-
 define_dep_nodes!( <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
