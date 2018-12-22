@@ -368,11 +368,20 @@ impl Analysis {
     }
 }
 
-#[derive(Debug)]
 pub struct LibraryData {
     root_id: SourceRootId,
     root_change: RootChange,
     symbol_index: SymbolIndex,
+}
+
+impl fmt::Debug for LibraryData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("LibraryData")
+            .field("root_id", &self.root_id)
+            .field("root_change", &self.root_change)
+            .field("n_symbols", &self.symbol_index.len())
+            .finish()
+    }
 }
 
 impl LibraryData {
