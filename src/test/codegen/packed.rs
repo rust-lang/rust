@@ -83,6 +83,42 @@ pub fn call_pkd2(f: fn() -> Array) -> BigPacked2 {
     BigPacked2 { dealign: 0, data: f() }
 }
 
+// CHECK-LABEL: @write_packed_array1
+// CHECK: store i32 0, i32* %{{.+}}, align 1
+// CHECK: store i32 1, i32* %{{.+}}, align 1
+// CHECK: store i32 2, i32* %{{.+}}, align 1
+#[no_mangle]
+pub fn write_packed_array1(p: &mut BigPacked1) {
+    p.data.0[0] = 0;
+    p.data.0[1] = 1;
+    p.data.0[2] = 2;
+}
+
+// CHECK-LABEL: @write_packed_array2
+// CHECK: store i32 0, i32* %{{.+}}, align 2
+// CHECK: store i32 1, i32* %{{.+}}, align 2
+// CHECK: store i32 2, i32* %{{.+}}, align 2
+#[no_mangle]
+pub fn write_packed_array2(p: &mut BigPacked2) {
+    p.data.0[0] = 0;
+    p.data.0[1] = 1;
+    p.data.0[2] = 2;
+}
+
+// CHECK-LABEL: @repeat_packed_array1
+// CHECK: store i32 42, i32* %{{.+}}, align 1
+#[no_mangle]
+pub fn repeat_packed_array1(p: &mut BigPacked1) {
+    p.data.0 = [42; 8];
+}
+
+// CHECK-LABEL: @repeat_packed_array2
+// CHECK: store i32 42, i32* %{{.+}}, align 2
+#[no_mangle]
+pub fn repeat_packed_array2(p: &mut BigPacked2) {
+    p.data.0 = [42; 8];
+}
+
 #[repr(packed)]
 #[derive(Copy, Clone)]
 pub struct Packed1Pair(u8, u32);
