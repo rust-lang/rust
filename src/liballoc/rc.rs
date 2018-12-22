@@ -253,7 +253,7 @@ use core::intrinsics::abort;
 use core::marker;
 use core::marker::{Unpin, Unsize, PhantomData};
 use core::mem::{self, align_of_val, forget, size_of_val};
-use core::ops::Deref;
+use core::ops::{Deref, Receiver};
 use core::ops::{CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -812,6 +812,9 @@ impl<T: ?Sized> Deref for Rc<T> {
         &self.inner().value
     }
 }
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for Rc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {

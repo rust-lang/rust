@@ -301,6 +301,7 @@ language_item_table! {
 
     DerefTraitLangItem,          "deref",              deref_trait,             Target::Trait;
     DerefMutTraitLangItem,       "deref_mut",          deref_mut_trait,         Target::Trait;
+    ReceiverTraitLangItem,       "receiver",           receiver_trait,          Target::Trait;
 
     FnTraitLangItem,             "fn",                 fn_trait,                Target::Trait;
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;

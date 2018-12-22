@@ -1,7 +1,7 @@
-error[E0307]: invalid `self` type: &SomeType
+error[E0307]: invalid method receiver type: &SomeType
   --> $DIR/issue-27522.rs:16:22
    |
-LL |     fn handler(self: &SomeType); //~ ERROR invalid `self` type
+LL |     fn handler(self: &SomeType); //~ ERROR invalid method receiver type
    |                      ^^^^^^^^^
    |
    = note: type must be `Self` or a type that dereferences to it
