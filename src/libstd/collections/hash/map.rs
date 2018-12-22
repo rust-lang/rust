@@ -354,7 +354,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// *stat += random_stat_buff();
 /// ```
 ///
-/// The easiest way to use `HashMap` with a custom type as key is to derive [`Eq`] and [`Hash`].
+/// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
 ///
 /// [`Eq`]: ../../std/cmp/trait.Eq.html
