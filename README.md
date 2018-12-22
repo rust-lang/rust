@@ -151,7 +151,9 @@ Note: `deny` produces errors instead of warnings.
 
 If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra flags to Clippy during the run: `cargo clippy -- -A clippy::lint_name` will run Clippy with `lint_name` disabled and `cargo clippy -- -W clippy::lint_name` will run it with that enabled. This also works with lint groups. For example you can run Clippy with warnings for all lints enabled: `cargo clippy -- -W clippy::pedantic`
 
-## [Contributing](https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md)
+## Contributing
+
+If you want to contribute to Clippy, you can find more information in [CONTRIBUTING.md](https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md).
 
 ## License
 
