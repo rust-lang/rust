@@ -740,6 +740,7 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    #[inline]
     fn new_internal(
         capacity: usize,
         fallibility: Fallibility,
@@ -755,12 +756,14 @@ impl<K, V> RawTable<K, V> {
 
     /// Tries to create a new raw table from a given capacity. If it cannot allocate,
     /// it returns with AllocErr.
+    #[inline]
     pub fn try_new(capacity: usize) -> Result<RawTable<K, V>, CollectionAllocErr> {
         Self::new_internal(capacity, Fallible)
     }
 
     /// Creates a new raw table from a given capacity. All buckets are
     /// initially empty.
+    #[inline]
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::new_internal(capacity, Infallible) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
