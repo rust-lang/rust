@@ -964,7 +964,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                           .collect::<Vec<_>>()
                                           .join(",")));
         }
-        all_aliases.push(format!("ALIASES['{}'] = {{{}}};", krate.name, output));
+        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
         all_aliases.sort();
         try_err!(writeln!(&mut w, "var ALIASES = {{}};"), &dst);
         for aliases in &all_aliases {
@@ -1038,7 +1038,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
         let dst = cx.dst.join("source-files.js");
         let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
-        all_sources.push(format!("sourcesIndex['{}'] = {};",
+        all_sources.push(format!("sourcesIndex[\"{}\"] = {};",
                                  &krate.name,
                                  hierarchy.to_json_string()));
         all_sources.sort();
