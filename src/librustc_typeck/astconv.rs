@@ -1139,6 +1139,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             })
         });
 
+        // HACK(#57057): see below.
+        let extra_principal_trait = auto_traits.iter().skip(1).any(
+            |tr| tr.trait_ref().def_id() == principal.def_id());
+
         // Lint duplicate auto traits, and then remove duplicates.
         auto_traits.sort_by_key(|i| i.trait_ref().def_id());
         let emit_dup_traits_err = |range: Range<usize>| {
@@ -1166,14 +1170,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         if auto_traits.len() - seq_start > 1 {
             emit_dup_traits_err(seq_start..auto_traits.len());
         }
-        // Remove first auto trait if it is the principal trait.
-        // HACK(alexreg): we really want to do this *after* dedup, but we must maintain this
-        // behaviour for the sake of backwards compatibility, until the duplicate traits lint
-        // becomes a hard error.
-        if auto_traits.first().map_or(false, |tr| tr.trait_ref().def_id() == principal.def_id()) {
-            auto_traits.remove(0);
-        }
         auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
+
+        // If principal is auto trait, remove it from list of auto traits.
+        // HACK(#57057): we don't do this if the trait was mentioned multiple times.
+        // Previous behaviour was buggy in this respect, but we want to maintain backwards
+        // compatibility for now. This check will eventually be removed.
+        if !extra_principal_trait {
+            if let Some(principal_index) = auto_traits.iter().position(
+                    |tr| tr.trait_ref().def_id() == principal.def_id()) {
+                auto_traits.remove(principal_index);
+            }
+        }
+
         debug!("auto_traits: {:?}", auto_traits);
 
         // Calling `skip_binder` is okay, since the predicates are re-bound.

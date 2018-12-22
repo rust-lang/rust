@@ -62,7 +62,6 @@ struct Children {
 pub enum FutureCompatOverlapErrorKind {
     Issue43355,
     Issue33140,
-    Issue57057,
 }
 
 #[derive(Debug)]

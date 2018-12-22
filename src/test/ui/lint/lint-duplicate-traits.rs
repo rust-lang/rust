@@ -3,13 +3,15 @@
 #![feature(trait_alias)]
 
 trait Foo {}
+trait Bar {}
+trait Baz {}
 
 trait SyncAlias = Sync;
 
 impl Foo for dyn Send {}
 
-impl Foo for dyn Send + Send {}
+impl Bar for dyn Send + Send {}
 
-impl Foo for dyn Send + Sync + Send + SyncAlias {}
+impl Baz for dyn Send + Sync + Send + SyncAlias {}
 
 fn main() {}
