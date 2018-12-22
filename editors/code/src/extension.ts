@@ -23,19 +23,23 @@ export function activate(context: vscode.ExtensionContext) {
         const original = (...args: any[]) =>
             vscode.commands.executeCommand(defaultCmd, ...args);
 
-        registerCommand(name, async (...args: any[]) => {
-            const editor = vscode.window.activeTextEditor;
-            if (
-                !editor ||
-                !editor.document ||
-                editor.document.languageId !== 'rust'
-            ) {
-                return await original(...args);
-            }
-            if (!(await f(...args))) {
-                return await original(...args);
-            }
-        });
+        try {
+            registerCommand(name, async (...args: any[]) => {
+                const editor = vscode.window.activeTextEditor;
+                if (
+                    !editor ||
+                    !editor.document ||
+                    editor.document.languageId !== 'rust'
+                ) {
+                    return await original(...args);
+                }
+                if (!(await f(...args))) {
+                    return await original(...args);
+                }
+            });
+        } catch(_) {
+            vscode.window.showWarningMessage('Enhanced typing feature is disabled because of incompatibility with VIM extension');
+        }
     }
 
     // Commands are requests from vscode to the language server
