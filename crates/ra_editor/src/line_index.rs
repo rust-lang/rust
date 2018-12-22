@@ -4,8 +4,8 @@ use superslice::Ext;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
-    newlines: Vec<TextUnit>,
-    utf16_lines: FxHashMap<u32, Vec<Utf16Char>>,
+    pub(crate) newlines: Vec<TextUnit>,
+    pub(crate) utf16_lines: FxHashMap<u32, Vec<Utf16Char>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -119,16 +119,6 @@ impl LineIndex {
         }
 
         col
-    }
-
-    pub(crate) fn newlines(&self) -> &[TextUnit] {
-        &self.newlines[..]
-    }
-
-    pub(crate) fn utf16_chars(&self, newline_idx: usize) -> Option<&[Utf16Char]> {
-        self.utf16_lines
-            .get(&(newline_idx as u32))
-            .map(|x| x.as_slice())
     }
 }
 

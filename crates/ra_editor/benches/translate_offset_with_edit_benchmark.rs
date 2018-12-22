@@ -72,10 +72,10 @@ fn compare_translates(c: &mut Criterion) {
         })
     });
 
-    let f2 = Fun::new("count_newlines", |b, _| {
+    let f2 = Fun::new("translate_offset_with_edit", |b, _| {
         b.iter(|| {
             let d = &*DATA;
-            line_index_utils::count_newlines(d.offset, &d.line_index, &d.edits);
+            line_index_utils::translate_offset_with_edit(&d.line_index, d.offset, &d.edits);
         })
     });
 
