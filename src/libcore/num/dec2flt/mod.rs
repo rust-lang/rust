@@ -129,7 +129,9 @@ macro_rules! from_str_float_impl {
             ///
             /// # Grammar
             ///
-            /// All strings that adhere to the following EBNF grammar
+            /// [EBNF]: https://www.w3.org/TR/REC-xml/#sec-notation
+            ///
+            /// All strings that adhere to the following [EBNF] grammar
             /// will result in an [`Ok`] being returned:
             ///
             /// ```txt
