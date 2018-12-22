@@ -3,7 +3,8 @@
 #![feature(untagged_unions)]
 
 #![allow(dead_code)]
-#![allow(unions_with_drop_fields)]
+
+use std::mem::ManuallyDrop;
 
 enum A<'a, T: 'a>
 where
@@ -24,6 +25,14 @@ where
 union C<'a, T: 'a>
 where
     Self: Send, T: PartialEq<Self>
+{
+    foo: &'a Self,
+    bar: ManuallyDrop<T>,
+}
+
+union D<'a, T: 'a>
+where
+    Self: Send, T: PartialEq<Self> + Copy
 {
     foo: &'a Self,
     bar: T,
