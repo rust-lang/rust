@@ -777,7 +777,7 @@ fn main() {
     }
     
     // count leading zeros
-    gen(|a: MyU128| {
+    gen(|a: MyU64| {
             Some((a as usize).leading_zeros())
         },
         "{
