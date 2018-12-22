@@ -2,6 +2,7 @@ mod handlers;
 mod subscriptions;
 
 use std::{
+    fmt,
     path::PathBuf,
     sync::Arc,
 };
@@ -109,6 +110,43 @@ pub fn main_loop(
     Ok(())
 }
 
+enum Event {
+    Msg(RawMessage),
+    Task(Task),
+    Vfs(VfsTask),
+    Lib(LibraryData),
+}
+
+impl fmt::Debug for Event {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let debug_verbose_not = |not: &RawNotification, f: &mut fmt::Formatter| {
+            f.debug_struct("RawNotification")
+                .field("method", &not.method)
+                .finish()
+        };
+
+        match self {
+            Event::Msg(RawMessage::Notification(not)) => {
+                if not.is::<req::DidOpenTextDocument>() || not.is::<req::DidChangeTextDocument>() {
+                    return debug_verbose_not(not, f);
+                }
+            }
+            Event::Task(Task::Notify(not)) => {
+                if not.is::<req::PublishDecorations>() || not.is::<req::PublishDiagnostics>() {
+                    return debug_verbose_not(not, f);
+                }
+            }
+            _ => (),
+        }
+        match self {
+            Event::Msg(it) => fmt::Debug::fmt(it, f),
+            Event::Task(it) => fmt::Debug::fmt(it, f),
+            Event::Vfs(it) => fmt::Debug::fmt(it, f),
+            Event::Lib(it) => fmt::Debug::fmt(it, f),
+        }
+    }
+}
+
 fn main_loop_inner(
     internal_mode: bool,
     publish_decorations: bool,
@@ -123,13 +161,6 @@ fn main_loop_inner(
 ) -> Result<()> {
     let (libdata_sender, libdata_receiver) = unbounded();
     loop {
-        #[derive(Debug)]
-        enum Event {
-            Msg(RawMessage),
-            Task(Task),
-            Vfs(VfsTask),
-            Lib(LibraryData),
-        }
         log::trace!("selecting");
         let event = select! {
             recv(msg_receiver, msg) => match msg {
