@@ -15,14 +15,7 @@ diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
 index f3965f3..13e17b1 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -249,14 +249,12 @@
- #![feature(cfg_target_thread_local)]
- #![feature(cfg_target_vendor)]
- #![feature(char_error_internals)]
--#![feature(compiler_builtins_lib)]
- #![feature(const_int_ops)]
- #![feature(const_ip)]
- #![feature(const_raw_ptr_deref)]
+@@ -256,7 +256,6 @@
  #![feature(const_cstr_unchecked)]
  #![feature(core_intrinsics)]
  #![feature(dropck_eyepatch)]
@@ -47,7 +40,7 @@ index f3965f3..13e17b1 100644
 -pub use core::u128;
  #[stable(feature = "core_hint", since = "1.27.0")]
  pub use core::hint;
- 
+
 diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
 index 8685cb7..c4bf4d2 100644
 --- a/src/libstd/net/ip.rs
@@ -55,7 +48,7 @@ index 8685cb7..c4bf4d2 100644
 @@ -1392,26 +1392,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
      }
  }
- 
+
 -#[stable(feature = "i128", since = "1.26.0")]
 -impl From<Ipv6Addr> for u128 {
 -    fn from(ip: Ipv6Addr) -> u128 {
@@ -85,11 +78,11 @@ index 3f90c1f..85aab83 100644
 +++ b/src/libstd/num.rs
 @@ -22,7 +22,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
  pub use core::num::Wrapping;
- 
+
  #[stable(feature = "nonzero", since = "1.28.0")]
 -pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
 +pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
- 
+
  #[cfg(test)] use fmt;
  #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
@@ -103,7 +96,7 @@ index 3eacc7a..b518448 100644
 -#[cfg(target_has_atomic = "128")]
 -#[unstable(feature = "integer_atomics", issue = "32976")]
 -impl RefUnwindSafe for atomic::AtomicI128 {}
- 
+
  #[cfg(target_has_atomic = "ptr")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 @@ -283,9 +280,6 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
@@ -113,7 +106,7 @@ index 3eacc7a..b518448 100644
 -#[cfg(target_has_atomic = "128")]
 -#[unstable(feature = "integer_atomics", issue = "32976")]
 -impl RefUnwindSafe for atomic::AtomicU128 {}
- 
+
  #[cfg(target_has_atomic = "8")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 diff --git a/src/libstd/primitive_docs.rs b/src/libstd/primitive_docs.rs
@@ -123,7 +116,7 @@ index 7c1654f..cc96271 100644
 @@ -808,14 +808,6 @@ mod prim_i32 { }
  #[stable(feature = "rust1", since = "1.0.0")]
  mod prim_i64 { }
- 
+
 -#[doc(primitive = "i128")]
 -//
 -/// The 128-bit signed integer type.
@@ -138,7 +131,7 @@ index 7c1654f..cc96271 100644
 @@ -848,14 +840,6 @@ mod prim_u32 { }
  #[stable(feature = "rust1", since = "1.0.0")]
  mod prim_u64 { }
- 
+
 -#[doc(primitive = "u128")]
 -//
 -/// The 128-bit unsigned integer type.
@@ -150,6 +143,5 @@ index 7c1654f..cc96271 100644
  #[doc(primitive = "isize")]
  //
  /// The pointer-sized signed integer type.
--- 
+--
 2.17.2 (Apple Git-113)
-
