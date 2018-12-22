@@ -181,6 +181,9 @@ pub struct RenderOptions {
     /// A file to use as the index page at the root of the output directory. Overrides
     /// `enable_index_page` to be true if set.
     pub index_page: Option<PathBuf>,
+    /// An optional path to use as the location of static files. If not set, uses combinations of
+    /// `../` to reach the documentation root.
+    pub static_root_path: Option<String>,
 
     // Options specific to reading standalone Markdown files
 
@@ -433,6 +436,7 @@ impl Options {
         let markdown_playground_url = matches.opt_str("markdown-playground-url");
         let crate_version = matches.opt_str("crate-version");
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
+        let static_root_path = matches.opt_str("static-root-path");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -471,6 +475,7 @@ impl Options {
                 enable_minification,
                 enable_index_page,
                 index_page,
+                static_root_path,
                 markdown_no_toc,
                 markdown_css,
                 markdown_playground_url,

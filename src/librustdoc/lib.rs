@@ -25,6 +25,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
+#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 
@@ -337,6 +338,13 @@ fn opts() -> Vec<RustcOptGroup> {
              o.optflag("",
                        "enable-index-page",
                        "To enable generation of the index page")
+        }),
+        unstable("static-root-path", |o| {
+            o.optopt("",
+                     "static-root-path",
+                     "Path string to force loading static files from in output pages. \
+                      If not set, uses combinations of '../' to reach the documentation root.",
+                     "PATH")
         }),
     ]
 }
