@@ -205,7 +205,7 @@ impl EarlyProps {
         fn ignore_lldb(config: &Config, line: &str) -> bool {
             if let Some(ref actual_version) = config.lldb_version {
                 if line.starts_with("min-lldb-version") {
-                    let min_version = line.trim_right()
+                    let min_version = line.trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed lldb version directive");
@@ -228,7 +228,7 @@ impl EarlyProps {
             }
             if let Some(ref actual_version) = config.llvm_version {
                 if line.starts_with("min-llvm-version") {
-                    let min_version = line.trim_right()
+                    let min_version = line.trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed llvm version directive");
@@ -236,7 +236,7 @@ impl EarlyProps {
                     // version
                     &actual_version[..] < min_version
                 } else if line.starts_with("min-system-llvm-version") {
-                    let min_version = line.trim_right()
+                    let min_version = line.trim_end()
                         .rsplit(' ')
                         .next()
                         .expect("Malformed llvm version directive");
@@ -573,14 +573,14 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
                     None => false,
                 };
                 if matches {
-                    it(ln[(close_brace + 1)..].trim_left());
+                    it(ln[(close_brace + 1)..].trim_start());
                 }
             } else {
                 panic!("malformed condition directive: expected `{}foo]`, found `{}`",
                         comment_with_brace, ln)
             }
         } else if ln.starts_with(comment) {
-            it(ln[comment.len() ..].trim_left());
+            it(ln[comment.len() ..].trim_start());
         }
     }
     return;

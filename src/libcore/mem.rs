@@ -530,6 +530,12 @@ pub unsafe fn zeroed<T>() -> T {
 /// it goes out of scope (and therefore would be dropped). Note that this
 /// includes a `panic` occurring and unwinding the stack suddenly.
 ///
+/// If you partially initialize an array, you may need to use
+/// [`ptr::drop_in_place`][drop_in_place] to remove the elements you have fully
+/// initialized followed by [`mem::forget`][mem_forget] to prevent drop running
+/// on the array. If a partially allocated array is dropped this will lead to
+/// undefined behaviour.
+///
 /// # Examples
 ///
 /// Here's how to safely initialize an array of [`Vec`]s.
@@ -583,11 +589,44 @@ pub unsafe fn zeroed<T>() -> T {
 /// println!("{:?}", &data[0]);
 /// ```
 ///
+/// This example shows how to handle partially initialized arrays, which could
+/// be found in low-level datastructures.
+///
+/// ```
+/// use std::mem;
+/// use std::ptr;
+///
+/// // Count the number of elements we have assigned.
+/// let mut data_len: usize = 0;
+/// let mut data: [String; 1000];
+///
+/// unsafe {
+///     data = mem::uninitialized();
+///
+///     for elem in &mut data[0..500] {
+///         ptr::write(elem, String::from("hello"));
+///         data_len += 1;
+///     }
+///
+///     // For each item in the array, drop if we allocated it.
+///     for i in &mut data[0..data_len] {
+///         ptr::drop_in_place(i);
+///     }
+/// }
+/// // Forget the data. If this is allowed to drop, you may see a crash such as:
+/// // 'mem_uninit_test(2457,0x7fffb55dd380) malloc: *** error for object
+/// // 0x7ff3b8402920: pointer being freed was not allocated'
+/// mem::forget(data);
+/// ```
+///
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 /// [`vec!`]: ../../std/macro.vec.html
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 /// [write]: ../ptr/fn.write.html
+/// [drop_in_place]: ../ptr/fn.drop_in_place.html
+/// [mem_zeroed]: fn.zeroed.html
+/// [mem_forget]: fn.forget.html
 /// [copy]: ../intrinsics/fn.copy.html
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
 /// [`Drop`]: ../ops/trait.Drop.html
@@ -984,6 +1023,9 @@ impl<T> ManuallyDrop<T> {
     ///
     /// This function semantically moves out the contained value without preventing further usage.
     /// It is up to the user of this method to ensure that this container is not used again.
+    ///
+    /// [`ManuallyDrop::drop`]: #method.drop
+    /// [`ManuallyDrop::into_inner`]: #method.into_inner
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
     #[unstable(feature = "manually_drop_take", issue = "55422")]
     #[inline]

@@ -10,11 +10,11 @@ warning: unknown lint: `DEAD_CODE`
   --> $DIR/not_found.rs:18:8
    |
 LL | #[warn(DEAD_CODE)]
-   |        ^^^^^^^^^ help: lowercase the lint name: `dead_code`
+   |        ^^^^^^^^^ help: did you mean: `dead_code`
 
 warning: unknown lint: `Warnings`
   --> $DIR/not_found.rs:20:8
    |
 LL | #[deny(Warnings)]
-   |        ^^^^^^^^ help: lowercase the lint name: `warnings`
+   |        ^^^^^^^^ help: did you mean: `warnings`
 

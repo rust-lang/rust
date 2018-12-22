@@ -26,7 +26,10 @@ function getNextStep(content, pos, stop) {
     return pos;
 }
 
-// Stupid function extractor based on indent.
+// Stupid function extractor based on indent. Doesn't support block
+// comments. If someone puts a ' or an " in a block comment this
+// will blow up. Template strings are not tested and might also be
+// broken.
 function extractFunction(content, functionName) {
     var indent = 0;
     var splitter = "function " + functionName + "(";
@@ -51,7 +54,14 @@ function extractFunction(content, functionName) {
             continue;
         }
         while (pos < content.length) {
-            if (content[pos] === '"' || content[pos] === "'") {
+            // Eat single-line comments
+            if (content[pos] === '/' && pos > 0 && content[pos-1] === '/') {
+                do {
+                    pos += 1;
+                } while (pos < content.length && content[pos] !== '\n');
+
+            // Eat quoted strings
+            } else if (content[pos] === '"' || content[pos] === "'" || content[pos] === "`") {
                 var stop = content[pos];
                 var is_escaped = false;
                 do {
@@ -62,6 +72,8 @@ function extractFunction(content, functionName) {
                     }
                 } while (pos < content.length &&
                          (content[pos] !== stop || content[pos - 1] === '\\'));
+
+            // Otherwise, check for indent
             } else if (content[pos] === '{') {
                 indent += 1;
             } else if (content[pos] === '}') {

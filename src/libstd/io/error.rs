@@ -225,6 +225,9 @@ impl From<ErrorKind> for Error {
     /// let error = Error::from(not_found);
     /// assert_eq!("entity not found", format!("{}", error));
     /// ```
+    ///
+    /// [`ErrorKind`]: ../../std/io/enum.ErrorKind.html
+    /// [`Error`]: ../../std/io/struct.Error.html
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error {

@@ -21,7 +21,6 @@
 
 #![allow(dead_code)]
 #![feature(start)]
-#![feature(repr_packed)]
 
 #[derive(Default)]
 #[repr(packed)]

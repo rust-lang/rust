@@ -385,7 +385,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         }
                         err.emit();
                     }
-                    CheckLintNameResult::NoLint => {
+                    CheckLintNameResult::NoLint(suggestion) => {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) = self.sets.get_lint_level(lint,
                                                                     self.cur,
@@ -398,22 +398,17 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 src,
                                                 Some(li.span.into()),
                                                 &msg);
-                        if name.as_str().chars().any(|c| c.is_uppercase()) {
-                            let name_lower = name.as_str().to_lowercase().to_string();
-                            if let CheckLintNameResult::NoLint =
-                                    store.check_lint_name(&name_lower, tool_name) {
-                                db.emit();
-                            } else {
-                                db.span_suggestion_with_applicability(
-                                    li.span,
-                                    "lowercase the lint name",
-                                    name_lower,
-                                    Applicability::MachineApplicable
-                                ).emit();
-                            }
-                        } else {
-                            db.emit();
+
+                        if let Some(suggestion) = suggestion {
+                            db.span_suggestion_with_applicability(
+                                li.span,
+                                "did you mean",
+                                suggestion.to_string(),
+                                Applicability::MachineApplicable,
+                            );
                         }
+
+                        db.emit();
                     }
                 }
             }

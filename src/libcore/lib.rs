@@ -71,6 +71,7 @@
 
 #![no_core]
 #![deny(missing_docs)]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
 #![feature(allow_internal_unstable)]

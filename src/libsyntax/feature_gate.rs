@@ -397,9 +397,6 @@ declare_features! (
     // Multiple patterns with `|` in `if let` and `while let`.
     (active, if_while_or_patterns, "1.26.0", Some(48215), None),
 
-    // Allows `#[repr(packed)]` attribute on structs.
-    (active, repr_packed, "1.26.0", Some(33158), None),
-
     // Allows macro invocations in `extern {}` blocks.
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
@@ -684,17 +681,19 @@ declare_features! (
     // `extern crate foo as bar;` puts `bar` into extern prelude.
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the `:literal` macro fragment specifier (RFC 1576).
-    (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
-    // Integer match exhaustiveness checking (RFC 2591)
-    (accepted, exhaustive_integer_patterns, "1.32.0", Some(50907), None),
+    (accepted, macro_literal_matcher, "1.32.0", Some(35625), None),
     // Use `?` as the Kleene "at most one" operator.
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
     // `Self` struct constructor (RFC 2302)
     (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
     // `Self` in type definitions (RFC 2300)
     (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
+    // Integer match exhaustiveness checking (RFC 2591)
+    (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907), None),
     // `use path as _;` and `extern crate c as _;`
     (accepted, underscore_imports, "1.33.0", Some(48216), None),
+    // Allows `#[repr(packed(N))]` attribute on structs.
+    (accepted, repr_packed, "1.33.0", Some(33158), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -1587,13 +1586,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
-                        }
-                        if let Some((name, _)) = item.name_value_literal() {
-                            if name == "packed" {
-                                gate_feature_post!(&self, repr_packed, attr.span,
-                                                   "the `#[repr(packed(n))]` attribute \
-                                                    is experimental");
-                            }
                         }
                     }
                 }

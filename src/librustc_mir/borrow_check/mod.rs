@@ -373,10 +373,14 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                     for err in &mut mbcx.errors_buffer {
                         if err.is_error() {
                             err.level = Level::Warning;
-                            err.warn("This error has been downgraded to a warning \
-                                      for backwards compatibility with previous releases.\n\
-                                      It represents potential unsoundness in your code.\n\
-                                      This warning will become a hard error in the future.");
+                            err.warn(
+                                "this error has been downgraded to a warning for backwards \
+                                 compatibility with previous releases",
+                            );
+                            err.warn(
+                                "this represents potential undefined behavior in your code and \
+                                 this warning will become a hard error in the future",
+                            );
                         }
                     }
                 }

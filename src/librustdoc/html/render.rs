@@ -140,6 +140,9 @@ struct SharedContext {
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
     pub resource_suffix: String,
+    /// Optional path string to be used to load static files on output pages. If not set, uses
+    /// combinations of `../` to reach the documentation root.
+    pub static_root_path: Option<String>,
 }
 
 impl SharedContext {
@@ -506,6 +509,7 @@ pub fn run(mut krate: clean::Crate,
         extension_css,
         extern_html_root_urls,
         resource_suffix,
+        static_root_path,
         ..
     } = options;
 
@@ -533,6 +537,7 @@ pub fn run(mut krate: clean::Crate,
         sort_modules_alphabetically,
         themes,
         resource_suffix,
+        static_root_path,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -964,7 +969,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                           .collect::<Vec<_>>()
                                           .join(",")));
         }
-        all_aliases.push(format!("ALIASES['{}'] = {{{}}};", krate.name, output));
+        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
         all_aliases.sort();
         try_err!(writeln!(&mut w, "var ALIASES = {{}};"), &dst);
         for aliases in &all_aliases {
@@ -1038,7 +1043,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
         let dst = cx.dst.join("source-files.js");
         let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
-        all_sources.push(format!("sourcesIndex['{}'] = {};",
+        all_sources.push(format!("sourcesIndex[\"{}\"] = {};",
                                  &krate.name,
                                  hierarchy.to_json_string()));
         all_sources.sort();
@@ -1080,9 +1085,12 @@ themePicker.onblur = handleThemeButtonsBlur;
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
+                static_root_path: cx.shared.static_root_path.deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
+                extra_scripts: &[],
+                static_extra_scripts: &[],
             };
             krates.push(krate.name.clone());
             krates.sort();
@@ -1101,7 +1109,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             try_err!(layout::render(&mut w, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes, &[]), &dst);
+                                    &cx.shared.themes), &dst);
             try_err!(w.flush(), &dst);
         }
     }
@@ -1366,15 +1374,17 @@ impl<'a> SourceCollector<'a> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
+            static_root_path: self.scx.static_root_path.deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
+            extra_scripts: &["source-files"],
+            static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes, &["source-files",
-                                           &format!("source-script{}", page.resource_suffix)])?;
+                       &self.scx.themes)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1956,9 +1966,12 @@ impl Context {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
+            static_root_path: self.shared.static_root_path.deref(),
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
         };
         let sidebar = if let Some(ref version) = cache().crate_version {
             format!("<p class='location'>Crate {}</p>\
@@ -1973,7 +1986,7 @@ impl Context {
         try_err!(layout::render(&mut w, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
-                                &self.shared.themes, &[]),
+                                &self.shared.themes),
                  &final_file);
 
         // Generating settings page.
@@ -1993,7 +2006,7 @@ impl Context {
         try_err!(layout::render(&mut w, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
-                                &themes, &[]),
+                                &themes),
                  &settings_file);
 
         Ok(())
@@ -2035,10 +2048,13 @@ impl Context {
         let page = layout::Page {
             css_class: tyname,
             root_path: &self.root_path(),
+            static_root_path: self.shared.static_root_path.deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
             resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
         };
 
         {
@@ -2051,7 +2067,7 @@ impl Context {
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
-                           &self.shared.themes, &[])?;
+                           &self.shared.themes)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {

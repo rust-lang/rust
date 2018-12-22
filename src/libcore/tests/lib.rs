@@ -19,6 +19,7 @@
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
+#![feature(iter_nth_back)]
 #![feature(iter_unfold)]
 #![feature(pattern)]
 #![feature(range_is_empty)]

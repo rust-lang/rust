@@ -187,7 +187,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     }
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
-    let ret = ecx.allocate(layout, MemoryKind::Stack)?;
+    let ret = ecx.allocate(layout, MemoryKind::Stack);
 
     let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
@@ -490,8 +490,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         _kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
-        Ok(ptr)
+    ) -> Pointer {
+        ptr
     }
 
     #[inline(always)]
@@ -692,12 +692,16 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
         if tcx.is_static(def_id).is_some() {
-            let err = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
-            // check that a static never produces `TooGeneric`
+            let reported_err = err.report_as_error(ecx.tcx,
+                                                   "could not evaluate static initializer");
+            // Ensure that if the above error was either `TooGeneric` or `Reported`
+            // an error must be reported.
             if tcx.sess.err_count() == 0 {
-                span_bug!(ecx.tcx.span, "static eval failure didn't emit an error: {:#?}", err);
+                tcx.sess.delay_span_bug(err.span,
+                                        &format!("static eval failure did not emit an error: {:#?}",
+                                                 reported_err));
             }
-            err
+            reported_err
         } else if def_id.is_local() {
             // constant defined in this crate, we can figure out a lint level!
             match tcx.describe_def(def_id) {

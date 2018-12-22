@@ -294,7 +294,7 @@ impl<R: Seek> Seek for BufReader<R> {
     /// `.into_inner()` immediately after a seek yields the underlying reader
     /// at the same position.
     ///
-    /// To seek without discarding the internal buffer, use [`Seek::seek_relative`].
+    /// To seek without discarding the internal buffer, use [`BufReader::seek_relative`].
     ///
     /// See [`std::io::Seek`] for more details.
     ///
@@ -303,6 +303,9 @@ impl<R: Seek> Seek for BufReader<R> {
     /// seeks will be performed instead of one. If the second seek returns
     /// `Err`, the underlying reader will be left at the same position it would
     /// have if you called `seek` with `SeekFrom::Current(0)`.
+    ///
+    /// [`BufReader::seek_relative`]: struct.BufReader.html#method.seek_relative
+    /// [`std::io::Seek`]: trait.Seek.html
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
