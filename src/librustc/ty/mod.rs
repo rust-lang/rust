@@ -2061,9 +2061,10 @@ impl ReprOptions {
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
-    /// optimizations, such as with repr(C) or repr(packed(1)).
+    /// optimizations, such as with repr(C), repr(packed(1)), or repr(<int>).
     pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
-        !(self.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty() || (self.pack == 1)
+        self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.pack == 1 ||
+            self.int.is_some()
     }
 
     /// Returns true if this `#[repr()]` should inhibit union abi optimisations
