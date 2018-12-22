@@ -51,12 +51,7 @@ trait GenericRadix {
         // characters for a base 2 number.
         let zero = T::zero();
         let is_nonnegative = x >= zero;
-        // Creating a `[MaybeUninit; N]` array by first creating a
-        // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
-        // array does not require initialization.
-        let mut buf: [MaybeUninit<u8>; 128] = unsafe {
-            MaybeUninit::uninitialized().into_inner()
-        };
+        let mut buf = uninitialized_array![u8; 128];
         let mut curr = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {
@@ -203,12 +198,7 @@ macro_rules! impl_Display {
                 // convert the negative num to positive by summing 1 to it's 2 complement
                 (!self.$conv_fn()).wrapping_add(1)
             };
-            // Creating a `[MaybeUninit; N]` array by first creating a
-            // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
-            // array does not require initialization.
-            let mut buf: [MaybeUninit<u8>; 39] = unsafe {
-                MaybeUninit::uninitialized().into_inner()
-            };
+            let mut buf = uninitialized_array![u8; 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();

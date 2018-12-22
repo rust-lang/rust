@@ -106,11 +106,8 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            // Creating a `[MaybeUninit; N]` array by first creating a
-            // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
-            // array does not require initialization.
-            keys: MaybeUninit::uninitialized().into_inner(),
-            vals: MaybeUninit::uninitialized().into_inner(),
+            keys: uninitialized_array![_; CAPACITY],
+            vals: uninitialized_array![_; CAPACITY],
             parent: ptr::null(),
             parent_idx: MaybeUninit::uninitialized(),
             len: 0
@@ -162,10 +159,7 @@ impl<K, V> InternalNode<K, V> {
     unsafe fn new() -> Self {
         InternalNode {
             data: LeafNode::new(),
-            // Creating a `[MaybeUninit; N]` array by first creating a
-            // `MaybeUninit<[MaybeUninit; N]>`; the `into_inner` is safe because the inner
-            // array does not require initialization.
-            edges: MaybeUninit::uninitialized().into_inner(),
+            edges: uninitialized_array![_; 2*B],
         }
     }
 }

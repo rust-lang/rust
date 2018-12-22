@@ -123,6 +123,7 @@
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
+#![feature(maybe_uninit)]
 
 #[prelude_import]
 #[allow(unused)]
