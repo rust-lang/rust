@@ -65,7 +65,7 @@ use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
+use clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
 use config::RenderOptions;
 use doctree;
 use fold::DocFolder;
@@ -2458,7 +2458,7 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
 
 fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
                       is_hidden: bool) -> fmt::Result {
-    let stabilities = short_stability(item, cx, true);
+    let stabilities = short_stability(item, cx);
     if !stabilities.is_empty() {
         write!(w, "<div class='stability{}'>", if is_hidden { " hidden" } else { "" })?;
         for stability in stabilities {
@@ -2651,18 +2651,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             _ => {
                 if myitem.name.is_none() { continue }
 
-                let stabilities = short_stability(myitem, cx, false);
-
-                let stab_docs = if !stabilities.is_empty() {
-                    stabilities.iter()
-                               .map(|s| format!("[{}]", s))
-                               .collect::<Vec<_>>()
-                               .as_slice()
-                               .join(" ")
-                } else {
-                    String::new()
-                };
-
                 let unsafety_flag = match myitem.inner {
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
                     if func.header.unsafety == hir::Unsafety::Unsafe => {
@@ -2683,11 +2671,11 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        <tr class='{stab}{add}module-item'>\
                            <td><a class=\"{class}\" href=\"{href}\" \
                                   title='{title}'>{name}</a>{unsafety_flag}</td>\
-                           <td class='docblock-short'>{stab_docs}{docs}\
+                           <td class='docblock-short'>{stab_tags}{docs}\
                            </td>\
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
-                       stab_docs = stab_docs,
+                       stab_tags = stability_tags(myitem),
                        docs = MarkdownSummaryLine(doc_value, &myitem.links()),
                        class = myitem.type_(),
                        add = add,
@@ -2714,101 +2702,123 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     Ok(())
 }
 
-fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
-    let mut stability = vec![];
-    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+/// Render the stability and deprecation tags that are displayed in the item's summary at the
+/// module level.
+fn stability_tags(item: &clean::Item) -> String {
+    let mut tags = String::new();
 
-    if let Some(stab) = item.stability.as_ref() {
-        let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
-            format!(": {}", stab.deprecated_reason)
-        } else {
-            String::new()
-        };
-        if !stab.deprecated_since.is_empty() {
-            let since = if show_reason {
-                format!(" since {}", Escape(&stab.deprecated_since))
-            } else {
-                String::new()
-            };
-            let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&deprecated_reason, RefCell::new(&mut ids), error_codes);
-            let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
-                format!("Deprecated{}{}", since, html)
-            } else {
-                format!("Deprecating in {}{}", Escape(&stab.deprecated_since), html)
-            };
-            stability.push(format!("<div class='stab deprecated'>{}</div>", text))
-        };
+    // The trailing space after each tag is to space it properly against the rest of the docs.
+    if item.deprecation().is_some() {
+        tags.push_str("[<div class='stab deprecated'>Deprecated</div>] ");
+    }
 
-        if stab.level == stability::Unstable {
-            if show_reason {
-                let unstable_extra = match (!stab.feature.is_empty(),
-                                            &cx.shared.issue_tracker_base_url,
-                                            stab.issue) {
-                    (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
-                        format!(" (<code>{} </code><a href=\"{}{}\">#{}</a>)",
-                                Escape(&stab.feature), tracker_url, issue_no, issue_no),
-                    (false, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
-                        format!(" (<a href=\"{}{}\">#{}</a>)", Escape(&tracker_url), issue_no,
-                                issue_no),
-                    (true, ..) =>
-                        format!(" (<code>{}</code>)", Escape(&stab.feature)),
-                    _ => String::new(),
-                };
-                if stab.unstable_reason.is_empty() {
-                    stability.push(format!("<div class='stab unstable'>\
-                                            <span class=microscope>🔬</span> \
-                                            This is a nightly-only experimental API. {}\
-                                            </div>",
-                                           unstable_extra));
-                } else {
-                    let mut ids = cx.id_map.borrow_mut();
-                    let text = format!("<summary><span class=microscope>🔬</span> \
-                                        This is a nightly-only experimental API. {}\
-                                        </summary>{}",
-                                       unstable_extra,
-                                       MarkdownHtml(
-                                           &stab.unstable_reason,
-                                           RefCell::new(&mut ids),
-                                           error_codes));
-                    stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
-                                   text));
-                }
-            } else {
-                stability.push("<div class='stab unstable'>Experimental</div>".to_string())
-            }
-        };
-    } else if let Some(depr) = item.deprecation.as_ref() {
-        let note = if show_reason && !depr.note.is_empty() {
-            format!(": {}", depr.note)
+    if let Some(stab) = item
+        .stability
+        .as_ref()
+        .filter(|s| s.level == stability::Unstable)
+    {
+        if stab.feature.as_ref().map(|s| &**s) == Some("rustc_private") {
+            tags.push_str("[<div class='stab internal'>Internal</div>] ");
         } else {
-            String::new()
-        };
-        let since = if show_reason && !depr.since.is_empty() {
-            format!(" since {}", Escape(&depr.since))
-        } else {
-            String::new()
-        };
-
-        let mut ids = cx.id_map.borrow_mut();
-        let text = if stability::deprecation_in_effect(&depr.since) {
-            format!("Deprecated{}{}",
-                    since,
-                    MarkdownHtml(&note, RefCell::new(&mut ids), error_codes))
-        } else {
-            format!("Deprecating in {}{}",
-                    Escape(&depr.since),
-                    MarkdownHtml(&note, RefCell::new(&mut ids), error_codes))
-        };
-        stability.push(format!("<div class='stab deprecated'>{}</div>", text))
+            tags.push_str("[<div class='stab unstable'>Experimental</div>] ");
+        }
     }
 
     if let Some(ref cfg) = item.attrs.cfg {
-        stability.push(format!("<div class='stab portability'>{}</div>", if show_reason {
-            cfg.render_long_html()
-        } else {
+        tags.push_str(&format!(
+            "[<div class='stab portability'>{}</div>] ",
             cfg.render_short_html()
-        }));
+        ));
+    }
+
+    tags
+}
+
+/// Render the stability and/or deprecation warning that is displayed at the top of the item's
+/// documentation.
+fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
+    let mut stability = vec![];
+    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+
+    if let Some(Deprecation { since, note }) = &item.deprecation() {
+        let mut message = if let Some(since) = since {
+            if stability::deprecation_in_effect(since) {
+                format!("Deprecated since {}", Escape(since))
+            } else {
+                format!("Deprecating in {}", Escape(since))
+            }
+        } else {
+            String::from("Deprecated")
+        };
+
+        if let Some(note) = note {
+            let mut ids = cx.id_map.borrow_mut();
+            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes);
+            message.push_str(&format!(": {}", html));
+        }
+        stability.push(format!("<div class='stab deprecated'>{}</div>", message));
+    }
+
+    if let Some(stab) = item
+        .stability
+        .as_ref()
+        .filter(|stab| stab.level == stability::Unstable)
+    {
+        let is_rustc_private = stab.feature.as_ref().map(|s| &**s) == Some("rustc_private");
+
+        let mut message = if is_rustc_private {
+            "<span class='emoji'>⚙️</span> This is an internal compiler API."
+        } else {
+            "<span class='emoji'>🔬</span> This is a nightly-only experimental API."
+        }
+        .to_owned();
+
+        if let Some(feature) = stab.feature.as_ref() {
+            let mut feature = format!("<code>{}</code>", Escape(&feature));
+            if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, stab.issue) {
+                feature.push_str(&format!(
+                    "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
+                    url = url,
+                    issue = issue
+                ));
+            }
+
+            message.push_str(&format!(" ({})", feature));
+        }
+
+        if let Some(unstable_reason) = &stab.unstable_reason {
+            // Provide a more informative message than the compiler help.
+            let unstable_reason = if is_rustc_private {
+                "This crate is being loaded from the sysroot, a permanently unstable location \
+                for private compiler dependencies. It is not intended for general use. Prefer \
+                using a public version of this crate from \
+                [crates.io](https://crates.io) via [`Cargo.toml`]\
+                (https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)."
+            } else {
+                unstable_reason
+            };
+
+            let mut ids = cx.id_map.borrow_mut();
+            message = format!(
+                "<details><summary>{}</summary>{}</details>",
+                message,
+                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes)
+            );
+        }
+
+        let class = if is_rustc_private {
+            "internal"
+        } else {
+            "unstable"
+        };
+        stability.push(format!("<div class='stab {}'>{}</div>", class, message));
+    }
+
+    if let Some(ref cfg) = item.attrs.cfg {
+        stability.push(format!(
+            "<div class='stab portability'>{}</div>",
+            cfg.render_long_html()
+        ));
     }
 
     stability

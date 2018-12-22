@@ -478,7 +478,7 @@ impl Item {
                 classes.push("unstable");
             }
 
-            if !s.deprecated_since.is_empty() {
+            if s.deprecation.is_some() {
                 classes.push("deprecated");
             }
 
@@ -502,6 +502,15 @@ impl Item {
     /// Returns a documentation-level item type from the item.
     pub fn type_(&self) -> ItemType {
         ItemType::from(self)
+    }
+
+    /// Returns the info in the item's `#[deprecated]` or `#[rustc_deprecated]` attributes.
+    ///
+    /// If the item is not deprecated, returns `None`.
+    pub fn deprecation(&self) -> Option<&Deprecation> {
+        self.deprecation
+            .as_ref()
+            .or_else(|| self.stability.as_ref().and_then(|s| s.deprecation.as_ref()))
     }
 }
 
@@ -3844,40 +3853,37 @@ impl Clean<Item> for doctree::ProcMacro {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Stability {
     pub level: stability::StabilityLevel,
-    pub feature: String,
+    pub feature: Option<String>,
     pub since: String,
-    pub deprecated_since: String,
-    pub deprecated_reason: String,
-    pub unstable_reason: String,
-    pub issue: Option<u32>
+    pub deprecation: Option<Deprecation>,
+    pub unstable_reason: Option<String>,
+    pub issue: Option<u32>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Deprecation {
-    pub since: String,
-    pub note: String,
+    pub since: Option<String>,
+    pub note: Option<String>,
 }
 
 impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
             level: stability::StabilityLevel::from_attr_level(&self.level),
-            feature: self.feature.to_string(),
+            feature: Some(self.feature.to_string()).filter(|f| !f.is_empty()),
             since: match self.level {
                 attr::Stable {ref since} => since.to_string(),
                 _ => String::new(),
             },
-            deprecated_since: match self.rustc_depr {
-                Some(attr::RustcDeprecation {ref since, ..}) => since.to_string(),
-                _=> String::new(),
-            },
-            deprecated_reason: match self.rustc_depr {
-                Some(ref depr) => depr.reason.to_string(),
-                _ => String::new(),
-            },
+            deprecation: self.rustc_depr.as_ref().map(|d| {
+                Deprecation {
+                    note: Some(d.reason.to_string()).filter(|r| !r.is_empty()),
+                    since: Some(d.since.to_string()).filter(|d| !d.is_empty()),
+                }
+            }),
             unstable_reason: match self.level {
-                attr::Unstable { reason: Some(ref reason), .. } => reason.to_string(),
-                _ => String::new(),
+                attr::Unstable { reason: Some(ref reason), .. } => Some(reason.to_string()),
+                _ => None,
             },
             issue: match self.level {
                 attr::Unstable {issue, ..} => Some(issue),
@@ -3896,8 +3902,8 @@ impl<'a> Clean<Stability> for &'a attr::Stability {
 impl Clean<Deprecation> for attr::Deprecation {
     fn clean(&self, _: &DocContext) -> Deprecation {
         Deprecation {
-            since: self.since.as_ref().map_or(String::new(), |s| s.to_string()),
-            note: self.note.as_ref().map_or(String::new(), |s| s.to_string()),
+            since: self.since.map(|s| s.to_string()).filter(|s| !s.is_empty()),
+            note: self.note.map(|n| n.to_string()).filter(|n| !n.is_empty()),
         }
     }
 }
