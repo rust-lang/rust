@@ -33,7 +33,7 @@ pub struct ScopeData {
 }
 
 impl FnScopes {
-    pub fn new(fn_def: ast::FnDef) -> FnScopes {
+    pub(crate) fn new(fn_def: ast::FnDef) -> FnScopes {
         let mut scopes = FnScopes {
             self_param: fn_def
                 .param_list()

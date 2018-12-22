@@ -235,7 +235,7 @@ impl AnalysisImpl {
                 position.file_id,
                 name_ref.syntax(),
             )? {
-                let scope = fn_descr.scope(&*self.db);
+                let scope = fn_descr.scopes(&*self.db);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
                     rr.add_resolution(
@@ -294,7 +294,7 @@ impl AnalysisImpl {
         let mut ret = vec![(position.file_id, binding.syntax().range())];
         ret.extend(
             descr
-                .scope(&*self.db)
+                .scopes(&*self.db)
                 .find_all_refs(binding)
                 .into_iter()
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
@@ -322,7 +322,7 @@ impl AnalysisImpl {
                 position.file_id,
                 name_ref.syntax(),
             )?);
-            let scope = descr.scope(db);
+            let scope = descr.scopes(db);
             let resolved = ctry!(scope.resolve_local_name(name_ref));
             let resolved = resolved.ptr().resolve(source_file);
             let binding = ctry!(find_node_at_offset::<ast::BindPat>(

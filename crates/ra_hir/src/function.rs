@@ -27,7 +27,7 @@ impl Function {
         Function { fn_id }
     }
 
-    pub fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
+    pub fn scopes(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
         db.fn_scopes(self.fn_id)
     }
 
