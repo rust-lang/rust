@@ -1,90 +1,119 @@
-error: this looks like an `else if` but the `else` is missing
+error: this looks like an `else {..}` but the `else` is missing
   --> $DIR/formatting.rs:21:6
    |
-21 |     } if foo() {
+21 |     } {
    |      ^
    |
    = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, add the missing `else` or add a new line before the next block
+
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/formatting.rs:25:6
+   |
+25 |     } if foo() {
+   |      ^
+   |
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:28:10
+  --> $DIR/formatting.rs:32:10
    |
-28 |         } if foo() {
+32 |         } if foo() {
    |          ^
    |
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:36:10
+  --> $DIR/formatting.rs:40:10
    |
-36 |         } if foo() {
+40 |         } if foo() {
    |          ^
    |
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> $DIR/formatting.rs:49:6
+   |
+49 |       } else
+   |  ______^
+50 | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> $DIR/formatting.rs:54:6
+   |
+54 |       }
+   |  ______^
+55 | |     else
+56 | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
 
 error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:45:6
+  --> $DIR/formatting.rs:60:6
    |
-45 |       } else
+60 |       } else
    |  ______^
-46 | |     if foo() { // the span of the above error should continue here
+61 | |     if foo() { // the span of the above error should continue here
    | |____^
    |
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:50:6
+  --> $DIR/formatting.rs:65:6
    |
-50 |       }
+65 |       }
    |  ______^
-51 | |     else
-52 | |     if foo() { // the span of the above error should continue here
+66 | |     else
+67 | |     if foo() { // the span of the above error should continue here
    | |____^
    |
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-  --> $DIR/formatting.rs:77:6
-   |
-77 |     a =- 35;
-   |      ^^^^
-   |
-   = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
-   = note: to remove this lint, use either `-=` or `= -`
+   --> $DIR/formatting.rs:106:6
+    |
+106 |     a =- 35;
+    |      ^^^^
+    |
+    = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
+    = note: to remove this lint, use either `-=` or `= -`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-  --> $DIR/formatting.rs:78:6
-   |
-78 |     a =* &191;
-   |      ^^^^
-   |
-   = note: to remove this lint, use either `*=` or `= *`
+   --> $DIR/formatting.rs:107:6
+    |
+107 |     a =* &191;
+    |      ^^^^
+    |
+    = note: to remove this lint, use either `*=` or `= *`
 
 error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-  --> $DIR/formatting.rs:81:6
-   |
-81 |     b =! false;
-   |      ^^^^
-   |
-   = note: to remove this lint, use either `!=` or `= !`
+   --> $DIR/formatting.rs:110:6
+    |
+110 |     b =! false;
+    |      ^^^^
+    |
+    = note: to remove this lint, use either `!=` or `= !`
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:90:19
-   |
-90 |         -1, -2, -3 // <= no comma here
-   |                   ^
-   |
-   = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
-   = note: to remove this lint, add a comma or write the expr in a single line
+   --> $DIR/formatting.rs:119:19
+    |
+119 |         -1, -2, -3 // <= no comma here
+    |                   ^
+    |
+    = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
+    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:94:19
-   |
-94 |         -1, -2, -3 // <= no comma here
-   |                   ^
-   |
-   = note: to remove this lint, add a comma or write the expr in a single line
+   --> $DIR/formatting.rs:123:19
+    |
+123 |         -1, -2, -3 // <= no comma here
+    |                   ^
+    |
+    = note: to remove this lint, add a comma or write the expr in a single line
 
-error: aborting due to 10 previous errors
+error: aborting due to 13 previous errors
 
