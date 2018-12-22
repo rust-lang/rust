@@ -681,15 +681,15 @@ declare_features! (
     // `extern crate foo as bar;` puts `bar` into extern prelude.
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the `:literal` macro fragment specifier (RFC 1576).
-    (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
-    // Integer match exhaustiveness checking (RFC 2591)
-    (accepted, exhaustive_integer_patterns, "1.32.0", Some(50907), None),
+    (accepted, macro_literal_matcher, "1.32.0", Some(35625), None),
     // Use `?` as the Kleene "at most one" operator.
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
     // `Self` struct constructor (RFC 2302)
     (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
     // `Self` in type definitions (RFC 2300)
     (accepted, self_in_typedefs, "1.32.0", Some(49303), None),
+    // Integer match exhaustiveness checking (RFC 2591)
+    (accepted, exhaustive_integer_patterns, "1.33.0", Some(50907), None),
     // `use path as _;` and `extern crate c as _;`
     (accepted, underscore_imports, "1.33.0", Some(48216), None),
     // Allows `#[repr(packed(N))]` attribute on structs.
