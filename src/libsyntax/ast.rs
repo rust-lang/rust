@@ -454,7 +454,6 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub recovered: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -1011,6 +1010,7 @@ impl Expr {
             ExprKind::Paren(..) => ExprPrecedence::Paren,
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Err => ExprPrecedence::Err,
         }
     }
 }
@@ -1170,6 +1170,9 @@ pub enum ExprKind {
 
     /// A `yield`, with an optional value to be yielded.
     Yield(Option<P<Expr>>),
+
+    /// Placeholder for an expression that wasn't syntactically well formed in some way.
+    Err,
 }
 
 /// The explicit `Self` type in a "qualified path". The actual

@@ -33,3 +33,5 @@ extern {
     emits_nothing!();
     //~^ ERROR macro invocations in `extern {}` blocks are experimental
 }
+
+fn main() {}

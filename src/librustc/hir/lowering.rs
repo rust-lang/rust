@@ -2719,7 +2719,6 @@ impl<'a> LoweringContext<'a> {
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
             targeted_by_break,
-            recovered: b.recovered,
         })
     }
 
@@ -3791,7 +3790,6 @@ impl<'a> LoweringContext<'a> {
                                 rules: hir::DefaultBlock,
                                 span,
                                 targeted_by_break: false,
-                                recovered: blk.recovered,
                             });
                             P(self.expr_block(blk, ThinVec::new()))
                         }
@@ -4126,6 +4124,8 @@ impl<'a> LoweringContext<'a> {
                 );
                 hir::ExprKind::Yield(P(expr))
             }
+
+            ExprKind::Err => hir::ExprKind::Err,
 
             // Desugar `ExprIfLet`
             // from: `if let <pat> = <sub_expr> <body> [<else_opt>]`
@@ -4831,7 +4831,6 @@ impl<'a> LoweringContext<'a> {
             rules: hir::DefaultBlock,
             span,
             targeted_by_break: false,
-            recovered: false,
         }
     }
 

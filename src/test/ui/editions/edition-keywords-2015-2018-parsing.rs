@@ -14,6 +14,10 @@
 #[macro_use]
 extern crate edition_kw_macro_2018;
 
+mod module {
+    pub fn async() {}
+}
+
 pub fn check_async() {
     let mut async = 1; // OK
     let mut r#async = 1; // OK
@@ -28,3 +32,5 @@ pub fn check_async() {
     module::async(); // OK
     module::r#async(); // OK
 }
+
+fn main() {}

@@ -817,11 +817,6 @@ pub struct Block {
     /// break out of this block early.
     /// Used by `'label: {}` blocks and by `catch` statements.
     pub targeted_by_break: bool,
-    /// If true, don't emit return value type errors as the parser had
-    /// to recover from a parse error so this block will not have an
-    /// appropriate type. A parse error will have been emitted so the
-    /// compilation will never succeed if this is true.
-    pub recovered: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -1372,6 +1367,7 @@ impl Expr {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Err => ExprPrecedence::Err,
         }
     }
 
@@ -1422,7 +1418,8 @@ impl Expr {
             ExprKind::AddrOf(..) |
             ExprKind::Binary(..) |
             ExprKind::Yield(..) |
-            ExprKind::Cast(..) => {
+            ExprKind::Cast(..) |
+            ExprKind::Err => {
                 false
             }
         }
@@ -1535,6 +1532,9 @@ pub enum ExprKind {
 
     /// A suspension point for generators. This is `yield <expr>` in Rust.
     Yield(P<Expr>),
+
+    /// Placeholder for an expression that wasn't syntactically well formed in some way.
+    Err,
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.

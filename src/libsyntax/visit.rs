@@ -812,6 +812,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::TryBlock(ref body) => {
             visitor.visit_block(body)
         }
+        ExprKind::Err => {}
     }
 
     visitor.visit_expr_post(expression)

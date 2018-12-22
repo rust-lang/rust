@@ -41,3 +41,5 @@ mod derive {
     //~^ ERROR `derive` may only be applied to structs, enums and unions
     impl S { }
 }
+
+fn main() {}

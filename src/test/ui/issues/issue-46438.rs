@@ -14,7 +14,7 @@ macro_rules! m {
     }
 }
 
-trait Trait {}
+trait Tr {}
 
 m!(Tr);
 

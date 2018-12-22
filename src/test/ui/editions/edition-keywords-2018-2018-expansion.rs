@@ -20,3 +20,5 @@ mod one_async {
 mod two_async {
     produces_async_raw! {} // OK
 }
+
+fn main() {}
