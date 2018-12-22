@@ -136,6 +136,13 @@ impl fmt::Debug for Event {
                     return debug_verbose_not(not, f);
                 }
             }
+            Event::Task(Task::Respond(resp)) => {
+                return f
+                    .debug_struct("RawResponse")
+                    .field("id", &resp.id)
+                    .field("error", &resp.error)
+                    .finish();
+            }
             _ => (),
         }
         match self {
