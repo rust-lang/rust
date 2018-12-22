@@ -1,7 +1,57 @@
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{TextUnit, TextRange};
-use crate::{LineIndex, LineCol};
+use crate::{LineIndex, LineCol, line_index::Utf16Char};
 use superslice::Ext;
+
+#[derive(Debug, Clone)]
+enum Step {
+    Newline(TextUnit),
+    Utf16Char(TextRange),
+}
+
+struct LineIndexStepIter<'a> {
+    line_index: &'a LineIndex,
+    newlines: std::slice::Iter<'a, TextUnit>,
+    next_newline_idx: usize,
+    utf16_chars: Option<std::slice::Iter<'a, Utf16Char>>,
+}
+
+impl<'a> LineIndexStepIter<'a> {
+    fn from(line_index: &LineIndex) -> LineIndexStepIter {
+        let mut x = LineIndexStepIter {
+            line_index,
+            newlines: line_index.newlines().iter(),
+            next_newline_idx: 0,
+            utf16_chars: None,
+        };
+        // skip first newline since it's not real
+        x.next();
+        x
+    }
+}
+
+impl<'a> Iterator for LineIndexStepIter<'a> {
+    type Item = Step;
+    fn next(&mut self) -> Option<Step> {
+        self.utf16_chars
+            .as_mut()
+            .and_then(|x| {
+                None
+                // TODO Enable
+                // let x = x.next()?;
+                // Some(Step::Utf16Char(TextRange::from_to(x.start, x.end)))
+            })
+            .or_else(|| {
+                self.utf16_chars = self
+                    .line_index
+                    .utf16_chars(self.next_newline_idx)
+                    .map(|x| x.iter());
+                self.next_newline_idx += 1;
+                let x = self.newlines.next()?;
+                Some(Step::Newline(*x))
+            })
+    }
+}
 
 #[derive(Debug)]
 struct OffsetNewlineIter<'a> {
@@ -10,16 +60,35 @@ struct OffsetNewlineIter<'a> {
 }
 
 impl<'a> Iterator for OffsetNewlineIter<'a> {
-    type Item = TextUnit;
-    fn next(&mut self) -> Option<TextUnit> {
-        let next_idx = self
+    type Item = Step;
+    fn next(&mut self) -> Option<Step> {
+        let (next, next_offset) = self
             .text
             .char_indices()
-            .filter_map(|(i, c)| if c == '\n' { Some(i + 1) } else { None })
+            .filter_map(|(i, c)| {
+                if c == '\n' {
+                    let next_offset = self.offset + TextUnit::from_usize(i + 1);
+                    let next = Step::Newline(next_offset);
+                    Some((next, next_offset))
+                } else {
+                    None
+                    // TODO enable
+                    // let char_len = TextUnit::of_char(c);
+                    // if char_len.to_usize() > 1 {
+                    //     let start = self.offset + TextUnit::from_usize(i);
+                    //     let end = start + char_len;
+                    //     let next = Step::Utf16Char(TextRange::from_to(start, end));
+                    //     let next_offset = end;
+                    //     Some((next, next_offset))
+                    // } else {
+                    //     None
+                    // }
+                }
+            })
             .next()?;
-        let next = self.offset + TextUnit::from_usize(next_idx);
+        let next_idx = (next_offset - self.offset).to_usize();
         self.text = &self.text[next_idx..];
-        self.offset = next;
+        self.offset = next_offset;
         Some(next)
     }
 }
@@ -83,12 +152,16 @@ impl<'a, 'b> Edits<'a, 'b> {
         res
     }
 
-    fn next_newlines(&mut self, candidate: TextUnit) -> NextNewlines {
+    fn next_step(&mut self, step: &Step) -> NextNewlines {
+        let step_pos = match step {
+            &Step::Newline(n) => n,
+            &Step::Utf16Char(r) => unimplemented!(),
+        };
         let res = match &mut self.current {
             Some(edit) => {
-                if candidate <= edit.delete.start() {
+                if step_pos <= edit.delete.start() {
                     NextNewlines::Use
-                } else if candidate <= edit.delete.end() {
+                } else if step_pos <= edit.delete.end() {
                     let iter = OffsetNewlineIter {
                         offset: edit.delete.start(),
                         text: &edit.insert,
@@ -129,6 +202,17 @@ impl<'a, 'b> Edits<'a, 'b> {
             TextUnit::from((x.to_usize() as i64 + self.acc_diff) as u32)
         }
     }
+
+    fn translate_step(&self, x: &Step) -> Step {
+        if self.acc_diff == 0 {
+            x.clone()
+        } else {
+            match x {
+                &Step::Newline(n) => Step::Newline(self.translate(n)),
+                &Step::Utf16Char(r) => Step::Utf16Char(self.translate_range(r)),
+            }
+        }
+    }
 }
 
 pub fn count_newlines(offset: TextUnit, line_index: &LineIndex, edits: &[AtomTextEdit]) -> u32 {
@@ -143,33 +227,38 @@ pub fn count_newlines(offset: TextUnit, line_index: &LineIndex, edits: &[AtomTex
 
     let mut lines: u32 = 0;
 
-    macro_rules! test_newline {
+    macro_rules! test_step {
         ($x:ident) => {
-            if offset < $x {
-                return lines;
-            } else {
-                lines += 1;
+            match &$x {
+                Step::Newline(n) => {
+                    if offset < *n {
+                        return lines;
+                    } else {
+                        lines += 1;
+                    }
+                }
+                Step::Utf16Char(x) => unimplemented!(),
             }
         };
     }
 
-    for &orig_newline in line_index.newlines() {
+    for orig_step in LineIndexStepIter::from(line_index) {
         loop {
-            let translated_newline = state.translate(orig_newline);
-            match state.next_newlines(translated_newline) {
+            let translated_newline = state.translate_step(&orig_step);
+            match state.next_step(&translated_newline) {
                 NextNewlines::Use => {
-                    test_newline!(translated_newline);
+                    test_step!(translated_newline);
                     break;
                 }
                 NextNewlines::ReplaceMany(ns) => {
                     for n in ns {
-                        test_newline!(n);
+                        test_step!(n);
                     }
                     break;
                 }
                 NextNewlines::AddMany(ns) => {
                     for n in ns {
-                        test_newline!(n);
+                        test_step!(n);
                     }
                 }
             }
@@ -181,7 +270,7 @@ pub fn count_newlines(offset: TextUnit, line_index: &LineIndex, edits: &[AtomTex
             None => break,
             Some(ns) => {
                 for n in ns {
-                    test_newline!(n);
+                    test_step!(n);
                 }
             }
         }

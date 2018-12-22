@@ -15,9 +15,9 @@ pub struct LineCol {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-struct Utf16Char {
-    start: TextUnit,
-    end: TextUnit,
+pub(crate) struct Utf16Char {
+    pub(crate) start: TextUnit,
+    pub(crate) end: TextUnit,
 }
 
 impl Utf16Char {
@@ -122,7 +122,13 @@ impl LineIndex {
     }
 
     pub(crate) fn newlines(&self) -> &[TextUnit] {
-        &self.newlines[1..]
+        &self.newlines[..]
+    }
+
+    pub(crate) fn utf16_chars(&self, newline_idx: usize) -> Option<&[Utf16Char]> {
+        self.utf16_lines
+            .get(&(newline_idx as u32))
+            .map(|x| x.as_slice())
     }
 }
 
