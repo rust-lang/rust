@@ -118,9 +118,10 @@ impl CrateGraph {
         self.arena[&crate_id].dependencies.iter()
     }
     fn dfs_find(&self, target: CrateId, from: CrateId, visited: &mut FxHashSet<CrateId>) -> bool {
-        if visited.contains(&from) {
+        if !visited.insert(from) {
             return false;
         }
+
         for dep in self.dependencies(from) {
             let crate_id = dep.crate_id();
             if crate_id == target {
@@ -131,7 +132,6 @@ impl CrateGraph {
                 return true;
             }
         }
-        visited.insert(from);
         return false;
     }
 }
