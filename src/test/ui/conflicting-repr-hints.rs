@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(repr_packed)]
 
 #[repr(C)]
 enum A { A }

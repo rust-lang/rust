@@ -11,7 +11,6 @@
 // run-pass
 #![allow(dead_code)]
 #![feature(box_syntax)]
-#![feature(repr_packed)]
 
 use std::mem;
 

@@ -13,7 +13,6 @@
 #![allow(non_snake_case)]
 
 #![feature(untagged_unions)]
-#![feature(repr_packed)]
 
 use std::mem::{size_of, size_of_val, align_of, align_of_val};
 
