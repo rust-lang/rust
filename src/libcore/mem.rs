@@ -984,6 +984,9 @@ impl<T> ManuallyDrop<T> {
     ///
     /// This function semantically moves out the contained value without preventing further usage.
     /// It is up to the user of this method to ensure that this container is not used again.
+    ///
+    /// [`ManuallyDrop::drop`]: #method.drop
+    /// [`ManuallyDrop::into_inner`]: #method.into_inner
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
     #[unstable(feature = "manually_drop_take", issue = "55422")]
     #[inline]

@@ -955,6 +955,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    ///
+    /// [`Weak`]: ../../std/sync/struct.Weak.html
     #[inline]
     fn drop(&mut self) {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
@@ -1222,10 +1224,11 @@ impl<T: ?Sized> Clone for Weak<T> {
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating memory.
-    /// Calling [`upgrade`][Weak::upgrade] on the return value always
+    /// Calling [`upgrade`] on the return value always
     /// gives [`None`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`upgrade`]: ../../std/sync/struct.Weak.html#method.upgrade
     ///
     /// # Examples
     ///
