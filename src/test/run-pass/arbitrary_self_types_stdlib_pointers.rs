@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(arbitrary_self_types)]
-#![feature(pin)]
 #![feature(rustc_attrs)]
 
 use std::{
