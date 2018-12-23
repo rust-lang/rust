@@ -70,7 +70,7 @@ def issue(
     response = urllib2.urlopen(urllib2.Request(
         gh_url,
         json.dumps({
-            'body': '''\
+            'body': textwrap.dedent('''\
             Hello, this is your friendly neighborhood mergebot.
             After merging PR {}, I observed that the tool {} no longer builds.
             A follow-up PR to the repository {} is needed to fix the fallout.
@@ -80,7 +80,7 @@ def issue(
 
             cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
 
-            '''.format(relevant_pr_number, tool, REPOS[tool], relevant_pr_user, pr_reviewer),
+            ''').format(relevant_pr_number, tool, REPOS[tool], relevant_pr_user, pr_reviewer),
             'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
             'assignees': assignees,
             'labels': ['T-compiler', 'I-nominated'],
