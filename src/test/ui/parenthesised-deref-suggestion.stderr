@@ -1,0 +1,21 @@
+error[E0609]: no field `opts` on type `*const Session`
+  --> $DIR/parenthesised-deref-suggestion.rs:7:30
+   |
+LL |     (sess as *const Session).opts; //~ ERROR no field `opts` on type `*const Session`
+   |                              ^^^^
+help: `(sess as *const Session)` is a raw pointer; try dereferencing it
+   |
+LL |     (*(sess as *const Session)).opts; //~ ERROR no field `opts` on type `*const Session`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0609]: no field `0` on type `[u32; 1]`
+  --> $DIR/parenthesised-deref-suggestion.rs:10:21
+   |
+LL |     (x as [u32; 1]).0; //~ ERROR no field `0` on type `[u32; 1]`
+   |     ----------------^
+   |     |
+   |     help: instead of using tuple indexing, use array indexing: `(x as [u32; 1])[0]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.
