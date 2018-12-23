@@ -2,24 +2,21 @@ mod primitive;
 #[cfg(test)]
 mod tests;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-
 use std::sync::Arc;
-use std::collections::HashMap;
 use std::fmt;
+
+use rustc_hash::{FxHashMap};
 
 use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
-    TextRange, TextUnit, SmolStr,
-    algo::visit::{visitor, Visitor},
-    ast::{self, AstNode, DocCommentsOwner, NameOwner, LoopBodyOwner, ArgListOwner},
+    SmolStr,
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner},
     SyntaxNodeRef
 };
 
 use crate::{
     FnScopes,
     db::HirDatabase,
-    arena::{Arena, Id},
 };
 
 // pub(crate) type TypeId = Id<Ty>;
@@ -150,9 +147,17 @@ impl Ty {
             TupleType(_inner) => Ty::Unknown, // TODO
             NeverType(..) => Ty::Never,
             PathType(inner) => {
-                let path = if let Some(p) = inner.path() { p } else { return Ty::Unknown };
+                let path = if let Some(p) = inner.path() {
+                    p
+                } else {
+                    return Ty::Unknown;
+                };
                 if path.qualifier().is_none() {
-                    let name = path.segment().and_then(|s| s.name_ref()).map(|n| n.text()).unwrap_or(SmolStr::new(""));
+                    let name = path
+                        .segment()
+                        .and_then(|s| s.name_ref())
+                        .map(|n| n.text())
+                        .unwrap_or(SmolStr::new(""));
                     if let Some(int_ty) = primitive::IntTy::from_string(&name) {
                         Ty::Int(int_ty)
                     } else if let Some(uint_ty) = primitive::UintTy::from_string(&name) {
@@ -167,16 +172,16 @@ impl Ty {
                     // TODO
                     Ty::Unknown
                 }
-            },
-            PointerType(_inner) => Ty::Unknown, // TODO
-            ArrayType(_inner) => Ty::Unknown, // TODO
-            SliceType(_inner) => Ty::Unknown, // TODO
-            ReferenceType(_inner) => Ty::Unknown, // TODO
+            }
+            PointerType(_inner) => Ty::Unknown,     // TODO
+            ArrayType(_inner) => Ty::Unknown,       // TODO
+            SliceType(_inner) => Ty::Unknown,       // TODO
+            ReferenceType(_inner) => Ty::Unknown,   // TODO
             PlaceholderType(_inner) => Ty::Unknown, // TODO
-            FnPointerType(_inner) => Ty::Unknown, // TODO
-            ForType(_inner) => Ty::Unknown, // TODO
-            ImplTraitType(_inner) => Ty::Unknown, // TODO
-            DynTraitType(_inner) => Ty::Unknown, // TODO
+            FnPointerType(_inner) => Ty::Unknown,   // TODO
+            ForType(_inner) => Ty::Unknown,         // TODO
+            ImplTraitType(_inner) => Ty::Unknown,   // TODO
+            DynTraitType(_inner) => Ty::Unknown,    // TODO
         }
     }
 
@@ -203,7 +208,7 @@ impl fmt::Display for Ty {
                 }
                 write!(f, ")")
             }
-            Ty::Unknown => write!(f, "[unknown]")
+            Ty::Unknown => write!(f, "[unknown]"),
         }
     }
 }
@@ -230,7 +235,7 @@ impl InferenceContext {
     fn new(scopes: Arc<FnScopes>) -> Self {
         InferenceContext {
             type_for: FxHashMap::default(),
-            scopes
+            scopes,
         }
     }
 
@@ -238,7 +243,7 @@ impl InferenceContext {
         self.type_for.insert(LocalSyntaxPtr::new(node), ty);
     }
 
-    fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+    fn unify(&mut self, _ty1: &Ty, _ty2: &Ty) -> bool {
         unimplemented!()
     }
 
@@ -303,7 +308,7 @@ impl InferenceContext {
                 if let Some(expr) = e.iterable() {
                     self.infer_expr(expr);
                 }
-                if let Some(pat) = e.pat() {
+                if let Some(_pat) = e.pat() {
                     // TODO write type for pat
                 }
                 if let Some(block) = e.loop_body() {
@@ -313,7 +318,7 @@ impl InferenceContext {
                 Ty::Unknown
             }
             ast::Expr::LambdaExpr(e) => {
-                let body_ty = if let Some(body) = e.body() {
+                let _body_ty = if let Some(body) = e.body() {
                     self.infer_expr(body)
                 } else {
                     Ty::Unknown
@@ -339,7 +344,7 @@ impl InferenceContext {
                 Ty::Unknown
             }
             ast::Expr::MatchExpr(e) => {
-                let ty = if let Some(match_expr) = e.expr() {
+                let _ty = if let Some(match_expr) = e.expr() {
                     self.infer_expr(match_expr)
                 } else {
                     Ty::Unknown
@@ -348,7 +353,7 @@ impl InferenceContext {
                     for arm in match_arm_list.arms() {
                         // TODO type the bindings in pat
                         // TODO type the guard
-                        let ty = if let Some(e) = arm.expr() {
+                        let _ty = if let Some(e) = arm.expr() {
                             self.infer_expr(e)
                         } else {
                             Ty::Unknown
@@ -360,12 +365,8 @@ impl InferenceContext {
                     Ty::Unknown
                 }
             }
-            ast::Expr::TupleExpr(e) => {
-                Ty::Unknown
-            }
-            ast::Expr::ArrayExpr(e) => {
-                Ty::Unknown
-            }
+            ast::Expr::TupleExpr(_e) => Ty::Unknown,
+            ast::Expr::ArrayExpr(_e) => Ty::Unknown,
             ast::Expr::PathExpr(e) => {
                 if let Some(p) = e.path() {
                     if p.qualifier().is_none() {
@@ -392,12 +393,8 @@ impl InferenceContext {
                     Ty::Unknown
                 }
             }
-            ast::Expr::ContinueExpr(e) => {
-                Ty::Never
-            }
-            ast::Expr::BreakExpr(e) => {
-                Ty::Never
-            }
+            ast::Expr::ContinueExpr(_e) => Ty::Never,
+            ast::Expr::BreakExpr(_e) => Ty::Never,
             ast::Expr::ParenExpr(e) => {
                 if let Some(e) = e.expr() {
                     self.infer_expr(e)
@@ -405,9 +402,7 @@ impl InferenceContext {
                     Ty::Unknown
                 }
             }
-            ast::Expr::Label(e) => {
-                Ty::Unknown
-            }
+            ast::Expr::Label(_e) => Ty::Unknown,
             ast::Expr::ReturnExpr(e) => {
                 if let Some(e) = e.expr() {
                     // TODO unify with return type
@@ -419,21 +414,15 @@ impl InferenceContext {
                 // Can this even occur outside of a match expression?
                 Ty::Unknown
             }
-            ast::Expr::StructLit(e) => {
-                Ty::Unknown
-            }
+            ast::Expr::StructLit(_e) => Ty::Unknown,
             ast::Expr::NamedFieldList(_) | ast::Expr::NamedField(_) => {
                 // Can this even occur outside of a struct literal?
                 Ty::Unknown
             }
-            ast::Expr::IndexExpr(e) => {
-                Ty::Unknown
-            }
-            ast::Expr::FieldExpr(e) => {
-                Ty::Unknown
-            }
+            ast::Expr::IndexExpr(_e) => Ty::Unknown,
+            ast::Expr::FieldExpr(_e) => Ty::Unknown,
             ast::Expr::TryExpr(e) => {
-                let inner_ty = if let Some(e) = e.expr() {
+                let _inner_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)
                 } else {
                     Ty::Unknown
@@ -441,7 +430,7 @@ impl InferenceContext {
                 Ty::Unknown
             }
             ast::Expr::CastExpr(e) => {
-                let inner_ty = if let Some(e) = e.expr() {
+                let _inner_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)
                 } else {
                     Ty::Unknown
@@ -451,7 +440,7 @@ impl InferenceContext {
                 cast_ty
             }
             ast::Expr::RefExpr(e) => {
-                let inner_ty = if let Some(e) = e.expr() {
+                let _inner_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)
                 } else {
                     Ty::Unknown
@@ -459,22 +448,16 @@ impl InferenceContext {
                 Ty::Unknown
             }
             ast::Expr::PrefixExpr(e) => {
-                let inner_ty = if let Some(e) = e.expr() {
+                let _inner_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)
                 } else {
                     Ty::Unknown
                 };
                 Ty::Unknown
             }
-            ast::Expr::RangeExpr(e) => {
-                Ty::Unknown
-            }
-            ast::Expr::BinExpr(e) => {
-                Ty::Unknown
-            }
-            ast::Expr::Literal(e) => {
-                Ty::Unknown
-            }
+            ast::Expr::RangeExpr(_e) => Ty::Unknown,
+            ast::Expr::BinExpr(_e) => Ty::Unknown,
+            ast::Expr::Literal(_e) => Ty::Unknown,
         };
         self.write_ty(expr.syntax(), ty.clone());
         ty
@@ -505,7 +488,7 @@ impl InferenceContext {
     }
 }
 
-pub fn infer(db: &impl HirDatabase, node: ast::FnDef, scopes: Arc<FnScopes>) -> InferenceResult {
+pub fn infer(_db: &impl HirDatabase, node: ast::FnDef, scopes: Arc<FnScopes>) -> InferenceResult {
     let mut ctx = InferenceContext::new(scopes);
 
     for param in node.param_list().unwrap().params() {
@@ -522,5 +505,7 @@ pub fn infer(db: &impl HirDatabase, node: ast::FnDef, scopes: Arc<FnScopes>) -> 
 
     // TODO 'resolve' the types: replace inference variables by their inferred results
 
-    InferenceResult { type_for: ctx.type_for }
+    InferenceResult {
+        type_for: ctx.type_for,
+    }
 }

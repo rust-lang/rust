@@ -1,12 +1,10 @@
 extern crate ra_syntax;
-#[macro_use]
 extern crate test_utils;
 extern crate walkdir;
 
 use std::{
     fmt::Write,
-    fs,
-    path::{Path, PathBuf, Component},
+    path::{PathBuf, Component},
 };
 
 use test_utils::{project_dir, dir_tests, read_text, collect_tests};
@@ -25,28 +23,36 @@ fn lexer_tests() {
 
 #[test]
 fn parser_tests() {
-    dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
-        let file = SourceFileNode::parse(text);
-        let errors = file.errors();
-        assert_eq!(
-            &*errors,
-            &[] as &[ra_syntax::SyntaxError],
-            "There should be no errors in the file {:?}",
-            path.display()
-        );
-        dump_tree(file.syntax())
-    });
-    dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
-        let file = SourceFileNode::parse(text);
-        let errors = file.errors();
-        assert_ne!(
-            &*errors,
-            &[] as &[ra_syntax::SyntaxError],
-            "There should be errors in the file {:?}",
-            path.display()
-        );
-        dump_tree(file.syntax())
-    });
+    dir_tests(
+        &test_data_dir(),
+        &["parser/inline/ok", "parser/ok"],
+        |text, path| {
+            let file = SourceFileNode::parse(text);
+            let errors = file.errors();
+            assert_eq!(
+                &*errors,
+                &[] as &[ra_syntax::SyntaxError],
+                "There should be no errors in the file {:?}",
+                path.display()
+            );
+            dump_tree(file.syntax())
+        },
+    );
+    dir_tests(
+        &test_data_dir(),
+        &["parser/err", "parser/inline/err"],
+        |text, path| {
+            let file = SourceFileNode::parse(text);
+            let errors = file.errors();
+            assert_ne!(
+                &*errors,
+                &[] as &[ra_syntax::SyntaxError],
+                "There should be errors in the file {:?}",
+                path.display()
+            );
+            dump_tree(file.syntax())
+        },
+    );
 }
 
 #[test]
