@@ -393,9 +393,17 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
 ) {
     let mut cx = CodegenCx::new(tcx, module);
     time("codegen mono items", move || {
-        for (mono_item, (_linkage, _vis)) in mono_items {
+        for (mono_item, (linkage, vis)) in mono_items {
             unimpl::try_unimpl(tcx, log, || {
-                base::trans_mono_item(&mut cx, mono_item);
+                let linkage = match (linkage, vis) {
+                    (RLinkage::External, Visibility::Default) => Linkage::Export,
+                    (RLinkage::Internal, Visibility::Default) => Linkage::Local,
+                    // FIXME this should get external linkage, but hidden visibility,
+                    // not internal linkage and default visibility
+                    | (RLinkage::External, Visibility::Hidden) => Linkage::Local,
+                    _ => panic!("{:?} = {:?} {:?}", mono_item, linkage, vis),
+                };
+                base::trans_mono_item(&mut cx, mono_item, linkage);
             });
         }
 

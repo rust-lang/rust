@@ -12,6 +12,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 pub fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
     mono_item: MonoItem<'tcx>,
+    linkage: Linkage,
 ) {
     let tcx = cx.tcx;
     match mono_item {
@@ -42,7 +43,7 @@ pub fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
                 }
             });
 
-            trans_fn(cx, inst);
+            trans_fn(cx, inst, linkage);
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.ccx, def_id);
@@ -56,6 +57,7 @@ pub fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
     instance: Instance<'tcx>,
+    linkage: Linkage,
 ) {
     let tcx = cx.tcx;
 
@@ -65,7 +67,7 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     // Step 2. Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance);
     let func_id = cx.module
-        .declare_function(&name, Linkage::Export, &sig)
+        .declare_function(&name, linkage, &sig)
         .unwrap();
 
     // Step 3. Make FunctionBuilder
