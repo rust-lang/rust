@@ -130,9 +130,9 @@ pub struct FnSig {
 }
 
 impl Ty {
-    pub fn new(node: ast::TypeRef) -> Self {
+    pub fn new(_db: &impl HirDatabase, node: ast::TypeRef) -> Cancelable<Self> {
         use ra_syntax::ast::TypeRef::*;
-        match node {
+        Ok(match node {
             ParenType(_inner) => Ty::Unknown, // TODO
             TupleType(_inner) => Ty::Unknown, // TODO
             NeverType(..) => Ty::Never,
@@ -140,7 +140,7 @@ impl Ty {
                 let path = if let Some(p) = inner.path() {
                     p
                 } else {
-                    return Ty::Unknown;
+                    return Ok(Ty::Unknown);
                 };
                 if path.qualifier().is_none() {
                     let name = path
@@ -172,7 +172,7 @@ impl Ty {
             ForType(_inner) => Ty::Unknown,         // TODO
             ImplTraitType(_inner) => Ty::Unknown,   // TODO
             DynTraitType(_inner) => Ty::Unknown,    // TODO
-        }
+        })
     }
 
     pub fn unit() -> Self {
@@ -218,19 +218,28 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
         .param_list()
         .map(|pl| {
             pl.params()
-                .map(|p| p.type_ref().map(|t| Ty::new(t)).unwrap_or(Ty::Unknown))
+                .map(|p| {
+                    p.type_ref()
+                        .map(|t| Ty::new(db, t))
+                        .unwrap_or(Ok(Ty::Unknown))
+                })
                 .collect()
         })
-        .unwrap_or_else(Vec::new);
+        .unwrap_or_else(|| Ok(Vec::new()))?;
     let output = node
         .ret_type()
         .and_then(|rt| rt.type_ref())
-        .map(|t| Ty::new(t))
-        .unwrap_or(Ty::Unknown);
+        .map(|t| Ty::new(db, t))
+        .unwrap_or(Ok(Ty::Unknown))?;
     let sig = FnSig { input, output };
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
 
+// TODO this should probably be per namespace (i.e. types vs. values), since for
+// a tuple struct `struct Foo(Bar)`, Foo has function type as a value, but
+// defines the struct type Foo when used in the type namespace. rustc has a
+// separate DefId for the constructor, but with the current DefId approach, that
+// seems complicated.
 pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     let def = def_id.resolve(db)?;
     match def {
@@ -408,9 +417,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                 }
                 match callee_ty {
-                    Ty::FnPtr(sig) => {
-                        sig.output.clone()
-                    }
+                    Ty::FnPtr(sig) => sig.output.clone(),
                     _ => {
                         // not callable
                         // TODO report an error?
@@ -499,7 +506,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 } else {
                     Ty::Unknown
                 };
-                let cast_ty = e.type_ref().map(Ty::new).unwrap_or(Ty::Unknown);
+                let cast_ty = e
+                    .type_ref()
+                    .map(|t| Ty::new(self.db, t))
+                    .unwrap_or(Ok(Ty::Unknown))?;
                 // TODO do the coercion...
                 cast_ty
             }
@@ -532,7 +542,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             match stmt {
                 ast::Stmt::LetStmt(stmt) => {
                     let decl_ty = if let Some(type_ref) = stmt.type_ref() {
-                        Ty::new(type_ref)
+                        Ty::new(self.db, type_ref)?
                     } else {
                         Ty::Unknown
                     };
@@ -582,7 +592,7 @@ pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceR
                 continue;
             };
             if let Some(type_ref) = param.type_ref() {
-                let ty = Ty::new(type_ref);
+                let ty = Ty::new(db, type_ref)?;
                 ctx.type_for.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
             } else {
                 // TODO self param
