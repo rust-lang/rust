@@ -34,6 +34,7 @@ pub use crate::{
 };
 pub use ra_editor::{
     FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,
+    Severity
 };
 pub use hir::FnSignatureInfo;
 
@@ -198,6 +199,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub fix: Option<SourceChange>,
+    pub severity: Option<Severity>,
 }
 
 #[derive(Debug)]

@@ -34,14 +34,16 @@ pub struct HighlightedRange {
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
     Error,
-    Warning
+    Warning,
+    Information,
+    Hint,
 }
 
 #[derive(Debug)]
 pub struct Diagnostic {
     pub range: TextRange,
     pub msg: String,
-    pub severity: Severity,
+    pub severity: Option<Severity>,
 }
 
 #[derive(Debug)]
@@ -104,12 +106,13 @@ pub fn diagnostics(file: &SourceFileNode) -> Vec<Diagnostic> {
         }
     }
 
-    let mut errors: Vec<Diagnostic> = file.errors()
+    let mut errors: Vec<Diagnostic> = file
+        .errors()
         .into_iter()
         .map(|err| Diagnostic {
             range: location_to_range(err.location()),
             msg: format!("Syntax Error: {}", err),
-            severity: Severity::Error,
+            severity: Some(Severity::Error),
         })
         .collect();
 
@@ -127,7 +130,7 @@ fn check_unnecessary_braces_in_use_statement(file: &SourceFileNode) -> Vec<Diagn
                 diagnostics.push(Diagnostic {
                     range: use_tree_list.syntax().range(),
                     msg: format!("Unnecessary braces in use statement"),
-                    severity: Severity::Warning,
+                    severity: Some(Severity::Warning),
                 })
             }
         }
@@ -249,9 +252,9 @@ fn main() {}
         );
         let diagnostics = check_unnecessary_braces_in_use_statement(&file);
         assert_eq_dbg(
-            r#"[Diagnostic { range: [12; 15), msg: "Unnecessary braces in use statement", severity: Warning },
-                Diagnostic { range: [24; 27), msg: "Unnecessary braces in use statement", severity: Warning },
-                Diagnostic { range: [61; 64), msg: "Unnecessary braces in use statement", severity: Warning }]"#,
+            r#"[Diagnostic { range: [12; 15), msg: "Unnecessary braces in use statement", severity: Some(Warning) },
+                Diagnostic { range: [24; 27), msg: "Unnecessary braces in use statement", severity: Some(Warning) },
+                Diagnostic { range: [61; 64), msg: "Unnecessary braces in use statement", severity: Some(Warning) }]"#,
             &diagnostics,
         )
     }
