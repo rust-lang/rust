@@ -247,6 +247,19 @@ impl InferenceContext {
         unimplemented!()
     }
 
+    fn infer_path_expr(&mut self, expr: ast::PathExpr) -> Option<Ty> {
+        let p = expr.path()?;
+        if p.qualifier().is_none() {
+            let name = p.segment().and_then(|s| s.name_ref())?;
+            let scope_entry = self.scopes.resolve_local_name(name)?;
+            let ty = self.type_for.get(&scope_entry.ptr())?;
+            Some(ty.clone())
+        } else {
+            // TODO resolve path
+            Some(Ty::Unknown)
+        }
+    }
+
     fn infer_expr(&mut self, expr: ast::Expr) -> Ty {
         let ty = match expr {
             ast::Expr::IfExpr(e) => {
@@ -367,32 +380,7 @@ impl InferenceContext {
             }
             ast::Expr::TupleExpr(_e) => Ty::Unknown,
             ast::Expr::ArrayExpr(_e) => Ty::Unknown,
-            ast::Expr::PathExpr(e) => {
-                if let Some(p) = e.path() {
-                    if p.qualifier().is_none() {
-                        if let Some(name) = p.segment().and_then(|s| s.name_ref()) {
-                            let s = self.scopes.resolve_local_name(name);
-                            if let Some(scope_entry) = s {
-                                if let Some(ty) = self.type_for.get(&scope_entry.ptr()) {
-                                    ty.clone()
-                                } else {
-                                    // TODO introduce type variable?
-                                    Ty::Unknown
-                                }
-                            } else {
-                                Ty::Unknown
-                            }
-                        } else {
-                            Ty::Unknown
-                        }
-                    } else {
-                        // TODO resolve path
-                        Ty::Unknown
-                    }
-                } else {
-                    Ty::Unknown
-                }
-            }
+            ast::Expr::PathExpr(e) => self.infer_path_expr(e).unwrap_or(Ty::Unknown),
             ast::Expr::ContinueExpr(_e) => Ty::Never,
             ast::Expr::BreakExpr(_e) => Ty::Never,
             ast::Expr::ParenExpr(e) => {
