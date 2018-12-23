@@ -273,7 +273,7 @@ impl<T> Option<T> {
 
     /// Converts from `Pin<&Option<T>>` to `Option<Pin<&T>>`
     #[inline]
-    #[unstable(feature = "pin", issue = "49150")]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
         unsafe {
             Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x))
@@ -282,10 +282,10 @@ impl<T> Option<T> {
 
     /// Converts from `Pin<&mut Option<T>>` to `Option<Pin<&mut T>>`
     #[inline]
-    #[unstable(feature = "pin", issue = "49150")]
+    #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
         unsafe {
-            Pin::get_mut_unchecked(self).as_mut().map(|x| Pin::new_unchecked(x))
+            Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
         }
     }
 

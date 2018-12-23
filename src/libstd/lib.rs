@@ -282,7 +282,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
-#![feature(pin)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
@@ -434,7 +433,7 @@ pub use alloc_crate::borrow;
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;

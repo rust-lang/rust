@@ -43,7 +43,7 @@ impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
     type Output = T::Return;
     fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-        set_task_waker(lw, || match unsafe { Pin::get_mut_unchecked(self).0.resume() } {
+        set_task_waker(lw, || match unsafe { Pin::get_unchecked_mut(self).0.resume() } {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         })

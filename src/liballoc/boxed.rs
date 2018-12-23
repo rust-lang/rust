@@ -111,9 +111,11 @@ impl<T> Box<T> {
         box x
     }
 
-    #[unstable(feature = "pin", issue = "49150")]
+    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
+    /// `x` will be pinned in memory and unable to be moved.
+    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn pinned(x: T) -> Pin<Box<T>> {
+    pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
     }
 }
@@ -446,7 +448,7 @@ impl<T> From<T> for Box<T> {
     }
 }
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<T> From<Box<T>> for Pin<Box<T>> {
     fn from(boxed: Box<T>) -> Self {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
@@ -813,7 +815,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
  *  implementation of `Unpin` (where `T: Unpin`) would be valid/safe, and
  *  could have a method to project a Pin<T> from it.
  */
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Box<T> { }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
