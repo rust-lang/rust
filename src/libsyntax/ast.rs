@@ -1458,6 +1458,29 @@ impl IntTy {
             IntTy::I128 => 128,
         })
     }
+
+    pub fn min_as_i128(&self) -> i128 {
+        match *self {
+            IntTy::Isize => ::std::isize::MIN as i128,
+            IntTy::I8 => ::std::i8::MIN as i128,
+            IntTy::I16 => ::std::i16::MIN as i128,
+            IntTy::I32 => ::std::i32::MIN as i128,
+            IntTy::I64 => ::std::i64::MIN as i128,
+            IntTy::I128 => ::std::i128::MIN,
+        }
+    }
+
+    pub fn max_as_i128(&self) -> i128 {
+        match *self {
+            IntTy::Isize => ::std::isize::MAX as i128,
+            IntTy::I8 => ::std::i8::MAX as i128,
+            IntTy::I16 => ::std::i16::MAX as i128,
+            IntTy::I32 => ::std::i32::MAX as i128,
+            IntTy::I64 => ::std::i64::MAX as i128,
+            IntTy::I128 => ::std::i128::MAX,
+        }
+    }
+
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
@@ -1495,6 +1518,17 @@ impl UintTy {
             UintTy::U64 => 64,
             UintTy::U128 => 128,
         })
+    }
+
+    pub fn max_as_u128(&self) -> u128 {
+        match *self {
+            UintTy::Usize => ::std::usize::MAX as u128,
+            UintTy::U8 => ::std::u8::MAX as u128,
+            UintTy::U16 => ::std::u16::MAX as u128,
+            UintTy::U32 => ::std::u32::MAX as u128,
+            UintTy::U64 => ::std::u64::MAX as u128,
+            UintTy::U128 => ::std::u128::MAX,
+        }
     }
 }
 

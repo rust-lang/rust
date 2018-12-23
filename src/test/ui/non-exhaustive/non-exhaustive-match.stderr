@@ -16,11 +16,11 @@ error[E0004]: non-exhaustive patterns: `Some(_)` not covered
 LL |     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
    |           ^^^^^^^^ pattern `Some(_)` not covered
 
-error[E0004]: non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)` and `(_, _, 5i32..=2147483647i32)` not covered
+error[E0004]: non-exhaustive patterns: `(_, _, ::std::i32::MIN..=3i32)` and `(_, _, 5i32..=::std::i32::MAX)` not covered
   --> $DIR/non-exhaustive-match.rs:25:11
    |
-LL |     match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)`
-   |           ^^^^^^^^^ patterns `(_, _, -2147483648i32..=3i32)` and `(_, _, 5i32..=2147483647i32)` not covered
+LL |     match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, ::std::i32::MIN..=3i32)`
+   |           ^^^^^^^^^ patterns `(_, _, ::std::i32::MIN..=3i32)` and `(_, _, 5i32..=::std::i32::MAX)` not covered
 
 error[E0004]: non-exhaustive patterns: `(a, a)` not covered
   --> $DIR/non-exhaustive-match.rs:29:11
