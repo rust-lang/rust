@@ -148,3 +148,11 @@ fn boxed_slice_from_iter() {
     assert_eq!(boxed.len(), 100);
     assert_eq!(boxed[7], 7);
 }
+
+#[test]
+fn to_nonnull() {
+    let boxed: Box<i32> = Box::from(0);
+    let ptr: std::ptr::NonNull<i32> = boxed.into();
+    let deref = unsafe { *ptr.as_ref() };
+    assert_eq!(deref, 0);
+}
