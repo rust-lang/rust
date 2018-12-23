@@ -276,6 +276,27 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::StaticAccess, span)
         }
     }
+
+    fn check_immutable_borrow_like(
+        &mut self,
+        location: Location,
+        place: &Place<'tcx>,
+    ) {
+        // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
+        // seek the cursors beforehand.
+        self.qualifs.has_mut_interior.cursor.seek_before(location);
+        self.qualifs.indirectly_mutable.seek(location);
+
+        let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+            &self.item,
+            &|local| self.qualifs.has_mut_interior_eager_seek(local),
+            place.as_ref(),
+        );
+
+        if borrowed_place_has_mut_interior {
+            self.check_op(ops::CellBorrow);
+        }
+    }
 }
 
 impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
@@ -302,26 +323,44 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Special-case reborrows to be more like a copy of a reference.
-        if let Rvalue::Ref(_, kind, ref place) = *rvalue {
-            if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
-                let ctx = match kind {
-                    BorrowKind::Shared => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::SharedBorrow,
-                    ),
-                    BorrowKind::Shallow => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::ShallowBorrow,
-                    ),
-                    BorrowKind::Unique => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::UniqueBorrow,
-                    ),
-                    BorrowKind::Mut { .. } => PlaceContext::MutatingUse(
-                        MutatingUseContext::Borrow,
-                    ),
-                };
-                self.visit_place_base(&place.base, ctx, location);
-                self.visit_projection(&place.base, reborrowed_proj, ctx, location);
-                return;
+        match *rvalue {
+            Rvalue::Ref(_, kind, ref place) => {
+                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
+                    let ctx = match kind {
+                        BorrowKind::Shared => PlaceContext::NonMutatingUse(
+                            NonMutatingUseContext::SharedBorrow,
+                        ),
+                        BorrowKind::Shallow => PlaceContext::NonMutatingUse(
+                            NonMutatingUseContext::ShallowBorrow,
+                        ),
+                        BorrowKind::Unique => PlaceContext::NonMutatingUse(
+                            NonMutatingUseContext::UniqueBorrow,
+                        ),
+                        BorrowKind::Mut { .. } => PlaceContext::MutatingUse(
+                            MutatingUseContext::Borrow,
+                        ),
+                    };
+                    self.visit_place_base(&place.base, ctx, location);
+                    self.visit_projection(&place.base, reborrowed_proj, ctx, location);
+                    return;
+                }
             }
+            Rvalue::AddressOf(mutbl, ref place) => {
+                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
+                    let ctx = match mutbl {
+                        Mutability::Not => PlaceContext::NonMutatingUse(
+                            NonMutatingUseContext::AddressOf,
+                        ),
+                        Mutability::Mut => PlaceContext::MutatingUse(
+                            MutatingUseContext::AddressOf,
+                        ),
+                    };
+                    self.visit_place_base(&place.base, ctx, location);
+                    self.visit_projection(&place.base, reborrowed_proj, ctx, location);
+                    return;
+                }
+            }
+            _ => {}
         }
 
         self.super_rvalue(rvalue, location);
@@ -367,34 +406,25 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
+            Rvalue::AddressOf(Mutability::Mut, _) => {
+                self.check_op(ops::MutAddressOf)
+            }
+
             // At the moment, `PlaceBase::Static` is only used for promoted MIR.
             | Rvalue::Ref(_, BorrowKind::Shared, ref place)
             | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            | Rvalue::AddressOf(Mutability::Not, ref place)
             if matches!(place.base, PlaceBase::Static(_))
             => bug!("Saw a promoted during const-checking, which must run before promotion"),
 
-            | Rvalue::Ref(_, kind @ BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, kind @ BorrowKind::Shallow, ref place)
-            => {
-                // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
-                // seek the cursors beforehand.
-                self.qualifs.has_mut_interior.cursor.seek_before(location);
-                self.qualifs.indirectly_mutable.seek(location);
+            | Rvalue::Ref(_, BorrowKind::Shared, ref place)
+            | Rvalue::Ref(_, BorrowKind::Shallow, ref place) => {
+                self.check_immutable_borrow_like(location, place)
+            },
 
-                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
-                    &self.item,
-                    &|local| self.qualifs.has_mut_interior_eager_seek(local),
-                    place.as_ref(),
-                );
-
-                if borrowed_place_has_mut_interior {
-                    if let BorrowKind::Mut{ .. } = kind {
-                        self.check_op(ops::MutBorrow);
-                    } else {
-                        self.check_op(ops::CellBorrow);
-                    }
-                }
-            }
+            Rvalue::AddressOf(Mutability::Not, ref place) => {
+                self.check_immutable_borrow_like(location, place)
+            },
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(*self.body, self.tcx);

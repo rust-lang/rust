@@ -448,7 +448,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
-        let result = match &place_ref {
+        let result = match place_ref {
             mir::PlaceRef {
                 base: mir::PlaceBase::Local(index),
                 projection: [],

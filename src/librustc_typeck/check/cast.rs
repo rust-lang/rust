@@ -469,22 +469,48 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                if let ty::FnDef(..) = self.expr_ty.kind {
-                    // Attempt a coercion to a fn pointer type.
-                    let f = self.expr_ty.fn_sig(fcx.tcx);
-                    let res = fcx.try_coerce(self.expr,
-                                             self.expr_ty,
-                                             fcx.tcx.mk_fn_ptr(f),
-                                             AllowTwoPhase::No);
-                    if let Err(TypeError::IntrinsicCast) = res {
-                        return Err(CastError::IllegalCast);
+                match self.expr_ty.kind {
+                    ty::FnDef(..) => {
+                        // Attempt a coercion to a fn pointer type.
+                        let f = self.expr_ty.fn_sig(fcx.tcx);
+                        let res = fcx.try_coerce(self.expr,
+                                                 self.expr_ty,
+                                                 fcx.tcx.mk_fn_ptr(f),
+                                                 AllowTwoPhase::No);
+                        if let Err(TypeError::IntrinsicCast) = res {
+                            return Err(CastError::IllegalCast);
+                        }
+                        if res.is_err() {
+                            return Err(CastError::NonScalar);
+                        }
+                        (FnPtr, t_cast)
                     }
-                    if res.is_err() {
-                        return Err(CastError::NonScalar);
+                    // Special case some errors for references, and check for
+                    // array-ptr-casts. `Ref` is not a CastTy because the cast
+                    // is split into a coercion to a pointer type, followed by
+                    // a cast.
+                    ty::Ref(_, inner_ty, mutbl) => {
+                        return match t_cast {
+                            Int(_) | Float => match inner_ty.kind {
+                                ty::Int(_) |
+                                ty::Uint(_) |
+                                ty::Float(_) |
+                                ty::Infer(ty::InferTy::IntVar(_)) |
+                                ty::Infer(ty::InferTy::FloatVar(_)) => {
+                                    Err(CastError::NeedDeref)
+                                }
+                                _ => Err(CastError::NeedViaPtr),
+                            }
+                            // array-ptr-cast
+                            Ptr(mt) => self.check_ref_cast(
+                                fcx,
+                                TypeAndMut { mutbl, ty: inner_ty },
+                                mt,
+                            ),
+                            _ => Err(CastError::NonScalar),
+                        };
                     }
-                    (FnPtr, t_cast)
-                } else {
-                    return Err(CastError::NonScalar);
+                    _ => return Err(CastError::NonScalar),
                 }
             }
             _ => return Err(CastError::NonScalar),
@@ -492,7 +518,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.
-            (_, RPtr(_)) | (_, Int(CEnum)) | (_, FnPtr) => Err(CastError::NonScalar),
+            (_, Int(CEnum)) | (_, FnPtr) => Err(CastError::NonScalar),
 
             // * -> Bool
             (_, Int(Bool)) => Err(CastError::CastToBool),
@@ -517,28 +543,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
             (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr), // ptr-addr-cast
             (FnPtr, Int(_)) => Ok(CastKind::FnPtrAddrCast),
-            (RPtr(p), Int(_)) |
-            (RPtr(p), Float) => {
-                match p.ty.kind {
-                    ty::Int(_) |
-                    ty::Uint(_) |
-                    ty::Float(_) => {
-                        Err(CastError::NeedDeref)
-                    }
-                    ty::Infer(t) => {
-                        match t {
-                            ty::InferTy::IntVar(_) |
-                            ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),
-                            _ => Err(CastError::NeedViaPtr),
-                        }
-                    }
-                    _ => Err(CastError::NeedViaPtr),
-                }
-            }
+
             // * -> ptr
             (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt), // addr-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
-            (RPtr(rmt), Ptr(mt)) => self.check_ref_cast(fcx, rmt, mt), // array-ptr-cast
 
             // prim -> prim
             (Int(CEnum), Int(_)) => Ok(CastKind::EnumCast),

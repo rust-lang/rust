@@ -1233,6 +1233,31 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
+
+            Rvalue::AddressOf(mutability, ref place) => {
+                let access_kind = match mutability {
+                    Mutability::Mut => (Deep, Write(WriteKind::MutableBorrow(BorrowKind::Mut {
+                        allow_two_phase_borrow: false,
+                    }))),
+                    Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                };
+
+                self.access_place(
+                    location,
+                    (place, span),
+                    access_kind,
+                    LocalMutationIsAllowed::No,
+                    flow_state,
+                );
+
+                self.check_if_path_or_subpath_is_moved(
+                    location,
+                    InitializationRequiringAction::Borrow,
+                    (place.as_ref(), span),
+                    flow_state,
+                );
+            }
+
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
