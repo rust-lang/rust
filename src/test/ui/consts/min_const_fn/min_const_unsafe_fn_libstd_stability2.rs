@@ -14,7 +14,6 @@
             issue = "0")]
 
 #![feature(rustc_const_unstable, const_fn, foo, foo2)]
-#![feature(min_const_unsafe_fn)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]

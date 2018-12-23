@@ -2792,9 +2792,6 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
-    /// Right now function calls to `const unsafe fn` are only permitted behind a feature gate
-    /// Also, even `const unsafe fn` need an `unsafe` block to do the allowed operations.
-    GatedConstFnCall,
     /// Permitted in const fn and regular fns
     GeneralAndConstFn,
     ExternStatic(ast::NodeId),
