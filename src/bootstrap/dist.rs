@@ -1276,6 +1276,90 @@ impl Step for Clippy {
 }
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Miri {
+    pub stage: u32,
+    pub target: Interned<String>,
+}
+
+impl Step for Miri {
+    type Output = Option<PathBuf>;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("miri")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Miri {
+            stage: run.builder.top_stage,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
+        let stage = self.stage;
+        let target = self.target;
+        assert!(builder.config.extended);
+
+        builder.info(&format!("Dist miri stage{} ({})", stage, target));
+        let src = builder.src.join("src/tools/miri");
+        let release_num = builder.release_num("miri");
+        let name = pkgname(builder, "miri");
+        let version = builder.miri_info.version(builder, &release_num);
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("miri-image");
+        drop(fs::remove_dir_all(&image));
+        builder.create_dir(&image);
+
+        // Prepare the image directory
+        // We expect miri to build, because we've exited this step above if tool
+        // state for miri isn't testing.
+        let miri = builder.ensure(tool::Miri {
+            compiler: builder.compiler(stage, builder.config.build),
+            target, extra_features: Vec::new()
+        }).or_else(|| { missing_tool("miri", builder.build.config.missing_tools); None })?;
+        let cargomiri = builder.ensure(tool::CargoMiri {
+            compiler: builder.compiler(stage, builder.config.build),
+            target, extra_features: Vec::new()
+        }).or_else(|| { missing_tool("cargo miri", builder.build.config.missing_tools); None })?;
+
+        builder.install(&miri, &image.join("bin"), 0o755);
+        builder.install(&cargomiri, &image.join("bin"), 0o755);
+        let doc = image.join("share/doc/miri");
+        builder.install(&src.join("README.md"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
+
+        // Prepare the overlay
+        let overlay = tmp.join("miri-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        t!(fs::create_dir_all(&overlay));
+        builder.install(&src.join("README.md"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
+        builder.create(&overlay.join("version"), &version);
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=miri-ready-to-serve.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(builder))
+           .arg("--output-dir").arg(&distdir(builder))
+           .arg("--non-installed-overlay").arg(&overlay)
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo")
+           .arg("--component-name=miri-preview");
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustfmt {
     pub stage: u32,
     pub target: Interned<String>,

@@ -592,6 +592,14 @@ tool_extended!((self, builder),
         });
     };
     Miri, miri, "src/tools/miri", "miri", {};
+    CargoMiri, clippy, "src/tools/miri", "cargo-miri", {
+        // Miri depends on procedural macros (serde), which requires a full host
+        // compiler to be available, so we need to depend on that.
+        builder.ensure(compile::Rustc {
+            compiler: self.compiler,
+            target: builder.config.build,
+        });
+    };
     Rls, rls, "src/tools/rls", "rls", {
         let clippy = builder.ensure(Clippy {
             compiler: self.compiler,
