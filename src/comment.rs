@@ -1304,13 +1304,7 @@ impl<'a> Iterator for LineClasses<'a> {
             None => FullCodeCharKind::Normal,
         };
 
-        while let Some((kind, mut c)) = self.base.next() {
-            // If \r\n newline appears, consume one more character.
-            // Then do the same process with the single \n case.
-            if c == '\r' && self.base.peek().map_or(false, |(_, c2)| *c2 == '\n') {
-                self.base.next();
-                c = '\n';
-            }
+        while let Some((kind, c)) = self.base.next() {
             if c == '\n' {
                 self.kind = match (start_class, kind) {
                     (FullCodeCharKind::Normal, FullCodeCharKind::InString) => {
@@ -1325,6 +1319,11 @@ impl<'a> Iterator for LineClasses<'a> {
             } else {
                 line.push(c);
             }
+        }
+
+        // Workaround for CRLF newline.
+        if line.ends_with('\r') {
+            line.pop();
         }
 
         Some((self.kind, line))
