@@ -316,6 +316,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
             }
             Rvalue::Ref(..) |
+            Rvalue::AddressOf(..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(..) |
             Rvalue::NullaryOp(NullOp::SizeOf, _) |

@@ -397,6 +397,25 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 })
             }
 
+            mir::Rvalue::AddressOf(mutability, ref place) => {
+                let cg_place = self.codegen_place(&mut bx, place);
+
+                let ty = cg_place.layout.ty;
+
+                let val = if !bx.cx().type_has_metadata(ty) {
+                    OperandValue::Immediate(cg_place.llval)
+                } else {
+                    OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
+                };
+
+                (bx, OperandRef {
+                    val,
+                    layout: self.cx.layout_of(self.cx.tcx().mk_ptr(
+                        ty::TypeAndMut { ty, mutbl: mutability.into() }
+                    )),
+                })
+            }
+
             mir::Rvalue::Len(ref place) => {
                 let size = self.evaluate_array_len(&mut bx, place);
                 let operand = OperandRef {
@@ -710,6 +729,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
+            mir::Rvalue::AddressOf(..) |
             mir::Rvalue::Len(..) |
             mir::Rvalue::Cast(..) | // (*)
             mir::Rvalue::BinaryOp(..) |

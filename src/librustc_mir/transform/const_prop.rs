@@ -327,6 +327,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             },
             Rvalue::Repeat(..) |
             Rvalue::Ref(..) |
+            Rvalue::AddressOf(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => None,

@@ -1992,8 +1992,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.add_reborrow_constraint(location, region, borrowed_place);
             }
 
-            // FIXME: These other cases have to be implemented in future PRs
-            Rvalue::Use(..)
+            Rvalue::AddressOf(..)
+            | Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::CheckedBinaryOp(..)
@@ -2010,6 +2010,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
+            | Rvalue::AddressOf(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)

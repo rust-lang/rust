@@ -15,7 +15,7 @@ use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
-use rustc::mir::{Operand, BorrowKind};
+use rustc::mir::{Operand, BorrowKind, Mutability};
 use rustc_data_structures::graph::dominators::Dominators;
 
 pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
@@ -336,6 +336,22 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                             (Deep, Write(wk))
                         }
                     }
+                };
+
+                self.access_place(
+                    context,
+                    place,
+                    access_kind,
+                    LocalMutationIsAllowed::No,
+                );
+            }
+
+            Rvalue::AddressOf(mutability, ref place) => {
+                let access_kind = match mutability {
+                    Mutability::Mut => (Deep, Write(WriteKind::MutableBorrow(BorrowKind::Mut {
+                        allow_two_phase_borrow: false,
+                    }))),
+                    Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
                 };
 
                 self.access_place(

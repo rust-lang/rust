@@ -299,7 +299,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Ref(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(_, box Rvalue::Ref(_, _, ref mut place)) => {
+                        StatementKind::Assign(_, box Rvalue::Ref(_, _, ref mut place))
+                        | StatementKind::Assign(_, box Rvalue::AddressOf(_, ref mut place)) => {
                             // Find the underlying local for this (necessarily interior) borrow.
                             let mut place = place;
                             while let Place::Projection(ref mut proj) = *place {

@@ -224,6 +224,7 @@ trait Qualif {
         match *rvalue {
             Rvalue::NullaryOp(..) => false,
 
+            Rvalue::AddressOf(_, ref place) |
             Rvalue::Discriminant(ref place) |
             Rvalue::Len(ref place) => Self::in_place(cx, place),
 
@@ -237,6 +238,7 @@ trait Qualif {
                 Self::in_operand(cx, lhs) || Self::in_operand(cx, rhs)
             }
 
+            // TODO: special-case raw reborrows?
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
                 if let Place::Projection(ref proj) = *place {
@@ -296,10 +298,11 @@ impl Qualif for HasMutInterior {
             // Returning `true` for `Rvalue::Ref` indicates the borrow isn't
             // allowed in constants (and the `Checker` will error), and/or it
             // won't be promoted, due to `&mut ...` or interior mutability.
-            Rvalue::Ref(_, kind, ref place) => {
+            Rvalue::Ref(_, BorrowKind::Mut { .. }, ref place)
+            | Rvalue::Ref(_, BorrowKind::Unique, ref place)
+            | Rvalue::AddressOf(Mutability::Mut, ref place) => {
                 let ty = place.ty(cx.mir, cx.tcx).to_ty(cx.tcx);
 
-                if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.
@@ -319,7 +322,6 @@ impl Qualif for HasMutInterior {
                         return true;
                     }
                 }
-            }
 
             Rvalue::Aggregate(ref kind, _) => {
                 if let AggregateKind::Adt(def, ..) = **kind {
@@ -683,71 +685,18 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut qualifs = self.qualifs_in_value(source);
 
-        if let ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) = source {
-            // Getting `true` from `HasMutInterior::in_rvalue` means
-            // the borrowed place is disallowed from being borrowed,
-            // due to either a mutable borrow (with some exceptions),
-            // or an shared borrow of a value with interior mutability.
-            // Then `HasMutInterior` is replaced with `IsNotConst`,
-            // to avoid duplicate errors (e.g. from reborrowing).
-            if qualifs[HasMutInterior] {
-                qualifs[HasMutInterior] = false;
-                qualifs[IsNotConst] = true;
-
-                if self.mode != Mode::Fn {
-                    if let BorrowKind::Mut { .. } = kind {
-                        let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
-                                                       "references in {}s may only refer \
-                                                        to immutable values", self.mode);
-                        err.span_label(self.span, format!("{}s require immutable values",
-                                                            self.mode));
-                        if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                            err.note("References in statics and constants may only refer to \
-                                      immutable values.\n\n\
-                                      Statics are shared everywhere, and if they refer to \
-                                      mutable data one might violate memory safety since \
-                                      holding multiple mutable references to shared data is \
-                                      not allowed.\n\n\
-                                      If you really want global mutable state, try using \
-                                      static mut or a global UnsafeCell.");
-                        }
-                        err.emit();
-                    } else {
-                        span_err!(self.tcx.sess, self.span, E0492,
-                                  "cannot borrow a constant which may contain \
-                                   interior mutability, create a static instead");
-                    }
-                }
-            } else {
-                // We might have a candidate for promotion.
-                let candidate = Candidate::Ref(location);
-                // We can only promote interior borrows of promotable temps.
-                let mut place = place;
-                while let Place::Projection(ref proj) = *place {
-                    if proj.elem == ProjectionElem::Deref {
-                        break;
-                    }
-                    place = &proj.base;
-                }
-                debug!("qualify_consts: promotion candidate: place={:?}", place);
-                if let Place::Local(local) = *place {
-                    if self.mir.local_kind(local) == LocalKind::Temp {
-                        debug!("qualify_consts: promotion candidate: local={:?}", local);
-                        // The borrowed place doesn't have `HasMutInterior`
-                        // (from `in_rvalue`), so we can safely ignore
-                        // `HasMutInterior` from the local's qualifications.
-                        // This allows borrowing fields which don't have
-                        // `HasMutInterior`, from a type that does, e.g.:
-                        // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                        let mut local_qualifs = self.qualifs_in_local(local);
-                        local_qualifs[HasMutInterior] = false;
-                        if !local_qualifs.0.iter().any(|&qualif| qualif) {
-                            debug!("qualify_consts: promotion candidate: {:?}", candidate);
-                            self.promotion_candidates.push(candidate);
-                        }
-                    }
-                }
+        match source {
+            ValueSource::Rvalue(&Rvalue::Ref(_, BorrowKind::Mut { .. }, ref place))
+            | ValueSource::Rvalue(&Rvalue::Ref(_, BorrowKind::Unique, ref place))
+            | ValueSource::Rvalue(&Rvalue::AddressOf(Mutability::Mut, ref place)) => {
+                self.check_borrow_like(place, true, location, &mut qualifs);
             }
+            ValueSource::Rvalue(&Rvalue::Ref(_, BorrowKind::Shared, ref place))
+            | ValueSource::Rvalue(&Rvalue::Ref(_, BorrowKind::Shallow, ref place))
+            | ValueSource::Rvalue(&Rvalue::AddressOf(Mutability::Not, ref place)) => {
+                self.check_borrow_like(place, false, location, &mut qualifs);
+            }
+            _ => (),
         }
 
         let mut dest = dest;
@@ -816,6 +765,79 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
     }
 
+    fn check_borrow_like(
+        &mut self,
+        place: &Place<'tcx>,
+        mutable: bool,
+        location: Location,
+        qualifs: &mut PerQualif<bool>,
+    ) {
+        // Getting `true` from `HasMutInterior::in_rvalue` means
+        // the borrowed place is disallowed from being borrowed,
+        // due to either a mutable borrow (with some exceptions),
+        // or an shared borrow of a value with interior mutability.
+        // Then `HasMutInterior` is replaced with `IsNotConst`,
+        // to avoid duplicate errors (e.g. from reborrowing).
+        if qualifs[HasMutInterior] {
+            qualifs[HasMutInterior] = false;
+            qualifs[IsNotConst] = true;
+
+            if self.mode != Mode::Fn {
+                if mutable {
+                    let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
+                                                    "references in {}s may only refer \
+                                                    to immutable values", self.mode);
+                    err.span_label(self.span, format!("{}s require immutable values",
+                                                        self.mode));
+                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                        err.note("References in statics and constants may only refer to \
+                                    immutable values.\n\n\
+                                    Statics are shared everywhere, and if they refer to \
+                                    mutable data one might violate memory safety since \
+                                    holding multiple mutable references to shared data is \
+                                    not allowed.\n\n\
+                                    If you really want global mutable state, try using \
+                                    static mut or a global UnsafeCell.");
+                    }
+                    err.emit();
+                } else {
+                    span_err!(self.tcx.sess, self.span, E0492,
+                                "cannot borrow a constant which may contain \
+                                interior mutability, create a static instead");
+                }
+            }
+        } else {
+            // We might have a candidate for promotion.
+            let candidate = Candidate::Ref(location);
+            // We can only promote interior borrows of promotable temps.
+            let mut place = place;
+            while let Place::Projection(ref proj) = *place {
+                if proj.elem == ProjectionElem::Deref {
+                    break;
+                }
+                place = &proj.base;
+            }
+            debug!("qualify_consts: promotion candidate: place={:?}", place);
+            if let Place::Local(local) = *place {
+                if self.mir.local_kind(local) == LocalKind::Temp {
+                    debug!("qualify_consts: promotion candidate: local={:?}", local);
+                    // The borrowed place doesn't have `HasMutInterior`
+                    // (from `in_rvalue`), so we can safely ignore
+                    // `HasMutInterior` from the local's qualifications.
+                    // This allows borrowing fields which don't have
+                    // `HasMutInterior`, from a type that does, e.g.:
+                    // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                    let mut local_qualifs = self.qualifs_in_local(local);
+                    local_qualifs[HasMutInterior] = false;
+                    if !local_qualifs.0.iter().any(|&qualif| qualif) {
+                        debug!("qualify_consts: promotion candidate: {:?}", candidate);
+                        self.promotion_candidates.push(candidate);
+                    }
+                }
+            }
+        }
+    }
+
     /// Check a whole const, static initializer or const fn.
     fn check_const(&mut self) -> (u8, Lrc<BitSet<Local>>) {
         debug!("const-checking {} {:?}", self.mode, self.def_id);
@@ -878,7 +900,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(_, box Rvalue::Ref(_, _, Place::Local(index))) => {
+                        StatementKind::Assign(_, box Rvalue::Ref(_, _, Place::Local(index)))
+                        | StatementKind::Assign(_, box Rvalue::AddressOf(_, Place::Local(index))) => {
                             promoted_temps.insert(index);
                         }
                         _ => {}
@@ -1045,6 +1068,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         debug!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Check nested operands and places.
+        // TODO AddressOf?
         if let Rvalue::Ref(region, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut is_reborrow = false;
@@ -1094,6 +1118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) |
             Rvalue::Ref(..) |
+            Rvalue::AddressOf(..) |
             Rvalue::Aggregate(..) => {}
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {

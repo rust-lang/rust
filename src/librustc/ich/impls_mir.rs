@@ -335,6 +335,10 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Rvalue<'gcx> {
                 borrow_kind.hash_stable(hcx, hasher);
                 place.hash_stable(hcx, hasher);
             }
+            mir::Rvalue::AddressOf(mutability, ref place) => {
+                mutability.hash_stable(hcx, hasher);
+                place.hash_stable(hcx, hasher);
+            }
             mir::Rvalue::Len(ref place) => {
                 place.hash_stable(hcx, hasher);
             }
