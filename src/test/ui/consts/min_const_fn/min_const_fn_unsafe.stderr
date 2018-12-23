@@ -1,43 +1,44 @@
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe.rs:31:59
+  --> $DIR/min_const_fn_unsafe.rs:60:77
    |
-LL | const unsafe fn deref_forbidden(x: *mut usize) -> usize { *x }
-   |                                                           ^^
+LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
+   |                                                                             ^^^
+   |
+   = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
+
+error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
+  --> $DIR/min_const_fn_unsafe.rs:63:70
+   |
+LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
+   |                                                                      ^^
+   |
+   = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
+
+error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
+  --> $DIR/min_const_fn_unsafe.rs:66:83
+   |
+LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static usize { &*x }
+   |                                                                                   ^^^
    |
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: unions in const fn are unstable (see issue #51909)
-  --> $DIR/min_const_fn_unsafe.rs:38:5
+  --> $DIR/min_const_fn_unsafe.rs:73:5
    |
 LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
 
-error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
-  --> $DIR/min_const_fn_unsafe.rs:21:14
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
+  --> $DIR/min_const_fn_unsafe.rs:60:77
    |
-LL |     unsafe { ret_i32_no_unsafe() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
-   |              ^^^^^^^^^^^^^^^^^^^
+LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
+   |                                                                             ^^^ dereference of raw pointer
    |
-   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
-
-error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
-  --> $DIR/min_const_fn_unsafe.rs:24:14
-   |
-LL |     unsafe { ret_null_ptr_no_unsafe::<String>() }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
-
-error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
-  --> $DIR/min_const_fn_unsafe.rs:28:14
-   |
-LL |     unsafe { ret_null_mut_ptr_no_unsafe::<Vec<std::cell::Cell<u32>>>() }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
+   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors occurred: E0133, E0658.
+For more information about an error, try `rustc --explain E0133`.
