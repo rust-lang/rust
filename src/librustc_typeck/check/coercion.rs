@@ -1183,11 +1183,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
-                let reason_label = if label_expression_as_expected {
-                    "found because of this statement"
-                } else {
-                    "expected because of this statement"
-                };
+                let reason_label = "expected because of this statement";
                 let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
