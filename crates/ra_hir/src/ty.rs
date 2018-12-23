@@ -243,8 +243,23 @@ impl InferenceContext {
         self.type_for.insert(LocalSyntaxPtr::new(node), ty);
     }
 
-    fn unify(&mut self, _ty1: &Ty, _ty2: &Ty) -> bool {
-        unimplemented!()
+    fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> Option<Ty> {
+        if *ty1 == Ty::Unknown {
+            return Some(ty2.clone());
+        }
+        if *ty2 == Ty::Unknown {
+            return Some(ty1.clone());
+        }
+        if ty1 == ty2 {
+            return Some(ty1.clone());
+        }
+        // TODO implement actual unification
+        return None;
+    }
+
+    fn unify_with_coercion(&mut self, ty1: &Ty, ty2: &Ty) -> Option<Ty> {
+        // TODO implement coercion
+        self.unify(ty1, ty2)
     }
 
     fn infer_path_expr(&mut self, expr: ast::PathExpr) -> Option<Ty> {
@@ -280,9 +295,8 @@ impl InferenceContext {
                 } else {
                     Ty::Unknown
                 };
-                if self.unify(&if_ty, &else_ty) {
-                    // TODO actually, need to take the 'more specific' type (not unknown, never, ...)
-                    if_ty
+                if let Some(ty) = self.unify(&if_ty, &else_ty) {
+                    ty
                 } else {
                     // TODO report diagnostic
                     Ty::Unknown
@@ -455,9 +469,23 @@ impl InferenceContext {
         for stmt in node.statements() {
             match stmt {
                 ast::Stmt::LetStmt(stmt) => {
-                    if let Some(expr) = stmt.initializer() {
-                        self.infer_expr(expr);
-                    }
+                    let decl_ty = if let Some(type_ref) = stmt.type_ref() {
+                        Ty::new(type_ref)
+                    } else {
+                        Ty::Unknown
+                    };
+                    let ty = if let Some(expr) = stmt.initializer() {
+                        // TODO pass expectation
+                        let expr_ty = self.infer_expr(expr);
+                        self.unify_with_coercion(&expr_ty, &decl_ty)
+                            .unwrap_or(decl_ty)
+                    } else {
+                        decl_ty
+                    };
+
+                    if let Some(pat) = stmt.pat() {
+                        self.write_ty(pat.syntax(), ty);
+                    };
                 }
                 ast::Stmt::ExprStmt(expr_stmt) => {
                     if let Some(expr) = expr_stmt.expr() {

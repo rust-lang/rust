@@ -1561,6 +1561,10 @@ impl<'a> LetStmt<'a> {
         super::child_opt(self)
     }
 
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+
     pub fn initializer(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }

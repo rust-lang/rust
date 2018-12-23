@@ -499,6 +499,7 @@ Grammar(
         ),
         "LetStmt": ( options: [
             ["pat", "Pat"],
+            ["type_ref", "TypeRef"],
             ["initializer", "Expr"],
         ]),
         "Condition": (
