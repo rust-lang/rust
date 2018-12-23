@@ -15,6 +15,7 @@ compiler_builtins = { version = "0.1.0", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = "0.6"
+rand_xorshift = "0.1"
 
 [[test]]
 name = "collectionstests"

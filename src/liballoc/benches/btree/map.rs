@@ -12,7 +12,7 @@
 use std::iter::Iterator;
 use std::vec::Vec;
 use std::collections::BTreeMap;
-use rand::{Rng, thread_rng};
+use rand::{Rng, seq::SliceRandom, thread_rng};
 use test::{Bencher, black_box};
 
 macro_rules! map_insert_rand_bench {
@@ -78,7 +78,7 @@ macro_rules! map_find_rand_bench {
                 map.insert(k, k);
             }
 
-            rng.shuffle(&mut keys);
+            keys.shuffle(&mut rng);
 
             // measure
             let mut i = 0;
