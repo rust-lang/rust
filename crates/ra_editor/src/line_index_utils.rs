@@ -1,6 +1,6 @@
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{TextUnit, TextRange};
-use crate::{LineIndex, LineCol, line_index::Utf16Char, line_index};
+use crate::{LineIndex, LineCol, line_index::{self, Utf16Char}};
 use superslice::Ext;
 
 #[derive(Debug, Clone)]

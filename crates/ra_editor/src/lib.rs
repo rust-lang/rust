@@ -14,6 +14,7 @@ pub use self::{
     extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},
+    line_index_utils::translate_offset_with_edit,
     symbols::{file_structure, file_symbols, FileSymbol, StructureNode},
     typing::{join_lines, on_enter, on_eq_typed},
 };

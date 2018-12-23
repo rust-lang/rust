@@ -6,8 +6,10 @@ pub use crate::text_edit::{TextEdit, TextEditBuilder};
 
 use text_unit::{TextRange, TextUnit};
 
+/// Must not overlap with other `AtomTextEdit`s
 #[derive(Debug, Clone)]
 pub struct AtomTextEdit {
+    /// Refers to offsets in the original text
     pub delete: TextRange,
     pub insert: String,
 }
