@@ -2,7 +2,9 @@ error[E0069]: `return;` in a function whose return type is not `()`
   --> $DIR/ret-non-nil.rs:15:19
    |
 LL | fn g() -> isize { return; }
-   |                   ^^^^^^ return type is not ()
+   |           -----   ^^^^^^ return type is not `()`
+   |           |
+   |           expected `isize` because of this return type
 
 error: aborting due to previous error
 
