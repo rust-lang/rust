@@ -13,6 +13,7 @@
 #![feature(test)]
 
 extern crate rand;
+extern crate rand_xorshift;
 extern crate test;
 
 mod btree;
