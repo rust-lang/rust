@@ -337,7 +337,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 &name_lower,
                                 Some(tool_name.as_str())
                             ) {
-                                // @TODO: can we suggest similar lint names here?
+                                // FIXME: can we suggest similar lint names here?
                                 // https://github.com/rust-lang/rust/pull/56992
                                 CheckLintNameResult::NoLint(None) => (),
                                 _ => {
