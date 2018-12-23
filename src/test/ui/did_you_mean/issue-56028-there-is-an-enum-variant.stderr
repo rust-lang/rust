@@ -1,0 +1,38 @@
+error[E0412]: cannot find type `Set` in this scope
+  --> $DIR/issue-56028-there-is-an-enum-variant.rs:9:15
+   |
+LL | fn setup() -> Set { Set }
+   |               ^^^ not found in this scope
+help: there is an enum variant `AffixHeart::Set` and 7 others; try using the variant's enum
+   |
+LL | fn setup() -> AffixHeart { Set }
+   |               ^^^^^^^^^^
+LL | fn setup() -> CauseToBe { Set }
+   |               ^^^^^^^^^
+LL | fn setup() -> Determine { Set }
+   |               ^^^^^^^^^
+LL | fn setup() -> PutDown { Set }
+   |               ^^^^^^^
+and 3 other candidates
+
+error[E0425]: cannot find value `Set` in this scope
+  --> $DIR/issue-56028-there-is-an-enum-variant.rs:9:21
+   |
+LL | fn setup() -> Set { Set }
+   |                     ^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use AffixHeart::Set;
+   |
+LL | use CauseToBe::Set;
+   |
+LL | use Determine::Set;
+   |
+LL | use PutDown::Set;
+   |
+and 3 other candidates
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0412, E0425.
+For more information about an error, try `rustc --explain E0412`.
