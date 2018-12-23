@@ -570,6 +570,18 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
+                    Rvalue::AddressOf(m, path) => {
+                        let ctx = match m {
+                            Mutability::Mut => PlaceContext::MutatingUse(
+                                MutatingUseContext::AddressOf
+                            ),
+                            Mutability::Not => PlaceContext::NonMutatingUse(
+                                NonMutatingUseContext::AddressOf
+                            ),
+                        };
+                        self.visit_place(path, ctx, location);
+                    }
+
                     Rvalue::Len(path) => {
                         self.visit_place(
                             path,
@@ -1031,6 +1043,8 @@ pub enum NonMutatingUseContext {
     ShallowBorrow,
     /// Unique borrow.
     UniqueBorrow,
+    /// AddressOf for *const pointer.
+    AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     ///
@@ -1054,6 +1068,8 @@ pub enum MutatingUseContext {
     Drop,
     /// Mutable borrow.
     Borrow,
+    /// AddressOf for *mut pointer.
+    AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     ///
