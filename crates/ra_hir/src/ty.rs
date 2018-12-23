@@ -479,17 +479,30 @@ impl InferenceContext {
 pub fn infer(_db: &impl HirDatabase, node: ast::FnDef, scopes: Arc<FnScopes>) -> InferenceResult {
     let mut ctx = InferenceContext::new(scopes);
 
-    for param in node.param_list().unwrap().params() {
-        let pat = param.pat().unwrap();
-        let type_ref = param.type_ref().unwrap();
-        let ty = Ty::new(type_ref);
-        ctx.type_for.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
+    if let Some(param_list) = node.param_list() {
+        for param in param_list.params() {
+            let pat = if let Some(pat) = param.pat() {
+                pat
+            } else {
+                continue;
+            };
+            if let Some(type_ref) = param.type_ref() {
+                let ty = Ty::new(type_ref);
+                ctx.type_for.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
+            } else {
+                // TODO self param
+                ctx.type_for
+                    .insert(LocalSyntaxPtr::new(pat.syntax()), Ty::Unknown);
+            };
+        }
     }
 
     // TODO get Ty for node.ret_type() and pass that to infer_block as expectation
     // (see Expectation in rustc_typeck)
 
-    ctx.infer_block(node.body().unwrap());
+    if let Some(block) = node.body() {
+        ctx.infer_block(block);
+    }
 
     // TODO 'resolve' the types: replace inference variables by their inferred results
 
