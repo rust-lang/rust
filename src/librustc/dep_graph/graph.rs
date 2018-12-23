@@ -506,10 +506,18 @@ impl DepGraph {
     }
 
     pub fn serialize(&self) -> SerializedDepGraph {
+        let mut fingerprints = self.fingerprints.borrow_mut();
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
 
-        let fingerprints = self.fingerprints.borrow().clone().convert_index_type();
-        let nodes = current_dep_graph.nodes.clone().convert_index_type();
+        // Make sure we don't run out of bounds below.
+        if current_dep_graph.nodes.len() > fingerprints.len() {
+            fingerprints.resize(current_dep_graph.nodes.len(), Fingerprint::ZERO);
+        }
+
+        let nodes: IndexVec<_, (DepNode, Fingerprint)> =
+            current_dep_graph.nodes.iter_enumerated().map(|(idx, &dep_node)| {
+            (dep_node, fingerprints[idx])
+        }).collect();
 
         let total_edge_count: usize = current_dep_graph.edges.iter()
                                                              .map(|v| v.len())
@@ -533,7 +541,6 @@ impl DepGraph {
 
         SerializedDepGraph {
             nodes,
-            fingerprints,
             edge_list_indices,
             edge_list_data,
         }
