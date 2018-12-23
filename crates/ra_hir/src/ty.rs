@@ -211,7 +211,6 @@ impl fmt::Display for Ty {
 }
 
 pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
-    eprintln!("type_for_fn {:?}", f.fn_id);
     let syntax = f.syntax(db);
     let node = syntax.borrowed();
     // TODO we ignore type parameters for now
@@ -397,7 +396,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             ast::Expr::CallExpr(e) => {
-                let _callee_ty = if let Some(e) = e.expr() {
+                let callee_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)?
                 } else {
                     Ty::Unknown
@@ -408,7 +407,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         self.infer_expr(arg)?;
                     }
                 }
-                Ty::Unknown
+                match callee_ty {
+                    Ty::FnPtr(sig) => {
+                        sig.output.clone()
+                    }
+                    _ => {
+                        // not callable
+                        // TODO report an error?
+                        Ty::Unknown
+                    }
+                }
             }
             ast::Expr::MethodCallExpr(e) => {
                 let _receiver_ty = if let Some(e) = e.expr() {
