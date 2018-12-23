@@ -84,7 +84,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     this.write_null(dest)?;
                 } else {
                     let align = this.tcx.data_layout.pointer_align.abi;
-                    let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
+                    let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
                     this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
             }
@@ -114,7 +114,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into()
-                    )?
+                    )
                     .with_default_tag();
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
@@ -132,7 +132,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into()
-                    )?
+                    )
                     .with_default_tag();
                 this.memory_mut()
                     .get_mut(ptr.alloc_id)?
@@ -358,7 +358,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1).unwrap(),
                         MiriMemoryKind::Env.into(),
-                    )?.with_default_tag();
+                    ).with_default_tag();
                     {
                         let alloc = this.memory_mut().get_mut(value_copy.alloc_id)?;
                         alloc.write_bytes(tcx, value_copy, &value)?;
