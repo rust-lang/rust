@@ -192,6 +192,7 @@ salsa::database_storage! {
             fn fn_syntax() for db::FnSyntaxQuery;
             fn submodules() for db::SubmodulesQuery;
             fn infer() for db::InferQuery;
+            fn type_for_def() for db::TypeForDefQuery;
         }
     }
 }

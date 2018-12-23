@@ -524,7 +524,7 @@ impl AnalysisImpl {
         let function = ctry!(source_binder::function_from_source(
             &*self.db, file_id, parent_fn
         )?);
-        let infer = function.infer(&*self.db);
+        let infer = function.infer(&*self.db)?;
         Ok(infer.type_of_node(node).map(|t| t.to_string()))
     }
 

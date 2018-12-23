@@ -1,5 +1,8 @@
 use std::fmt::Write;
 use std::path::{PathBuf};
+use std::sync::Once;
+
+use flexi_logger::Logger;
 
 use ra_db::{SyntaxDatabase};
 use ra_syntax::ast::{self, AstNode};
@@ -22,7 +25,7 @@ fn infer_file(content: &str) -> String {
         let func = source_binder::function_from_source(&db, file_id, fn_def)
             .unwrap()
             .unwrap();
-        let inference_result = func.infer(&db);
+        let inference_result = func.infer(&db).unwrap();
         for (syntax_ptr, ty) in &inference_result.type_for {
             let node = syntax_ptr.resolve(&source_file);
             write!(
@@ -58,6 +61,8 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
 
 #[test]
 pub fn infer_tests() {
+    static INIT: Once = Once::new();
+    INIT.call_once(|| Logger::with_env().start().unwrap());
     dir_tests(&test_data_dir(), &["."], |text, _path| infer_file(text));
 }
 

@@ -254,7 +254,7 @@ Grammar(
             ],
             options: [ "ParamList", ["body", "Block"], "RetType" ],
         ),
-        "RetType": (),
+        "RetType": (options: ["TypeRef"]),
         "StructDef": (
             traits: [
                 "NameOwner",

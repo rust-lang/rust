@@ -3083,7 +3083,11 @@ impl<R: TreeRoot<RaTypes>> RetTypeNode<R> {
 }
 
 
-impl<'a> RetType<'a> {}
+impl<'a> RetType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ReturnExpr
 #[derive(Debug, Clone, Copy,)]

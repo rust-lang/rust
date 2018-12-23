@@ -16,3 +16,6 @@ ra_syntax = { path = "../ra_syntax" }
 ra_editor = { path = "../ra_editor" }
 ra_db = { path = "../ra_db" }
 test_utils = { path = "../test_utils" }
+
+[dev-dependencies]
+flexi_logger = "0.10.0"

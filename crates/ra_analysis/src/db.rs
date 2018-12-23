@@ -94,6 +94,7 @@ salsa::database_storage! {
             fn fn_syntax() for hir::db::FnSyntaxQuery;
             fn submodules() for hir::db::SubmodulesQuery;
             fn infer() for hir::db::InferQuery;
+            fn type_for_def() for hir::db::TypeForDefQuery;
         }
     }
 }
