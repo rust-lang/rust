@@ -28,8 +28,8 @@ fn main() -> Result<()> {
 #[serde(rename_all = "camelCase")]
 struct InitializationOptions {
     // Whether the client supports our custom highlighting publishing decorations.
-    // This is different to the highlightingOn setting, which is whether the client
-    // wants highlighting to be used or sent.
+    // This is different to the highlightingOn setting, which is whether the user
+    // wants our custom highlighting to be used.
     publish_decorations: Option<bool>,
 }
 
