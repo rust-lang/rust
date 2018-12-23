@@ -1026,7 +1026,10 @@ impl<T> VecDeque<T> {
             iter: Iter {
                 tail: drain_tail,
                 head: drain_head,
-                ring: unsafe { self.buffer_as_mut_slice() },
+                // Crucially, we only create shared references from `self` here and read from
+                // it.  We do not write to `self` nor reborrow to a mutable reference.
+                // Hence the raw pointer we created above, for `deque`, remains valid.
+                ring: unsafe { self.buffer_as_slice() },
             },
         }
     }
@@ -1894,8 +1897,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_resize_with)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1914,7 +1915,7 @@ impl<T> VecDeque<T> {
     /// buf.resize_with(5, || { state += 1; state });
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
-    #[unstable(feature = "vec_resize_with", issue = "41758")]
+    #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut()->T) {
         let len = self.len();
 
@@ -1923,6 +1924,118 @@ impl<T> VecDeque<T> {
         } else {
             self.truncate(new_len);
         }
+    }
+
+    /// Rotates the double-ended queue `mid` places to the left.
+    ///
+    /// Equivalently,
+    /// - Rotates item `mid` into the first position.
+    /// - Pops the first `mid` items and pushes them to the end.
+    /// - Rotates `len() - mid` places to the right.
+    ///
+    /// # Panics
+    ///
+    /// If `mid` is greater than `len()`.  Note that `mid == len()`
+    /// does _not_ panic and is a no-op rotation.
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(min(mid, len() - mid))` time and no extra space.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_rotate)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf: VecDeque<_> = (0..10).collect();
+    ///
+    /// buf.rotate_left(3);
+    /// assert_eq!(buf, [3, 4, 5, 6, 7, 8, 9, 0, 1, 2]);
+    ///
+    /// for i in 1..10 {
+    ///     assert_eq!(i * 3 % 10, buf[0]);
+    ///     buf.rotate_left(3);
+    /// }
+    /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    /// ```
+    #[unstable(feature = "vecdeque_rotate", issue = "56686")]
+    pub fn rotate_left(&mut self, mid: usize) {
+        assert!(mid <= self.len());
+        let k = self.len() - mid;
+        if mid <= k {
+            unsafe { self.rotate_left_inner(mid) }
+        } else {
+            unsafe { self.rotate_right_inner(k) }
+        }
+    }
+
+    /// Rotates the double-ended queue `k` places to the right.
+    ///
+    /// Equivalently,
+    /// - Rotates the first item into position `k`.
+    /// - Pops the last `k` items and pushes them to the front.
+    /// - Rotates `len() - k` places to the left.
+    ///
+    /// # Panics
+    ///
+    /// If `k` is greater than `len()`.  Note that `k == len()`
+    /// does _not_ panic and is a no-op rotation.
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(min(k, len() - k))` time and no extra space.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_rotate)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf: VecDeque<_> = (0..10).collect();
+    ///
+    /// buf.rotate_right(3);
+    /// assert_eq!(buf, [7, 8, 9, 0, 1, 2, 3, 4, 5, 6]);
+    ///
+    /// for i in 1..10 {
+    ///     assert_eq!(0, buf[i * 3 % 10]);
+    ///     buf.rotate_right(3);
+    /// }
+    /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    /// ```
+    #[unstable(feature = "vecdeque_rotate", issue = "56686")]
+    pub fn rotate_right(&mut self, k: usize) {
+        assert!(k <= self.len());
+        let mid = self.len() - k;
+        if k <= mid {
+            unsafe { self.rotate_right_inner(k) }
+        } else {
+            unsafe { self.rotate_left_inner(mid) }
+        }
+    }
+
+    // Safety: the following two methods require that the rotation amount
+    // be less than half the length of the deque.
+    //
+    // `wrap_copy` requres that `min(x, cap() - x) + copy_len <= cap()`,
+    // but than `min` is never more than half the capacity, regardless of x,
+    // so it's sound to call here because we're calling with something
+    // less than half the length, which is never above half the capacity.
+
+    unsafe fn rotate_left_inner(&mut self, mid: usize) {
+        debug_assert!(mid * 2 <= self.len());
+        self.wrap_copy(self.head, self.tail, mid);
+        self.head = self.wrap_add(self.head, mid);
+        self.tail = self.wrap_add(self.tail, mid);
+    }
+
+    unsafe fn rotate_right_inner(&mut self, k: usize) {
+        debug_assert!(k * 2 <= self.len());
+        self.head = self.wrap_sub(self.head, k);
+        self.tail = self.wrap_sub(self.tail, k);
+        self.wrap_copy(self.tail, self.head, k);
     }
 }
 
@@ -2795,7 +2908,7 @@ mod tests {
             // 0, 1, 2, .., len - 1
             let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
-                for to_remove in 0..len + 1 {
+                for to_remove in 0..=len {
                     tester.tail = tail_pos;
                     tester.head = tail_pos;
                     for i in 0..len {
@@ -2821,10 +2934,10 @@ mod tests {
         let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
 
         let cap = tester.capacity();
-        for len in 0..cap + 1 {
-            for tail in 0..cap + 1 {
-                for drain_start in 0..len + 1 {
-                    for drain_end in drain_start..len + 1 {
+        for len in 0..=cap {
+            for tail in 0..=cap {
+                for drain_start in 0..=len {
+                    for drain_end in drain_start..=len {
                         tester.tail = tail;
                         tester.head = tail;
                         for i in 0..len {
@@ -2866,10 +2979,10 @@ mod tests {
         tester.reserve(63);
         let max_cap = tester.capacity();
 
-        for len in 0..cap + 1 {
+        for len in 0..=cap {
             // 0, 1, 2, .., len - 1
             let expected = (0..).take(len).collect::<VecDeque<_>>();
-            for tail_pos in 0..max_cap + 1 {
+            for tail_pos in 0..=max_cap {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
                 tester.reserve(63);
@@ -2899,7 +3012,7 @@ mod tests {
         // len is the length *before* splitting
         for len in 0..cap {
             // index to split at
-            for at in 0..len + 1 {
+            for at in 0..=len {
                 // 0, 1, 2, .., at - 1 (may be empty)
                 let expected_self = (0..).take(at).collect::<VecDeque<_>>();
                 // at, at + 1, .., len - 1 (may be empty)
@@ -2927,7 +3040,7 @@ mod tests {
     fn test_from_vec() {
         use vec::Vec;
         for cap in 0..35 {
-            for len in 0..cap + 1 {
+            for len in 0..=cap {
                 let mut vec = Vec::with_capacity(cap);
                 vec.extend(0..len);
 

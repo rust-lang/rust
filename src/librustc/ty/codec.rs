@@ -92,7 +92,7 @@ pub fn encode_with_shorthand<E, T, M>(encoder: &mut E,
     let leb128_bits = len * 7;
 
     // Check that the shorthand is a not longer than the
-    // full encoding itself, i.e. it's an obvious win.
+    // full encoding itself, i.e., it's an obvious win.
     if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
         cache(encoder).insert(value.clone(), shorthand);
     }

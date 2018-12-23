@@ -19,7 +19,6 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
 use hair::pattern::PatternTypeProjections;
-use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -100,8 +99,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             .collect();
 
         // create binding start block for link them by false edges
-        let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
-        let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
+        let candidate_count = arms.iter().map(|c| c.patterns.len()).sum::<usize>();
+        let pre_binding_blocks: Vec<_> = (0..=candidate_count)
             .map(|_| self.cfg.start_new_block())
             .collect();
 
@@ -111,7 +110,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
         // highest priority candidate comes first in the list.
-        // (i.e. same order as in source)
+        // (i.e., same order as in source)
 
         let candidates: Vec<_> = arms.iter()
             .enumerate()
@@ -337,7 +336,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn place_into_pattern(
         &mut self,
-        mut block: BasicBlock,
+        block: BasicBlock,
         irrefutable_pat: Pattern<'tcx>,
         initializer: &Place<'tcx>,
         set_match_place: bool,
@@ -359,7 +358,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
         // always convert all match-pairs into bindings.
-        unpack!(block = self.simplify_candidate(block, &mut candidate));
+        self.simplify_candidate(&mut candidate);
 
         if !candidate.match_pairs.is_empty() {
             span_bug!(
@@ -470,7 +469,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
         let place = Place::Local(local_id);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
         place
@@ -479,7 +478,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
         let var_ty = self.local_decls[local_id].ty;
-        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let hir_id = self.hir.tcx().hir().node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
         self.schedule_drop(
             span,
@@ -681,12 +680,7 @@ enum TestKind<'tcx> {
     },
 
     // test whether the value falls within an inclusive or exclusive range
-    Range {
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
-        ty: Ty<'tcx>,
-        end: hir::RangeEnd,
-    },
+    Range(PatternRange<'tcx>),
 
     // test length of the slice is equal to len
     Len {
@@ -745,7 +739,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // complete, all the match pairs which remain require some
         // form of test, whether it be a switch or pattern comparison.
         for candidate in &mut candidates {
-            unpack!(block = self.simplify_candidate(block, candidate));
+            self.simplify_candidate(candidate);
         }
 
         // The candidates are sorted by priority. Check to see
@@ -1035,7 +1029,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             test, match_pair
         );
         let target_blocks = self.perform_test(block, &match_pair.place, &test);
-        let mut target_candidates: Vec<_> = (0..target_blocks.len()).map(|_| vec![]).collect();
+        let mut target_candidates = vec![vec![]; target_blocks.len()];
 
         // Sort the candidates into the appropriate vector in
         // `target_candidates`. Note that at some point we may
@@ -1384,7 +1378,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // Tricky business: For `ref id` and `ref mut id`
                     // patterns, we want `id` within the guard to
                     // correspond to a temp of type `& &T` or `& &mut
-                    // T` (i.e. a "borrow of a borrow") that is
+                    // T` (i.e., a "borrow of a borrow") that is
                     // implicitly dereferenced.
                     //
                     // To borrow a borrow, we need that inner borrow

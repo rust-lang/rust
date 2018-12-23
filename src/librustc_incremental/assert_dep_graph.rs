@@ -79,8 +79,8 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             let mut visitor = IfThisChanged { tcx,
                                             if_this_changed: vec![],
                                             then_this_would_need: vec![] };
-            visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir.krate().attrs);
-            tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+            visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir().krate().attrs);
+            tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
 
@@ -121,7 +121,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     }
 
     fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir.local_def_id(node_id);
+        let def_id = self.tcx.hir().local_def_id(node_id);
         let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {
             if attr.check_name(ATTR_IF_THIS_CHANGED) {
@@ -170,7 +170,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {

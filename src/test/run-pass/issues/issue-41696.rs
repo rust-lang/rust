@@ -11,6 +11,7 @@
 // run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![recursion_limit = "128"]
 // this used to cause exponential code-size blowup during LLVM passes.
 
 #![feature(test)]

@@ -135,7 +135,6 @@ summary {
 
 code, pre {
 	font-family: "Source Code Pro", monospace;
-	white-space: pre-wrap;
 }
 .docblock code, .docblock-short code {
 	border-radius: 3px;
@@ -283,7 +282,7 @@ nav.sub {
 	padding-left: 0;
 }
 
-:not(.source) .example-wrap {
+.rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
 }
@@ -301,11 +300,12 @@ nav.sub {
 	text-align: right;
 }
 
-:not(.source) .example-wrap > pre.rust {
+.rustdoc:not(.source) .example-wrap > pre.rust {
 	width: 100%;
+	overflow-x: auto;
 }
 
-body:not(.source) .example-wrap > pre {
+.rustdoc:not(.source) .example-wrap > pre {
 	margin: 0;
 }
 
@@ -367,6 +367,10 @@ body:not(.source) .example-wrap > pre {
 #main > .docblock h1 { font-size: 1.3em; }
 #main > .docblock h2 { font-size: 1.15em; }
 #main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
+
+#main > h2 + div, #main > h2 + h3, #main > h3 + div {
+	display: none;
+}
 
 .docblock h1 { font-size: 1em; }
 .docblock h2 { font-size: 0.95em; }
@@ -607,7 +611,7 @@ a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink {
+.invisible > .srclink, h4 > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -620,13 +624,36 @@ a {
 .search-container {
 	position: relative;
 }
+.search-container > div {
+	display: inline-flex;
+	width: calc(100% - 34px);
+}
+#crate-search {
+	margin-top: 5px;
+	padding: 6px;
+	padding-right: 19px;
+	border: 0;
+	border-right: 0;
+	border-radius: 4px 0 0 4px;
+	outline: none;
+	cursor: pointer;
+	border-right: 1px solid;
+	-moz-appearance: none;
+	-webkit-appearance: none;
+	/* Removes default arrow from firefox */
+	text-indent: 0.01px;
+	text-overflow: "";
+	background-repeat: no-repeat;
+	background-color: transparent;
+	background-size: 20px;
+	background-position: calc(100% - 1px) 56%;
+}
 .search-container > .top-button {
 	position: absolute;
 	right: 0;
 	top: 10px;
 }
 .search-input {
-	width: calc(100% - 34px);
 	/* Override Normalize.css: we have margins and do
 	 not want to overflow - the `moz` attribute is necessary
 	 until Firefox 29, too early to drop at this point */
@@ -634,13 +661,14 @@ a {
 	box-sizing: border-box !important;
 	outline: none;
 	border: none;
-	border-radius: 1px;
+	border-radius: 0 1px 1px 0;
 	margin-top: 5px;
 	padding: 10px 16px;
 	font-size: 17px;
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
+	width: 100%;
 }
 
 .search-input:focus {
@@ -741,7 +769,7 @@ body.blur > :not(#help) {
 	display: list-item;
 }
 
-.stab .microscope {
+.stab .emoji {
 	font-size: 1.5em;
 }
 
@@ -969,7 +997,7 @@ span.since {
 		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
-		z-index: 1;
+		z-index: 11;
 	}
 
 	.sidebar > .location {
@@ -1130,6 +1158,13 @@ pre.rust {
 .search-failed {
 	text-align: center;
 	margin-top: 20px;
+}
+
+.search-failed > ul {
+	text-align: left;
+	max-width: 570px;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 #titles {

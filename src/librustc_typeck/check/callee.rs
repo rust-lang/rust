@@ -38,7 +38,7 @@ pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefI
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(ty::FnSig<'tcx>),
-    /// e.g. enum variant constructors
+    /// e.g., enum variant constructors
     Overloaded(MethodCallee<'tcx>),
 }
 
@@ -57,7 +57,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_overloaded_call_step(call_expr, callee_expr, &autoderef);
         }
-        autoderef.finalize();
+        autoderef.finalize(self);
 
         let output = match result {
             None => {
@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 callee_expr: &'gcx hir::Expr,
                                 autoderef: &Autoderef<'a, 'gcx, 'tcx>)
                                 -> Option<CallStep<'tcx>> {
-        let adjusted_ty = autoderef.unambiguous_final_ty();
+        let adjusted_ty = autoderef.unambiguous_final_ty(self);
         debug!("try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?})",
                call_expr,
                adjusted_ty);
@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match adjusted_ty.sty {
             ty::FnDef(..) | ty::FnPtr(_) => {
-                let adjustments = autoderef.adjust_steps(Needs::None);
+                let adjustments = autoderef.adjust_steps(self, Needs::None);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
             }
@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         infer::FnCall,
                         &closure_ty
                     ).0;
-                    let adjustments = autoderef.adjust_steps(Needs::None);
+                    let adjustments = autoderef.adjust_steps(self, Needs::None);
                     self.record_deferred_call_resolution(def_id, DeferredCallResolution {
                         call_expr,
                         callee_expr,
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.try_overloaded_call_traits(call_expr, adjusted_ty).map(|(autoref, method)| {
-            let mut adjustments = autoderef.adjust_steps(Needs::None);
+            let mut adjustments = autoderef.adjust_steps(self, Needs::None);
             adjustments.extend(autoref);
             self.apply_adjustments(callee_expr, adjustments);
             CallStep::Overloaded(method)
@@ -206,7 +206,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             -> Ty<'tcx> {
         let (fn_sig, def_span) = match callee_ty.sty {
             ty::FnDef(def_id, _) => {
-                (callee_ty.fn_sig(self.tcx), self.tcx.hir.span_if_local(def_id))
+                (callee_ty.fn_sig(self.tcx), self.tcx.hir().span_if_local(def_id))
             }
             ty::FnPtr(sig) => (sig, None),
             ref t => {
@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
-                            unit_variant = Some(self.tcx.hir.node_to_pretty_string(expr.id))
+                            unit_variant = Some(self.tcx.hir().node_to_pretty_string(expr.id))
                         }
                     }
                 }
@@ -278,9 +278,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let def_span = match def {
                         Def::Err => None,
                         Def::Local(id) | Def::Upvar(id, ..) => {
-                            Some(self.tcx.hir.span(id))
+                            Some(self.tcx.hir().span(id))
                         }
-                        _ => self.tcx.hir.span_if_local(def.def_id())
+                        _ => def.opt_def_id().and_then(|did| self.tcx.hir().span_if_local(did)),
                     };
                     if let Some(span) = def_span {
                         let label = match (unit_variant, inner_callee_path) {

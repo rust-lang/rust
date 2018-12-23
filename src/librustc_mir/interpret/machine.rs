@@ -81,7 +81,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type FrameExtra;
 
     /// Extra data stored in memory.  A reference to this is available when `AllocExtra`
-    /// gets initialized, so you can e.g. have an `Rc` here if there is global state you
+    /// gets initialized, so you can e.g., have an `Rc` here if there is global state you
     /// need access to in the `AllocExtra` hooks.
     type MemoryExtra: Default;
 
@@ -185,7 +185,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
+    ) -> Pointer<Self::PointerTag>;
 
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the chance to adjust the tag.  It should not change anything else!
@@ -203,17 +203,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     #[inline]
     fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _fn_entry: bool,
+        _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    /// Execute an escape-to-raw operation
-    #[inline]
-    fn escape_to_raw(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _ptr: OpTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }

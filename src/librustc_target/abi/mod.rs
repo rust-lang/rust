@@ -409,7 +409,7 @@ impl Align {
     /// Compute the best alignment possible for the given offset
     /// (the largest power of two that the offset is a multiple of).
     ///
-    /// NB: for an offset of `0`, this happens to return `2^64`.
+    /// N.B., for an offset of `0`, this happens to return `2^64`.
     pub fn max_for_offset(offset: Size) -> Align {
         Align {
             pow2: offset.bytes().trailing_zeros() as u8,
@@ -639,7 +639,7 @@ pub struct Scalar {
     ///
     /// This is intended specifically to mirror LLVM’s `!range` metadata,
     /// semantics.
-    // FIXME(eddyb) always use the shortest range, e.g. by finding
+    // FIXME(eddyb) always use the shortest range, e.g., by finding
     // the largest space between two consecutive valid values and
     // taking everything else as the (shortest) valid range.
     pub valid_range: RangeInclusive<u128>,
@@ -887,12 +887,12 @@ impl LayoutDetails {
 }
 
 /// The details of the layout of a type, alongside the type itself.
-/// Provides various type traversal APIs (e.g. recursing into fields).
+/// Provides various type traversal APIs (e.g., recursing into fields).
 ///
 /// Note that the details are NOT guaranteed to always be identical
 /// to those obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
-/// or synthetic fields of enums (i.e. discriminants) and fat pointers.
+/// or synthetic fields of enums (i.e., discriminants) and fat pointers.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyLayout<'a, Ty> {
     pub ty: Ty,

@@ -68,6 +68,7 @@ mod linux_musl_base;
 mod openbsd_base;
 mod netbsd_base;
 mod solaris_base;
+mod uefi_base;
 mod windows_base;
 mod windows_msvc_base;
 mod thumb_base;
@@ -234,7 +235,7 @@ macro_rules! supported_targets {
         $(mod $module;)*
 
         /// List of supported targets
-        const TARGETS: &'static [&'static str] = &[$($triple),*];
+        const TARGETS: &[&str] = &[$($triple),*];
 
         fn load_specific(target: &str) -> TargetResult {
             match target {
@@ -254,12 +255,12 @@ macro_rules! supported_targets {
             }
         }
 
-        pub fn get_targets() -> Box<dyn Iterator<Item=String>> {
-            Box::new(TARGETS.iter().filter_map(|t| -> Option<String> {
+        pub fn get_targets() -> impl Iterator<Item = String> {
+            TARGETS.iter().filter_map(|t| -> Option<String> {
                 load_specific(t)
                     .and(Ok(t.to_string()))
                     .ok()
-            }))
+            })
         }
 
         #[cfg(test)]
@@ -313,6 +314,7 @@ supported_targets! {
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-musleabi", armv5te_unknown_linux_musleabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
+    ("thumbv7neon-unknown-linux-gnueabihf", thumbv7neon_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
 
@@ -330,6 +332,7 @@ supported_targets! {
     ("x86_64-linux-android", x86_64_linux_android),
     ("arm-linux-androideabi", arm_linux_androideabi),
     ("armv7-linux-androideabi", armv7_linux_androideabi),
+    ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
@@ -400,6 +403,8 @@ supported_targets! {
     ("thumbv7em-none-eabi", thumbv7em_none_eabi),
     ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
     ("thumbv8m.base-none-eabi", thumbv8m_base_none_eabi),
+    ("thumbv8m.main-none-eabi", thumbv8m_main_none_eabi),
+    ("thumbv8m.main-none-eabihf", thumbv8m_main_none_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -417,6 +422,8 @@ supported_targets! {
     ("aarch64-unknown-none", aarch64_unknown_none),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
+
+    ("x86_64-unknown-uefi", x86_64_unknown_uefi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -603,7 +610,7 @@ pub struct TargetOptions {
     /// `eh_unwind_resume` lang item.
     pub custom_unwind_resume: bool,
 
-    /// Flag indicating whether ELF TLS (e.g. #[thread_local]) is available for
+    /// Flag indicating whether ELF TLS (e.g., #[thread_local]) is available for
     /// this target.
     pub has_elf_tls: bool,
     // This is mainly for easy compatibility with emscripten.

@@ -78,9 +78,9 @@ const fn i32_ops2(c: i32, d: i32) -> bool { c < d }
 const fn i32_ops3(c: i32, d: i32) -> bool { c != d }
 const fn i32_ops4(c: i32, d: i32) -> i32 { c + d }
 const fn char_cast(u: u8) -> char { u as char }
-const unsafe fn foo4() -> i32 { 42 }
-const unsafe fn foo5<T>() -> *const T { 0 as *const T }
-const unsafe fn foo6<T>() -> *mut T { 0 as *mut T }
+const unsafe fn ret_i32_no_unsafe() -> i32 { 42 }
+const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { 0 as *const T }
+const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { 0 as *mut T }
 
 // not ok
 const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
@@ -106,7 +106,7 @@ const fn foo30_2(x: *mut u32) -> usize { x as usize }
 const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
 //~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
 const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
-const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn are unstable
+const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn
 const fn foo36(a: bool, b: bool) -> bool { a && b }
 //~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
 const fn foo37(a: bool, b: bool) -> bool { a || b }

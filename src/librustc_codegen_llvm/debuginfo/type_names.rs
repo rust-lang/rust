@@ -19,9 +19,9 @@ use rustc_codegen_ssa::traits::*;
 use rustc::hir;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
-// any caching, i.e. calling the function twice with the same type will also do
+// any caching, i.e., calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
-// type name, further levels (i.e. type parameters) are always fully qualified.
+// type name, further levels (i.e., type parameters) are always fully qualified.
 pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                              t: Ty<'tcx>,
                                              qualified: bool)

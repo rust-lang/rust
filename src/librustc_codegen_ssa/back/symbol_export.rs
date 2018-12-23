@@ -85,7 +85,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // categories:
             //
             // 1. Those that are included statically via a static library
-            // 2. Those included otherwise (e.g. dynamically or via a framework)
+            // 2. Those included otherwise (e.g., dynamically or via a framework)
             //
             // Although our LLVM module is not literally emitting code for the
             // statically included symbols, it's an export of our library which
@@ -93,9 +93,9 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             //
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
-            match tcx.hir.get(node_id) {
+            match tcx.hir().get(node_id) {
                 Node::ForeignItem(..) => {
-                    let def_id = tcx.hir.local_def_id(node_id);
+                    let def_id = tcx.hir().local_def_id(node_id);
                     if tcx.is_statically_included_foreign_item(def_id) {
                         Some(def_id)
                     } else {
@@ -115,7 +115,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     node: hir::ImplItemKind::Method(..),
                     ..
                 }) => {
-                    let def_id = tcx.hir.local_def_id(node_id);
+                    let def_id = tcx.hir().local_def_id(node_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened
@@ -158,12 +158,12 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .collect();
 
     if let Some(id) = *tcx.sess.proc_macro_decls_static.get() {
-        let def_id = tcx.hir.local_def_id(id);
+        let def_id = tcx.hir().local_def_id(id);
         reachable_non_generics.insert(def_id, SymbolExportLevel::C);
     }
 
     if let Some(id) = *tcx.sess.plugin_registrar_fn.get() {
-        let def_id = tcx.hir.local_def_id(id);
+        let def_id = tcx.hir().local_def_id(id);
         reachable_non_generics.insert(def_id, SymbolExportLevel::C);
     }
 
@@ -225,7 +225,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
-        const PROFILER_WEAK_SYMBOLS: [&'static str; 2] = [
+        const PROFILER_WEAK_SYMBOLS: [&str; 2] = [
             "__llvm_profile_raw_version",
             "__llvm_profile_filename",
         ];
@@ -355,7 +355,7 @@ fn upstream_monomorphizations_for_provider<'a, 'tcx>(
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
         !tcx.reachable_set(LOCAL_CRATE).0.contains(&node_id)
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}",
@@ -393,7 +393,7 @@ fn symbol_export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
             if let Some(Node::Item(&hir::Item {
                 node: hir::ItemKind::Static(..),
                 ..
-            })) = tcx.hir.get_if_local(sym_def_id) {
+            })) = tcx.hir().get_if_local(sym_def_id) {
                 return SymbolExportLevel::Rust;
             }
         }

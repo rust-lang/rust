@@ -404,7 +404,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::Mod(_) => {
-                // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
+                // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
                 if attr::contains_name(&item.attrs, "warn_directory_ownership") {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
@@ -529,7 +529,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
+// Bans nested `impl Trait`, e.g., `impl Into<impl Debug>`.
 // Nested `impl Trait` _is_ allowed in associated type position,
 // e.g `impl Iterator<Item=impl Debug>`
 struct NestedImplTraitVisitor<'a> {

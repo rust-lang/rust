@@ -408,7 +408,7 @@ where
 
         // Remove outlives bounds that we get from the environment but
         // which are also deducable from the trait. This arises (cc
-        // #55756) in cases where you have e.g. `<T as Foo<'a>>::Item:
+        // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
         approx_env_bounds.retain(|bound| {

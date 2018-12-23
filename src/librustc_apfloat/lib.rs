@@ -26,8 +26,8 @@
 //! Comments have been preserved where possible, only slightly adapted.
 //!
 //! Instead of keeping a pointer to a configuration struct and inspecting it
-//! dynamically on every operation, types (e.g. `ieee::Double`), traits
-//! (e.g. `ieee::Semantics`) and associated constants are employed for
+//! dynamically on every operation, types (e.g., `ieee::Double`), traits
+//! (e.g., `ieee::Semantics`) and associated constants are employed for
 //! increased type safety and performance.
 //!
 //! On-heap bigints are replaced everywhere (except in decimal conversion),
@@ -179,7 +179,7 @@ pub struct ParseError(pub &'static str);
 /// implemented operations. Currently implemented operations are add, subtract,
 /// multiply, divide, fused-multiply-add, conversion-to-float,
 /// conversion-to-integer and conversion-from-integer. New rounding modes
-/// (e.g. away from zero) can be added with three or four lines of code.
+/// (e.g., away from zero) can be added with three or four lines of code.
 ///
 /// Four formats are built-in: IEEE single precision, double precision,
 /// quadruple precision, and x87 80-bit extended double (when operating with
@@ -589,7 +589,7 @@ pub trait Float
 pub trait FloatConvert<T: Float>: Float {
     /// Convert a value of one floating point type to another.
     /// The return value corresponds to the IEEE754 exceptions. *loses_info
-    /// records whether the transformation lost information, i.e. whether
+    /// records whether the transformation lost information, i.e., whether
     /// converting the result back to the original type will produce the
     /// original value (this is almost the same as return value==Status::OK,
     /// but there are edge cases where this is not so).

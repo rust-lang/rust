@@ -56,9 +56,15 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
     }
 
+    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
+    // load our env var set by cargo to find the source code.
+    let root = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
+    let root = Path::new(&root);
+
     for src in profile_sources {
-        cfg.file(Path::new("../libcompiler_builtins/compiler-rt/lib/profile").join(src));
+        cfg.file(root.join("lib").join("profile").join(src));
     }
 
+    cfg.warnings(false);
     cfg.compile("profiler-rt");
 }

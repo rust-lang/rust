@@ -51,13 +51,13 @@ use html::render::RenderInfo;
 use passes;
 
 pub use rustc::session::config::{Input, Options, CodegenOptions};
-pub use rustc::session::search_paths::SearchPaths;
+pub use rustc::session::search_paths::SearchPath;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
+pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub resolver: &'a RefCell<resolve::Resolver<'rcx, 'cstore>>,
+    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
@@ -88,7 +88,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub all_traits: Vec<DefId>,
 }
 
-impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
+impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
     }
@@ -121,7 +121,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
         let start_def_id = {
             let next_id = if crate_num == LOCAL_CRATE {
                 self.tcx
-                    .hir
+                    .hir()
                     .definitions()
                     .def_path_table()
                     .next_id(DefIndexAddressSpace::Low)
@@ -168,7 +168,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
-            self.tcx.hir.as_local_node_id(def_id)
+            self.tcx.hir().as_local_node_id(def_id)
         }
     }
 
@@ -485,7 +485,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
-        let arenas = AllArenas::new();
+        let mut arenas = AllArenas::new();
         let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
         let output_filenames = driver::build_output_filenames(&input,
                                                             &None,
@@ -501,7 +501,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         hir_map,
                                                         analysis,
                                                         resolutions,
-                                                        &arenas,
+                                                        &mut arenas,
                                                         &name,
                                                         &output_filenames,
                                                         |tcx, analysis, _, result| {
@@ -515,7 +515,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             // to the map from defid -> nodeid
             let access_levels = AccessLevels {
                 map: access_levels.map.iter()
-                                    .map(|(&k, &v)| (tcx.hir.local_def_id(k), v))
+                                    .map(|(&k, &v)| (tcx.hir().local_def_id(k), v))
                                     .collect()
             };
 
@@ -545,11 +545,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 generated_synthetics: Default::default(),
                 all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
             };
-            debug!("crate: {:?}", tcx.hir.krate());
+            debug!("crate: {:?}", tcx.hir().krate());
 
             let mut krate = {
                 let mut v = RustdocVisitor::new(&ctxt);
-                v.visit(tcx.hir.krate());
+                v.visit(tcx.hir().krate());
                 v.clean(&ctxt)
             };
 

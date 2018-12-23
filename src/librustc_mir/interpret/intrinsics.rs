@@ -103,7 +103,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     if bits == 0 {
                         return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
                     }
-                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), bits, kind)?
+                    numeric_intrinsic(intrinsic_name.trim_end_matches("_nonzero"), bits, kind)?
                 } else {
                     numeric_intrinsic(intrinsic_name, bits, kind)?
                 };

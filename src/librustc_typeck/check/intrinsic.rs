@@ -36,7 +36,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
 ) {
-    let def_id = tcx.hir.local_def_id(it.id);
+    let def_id = tcx.hir().local_def_id(it.id);
 
     match it.node {
         hir::ForeignItemKind::Fn(..) => {}
@@ -401,7 +401,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.mk_ty_param(n, name)
     };
 
-    let def_id = tcx.hir.local_def_id(it.id);
+    let def_id = tcx.hir().local_def_id(it.id);
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     let name = it.name.as_str();
 
@@ -435,7 +435,8 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
         "simd_cast" => (2, vec![param(0)], param(1)),
-        "simd_select" => (2, vec![param(0), param(1), param(1)], param(1)),
+        "simd_select" |
+        "simd_select_bitmask" => (2, vec![param(0), param(1), param(1)], param(1)),
         "simd_reduce_all" | "simd_reduce_any" => (1, vec![param(0)], tcx.types.bool),
         "simd_reduce_add_ordered" | "simd_reduce_mul_ordered"
             => (2, vec![param(0), param(1)], param(1)),
@@ -505,7 +506,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 // walk the expected type and the actual type in lock step, checking they're
-// the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
+// the same, in a kinda-structural way, i.e., `Vector`s have to be simd structs with
 // exactly the right element type
 fn match_intrinsic_type_to_type<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,

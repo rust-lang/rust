@@ -28,6 +28,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate test;
 extern crate rustfix;
+extern crate walkdir;
 
 use common::CompareMode;
 use common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
@@ -38,11 +39,12 @@ use getopts::Options;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use test::ColorConfig;
 use util::logv;
+use walkdir::WalkDir;
 
 use self::header::{EarlyProps, Ignore};
 
@@ -511,7 +513,11 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
-        run_ignored: config.run_ignored,
+        run_ignored: if config.run_ignored {
+            test::RunIgnored::Yes
+        } else {
+            test::RunIgnored::No
+        },
         format: if config.quiet {
             test::OutputFormat::Terse
         } else {
@@ -678,6 +684,15 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+/// Return an iterator over timestamps of files in the directory at `path`.
+fn collect_timestamps(path: &PathBuf) -> impl Iterator<Item=FileTime> {
+    WalkDir::new(path)
+        .into_iter()
+        .map(|entry| entry.unwrap())
+        .filter(|entry| entry.metadata().unwrap().is_file())
+        .map(|entry| mtime(entry.path()))
+}
+
 fn up_to_date(
     config: &Config,
     testpaths: &TestPaths,
@@ -686,13 +701,11 @@ fn up_to_date(
 ) -> bool {
     let stamp_name = stamp(config, testpaths, revision);
     // Check hash.
-    let mut f = match fs::File::open(&stamp_name) {
+    let contents = match fs::read_to_string(&stamp_name) {
         Ok(f) => f,
+        Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
         Err(_) => return true,
     };
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("Can't read stamp contents");
     let expected_hash = runtest::compute_stamp_hash(config);
     if contents != expected_hash {
         return true;
@@ -723,16 +736,7 @@ fn up_to_date(
     for pretty_printer_file in &pretty_printer_files {
         inputs.push(mtime(&rust_src_dir.join(pretty_printer_file)));
     }
-    let mut entries = config.run_lib_path.read_dir().unwrap().collect::<Vec<_>>();
-    while let Some(entry) = entries.pop() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if entry.metadata().unwrap().is_file() {
-            inputs.push(mtime(&path));
-        } else {
-            entries.extend(path.read_dir().unwrap());
-        }
-    }
+    inputs.extend(collect_timestamps(&config.run_lib_path));
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         inputs.push(mtime(&rustdoc_path));
         inputs.push(mtime(&rust_src_dir.join("src/etc/htmldocck.py")));
@@ -743,6 +747,9 @@ fn up_to_date(
         let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
         inputs.push(mtime(path));
     }
+
+    // Compiletest itself.
+    inputs.extend(collect_timestamps(&rust_src_dir.join("src/tools/compiletest/")));
 
     inputs.iter().any(|input| *input > stamp)
 }

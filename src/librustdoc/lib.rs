@@ -25,6 +25,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
+#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 
@@ -276,7 +277,7 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("resource-suffix", |o| {
             o.optopt("",
                      "resource-suffix",
-                     "suffix to add to CSS and JavaScript files, e.g. \"light.css\" will become \
+                     "suffix to add to CSS and JavaScript files, e.g., \"light.css\" will become \
                       \"light-suffix.css\"",
                      "PATH")
         }),
@@ -338,6 +339,13 @@ fn opts() -> Vec<RustcOptGroup> {
                        "enable-index-page",
                        "To enable generation of the index page")
         }),
+        unstable("static-root-path", |o| {
+            o.optopt("",
+                     "static-root-path",
+                     "Path string to force loading static files from in output pages. \
+                      If not set, uses combinations of '../' to reach the documentation root.",
+                     "PATH")
+        }),
     ]
 }
 
@@ -387,9 +395,21 @@ fn main_args(args: &[String]) -> isize {
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
-        html::render::run(krate, renderopts, passes.into_iter().collect(), renderinfo, &diag)
-            .expect("failed to generate documentation");
-        0
+        match html::render::run(
+            krate,
+            renderopts,
+            passes.into_iter().collect(),
+            renderinfo,
+            &diag,
+        ) {
+            Ok(_) => rustc_driver::EXIT_SUCCESS,
+            Err(e) => {
+                diag.struct_err(&format!("couldn't generate documentation: {}", e.error))
+                    .note(&format!("failed to create or modify \"{}\"", e.file.display()))
+                    .emit();
+                rustc_driver::EXIT_FAILURE
+            }
+        }
     })
 }
 

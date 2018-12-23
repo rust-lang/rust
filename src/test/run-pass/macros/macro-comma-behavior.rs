@@ -15,7 +15,7 @@
 //
 // This checks the behavior of macros with trailing commas in key
 // places where regressions in behavior seem highly possible (due
-// to it being e.g. a place where the addition of an argument
+// to it being e.g., a place where the addition of an argument
 // causes it to go down a code path with subtly different behavior).
 //
 // There is a companion test in compile-fail.

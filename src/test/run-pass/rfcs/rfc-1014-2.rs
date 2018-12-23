@@ -11,7 +11,7 @@
 // run-pass
 #![allow(dead_code)]
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

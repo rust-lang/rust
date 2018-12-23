@@ -8,6 +8,7 @@ struct S {
 impl S {
     const fn foo(&mut self, x: u32) {
         self.state = x;
+        //~^ contains unimplemented expression
     }
 }
 

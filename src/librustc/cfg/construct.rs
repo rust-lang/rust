@@ -53,7 +53,7 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let body_exit;
 
     // Find the tables for this body.
-    let owner_def_id = tcx.hir.local_def_id(tcx.hir.body_owner(body.id()));
+    let owner_def_id = tcx.hir().local_def_id(tcx.hir().body_owner(body.id()));
     let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
@@ -109,7 +109,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
-        let hir_id = self.tcx.hir.node_to_hir_id(stmt.node.id());
+        let hir_id = self.tcx.hir().node_to_hir_id(stmt.node.id());
         match stmt.node {
             hir::StmtKind::Decl(ref decl, _) => {
                 let exit = self.decl(&decl, pred);
@@ -379,7 +379,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprKind::Index(ref l, ref r) |
-            hir::ExprKind::Binary(_, ref l, ref r) => { // NB: && and || handled earlier
+            hir::ExprKind::Binary(_, ref l, ref r) => { // N.B., && and || handled earlier
                 self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
             }
 
@@ -415,8 +415,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             args: I) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        // FIXME(canndrew): This is_never should probably be an is_uninhabited.
-        if self.tables.expr_ty(call_expr).is_never() {
+        let m = self.tcx.hir().get_module_parent(call_expr.id);
+        if self.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(call_expr)) {
             self.add_unreachable_node()
         } else {
             ret
@@ -588,9 +588,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         match destination.target_id {
             Ok(loop_id) => {
                 for b in &self.breakable_block_scopes {
-                    if b.block_expr_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
+                    if b.block_expr_id == self.tcx.hir().node_to_hir_id(loop_id).local_id {
                         let scope = region::Scope {
-                            id: self.tcx.hir.node_to_hir_id(loop_id).local_id,
+                            id: self.tcx.hir().node_to_hir_id(loop_id).local_id,
                             data: region::ScopeData::Node
                         };
                         return (scope, match scope_cf_kind {
@@ -600,9 +600,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     }
                 }
                 for l in &self.loop_scopes {
-                    if l.loop_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
+                    if l.loop_id == self.tcx.hir().node_to_hir_id(loop_id).local_id {
                         let scope = region::Scope {
-                            id: self.tcx.hir.node_to_hir_id(loop_id).local_id,
+                            id: self.tcx.hir().node_to_hir_id(loop_id).local_id,
                             data: region::ScopeData::Node
                         };
                         return (scope, match scope_cf_kind {

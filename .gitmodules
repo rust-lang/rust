@@ -5,9 +5,6 @@
 [submodule "src/rust-installer"]
 	path = src/tools/rust-installer
 	url = https://github.com/rust-lang/rust-installer.git
-[submodule "src/liblibc"]
-	path = src/liblibc
-	url = https://github.com/rust-lang/libc.git
 [submodule "src/doc/nomicon"]
 	path = src/doc/nomicon
 	url = https://github.com/rust-lang-nursery/nomicon.git
@@ -23,9 +20,6 @@
 [submodule "src/tools/rls"]
 	path = src/tools/rls
 	url = https://github.com/rust-lang-nursery/rls.git
-[submodule "src/libcompiler_builtins"]
-	path = src/libcompiler_builtins
-	url = https://github.com/rust-lang-nursery/compiler-builtins.git
 [submodule "src/tools/clippy"]
 	path = src/tools/clippy
 	url = https://github.com/rust-lang-nursery/rust-clippy.git
@@ -35,9 +29,6 @@
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/solson/miri.git
-[submodule "src/dlmalloc"]
-	path = src/dlmalloc
-	url = https://github.com/alexcrichton/dlmalloc-rs.git
 [submodule "src/doc/rust-by-example"]
 	path = src/doc/rust-by-example
 	url = https://github.com/rust-lang/rust-by-example.git
@@ -61,7 +52,6 @@
 	path = src/tools/clang
 	url = https://github.com/rust-lang-nursery/clang.git
 	branch = rust-release-80-v2
-
 [submodule "src/doc/rustc-guide"]
 	path = src/doc/rustc-guide
 	url = https://github.com/rust-lang/rustc-guide.git

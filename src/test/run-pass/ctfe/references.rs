@@ -28,6 +28,7 @@ fn main() {
         _ => panic!("c"),
     }
 
+    #[allow(unreachable_patterns)]
     match &43 {
         &42 => panic!(),
         BOO => panic!(),

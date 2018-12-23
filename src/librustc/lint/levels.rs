@@ -66,7 +66,7 @@ impl LintLevelSets {
         for &(ref lint_name, level) in &sess.opts.lint_opts {
             store.check_lint_name_cmdline(sess, &lint_name, level);
 
-            // If the cap is less than this specified level, e.g. if we've got
+            // If the cap is less than this specified level, e.g., if we've got
             // `--cap-lints allow` but we've also got `-D foo` then we ignore
             // this specification as the lint cap will set it to allow anyway.
             let level = cmp::min(level, self.lint_cap);
@@ -191,7 +191,7 @@ impl<'a> LintLevelsBuilder<'a> {
     /// * It'll validate all lint-related attributes in `attrs`
     /// * It'll mark all lint-related attributes as used
     /// * Lint levels will be updated based on the attributes provided
-    /// * Lint attributes are validated, e.g. a #[forbid] can't be switched to
+    /// * Lint attributes are validated, e.g., a #[forbid] can't be switched to
     ///   #[allow]
     ///
     /// Don't forget to call `pop`!
@@ -385,7 +385,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         }
                         err.emit();
                     }
-                    CheckLintNameResult::NoLint => {
+                    CheckLintNameResult::NoLint(suggestion) => {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) = self.sets.get_lint_level(lint,
                                                                     self.cur,
@@ -398,22 +398,17 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 src,
                                                 Some(li.span.into()),
                                                 &msg);
-                        if name.as_str().chars().any(|c| c.is_uppercase()) {
-                            let name_lower = name.as_str().to_lowercase().to_string();
-                            if let CheckLintNameResult::NoLint =
-                                    store.check_lint_name(&name_lower, tool_name) {
-                                db.emit();
-                            } else {
-                                db.span_suggestion_with_applicability(
-                                    li.span,
-                                    "lowercase the lint name",
-                                    name_lower,
-                                    Applicability::MachineApplicable
-                                ).emit();
-                            }
-                        } else {
-                            db.emit();
+
+                        if let Some(suggestion) = suggestion {
+                            db.span_suggestion_with_applicability(
+                                li.span,
+                                "did you mean",
+                                suggestion.to_string(),
+                                Applicability::MachineApplicable,
+                            );
                         }
+
+                        db.emit();
                     }
                 }
             }

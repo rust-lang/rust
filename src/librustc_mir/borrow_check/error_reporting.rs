@@ -195,8 +195,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let needs_note = match ty.sty {
                     ty::Closure(id, _) => {
                         let tables = self.infcx.tcx.typeck_tables_of(id);
-                        let node_id = self.infcx.tcx.hir.as_local_node_id(id).unwrap();
-                        let hir_id = self.infcx.tcx.hir.node_to_hir_id(node_id);
+                        let node_id = self.infcx.tcx.hir().as_local_node_id(id).unwrap();
+                        let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
 
                         tables.closure_kind_origins().get(hir_id).is_none()
                     }
@@ -344,6 +344,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let first_borrow_desc;
 
+        let explanation = self.explain_why_borrow_contains_point(context, issued_borrow, None);
+        let second_borrow_desc = if explanation.is_explained() {
+            "second "
+        } else {
+            ""
+        };
+
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (
             gen_borrow_kind,
@@ -454,6 +461,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     issued_span,
                     "",
                     None,
+                    second_borrow_desc,
                     Origin::Mir,
                 )
             }
@@ -469,6 +477,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     issued_span,
                     "",
                     None,
+                    second_borrow_desc,
                     Origin::Mir,
                 )
             }
@@ -513,7 +522,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         }
 
-        self.explain_why_borrow_contains_point(context, issued_borrow, None)
+        explanation
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
 
         err.buffer(&mut self.errors_buffer);
@@ -711,13 +720,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            if let Some(fn_node_id) = self.infcx.tcx.hir.as_local_node_id(self.mir_def_id) {
+            if let Some(fn_node_id) = self.infcx.tcx.hir().as_local_node_id(self.mir_def_id) {
                 err.span_label(
                     drop_span,
                     format!(
                         "...but `{}` will be dropped here, when the function `{}` returns",
                         name,
-                        self.infcx.tcx.hir.name(fn_node_id),
+                        self.infcx.tcx.hir().name(fn_node_id),
                     ),
                 );
 
@@ -1055,7 +1064,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let escapes_from = if tcx.is_closure(self.mir_def_id) {
             let tables = tcx.typeck_tables_of(self.mir_def_id);
-            let mir_hir_id = tcx.hir.def_index_to_hir_id(self.mir_def_id.index);
+            let mir_hir_id = tcx.hir().def_index_to_hir_id(self.mir_def_id.index);
             match tables.node_id_to_type(mir_hir_id).sty {
                 ty::Closure(..) => "closure",
                 ty::Generator(..) => "generator",
@@ -1240,7 +1249,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// (part of) a non-`mut` local that occurs potentially after that
     /// local has already been initialized. `place` is the path being
     /// assigned; `err_place` is a place providing a reason why
-    /// `place` is not mutable (e.g. the non-`mut` local `x` in an
+    /// `place` is not mutable (e.g., the non-`mut` local `x` in an
     /// assignment to `x.f`).
     pub(super) fn report_illegal_reassignment(
         &mut self,
@@ -1403,11 +1412,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
 
                 if let ty::TyKind::Closure(did, _substs) = self.mir.local_decls[closure].ty.sty {
-                    let node_id = match self.infcx.tcx.hir.as_local_node_id(did) {
+                    let node_id = match self.infcx.tcx.hir().as_local_node_id(did) {
                         Some(node_id) => node_id,
                         _ => return,
                     };
-                    let hir_id = self.infcx.tcx.hir.node_to_hir_id(node_id);
+                    let hir_id = self.infcx.tcx.hir().node_to_hir_id(node_id);
 
                     if let Some((
                         span, name
@@ -1645,12 +1654,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let node_id = self.infcx.tcx.hir.as_local_node_id(def_id).unwrap();
+                    let node_id = self.infcx.tcx.hir().as_local_node_id(def_id).unwrap();
                     let freevar = self.infcx
                         .tcx
                         .with_freevars(node_id, |fv| fv[field.index()]);
 
-                    self.infcx.tcx.hir.name(freevar.var_id()).to_string()
+                    self.infcx.tcx.hir().name(freevar.var_id()).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -1971,8 +1980,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did);
-        let fn_node_id = self.infcx.tcx.hir.as_local_node_id(did)?;
-        let fn_decl = self.infcx.tcx.hir.fn_decl(fn_node_id)?;
+        let fn_node_id = self.infcx.tcx.hir().as_local_node_id(did)?;
+        let fn_decl = self.infcx.tcx.hir().fn_decl(fn_node_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking
         // at the return type, where there are three cases:
@@ -2414,8 +2423,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let node_id = self.infcx.tcx.hir.as_local_node_id(def_id)?;
-        let expr = &self.infcx.tcx.hir.expect_expr(node_id).node;
+        let node_id = self.infcx.tcx.hir().as_local_node_id(def_id)?;
+        let expr = &self.infcx.tcx.hir().expect_expr(node_id).node;
         debug!("closure_span: node_id={:?} expr={:?}", node_id, expr);
         if let hir::ExprKind::Closure(
             .., args_span, _

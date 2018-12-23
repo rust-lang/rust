@@ -93,7 +93,7 @@
 //! Threads are represented via the [`Thread`] type, which you can get in one of
 //! two ways:
 //!
-//! * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
+//! * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
 //!   function, and calling [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
 //! * By requesting the current thread, using the [`thread::current`] function.
 //!
@@ -124,7 +124,7 @@
 //! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
 //!
 //! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
-//! * The thread name is provided to the OS where applicable (e.g. `pthread_setname_np` in
+//! * The thread name is provided to the OS where applicable (e.g., `pthread_setname_np` in
 //!   unix-like platforms).
 //!
 //! ## Stack size
@@ -167,10 +167,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use any::Any;
+use boxed::FnBox;
 use cell::UnsafeCell;
 use ffi::{CStr, CString};
 use fmt;
 use io;
+use mem;
 use panic;
 use panicking;
 use str;
@@ -420,7 +422,7 @@ impl Builder {
     ///
     /// - ensure that [`join`][`JoinHandle::join`] is called before any referenced
     /// data is dropped
-    /// - use only types with `'static` lifetime bounds, i.e. those with no or only
+    /// - use only types with `'static` lifetime bounds, i.e., those with no or only
     /// `'static` references (both [`thread::Builder::spawn`][`Builder::spawn`]
     /// and [`thread::spawn`][`spawn`] enforce this property statically)
     ///
@@ -452,8 +454,8 @@ impl Builder {
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
-    pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
-        F: FnOnce() -> T, F: Send, T: Send
+    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
+        F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
     {
         let Builder { name, stack_size } = self;
 
@@ -482,7 +484,21 @@ impl Builder {
         };
 
         Ok(JoinHandle(JoinInner {
-            native: Some(imp::Thread::new(stack_size, Box::new(main))?),
+            // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
+            // through FFI or otherwise used with low-level threading primitives that have no
+            // notion of or way to enforce lifetimes.
+            //
+            // As mentioned in the `Safety` section of this function's documentation, the caller of
+            // this function needs to guarantee that the passed-in lifetime is sufficiently long
+            // for the lifetime of the thread.
+            //
+            // Similarly, the `sys` implementation must guarantee that no references to the closure
+            // exist after the thread has terminated, which is signaled by `Thread::join`
+            // returning.
+            native: Some(imp::Thread::new(
+                stack_size,
+                mem::transmute::<Box<dyn FnBox() + 'a>, Box<dyn FnBox() + 'static>>(Box::new(main))
+            )?),
             thread: my_thread,
             packet: Packet(my_packet),
         }))
@@ -676,7 +692,7 @@ pub fn yield_now() {
 /// already poison themselves when a thread panics while holding the lock.
 ///
 /// This can also be used in multithreaded applications, in order to send a
-/// message to other threads warning that a thread has panicked (e.g. for
+/// message to other threads warning that a thread has panicked (e.g., for
 /// monitoring purposes).
 ///
 /// # Examples
@@ -806,9 +822,14 @@ const NOTIFIED: usize = 2;
 /// In other words, each [`Thread`] acts a bit like a spinlock that can be
 /// locked and unlocked using `park` and `unpark`.
 ///
+/// Notice that being unblocked does not imply any synchronization with someone
+/// that unparked this thread, it could also be spurious.
+/// For example, it would be a valid, but inefficient, implementation to make both [`park`] and
+/// [`unpark`] return immediately without doing anything.
+///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
-/// find it, and then `park`ing. When some desired condition is met, another
+/// find it, and then `park`ing in a loop. When some desired condition is met, another
 /// thread calls [`unpark`] on the handle.
 ///
 /// The motivation for this design is twofold:
@@ -823,21 +844,33 @@ const NOTIFIED: usize = 2;
 ///
 /// ```
 /// use std::thread;
+/// use std::sync::{Arc, atomic::{Ordering, AtomicBool}};
 /// use std::time::Duration;
 ///
-/// let parked_thread = thread::Builder::new()
-///     .spawn(|| {
+/// let flag = Arc::new(AtomicBool::new(false));
+/// let flag2 = Arc::clone(&flag);
+///
+/// let parked_thread = thread::spawn(move || {
+///     // We want to wait until the flag is set.  We *could* just spin, but using
+///     // park/unpark is more efficient.
+///     while !flag2.load(Ordering::Acquire) {
 ///         println!("Parking thread");
 ///         thread::park();
+///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
+///         // But that is no problem, we are in a loop until the flag is set anyway.
 ///         println!("Thread unparked");
-///     })
-///     .unwrap();
+///     }
+///     println!("Flag received");
+/// });
 ///
 /// // Let some time pass for the thread to be spawned.
 /// thread::sleep(Duration::from_millis(10));
 ///
+/// // Set the flag, and let the thread wake up.
 /// // There is no race condition here, if `unpark`
 /// // happens first, `park` will return immediately.
+/// // Hence there is no risk of a deadlock.
+/// flag.store(true, Ordering::Release);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -1062,7 +1095,7 @@ struct Inner {
 /// Threads are represented via the `Thread` type, which you can get in one of
 /// two ways:
 ///
-/// * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
+/// * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
 ///   function, and calling [`thread`][`JoinHandle::thread`] on the
 ///   [`JoinHandle`].
 /// * By requesting the current thread, using the [`thread::current`] function.

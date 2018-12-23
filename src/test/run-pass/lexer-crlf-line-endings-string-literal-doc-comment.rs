@@ -12,7 +12,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NB: this file needs CRLF line endings. The .gitattributes file in
+// N.B., this file needs CRLF line endings. The .gitattributes file in
 // this directory should enforce it.
 
 // ignore-pretty issue #37195

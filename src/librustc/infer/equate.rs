@@ -39,6 +39,10 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
+    fn trait_object_mode(&self) -> relate::TraitObjectMode {
+        self.fields.infcx.trait_object_mode()
+    }
+
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_item_substs(&mut self,
@@ -47,9 +51,9 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                           b_subst: &'tcx Substs<'tcx>)
                           -> RelateResult<'tcx, &'tcx Substs<'tcx>>
     {
-        // NB: Once we are equating types, we don't care about
+        // N.B., once we are equating types, we don't care about
         // variance, so don't try to lookup the variance here. This
-        // also avoids some cycles (e.g. #41849) since looking up
+        // also avoids some cycles (e.g., #41849) since looking up
         // variance requires computing types which can require
         // performing trait matching (which then performs equality
         // unification).

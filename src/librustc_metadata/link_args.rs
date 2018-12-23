@@ -17,9 +17,9 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     let mut collector = Collector {
         args: Vec::new(),
     };
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
+    tcx.hir().krate().visit_all_item_likes(&mut collector);
 
-    for attr in tcx.hir.krate().attrs.iter() {
+    for attr in tcx.hir().krate().attrs.iter() {
         if attr.path == "link_args" {
             if let Some(linkarg) = attr.value_str() {
                 collector.add_link_args(&linkarg.as_str());

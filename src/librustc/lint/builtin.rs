@@ -174,7 +174,7 @@ declare_lint! {
 declare_lint! {
     pub LEGACY_DIRECTORY_OWNERSHIP,
     Deny,
-    "non-inline, non-`#[path]` modules (e.g. `mod foo;`) were erroneously allowed in some files \
+    "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
      not named `mod.rs`"
 }
 
@@ -206,6 +206,12 @@ declare_lint! {
     pub INCOHERENT_FUNDAMENTAL_IMPLS,
     Deny,
     "potentially-conflicting impls were erroneously allowed"
+}
+
+declare_lint! {
+    pub ORDER_DEPENDENT_TRAIT_OBJECTS,
+    Deny,
+    "trait-object types were treated as different depending on marker-trait order"
 }
 
 declare_lint! {
@@ -309,19 +315,19 @@ declare_lint! {
 declare_lint! {
     pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
     Warn,
-    "warn about documentation intra links resolution failure"
+    "failures in resolving intra-doc link targets"
 }
 
 declare_lint! {
     pub MISSING_DOC_CODE_EXAMPLES,
     Allow,
-    "warn about missing code example in an item's documentation"
+    "detects publicly-exported items without code samples in their documentation"
 }
 
 declare_lint! {
     pub PRIVATE_DOC_TESTS,
     Allow,
-    "warn about doc test in private item"
+    "detects code samples in docs of private items not documented by rustdoc"
 }
 
 declare_lint! {
@@ -365,8 +371,15 @@ pub mod parser {
     }
 }
 
+declare_lint! {
+    pub DEPRECATED_IN_FUTURE,
+    Allow,
+    "detects use of items that will be deprecated in a future version",
+    report_in_external_macro: true
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
-/// which are used by other parts of the compiler.
+/// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]
 pub struct HardwiredLints;
 
@@ -405,6 +418,7 @@ impl LintPass for HardwiredLints {
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
             LATE_BOUND_LIFETIME_ARGUMENTS,
             INCOHERENT_FUNDAMENTAL_IMPLS,
+            ORDER_DEPENDENT_TRAIT_OBJECTS,
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,
@@ -427,6 +441,7 @@ impl LintPass for HardwiredLints {
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             parser::QUESTION_MARK_MACRO_SEP,
+            DEPRECATED_IN_FUTURE,
         )
     }
 }
@@ -463,7 +478,7 @@ impl BuiltinLintDiagnostics {
                     Ok(ref s) => {
                         // FIXME(Manishearth) ideally the emitting code
                         // can tell us whether or not this is global
-                        let opt_colon = if s.trim_left().starts_with("::") {
+                        let opt_colon = if s.trim_start().starts_with("::") {
                             ""
                         } else {
                             "::"

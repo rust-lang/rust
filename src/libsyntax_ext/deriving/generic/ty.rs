@@ -32,7 +32,7 @@ pub enum PtrTy<'a> {
     Raw(ast::Mutability),
 }
 
-/// A path, e.g. `::std::option::Option::<i32>` (global). Has support
+/// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters and a lifetime.
 #[derive(Clone)]
 pub struct Path<'a> {

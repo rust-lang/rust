@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, Block, Ident, NodeId, PatKind, Path};
+use ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
 use source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
@@ -34,8 +34,8 @@ use tokenstream::{TokenStream, TokenTree};
 use visit::{self, Visitor};
 
 use rustc_data_structures::fx::FxHashMap;
-use std::fs::File;
-use std::io::Read;
+use std::fs;
+use std::io::ErrorKind;
 use std::{iter, mem};
 use std::rc::Rc;
 use std::path::PathBuf;
@@ -203,10 +203,7 @@ fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
         if i != 0 {
             path_str.push_str("::");
         }
-
-        if segment.ident.name != keywords::CrateRoot.name() &&
-            segment.ident.name != keywords::DollarCrate.name()
-        {
+        if segment.ident.name != keywords::PathRoot.name() {
             path_str.push_str(&segment.ident.as_str())
         }
     }
@@ -622,9 +619,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn extract_proc_macro_attr_input(&self, tokens: TokenStream, span: Span) -> TokenStream {
         let mut trees = tokens.trees();
         match trees.next() {
-            Some(TokenTree::Delimited(_, delim)) => {
+            Some(TokenTree::Delimited(_, _, tts)) => {
                 if trees.next().is_none() {
-                    return delim.tts.into()
+                    return tts.into()
                 }
             }
             Some(TokenTree::Token(..)) => {}
@@ -1134,12 +1131,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
         item = item.map_attrs(|mut attrs| {
-            if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs,
-                                                                                     true) {
-                attr = Some(legacy_attr_invoc);
-                return attrs;
-            }
-
             attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
             traits = collect_derives(&mut self.cx, &mut attrs);
             attrs
@@ -1156,12 +1147,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let (mut attr, mut after_derive) = (None, false);
 
         item = item.map_attrs(|mut attrs| {
-            if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs,
-                                                                                     false) {
-                attr = Some(legacy_attr_invoc);
-                return attrs;
-            }
-
             attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
             attrs
         });
@@ -1363,7 +1348,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 module.mod_path.push(item.ident);
 
                 // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
-                // In the non-inline case, `inner` is never the dummy span (c.f. `parse_item_mod`).
+                // In the non-inline case, `inner` is never the dummy span (cf. `parse_item_mod`).
                 // Thus, if `inner` is the dummy span, we know the module is inline.
                 let inline_module = item.span.contains(inner) || inner.is_dummy();
 
@@ -1519,20 +1504,8 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         return noop_fold_attribute(at, self);
                     }
 
-                    let mut buf = vec![];
                     let filename = self.cx.root_path.join(file.to_string());
-
-                    match File::open(&filename).and_then(|mut f| f.read_to_end(&mut buf)) {
-                        Ok(..) => {}
-                        Err(e) => {
-                            self.cx.span_err(at.span,
-                                             &format!("couldn't read {}: {}",
-                                                      filename.display(),
-                                                      e));
-                        }
-                    }
-
-                    match String::from_utf8(buf) {
+                    match fs::read_to_string(&filename) {
                         Ok(src) => {
                             let src_interned = Symbol::intern(&src);
 
@@ -1542,25 +1515,82 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str(Ident::from_str("file"),
-                                                                     dummy_spanned(file)))),
+                                    attr::mk_name_value_item_str(
+                                        Ident::from_str("file"),
+                                        dummy_spanned(file),
+                                    ),
+                                )),
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str(Ident::from_str("contents"),
-                                                            dummy_spanned(src_interned)))),
+                                    attr::mk_name_value_item_str(
+                                        Ident::from_str("contents"),
+                                        dummy_spanned(src_interned),
+                                    ),
+                                )),
                             ];
 
                             let include_ident = Ident::from_str("include");
                             let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
                             items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
                         }
-                        Err(_) => {
-                            self.cx.span_err(at.span,
-                                             &format!("{} wasn't a utf-8 file",
-                                                      filename.display()));
+                        Err(e) => {
+                            let lit = it
+                                .meta_item()
+                                .and_then(|item| item.name_value_literal())
+                                .unwrap();
+
+                            if e.kind() == ErrorKind::InvalidData {
+                                self.cx
+                                    .struct_span_err(
+                                        lit.span,
+                                        &format!("{} wasn't a utf-8 file", filename.display()),
+                                    )
+                                    .span_label(lit.span, "contains invalid utf-8")
+                                    .emit();
+                            } else {
+                                let mut err = self.cx.struct_span_err(
+                                    lit.span,
+                                    &format!("couldn't read {}: {}", filename.display(), e),
+                                );
+                                err.span_label(lit.span, "couldn't read file");
+
+                                if e.kind() == ErrorKind::NotFound {
+                                    err.help("external doc paths are relative to the crate root");
+                                }
+
+                                err.emit();
+                            }
                         }
                     }
                 } else {
-                    items.push(noop_fold_meta_list_item(it, self));
+                    let mut err = self.cx.struct_span_err(
+                        it.span,
+                        &format!("expected path to external documentation"),
+                    );
+
+                    // Check if the user erroneously used `doc(include(...))` syntax.
+                    let literal = it.meta_item_list().and_then(|list| {
+                        if list.len() == 1 {
+                            list[0].literal().map(|literal| &literal.node)
+                        } else {
+                            None
+                        }
+                    });
+
+                    let (path, applicability) = match &literal {
+                        Some(LitKind::Str(path, ..)) => {
+                            (path.to_string(), Applicability::MachineApplicable)
+                        }
+                        _ => (String::from("<path>"), Applicability::HasPlaceholders),
+                    };
+
+                    err.span_suggestion_with_applicability(
+                        it.span,
+                        "provide a file path with `=`",
+                        format!("include = \"{}\"", path),
+                        applicability,
+                    );
+
+                    err.emit();
                 }
             }
 
@@ -1623,7 +1653,6 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 
     feature_tests! {
-        fn enable_quotes = quote,
         fn enable_asm = asm,
         fn enable_custom_test_frameworks = custom_test_frameworks,
         fn enable_global_asm = global_asm,
@@ -1631,7 +1660,6 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_concat_idents = concat_idents,
         fn enable_trace_macros = trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
-        fn enable_custom_derive = custom_derive,
         fn enable_format_args_nl = format_args_nl,
         fn macros_in_extern_enabled = macros_in_extern,
         fn proc_macro_hygiene = proc_macro_hygiene,

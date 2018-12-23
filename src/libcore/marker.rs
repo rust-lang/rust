@@ -274,10 +274,10 @@ pub trait Unsize<T: ?Sized> {
 /// In addition to the [implementors listed below][impls],
 /// the following types also implement `Copy`:
 ///
-/// * Function item types (i.e. the distinct types defined for each function)
-/// * Function pointer types (e.g. `fn() -> i32`)
-/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
-/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
+/// * Function item types (i.e., the distinct types defined for each function)
+/// * Function pointer types (e.g., `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g., `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
 ///   Note that variables captured by shared reference always implement `Copy`
@@ -596,7 +596,7 @@ mod impls {
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
 #[lang = "freeze"]
-unsafe auto trait Freeze {}
+pub(crate) unsafe auto trait Freeze {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
@@ -640,15 +640,15 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 #[unstable(feature = "pin", issue = "49150")]
 pub auto trait Unpin {}
 
-/// A type which does not implement `Unpin`.
+/// A marker type which does not implement `Unpin`.
 ///
-/// If a type contains a `Pinned`, it will not implement `Unpin` by default.
+/// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
 #[unstable(feature = "pin", issue = "49150")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Pinned;
+pub struct PhantomPinned;
 
 #[unstable(feature = "pin", issue = "49150")]
-impl !Unpin for Pinned {}
+impl !Unpin for PhantomPinned {}
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a T {}

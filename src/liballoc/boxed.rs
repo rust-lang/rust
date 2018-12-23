@@ -77,7 +77,9 @@ use core::iter::{Iterator, FromIterator, FusedIterator};
 use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::pin::Pin;
-use core::ops::{CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Generator, GeneratorState};
+use core::ops::{
+    CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
+};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
@@ -583,6 +585,9 @@ impl<T: ?Sized> DerefMut for Box<T> {
     }
 }
 
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for Box<T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for Box<I> {
     type Item = I::Item;
@@ -801,7 +806,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
  *        safe.)
  *      - It is in practice very useful to have Box<T> be unconditionally
  *        Unpin because of trait objects, for which the structural auto
- *        trait functionality does not apply (e.g. Box<dyn Foo> would
+ *        trait functionality does not apply (e.g., Box<dyn Foo> would
  *        otherwise not be Unpin).
  *
  *  Another type with the same semantics as Box but only a conditional

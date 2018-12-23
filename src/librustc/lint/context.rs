@@ -42,11 +42,12 @@ use util::nodemap::FxHashMap;
 use std::default::Default as StdDefault;
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::LocalInternedString};
+use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
 use errors::DiagnosticBuilder;
 use hir;
 use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
+use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 
 /// Information about the registered lints.
@@ -139,8 +140,8 @@ struct LintGroup {
 
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
-    /// Lint doesn't exist
-    NoLint,
+    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
+    NoLint(Option<Symbol>),
     /// The lint is either renamed or removed. This is the warning
     /// message, and an optional new name (`None` if removed).
     Warning(String, Option<String>),
@@ -359,8 +360,14 @@ impl LintStore {
             CheckLintNameResult::Warning(ref msg, _) => {
                 Some(sess.struct_warn(msg))
             },
-            CheckLintNameResult::NoLint => {
-                Some(struct_err!(sess, E0602, "unknown lint: `{}`", lint_name))
+            CheckLintNameResult::NoLint(suggestion) => {
+                let mut err = struct_err!(sess, E0602, "unknown lint: `{}`", lint_name);
+
+                if let Some(suggestion) = suggestion {
+                    err.help(&format!("did you mean: `{}`", suggestion));
+                }
+
+                Some(err)
             }
             CheckLintNameResult::Tool(result) => match result {
                 Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
@@ -464,7 +471,16 @@ impl LintStore {
         match self.by_name.get(&complete_name) {
             None => match self.lint_groups.get(&*complete_name) {
                 // Now we are sure, that this lint exists nowhere
-                None => CheckLintNameResult::NoLint,
+                None => {
+                    let symbols = self.by_name.keys()
+                        .map(|name| Symbol::intern(&name))
+                        .collect::<Vec<_>>();
+
+                    let suggestion =
+                        find_best_match_for_name(symbols.iter(), &lint_name.to_lowercase(), None);
+
+                    CheckLintNameResult::NoLint(suggestion)
+                }
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Reaching this would be weird, but let's cover this case anyway
                     if let Some(LintAlias { name, silent }) = depr {
@@ -484,7 +500,7 @@ impl LintStore {
             Some(&Id(ref id)) => {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
-            _ => CheckLintNameResult::NoLint,
+            _ => CheckLintNameResult::NoLint(None),
         }
     }
 }
@@ -774,7 +790,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         where F: FnOnce(&mut Self),
     {
         let old_param_env = self.param_env;
-        self.param_env = self.tcx.param_env(self.tcx.hir.local_def_id(id));
+        self.param_env = self.tcx.param_env(self.tcx.hir().local_def_id(id));
         f(self);
         self.param_env = old_param_env;
     }
@@ -797,13 +813,13 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// items in the context of the outer item, so enable
     /// deep-walking.
     fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'tcx> {
-        hir_visit::NestedVisitorMap::All(&self.tcx.hir)
+        hir_visit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body);
-        let body = self.tcx.hir.body(body);
+        let body = self.tcx.hir().body(body);
         self.visit_body(body);
         self.tables = old_tables;
     }
@@ -866,7 +882,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         // in order for `check_fn` to be able to use them.
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body_id);
-        let body = self.tcx.hir.body(body_id);
+        let body = self.tcx.hir().body(body_id);
         run_lints!(self, check_fn, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         run_lints!(self, check_fn_post, fk, decl, body, span, id);
@@ -1191,7 +1207,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
-    let krate = tcx.hir.krate();
+    let krate = tcx.hir().krate();
     let passes = tcx.sess.lint_store.borrow_mut().late_passes.take();
 
     let passes = {
@@ -1270,7 +1286,7 @@ pub fn check_ast_crate(
     //
     // Rustdoc runs everybody-loops before the early lints and removes
     // function bodies, so it's totally possible for linted
-    // node ids to not exist (e.g. macros defined within functions for the
+    // node ids to not exist (e.g., macros defined within functions for the
     // unused_macro lint) anymore. So we only run this check
     // when we're not in rustdoc mode. (see issue #47639)
     if !sess.opts.actually_rustdoc {

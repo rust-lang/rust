@@ -27,7 +27,7 @@
 //! should have some resemblance to multiplication (and share expected
 //! properties like associativity).
 //!
-//! Note that the `&&` and `||` operators short-circuit, i.e. they only
+//! Note that the `&&` and `||` operators short-circuit, i.e., they only
 //! evaluate their second operand if it contributes to the result. Since this
 //! behavior is not enforceable by traits, `&&` and `||` are not supported as
 //! overloadable operators.
@@ -177,6 +177,9 @@ pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssig
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+pub use self::deref::Receiver;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;

@@ -10,6 +10,9 @@
 
 use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
+// This target is for glibc Linux on ARMv7 without NEON or
+// thumb-mode. See the thumbv7neon variant for enabling both.
+
 pub fn target() -> TargetResult {
     let base = super::linux_base::opts();
     Ok(Target {

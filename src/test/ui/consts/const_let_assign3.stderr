@@ -1,9 +1,16 @@
+error[E0019]: constant function contains unimplemented expression type
+  --> $DIR/const_let_assign3.rs:10:9
+   |
+LL |         self.state = x;
+   |         ^^^^^^^^^^^^^^
+
 error[E0017]: references in constants may only refer to immutable values
-  --> $DIR/const_let_assign3.rs:16:5
+  --> $DIR/const_let_assign3.rs:17:5
    |
 LL |     s.foo(3); //~ ERROR references in constants may only refer to immutable values
    |     ^ constants require immutable values
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0017`.
+Some errors occurred: E0017, E0019.
+For more information about an error, try `rustc --explain E0017`.

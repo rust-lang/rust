@@ -85,7 +85,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'gcx>,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'cx, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     errors_buffer: &mut Vec<Diagnostic>,
@@ -176,7 +176,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
         if infcx.tcx.sess.opts.debugging_opts.nll_facts {
-            let def_path = infcx.tcx.hir.def_path(def_id);
+            let def_path = infcx.tcx.hir().def_path(def_id);
             let dir_path =
                 PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();

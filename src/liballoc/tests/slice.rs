@@ -18,7 +18,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
 use std::thread;
 
-use rand::{Rng, RngCore, thread_rng};
+use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
 use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
@@ -459,7 +459,7 @@ fn test_sort() {
     for i in 0..v.len() {
         v[i] = i as i32;
     }
-    v.sort_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
+    v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
     v.sort();
     for i in 0..v.len() {
         assert_eq!(v[i], i as i32);
@@ -484,7 +484,7 @@ fn test_sort_stability() {
             // create a vector like [(6, 1), (5, 1), (6, 2), ...],
             // where the first item of each tuple is random, but
             // the second item represents which occurrence of that
-            // number this element is, i.e. the second elements
+            // number this element is, i.e., the second elements
             // will occur in sorted order.
             let mut orig: Vec<_> = (0..len)
                 .map(|_| {
@@ -502,7 +502,7 @@ fn test_sort_stability() {
             // This comparison includes the count (the second item
             // of the tuple), so elements with equal first items
             // will need to be ordered with increasing
-            // counts... i.e. exactly asserting that this sort is
+            // counts... i.e., exactly asserting that this sort is
             // stable.
             assert!(v.windows(2).all(|w| w[0] <= w[1]));
 
@@ -1579,7 +1579,7 @@ macro_rules! test {
             }).join();
 
             // Check that the number of things dropped is exactly
-            // what we expect (i.e. the contents of `v`).
+            // what we expect (i.e., the contents of `v`).
             for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
                 let count = c.load(Relaxed);
                 assert!(count == 1,

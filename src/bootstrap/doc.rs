@@ -18,20 +18,19 @@
 //! `rustdoc`.
 
 use std::collections::HashSet;
-use std::fs::{self, File};
-use std::io::prelude::*;
+use std::fs;
 use std::io;
 use std::path::{PathBuf, Path};
 
-use Mode;
+use crate::Mode;
 use build_helper::up_to_date;
 
-use util::symlink_dir;
-use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
-use tool::{self, prepare_tool_cargo, Tool, SourceType};
-use compile;
-use cache::{INTERNER, Interned};
-use config::Config;
+use crate::util::symlink_dir;
+use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
+use crate::tool::{self, prepare_tool_cargo, Tool, SourceType};
+use crate::compile;
+use crate::cache::{INTERNER, Interned};
+use crate::config::Config;
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr;)+) => {
@@ -379,12 +378,11 @@ impl Step for Standalone {
         let version_info = out.join("version_info.html");
 
         if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
-            let mut info = String::new();
-            t!(t!(File::open(&version_input)).read_to_string(&mut info));
-            let info = info.replace("VERSION", &builder.rust_release())
-                           .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                           .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
-            t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
+            let info = t!(fs::read_to_string(&version_input))
+                .replace("VERSION", &builder.rust_release())
+                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+            t!(fs::write(&version_info, &info));
         }
 
         for file in t!(fs::read_dir(builder.src.join("src/doc"))) {
@@ -697,9 +695,6 @@ impl Step for Rustc {
             return;
         }
 
-        // Build libstd docs so that we generate relative links.
-        builder.ensure(Std { stage, target });
-
         // Build rustc.
         builder.ensure(compile::Rustc { compiler, target });
 
@@ -718,12 +713,16 @@ impl Step for Rustc {
 
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
-        for root_crate in &["rustc", "rustc_driver", "rustc_codegen_llvm"] {
+        for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
             let interned_root_crate = INTERNER.intern_str(root_crate);
             find_compiler_crates(builder, &interned_root_crate, &mut compiler_crates);
         }
 
         for krate in &compiler_crates {
+            // Create all crate output directories first to make sure rustdoc uses
+            // relative links.
+            // FIXME: Cargo should probably do this itself.
+            t!(fs::create_dir_all(out_dir.join(krate)));
             cargo.arg("-p").arg(krate);
         }
 
@@ -797,8 +796,8 @@ impl Step for Rustdoc {
             return;
         }
 
-        // Build libstd docs so that we generate relative links.
-        builder.ensure(Std { stage, target });
+        // Build rustc docs so that we generate relative links.
+        builder.ensure(Rustc { stage, target });
 
         // Build rustdoc.
         builder.ensure(tool::Rustdoc { host: compiler.host });
@@ -821,6 +820,10 @@ impl Step for Rustdoc {
             SourceType::InTree,
             &[]
         );
+
+        // Only include compiler crates, no dependencies of those, such as `libc`.
+        cargo.arg("--no-deps");
+        cargo.arg("-p").arg("rustdoc");
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");
         builder.run(&mut cargo);

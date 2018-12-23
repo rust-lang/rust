@@ -15,7 +15,7 @@ use super::Subtype;
 
 use traits::ObligationCause;
 use ty::{self, Ty, TyCtxt};
-use ty::relate::{Relate, RelateResult, TypeRelation};
+use ty::relate::{self, Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
@@ -35,6 +35,10 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
     for Glb<'combine, 'infcx, 'gcx, 'tcx>
 {
     fn tag(&self) -> &'static str { "Glb" }
+
+    fn trait_object_mode(&self) -> relate::TraitObjectMode {
+        self.fields.infcx.trait_object_mode()
+    }
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 

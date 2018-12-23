@@ -20,7 +20,7 @@ use rustc::session::early_error;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
                              get_cmd_lint_options};
-use rustc::session::search_paths::SearchPaths;
+use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
 use syntax::edition::Edition;
@@ -46,7 +46,7 @@ pub struct Options {
     /// How to format errors and warnings.
     pub error_format: ErrorOutputType,
     /// Library search paths to hand to the compiler.
-    pub libs: SearchPaths,
+    pub libs: Vec<SearchPath>,
     /// The list of external crates to link against.
     pub externs: Externs,
     /// List of `cfg` flags to hand to the compiler. Always includes `rustdoc`.
@@ -181,6 +181,9 @@ pub struct RenderOptions {
     /// A file to use as the index page at the root of the output directory. Overrides
     /// `enable_index_page` to be true if set.
     pub index_page: Option<PathBuf>,
+    /// An optional path to use as the location of static files. If not set, uses combinations of
+    /// `../` to reach the documentation root.
+    pub static_root_path: Option<String>,
 
     // Options specific to reading standalone Markdown files
 
@@ -295,10 +298,9 @@ impl Options {
         }
         let input = PathBuf::from(&matches.free[0]);
 
-        let mut libs = SearchPaths::new();
-        for s in &matches.opt_strs("L") {
-            libs.add_path(s, error_format);
-        }
+        let libs = matches.opt_strs("L").iter()
+            .map(|s| SearchPath::from_cli_opt(s, error_format))
+            .collect();
         let externs = match parse_externs(&matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -434,6 +436,7 @@ impl Options {
         let markdown_playground_url = matches.opt_str("markdown-playground-url");
         let crate_version = matches.opt_str("crate-version");
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
+        let static_root_path = matches.opt_str("static-root-path");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -472,6 +475,7 @@ impl Options {
                 enable_minification,
                 enable_index_page,
                 index_page,
+                static_root_path,
                 markdown_no_toc,
                 markdown_css,
                 markdown_playground_url,

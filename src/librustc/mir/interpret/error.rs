@@ -183,50 +183,14 @@ pub struct EvalError<'tcx> {
 impl<'tcx> EvalError<'tcx> {
     pub fn print_backtrace(&mut self) {
         if let Some(ref mut backtrace) = self.backtrace {
-            eprintln!("{}", print_backtrace(&mut *backtrace));
+            print_backtrace(&mut *backtrace);
         }
     }
 }
 
-fn print_backtrace(backtrace: &mut Backtrace) -> String {
-    use std::fmt::Write;
-
+fn print_backtrace(backtrace: &mut Backtrace) {
     backtrace.resolve();
-
-    let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
-    write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
-    'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
-        if frame.symbols().is_empty() {
-            write!(trace_text, "  {}: no symbols\n", i).unwrap();
-        }
-        let mut first = true;
-        for symbol in frame.symbols() {
-            if first {
-                write!(trace_text, "  {}: ", i).unwrap();
-                first = false;
-            } else {
-                let len = i.to_string().len();
-                write!(trace_text, "  {}  ", " ".repeat(len)).unwrap();
-            }
-            if let Some(name) = symbol.name() {
-                write!(trace_text, "{}\n", name).unwrap();
-            } else {
-                write!(trace_text, "<unknown>\n").unwrap();
-            }
-            write!(trace_text, "           at ").unwrap();
-            if let Some(file_path) = symbol.filename() {
-                write!(trace_text, "{}", file_path.display()).unwrap();
-            } else {
-                write!(trace_text, "<unknown_file>").unwrap();
-            }
-            if let Some(line) = symbol.lineno() {
-                write!(trace_text, ":{}\n", line).unwrap();
-            } else {
-                write!(trace_text, "\n").unwrap();
-            }
-        }
-    }
-    trace_text
+    eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
 impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
@@ -238,7 +202,7 @@ impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
 
                 if val == "immediate" {
                     // Print it now
-                    eprintln!("{}", print_backtrace(&mut backtrace));
+                    print_backtrace(&mut backtrace);
                     None
                 } else {
                     Some(Box::new(backtrace))
@@ -378,7 +342,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "tried to read from foreign (extern) static",
             InvalidPointerMath =>
                 "attempted to do invalid arithmetic on pointers that would leak base addresses, \
-                e.g. comparing pointers into different allocations",
+                e.g., comparing pointers into different allocations",
             ReadUndefBytes(_) =>
                 "attempted to read undefined bytes",
             DeadLocal =>

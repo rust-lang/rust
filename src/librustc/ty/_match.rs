@@ -29,17 +29,24 @@ use ty::relate::{self, Relate, TypeRelation, RelateResult};
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
 pub struct Match<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    trait_object_mode: relate::TraitObjectMode
 }
 
 impl<'a, 'gcx, 'tcx> Match<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Match<'a, 'gcx, 'tcx> {
-        Match { tcx }
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+               trait_object_mode: relate::TraitObjectMode)
+               -> Match<'a, 'gcx, 'tcx> {
+        Match { tcx, trait_object_mode }
     }
 }
 
 impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Match<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Match" }
+    fn trait_object_mode(&self) -> relate::TraitObjectMode {
+        self.trait_object_mode
+    }
+
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.tcx }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 

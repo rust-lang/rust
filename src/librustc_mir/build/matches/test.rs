@@ -18,6 +18,7 @@
 use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
+use hair::pattern::compare_const_vals;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::{self, Ty};
@@ -71,16 +72,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatternKind::Range { lo, hi, ty, end } => {
-                assert!(ty == match_pair.pattern.ty);
+            PatternKind::Range(range) => {
+                assert!(range.ty == match_pair.pattern.ty);
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Range {
-                        lo,
-                        hi,
-                        ty,
-                        end,
-                    },
+                    kind: TestKind::Range(range),
                 }
             }
 
@@ -136,7 +132,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Variant { .. } => {
                 panic!("you should have called add_variants_to_switch instead!");
             }
-            PatternKind::Range { .. } |
+            PatternKind::Range(range) => {
+                // Check that none of the switch values are in the range.
+                self.values_not_contained_in_range(range, indices)
+                    .unwrap_or(false)
+            }
             PatternKind::Slice { .. } |
             PatternKind::Array { .. } |
             PatternKind::Wild |
@@ -200,20 +200,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 for (idx, discr) in adt_def.discriminants(tcx) {
                     target_blocks.push(if variants.contains(idx) {
                         values.push(discr.val);
-                        targets.push(self.cfg.start_new_block());
-                        *targets.last().unwrap()
+                        let block = self.cfg.start_new_block();
+                        targets.push(block);
+                        block
                     } else {
-                        if otherwise_block.is_none() {
-                            otherwise_block = Some(self.cfg.start_new_block());
-                        }
-                        otherwise_block.unwrap()
+                        *otherwise_block
+                            .get_or_insert_with(|| self.cfg.start_new_block())
                     });
                 }
-                if let Some(otherwise_block) = otherwise_block {
-                    targets.push(otherwise_block);
-                } else {
-                    targets.push(self.unreachable_block());
-                }
+                targets.push(
+                    otherwise_block
+                        .unwrap_or_else(|| self.unreachable_block()),
+                );
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
@@ -378,7 +376,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            TestKind::Range { ref lo, ref hi, ty, ref end } => {
+            TestKind::Range(PatternRange { ref lo, ref hi, ty, ref end }) => {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
                 let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
@@ -490,8 +488,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // away.)
         let tested_match_pair = candidate.match_pairs.iter()
                                                      .enumerate()
-                                                     .filter(|&(_, mp)| mp.place == *test_place)
-                                                     .next();
+                                                     .find(|&(_, mp)| mp.place == *test_place);
         let (match_pair_index, match_pair) = match tested_match_pair {
             Some(pair) => pair,
             None => {
@@ -532,6 +529,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 resulting_candidates[index].push(new_candidate);
                 true
             }
+
+            (&TestKind::SwitchInt { switch_ty: _, ref options, ref indices },
+             &PatternKind::Range(range)) => {
+                let not_contained = self
+                    .values_not_contained_in_range(range, indices)
+                    .unwrap_or(false);
+
+                if not_contained {
+                    // No switch values are contained in the pattern range,
+                    // so the pattern can be matched only if this test fails.
+                    let otherwise = options.len();
+                    resulting_candidates[otherwise].push(candidate.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+
             (&TestKind::SwitchInt { .. }, _) => false,
 
 
@@ -610,8 +625,63 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
+            (&TestKind::Range(test),
+             &PatternKind::Range(pat)) => {
+                if test == pat {
+                    resulting_candidates[0]
+                        .push(self.candidate_without_match_pair(
+                            match_pair_index,
+                            candidate,
+                        ));
+                    return true;
+                }
+
+                let no_overlap = (|| {
+                    use std::cmp::Ordering::*;
+                    use rustc::hir::RangeEnd::*;
+
+                    let param_env = ty::ParamEnv::empty().and(test.ty);
+                    let tcx = self.hir.tcx();
+
+                    let lo = compare_const_vals(tcx, test.lo, pat.hi, param_env)?;
+                    let hi = compare_const_vals(tcx, test.hi, pat.lo, param_env)?;
+
+                    match (test.end, pat.end, lo, hi) {
+                        // pat < test
+                        (_, _, Greater, _) |
+                        (_, Excluded, Equal, _) |
+                        // pat > test
+                        (_, _, _, Less) |
+                        (Excluded, _, _, Equal) => Some(true),
+                        _ => Some(false),
+                    }
+                })();
+
+                if no_overlap == Some(true) {
+                    // Testing range does not overlap with pattern range,
+                    // so the pattern can be matched only if this test fails.
+                    resulting_candidates[1].push(candidate.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+
+            (&TestKind::Range(range), &PatternKind::Constant { ref value }) => {
+                if self.const_range_contains(range, value) == Some(false) {
+                    // `value` is not contained in the testing range,
+                    // so `value` can be matched only if this test fails.
+                    resulting_candidates[1].push(candidate.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+
+            (&TestKind::Range { .. }, _) => false,
+
+
             (&TestKind::Eq { .. }, _) |
-            (&TestKind::Range { .. }, _) |
             (&TestKind::Len { .. }, _) => {
                 // These are all binary tests.
                 //
@@ -721,6 +791,40 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         span_bug!(match_pair.pattern.span,
                   "simplifyable pattern found: {:?}",
                   match_pair.pattern)
+    }
+
+    fn const_range_contains(
+        &self,
+        range: PatternRange<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
+    ) -> Option<bool> {
+        use std::cmp::Ordering::*;
+
+        let param_env = ty::ParamEnv::empty().and(range.ty);
+        let tcx = self.hir.tcx();
+
+        let a = compare_const_vals(tcx, range.lo, value, param_env)?;
+        let b = compare_const_vals(tcx, value, range.hi, param_env)?;
+
+        match (b, range.end) {
+            (Less, _) |
+            (Equal, RangeEnd::Included) if a != Greater => Some(true),
+            _ => Some(false),
+        }
+    }
+
+    fn values_not_contained_in_range(
+        &self,
+        range: PatternRange<'tcx>,
+        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+    ) -> Option<bool> {
+        for val in indices.keys() {
+            if self.const_range_contains(range, val)? {
+                return Some(false);
+            }
+        }
+
+        Some(true)
     }
 }
 

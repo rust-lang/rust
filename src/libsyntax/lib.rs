@@ -134,7 +134,7 @@ pub mod diagnostics {
     pub mod metadata;
 }
 
-// NB: This module needs to be declared first so diagnostics are
+// N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
 pub mod diagnostic_list;
 
@@ -145,12 +145,6 @@ pub mod util {
     #[cfg(test)]
     pub mod parser_testing;
     pub mod move_map;
-
-    mod rc_slice;
-    pub use self::rc_slice::RcSlice;
-
-    mod rc_vec;
-    pub use self::rc_vec::RcVec;
 }
 
 pub mod json;
@@ -173,7 +167,6 @@ pub mod parse;
 pub mod ptr;
 pub mod show_span;
 pub mod std_inject;
-pub mod str;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod test;

@@ -60,10 +60,12 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
+#![feature(thread_local)]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(vec_remove_item)]
 #![feature(step_trait)]
+#![feature(stmt_expr_attributes)]
 #![feature(integer_atomics)]
 #![feature(test)]
 #![feature(in_band_lifetimes)]
@@ -119,7 +121,7 @@ extern crate test;
 #[macro_use]
 mod macros;
 
-// NB: This module needs to be declared first so diagnostics are
+// N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
 pub mod diagnostics;
 

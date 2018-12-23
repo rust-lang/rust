@@ -32,7 +32,6 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn stats(&self) -> &RefCell<Stats>;
     fn consume_stats(self) -> RefCell<Stats>;
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
-    fn closure_env_needs_indirect_debuginfo(&self) -> bool;
     fn used_statics(&self) -> &RefCell<Vec<Self::Value>>;
     fn set_frame_pointer_elimination(&self, llfn: Self::Value);
     fn apply_target_cpu_attr(&self, llfn: Self::Value);

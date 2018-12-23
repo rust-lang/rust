@@ -328,7 +328,7 @@ impl<'a> StripUnconfigured<'a> {
         // Anything else is always required, and thus has to error out
         // in case of a cfg attr.
         //
-        // NB: This is intentionally not part of the fold_expr() function
+        // N.B., this is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
             let msg = "removing an expression is not supported in this position";
@@ -421,7 +421,7 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        // Don't configure interpolated AST (c.f. #34171).
+        // Don't configure interpolated AST (cf. issue #34171).
         // Interpolated AST will get configured once the surrounding tokens are parsed.
         mac
     }

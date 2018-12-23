@@ -56,14 +56,17 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
+
+    /// See field with the same name on `Mir`
+    control_flow_destroyed: Vec<(Span, String)>,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                src_id: ast::NodeId) -> Cx<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
-        let src_def_id = tcx.hir.local_def_id(src_id);
-        let body_owner_kind = tcx.hir.body_owner_kind(src_id);
+        let src_def_id = tcx.hir().local_def_id(src_id);
+        let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
@@ -71,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
-        let attrs = tcx.hir.attrs(src_id);
+        let attrs = tcx.hir().attrs(src_id);
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
@@ -96,9 +99,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             constness,
             body_owner_kind,
             check_overflow,
+            control_flow_destroyed: Vec::new(),
         }
     }
 
+    pub fn control_flow_destroyed(self) -> Vec<(Span, String)> {
+        self.control_flow_destroyed
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -157,7 +164,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
         let tcx = self.tcx.global_tcx();
-        let p = match tcx.hir.get(p.id) {
+        let p = match tcx.hir().get(p.id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };
@@ -202,7 +209,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     fn lint_level_of(&self, node_id: ast::NodeId) -> LintLevel {
-        let hir_id = self.tcx.hir.definitions().node_to_hir_id(node_id);
+        let hir_id = self.tcx.hir().definitions().node_to_hir_id(node_id);
         let has_lint_level = self.tcx.dep_graph.with_ignore(|| {
             self.tcx.lint_levels(LOCAL_CRATE).lint_level_set(hir_id).is_some()
         });
@@ -253,11 +260,11 @@ fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
     tcx.dep_graph.with_ignore(|| {
         let sets = tcx.lint_levels(LOCAL_CRATE);
         loop {
-            let hir_id = tcx.hir.definitions().node_to_hir_id(id);
+            let hir_id = tcx.hir().definitions().node_to_hir_id(id);
             if sets.lint_level_set(hir_id).is_some() {
                 return id
             }
-            let next = tcx.hir.get_parent_node(id);
+            let next = tcx.hir().get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }

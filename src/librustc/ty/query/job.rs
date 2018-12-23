@@ -18,6 +18,11 @@ use syntax_pos::Span;
 use ty::tls;
 use ty::query::Query;
 use ty::query::plumbing::CycleError;
+#[cfg(not(parallel_queries))]
+use ty::query::{
+    plumbing::TryGetJob,
+    config::QueryDescription,
+};
 use ty::context::TyCtxt;
 use errors::Diagnostic;
 use std::process;
@@ -83,33 +88,44 @@ impl<'tcx> QueryJob<'tcx> {
     ///
     /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
     /// query that means that there is a query cycle, thus this always running a cycle error.
+    #[cfg(not(parallel_queries))]
+    #[inline(never)]
+    #[cold]
+    pub(super) fn cycle_error<'lcx, 'a, D: QueryDescription<'tcx>>(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        span: Span,
+    ) -> TryGetJob<'a, 'tcx, D> {
+        TryGetJob::JobCompleted(Err(Box::new(self.find_cycle_in_stack(tcx, span))))
+    }
+
+    /// Awaits for the query job to complete.
+    ///
+    /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
+    /// query that means that there is a query cycle, thus this always running a cycle error.
+    #[cfg(parallel_queries)]
     pub(super) fn await<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
-    ) -> Result<(), CycleError<'tcx>> {
-        #[cfg(not(parallel_queries))]
-        {
-            self.find_cycle_in_stack(tcx, span)
-        }
-
-        #[cfg(parallel_queries)]
-        {
-            tls::with_related_context(tcx, move |icx| {
-                let mut waiter = Lrc::new(QueryWaiter {
-                    query: icx.query.clone(),
-                    span,
-                    cycle: Lock::new(None),
-                    condvar: Condvar::new(),
-                });
-                self.latch.await(&waiter);
-
-                match Lrc::get_mut(&mut waiter).unwrap().cycle.get_mut().take() {
-                    None => Ok(()),
-                    Some(cycle) => Err(cycle)
-                }
-            })
-        }
+    ) -> Result<(), Box<CycleError<'tcx>>> {
+        tls::with_related_context(tcx, move |icx| {
+            let mut waiter = Lrc::new(QueryWaiter {
+                query: icx.query.clone(),
+                span,
+                cycle: Lock::new(None),
+                condvar: Condvar::new(),
+            });
+            self.latch.await(&waiter);
+            // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
+            // although another thread may still have a Lrc reference so we cannot
+            // use Lrc::get_mut
+            let mut cycle = waiter.cycle.lock();
+            match cycle.take() {
+                None => Ok(()),
+                Some(cycle) => Err(Box::new(cycle))
+            }
+        })
     }
 
     #[cfg(not(parallel_queries))]
@@ -117,7 +133,7 @@ impl<'tcx> QueryJob<'tcx> {
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
-    ) -> Result<(), CycleError<'tcx>> {
+    ) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents
         let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
         let mut cycle = Vec::new();
@@ -137,7 +153,7 @@ impl<'tcx> QueryJob<'tcx> {
                 let usage = job.parent.as_ref().map(|parent| {
                     (job.info.span, parent.info.query.clone())
                 });
-                return Err(CycleError { usage, cycle });
+                return CycleError { usage, cycle };
             }
 
             current_job = job.parent.clone();
@@ -326,19 +342,17 @@ fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
     visited: &mut FxHashSet<*const QueryJob<'tcx>>
 ) -> bool {
-    // This query is connected to the root (it has no query parent), return true
-    if query.parent.is_none() {
-        return true;
-    }
-
     // We already visited this or we're deliberately ignoring it
     if visited.contains(&query.as_ptr()) {
         return false;
     }
 
-    visited.insert(query.as_ptr());
+    // This query is connected to the root (it has no query parent), return true
+    if query.parent.is_none() {
+        return true;
+    }
 
-    let mut connected = false;
+    visited.insert(query.as_ptr());
 
     visit_waiters(query, |_, successor| {
         if connected_to_root(successor, visited) {
@@ -347,6 +361,28 @@ fn connected_to_root<'tcx>(
             None
         }
     }).is_some()
+}
+
+// Deterministically pick an query from a list
+#[cfg(parallel_queries)]
+fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
+    tcx: TyCtxt<'_, 'tcx, '_>,
+    queries: &'a [T],
+    f: F
+) -> &'a T {
+    // Deterministically pick an entry point
+    // FIXME: Sort this instead
+    let mut hcx = tcx.create_stable_hashing_context();
+    queries.iter().min_by_key(|v| {
+        let (span, query) = f(v);
+        let mut stable_hasher = StableHasher::<u64>::new();
+        query.info.query.hash_stable(&mut hcx, &mut stable_hasher);
+        // Prefer entry points which have valid spans for nicer error messages
+        // We add an integer to the tuple ensuring that entry points
+        // with valid spans are picked first
+        let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
+        (span_cmp, stable_hasher.finish())
+    }).unwrap()
 }
 
 /// Looks for query cycles starting from the last query in `jobs`.
@@ -388,41 +424,52 @@ fn remove_cycle<'tcx>(
 
         // Find the queries in the cycle which are
         // connected to queries outside the cycle
-        let entry_points = stack.iter().filter_map(|query| {
-            // Mark all the other queries in the cycle as already visited
-            let mut visited = FxHashSet::from_iter(stack.iter().filter_map(|q| {
-                if q.1.as_ptr() != query.1.as_ptr() {
-                    Some(q.1.as_ptr())
-                } else {
-                    None
-                }
-            }));
-
-            if connected_to_root(query.1.clone(), &mut visited) {
-                Some(query.1.clone())
+        let entry_points: Vec<_> = stack.iter().filter_map(|(span, query)| {
+            if query.parent.is_none() {
+                // This query is connected to the root (it has no query parent)
+                Some((*span, query.clone(), None))
             } else {
-                None
+                let mut waiters = Vec::new();
+                // Find all the direct waiters who lead to the root
+                visit_waiters(query.clone(), |span, waiter| {
+                    // Mark all the other queries in the cycle as already visited
+                    let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1.as_ptr()));
+
+                    if connected_to_root(waiter.clone(), &mut visited) {
+                        waiters.push((span, waiter));
+                    }
+
+                    None
+                });
+                if waiters.is_empty() {
+                    None
+                } else {
+                    // Deterministically pick one of the waiters to show to the user
+                    let waiter = pick_query(tcx, &waiters, |s| s.clone()).clone();
+                    Some((*span, query.clone(), Some(waiter)))
+                }
             }
-        });
+        }).collect();
+
+        let entry_points: Vec<(Span, Lrc<QueryJob<'tcx>>, Option<(Span, Lrc<QueryJob<'tcx>>)>)>
+         = entry_points;
 
         // Deterministically pick an entry point
-        // FIXME: Sort this instead
-        let mut hcx = tcx.create_stable_hashing_context();
-        let entry_point = entry_points.min_by_key(|q| {
-            let mut stable_hasher = StableHasher::<u64>::new();
-            q.info.query.hash_stable(&mut hcx, &mut stable_hasher);
-            stable_hasher.finish()
-        }).unwrap().as_ptr();
+        let (_, entry_point, usage) = pick_query(tcx, &entry_points, |e| (e.0, e.1.clone()));
 
         // Shift the stack so that our entry point is first
-        let entry_point_pos = stack.iter().position(|(_, query)| query.as_ptr() == entry_point);
+        let entry_point_pos = stack.iter().position(|(_, query)| {
+            query.as_ptr() == entry_point.as_ptr()
+        });
         if let Some(pos) = entry_point_pos {
-            stack.rotate_right(pos);
+            stack.rotate_left(pos);
         }
+
+        let usage = usage.as_ref().map(|(span, query)| (*span, query.info.query.clone()));
 
         // Create the cycle error
         let mut error = CycleError {
-            usage: None,
+            usage,
             cycle: stack.iter().map(|&(s, ref q)| QueryInfo {
                 span: s,
                 query: q.info.query.clone(),

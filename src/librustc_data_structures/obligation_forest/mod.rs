@@ -531,7 +531,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// indices. Cannot be used during a transaction.
     ///
     /// Beforehand, all nodes must be marked as `Done` and no cycles
-    /// on these nodes may be present. This is done by e.g. `process_cycles`.
+    /// on these nodes may be present. This is done by e.g., `process_cycles`.
     #[inline(never)]
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let nodes_len = self.nodes.len();

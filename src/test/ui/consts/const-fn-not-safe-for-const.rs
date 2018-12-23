@@ -37,15 +37,13 @@ const fn get_Y_addr() -> &'static u32 {
 }
 
 const fn get() -> u32 {
-    let x = 22;
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR statements in constant functions are unstable
-    let y = 44;
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR statements in constant functions are unstable
+    let x = 22; //~ ERROR let bindings in constant functions are unstable
+//~^ ERROR statements in constant functions
+    let y = 44; //~ ERROR let bindings in constant functions are unstable
+//~^ ERROR statements in constant functions
     x + y
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR let bindings in constant functions are unstable
+//~^ ERROR let bindings in constant functions are unstable
+//~| ERROR let bindings in constant functions are unstable
 }
 
 fn main() {}

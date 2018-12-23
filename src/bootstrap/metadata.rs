@@ -16,8 +16,8 @@ use std::collections::HashSet;
 use build_helper::output;
 use serde_json;
 
-use {Build, Crate};
-use cache::INTERNER;
+use crate::{Build, Crate};
+use crate::cache::INTERNER;
 
 #[derive(Deserialize)]
 struct Output {

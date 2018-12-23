@@ -307,7 +307,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             Lrc::new(link_args::collect(tcx))
         },
 
-        // Returns a map from a sufficiently visible external item (i.e. an
+        // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the
         // external item to be parents).

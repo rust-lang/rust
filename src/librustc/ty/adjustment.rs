@@ -83,7 +83,7 @@ pub enum Adjust<'tcx> {
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow<'tcx>),
 
-    /// Unsize a pointer/reference value, e.g. `&[T; n]` to
+    /// Unsize a pointer/reference value, e.g., `&[T; n]` to
     /// `&[T]`. Note that the source could be a thin or fat pointer.
     /// This will do things like convert thin pointers to fat
     /// pointers, or convert structs containing thin pointers to

@@ -302,7 +302,6 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                           "SetDiscriminant should not exist during borrowck");
             }
             StatementKind::Retag { .. } |
-            StatementKind::EscapeToRaw { .. } |
             StatementKind::AscribeUserType(..) |
             StatementKind::Nop => {}
         }

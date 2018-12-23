@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![feature(const_fn, const_let)]
 
 const X : usize = 2;
 
 const fn f(x: usize) -> usize {
     let mut sum = 0;
-    //~^ let bindings in constant functions are unstable
-    //~| statements in constant functions are unstable
     for i in 0..x {
         //~^ ERROR E0015
         //~| ERROR E0019

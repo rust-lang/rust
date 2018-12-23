@@ -30,7 +30,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ///    { x.push(y); }
     /// ```
     /// The function returns the nested type corresponding to the anonymous region
-    /// for e.g. `&u8` and Vec<`&u8`.
+    /// for e.g., `&u8` and Vec<`&u8`.
     pub(super) fn find_anon_type(
         &self,
         region: Region<'tcx>,
@@ -38,8 +38,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ) -> Option<(&hir::Ty, &hir::FnDecl)> {
         if let Some(anon_reg) = self.tcx.is_suitable_region(region) {
             let def_id = anon_reg.def_id;
-            if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let fndecl = match self.tcx.hir.get(node_id) {
+            if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
+                let fndecl = match self.tcx.hir().get(node_id) {
                     Node::Item(&hir::Item {
                         node: hir::ItemKind::Fn(ref fndecl, ..),
                         ..
@@ -97,14 +97,14 @@ struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // associated with the anonymous region we are looking for.
     bound_region: ty::BoundRegion,
     // The type where the anonymous lifetime appears
-    // for e.g. Vec<`&u8`> and <`&u8`>
+    // for e.g., Vec<`&u8`> and <`&u8`>
     found_type: Option<&'gcx hir::Ty>,
     current_index: ty::DebruijnIndex,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
             hir::TyKind::Rptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
-                let hir_id = self.tcx.hir.node_to_hir_id(lifetime.id);
+                let hir_id = self.tcx.hir().node_to_hir_id(lifetime.id);
                 match (self.tcx.named_region(hir_id), self.bound_region) {
                     // Find the index of the anonymous region that was part of the
                     // error. We will then search the function parameters for a bound
@@ -150,7 +150,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     // region at the right depth with the same index
                     (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
                         debug!(
-                            "EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
+                            "EarlyBound self.infcx.tcx.hir().local_def_id(id)={:?} \
                              def_id={:?}",
                             id,
                             def_id
@@ -172,7 +172,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                             "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                             debruijn_index
                         );
-                        debug!("self.infcx.tcx.hir.local_def_id(id)={:?}", id);
+                        debug!("self.infcx.tcx.hir().local_def_id(id)={:?}", id);
                         debug!("def_id={:?}", def_id);
                         if debruijn_index == self.current_index && id == def_id {
                             self.found_type = Some(arg);
@@ -227,11 +227,11 @@ struct TyPathVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        let hir_id = self.tcx.hir.node_to_hir_id(lifetime.id);
+        let hir_id = self.tcx.hir().node_to_hir_id(lifetime.id);
         match (self.tcx.named_region(hir_id), self.bound_region) {
             // the lifetime of the TyPath!
             (Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)), ty::BrAnon(br_index)) => {
@@ -243,7 +243,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
 
             (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
                 debug!(
-                    "EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
+                    "EarlyBound self.infcx.tcx.hir().local_def_id(id)={:?} \
                      def_id={:?}",
                     id,
                     def_id

@@ -22,33 +22,35 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use build::{BlockAnd, BlockAndExtension, Builder};
+use build::Builder;
 use build::matches::{Ascription, Binding, MatchPair, Candidate};
 use hair::*;
-use rustc::mir::*;
+use rustc::ty;
+use rustc::ty::layout::{Integer, IntegerExt, Size};
+use syntax::attr::{SignedInt, UnsignedInt};
+use rustc::hir::RangeEnd;
 
 use std::mem;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
-                                    block: BasicBlock,
-                                    candidate: &mut Candidate<'pat, 'tcx>)
-                                    -> BlockAnd<()> {
+                                    candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
-            let mut progress = match_pairs.len(); // count how many were simplified
+            let mut changed = false;
             for match_pair in match_pairs {
                 match self.simplify_match_pair(match_pair, candidate) {
-                    Ok(()) => {}
+                    Ok(()) => {
+                        changed = true;
+                    }
                     Err(match_pair) => {
                         candidate.match_pairs.push(match_pair);
-                        progress -= 1; // this one was not simplified
                     }
                 }
             }
-            if progress == 0 {
-                return block.unit(); // if we were not able to simplify any, done.
+            if !changed {
+                return; // if we were not able to simplify any, done.
             }
         }
     }
@@ -62,6 +64,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                  match_pair: MatchPair<'pat, 'tcx>,
                                  candidate: &mut Candidate<'pat, 'tcx>)
                                  -> Result<(), MatchPair<'pat, 'tcx>> {
+        let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
             PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
                 candidate.ascriptions.push(Ascription {
@@ -104,7 +107,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Range { .. } => {
+            PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
+                let range = match ty.sty {
+                    ty::Char => {
+                        Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32)))
+                    }
+                    ty::Int(ity) => {
+                        // FIXME(49937): refactor these bit manipulations into interpret.
+                        let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                        let min = 1u128 << (size.bits() - 1);
+                        let max = (1u128 << (size.bits() - 1)) - 1;
+                        Some((min, max, size))
+                    }
+                    ty::Uint(uty) => {
+                        // FIXME(49937): refactor these bit manipulations into interpret.
+                        let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
+                        let max = !0u128 >> (128 - size.bits());
+                        Some((0, max, size))
+                    }
+                    _ => None,
+                };
+                if let Some((min, max, sz)) = range {
+                    if let (Some(lo), Some(hi)) = (lo.val.try_to_bits(sz), hi.val.try_to_bits(sz)) {
+                        if lo <= min && (hi > max || hi == max && end == RangeEnd::Included) {
+                            // Irrefutable pattern match.
+                            return Ok(());
+                        }
+                    }
+                }
                 Err(match_pair)
             }
 

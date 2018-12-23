@@ -36,7 +36,7 @@ pub enum ObjectSafetyViolation {
     SizedSelf,
 
     /// Supertrait reference references `Self` an in illegal location
-    /// (e.g. `trait Foo : Bar<Self>`)
+    /// (e.g., `trait Foo : Bar<Self>`)
     SupertraitSelf,
 
     /// Method has something illegal
@@ -81,7 +81,7 @@ pub enum MethodViolationCode {
     /// e.g., `fn foo(&self, x: Self)` or `fn foo(&self) -> Self`
     ReferencesSelf,
 
-    /// e.g. `fn foo(&self) where Self: Clone`
+    /// e.g., `fn foo(&self) where Self: Clone`
     WhereClauseReferencesSelf(Span),
 
     /// e.g., `fn foo<A>()`
@@ -190,7 +190,26 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                         // In the case of a trait predicate, we can skip the "self" type.
                         data.skip_binder().input_types().skip(1).any(|t| t.has_self_ty())
                     }
-                    ty::Predicate::Projection(..) |
+                    ty::Predicate::Projection(ref data) => {
+                        // And similarly for projections. This should be redundant with
+                        // the previous check because any projection should have a
+                        // matching `Trait` predicate with the same inputs, but we do
+                        // the check to be safe.
+                        //
+                        // Note that we *do* allow projection *outputs* to contain
+                        // `self` (i.e., `trait Foo: Bar<Output=Self::Result> { type Result; }`),
+                        // we just require the user to specify *both* outputs
+                        // in the object type (i.e., `dyn Foo<Output=(), Result=()>`).
+                        //
+                        // This is ALT2 in issue #56288, see that for discussion of the
+                        // possible alternatives.
+                        data.skip_binder()
+                            .projection_ty
+                            .trait_ref(self)
+                            .input_types()
+                            .skip(1)
+                            .any(|t| t.has_self_ty())
+                    }
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::TypeOutlives(..) |
@@ -343,7 +362,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                     }
                 };
 
-                // e.g. Rc<()>
+                // e.g., Rc<()>
                 let unit_receiver_ty = self.receiver_for_self_ty(
                     receiver_ty, self.mk_unit(), method.def_id
                 );
@@ -357,7 +376,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                     trait_def_id, self.mk_region(ty::ReStatic)
                 );
 
-                // e.g. Rc<dyn Trait>
+                // e.g., Rc<dyn Trait>
                 let trait_object_receiver = self.receiver_for_self_ty(
                     receiver_ty, trait_object_ty, method.def_id
                 );
@@ -376,7 +395,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 
     /// performs a type substitution to produce the version of receiver_ty when `Self = self_ty`
-    /// e.g. for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`
+    /// e.g., for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`
     fn receiver_for_self_ty(
         self, receiver_ty: Ty<'tcx>, self_ty: Ty<'tcx>, method_def_id: DefId
     ) -> Ty<'tcx> {
@@ -451,7 +470,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     ///
     /// The only case where the receiver is not dispatchable, but is still a valid receiver
     /// type (just not object-safe), is when there is more than one level of pointer indirection.
-    /// e.g. `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
+    /// e.g., `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
     /// is no way, or at least no inexpensive way, to coerce the receiver from the version where
     /// `Self = dyn Trait` to the version where `Self = T`, where `T` is the unknown erased type
     /// contained by the trait object, because the object that needs to be coerced is behind

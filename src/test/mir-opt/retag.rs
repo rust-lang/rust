@@ -87,8 +87,8 @@ fn main() {
 //         ...
 //         _14 = &mut (*_10);
 //         Retag(_14);
-//         EscapeToRaw(move _14);
 //         _13 = move _14 as *mut i32 (Misc);
+//         Retag([raw] _13);
 //         ...
 //         _17 = move _18(move _19) -> bb2;
 //     }

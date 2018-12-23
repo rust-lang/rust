@@ -80,7 +80,7 @@ pub use core::panic::{PanicInfo, Location};
 /// Simply put, a type `T` implements `UnwindSafe` if it cannot easily allow
 /// witnessing a broken invariant through the use of `catch_unwind` (catching a
 /// panic). This trait is an auto trait, so it is automatically implemented for
-/// many types, and it is also structurally composed (e.g. a struct is unwind
+/// many types, and it is also structurally composed (e.g., a struct is unwind
 /// safe if all of its components are unwind safe).
 ///
 /// Note, however, that this is not an unsafe trait, so there is not a succinct
@@ -264,7 +264,7 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
 #[cfg(target_has_atomic = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI64 {}
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI128 {}
 
@@ -283,7 +283,7 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
 #[cfg(target_has_atomic = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU64 {}
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU128 {}
 

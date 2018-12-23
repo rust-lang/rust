@@ -1,5 +1,5 @@
 warning: unused import: `m::Tr1 as _`
-  --> $DIR/basic.rs:31:9
+  --> $DIR/basic.rs:36:9
    |
 LL |     use m::Tr1 as _; //~ WARN unused import
    |         ^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL | #![warn(unused_imports, unused_extern_crates)]
    |         ^^^^^^^^^^^^^^
 
 warning: unused import: `S as _`
-  --> $DIR/basic.rs:32:9
+  --> $DIR/basic.rs:37:9
    |
 LL |     use S as _; //~ WARN unused import
    |         ^^^^^^

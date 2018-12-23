@@ -443,7 +443,7 @@ impl FromInner<c::HANDLE> for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME(#24570): add more info here (e.g. mode)
+        // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.raw());
         if let Ok(path) = get_path(&self) {

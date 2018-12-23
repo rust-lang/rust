@@ -127,7 +127,7 @@ pub enum PointerKind<'tcx> {
 }
 
 // We use the term "interior" to mean "something reachable from the
-// base without a pointer dereference", e.g. a field
+// base without a pointer dereference", e.g., a field
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldIndex),
@@ -153,8 +153,8 @@ impl Hash for FieldIndex {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InteriorOffsetKind {
-    Index,   // e.g. `array_expr[index_expr]`
-    Pattern, // e.g. `fn foo([_, a, _, _]: [A; 4]) { ... }`
+    Index,   // e.g., `array_expr[index_expr]`
+    Pattern, // e.g., `fn foo([_, a, _, _]: [A; 4]) { ... }`
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -348,7 +348,7 @@ impl MutabilityCategory {
 
     fn from_local(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>,
                   id: ast::NodeId) -> MutabilityCategory {
-        let ret = match tcx.hir.get(id) {
+        let ret = match tcx.hir().get(id) {
             Node::Binding(p) => match p.node {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()
@@ -362,7 +362,7 @@ impl MutabilityCategory {
                 }
                 _ => span_bug!(p.span, "expected identifier pattern")
             },
-            _ => span_bug!(tcx.hir.span(id), "expected identifier pattern")
+            _ => span_bug!(tcx.hir().span(id), "expected identifier pattern")
         };
         debug!("MutabilityCategory::{}(tcx, id={:?}) => {:?}",
                "from_local", id, ret);
@@ -495,9 +495,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // FIXME
             None if self.is_tainted_by_errors() => Err(()),
             None => {
-                let id = self.tcx.hir.hir_to_node_id(id);
+                let id = self.tcx.hir().hir_to_node_id(id);
                 bug!("no type for node {}: {} in mem_categorization",
-                     id, self.tcx.hir.node_to_string(id));
+                     id, self.tcx.hir().node_to_string(id));
             }
         }
     }
@@ -770,7 +770,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  fn_node_id: ast::NodeId)
                  -> McResult<cmt_<'tcx>>
     {
-        let fn_hir_id = self.tcx.hir.node_to_hir_id(fn_node_id);
+        let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_node_id);
 
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
@@ -815,8 +815,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ref t => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", t),
         };
 
-        let closure_expr_def_id = self.tcx.hir.local_def_id(fn_node_id);
-        let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
+        let closure_expr_def_id = self.tcx.hir().local_def_id(fn_node_id);
+        let var_hir_id = self.tcx.hir().node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_hir_id },
             closure_expr_id: closure_expr_def_id.to_local(),
@@ -961,7 +961,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         debug!("cat_rvalue_node: promotable = {:?}", promotable);
 
-        // Always promote `[T; 0]` (even when e.g. borrowed mutably).
+        // Always promote `[T; 0]` (even when e.g., borrowed mutably).
         let promotable = match expr_ty.sty {
             ty::Array(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
             _ => promotable,
@@ -1504,7 +1504,7 @@ impl<'tcx> cmt_<'tcx> {
                 "non-place".into()
             }
             Categorization::Local(vid) => {
-                if tcx.hir.is_argument(vid) {
+                if tcx.hir().is_argument(vid) {
                     "argument"
                 } else {
                     "local variable"

@@ -48,7 +48,7 @@ impl RegionValueElements {
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
         for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-            basic_blocks.extend((0..bb_data.statements.len() + 1).map(|_| bb));
+            basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 
         Self {
@@ -313,7 +313,7 @@ impl<N: Idx> RegionValues<N> {
         self.points.insert_all_into_row(r);
     }
 
-    /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
+    /// Add all elements in `r_from` to `r_to` (because e.g., `r_to:
     /// r_from`).
     crate fn add_region(&mut self, r_to: N, r_from: N) -> bool {
         self.points.union_rows(r_from, r_to)

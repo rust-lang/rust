@@ -13,9 +13,9 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "Sync", "Send".
+// * Traits that specify "kinds"; e.g., "Sync", "Send".
 //
-// * Traits that represent operators; e.g. "Add", "Sub", "Index".
+// * Traits that represent operators; e.g., "Add", "Sub", "Index".
 //
 // * Functions called by the compiler itself.
 
@@ -108,7 +108,7 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
             match self.item_refs.get(&*value.as_str()).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
-                    let def_id = self.tcx.hir.local_def_id(item.id);
+                    let def_id = self.tcx.hir().local_def_id(item.id);
                     self.collect_item(item_index, def_id);
                 },
                 // Known lang item with attribute on incorrect target.
@@ -171,7 +171,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         if let Some(original_def_id) = self.items.items[item_index] {
             if original_def_id != item_def_id {
                 let name = LangItem::from_u32(item_index as u32).unwrap().name();
-                let mut err = match self.tcx.hir.span_if_local(item_def_id) {
+                let mut err = match self.tcx.hir().span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
                         self.tcx.sess,
                         span,
@@ -183,7 +183,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
                             self.tcx.crate_name(item_def_id.krate),
                             name)),
                 };
-                if let Some(span) = self.tcx.hir.span_if_local(original_def_id) {
+                if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
                     span_note!(&mut err, span, "first defined here.");
                 } else {
                     err.note(&format!("first defined in crate `{}`.",
@@ -221,7 +221,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {
             collector.collect_item(item_index, def_id);
         }
     }
-    tcx.hir.krate().visit_all_item_likes(&mut collector);
+    tcx.hir().krate().visit_all_item_likes(&mut collector);
     let LanguageItemCollector { mut items, .. } = collector;
     weak_lang_items::check_crate(tcx, &mut items);
     items
@@ -301,6 +301,7 @@ language_item_table! {
 
     DerefTraitLangItem,          "deref",              deref_trait,             Target::Trait;
     DerefMutTraitLangItem,       "deref_mut",          deref_mut_trait,         Target::Trait;
+    ReceiverTraitLangItem,       "receiver",           receiver_trait,          Target::Trait;
 
     FnTraitLangItem,             "fn",                 fn_trait,                Target::Trait;
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;

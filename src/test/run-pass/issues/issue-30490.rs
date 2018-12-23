@@ -18,7 +18,7 @@
 // where the descriptors to inherit were already stdio descriptors.
 // This test checks to avoid that regression.
 
-#![cfg_attr(unix, feature(libc))]
+#![cfg_attr(unix, feature(rustc_private))]
 #![cfg_attr(windows, allow(unused_imports))]
 
 #[cfg(unix)]

@@ -23,7 +23,7 @@ pub fn foreach_symbol_fileline<F>(frame: Frame,
 where F: FnMut(&[u8], u32) -> io::Result<()>
 {
     // pcinfo may return an arbitrary number of file:line pairs,
-    // in the order of stack trace (i.e. inlined calls first).
+    // in the order of stack trace (i.e., inlined calls first).
     // in order to avoid allocation, we stack-allocate a fixed size of entries.
     const FILELINE_SIZE: usize = 32;
     let mut fileline_buf = [(ptr::null(), !0); FILELINE_SIZE];

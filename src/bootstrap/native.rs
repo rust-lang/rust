@@ -21,7 +21,6 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -29,11 +28,11 @@ use build_helper::output;
 use cmake;
 use cc;
 
-use util::{self, exe};
+use crate::util::{self, exe};
 use build_helper::up_to_date;
-use builder::{Builder, RunConfig, ShouldRun, Step};
-use cache::Interned;
-use GitRepo;
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::cache::Interned;
+use crate::GitRepo;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
@@ -75,8 +74,7 @@ impl Step for Llvm {
         }
 
         let rebuild_trigger = builder.src.join("src/rustllvm/llvm-rebuild-trigger");
-        let mut rebuild_trigger_contents = String::new();
-        t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
+        let rebuild_trigger_contents = t!(fs::read_to_string(&rebuild_trigger));
 
         let (out_dir, llvm_config_ret_dir) = if emscripten {
             let dir = builder.emscripten_llvm_out(target);
@@ -93,8 +91,7 @@ impl Step for Llvm {
         let build_llvm_config = llvm_config_ret_dir
             .join(exe("llvm-config", &*builder.config.build));
         if done_stamp.exists() {
-            let mut done_contents = String::new();
-            t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
+            let done_contents = t!(fs::read_to_string(&done_stamp));
 
             // If LLVM was already built previously and contents of the rebuild-trigger file
             // didn't change from the previous build, then no action is required.
@@ -251,7 +248,7 @@ impl Step for Llvm {
         configure_cmake(builder, target, &mut cfg, false);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
-        //        libraries here, e.g. we just want a few components and a few
+        //        libraries here, e.g., we just want a few components and a few
         //        tools. Figure out how to filter them down and only build the right
         //        tools and libs on all platforms.
 
@@ -261,7 +258,7 @@ impl Step for Llvm {
 
         cfg.build();
 
-        t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
+        t!(fs::write(&done_stamp, &rebuild_trigger_contents));
 
         build_llvm_config
     }
@@ -281,11 +278,11 @@ fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
     let mut parts = version.split('.').take(2)
         .filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 5 {
+        if major >= 6 {
             return
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=5.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=6.0\n\n", version)
 }
 
 fn configure_cmake(builder: &Builder,

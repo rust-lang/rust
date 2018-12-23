@@ -609,10 +609,15 @@ pub trait Debug {
 /// println!("The origin is: {}", origin);
 /// ```
 #[rustc_on_unimplemented(
+    on(
+        _Self="std::path::Path",
+        label="`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
+        note="call `.display()` or `.to_string_lossy()` to safely print paths, \
+              as they may contain non-Unicode data"
+    ),
     message="`{Self}` doesn't implement `{Display}`",
     label="`{Self}` cannot be formatted with the default formatter",
-    note="in format strings you may be able to use `{{:?}}` \
-          (or {{:#?}} for pretty-print) instead",
+    note="in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead",
 )]
 #[doc(alias = "{}")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1381,7 +1386,7 @@ impl<'a> Formatter<'a> {
         for part in formatted.parts {
             match *part {
                 flt2dec::Part::Zero(mut nzeroes) => {
-                    const ZEROES: &'static str = // 64 zeroes
+                    const ZEROES: &str = // 64 zeroes
                         "0000000000000000000000000000000000000000000000000000000000000000";
                     while nzeroes > ZEROES.len() {
                         self.buf.write_str(ZEROES)?;

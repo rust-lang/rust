@@ -10,8 +10,9 @@
 
 // run-pass
 // ignore-wasm32-bare no libc to test ffi with
+// ignore-emscripten blows the JS stack
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

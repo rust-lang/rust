@@ -109,7 +109,7 @@
 //! The buffered tokens go through a ring-buffer, 'tokens'. The 'left' and
 //! 'right' indices denote the active portion of the ring buffer as well as
 //! describing hypothetical points-in-the-infinite-stream at most 3N tokens
-//! apart (i.e. "not wrapped to ring-buffer boundaries"). The paper will switch
+//! apart (i.e., "not wrapped to ring-buffer boundaries"). The paper will switch
 //! between using 'left' and 'right' terms to denote the wrapped-to-ring-buffer
 //! and point-in-infinite-stream senses freely.
 //!

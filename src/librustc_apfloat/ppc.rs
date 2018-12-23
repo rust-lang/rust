@@ -288,7 +288,7 @@ where
         //   \   /
         //   Normal
         //
-        // e.g. NaN * NaN = NaN
+        // e.g., NaN * NaN = NaN
         //      Zero * Inf = NaN
         //      Normal * Zero = Zero
         //      Normal * Inf = Inf

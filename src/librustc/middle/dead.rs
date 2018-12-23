@@ -35,7 +35,7 @@ use syntax_pos;
 // may need to be marked as live.
 fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             node_id: ast::NodeId) -> bool {
-    match tcx.hir.find(node_id) {
+    match tcx.hir().find(node_id) {
         Some(Node::Item(..)) |
         Some(Node::ImplItem(..)) |
         Some(Node::ForeignItem(..)) |
@@ -59,7 +59,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn check_def_id(&mut self, def_id: DefId) {
-        if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+        if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
             if should_explore(self.tcx, node_id) {
                 self.worklist.push(node_id);
             }
@@ -68,7 +68,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn insert_def_id(&mut self, def_id: DefId) {
-        if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+        if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
             debug_assert!(!should_explore(self.tcx, node_id));
             self.live_symbols.insert(node_id);
         }
@@ -137,7 +137,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 continue
             }
 
-            if let Some(ref node) = self.tcx.hir.find(id) {
+            if let Some(ref node) = self.tcx.hir().find(id) {
                 self.live_symbols.insert(id);
                 self.visit_node(node);
             }
@@ -153,7 +153,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                        let def_id = self.tcx.hir.local_def_id(item.id);
+                        let def_id = self.tcx.hir().local_def_id(item.id);
                         let def = self.tcx.adt_def(def_id);
                         self.repr_has_repr_c = def.repr.c();
 
@@ -166,6 +166,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     hir::ItemKind::Fn(..)
                     | hir::ItemKind::Ty(..)
                     | hir::ItemKind::Static(..)
+                    | hir::ItemKind::Existential(..)
                     | hir::ItemKind::Const(..) => {
                         intravisit::walk_item(self, &item);
                     }
@@ -205,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
         self.tables = self.tcx.body_tables(body);
-        let body = self.tcx.hir.body(body);
+        let body = self.tcx.hir().body(body);
         self.visit_body(body);
         self.tables = old_tables;
     }
@@ -306,11 +307,11 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
         return true;
     }
 
-    let def_id = tcx.hir.local_def_id(id);
+    let def_id = tcx.hir().local_def_id(id);
     let cg_attrs = tcx.codegen_fn_attrs(def_id);
 
     // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
-    // forcefully, e.g. for placing it in a specific section.
+    // forcefully, e.g., for placing it in a specific section.
     if cg_attrs.contains_extern_indicator() ||
         cg_attrs.flags.contains(CodegenFnAttrFlags::USED) {
         return true;
@@ -468,7 +469,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.type_of(self.tcx.hir.local_def_id(field.id));
+        let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.id));
         !field.is_positional()
             && !self.symbol_is_live(field.id, None)
             && !field_type.is_phantom_data()
@@ -509,11 +510,11 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let def_id = self.tcx.hir.local_def_id(id);
+        let def_id = self.tcx.hir().local_def_id(id);
         let inherent_impls = self.tcx.inherent_impls(def_id);
         for &impl_did in inherent_impls.iter() {
             for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
-                if let Some(item_node_id) = self.tcx.hir.as_local_node_id(item_did) {
+                if let Some(item_node_id) = self.tcx.hir().as_local_node_id(item_did) {
                     if self.live_symbols.contains(&item_node_id) {
                         return true;
                     }
@@ -546,7 +547,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.tcx.hir)
+        NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
@@ -647,7 +648,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
-    let krate = tcx.hir.krate();
+    let krate = tcx.hir().krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor {
         tcx,

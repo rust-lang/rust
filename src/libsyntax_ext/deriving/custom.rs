@@ -74,7 +74,6 @@ impl MultiItemModifier for ProcMacroDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let item = ecx.resolver.eliminate_crate_var(item);
         let token = Token::interpolated(token::NtItem(item));
         let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
 

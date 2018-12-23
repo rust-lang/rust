@@ -19,7 +19,7 @@ pub trait ApplyL<'a> {
     type Out;
 }
 
-/// Type lambda taking a lifetime, i.e. `Lifetime -> Type`.
+/// Type lambda taking a lifetime, i.e., `Lifetime -> Type`.
 pub trait LambdaL: for<'a> ApplyL<'a> {}
 
 impl<T: for<'a> ApplyL<'a>> LambdaL for T {}

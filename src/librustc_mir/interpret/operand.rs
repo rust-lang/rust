@@ -382,7 +382,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             _ => {
                 trace!("Forcing allocation for local of type {:?}", layout.ty);
                 Operand::Indirect(
-                    *self.allocate(layout, MemoryKind::Stack)?
+                    *self.allocate(layout, MemoryKind::Stack)
                 )
             }
         })

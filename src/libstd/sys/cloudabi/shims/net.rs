@@ -13,13 +13,14 @@ use io;
 use net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use time::Duration;
 use sys::{unsupported, Void};
+use convert::TryFrom;
 
 pub extern crate libc as netc;
 
 pub struct TcpStream(Void);
 
 impl TcpStream {
-    pub fn connect(_: &SocketAddr) -> io::Result<TcpStream> {
+    pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
         unsupported()
     }
 
@@ -105,7 +106,7 @@ impl fmt::Debug for TcpStream {
 pub struct TcpListener(Void);
 
 impl TcpListener {
-    pub fn bind(_: &SocketAddr) -> io::Result<TcpListener> {
+    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
         unsupported()
     }
 
@@ -155,7 +156,7 @@ impl fmt::Debug for TcpListener {
 pub struct UdpSocket(Void);
 
 impl UdpSocket {
-    pub fn bind(_: &SocketAddr) -> io::Result<UdpSocket> {
+    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
         unsupported()
     }
 
@@ -271,7 +272,7 @@ impl UdpSocket {
         match self.0 {}
     }
 
-    pub fn connect(&self, _: &SocketAddr) -> io::Result<()> {
+    pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
         match self.0 {}
     }
 }
@@ -284,6 +285,12 @@ impl fmt::Debug for UdpSocket {
 
 pub struct LookupHost(Void);
 
+impl LookupHost {
+    pub fn port(&self) -> u16 {
+        match self.0 {}
+    }
+}
+
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
@@ -291,6 +298,18 @@ impl Iterator for LookupHost {
     }
 }
 
-pub fn lookup_host(_: &str) -> io::Result<LookupHost> {
-    unsupported()
+impl<'a> TryFrom<&'a str> for LookupHost {
+    type Error = io::Error;
+
+    fn try_from(_v: &'a str) -> io::Result<LookupHost> {
+        unsupported()
+    }
+}
+
+impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
+    type Error = io::Error;
+
+    fn try_from(_v: (&'a str, u16)) -> io::Result<LookupHost> {
+        unsupported()
+    }
 }

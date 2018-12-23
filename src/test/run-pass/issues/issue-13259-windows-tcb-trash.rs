@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

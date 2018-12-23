@@ -16,7 +16,7 @@ use libc;
 use mem;
 use ptr;
 use sys::cloudabi::abi;
-use sys::time::dur2intervals;
+use sys::time::checked_dur2intervals;
 use sys_common::thread::*;
 use time::Duration;
 
@@ -32,7 +32,8 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<dyn FnBox() + 'a>) -> io::Result<Thread> {
+    // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    pub unsafe fn new(stack: usize, p: Box<dyn FnBox()>) -> io::Result<Thread> {
         let p = box p;
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
@@ -69,13 +70,15 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
+        let timeout = checked_dur2intervals(&dur)
+            .expect("overflow converting duration to nanoseconds");
         unsafe {
             let subscription = abi::subscription {
                 type_: abi::eventtype::CLOCK,
                 union: abi::subscription_union {
                     clock: abi::subscription_clock {
                         clock_id: abi::clockid::MONOTONIC,
-                        timeout: dur2intervals(&dur),
+                        timeout,
                         ..mem::zeroed()
                     },
                 },
@@ -118,7 +121,6 @@ pub mod guard {
     pub unsafe fn init() -> Option<Guard> {
         None
     }
-    pub unsafe fn deinit() {}
 }
 
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {

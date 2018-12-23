@@ -216,16 +216,11 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
       Members.push_back(std::move(*MOrErr));
     }
   }
+
   auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
-#if LLVM_VERSION_GE(6, 0)
   if (!Result)
     return LLVMRustResult::Success;
   LLVMRustSetLastError(toString(std::move(Result)).c_str());
-#else
-  if (!Result.second)
-    return LLVMRustResult::Success;
-  LLVMRustSetLastError(Result.second.message().c_str());
-#endif
 
   return LLVMRustResult::Failure;
 }

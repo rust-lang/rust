@@ -93,9 +93,9 @@ pub enum TokenTree {
     Delimited(DelimSpan, Lrc<Delimited>),
     /// A kleene-style repetition sequence
     Sequence(DelimSpan, Lrc<SequenceRepetition>),
-    /// E.g. `$var`
+    /// e.g., `$var`
     MetaVar(Span, ast::Ident),
-    /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
+    /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
     MetaVarDecl(
         Span,
         ast::Ident, /* name to bind */
@@ -199,7 +199,7 @@ pub fn parse(
     let mut trees = input.trees().peekable();
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
-        // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
+        // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(
             tree,
             &mut trees,
@@ -281,16 +281,16 @@ where
         tokenstream::TokenTree::Token(span, token::Dollar) => match trees.next() {
             // `tree` is followed by a delimited set of token trees. This indicates the beginning
             // of a repetition sequence in the macro (e.g. `$(pat)*`).
-            Some(tokenstream::TokenTree::Delimited(span, delimited)) => {
+            Some(tokenstream::TokenTree::Delimited(span, delim, tts)) => {
                 // Must have `(` not `{` or `[`
-                if delimited.delim != token::Paren {
-                    let tok = pprust::token_to_string(&token::OpenDelim(delimited.delim));
+                if delim != token::Paren {
+                    let tok = pprust::token_to_string(&token::OpenDelim(delim));
                     let msg = format!("expected `(`, found `{}`", tok);
                     sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
                 // Parse the contents of the sequence itself
                 let sequence = parse(
-                    delimited.tts.into(),
+                    tts.into(),
                     expect_matchers,
                     sess,
                     features,
@@ -309,7 +309,7 @@ where
                         edition,
                         macro_node_id,
                     );
-                // Count the number of captured "names" (i.e. named metavars)
+                // Count the number of captured "names" (i.e., named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
                     span,
@@ -352,14 +352,14 @@ where
         // `tree` is an arbitrary token. Keep it.
         tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok),
 
-        // `tree` is the beginning of a delimited set of tokens (e.g. `(` or `{`). We need to
+        // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
-        tokenstream::TokenTree::Delimited(span, delimited) => TokenTree::Delimited(
+        tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
             Lrc::new(Delimited {
-                delim: delimited.delim,
+                delim: delim,
                 tts: parse(
-                    delimited.tts.into(),
+                    tts.into(),
                     expect_matchers,
                     sess,
                     features,
@@ -444,7 +444,6 @@ where
             macro_node_id,
         ),
         Edition::Edition2018 => parse_sep_and_kleene_op_2018(input, span, sess, features, attrs),
-        _ => unimplemented!(),
     }
 }
 

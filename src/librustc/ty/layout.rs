@@ -191,7 +191,14 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         ty::tls::enter_context(&icx, |_| {
             let cx = LayoutCx { tcx, param_env };
-            cx.layout_raw_uncached(ty)
+            let layout = cx.layout_raw_uncached(ty);
+            // Type-level uninhabitedness should always imply ABI uninhabitedness.
+            if let Ok(layout) = layout {
+                if ty.conservative_is_privately_uninhabited(tcx) {
+                    assert!(layout.abi.is_uninhabited());
+                }
+            }
+            layout
         })
     })
 }
@@ -205,12 +212,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
-    pub param_env: ty::ParamEnv<'tcx>
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
-    fn layout_raw_uncached(&self, ty: Ty<'tcx>)
-                           -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
+    fn layout_raw_uncached(&self, ty: Ty<'tcx>) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         let tcx = self.tcx;
         let param_env = self.param_env;
         let dl = self.data_layout();
@@ -248,7 +254,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             AlwaysSized,
             /// A univariant, the last field of which may be coerced to unsized.
             MaybeUnsized,
-            /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
+            /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
             Prefixed(Size, Align),
         }
 
@@ -551,13 +557,19 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
+                let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
+                    Abi::Uninhabited
+                } else {
+                    Abi::Aggregate { sized: true }
+                };
+
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
                         stride: element.size,
                         count
                     },
-                    abi: Abi::Aggregate { sized: true },
+                    abi,
                     align: element.align,
                     size
                 })
@@ -748,7 +760,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 // A variant is absent if it's uninhabited and only has ZST fields.
                 // Present uninhabited variants only require space for their fields,
-                // but *not* an encoding of the discriminant (e.g. a tag value).
+                // but *not* an encoding of the discriminant (e.g., a tag value).
                 // See issue #49298 for more details on the need to leave space
                 // for non-ZST uninhabited data (mostly partial initialization).
                 let absent = |fields: &[TyLayout<'_>]| {
@@ -1252,7 +1264,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }).collect();
 
             session::VariantInfo {
-                name: n.map(|n|n.to_string()),
+                name: n.map(|n| n.to_string()),
                 kind: if layout.is_unsized() {
                     session::SizeKind::Min
                 } else {
@@ -1311,7 +1323,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     }
 }
 
-/// Type size "skeleton", i.e. the only information determining a type's size.
+/// Type size "skeleton", i.e., the only information determining a type's size.
 /// While this is conservative, (aside from constant sizes, only pointers,
 /// newtypes thereof and null pointer optimized enums are allowed), it is
 /// enough to statically check common use cases of transmute.
@@ -1522,7 +1534,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             details
         };
 
-        // NB: This recording is normally disabled; when enabled, it
+        // N.B., this recording is normally disabled; when enabled, it
         // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
@@ -1549,7 +1561,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'a, 'tcx, 'tcx>> 
             details
         };
 
-        // NB: This recording is normally disabled; when enabled, it
+        // N.B., this recording is normally disabled; when enabled, it
         // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
@@ -1660,7 +1672,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 assert!(i < this.fields.count());
 
                 // Reuse the fat *T type as its own thin pointer data field.
-                // This provides information about e.g. DST struct pointees
+                // This provides information about e.g., DST struct pointees
                 // (which may have no non-DST form), and will work as long
                 // as the `Abi` or `FieldPlacement` is checked by users.
                 if i == 0 {

@@ -22,7 +22,8 @@ fn main() {
     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
       None => {}
     }
-    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, _)` not covered
+    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)`
+                      //  and `(_, _, 5i32..=2147483647i32)` not covered
       (_, _, 4) => {}
     }
     match (t::a, t::a) { //~ ERROR non-exhaustive patterns: `(a, a)` not covered

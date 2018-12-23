@@ -426,7 +426,7 @@ mod prim_unit { }
 /// ## 3. Get it from C.
 ///
 /// ```
-/// # #![feature(libc)]
+/// # #![feature(rustc_private)]
 /// extern crate libc;
 ///
 /// use std::mem;
@@ -462,7 +462,7 @@ mod prim_pointer { }
 ///
 /// There are two syntactic forms for creating an array:
 ///
-/// * A list with each element, i.e. `[x, y, z]`.
+/// * A list with each element, i.e., `[x, y, z]`.
 /// * A repeat expression `[x; N]`, which produces an array with `N` copies of `x`.
 ///   The type of `x` must be [`Copy`][copy].
 ///

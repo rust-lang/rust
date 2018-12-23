@@ -33,7 +33,7 @@ pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut visitor = SymbolNamesTest { tcx };
-        tcx.hir.krate().visit_all_item_likes(&mut visitor);
+        tcx.hir().krate().visit_all_item_likes(&mut visitor);
     })
 }
 
@@ -45,7 +45,7 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
     fn process_attrs(&mut self,
                      node_id: ast::NodeId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir.local_def_id(node_id);
+        let def_id = tcx.hir().local_def_id(node_id);
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names

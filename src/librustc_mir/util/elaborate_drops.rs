@@ -24,8 +24,8 @@ use std::u32;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
-    Present, // i.e. initialized
-    Absent, // i.e. deinitialized or "moved"
+    Present, // i.e., initialized
+    Absent, // i.e., deinitialized or "moved"
 }
 
 impl DropFlagState {

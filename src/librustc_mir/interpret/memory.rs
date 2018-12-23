@@ -29,7 +29,7 @@ use syntax::ast::Mutability;
 
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
-    EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
+    EvalResult, Scalar, EvalErrorKind, AllocKind, PointerArithmetic,
     Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
 };
 
@@ -55,7 +55,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
 }
 
 // `Memory` has to depend on the `Machine` because some of its operations
-// (e.g. `get`) call a `Machine` hook.
+// (e.g., `get`) call a `Machine` hook.
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and
@@ -131,10 +131,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &mut self,
         alloc: Allocation<M::PointerTag, M::AllocExtra>,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, AllocId> {
+    ) -> AllocId {
         let id = self.tcx.alloc_map.lock().reserve();
         self.alloc_map.insert(id, (kind, alloc));
-        Ok(id)
+        id
     }
 
     pub fn allocate(
@@ -142,9 +142,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> Pointer {
         let extra = AllocationExtra::memory_allocated(size, &self.extra);
-        Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind)?))
+        Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind))
     }
 
     pub fn reallocate(
@@ -162,7 +162,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate(new_size, new_align, kind)?;
+        let new_ptr = self.allocate(new_size, new_align, kind);
         self.copy(
             ptr.into(),
             old_align,
@@ -204,12 +204,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             None => {
                 // Deallocating static memory -- always an error
                 return match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-                    Some(AllocType::Function(..)) => err!(DeallocatedWrongMemoryKind(
+                    Some(AllocKind::Function(..)) => err!(DeallocatedWrongMemoryKind(
                         "function".to_string(),
                         format!("{:?}", kind),
                     )),
-                    Some(AllocType::Static(..)) |
-                    Some(AllocType::Memory(..)) => err!(DeallocatedWrongMemoryKind(
+                    Some(AllocKind::Static(..)) |
+                    Some(AllocKind::Memory(..)) => err!(DeallocatedWrongMemoryKind(
                         "static".to_string(),
                         format!("{:?}", kind),
                     )),
@@ -326,15 +326,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
-            Some(AllocType::Memory(mem)) => {
+            Some(AllocKind::Memory(mem)) => {
                 // We got tcx memory. Let the machine figure out whether and how to
                 // turn that into memory with the right pointer tag.
                 return Ok(M::adjust_static_allocation(mem, memory_extra))
             }
-            Some(AllocType::Function(..)) => {
+            Some(AllocKind::Function(..)) => {
                 return err!(DerefFunctionPointer)
             }
-            Some(AllocType::Static(did)) => {
+            Some(AllocKind::Static(did)) => {
                 did
             }
             None =>
@@ -435,8 +435,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         // Could also be a fn ptr or extern static
         match self.tcx.alloc_map.lock().get(id) {
-            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1).unwrap()),
-            Some(AllocType::Static(did)) => {
+            Some(AllocKind::Function(..)) => (Size::ZERO, Align::from_bytes(1).unwrap()),
+            Some(AllocKind::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
                 assert!(self.tcx.is_foreign_item(did));
                 // Use size and align of the type
@@ -459,7 +459,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         trace!("reading fn ptr: {}", ptr.alloc_id);
         match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-            Some(AllocType::Function(instance)) => Ok(instance),
+            Some(AllocKind::Function(instance)) => Ok(instance),
             _ => Err(EvalErrorKind::ExecuteMemory.into()),
         }
     }
@@ -557,16 +557,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Err(()) => {
                     // static alloc?
                     match self.tcx.alloc_map.lock().get(id) {
-                        Some(AllocType::Memory(alloc)) => {
+                        Some(AllocKind::Memory(alloc)) => {
                             self.dump_alloc_helper(
                                 &mut allocs_seen, &mut allocs_to_print,
                                 msg, alloc, " (immutable)".to_owned()
                             );
                         }
-                        Some(AllocType::Function(func)) => {
+                        Some(AllocKind::Function(func)) => {
                             trace!("{} {}", msg, func);
                         }
-                        Some(AllocType::Static(did)) => {
+                        Some(AllocKind::Static(did)) => {
                             trace!("{} {:?}", msg, did);
                         }
                         None => {
@@ -638,7 +638,7 @@ where
         // ensure llvm knows not to put this into immutable memory
         alloc.mutability = mutability;
         let alloc = self.tcx.intern_const_alloc(alloc);
-        self.tcx.alloc_map.lock().set_id_memory(alloc_id, alloc);
+        self.tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
         // recurse into inner allocations
         for &(_, alloc) in alloc.relocations.values() {
             // FIXME: Reusing the mutability here is likely incorrect.  It is originally
@@ -708,8 +708,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     relocations
                     .iter()
                     .map(|&(offset, reloc)| {
-                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64),
-                     reloc)
+                        // compute offset for current repetition
+                        let dest_offset = dest.offset + (i * size);
+                        (
+                            // shift offsets from source allocation to destination allocation
+                            offset + dest_offset - src.offset,
+                            reloc,
+                        )
                     })
                 );
             }

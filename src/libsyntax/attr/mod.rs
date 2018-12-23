@@ -34,7 +34,7 @@ use parse::token::{self, Token};
 use ptr::P;
 use symbol::Symbol;
 use ThinVec;
-use tokenstream::{TokenStream, TokenTree, Delimited, DelimSpan};
+use tokenstream::{TokenStream, TokenTree, DelimSpan};
 use GLOBALS;
 
 use std::iter;
@@ -96,7 +96,7 @@ impl NestedMetaItem {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
 
-    /// Returns the name of the meta item, e.g. `foo` in `#[foo]`,
+    /// Returns the name of the meta item, e.g., `foo` in `#[foo]`,
     /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
     pub fn name(&self) -> Option<Name> {
         self.meta_item().and_then(|meta_item| Some(meta_item.name()))
@@ -180,7 +180,7 @@ impl Attribute {
     }
 
     /// Returns the **last** segment of the name of this attribute.
-    /// E.g. `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
+    /// e.g., `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
     pub fn name(&self) -> Name {
         name_from_path(&self.path)
     }
@@ -483,7 +483,7 @@ impl MetaItem {
             last_pos = segment.ident.span.hi();
         }
         idents.push(self.node.tokens(self.span));
-        TokenStream::concat(idents)
+        TokenStream::new(idents)
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
@@ -539,7 +539,7 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
             MetaItemKind::NameValue(ref lit) => {
-                TokenStream::concat(vec![TokenTree::Token(span, Token::Eq).into(), lit.tokens()])
+                TokenStream::new(vec![TokenTree::Token(span, Token::Eq).into(), lit.tokens()])
             }
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
@@ -549,10 +549,11 @@ impl MetaItemKind {
                     }
                     tokens.push(item.node.tokens());
                 }
-                TokenTree::Delimited(DelimSpan::from_single(span), Delimited {
-                    delim: token::Paren,
-                    tts: TokenStream::concat(tokens).into(),
-                }).into()
+                TokenTree::Delimited(
+                    DelimSpan::from_single(span),
+                    token::Paren,
+                    TokenStream::new(tokens).into(),
+                ).into()
             }
         }
     }
@@ -570,9 +571,9 @@ impl MetaItemKind {
                     None
                 };
             }
-            Some(TokenTree::Delimited(_, ref delimited)) if delimited.delim == token::Paren => {
+            Some(TokenTree::Delimited(_, delim, ref tts)) if delim == token::Paren => {
                 tokens.next();
-                delimited.stream()
+                tts.stream()
             }
             _ => return Some(MetaItemKind::Word),
         };
@@ -803,7 +804,7 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
     for raw_attr in attrs {
         let mut parser = parse::new_parser_from_source_str(
             parse_sess,
-            FileName::CliCrateAttr,
+            FileName::cli_crate_attr_source_code(&raw_attr),
             raw_attr.clone(),
         );
 

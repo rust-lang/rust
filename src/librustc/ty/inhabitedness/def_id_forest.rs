@@ -43,7 +43,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest {
-        let crate_id = tcx.hir.local_def_id(CRATE_NODE_ID);
+        let crate_id = tcx.hir().local_def_id(CRATE_NODE_ID);
         DefIdForest::from_id(crate_id)
     }
 
@@ -74,10 +74,21 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
                            iter: I) -> DefIdForest
             where I: IntoIterator<Item=DefIdForest>
     {
-        let mut ret = DefIdForest::full(tcx);
+        let mut iter = iter.into_iter();
+        let mut ret = if let Some(first) = iter.next() {
+            first
+        } else {
+            return DefIdForest::full(tcx);
+        };
+
         let mut next_ret = SmallVec::new();
         let mut old_ret: SmallVec<[DefId; 1]> = SmallVec::new();
         for next_forest in iter {
+            // No need to continue if the intersection is already empty.
+            if ret.is_empty() {
+                break;
+            }
+
             for id in ret.root_ids.drain() {
                 if next_forest.contains(tcx, id) {
                     next_ret.push(id);

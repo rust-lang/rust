@@ -23,6 +23,9 @@ pub static RUSTDOC_CSS: &'static str = include_str!("static/rustdoc.css");
 /// The file contents of `settings.css`, responsible for the items on the settings page.
 pub static SETTINGS_CSS: &'static str = include_str!("static/settings.css");
 
+/// The file contents of the `noscript.css` file, used in case JS isn't supported or is disabled.
+pub static NOSCRIPT_CSS: &'static str = include_str!("static/noscript.css");
+
 /// The file contents of `normalize.css`, included to even out standard elements between browser
 /// implementations.
 pub static NORMALIZE_CSS: &'static str = include_str!("static/normalize.css");
@@ -44,6 +47,9 @@ pub static BRUSH_SVG: &'static [u8] = include_bytes!("static/brush.svg");
 
 /// The file contents of `wheel.svg`, the icon used for the settings button.
 pub static WHEEL_SVG: &'static [u8] = include_bytes!("static/wheel.svg");
+
+/// The file contents of `down-arrow.svg`, the icon used for the crate choice combobox.
+pub static DOWN_ARROW_SVG: &'static [u8] = include_bytes!("static/down-arrow.svg");
 
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.

@@ -31,6 +31,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
+use smallvec::smallvec;
 use std::slice;
 
 use syntax::ast;
@@ -41,18 +42,18 @@ struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         intravisit::walk_body(self, body);
-        let def_id = self.tcx.hir.body_owner_def_id(body.id());
+        let def_id = self.tcx.hir().body_owner_def_id(body.id());
         let _ = self.tcx.check_match(def_id);
     }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx }.as_deep_visitor());
+    tcx.hir().krate().visit_all_item_likes(&mut OuterVisitor { tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
@@ -60,8 +61,8 @@ pub(crate) fn check_match<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Result<(), ErrorReported> {
-    let body_id = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        tcx.hir.body_owned_by(id)
+    let body_id = if let Some(id) = tcx.hir().as_local_node_id(def_id) {
+        tcx.hir().body_owned_by(id)
     } else {
         return Ok(());
     };
@@ -73,7 +74,7 @@ pub(crate) fn check_match<'a, 'tcx>(
             region_scope_tree: &tcx.region_scope_tree(def_id),
             param_env: tcx.param_env(def_id),
             identity_substs: Substs::identity_for_item(tcx, def_id),
-        }.visit_body(tcx.hir.body(body_id));
+        }.visit_body(tcx.hir().body(body_id));
     })
 }
 
@@ -188,11 +189,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Third, perform some lints.
             for pat in &arm.pats {
-                check_for_bindings_named_the_same_as_variants(self, pat);
+                check_for_bindings_named_same_as_variants(self, pat);
             }
         }
 
-        let module = self.tcx.hir.get_module_parent(scrut.id);
+        let module = self.tcx.hir().get_module_parent(scrut.id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -224,12 +225,16 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
-            let module = self.tcx.hir.get_module_parent(scrut.id);
+            let module = self.tcx.hir().get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
-                    self.conservative_is_uninhabited(pat_ty)
+                    match pat_ty.sty {
+                        ty::Never => true,
+                        ty::Adt(def, _) => def.variants.is_empty(),
+                        _ => false
+                    }
                 };
                 if !scrutinee_is_uninhabited {
                     // We know the type is inhabited, so this must be wrong
@@ -250,31 +255,22 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
-                .map(|pat| vec![pat.0])
+                .map(|pat| smallvec![pat.0])
                 .collect();
             let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
 
-    fn conservative_is_uninhabited(&self, scrutinee_ty: Ty<'tcx>) -> bool {
-        // "rustc-1.0-style" uncontentious uninhabitableness check
-        match scrutinee_ty.sty {
-            ty::Never => true,
-            ty::Adt(def, _) => def.variants.is_empty(),
-            _ => false
-        }
-    }
-
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir.get_module_parent(pat.id);
+        let module = self.tcx.hir().get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pats: Matrix = vec![vec![
+            let pats: Matrix = vec![smallvec![
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
@@ -309,7 +305,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 }
 
-fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
+fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, ident, None) = p.node {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
@@ -367,7 +363,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     let mut printed_if_let_err = false;
     for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
         for &(pat, hir_pat) in pats {
-            let v = vec![pat];
+            let v = smallvec![pat];
 
             match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
@@ -462,10 +458,10 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                               scrut_ty: Ty<'tcx>,
                               sp: Span,
-                              matrix: &Matrix<'a, 'tcx>) {
+                              matrix: &Matrix<'p, 'tcx>) {
     let wild_pattern = Pattern {
         ty: scrut_ty,
         span: DUMMY_SP,

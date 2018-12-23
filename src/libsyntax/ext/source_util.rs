@@ -21,8 +21,8 @@ use smallvec::SmallVec;
 use symbol::Symbol;
 use tokenstream;
 
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use rustc_data_structures::sync::Lrc;
 
@@ -137,18 +137,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
         None => return DummyResult::expr(sp)
     };
     let file = res_rel_file(cx, sp, file);
-    let mut bytes = Vec::new();
-    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        Ok(..) => {}
-        Err(e) => {
-            cx.span_err(sp,
-                        &format!("couldn't read {}: {}",
-                                file.display(),
-                                e));
-            return DummyResult::expr(sp);
-        }
-    };
-    match String::from_utf8(bytes) {
+    match fs::read_to_string(&file) {
         Ok(src) => {
             let interned_src = Symbol::intern(&src);
 
@@ -157,11 +146,13 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
             cx.source_map().new_source_file(file.into(), src);
 
             base::MacEager::expr(cx.expr_str(sp, interned_src))
+        },
+        Err(ref e) if e.kind() == ErrorKind::InvalidData => {
+            cx.span_err(sp, &format!("{} wasn't a utf-8 file", file.display()));
+            DummyResult::expr(sp)
         }
-        Err(_) => {
-            cx.span_err(sp,
-                        &format!("{} wasn't a utf-8 file",
-                                file.display()));
+        Err(e) => {
+            cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
             DummyResult::expr(sp)
         }
     }
@@ -174,19 +165,23 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         None => return DummyResult::expr(sp)
     };
     let file = res_rel_file(cx, sp, file);
-    let mut bytes = Vec::new();
-    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        Err(e) => {
-            cx.span_err(sp,
-                        &format!("couldn't read {}: {}", file.display(), e));
-            DummyResult::expr(sp)
-        }
-        Ok(..) => {
-            // Add this input file to the code map to make it available as
-            // dependency information, but don't enter it's contents
-            cx.source_map().new_source_file(file.into(), String::new());
+    match fs::read(&file) {
+        Ok(bytes) => {
+            // Add the contents to the source map if it contains UTF-8.
+            let (contents, bytes) = match String::from_utf8(bytes) {
+                Ok(s) => {
+                    let bytes = s.as_bytes().to_owned();
+                    (s, bytes)
+                },
+                Err(e) => (String::new(), e.into_bytes()),
+            };
+            cx.source_map().new_source_file(file.into(), contents);
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
+        },
+        Err(e) => {
+            cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
+            DummyResult::expr(sp)
         }
     }
 }
@@ -201,6 +196,7 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: String) -> PathBuf 
         let callsite = sp.source_callsite();
         let mut path = match cx.source_map().span_to_unmapped_path(callsite) {
             FileName::Real(path) => path,
+            FileName::DocTest(path, _) => path,
             other => panic!("cannot resolve relative path in non-file source `{}`", other),
         };
         path.pop();

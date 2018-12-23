@@ -292,7 +292,7 @@ impl<T> Packet<T> {
             }
         }
 
-        // NB: Channel could be disconnected while waiting, so the order of
+        // N.B., channel could be disconnected while waiting, so the order of
         // these conditionals is important.
         if guard.disconnected && guard.buf.size() == 0 {
             return Err(Disconnected);

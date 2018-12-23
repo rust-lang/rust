@@ -15,16 +15,16 @@ use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::collections::HashSet;
 
-use Mode;
-use Compiler;
-use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{exe, add_lib_path};
-use compile;
-use native;
-use channel::GitInfo;
-use channel;
-use cache::Interned;
-use toolstate::ToolState;
+use crate::Mode;
+use crate::Compiler;
+use crate::builder::{Step, RunConfig, ShouldRun, Builder};
+use crate::util::{exe, add_lib_path};
+use crate::compile;
+use crate::native;
+use crate::channel::GitInfo;
+use crate::channel;
+use crate::cache::Interned;
+use crate::toolstate::ToolState;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -646,7 +646,7 @@ impl<'a> Builder<'a> {
             self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
         ];
 
-        // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
+        // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do
         // so here.
         if compiler.host.contains("msvc") {

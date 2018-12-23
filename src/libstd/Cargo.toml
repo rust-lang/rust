@@ -17,13 +17,14 @@ alloc = { path = "../liballoc" }
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
-libc = { path = "../rustc/libc_shim" }
-compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
+libc = { version = "0.2.44", default-features = false, features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "0.1.1" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
+rustc-demangle = { version = "0.1.10", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
-rand = "0.5"
+rand = "0.6.1"
 
 [target.x86_64-apple-darwin.dependencies]
 rustc_asan = { path = "../librustc_asan" }
@@ -35,8 +36,11 @@ rustc_lsan = { path = "../librustc_lsan" }
 rustc_msan = { path = "../librustc_msan" }
 rustc_tsan = { path = "../librustc_tsan" }
 
-[target.'cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))'.dependencies]
-dlmalloc = { path = '../rustc/dlmalloc_shim' }
+[target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), target_env = "sgx"))'.dependencies]
+dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
+
+[target.x86_64-fortanix-unknown-sgx.dependencies]
+fortanix-sgx-abi = { version = "0.3.1", features = ['rustc-dep-of-std'] }
 
 [build-dependencies]
 cc = "1.0"

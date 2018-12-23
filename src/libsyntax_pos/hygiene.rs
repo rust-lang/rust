@@ -17,12 +17,12 @@
 
 use GLOBALS;
 use Span;
-use edition::Edition;
-use symbol::Symbol;
+use edition::{Edition, DEFAULT_EDITION};
+use symbol::{keywords, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use std::fmt;
+use std::{fmt, mem};
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
@@ -37,6 +37,8 @@ struct SyntaxContextData {
     opaque: SyntaxContext,
     // This context, but with all transparent marks filtered away.
     opaque_and_semitransparent: SyntaxContext,
+    // Name of the crate to which `$crate` with this context would resolve.
+    dollar_crate_name: Symbol,
 }
 
 /// A mark is a unique id associated with a macro expansion.
@@ -47,7 +49,6 @@ pub struct Mark(u32);
 struct MarkData {
     parent: Mark,
     default_transparency: Transparency,
-    is_builtin: bool,
     expn_info: Option<ExpnInfo>,
 }
 
@@ -77,7 +78,6 @@ impl Mark {
                 parent,
                 // By default expansions behave like `macro_rules`.
                 default_transparency: Transparency::SemiTransparent,
-                is_builtin: false,
                 expn_info: None,
             });
             Mark(data.marks.len() as u32 - 1)
@@ -119,18 +119,6 @@ impl Mark {
     pub fn set_default_transparency(self, transparency: Transparency) {
         assert_ne!(self, Mark::root());
         HygieneData::with(|data| data.marks[self.0 as usize].default_transparency = transparency)
-    }
-
-    #[inline]
-    pub fn is_builtin(self) -> bool {
-        assert_ne!(self, Mark::root());
-        HygieneData::with(|data| data.marks[self.0 as usize].is_builtin)
-    }
-
-    #[inline]
-    pub fn set_is_builtin(self, is_builtin: bool) {
-        assert_ne!(self, Mark::root());
-        HygieneData::with(|data| data.marks[self.0 as usize].is_builtin = is_builtin)
     }
 
     pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
@@ -206,7 +194,6 @@ impl HygieneData {
                 // If the root is opaque, then loops searching for an opaque mark
                 // will automatically stop after reaching it.
                 default_transparency: Transparency::Opaque,
-                is_builtin: true,
                 expn_info: None,
             }],
             syntax_contexts: vec![SyntaxContextData {
@@ -215,9 +202,10 @@ impl HygieneData {
                 prev_ctxt: SyntaxContext(0),
                 opaque: SyntaxContext(0),
                 opaque_and_semitransparent: SyntaxContext(0),
+                dollar_crate_name: keywords::DollarCrate.name(),
             }],
             markings: FxHashMap::default(),
-            default_edition: Edition::Edition2015,
+            default_edition: DEFAULT_EDITION,
         }
     }
 
@@ -262,7 +250,6 @@ impl SyntaxContext {
             data.marks.push(MarkData {
                 parent: Mark::root(),
                 default_transparency: Transparency::SemiTransparent,
-                is_builtin: false,
                 expn_info: Some(expansion_info),
             });
 
@@ -274,6 +261,7 @@ impl SyntaxContext {
                 prev_ctxt: SyntaxContext::empty(),
                 opaque: SyntaxContext::empty(),
                 opaque_and_semitransparent: SyntaxContext::empty(),
+                dollar_crate_name: keywords::DollarCrate.name(),
             });
             SyntaxContext(data.syntax_contexts.len() as u32 - 1)
         })
@@ -308,11 +296,11 @@ impl SyntaxContext {
         }
 
         // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
-        // macros 2.0 expansion, i.e. a macros 1.0 invocation is in a macros 2.0 definition.
+        // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
         //
         // In this case, the tokens from the macros 1.0 definition inherit the hygiene
         // at their invocation. That is, we pretend that the macros 1.0 definition
-        // was defined at its invocation (i.e. inside the macros 2.0 definition)
+        // was defined at its invocation (i.e., inside the macros 2.0 definition)
         // so that the macros 2.0 definition remains hygienic.
         //
         // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
@@ -340,6 +328,7 @@ impl SyntaxContext {
                         prev_ctxt,
                         opaque: new_opaque,
                         opaque_and_semitransparent: new_opaque,
+                        dollar_crate_name: keywords::DollarCrate.name(),
                     });
                     new_opaque
                 });
@@ -357,6 +346,7 @@ impl SyntaxContext {
                         prev_ctxt,
                         opaque,
                         opaque_and_semitransparent: new_opaque_and_semitransparent,
+                        dollar_crate_name: keywords::DollarCrate.name(),
                     });
                     new_opaque_and_semitransparent
                 });
@@ -372,6 +362,7 @@ impl SyntaxContext {
                     prev_ctxt,
                     opaque,
                     opaque_and_semitransparent,
+                    dollar_crate_name: keywords::DollarCrate.name(),
                 });
                 new_opaque_and_semitransparent_and_transparent
             })
@@ -438,7 +429,7 @@ impl SyntaxContext {
     /// }
     /// ```
     /// This returns the expansion whose definition scope we use to privacy check the resolution,
-    /// or `None` if we privacy check as usual (i.e. not w.r.t. a macro definition scope).
+    /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
     pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
         let mut scope = None;
         while !expansion.is_descendant_of(self.outer()) {
@@ -526,6 +517,21 @@ impl SyntaxContext {
     pub fn outer(self) -> Mark {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].outer_mark)
     }
+
+    pub fn dollar_crate_name(self) -> Symbol {
+        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].dollar_crate_name)
+    }
+
+    pub fn set_dollar_crate_name(self, dollar_crate_name: Symbol) {
+        HygieneData::with(|data| {
+            let prev_dollar_crate_name = mem::replace(
+                &mut data.syntax_contexts[self.0 as usize].dollar_crate_name, dollar_crate_name
+            );
+            assert!(dollar_crate_name == prev_dollar_crate_name ||
+                    prev_dollar_crate_name == keywords::DollarCrate.name(),
+                    "$crate name is reset for a syntax context");
+        })
+    }
 }
 
 impl fmt::Debug for SyntaxContext {
@@ -540,7 +546,7 @@ pub struct ExpnInfo {
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
     ///
-    /// This may recursively refer to other macro invocations, e.g. if
+    /// This may recursively refer to other macro invocations, e.g., if
     /// `foo!()` invoked `bar!()` internally, and there was an
     /// expression inside `bar!`; the call_site of the expression in
     /// the expansion would point to the `bar!` invocation; that
@@ -548,7 +554,7 @@ pub struct ExpnInfo {
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
     /// The span of the macro definition itself. The macro may not
-    /// have a sensible definition span (e.g. something defined
+    /// have a sensible definition span (e.g., something defined
     /// completely inside libsyntax) in which case this is None.
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Option<Span>,
@@ -571,9 +577,9 @@ pub struct ExpnInfo {
 /// The source of expansion.
 #[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
-    /// e.g. #[derive(...)] <item>
+    /// e.g., #[derive(...)] <item>
     MacroAttribute(Symbol),
-    /// e.g. `format!()`
+    /// e.g., `format!()`
     MacroBang(Symbol),
     /// Desugaring done by the compiler during HIR lowering.
     CompilerDesugaring(CompilerDesugaringKind)

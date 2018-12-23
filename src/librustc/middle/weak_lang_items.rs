@@ -49,7 +49,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     {
         let mut cx = Context { tcx, items };
-        tcx.hir.krate().visit_all_item_likes(&mut cx.as_deep_visitor());
+        tcx.hir().krate().visit_all_item_likes(&mut cx.as_deep_visitor());
     }
     verify(tcx, items);
 }

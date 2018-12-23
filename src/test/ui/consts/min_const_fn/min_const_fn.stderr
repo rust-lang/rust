@@ -115,7 +115,7 @@ LL | const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
 error: local variables in const fn are unstable
   --> $DIR/min_const_fn.rs:109:34
    |
-LL | const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn are unstable
+LL | const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn
    |                                  ^
 
 error: `if`, `match`, `&&` and `||` are not stable in const fn

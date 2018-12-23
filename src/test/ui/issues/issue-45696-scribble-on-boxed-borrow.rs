@@ -62,7 +62,8 @@ fn boxed_boxed_borrowed_scribble<'a>(s: Box<Box<&'a mut Scribble>>) -> &'a mut u
 fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
     &mut *s.0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
     //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
-    //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
 // This, by analogy to previous case, is *also* not okay.
@@ -72,7 +73,8 @@ fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
 fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
     &mut *(*s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
     //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
-    //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
 // This, by analogy to previous case, is *also* not okay.
@@ -82,7 +84,8 @@ fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
 fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
     &mut *(**s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
     //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
-    //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
 #[rustc_error]

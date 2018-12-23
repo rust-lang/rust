@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     )
                 };
                 let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir.find(scope.node_id(self, region_scope_tree)) {
+                let tag = match self.hir().find(scope.node_id(self, region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
                     Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
@@ -190,8 +190,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let cm = self.sess.source_map();
 
         let scope = region.free_region_binding_scope(self);
-        let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
-        let tag = match self.hir.find(node) {
+        let node = self.hir().as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
+        let tag = match self.hir().find(node) {
             Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),
@@ -200,8 +200,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
-                let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(param) = self.hir
+                let mut sp = cm.def_span(self.hir().span(node));
+                if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&br.name))
                 {
@@ -213,8 +213,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 bound_region: ty::BoundRegion::BrNamed(_, ref name),
                 ..
             }) => {
-                let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(param) = self.hir
+                let mut sp = cm.def_span(self.hir().span(node));
+                if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(&name))
                 {
@@ -225,15 +225,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
-                    self.hir.span(node),
+                    self.hir().span(node),
                 ),
                 ty::BrFresh(_) => (
                     "an anonymous lifetime defined on".to_owned(),
-                    self.hir.span(node),
+                    self.hir().span(node),
                 ),
                 _ => (
                     format!("the lifetime {} as defined on", fr.bound_region),
-                    cm.def_span(self.hir.span(node)),
+                    cm.def_span(self.hir().span(node)),
                 ),
             },
             _ => bug!(),
@@ -1083,7 +1083,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // the expected type argument.
                     if !param.is_self() {
                         let type_param = generics.type_param(param, self.tcx);
-                        let hir = &self.tcx.hir;
+                        let hir = &self.tcx.hir();
                         hir.as_local_node_id(type_param.def_id).map(|id| {
                             // Get the `hir::Param` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
@@ -1095,7 +1095,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
-                            let sp = if has_bounds {
+                            let is_impl_trait = bound_kind.to_string().starts_with("impl ");
+                            let sp = if has_bounds && !is_impl_trait {
                                 sp.to(self.tcx
                                     .sess
                                     .source_map()
@@ -1103,7 +1104,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 sp
                             };
-                            (sp, has_bounds)
+                            (sp, has_bounds, is_impl_trait)
                         })
                     } else {
                         None
@@ -1136,25 +1137,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         fn binding_suggestion<'tcx, S: fmt::Display>(
             err: &mut DiagnosticBuilder<'tcx>,
-            type_param_span: Option<(Span, bool)>,
+            type_param_span: Option<(Span, bool, bool)>,
             bound_kind: GenericKind<'tcx>,
             sub: S,
         ) {
-            let consider = &format!(
-                "consider adding an explicit lifetime bound `{}: {}`...",
-                bound_kind, sub
+            let consider = format!(
+                "consider adding an explicit lifetime bound {}",
+                if type_param_span.map(|(_, _, is_impl_trait)| is_impl_trait).unwrap_or(false) {
+                    format!(" `{}` to `{}`...", sub, bound_kind)
+                } else {
+                    format!("`{}: {}`...", bound_kind, sub)
+                },
             );
-            if let Some((sp, has_lifetimes)) = type_param_span {
-                let tail = if has_lifetimes { " + " } else { "" };
-                let suggestion = format!("{}: {}{}", bound_kind, sub, tail);
+            if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
+                let suggestion = if is_impl_trait {
+                    format!("{} + {}", bound_kind, sub)
+                } else {
+                    let tail = if has_lifetimes { " + " } else { "" };
+                    format!("{}: {}{}", bound_kind, sub, tail)
+                };
                 err.span_suggestion_short_with_applicability(
                     sp,
-                    consider,
+                    &consider,
                     suggestion,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                err.help(consider);
+                err.help(&consider);
             }
         }
 
@@ -1315,8 +1324,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_path.hir_id);
-                let var_name = self.tcx.hir.name(var_node_id);
+                let var_node_id = self.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(var_node_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
             infer::NLL(..) => bug!("NLL variable found in lexical phase"),

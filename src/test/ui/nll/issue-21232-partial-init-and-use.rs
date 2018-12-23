@@ -61,7 +61,7 @@ impl<F> R<F> { fn new(f: F) -> Self { R { w: 0, f } } }
 // As a shorthand for the cases above, adding a numeric summary to
 // each test's fn name to denote each point on each axis.
 //
-// E.g. 1000 = field fully init struct; 0211 = local void reinit tuple
+// e.g., 1000 = field fully init struct; 0211 = local void reinit tuple
 
 // It got pretty monotonous writing the same code over and over, and I
 // feared I would forget details. So I abstracted some desiderata into

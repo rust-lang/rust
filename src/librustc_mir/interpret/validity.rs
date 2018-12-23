@@ -17,7 +17,7 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, EvalErrorKind,
+    Scalar, AllocKind, EvalResult, EvalErrorKind,
 };
 
 use super::{
@@ -388,7 +388,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                             "integer pointer in non-ZST reference", self.path);
                         // Skip validation entirely for some external statics
                         let alloc_kind = self.ecx.tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(AllocType::Static(did)) = alloc_kind {
+                        if let Some(AllocKind::Static(did)) = alloc_kind {
                             // `extern static` cannot be validated as they have no body.
                             // FIXME: Statics from other crates are also skipped.
                             // They might be checked at a different type, but for now we
@@ -408,7 +408,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     // Check if we have encountered this pointer+layout combination
                     // before.  Proceed recursively even for integer pointers, no
                     // reason to skip them! They are (recursively) valid for some ZST,
-                    // but not for others (e.g. `!` is a ZST).
+                    // but not for others (e.g., `!` is a ZST).
                     let op = place.into();
                     if ref_tracking.seen.insert(op) {
                         trace!("Recursing below ptr {:#?}", *op);
@@ -548,7 +548,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
                 // In run-time mode, we accept pointers in here.  This is actually more
-                // permissive than a per-element check would be, e.g. we accept
+                // permissive than a per-element check would be, e.g., we accept
                 // an &[u8] that contains a pointer even though bytewise checking would
                 // reject it.  However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to

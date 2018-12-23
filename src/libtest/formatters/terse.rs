@@ -66,7 +66,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_pretty(result, color)?;
         if self.test_count % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
             // we insert a new line every 100 dots in order to flush the
-            // screen when dealing with line-buffered output (e.g. piping to
+            // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
             let out = format!(" {}/{}\n", self.test_count+1, self.total_test_count);
             self.write_plain(&out)?;

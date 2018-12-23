@@ -10,7 +10,7 @@
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::convert::From;
+use std::iter::FromIterator;
 use std::mem;
 use std::ops::{RangeBounds, Bound, Index, IndexMut};
 
@@ -25,11 +25,10 @@ use std::ops::{RangeBounds, Bound, Index, IndexMut};
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, RustcEncodable,
          RustcDecodable)]
 pub struct SortedMap<K: Ord, V> {
-    data: Vec<(K,V)>
+    data: Vec<(K, V)>
 }
 
 impl<K: Ord, V> SortedMap<K, V> {
-
     #[inline]
     pub fn new() -> SortedMap<K, V> {
         SortedMap {
@@ -82,7 +81,10 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
         match self.lookup_index_for(key) {
             Ok(index) => {
                 unsafe {
@@ -96,7 +98,10 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
         match self.lookup_index_for(key) {
             Ok(index) => {
                 unsafe {
@@ -122,19 +127,24 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     /// Iterate over the keys, sorted
     #[inline]
-    pub fn keys(&self) -> impl Iterator<Item=&K> + ExactSizeIterator {
+    pub fn keys(&self) -> impl Iterator<Item = &K> + ExactSizeIterator {
         self.data.iter().map(|&(ref k, _)| k)
     }
 
     /// Iterate over values, sorted by key
     #[inline]
-    pub fn values(&self) -> impl Iterator<Item=&V> + ExactSizeIterator {
+    pub fn values(&self) -> impl Iterator<Item = &V> + ExactSizeIterator {
         self.data.iter().map(|&(_, ref v)| v)
     }
 
     #[inline]
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     #[inline]
@@ -207,8 +217,11 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     /// Looks up the key in `self.data` via `slice::binary_search()`.
     #[inline(always)]
-    fn lookup_index_for(&self, key: &K) -> Result<usize, usize> {
-        self.data.binary_search_by(|&(ref x, _)| x.cmp(key))
+    fn lookup_index_for<Q>(&self, key: &Q) -> Result<usize, usize>
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
+        self.data.binary_search_by(|&(ref x, _)| x.borrow().cmp(key))
     }
 
     #[inline]
@@ -247,38 +260,54 @@ impl<K: Ord, V> SortedMap<K, V> {
 
         (start, end)
     }
+
+    #[inline]
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
+        self.get(key).is_some()
+    }
 }
 
 impl<K: Ord, V> IntoIterator for SortedMap<K, V> {
     type Item = (K, V);
     type IntoIter = ::std::vec::IntoIter<(K, V)>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.data.into_iter()
     }
 }
 
-impl<K: Ord, V, Q: Borrow<K>> Index<Q> for SortedMap<K, V> {
+impl<'a, K, Q, V> Index<&'a Q> for SortedMap<K, V>
+    where K: Ord + Borrow<Q>,
+          Q: Ord + ?Sized
+{
     type Output = V;
-    fn index(&self, index: Q) -> &Self::Output {
-        let k: &K = index.borrow();
-        self.get(k).unwrap()
+
+    fn index(&self, key: &Q) -> &Self::Output {
+        self.get(key).expect("no entry found for key")
     }
 }
 
-impl<K: Ord, V, Q: Borrow<K>> IndexMut<Q> for SortedMap<K, V> {
-    fn index_mut(&mut self, index: Q) -> &mut Self::Output {
-        let k: &K = index.borrow();
-        self.get_mut(k).unwrap()
+impl<'a, K, Q, V> IndexMut<&'a Q> for SortedMap<K, V>
+    where K: Ord + Borrow<Q>,
+          Q: Ord + ?Sized
+{
+    fn index_mut(&mut self, key: &Q) -> &mut Self::Output {
+        self.get_mut(key).expect("no entry found for key")
     }
 }
 
-impl<K: Ord, V, I: Iterator<Item=(K, V)>> From<I> for SortedMap<K, V> {
-    fn from(data: I) -> Self {
-        let mut data: Vec<(K, V)> = data.collect();
+impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        let mut data: Vec<(K, V)> = iter.into_iter().collect();
+
         data.sort_unstable_by(|&(ref k1, _), &(ref k2, _)| k1.cmp(k2));
         data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| {
             k1.cmp(k2) == Ordering::Equal
         });
+
         SortedMap {
             data
         }

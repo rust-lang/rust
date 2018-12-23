@@ -1,9 +1,16 @@
+error[E0019]: static contains unimplemented expression type
+  --> $DIR/mod-static-with-const-fn.rs:29:5
+   |
+LL |     *FOO.0.get() = 5;
+   |     ^^^^^^^^^^^^^^^^
+
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/mod-static-with-const-fn.rs:34:5
+  --> $DIR/mod-static-with-const-fn.rs:32:5
    |
 LL |     foo();
    |     ^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors occurred: E0015, E0019.
+For more information about an error, try `rustc --explain E0015`.

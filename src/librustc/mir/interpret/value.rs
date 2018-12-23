@@ -18,7 +18,7 @@ use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_ex
 /// Represents the result of a raw const operation, pre-validation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct RawConst<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is a `AllocType::Memory`
+    // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,
@@ -134,6 +134,14 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn erase_tag(self) -> Scalar {
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_tag()),
+            Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
+        }
+    }
+
+    #[inline]
+    pub fn with_tag(self, new_tag: Tag) -> Self {
+        match self {
+            Scalar::Ptr(ptr) => Scalar::Ptr(Pointer { tag: new_tag, ..ptr }),
             Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
         }
     }

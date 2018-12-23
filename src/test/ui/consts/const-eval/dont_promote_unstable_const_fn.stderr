@@ -4,7 +4,7 @@ error: `foo` is not yet stable as a const fn
 LL | const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a const fn
    |                         ^^^^^
    |
-   = help: in Nightly builds, add `#![feature(foo)]` to the crate attributes to enable
+   = help: add `#![feature(foo)]` to the crate attributes to enable
 
 error[E0597]: borrowed value does not live long enough
   --> $DIR/dont_promote_unstable_const_fn.rs:28:28

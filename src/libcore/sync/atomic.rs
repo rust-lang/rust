@@ -188,7 +188,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// [Ordering::Relaxed]: #variant.Relaxed
 /// [Ordering::SeqCst]: #variant.SeqCst
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
@@ -1072,6 +1072,15 @@ impl<T> AtomicPtr<T> {
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "atomic_bool_from", since = "1.24.0")]
 impl From<bool> for AtomicBool {
+    /// Converts a `bool` into an `AtomicBool`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicBool;
+    /// let atomic_bool = AtomicBool::from(true);
+    /// assert_eq!(format!("{:?}", atomic_bool), "true")
+    /// ```
     #[inline]
     fn from(b: bool) -> Self { Self::new(b) }
 }
@@ -1126,8 +1135,12 @@ macro_rules! atomic_int {
 
         #[$stable_from]
         impl From<$int_type> for $atomic_type {
-            #[inline]
-            fn from(v: $int_type) -> Self { Self::new(v) }
+            doc_comment! {
+                concat!(
+"Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`."),
+                #[inline]
+                fn from(v: $int_type) -> Self { Self::new(v) }
+            }
         }
 
         #[$stable_debug]
@@ -1940,7 +1953,7 @@ atomic_int! {
     8,
     u64 AtomicU64 ATOMIC_U64_INIT
 }
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1954,7 +1967,7 @@ atomic_int! {
     16,
     i128 AtomicI128 ATOMIC_I128_INIT
 }
-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+#[cfg(target_has_atomic = "128")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),

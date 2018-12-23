@@ -68,12 +68,12 @@ impl fmt::Debug for Lifetime {
 /// It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
 ///
-/// E.g. `std::cmp::PartialEq`
+/// E.g., `std::cmp::PartialEq`.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
-    /// Global paths begin with `keywords::CrateRoot`.
+    /// Global paths begin with `keywords::PathRoot`.
     pub segments: Vec<PathSegment>,
 }
 
@@ -96,8 +96,8 @@ impl fmt::Display for Path {
 }
 
 impl Path {
-    // convert a span and an identifier to the corresponding
-    // 1-segment path
+    // Convert a span and an identifier to the corresponding
+    // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
         Path {
             segments: vec![PathSegment::from_ident(ident)],
@@ -105,25 +105,14 @@ impl Path {
         }
     }
 
-    // Make a "crate root" segment for this path unless it already has it
-    // or starts with something like `self`/`super`/`$crate`/etc.
-    pub fn make_root(&self) -> Option<PathSegment> {
-        if let Some(ident) = self.segments.get(0).map(|seg| seg.ident) {
-            if ident.is_path_segment_keyword() {
-                return None;
-            }
-        }
-        Some(PathSegment::crate_root(self.span.shrink_to_lo()))
-    }
-
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == keywords::CrateRoot.name()
+        !self.segments.is_empty() && self.segments[0].ident.name == keywords::PathRoot.name()
     }
 }
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of types.
 ///
-/// E.g. `std`, `String` or `Box<T>`
+/// E.g., `std`, `String` or `Box<T>`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
@@ -144,14 +133,14 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
         PathSegment { ident, id: DUMMY_NODE_ID, args: None }
     }
-    pub fn crate_root(span: Span) -> Self {
-        PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span))
+    pub fn path_root(span: Span) -> Self {
+        PathSegment::from_ident(Ident::new(keywords::PathRoot.name(), span))
     }
 }
 
 /// Arguments of a path segment.
 ///
-/// E.g. `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`
+/// E.g., `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericArgs {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
@@ -293,7 +282,7 @@ pub type GenericBounds = Vec<GenericBound>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericParamKind {
-    /// A lifetime definition, e.g. `'a: 'b+'c+'d`.
+    /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime,
     Type {
         default: Option<P<Ty>>,
@@ -345,11 +334,11 @@ pub struct WhereClause {
 /// A single predicate in a `where` clause
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum WherePredicate {
-    /// A type binding, e.g. `for<'c> Foo: Send+Clone+'c`
+    /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
     BoundPredicate(WhereBoundPredicate),
-    /// A lifetime predicate, e.g. `'a: 'b+'c`
+    /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
-    /// An equality predicate (unsupported)
+    /// An equality predicate (unsupported).
     EqPredicate(WhereEqPredicate),
 }
 
@@ -365,7 +354,7 @@ impl WherePredicate {
 
 /// A type bound.
 ///
-/// E.g. `for<'c> Foo: Send+Clone+'c`
+/// E.g., `for<'c> Foo: Send + Clone + 'c`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
@@ -379,7 +368,7 @@ pub struct WhereBoundPredicate {
 
 /// A lifetime predicate.
 ///
-/// E.g. `'a: 'b+'c`
+/// E.g., `'a: 'b + 'c`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereRegionPredicate {
     pub span: Span,
@@ -389,7 +378,7 @@ pub struct WhereRegionPredicate {
 
 /// An equality predicate (unsupported).
 ///
-/// E.g. `T=int`
+/// E.g., `T = int`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereEqPredicate {
     pub id: NodeId,
@@ -398,8 +387,8 @@ pub struct WhereEqPredicate {
     pub rhs_ty: P<Ty>,
 }
 
-/// The set of MetaItems that define the compilation environment of the crate,
-/// used to drive conditional compilation
+/// The set of `MetaItem`s that define the compilation environment of the crate,
+/// used to drive conditional compilation.
 pub type CrateConfig = FxHashSet<(Name, Option<Symbol>)>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -414,20 +403,20 @@ pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
 
 /// Possible values inside of compile-time attribute lists.
 ///
-/// E.g. the '..' in `#[name(..)]`.
+/// E.g., the '..' in `#[name(..)]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum NestedMetaItemKind {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
     /// A literal.
     ///
-    /// E.g. "foo", 64, true
+    /// E.g., `"foo"`, `64`, `true`.
     Literal(Lit),
 }
 
 /// A spanned compile-time attribute item.
 ///
-/// E.g. `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`
+/// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MetaItem {
     pub ident: Path,
@@ -437,26 +426,26 @@ pub struct MetaItem {
 
 /// A compile-time attribute item.
 ///
-/// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
+/// E.g., `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
-    /// E.g. `test` as in `#[test]`
+    /// E.g., `test` as in `#[test]`.
     Word,
     /// List meta item.
     ///
-    /// E.g. `derive(..)` as in `#[derive(..)]`
+    /// E.g., `derive(..)` as in `#[derive(..)]`.
     List(Vec<NestedMetaItem>),
     /// Name value meta item.
     ///
-    /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
+    /// E.g., `feature = "foo"` as in `#[feature = "foo"]`.
     NameValue(Lit),
 }
 
 /// A Block (`{ .. }`).
 ///
-/// E.g. `{ .. }` as in `fn foo() { .. }`
+/// E.g., `{ .. }` as in `fn foo() { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Block {
     /// Statements in a block
@@ -579,7 +568,7 @@ pub enum RangeSyntax {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum PatKind {
-    /// Represents a wildcard pattern (`_`)
+    /// Represents a wildcard pattern (`_`).
     Wild,
 
     /// A `PatKind::Ident` may either be a new bound variable (`ref mut binding @ OPT_SUBPATTERN`),
@@ -588,13 +577,13 @@ pub enum PatKind {
     /// during name resolution.
     Ident(BindingMode, Ident, Option<P<Pat>>),
 
-    /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
+    /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
     Struct(Path, Vec<Spanned<FieldPat>>, bool),
 
-    /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
+    /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
-    /// 0 <= position <= subpats.len()
+    /// `0 <= position <= subpats.len()`.
     TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
 
     /// A possibly qualified path pattern.
@@ -603,24 +592,24 @@ pub enum PatKind {
     /// only legally refer to associated constants.
     Path(Option<QSelf>, Path),
 
-    /// A tuple pattern `(a, b)`.
+    /// A tuple pattern (`(a, b)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
-    /// 0 <= position <= subpats.len()
+    /// `0 <= position <= subpats.len()`.
     Tuple(Vec<P<Pat>>, Option<usize>),
-    /// A `box` pattern
+    /// A `box` pattern.
     Box(P<Pat>),
-    /// A reference pattern, e.g. `&mut (a, b)`
+    /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(P<Pat>, Mutability),
-    /// A literal
+    /// A literal.
     Lit(P<Expr>),
-    /// A range pattern, e.g. `1...2`, `1..=2` or `1..2`
+    /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
     Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
-    /// Parentheses in patterns used for grouping, i.e. `(PAT)`.
+    /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),
-    /// A macro pattern; pre-expansion
+    /// A macro pattern; pre-expansion.
     Mac(Mac),
 }
 
@@ -818,23 +807,23 @@ pub enum StmtKind {
 
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum MacStmtStyle {
-    /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
-    /// `foo!(...);`, `foo![...];`
+    /// The macro statement had a trailing semicolon (e.g., `foo! { ... };`
+    /// `foo!(...);`, `foo![...];`).
     Semicolon,
-    /// The macro statement had braces; e.g. foo! { ... }
+    /// The macro statement had braces (e.g., `foo! { ... }`).
     Braces,
-    /// The macro statement had parentheses or brackets and no semicolon; e.g.
-    /// `foo!(...)`. All of these will end up being converted into macro
+    /// The macro statement had parentheses or brackets and no semicolon (e.g.,
+    /// `foo!(...)`). All of these will end up being converted into macro
     /// expressions.
     NoBraces,
 }
 
-/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
+/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Local {
     pub pat: P<Pat>,
     pub ty: Option<P<Ty>>,
-    /// Initializer expression to set the value, if any
+    /// Initializer expression to set the value, if any.
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
@@ -843,7 +832,7 @@ pub struct Local {
 
 /// An arm of a 'match'.
 ///
-/// E.g. `0..=10 => { println!("match!") }` as in
+/// E.g., `0..=10 => { println!("match!") }` as in
 ///
 /// ```
 /// match 123 {
@@ -889,8 +878,8 @@ pub enum UnsafeSource {
 
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
-/// These are usually found nested inside types (e.g. array lengths)
-/// or expressions (e.g. repeat counts), and also used to define
+/// These are usually found nested inside types (e.g., array lengths)
+/// or expressions (e.g., repeat counts), and also used to define
 /// explicit discriminant values for enum variants.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct AnonConst {
@@ -912,7 +901,7 @@ pub struct Expr {
 static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 88);
 
 impl Expr {
-    /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
+    /// Whether this expression would be valid somewhere that expects a value; for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
         if let ExprKind::Block(ref block, _) = self.node {
@@ -1060,24 +1049,24 @@ pub enum ExprKind {
     ///
     /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    /// The first element of the vector of `Expr`s is the expression that evaluates
+    /// The first element of the vector of an `Expr` is the expression that evaluates
     /// to the object on which the method is being called on (the receiver),
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
     MethodCall(PathSegment, Vec<P<Expr>>),
-    /// A tuple (`(a, b, c ,d)`)
+    /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
-    /// A binary operation (For example: `a + b`, `a * b`)
+    /// A binary operation (e.g., `a + b`, `a * b`).
     Binary(BinOp, P<Expr>, P<Expr>),
-    /// A unary operation (For example: `!x`, `*x`)
+    /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, P<Expr>),
-    /// A literal (For example: `1`, `"foo"`)
+    /// A literal (e.g., `1`, `"foo"`).
     Lit(Lit),
-    /// A cast (`foo as f64`)
+    /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
     Type(P<Expr>, P<Ty>),
-    /// An `if` block, with an optional else block
+    /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`
     If(P<Expr>, P<Block>, Option<P<Expr>>),
@@ -1091,31 +1080,31 @@ pub enum ExprKind {
     ///
     /// `'label: while expr { block }`
     While(P<Expr>, P<Block>, Option<Label>),
-    /// A while-let loop, with an optional label
+    /// A `while let` loop, with an optional label.
     ///
     /// `'label: while let pat = expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
     WhileLet(Vec<P<Pat>>, P<Expr>, P<Block>, Option<Label>),
-    /// A for loop, with an optional label
+    /// A `for` loop, with an optional label.
     ///
     /// `'label: for pat in expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
     ForLoop(P<Pat>, P<Expr>, P<Block>, Option<Label>),
-    /// Conditionless loop (can be exited with break, continue, or return)
+    /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
     Loop(P<Block>, Option<Label>),
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
-    /// A closure (for example, `move |a, b, c| a + b + c`)
+    /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
-    /// The final span is the span of the argument block `|...|`
+    /// The final span is the span of the argument block `|...|`.
     Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
-    /// A block (`'label: { ... }`)
+    /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
-    /// An async block (`async move { ... }`)
+    /// An async block (`async move { ... }`).
     ///
     /// The `NodeId` is the `NodeId` for the closure that results from
     /// desugaring an async block, just like the NodeId field in the
@@ -1124,70 +1113,69 @@ pub enum ExprKind {
     /// created during lowering cannot be made the parent of any other
     /// preexisting defs.
     Async(CaptureBy, NodeId, P<Block>),
-    /// A try block (`try { ... }`)
+    /// A try block (`try { ... }`).
     TryBlock(P<Block>),
 
-    /// An assignment (`a = foo()`)
+    /// An assignment (`a = foo()`).
     Assign(P<Expr>, P<Expr>),
-    /// An assignment with an operator
+    /// An assignment with an operator.
     ///
-    /// For example, `a += 1`.
+    /// E.g., `a += 1`.
     AssignOp(BinOp, P<Expr>, P<Expr>),
-    /// Access of a named (`obj.foo`) or unnamed (`obj.0`) struct field
+    /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
     Field(P<Expr>, Ident),
-    /// An indexing operation (`foo[2]`)
+    /// An indexing operation (e.g., `foo[2]`).
     Index(P<Expr>, P<Expr>),
-    /// A range (`1..2`, `1..`, `..2`, `1...2`, `1...`, `...2`)
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1...2`, `1...`, `...2`).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
 
     /// Variable reference, possibly containing `::` and/or type
-    /// parameters, e.g. foo::bar::<baz>.
+    /// parameters (e.g., `foo::bar::<baz>`).
     ///
-    /// Optionally "qualified",
-    /// E.g. `<Vec<T> as SomeTrait>::SomeType`.
+    /// Optionally "qualified" (e.g., `<Vec<T> as SomeTrait>::SomeType`).
     Path(Option<QSelf>, Path),
 
-    /// A referencing operation (`&a` or `&mut a`)
+    /// A referencing operation (`&a` or `&mut a`).
     AddrOf(Mutability, P<Expr>),
-    /// A `break`, with an optional label to break, and an optional expression
+    /// A `break`, with an optional label to break, and an optional expression.
     Break(Option<Label>, Option<P<Expr>>),
-    /// A `continue`, with an optional label
+    /// A `continue`, with an optional label.
     Continue(Option<Label>),
-    /// A `return`, with an optional value to be returned
+    /// A `return`, with an optional value to be returned.
     Ret(Option<P<Expr>>),
 
-    /// Output of the `asm!()` macro
+    /// Output of the `asm!()` macro.
     InlineAsm(P<InlineAsm>),
 
-    /// A macro invocation; pre-expansion
+    /// A macro invocation; pre-expansion.
     Mac(Mac),
 
     /// A struct literal expression.
     ///
-    /// For example, `Foo {x: 1, y: 2}`, or
-    /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
+    /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
+    /// where `base` is the `Option<Expr>`.
     Struct(Path, Vec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
-    /// For example, `[1; 5]`. The expression is the element to be
+    /// E.g., `[1; 5]`. The expression is the element to be
     /// repeated; the constant is the number of times to repeat it.
     Repeat(P<Expr>, AnonConst),
 
-    /// No-op: used solely so we can pretty-print faithfully
+    /// No-op: used solely so we can pretty-print faithfully.
     Paren(P<Expr>),
 
-    /// `expr?`
+    /// A try expression (`expr?`).
     Try(P<Expr>),
 
-    /// A `yield`, with an optional value to be yielded
+    /// A `yield`, with an optional value to be yielded.
     Yield(Option<P<Expr>>),
 }
 
-/// The explicit Self type in a "qualified path". The actual
+/// The explicit `Self` type in a "qualified path". The actual
 /// path, including the trait and the associated item, is stored
 /// separately. `position` represents the index of the associated
-/// item qualified with this Self type.
+/// item qualified with this `Self` type.
 ///
 /// ```ignore (only-for-syntax-highlight)
 /// <Vec<T> as a::b::Trait>::AssociatedItem
@@ -1209,14 +1197,14 @@ pub struct QSelf {
     pub position: usize,
 }
 
-/// A capture clause
+/// A capture clause.
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum CaptureBy {
     Value,
     Ref,
 }
 
-/// The movability of a generator / closure literal
+/// The movability of a generator / closure literal.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum Movability {
     Static,
@@ -1225,12 +1213,12 @@ pub enum Movability {
 
 pub type Mac = Spanned<Mac_>;
 
-/// Represents a macro invocation. The Path indicates which macro
+/// Represents a macro invocation. The `Path` indicates which macro
 /// is being invoked, and the vector of token-trees contains the source
 /// of the macro invocation.
 ///
-/// NB: the additional ident for a macro_rules-style macro is actually
-/// stored in the enclosing item. Oog.
+/// N.B., the additional ident for a `macro_rules`-style macro is actually
+/// stored in the enclosing item.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mac_ {
     pub path: Path,
@@ -1247,7 +1235,7 @@ pub enum MacDelimiter {
 
 impl Mac_ {
     pub fn stream(&self) -> TokenStream {
-        self.tts.clone().into()
+        self.tts.stream()
     }
 }
 
@@ -1265,15 +1253,15 @@ impl MacroDef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum StrStyle {
-    /// A regular string, like `"foo"`
+    /// A regular string, like `"foo"`.
     Cooked,
-    /// A raw string, like `r##"foo"##`
+    /// A raw string, like `r##"foo"##`.
     ///
     /// The value is the number of `#` symbols used.
     Raw(u16),
 }
 
-/// A literal
+/// A literal.
 pub type Lit = Spanned<LitKind>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
@@ -1285,29 +1273,29 @@ pub enum LitIntType {
 
 /// Literal kind.
 ///
-/// E.g. `"foo"`, `42`, `12.34` or `bool`
+/// E.g., `"foo"`, `42`, `12.34`, or `bool`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
 pub enum LitKind {
-    /// A string literal (`"foo"`)
+    /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
-    /// A byte string (`b"foo"`)
+    /// A byte string (`b"foo"`).
     ByteStr(Lrc<Vec<u8>>),
-    /// A byte char (`b'f'`)
+    /// A byte char (`b'f'`).
     Byte(u8),
-    /// A character literal (`'a'`)
+    /// A character literal (`'a'`).
     Char(char),
-    /// An integer literal (`1`)
+    /// An integer literal (`1`).
     Int(u128, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`)
+    /// A float literal (`1f64` or `1E10f64`).
     Float(Symbol, FloatTy),
-    /// A float literal without a suffix (`1.0 or 1.0E10`)
+    /// A float literal without a suffix (`1.0 or 1.0E10`).
     FloatUnsuffixed(Symbol),
-    /// A boolean literal
+    /// A boolean literal.
     Bool(bool),
 }
 
 impl LitKind {
-    /// Returns true if this literal is a string and false otherwise.
+    /// Returns `true` if this literal is a string.
     pub fn is_str(&self) -> bool {
         match *self {
             LitKind::Str(..) => true,
@@ -1315,7 +1303,7 @@ impl LitKind {
         }
     }
 
-    /// Returns true if this literal is byte literal string false otherwise.
+    /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
         match self {
             LitKind::ByteStr(_) => true,
@@ -1323,7 +1311,7 @@ impl LitKind {
         }
     }
 
-    /// Returns true if this is a numeric literal.
+    /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {
             LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => true,
@@ -1331,8 +1319,8 @@ impl LitKind {
         }
     }
 
-    /// Returns true if this literal has no suffix. Note: this will return true
-    /// for literals with prefixes such as raw strings and byte strings.
+    /// Returns `true` if this literal has no suffix.
+    /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
     pub fn is_unsuffixed(&self) -> bool {
         match *self {
             // unsuffixed variants
@@ -1350,14 +1338,14 @@ impl LitKind {
         }
     }
 
-    /// Returns true if this literal has a suffix.
+    /// Returns `true` if this literal has a suffix.
     pub fn is_suffixed(&self) -> bool {
         !self.is_unsuffixed()
     }
 }
 
-// NB: If you change this, you'll probably want to change the corresponding
-// type structure in middle/ty.rs as well.
+// N.B., If you change this, you'll probably want to change the corresponding
+// type structure in `middle/ty.rs` as well.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MutTy {
     pub ty: P<Ty>,
@@ -1384,7 +1372,7 @@ pub struct TraitItem {
     pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
-    /// See `Item::tokens` for what this is
+    /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
 
@@ -1406,7 +1394,7 @@ pub struct ImplItem {
     pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
-    /// See `Item::tokens` for what this is
+    /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
 
@@ -1454,8 +1442,8 @@ impl IntTy {
     }
 
     pub fn val_to_string(&self, val: i128) -> String {
-        // cast to a u128 so we can correctly print INT128_MIN. All integral types
-        // are parsed as u128, so we wouldn't want to print an extra negative
+        // Cast to a `u128` so we can correctly print `INT128_MIN`. All integral types
+        // are parsed as `u128`, so we wouldn't want to print an extra negative
         // sign.
         format!("{}{}", val as u128, self.ty_to_string())
     }
@@ -1522,7 +1510,7 @@ impl fmt::Display for UintTy {
     }
 }
 
-// Bind a type to an associated type: `A=Foo`.
+// Bind a type to an associated type: `A = Foo`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeBinding {
     pub id: NodeId,
@@ -1552,27 +1540,27 @@ pub struct BareFnTy {
     pub decl: P<FnDecl>,
 }
 
-/// The different kinds of types recognized by the compiler
+/// The different kinds of types recognized by the compiler.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum TyKind {
-    /// A variable-length slice (`[T]`)
+    /// A variable-length slice (`[T]`).
     Slice(P<Ty>),
-    /// A fixed length array (`[T; n]`)
+    /// A fixed length array (`[T; n]`).
     Array(P<Ty>, AnonConst),
-    /// A raw pointer (`*const T` or `*mut T`)
+    /// A raw pointer (`*const T` or `*mut T`).
     Ptr(MutTy),
-    /// A reference (`&'a T` or `&'a mut T`)
+    /// A reference (`&'a T` or `&'a mut T`).
     Rptr(Option<Lifetime>, MutTy),
-    /// A bare function (e.g. `fn(usize) -> bool`)
+    /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(P<BareFnTy>),
-    /// The never type (`!`)
+    /// The never type (`!`).
     Never,
-    /// A tuple (`(A, B, C, D,...)`)
+    /// A tuple (`(A, B, C, D,...)`).
     Tup(Vec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
-    /// "qualified", e.g. `<Vec<T> as SomeTrait>::SomeType`.
+    /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
-    /// Type parameters are stored in the Path itself
+    /// Type parameters are stored in the `Path` itself.
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
@@ -1582,18 +1570,18 @@ pub enum TyKind {
     ///
     /// The `NodeId` exists to prevent lowering from having to
     /// generate `NodeId`s on the fly, which would complicate
-    /// the generation of `existential type` items significantly
+    /// the generation of `existential type` items significantly.
     ImplTrait(NodeId, GenericBounds),
-    /// No-op; kept solely so that we can pretty-print faithfully
+    /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(P<Ty>),
-    /// Unused for now
+    /// Unused for now.
     Typeof(AnonConst),
-    /// TyKind::Infer means the type should be inferred instead of it having been
+    /// This means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
     /// Inferred type of a `self` or `&self` argument in a method.
     ImplicitSelf,
-    // A macro in the type position.
+    /// A macro in the type position.
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
@@ -1626,7 +1614,7 @@ pub enum TraitObjectSyntax {
 
 /// Inline assembly dialect.
 ///
-/// E.g. `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`
+/// E.g., `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum AsmDialect {
     Att,
@@ -1635,7 +1623,7 @@ pub enum AsmDialect {
 
 /// Inline assembly.
 ///
-/// E.g. `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`
+/// E.g., `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct InlineAsmOutput {
     pub constraint: Symbol,
@@ -1646,7 +1634,7 @@ pub struct InlineAsmOutput {
 
 /// Inline assembly.
 ///
-/// E.g. `asm!("NOP");`
+/// E.g., `asm!("NOP");`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct InlineAsm {
     pub asm: Symbol,
@@ -1662,7 +1650,7 @@ pub struct InlineAsm {
 
 /// An argument in a function header.
 ///
-/// E.g. `bar: usize` as in `fn foo(bar: usize)`
+/// E.g., `bar: usize` as in `fn foo(bar: usize)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arg {
     pub ty: P<Ty>,
@@ -1672,7 +1660,7 @@ pub struct Arg {
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
 ///
-/// E.g. `&mut self` as in `fn foo(&mut self)`
+/// E.g., `&mut self` as in `fn foo(&mut self)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum SelfKind {
     /// `self`, `mut self`
@@ -1688,7 +1676,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.node {
-            if ident.name == keywords::SelfValue.name() {
+            if ident.name == keywords::SelfLower.name() {
                 return match self.ty.node {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
                     TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.node.is_implicit_self() => {
@@ -1706,7 +1694,7 @@ impl Arg {
 
     pub fn is_self(&self) -> bool {
         if let PatKind::Ident(_, ident, _) = self.pat.node {
-            ident.name == keywords::SelfValue.name()
+            ident.name == keywords::SelfLower.name()
         } else {
             false
         }
@@ -1751,7 +1739,7 @@ impl Arg {
 
 /// Header (not the body) of a function declaration.
 ///
-/// E.g. `fn foo(bar: baz)`
+/// E.g., `fn foo(bar: baz)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
@@ -1798,7 +1786,8 @@ impl IsAsync {
             false
         }
     }
-    /// In case this is an `Async` return the `NodeId` for the generated impl Trait item
+
+    /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
     pub fn opt_return_id(self) -> Option<NodeId> {
         match self {
             IsAsync::Async {
@@ -1855,11 +1844,10 @@ impl fmt::Debug for ImplPolarity {
 pub enum FunctionRetTy {
     /// Return type is not specified.
     ///
-    /// Functions default to `()` and
-    /// closures default to inference. Span points to where return
-    /// type would be inserted.
+    /// Functions default to `()` and closures default to inference.
+    /// Span points to where return type would be inserted.
     Default(Span),
-    /// Everything else
+    /// Everything else.
     Ty(P<Ty>),
 }
 
@@ -1874,7 +1862,7 @@ impl FunctionRetTy {
 
 /// Module declaration.
 ///
-/// E.g. `mod foo;` or `mod foo { .. }`
+/// E.g., `mod foo;` or `mod foo { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mod {
     /// A span from the first token past `{` to the last token until `}`.
@@ -1882,22 +1870,22 @@ pub struct Mod {
     /// to the last token in the external file.
     pub inner: Span,
     pub items: Vec<P<Item>>,
-    /// For `mod foo;` inline is false, for `mod foo { .. }` it is true.
+    /// `true` for `mod foo { .. }`; `false` for `mod foo;`.
     pub inline: bool,
 }
 
 /// Foreign module declaration.
 ///
-/// E.g. `extern { .. }` or `extern C { .. }`
+/// E.g., `extern { .. }` or `extern C { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignMod {
     pub abi: Abi,
     pub items: Vec<ForeignItem>,
 }
 
-/// Global inline assembly
+/// Global inline assembly.
 ///
-/// aka module-level assembly or file-scoped assembly
+/// Also known as "module-level assembly" or "file-scoped assembly".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct GlobalAsm {
     pub asm: Symbol,
@@ -1914,7 +1902,7 @@ pub struct Variant_ {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub data: VariantData,
-    /// Explicit discriminant, e.g. `Foo = 1`
+    /// Explicit discriminant, e.g., `Foo = 1`.
     pub disr_expr: Option<AnonConst>,
 }
 
@@ -1959,7 +1947,7 @@ impl UseTree {
     }
 }
 
-/// Distinguishes between Attributes that decorate items and Attributes that
+/// Distinguishes between `Attribute`s that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -1982,8 +1970,8 @@ impl Idx for AttrId {
     }
 }
 
-/// Meta-data associated with an item
-/// Doc-comments are promoted to attributes that have is_sugared_doc = true
+/// Metadata associated with an item.
+/// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Attribute {
     pub id: AttrId,
@@ -1994,12 +1982,12 @@ pub struct Attribute {
     pub span: Span,
 }
 
-/// TraitRef's appear in impls.
+/// `TraitRef`s appear in impls.
 ///
-/// resolve maps each TraitRef's ref_id to its defining trait; that's all
-/// that the ref_id is for. The impl_id maps to the "self type" of this impl.
-/// If this impl is an ItemKind::Impl, the impl_id is redundant (it could be the
-/// same as the impl's node id).
+/// Resolve maps each `TraitRef`'s `ref_id` to its defining trait; that's all
+/// that the `ref_id` is for. The `impl_id` maps to the "self type" of this impl.
+/// If this impl is an `ItemKind::Impl`, the `impl_id` is redundant (it could be the
+/// same as the impl's node-id).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,
@@ -2032,10 +2020,10 @@ impl PolyTraitRef {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum CrateSugar {
-    /// Source is `pub(crate)`
+    /// Source is `pub(crate)`.
     PubCrate,
 
-    /// Source is (just) `crate`
+    /// Source is (just) `crate`.
     JustCrate,
 }
 
@@ -2061,7 +2049,7 @@ impl VisibilityKind {
 
 /// Field of a struct.
 ///
-/// E.g. `bar: usize` as in `struct Foo { bar: usize }`
+/// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct StructField {
     pub span: Span,
@@ -2087,15 +2075,15 @@ pub struct StructField {
 pub enum VariantData {
     /// Struct variant.
     ///
-    /// E.g. `Bar { .. }` as in `enum Foo { Bar { .. } }`
+    /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
     Struct(Vec<StructField>, NodeId),
     /// Tuple variant.
     ///
-    /// E.g. `Bar(..)` as in `enum Foo { Bar(..) }`
+    /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
     Tuple(Vec<StructField>, NodeId),
     /// Unit variant.
     ///
-    /// E.g. `Bar = ..` as in `enum Foo { Bar = .. }`
+    /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
     Unit(NodeId),
 }
 
@@ -2134,9 +2122,9 @@ impl VariantData {
     }
 }
 
-/// An item
+/// An item.
 ///
-/// The name might be a dummy name in case of anonymous items
+/// The name might be a dummy name in case of anonymous items.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
     pub ident: Ident,
@@ -2156,10 +2144,10 @@ pub struct Item {
     pub tokens: Option<TokenStream>,
 }
 
-/// A function header
+/// A function header.
 ///
-/// All the information between the visibility & the name of the function is
-/// included in this struct (e.g. `async unsafe fn` or `const extern "C" fn`)
+/// All the information between the visibility and the name of the function is
+/// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
@@ -2183,65 +2171,65 @@ impl Default for FnHeader {
 pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
-    /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
+    /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
     ExternCrate(Option<Name>),
     /// A use declaration (`use` or `pub use`) item.
     ///
-    /// E.g. `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`
+    /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
     Use(P<UseTree>),
     /// A static item (`static` or `pub static`).
     ///
-    /// E.g. `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`
+    /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
     Static(P<Ty>, Mutability, P<Expr>),
     /// A constant item (`const` or `pub const`).
     ///
-    /// E.g. `const FOO: i32 = 42;`
+    /// E.g., `const FOO: i32 = 42;`.
     Const(P<Ty>, P<Expr>),
     /// A function declaration (`fn` or `pub fn`).
     ///
-    /// E.g. `fn foo(bar: usize) -> usize { .. }`
+    /// E.g., `fn foo(bar: usize) -> usize { .. }`.
     Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
     /// A module declaration (`mod` or `pub mod`).
     ///
-    /// E.g. `mod foo;` or `mod foo { .. }`
+    /// E.g., `mod foo;` or `mod foo { .. }`.
     Mod(Mod),
     /// An external module (`extern` or `pub extern`).
     ///
-    /// E.g. `extern {}` or `extern "C" {}`
+    /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
-    /// Module-level inline assembly (from `global_asm!()`)
+    /// Module-level inline assembly (from `global_asm!()`).
     GlobalAsm(P<GlobalAsm>),
     /// A type alias (`type` or `pub type`).
     ///
-    /// E.g. `type Foo = Bar<u8>;`
+    /// E.g., `type Foo = Bar<u8>;`.
     Ty(P<Ty>, Generics),
     /// An existential type declaration (`existential type`).
     ///
-    /// E.g. `existential type Foo: Bar + Boo;`
+    /// E.g., `existential type Foo: Bar + Boo;`.
     Existential(GenericBounds, Generics),
     /// An enum definition (`enum` or `pub enum`).
     ///
-    /// E.g. `enum Foo<A, B> { C<A>, D<B> }`
+    /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
     Enum(EnumDef, Generics),
     /// A struct definition (`struct` or `pub struct`).
     ///
-    /// E.g. `struct Foo<A> { x: A }`
+    /// E.g., `struct Foo<A> { x: A }`.
     Struct(VariantData, Generics),
     /// A union definition (`union` or `pub union`).
     ///
-    /// E.g. `union Foo<A, B> { x: A, y: B }`
+    /// E.g., `union Foo<A, B> { x: A, y: B }`.
     Union(VariantData, Generics),
     /// A Trait declaration (`trait` or `pub trait`).
     ///
-    /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
+    /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
     Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
     /// Trait alias
     ///
-    /// E.g. `trait Foo = Bar + Quux;`
+    /// E.g., `trait Foo = Bar + Quux;`.
     TraitAlias(Generics, GenericBounds),
     /// An implementation.
     ///
-    /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
+    /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
     Impl(
         Unsafety,
         ImplPolarity,
@@ -2253,7 +2241,7 @@ pub enum ItemKind {
     ),
     /// A macro invocation.
     ///
-    /// E.g. `macro_rules! foo { .. }` or `foo!(..)`
+    /// E.g., `macro_rules! foo { .. }` or `foo!(..)`.
     Mac(Mac),
 
     /// A macro definition.
@@ -2293,17 +2281,17 @@ pub struct ForeignItem {
     pub vis: Visibility,
 }
 
-/// An item within an `extern` block
+/// An item within an `extern` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ForeignItemKind {
-    /// A foreign function
+    /// A foreign function.
     Fn(P<FnDecl>, Generics),
-    /// A foreign static item (`static ext: u8`), with optional mutability
-    /// (the boolean is true when mutable)
+    /// A foreign static item (`static ext: u8`), with optional mutability.
+    /// (The boolean is `true` for mutable items).
     Static(P<Ty>, bool),
-    /// A foreign type
+    /// A foreign type.
     Ty,
-    /// A macro invocation
+    /// A macro invocation.
     Macro(Mac),
 }
 
@@ -2323,7 +2311,7 @@ mod tests {
     use super::*;
     use serialize;
 
-    // are ASTs encodable?
+    // Are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
         fn assert_encodable<T: serialize::Encodable>() {}

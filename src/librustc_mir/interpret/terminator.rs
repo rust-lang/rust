@@ -252,7 +252,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     return err!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic));
                 }
                 // The intrinsic itself cannot diverge, so if we got here without a return
-                // place... (can happen e.g. for transmute returning `!`)
+                // place... (can happen e.g., for transmute returning `!`)
                 let dest = match dest {
                     Some(dest) => dest,
                     None => return err!(Unreachable)

@@ -65,7 +65,7 @@ pub trait PpAnn {
 
 pub struct NoAnn;
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &'static dyn PpAnn = &NoAnn;
+pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate {
     fn try_fetch_item(&self, item: ast::NodeId) -> Option<&hir::Item> {
@@ -1622,8 +1622,7 @@ impl<'a> State<'a> {
             if i > 0 {
                 self.s.word("::")?
             }
-            if segment.ident.name != keywords::CrateRoot.name() &&
-               segment.ident.name != keywords::DollarCrate.name() {
+            if segment.ident.name != keywords::PathRoot.name() {
                self.print_ident(segment.ident)?;
                segment.with_generic_args(|generic_args| {
                    self.print_generic_args(generic_args, segment.infer_types,
@@ -1636,8 +1635,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_path_segment(&mut self, segment: &hir::PathSegment) -> io::Result<()> {
-        if segment.ident.name != keywords::CrateRoot.name() &&
-           segment.ident.name != keywords::DollarCrate.name() {
+        if segment.ident.name != keywords::PathRoot.name() {
            self.print_ident(segment.ident)?;
            segment.with_generic_args(|generic_args| {
                self.print_generic_args(generic_args, segment.infer_types, false)
@@ -1664,8 +1662,7 @@ impl<'a> State<'a> {
                     if i > 0 {
                         self.s.word("::")?
                     }
-                    if segment.ident.name != keywords::CrateRoot.name() &&
-                       segment.ident.name != keywords::DollarCrate.name() {
+                    if segment.ident.name != keywords::PathRoot.name() {
                         self.print_ident(segment.ident)?;
                         segment.with_generic_args(|generic_args| {
                             self.print_generic_args(generic_args,
@@ -2448,8 +2445,8 @@ fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
     }
 }
 
-/// Expressions that syntactically contain an "exterior" struct literal i.e. not surrounded by any
-/// parens or other delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
+/// Expressions that syntactically contain an "exterior" struct literal i.e., not surrounded by any
+/// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
     match value.node {

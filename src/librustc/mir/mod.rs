@@ -25,7 +25,7 @@ use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::MappedReadGuard;
-use rustc_serialize as serialize;
+use rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
@@ -149,6 +149,14 @@ pub struct Mir<'tcx> {
     /// This is used for the "rust-call" ABI.
     pub spread_arg: Option<Local>,
 
+    /// Mark this MIR of a const context other than const functions as having converted a `&&` or
+    /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
+    /// this conversion from happening and use short circuiting, we will cause the following code
+    /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
+    ///
+    /// List of places where control flow was destroyed. Used for error reporting.
+    pub control_flow_destroyed: Vec<(Span, String)>,
+
     /// A span representing this MIR, for error reporting
     pub span: Span,
 
@@ -167,6 +175,7 @@ impl<'tcx> Mir<'tcx> {
         arg_count: usize,
         upvar_decls: Vec<UpvarDecl>,
         span: Span,
+        control_flow_destroyed: Vec<(Span, String)>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place
         assert!(
@@ -191,6 +200,7 @@ impl<'tcx> Mir<'tcx> {
             spread_arg: None,
             span,
             cache: cache::Cache::new(),
+            control_flow_destroyed,
         }
     }
 
@@ -339,7 +349,7 @@ impl<'tcx> Mir<'tcx> {
     #[inline]
     pub fn args_iter(&self) -> impl Iterator<Item = Local> {
         let arg_count = self.arg_count;
-        (1..arg_count + 1).map(Local::new)
+        (1..=arg_count).map(Local::new)
     }
 
     /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all
@@ -421,6 +431,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     arg_count,
     upvar_decls,
     spread_arg,
+    control_flow_destroyed,
     span,
     cache
 });
@@ -556,7 +567,7 @@ pub enum BorrowKind {
     /// Data is mutable and not aliasable.
     Mut {
         /// True if this borrow arose from method-call auto-ref
-        /// (i.e. `adjustment::Adjust::Borrow`)
+        /// (i.e., `adjustment::Adjust::Borrow`)
         allow_two_phase_borrow: bool,
     },
 }
@@ -692,7 +703,7 @@ mod binding_form_impl {
 /// expression; that is, a block like `{ STMT_1; STMT_2; EXPR }`.
 ///
 /// It is used to improve diagnostics when such temporaries are
-/// involved in borrow_check errors, e.g. explanations of where the
+/// involved in borrow_check errors, e.g., explanations of where the
 /// temporaries come from, when their destructors are run, and/or how
 /// one might revise the code to satisfy the borrow checker's rules.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -701,7 +712,7 @@ pub struct BlockTailInfo {
     /// expression is ignored by the block's expression context.
     ///
     /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
-    /// but not e.g. `let _x = { ...; tail };`
+    /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
 }
 
@@ -756,7 +767,7 @@ pub struct LocalDecl<'tcx> {
     pub ty: Ty<'tcx>,
 
     /// If the user manually ascribed a type to this variable,
-    /// e.g. via `let x: T`, then we carry that type here. The MIR
+    /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
     pub user_ty: UserTypeProjections<'tcx>,
@@ -767,7 +778,7 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// The *syntactic* (i.e. not visibility) source scope the local is defined
+    /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
     /// of it.
@@ -1745,9 +1756,12 @@ pub enum StatementKind<'tcx> {
     Assign(Place<'tcx>, Box<Rvalue<'tcx>>),
 
     /// This represents all the reading that a pattern match may do
-    /// (e.g. inspecting constants and discriminant values), and the
+    /// (e.g., inspecting constants and discriminant values), and the
     /// kind of pattern it comes from. This is in order to adapt potential
     /// error messages to these specific patterns.
+    ///
+    /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
+    /// never accessed still get some sanity checks for e.g. `let x: ! = ..;`
     FakeRead(FakeReadCause, Place<'tcx>),
 
     /// Write the discriminant for a variant to the enum Place.
@@ -1774,19 +1788,7 @@ pub enum StatementKind<'tcx> {
     /// by miri and only generated when "-Z mir-emit-retag" is passed.
     /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
     /// for more details.
-    Retag {
-        /// `fn_entry` indicates whether this is the initial retag that happens in the
-        /// function prolog.
-        fn_entry: bool,
-        place: Place<'tcx>,
-    },
-
-    /// Escape the given reference to a raw pointer, so that it can be accessed
-    /// without precise provenance tracking. These statements are currently only interpreted
-    /// by miri and only generated when "-Z mir-emit-retag" is passed.
-    /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
-    /// for more details.
-    EscapeToRaw(Operand<'tcx>),
+    Retag(RetagKind, Place<'tcx>),
 
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
@@ -1804,6 +1806,19 @@ pub enum StatementKind<'tcx> {
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
+}
+
+/// `RetagKind` describes what kind of retag is to be performed.
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq)]
+pub enum RetagKind {
+    /// The initial retag when entering a function
+    FnEntry,
+    /// Retag preparing for a two-phase borrow
+    TwoPhase,
+    /// Retagging raw pointers
+    Raw,
+    /// A "normal" retag
+    Default,
 }
 
 /// The `FakeReadCause` describes the type of pattern why a `FakeRead` statement exists.
@@ -1841,9 +1856,16 @@ impl<'tcx> Debug for Statement<'tcx> {
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
-            Retag { fn_entry, ref place } =>
-                write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry] " } else { "" }, place),
-            EscapeToRaw(ref place) => write!(fmt, "EscapeToRaw({:?})", place),
+            Retag(ref kind, ref place) =>
+                write!(fmt, "Retag({}{:?})",
+                    match kind {
+                        RetagKind::FnEntry => "[fn entry] ",
+                        RetagKind::TwoPhase => "[2phase] ",
+                        RetagKind::Raw => "[raw] ",
+                        RetagKind::Default => "",
+                    },
+                    place,
+                ),
             StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
             StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
             SetDiscriminant {
@@ -2172,7 +2194,7 @@ pub enum Rvalue<'tcx> {
 
     /// Read the discriminant of an ADT.
     ///
-    /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
+    /// Undefined (i.e., no effort is made to make it defined, but there’s no reason why it cannot
     /// be defined to return, say, a 0) if ADT is not an enum.
     Discriminant(Place<'tcx>),
 
@@ -2214,7 +2236,7 @@ pub enum AggregateKind<'tcx> {
     /// The second field is the variant index. It's equal to 0 for struct
     /// and union expressions. The fourth field is
     /// active field number and is present only for union expressions
-    /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
+    /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
     Adt(
         &'tcx AdtDef,
@@ -2368,17 +2390,17 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
-                        if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+                        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
                                 format!("[closure@{:?}]", node_id)
                             } else {
-                                format!("[closure@{:?}]", tcx.hir.span(node_id))
+                                format!("[closure@{:?}]", tcx.hir().span(node_id))
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
-                                    let var_name = tcx.hir.name(freevar.var_id());
+                                    let var_name = tcx.hir().name(freevar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                             });
@@ -2390,13 +2412,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }),
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
-                        if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-                            let name = format!("[generator@{:?}]", tcx.hir.span(node_id));
+                        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
+                            let name = format!("[generator@{:?}]", tcx.hir().span(node_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
-                                    let var_name = tcx.hir.name(freevar.var_id());
+                                    let var_name = tcx.hir().name(freevar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                                 struct_fmt.field("$state", &places[freevars.len()]);
@@ -2629,7 +2651,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
                 if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
                     return ty::tls::with(|tcx| {
                         let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(interpret::AllocType::Memory(alloc)) = alloc {
+                        if let Some(interpret::AllocKind::Memory(alloc)) = alloc {
                             assert_eq!(len as usize as u128, len);
                             let slice =
                                 &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
@@ -2770,8 +2792,11 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
-    /// unsafety is not allowed at all in min const fn
-    MinConstFn,
+    /// Right now function calls to `const unsafe fn` are only permitted behind a feature gate
+    /// Also, even `const unsafe fn` need an `unsafe` block to do the allowed operations.
+    GatedConstFnCall,
+    /// Permitted in const fn and regular fns
+    GeneralAndConstFn,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
 }
@@ -2894,6 +2919,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum ConstraintCategory {
     Return,
+    Yield,
     UseAsConst,
     UseAsStatic,
     TypeAnnotation,
@@ -2953,6 +2979,7 @@ CloneTypeFoldableAndLiftImpls! {
     SourceInfo,
     UpvarDecl,
     FakeReadCause,
+    RetagKind,
     SourceScope,
     SourceScopeData,
     SourceScopeLocalData,
@@ -2972,6 +2999,7 @@ BraceStructTypeFoldableImpl! {
         arg_count,
         upvar_decls,
         spread_arg,
+        control_flow_destroyed,
         span,
         cache,
     }
@@ -3019,8 +3047,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
         (StatementKind::InlineAsm) { asm, outputs, inputs },
-        (StatementKind::Retag) { fn_entry, place },
-        (StatementKind::EscapeToRaw)(place),
+        (StatementKind::Retag)(kind, place),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
     }

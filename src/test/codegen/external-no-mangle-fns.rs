@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C no-prepopulate-passes
-// `#[no_mangle]`d functions always have external linkage, i.e. no `internal` in their `define`s
+// `#[no_mangle]`d functions always have external linkage, i.e., no `internal` in their `define`s
 
 #![crate_type = "lib"]
 #![no_std]

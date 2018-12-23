@@ -18,11 +18,11 @@ use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::process::Command;
 
-use dist::{self, pkgname, sanitize_sh, tmpdir};
+use crate::dist::{self, pkgname, sanitize_sh, tmpdir};
 
-use builder::{Builder, RunConfig, ShouldRun, Step};
-use cache::Interned;
-use config::Config;
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::cache::Interned;
+use crate::config::Config;
 
 pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "docs", "rust-docs", stage, Some(host));

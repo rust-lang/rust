@@ -861,7 +861,7 @@ fn test_as_slices() {
         ring.push_back(i);
 
         let (left, right) = ring.as_slices();
-        let expected: Vec<_> = (0..i + 1).collect();
+        let expected: Vec<_> = (0..=i).collect();
         assert_eq!(left, &expected[..]);
         assert_eq!(right, []);
     }
@@ -869,7 +869,7 @@ fn test_as_slices() {
     for j in -last..0 {
         ring.push_front(j);
         let (left, right) = ring.as_slices();
-        let expected_left: Vec<_> = (-last..j + 1).rev().collect();
+        let expected_left: Vec<_> = (-last..=j).rev().collect();
         let expected_right: Vec<_> = (0..first).collect();
         assert_eq!(left, &expected_left[..]);
         assert_eq!(right, &expected_right[..]);
@@ -889,7 +889,7 @@ fn test_as_mut_slices() {
         ring.push_back(i);
 
         let (left, right) = ring.as_mut_slices();
-        let expected: Vec<_> = (0..i + 1).collect();
+        let expected: Vec<_> = (0..=i).collect();
         assert_eq!(left, &expected[..]);
         assert_eq!(right, []);
     }
@@ -897,7 +897,7 @@ fn test_as_mut_slices() {
     for j in -last..0 {
         ring.push_front(j);
         let (left, right) = ring.as_mut_slices();
-        let expected_left: Vec<_> = (-last..j + 1).rev().collect();
+        let expected_left: Vec<_> = (-last..=j).rev().collect();
         let expected_right: Vec<_> = (0..first).collect();
         assert_eq!(left, &expected_left[..]);
         assert_eq!(right, &expected_right[..]);
@@ -1308,4 +1308,138 @@ fn test_try_reserve_exact() {
         } else { panic!("usize::MAX should trigger an overflow!") }
     }
 
+}
+
+#[test]
+fn test_rotate_nop() {
+    let mut v: VecDeque<_> = (0..10).collect();
+    assert_unchanged(&v);
+
+    v.rotate_left(0);
+    assert_unchanged(&v);
+
+    v.rotate_left(10);
+    assert_unchanged(&v);
+
+    v.rotate_right(0);
+    assert_unchanged(&v);
+
+    v.rotate_right(10);
+    assert_unchanged(&v);
+
+    v.rotate_left(3);
+    v.rotate_right(3);
+    assert_unchanged(&v);
+
+    v.rotate_right(3);
+    v.rotate_left(3);
+    assert_unchanged(&v);
+
+    v.rotate_left(6);
+    v.rotate_right(6);
+    assert_unchanged(&v);
+
+    v.rotate_right(6);
+    v.rotate_left(6);
+    assert_unchanged(&v);
+
+    v.rotate_left(3);
+    v.rotate_left(7);
+    assert_unchanged(&v);
+
+    v.rotate_right(4);
+    v.rotate_right(6);
+    assert_unchanged(&v);
+
+    v.rotate_left(1);
+    v.rotate_left(2);
+    v.rotate_left(3);
+    v.rotate_left(4);
+    assert_unchanged(&v);
+
+    v.rotate_right(1);
+    v.rotate_right(2);
+    v.rotate_right(3);
+    v.rotate_right(4);
+    assert_unchanged(&v);
+
+    fn assert_unchanged(v: &VecDeque<i32>) {
+        assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+}
+
+#[test]
+fn test_rotate_left_parts() {
+    let mut v: VecDeque<_> = (1..=7).collect();
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[3, 4, 5, 6, 7, 1][..], &[2][..]));
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[5, 6, 7, 1][..], &[2, 3, 4][..]));
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[7, 1][..], &[2, 3, 4, 5, 6][..]));
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[2, 3, 4, 5, 6, 7, 1][..], &[][..]));
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[4, 5, 6, 7, 1, 2][..], &[3][..]));
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[6, 7, 1, 2][..], &[3, 4, 5][..]));
+    v.rotate_left(2);
+    assert_eq!(v.as_slices(), (&[1, 2][..], &[3, 4, 5, 6, 7][..]));
+}
+
+#[test]
+fn test_rotate_right_parts() {
+    let mut v: VecDeque<_> = (1..=7).collect();
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[6, 7][..], &[1, 2, 3, 4, 5][..]));
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[4, 5, 6, 7][..], &[1, 2, 3][..]));
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[2, 3, 4, 5, 6, 7][..], &[1][..]));
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[7, 1, 2, 3, 4, 5, 6][..], &[][..]));
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[5, 6][..], &[7, 1, 2, 3, 4][..]));
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[3, 4, 5, 6][..], &[7, 1, 2][..]));
+    v.rotate_right(2);
+    assert_eq!(v.as_slices(), (&[1, 2, 3, 4, 5, 6][..], &[7][..]));
+}
+
+#[test]
+fn test_rotate_left_random() {
+    let shifts = [
+        6, 1, 0, 11, 12, 1, 11, 7, 9, 3, 6, 1,
+        4, 0, 5, 1, 3, 1, 12, 8, 3, 1, 11, 11,
+        9, 4, 12, 3, 12, 9, 11, 1, 7, 9, 7, 2,
+    ];
+    let n = 12;
+    let mut v: VecDeque<_> = (0..n).collect();
+    let mut total_shift = 0;
+    for shift in shifts.iter().cloned() {
+        v.rotate_left(shift);
+        total_shift += shift;
+        for i in 0..n {
+            assert_eq!(v[i], (i + total_shift) % n);
+        }
+    }
+}
+
+#[test]
+fn test_rotate_right_random() {
+    let shifts = [
+        6, 1, 0, 11, 12, 1, 11, 7, 9, 3, 6, 1,
+        4, 0, 5, 1, 3, 1, 12, 8, 3, 1, 11, 11,
+        9, 4, 12, 3, 12, 9, 11, 1, 7, 9, 7, 2,
+    ];
+    let n = 12;
+    let mut v: VecDeque<_> = (0..n).collect();
+    let mut total_shift = 0;
+    for shift in shifts.iter().cloned() {
+        v.rotate_right(shift);
+        total_shift += shift;
+        for i in 0..n {
+            assert_eq!(v[(i + total_shift) % n], i);
+        }
+    }
 }

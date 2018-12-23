@@ -11,7 +11,7 @@
 // aux-build:custom_derive_plugin.rs
 // ignore-stage1
 
-#![feature(plugin, custom_derive)]
+#![feature(plugin)]
 #![plugin(custom_derive_plugin)]
 
 trait TotalSum {
@@ -32,14 +32,14 @@ impl TotalSum for Seven {
     }
 }
 
-#[derive(TotalSum)]
+#[derive_TotalSum]
 struct Foo {
     seven: Seven,
     bar: Bar,
     baz: isize,
 }
 
-#[derive(TotalSum)]
+#[derive_TotalSum]
 struct Bar {
     quux: isize,
     bleh: isize,

@@ -47,10 +47,10 @@ impl MirPass for ConstProp {
         }
 
         use rustc::hir::map::blocks::FnLikeNode;
-        let node_id = tcx.hir.as_local_node_id(source.def_id)
+        let node_id = tcx.hir().as_local_node_id(source.def_id)
                              .expect("Non-local call to local provider is_const_fn");
 
-        let is_fn_like = FnLikeNode::from_node(tcx.hir.get(node_id)).is_some();
+        let is_fn_like = FnLikeNode::from_node(tcx.hir().get(node_id)).is_some();
         let is_assoc_const = match tcx.describe_def(source.def_id) {
             Some(Def::AssociatedConst(_)) => true,
             _ => false,
@@ -289,7 +289,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     })?;
                     Some((res, span))
                 },
-                // We could get more projections by using e.g. `operand_projection`,
+                // We could get more projections by using e.g., `operand_projection`,
                 // but we do not even have the stack frame set up properly so
                 // an `Index` projection would throw us off-track.
                 _ => None,
@@ -346,7 +346,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::Cast(kind, ref operand, _) => {
                 let (op, span) = self.eval_operand(operand, source_info)?;
                 self.use_ecx(source_info, |this| {
-                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack)?;
+                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack);
                     this.ecx.cast(op, kind, dest.into())?;
                     Ok((dest.into(), span))
                 })
@@ -618,7 +618,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         .span;
                     let node_id = self
                         .tcx
-                        .hir
+                        .hir()
                         .as_local_node_id(self.source.def_id)
                         .expect("some part of a failing const eval must be local");
                     use rustc::mir::interpret::EvalErrorKind::*;

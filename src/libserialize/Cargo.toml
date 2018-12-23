@@ -9,4 +9,4 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-smallvec = { version = "0.6.5", features = ["union"] }
+smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }

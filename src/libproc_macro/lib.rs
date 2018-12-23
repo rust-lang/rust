@@ -110,7 +110,7 @@ impl FromStr for TokenStream {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
@@ -196,7 +196,7 @@ pub mod token_stream {
     use {bridge, Group, Ident, Literal, Punct, TokenTree, TokenStream};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
-    /// The iteration is "shallow", e.g. the iterator doesn't recurse into delimited groups,
+    /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
     /// and returns whole groups as token trees.
     #[derive(Clone)]
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -426,7 +426,7 @@ impl PartialEq for SourceFile {
 #[unstable(feature = "proc_macro_span", issue = "54725")]
 impl Eq for SourceFile {}
 
-/// A single token or a delimited sequence of token trees (e.g. `[1, (), ..]`).
+/// A single token or a delimited sequence of token trees (e.g., `[1, (), ..]`).
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Clone)]
 pub enum TokenTree {
@@ -533,7 +533,7 @@ impl From<Literal> for TokenTree {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenTree {
@@ -663,7 +663,7 @@ impl Group {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Group {
@@ -711,10 +711,10 @@ impl !Sync for Punct {}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
-    /// E.g. `+` is `Alone` in `+ =`, `+ident` or `+()`.
+    /// e.g., `+` is `Alone` in `+ =`, `+ident` or `+()`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Alone,
-    /// E.g. `+` is `Joint` in `+=` or `'#`.
+    /// e.g., `+` is `Joint` in `+=` or `'#`.
     /// Additionally, single quote `'` can join with identifiers to form lifetimes `'ident`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
@@ -729,11 +729,6 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^',
-                                       '&', '|', '@', '.', ',', ';', ':', '#', '$', '?', '\''];
-        if !LEGAL_CHARS.contains(&ch) {
-            panic!("unsupported character `{:?}`", ch)
-        }
         Punct(bridge::client::Punct::new(ch, spacing))
     }
 
@@ -765,7 +760,7 @@ impl Punct {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Punct {
@@ -800,16 +795,6 @@ impl fmt::Debug for Punct {
 pub struct Ident(bridge::client::Ident);
 
 impl Ident {
-    fn is_valid(string: &str) -> bool {
-        let mut chars = string.chars();
-        if let Some(start) = chars.next() {
-            (start == '_' || start.is_xid_start())
-                && chars.all(|cont| cont == '_' || cont.is_xid_continue())
-        } else {
-            false
-        }
-    }
-
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
     /// The `string` argument must be a valid identifier permitted by the
@@ -831,18 +816,12 @@ impl Ident {
     /// tokens, requires a `Span` to be specified at construction.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
-        if !Ident::is_valid(string) {
-            panic!("`{:?}` is not a valid identifier", string)
-        }
         Ident(bridge::client::Ident::new(string, span.0, false))
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
     #[unstable(feature = "proc_macro_raw_ident", issue = "54723")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
-        if !Ident::is_valid(string) {
-            panic!("`{:?}` is not a valid identifier", string)
-        }
         Ident(bridge::client::Ident::new(string, span.0, true))
     }
 
@@ -860,7 +839,7 @@ impl Ident {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Ident {
@@ -1110,7 +1089,7 @@ impl Literal {
     }
 }
 
-// NB: the bridge only provides `to_string`, implement `fmt::Display`
+// N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Literal {

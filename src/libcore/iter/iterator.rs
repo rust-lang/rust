@@ -87,7 +87,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     on(
         _Self="[]",
         label="borrow the array with `&` or call `.iter()` on it to iterate over it",
-        note="arrays are not an iterators, but slices like the following are: `&[1, 2, 3]`"
+        note="arrays are not iterators, but slices like the following are: `&[1, 2, 3]`"
     ),
     on(
         _Self="{integral}",
@@ -98,6 +98,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
     message="`{Self}` is not an iterator"
 )]
 #[doc(spotlight)]
+#[must_use]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -154,7 +155,7 @@ pub trait Iterator {
     ///
     /// `size_hint()` is primarily intended to be used for optimizations such as
     /// reserving space for the elements of the iterator, but must not be
-    /// trusted to e.g. omit bounds checks in unsafe code. An incorrect
+    /// trusted to e.g., omit bounds checks in unsafe code. An incorrect
     /// implementation of `size_hint()` should not lead to memory safety
     /// violations.
     ///

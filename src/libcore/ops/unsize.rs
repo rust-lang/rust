@@ -93,7 +93,7 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 /// {}
 /// ```
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
-#[cfg_attr(not(stage0), lang = "dispatch_from_dyn")]
+#[lang = "dispatch_from_dyn"]
 pub trait DispatchFromDyn<T> {
     // Empty.
 }

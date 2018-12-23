@@ -40,6 +40,7 @@ use traits::query::{
     CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
     CanonicalTypeOpNormalizeGoal, NoSolution,
 };
+use traits::query::method_autoderef::MethodAutoderefStepsResult;
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::query::outlives_bounds::OutlivesBound;
@@ -166,21 +167,21 @@ define_queries! { <'tcx>
         ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
         /// True if this is a const fn, use the `is_const_fn` to know whether your crate actually
-        /// sees it as const fn (e.g. the const-fn-ness might be unstable and you might not have
+        /// sees it as const fn (e.g., the const-fn-ness might be unstable and you might not have
         /// the feature gate active)
         ///
-        /// DO NOT CALL MANUALLY, it is only meant to cache the base data for the `is_const_fn`
-        /// function
+        /// **Do not call this function manually.** It is only meant to cache the base data for the
+        /// `is_const_fn` function.
         [] fn is_const_fn_raw: IsConstFn(DefId) -> bool,
 
 
         /// Returns true if calls to the function may be promoted
         ///
-        /// This is either because the function is e.g. a tuple-struct or tuple-variant constructor,
-        /// or because it has the `#[rustc_promotable]` attribute. The attribute should be removed
-        /// in the future in favour of some form of check which figures out whether the function
-        /// does not inspect the bits of any of its arguments (so is essentially just a constructor
-        /// function)
+        /// This is either because the function is e.g., a tuple-struct or tuple-variant
+        /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
+        /// be removed in the future in favour of some form of check which figures out whether the
+        /// function does not inspect the bits of any of its arguments (so is essentially just a
+        /// constructor function).
         [] fn is_promotable_const_fn: IsPromotableConstFn(DefId) -> bool,
 
         /// True if this is a foreign item (i.e., linked via `extern { ... }`).
@@ -539,7 +540,7 @@ define_queries! { <'tcx>
         [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
         /// A vector of every trait accessible in the whole crate
-        /// (i.e. including those from subcrates). This is used only for
+        /// (i.e., including those from subcrates). This is used only for
         /// error reporting.
         [] fn all_traits: all_traits_node(CrateNum) -> Lrc<Vec<DefId>>,
     },
@@ -668,6 +669,10 @@ define_queries! { <'tcx>
 
         [] fn substitute_normalize_and_test_predicates:
             substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
+
+        [] fn method_autoderef_steps: MethodAutoderefSteps(
+            CanonicalTyGoal<'tcx>
+        ) -> MethodAutoderefStepsResult<'tcx>,
     },
 
     Other {
@@ -705,21 +710,21 @@ impl<'a, 'tcx, 'lcx> TyCtxt<'a, 'tcx, 'lcx> {
         self,
         span: Span,
         key: DefId,
-    ) -> Result<&'tcx [Ty<'tcx>], DiagnosticBuilder<'a>> {
+    ) -> Result<&'tcx [Ty<'tcx>], Box<DiagnosticBuilder<'a>>> {
         self.try_get_query::<queries::adt_sized_constraint<'_>>(span, key)
     }
     pub fn try_needs_drop_raw(
         self,
         span: Span,
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, DiagnosticBuilder<'a>> {
+    ) -> Result<bool, Box<DiagnosticBuilder<'a>>> {
         self.try_get_query::<queries::needs_drop_raw<'_>>(span, key)
     }
     pub fn try_optimized_mir(
         self,
         span: Span,
         key: DefId,
-    ) -> Result<&'tcx mir::Mir<'tcx>, DiagnosticBuilder<'a>> {
+    ) -> Result<&'tcx mir::Mir<'tcx>, Box<DiagnosticBuilder<'a>>> {
         self.try_get_query::<queries::optimized_mir<'_>>(span, key)
     }
 }

@@ -31,8 +31,8 @@ mod tests {
     }
 
     #[test]
-    fn test_mod_euc() {
-        assert!((-1 as $T).mod_euc(MIN) == MAX);
+    fn test_rem_euclid() {
+        assert!((-1 as $T).rem_euclid(MIN) == MAX);
     }
 
     #[test]

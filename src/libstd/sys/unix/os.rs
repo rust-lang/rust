@@ -67,7 +67,8 @@ pub fn errno() -> i32 {
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(any(target_os = "solaris", target_os = "fuchsia"))] // only needed for readdir so far
+#[cfg(all(not(target_os = "linux"),
+          not(target_os = "dragonfly")))] // needed for readdir and syscall!
 pub fn set_errno(e: i32) {
     unsafe {
         *errno_location() = e as c_int
@@ -82,6 +83,18 @@ pub fn errno() -> i32 {
     }
 
     unsafe { errno as i32 }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn set_errno(e: i32) {
+    extern {
+        #[thread_local]
+        static mut errno: c_int;
+    }
+
+    unsafe {
+        errno = e;
+    }
 }
 
 /// Gets a detailed string description for the given error number.
@@ -283,11 +296,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    let selfexe = PathBuf::from("/proc/self/exe");
-    if selfexe.exists() {
-        ::fs::read_link(selfexe)
-    } else {
-        Err(io::Error::new(io::ErrorKind::Other, "no /proc/self/exe available. Is /proc mounted?"))
+    match ::fs::read_link("/proc/self/exe") {
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "no /proc/self/exe available. Is /proc mounted?"
+            ))
+        },
+        other => other,
     }
 }
 

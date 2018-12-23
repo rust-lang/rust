@@ -86,7 +86,7 @@ impl NaiveDate {
         let weeks_in_year = self.last_week_number();
 
         // Work out the final result.
-        // If the week is -1 or >= weeks_in_year, we will need to adjust the year.
+        // If the week is `-1` or `>= weeks_in_year`, we will need to adjust the year.
         let year = self.year();
         let wd = self.weekday();
 
@@ -234,7 +234,7 @@ impl Weekday {
     }
 }
 
-/// GroupBy implementation.
+/// `GroupBy` implementation.
 struct GroupBy<It: Iterator, F> {
     it: std::iter::Peekable<It>,
     f: F,
@@ -319,7 +319,7 @@ trait IteratorExt: Iterator + Sized {
         s
     }
 
-    // HACK(eddyb) Only needed because `impl Trait` can't be
+    // HACK(eddyb): only needed because `impl Trait` can't be
     // used with trait methods: `.foo()` becomes `.__(foo)`.
     fn __<F, R>(self, f: F) -> R
     where F: FnOnce(Self) -> R {
@@ -329,9 +329,7 @@ trait IteratorExt: Iterator + Sized {
 
 impl<It> IteratorExt for It where It: Iterator {}
 
-///
-/// Generates an iterator that yields exactly n spaces.
-///
+/// Generates an iterator that yields exactly `n` spaces.
 fn spaces(n: usize) -> std::iter::Take<std::iter::Repeat<char>> {
     std::iter::repeat(' ').take(n)
 }
@@ -341,9 +339,7 @@ fn test_spaces() {
     assert_eq!(spaces(10).collect::<String>(), "          ")
 }
 
-///
 /// Returns an iterator of dates in a given year.
-///
 fn dates_in_year(year: i32) -> impl Iterator<Item=NaiveDate>+Clone {
     InGroup {
         it: NaiveDate::from_ymd(year, 1, 1)..,
@@ -357,10 +353,10 @@ fn test_dates_in_year() {
         let mut dates = dates_in_year(2013);
         assert_eq!(dates.next(), Some(NaiveDate::from_ymd(2013, 1, 1)));
 
-        // Check increment
+        // Check increment.
         assert_eq!(dates.next(), Some(NaiveDate::from_ymd(2013, 1, 2)));
 
-        // Check monthly rollover
+        // Check monthly roll-over.
         for _ in 3..31 {
             assert!(dates.next() != None);
         }
@@ -370,7 +366,7 @@ fn test_dates_in_year() {
     }
 
     {
-        // Check length of year
+        // Check length of year.
         let mut dates = dates_in_year(2013);
         for _ in 0..365 {
             assert!(dates.next() != None);
@@ -379,7 +375,7 @@ fn test_dates_in_year() {
     }
 
     {
-        // Check length of leap year
+        // Check length of leap year.
         let mut dates = dates_in_year(1984);
         for _ in 0..366 {
             assert!(dates.next() != None);
@@ -388,10 +384,8 @@ fn test_dates_in_year() {
     }
 }
 
-///
 /// Convenience trait for verifying that a given type iterates over
 /// `NaiveDate`s.
-///
 trait DateIterator: Iterator<Item=NaiveDate> + Clone {}
 impl<It> DateIterator for It where It: Iterator<Item=NaiveDate> + Clone {}
 
@@ -427,11 +421,9 @@ fn test_group_by() {
     }
 }
 
-///
 /// Groups an iterator of dates by month.
-///
 fn by_month(it: impl Iterator<Item=NaiveDate> + Clone)
-           ->  impl Iterator<Item=(u32, impl Iterator<Item=NaiveDate> + Clone)> + Clone
+            ->  impl Iterator<Item=(u32, impl Iterator<Item=NaiveDate> + Clone)> + Clone
 {
     it.group_by(|d| d.month())
 }
@@ -444,9 +436,7 @@ fn test_by_month() {
     assert!(months.next().is_none());
 }
 
-///
 /// Groups an iterator of dates by week.
-///
 fn by_week(it: impl DateIterator)
           -> impl Iterator<Item=(u32, impl DateIterator)> + Clone
 {
@@ -518,9 +508,7 @@ const COLS_PER_DAY: u32 = 3;
 /// The number of columns per week in the formatted output.
 const COLS_PER_WEEK: u32 = 7 * COLS_PER_DAY;
 
-///
 /// Formats an iterator of weeks into an iterator of strings.
-///
 fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<Item=String> {
     it.map(|week| {
         let mut buf = String::with_capacity((COLS_PER_DAY * COLS_PER_WEEK + 2) as usize);
@@ -541,7 +529,7 @@ fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<It
         }
 
         // Insert more filler at the end to fill up the remainder of the week,
-        // if its a short week (e.g. at the end of the month).
+        // if its a short week (e.g., at the end of the month).
         buf.extend(spaces((COLS_PER_DAY * (6 - last_day)) as usize));
         buf
     })
@@ -567,9 +555,7 @@ fn test_format_weeks() {
     );
 }
 
-///
-/// Formats the name of a month, centered on COLS_PER_WEEK.
-///
+/// Formats the name of a month, centered on `COLS_PER_WEEK`.
 fn month_title(month: u32) -> String {
     const MONTH_NAMES: &'static [&'static str] = &[
         "January", "February", "March", "April", "May", "June",
@@ -584,7 +570,7 @@ fn month_title(month: u32) -> String {
     let before = (COLS_PER_WEEK as usize - name.len()) / 2;
     let after = COLS_PER_WEEK as usize - name.len() - before;
 
-    // NOTE: Being slightly more verbose to avoid extra allocations.
+    // Note: being slightly more verbose to avoid extra allocations.
     let mut result = String::with_capacity(COLS_PER_WEEK as usize);
     result.extend(spaces(before));
     result.push_str(name);
@@ -596,9 +582,7 @@ fn test_month_title() {
     assert_eq!(month_title(1).len(), COLS_PER_WEEK as usize);
 }
 
-///
 /// Formats a month.
-///
 fn format_month(it: impl DateIterator) -> impl Iterator<Item=String> {
     let mut month_days = it.peekable();
     let title = month_title(month_days.peek().unwrap().month());
@@ -627,22 +611,17 @@ fn test_format_month() {
     );
 }
 
-
-///
 /// Formats an iterator of months.
-///
 fn format_months(it: impl Iterator<Item = impl DateIterator>)
                 -> impl Iterator<Item=impl Iterator<Item=String>>
 {
     it.map(format_month)
 }
 
-///
 /// Takes an iterator of iterators of strings; the sub-iterators are consumed
 /// in lock-step, with their elements joined together.
-///
 trait PasteBlocks: Iterator + Sized
-where Self::Item: Iterator<Item=String> {
+where Self::Item: Iterator<Item = String> {
     fn paste_blocks(self, sep_width: usize) -> PasteBlocksIter<Self::Item> {
         PasteBlocksIter {
             iters: self.collect(),
@@ -721,9 +700,7 @@ fn test_paste_blocks() {
     );
 }
 
-///
 /// Produces an iterator that yields `n` elements at a time.
-///
 trait Chunks: Iterator + Sized {
     fn chunks(self, n: usize) -> ChunksIter<Self> {
         assert!(n > 0);
@@ -742,7 +719,7 @@ where It: Iterator {
     n: usize,
 }
 
-// NOTE: `chunks` in Rust is more-or-less impossible without overhead of some kind.
+// Note: `chunks` in Rust is more-or-less impossible without overhead of some kind.
 // Aliasing rules mean you need to add dynamic borrow checking, and the design of
 // `Iterator` means that you need to have the iterator's state kept in an allocation
 // that is jointly owned by the iterator itself and the sub-iterator.
@@ -753,10 +730,7 @@ where It: Iterator {
     type Item = Vec<It::Item>;
 
     fn next(&mut self) -> Option<Vec<It::Item>> {
-        let first = match self.it.next() {
-            Some(e) => e,
-            None => return None
-        };
+        let first = self.it.next()?;
 
         let mut result = Vec::with_capacity(self.n);
         result.push(first);
@@ -772,9 +746,7 @@ fn test_chunks() {
     assert_eq!(&*c, &[vec![1, 2, 3], vec![4, 5, 6], vec![7]]);
 }
 
-///
 /// Formats a year.
-///
 fn format_year(year: i32, months_per_row: usize) -> String {
     const COL_SPACING: usize = 1;
 
@@ -787,17 +759,17 @@ fn format_year(year: i32, months_per_row: usize) -> String {
         // Group the months into horizontal rows.
         .chunks(months_per_row)
 
-        // Format each row
+        // Format each row...
         .map(|r| r.into_iter()
-            // By formatting each month
+            // ... by formatting each month ...
             .__(format_months)
 
-            // Horizontally pasting each respective month's lines together.
+            // ... and horizontally pasting each respective month's lines together.
             .paste_blocks(COL_SPACING)
             .join("\n")
         )
 
-        // Insert a blank line between each row
+        // Insert a blank line between each row.
         .join("\n\n")
 }
 

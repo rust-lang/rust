@@ -96,7 +96,7 @@ pub mod eh_frames {
     pub mod ms_init {
         // .CRT$X?? sections are roughly analogous to ELF's .init_array and .fini_array,
         // except that they exploit the fact that linker will sort them alphabitically,
-        // so e.g. sections with names between .CRT$XIA and .CRT$XIZ are guaranteed to be
+        // so e.g., sections with names between .CRT$XIA and .CRT$XIZ are guaranteed to be
         // placed between those two, without requiring any ordering of objects on the linker
         // command line.
         // Note that ordering of same-named sections from different objects is not guaranteed.

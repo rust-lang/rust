@@ -16,7 +16,7 @@ matrix:
   fast_finish: true
   include:
     # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-5.0 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-6.0 RUST_BACKTRACE=1
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1

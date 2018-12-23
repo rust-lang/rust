@@ -28,7 +28,8 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new<'a>(_stack: usize, p: Box<dyn FnBox() + 'a>) -> io::Result<Thread> {
+    // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    pub unsafe fn new(_stack: usize, p: Box<dyn FnBox()>) -> io::Result<Thread> {
         let p = box p;
 
         let id = cvt(syscall::clone(syscall::CLONE_VM | syscall::CLONE_FS | syscall::CLONE_FILES))?;
@@ -91,5 +92,4 @@ pub mod guard {
     pub type Guard = !;
     pub unsafe fn current() -> Option<Guard> { None }
     pub unsafe fn init() -> Option<Guard> { None }
-    pub unsafe fn deinit() {}
 }

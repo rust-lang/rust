@@ -12,36 +12,34 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
 
-use check::FnCtxt;
-use hir::def::Def;
-use hir::def_id::DefId;
-use namespace::Namespace;
-use rustc::ty::subst::Substs;
-use rustc::traits;
-use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::ty::GenericParamDefKind;
-use rustc::ty::subst::Subst;
-use rustc::infer::{self, InferOk};
-
-use syntax::ast;
-use syntax_pos::Span;
-
-use rustc::hir;
-
-use rustc_data_structures::sync::Lrc;
+mod confirm;
+pub mod probe;
+mod suggest;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
 pub use self::suggest::TraitInfo;
 
-mod confirm;
-pub mod probe;
-mod suggest;
+use check::FnCtxt;
+use namespace::Namespace;
+use rustc_data_structures::sync::Lrc;
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
+use rustc::traits;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::ty::GenericParamDefKind;
+use rustc::ty::subst::Subst;
+use rustc::infer::{self, InferOk};
+use syntax::ast;
+use syntax_pos::Span;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers) {
     suggest::provide(providers);
+    probe::provide(providers);
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -50,7 +48,7 @@ pub struct MethodCallee<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
 
-    /// Instantiated method signature, i.e. it has been
+    /// Instantiated method signature, i.e., it has been
     /// substituted, normalized, and has had late-bound
     /// lifetimes replaced with inference variables.
     pub sig: ty::FnSig<'tcx>,
@@ -107,8 +105,7 @@ impl<'tcx> NoMatchData<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CandidateSource {
     ImplSource(DefId),
-    TraitSource(// trait id
-                DefId),
+    TraitSource(DefId /* trait id */),
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -171,10 +168,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         )?;
 
         if let Some(import_id) = pick.import_id {
-            let import_def_id = self.tcx.hir.local_def_id(import_id);
+            let import_def_id = self.tcx.hir().local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
-                                        .unwrap().insert(import_def_id);
+                .unwrap().insert(import_def_id);
         }
 
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.id), span);
@@ -239,7 +236,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// an obligation for a particular trait with the given self-type and checks
     /// whether that trait is implemented.
     ///
-    /// FIXME(#18741) -- It seems likely that we can consolidate some of this
+    /// FIXME(#18741): it seems likely that we can consolidate some of this
     /// code with the other method-lookup code. In particular, the second half
     /// of this method is basically the same as confirmation.
     pub fn lookup_method_in_trait(&self,
@@ -307,7 +304,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
         //
-        // NB: Instantiate late-bound regions first so that
+        // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
         let fn_sig = tcx.fn_sig(def_id);
@@ -324,7 +321,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        // Register obligations for the parameters.  This will include the
+        // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
         // so this also effectively registers `obligation` as well.  (We
         // used to register `obligation` explicitly, but that resulted in
@@ -380,7 +377,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        self_ty, expr_id, ProbeScope::TraitsInScope)?;
 
         if let Some(import_id) = pick.import_id {
-            let import_def_id = self.tcx.hir.local_def_id(import_id);
+            let import_def_id = self.tcx.hir().local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                                         .unwrap().insert(import_def_id);

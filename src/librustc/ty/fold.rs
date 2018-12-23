@@ -887,7 +887,7 @@ struct LateBoundRegionsCollector {
 
     /// If true, we only want regions that are known to be
     /// "constrained" when you equate this type with another type. In
-    /// particular, if you have e.g. `&'a u32` and `&'b u32`, equating
+    /// particular, if you have e.g., `&'a u32` and `&'b u32`, equating
     /// them constraints `'a == 'b`.  But if you have `<&'a u32 as
     /// Trait>::Foo` and `<&'b u32 as Trait>::Foo`, normalizing those
     /// types may mean that `'a` and `'b` don't appear in the results,

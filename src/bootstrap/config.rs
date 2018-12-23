@@ -15,17 +15,16 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, File};
-use std::io::prelude::*;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::cmp;
 
 use num_cpus;
 use toml;
-use cache::{INTERNER, Interned};
-use flags::Flags;
-pub use flags::Subcommand;
+use crate::cache::{INTERNER, Interned};
+use crate::flags::Flags;
+pub use crate::flags::Subcommand;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -416,9 +415,7 @@ impl Config {
         config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
 
         let toml = file.map(|file| {
-            let mut f = t!(File::open(&file));
-            let mut contents = String::new();
-            t!(f.read_to_string(&mut contents));
+            let contents = t!(fs::read_to_string(&file));
             match toml::from_str(&contents) {
                 Ok(table) => table,
                 Err(err) => {

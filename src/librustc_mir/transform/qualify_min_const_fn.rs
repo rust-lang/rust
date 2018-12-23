@@ -2,6 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Predicate, TyCtxt};
+use rustc_target::spec::abi;
 use std::borrow::Cow;
 use syntax_pos::Span;
 
@@ -229,7 +230,7 @@ fn check_statement(
             check_rvalue(tcx, mir, rval, span)
         }
 
-        StatementKind::FakeRead(..) => Err((span, "match in const fn is unstable".into())),
+        StatementKind::FakeRead(_, place) => check_place(tcx, mir, place, span, PlaceMode::Read),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),
@@ -242,7 +243,6 @@ fn check_statement(
         | StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::Retag { .. }
-        | StatementKind::EscapeToRaw { .. }
         | StatementKind::AscribeUserType(..)
         | StatementKind::Nop => Ok(()),
     }
@@ -338,19 +338,40 @@ fn check_terminator(
         } => {
             let fn_ty = func.ty(mir, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.sty {
-                if tcx.is_min_const_fn(def_id) {
-                    check_operand(tcx, mir, func, span)?;
 
-                    for arg in args {
-                        check_operand(tcx, mir, arg, span)?;
-                    }
-                    Ok(())
-                } else {
-                    Err((
+                // some intrinsics are waved through if called inside the
+                // standard library. Users never need to call them directly
+                match tcx.fn_sig(def_id).abi() {
+                    abi::Abi::RustIntrinsic => match &tcx.item_name(def_id).as_str()[..] {
+                        | "size_of"
+                        | "min_align_of"
+                        | "needs_drop"
+                        => {},
+                        _ => return Err((
+                            span,
+                            "can only call a curated list of intrinsics in `min_const_fn`".into(),
+                        )),
+                    },
+                    abi::Abi::Rust if tcx.is_min_const_fn(def_id) => {},
+                    abi::Abi::Rust => return Err((
                         span,
                         "can only call other `min_const_fn` within a `min_const_fn`".into(),
-                    ))
+                    )),
+                    abi => return Err((
+                        span,
+                        format!(
+                            "cannot call functions with `{}` abi in `min_const_fn`",
+                            abi,
+                        ).into(),
+                    )),
                 }
+
+                check_operand(tcx, mir, func, span)?;
+
+                for arg in args {
+                    check_operand(tcx, mir, arg, span)?;
+                }
+                Ok(())
             } else {
                 Err((span, "can only call other const fns within const fn".into()))
             }

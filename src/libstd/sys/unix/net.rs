@@ -26,7 +26,7 @@ pub extern crate libc as netc;
 pub type wrlen_t = size_t;
 
 // See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
-// Linux currently (e.g. support doesn't exist on other platforms). In order to
+// Linux currently (e.g., support doesn't exist on other platforms). In order to
 // get name resolution to work and things to compile we just define a dummy
 // SOCK_CLOEXEC here for other platforms. Note that the dummy constant isn't
 // actually ever used (the blocks below are wrapped in `if cfg!` as well.
@@ -203,18 +203,21 @@ impl Socket {
         // Linux. This was added in 2.6.28, however, and because we support
         // 2.6.18 we must detect this support dynamically.
         if cfg!(target_os = "linux") {
-            weak! {
-                fn accept4(c_int, *mut sockaddr, *mut socklen_t, c_int) -> c_int
+            syscall! {
+                fn accept4(
+                    fd: c_int,
+                    addr: *mut sockaddr,
+                    addr_len: *mut socklen_t,
+                    flags: c_int
+                ) -> c_int
             }
-            if let Some(accept) = accept4.get() {
-                let res = cvt_r(|| unsafe {
-                    accept(self.0.raw(), storage, len, SOCK_CLOEXEC)
-                });
-                match res {
-                    Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
-                    Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
-                    Err(e) => return Err(e),
-                }
+            let res = cvt_r(|| unsafe {
+                accept4(self.0.raw(), storage, len, SOCK_CLOEXEC)
+            });
+            match res {
+                Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
+                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
+                Err(e) => return Err(e),
             }
         }
 

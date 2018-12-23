@@ -36,6 +36,7 @@ use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
 use ty::{self, BoundVar, Lift, Ty, TyCtxt};
+use util::captures::Captures;
 
 impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
@@ -114,6 +115,31 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         );
 
         Ok(Lrc::new(canonical_result))
+    }
+
+    /// A version of `make_canonicalized_query_response` that does
+    /// not pack in obligations, for contexts that want to drop
+    /// pending obligations instead of treating them as an ambiguity (e.g.
+    /// typeck "probing" contexts).
+    ///
+    /// If you DO want to keep track of pending obligations (which
+    /// include all region obligations, so this includes all cases
+    /// that care about regions) with this function, you have to
+    /// do it yourself, by e.g. having them be a part of the answer.
+    pub fn make_query_response_ignoring_pending_obligations<T>(
+        &self,
+        inference_vars: CanonicalVarValues<'tcx>,
+        answer: T
+    ) -> Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>
+    where
+        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+    {
+        self.canonicalize_response(&QueryResponse {
+            var_values: inference_vars,
+            region_constraints: vec![],
+            certainty: Certainty::Proven, // Ambiguities are OK!
+            value: answer,
+        })
     }
 
     /// Helper for `make_canonicalized_query_response` that does
@@ -527,32 +553,30 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unsubstituted_region_constraints: &'a [QueryRegionConstraint<'tcx>],
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a {
-        Box::new(
-            unsubstituted_region_constraints
-                .iter()
-                .map(move |constraint| {
-                    let constraint = substitute_value(self.tcx, result_subst, constraint);
-                    let &ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'gcx> {
+        unsubstituted_region_constraints
+            .iter()
+            .map(move |constraint| {
+                let constraint = substitute_value(self.tcx, result_subst, constraint);
+                let &ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
 
-                    Obligation::new(
-                        cause.clone(),
-                        param_env,
-                        match k1.unpack() {
-                            UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
-                                ty::Binder::bind(
-                                    ty::OutlivesPredicate(r1, r2)
-                                )
-                            ),
-                            UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
-                                ty::Binder::bind(
-                                    ty::OutlivesPredicate(t1, r2)
-                                )
-                            ),
-                        }
-                    )
-                })
-        ) as Box<dyn Iterator<Item = _>>
+                Obligation::new(
+                    cause.clone(),
+                    param_env,
+                    match k1.unpack() {
+                        UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
+                            ty::Binder::bind(
+                                ty::OutlivesPredicate(r1, r2)
+                            )
+                        ),
+                        UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
+                            ty::Binder::bind(
+                                ty::OutlivesPredicate(t1, r2)
+                            )
+                        ),
+                    }
+                )
+            })
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.

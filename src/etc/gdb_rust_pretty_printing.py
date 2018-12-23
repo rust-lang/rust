@@ -9,6 +9,7 @@
 # except according to those terms.
 
 import gdb
+import re
 import sys
 import debugger_pretty_printers_common as rustpp
 
@@ -19,6 +20,16 @@ if sys.version_info[0] >= 3:
     xrange = range
 
 rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to_string = True)
+
+# The btree pretty-printers fail in a confusing way unless
+# https://sourceware.org/bugzilla/show_bug.cgi?id=21763 is fixed.
+# This fix went in 8.1, so check for that.
+# See https://github.com/rust-lang/rust/issues/56730
+gdb_81 = False
+_match = re.match('([0-9]+)\\.([0-9]+)', gdb.VERSION)
+if _match:
+    if int(_match.group(1)) > 8 or (int(_match.group(1)) == 8 and int(_match.group(2)) >= 1):
+        gdb_81 = True
 
 #===============================================================================
 # GDB Pretty Printing Module for Rust
@@ -110,10 +121,10 @@ def rust_pretty_printer_lookup_function(gdb_val):
     if type_kind == rustpp.TYPE_KIND_STD_VECDEQUE:
         return RustStdVecDequePrinter(val)
 
-    if type_kind == rustpp.TYPE_KIND_STD_BTREESET:
+    if type_kind == rustpp.TYPE_KIND_STD_BTREESET and gdb_81:
         return RustStdBTreeSetPrinter(val)
 
-    if type_kind == rustpp.TYPE_KIND_STD_BTREEMAP:
+    if type_kind == rustpp.TYPE_KIND_STD_BTREEMAP and gdb_81:
         return RustStdBTreeMapPrinter(val)
 
     if type_kind == rustpp.TYPE_KIND_STD_STRING:

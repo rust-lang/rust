@@ -40,9 +40,9 @@ use syntax::ast;
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
                  ATTR_EXPECTED_CGU_REUSE};
 
-const MODULE: &'static str = "module";
-const CFG: &'static str = "cfg";
-const KIND: &'static str = "kind";
+const MODULE: &str = "module";
+const CFG: &str = "cfg";
+const KIND: &str = "kind";
 
 pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
@@ -62,7 +62,7 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             available_cgus
         };
 
-        for attr in &tcx.hir.krate().attrs {
+        for attr in &tcx.hir().krate().attrs {
             ams.check_attr(attr);
         }
     })

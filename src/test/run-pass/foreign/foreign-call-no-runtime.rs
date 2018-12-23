@@ -11,7 +11,7 @@
 // run-pass
 // ignore-emscripten no threads support
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let t = cx.tables.expr_ty(&expr);
         let type_permits_lack_of_use = if t.is_unit()
-            || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir.get_module_parent(expr.id), t) {
+            || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir().get_module_parent(expr.id), t) {
             true
         } else {
             match t.sty {
@@ -473,7 +473,7 @@ impl UnusedImportBraces {
             match items[0].0.kind {
                 ast::UseTreeKind::Simple(rename, ..) => {
                     let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
-                    if orig_ident.name == keywords::SelfValue.name() {
+                    if orig_ident.name == keywords::SelfLower.name() {
                         return;
                     }
                     node_ident = rename.unwrap_or(orig_ident);

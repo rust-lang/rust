@@ -219,23 +219,19 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         local_decls_for_sig(&sig, span),
         sig.inputs().len(),
         vec![],
-        span
+        span,
+        vec![],
     );
 
     if let Some(..) = ty {
         // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::Local(Local::new(1+0));
         if tcx.sess.opts.debugging_opts.mir_emit_retag {
-            // Function arguments should be retagged
+            // Function arguments should be retagged, and we make this one raw.
             mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
                 source_info,
-                kind: StatementKind::Retag { fn_entry: true, place: dropee_ptr.clone() },
+                kind: StatementKind::Retag(RetagKind::Raw, dropee_ptr.clone()),
             });
-            // We use raw ptr operations, better prepare the alias tracking for that
-            mir.basic_blocks_mut()[START_BLOCK].statements.insert(1, Statement {
-                source_info,
-                kind: StatementKind::EscapeToRaw(Operand::Copy(dropee_ptr.clone())),
-            })
         }
         let patch = {
             let param_env = tcx.param_env(def_id).with_reveal_all();
@@ -392,7 +388,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             self.local_decls,
             self.sig.inputs().len(),
             vec![],
-            self.span
+            self.span,
+            vec![],
         )
     }
 
@@ -840,7 +837,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         local_decls,
         sig.inputs().len(),
         vec![],
-        span
+        span,
+        vec![],
     );
     if let Abi::RustCall = sig.abi {
         mir.spread_arg = Some(Local::new(sig.inputs().len()));
@@ -856,7 +854,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 {
     let tcx = infcx.tcx;
     let gcx = tcx.global_tcx();
-    let def_id = tcx.hir.local_def_id(ctor_id);
+    let def_id = tcx.hir().local_def_id(ctor_id);
     let param_env = gcx.param_env(def_id);
 
     // Normalize the sig.
@@ -917,6 +915,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         local_decls,
         sig.inputs().len(),
         vec![],
-        span
+        span,
+        vec![],
     )
 }

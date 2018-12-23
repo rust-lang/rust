@@ -48,8 +48,8 @@ pub fn error_string(mut errnum: i32) -> String {
         // `[MS-ERREF]`: https://msdn.microsoft.com/en-us/library/cc231198.aspx
         if (errnum & c::FACILITY_NT_BIT as i32) != 0 {
             // format according to https://support.microsoft.com/en-us/help/259693
-            const NTDLL_DLL: &'static [u16] = &['N' as _, 'T' as _, 'D' as _, 'L' as _, 'L' as _,
-                                                '.' as _, 'D' as _, 'L' as _, 'L' as _, 0];
+            const NTDLL_DLL: &[u16] = &['N' as _, 'T' as _, 'D' as _, 'L' as _, 'L' as _,
+                                        '.' as _, 'D' as _, 'L' as _, 'L' as _, 0];
             module = c::GetModuleHandleW(NTDLL_DLL.as_ptr());
 
             if module != ptr::null_mut() {
@@ -67,7 +67,7 @@ pub fn error_string(mut errnum: i32) -> String {
                                     buf.len() as c::DWORD,
                                     ptr::null()) as usize;
         if res == 0 {
-            // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
+            // Sometimes FormatMessageW can fail e.g., system doesn't like langId,
             let fm_err = errno();
             return format!("OS Error {} (FormatMessageW() returned error {})",
                            errnum, fm_err);
@@ -76,7 +76,7 @@ pub fn error_string(mut errnum: i32) -> String {
         match String::from_utf16(&buf[..res]) {
             Ok(mut msg) => {
                 // Trim trailing CRLF inserted by FormatMessageW
-                let len = msg.trim_right().len();
+                let len = msg.trim_end().len();
                 msg.truncate(len);
                 msg
             },

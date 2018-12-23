@@ -107,7 +107,7 @@ impl LinkerInfo {
 /// This trait is the total list of requirements needed by `back::link` and
 /// represents the meaning of each option being passed down. This trait is then
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
-/// MSVC linker (e.g. `link.exe`) is being used.
+/// MSVC linker (e.g., `link.exe`) is being used.
 pub trait Linker {
     fn link_dylib(&mut self, lib: &str);
     fn link_rust_dylib(&mut self, lib: &str, path: &Path);
@@ -606,8 +606,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/DEBUG");
 
         // This will cause the Microsoft linker to embed .natvis info into the PDB file
-        let sysroot = self.sess.sysroot();
-        let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
+        let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
             // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
             // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore

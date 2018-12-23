@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::def::Def;
+use rustc::hir::intravisit::FnKind;
 use rustc::ty;
+use rustc_target::spec::abi::Abi;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
-
-use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
-
-use rustc::hir::{self, GenericParamKind, PatKind};
-use rustc::hir::intravisit::FnKind;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {
@@ -29,7 +27,7 @@ pub enum MethodLateContext {
 }
 
 pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
-    let def_id = cx.tcx.hir.local_def_id(id);
+    let def_id = cx.tcx.hir().local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
         ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
@@ -169,7 +167,7 @@ impl NonSnakeCase {
     fn to_snake_case(mut str: &str) -> String {
         let mut words = vec![];
         // Preserve leading underscores
-        str = str.trim_left_matches(|c: char| {
+        str = str.trim_start_matches(|c: char| {
             if c == '_' {
                 words.push(String::new());
                 true
@@ -201,7 +199,7 @@ impl NonSnakeCase {
             if ident.is_empty() {
                 return true;
             }
-            let ident = ident.trim_left_matches('\'');
+            let ident = ident.trim_start_matches('\'');
             let ident = ident.trim_matches('_');
 
             let mut allow_underscore = true;

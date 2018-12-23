@@ -223,10 +223,10 @@ impl CodegenCx<'ll, 'tcx> {
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
 
-        let g = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
+        let g = if let Some(id) = self.tcx.hir().as_local_node_id(def_id) {
 
             let llty = self.layout_of(ty).llvm_type(self);
-            let (g, attrs) = match self.tcx.hir.get(id) {
+            let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
                 }) => {
@@ -295,7 +295,7 @@ impl CodegenCx<'ll, 'tcx> {
                             self.tcx.sess.opts.cg.prefer_dynamic));
 
             if needs_dll_storage_attr {
-                // This item is external but not foreign, i.e. it originates from an external Rust
+                // This item is external but not foreign, i.e., it originates from an external Rust
                 // crate. Since we don't know whether this crate will be linked dynamically or
                 // statically in the final application, we always mark such symbols as 'dllimport'.
                 // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
@@ -426,7 +426,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 //
                 // By default a global's alignment can be freely increased.
                 // This allows LLVM to generate more performant instructions
-                // e.g. using load-aligned into a SIMD register.
+                // e.g., using load-aligned into a SIMD register.
                 //
                 // However, on macOS 10.10 or below, the dynamic linker does not
                 // respect any alignment given on the TLS (radar 24221680).

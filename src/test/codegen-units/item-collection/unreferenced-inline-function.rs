@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 // compile-flags:-Zprint-mono-items=lazy
 
-// NB: We do not expect *any* monomorphization to be generated here.
+// N.B., we do not expect *any* monomorphization to be generated here.
 
 #![deny(dead_code)]
 #![crate_type = "rlib"]

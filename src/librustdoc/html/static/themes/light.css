@@ -174,6 +174,10 @@ a {
 	color: #3873AD;
 }
 
+.stab.internal a {
+	color: #304FFE;
+}
+
 a.test-arrow {
 	color: #f5f5f5;
 }
@@ -182,9 +186,16 @@ a.test-arrow {
 	color: #999;
 }
 
+#crate-search {
+	color: #555;
+	background-color: white;
+	border-color: #e0e0e0;
+	box-shadow: 0px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+}
+
 .search-input {
 	color: #555;
-	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 	background-color: white;
 }
 
@@ -193,6 +204,7 @@ a.test-arrow {
 }
 
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+.stab.internal { background: #FFB9B3; border-color: #B71C1C; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
 
@@ -279,7 +291,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: rgba(255,142,0,1);
 }
 
-.search-failed > a {
+.search-failed a {
 	color: #0089ff;
 }
 

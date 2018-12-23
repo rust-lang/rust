@@ -20,6 +20,7 @@ use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
 use traits::IntercrateMode;
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
+use ty::relate::TraitObjectMode;
 use ty::fold::TypeFoldable;
 use ty::subst::Subst;
 
@@ -52,6 +53,7 @@ pub fn overlapping_impls<'gcx, F1, F2, R>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
+    trait_object_mode: TraitObjectMode,
     on_overlap: F1,
     no_overlap: F2,
 ) -> R
@@ -62,12 +64,14 @@ where
     debug!("overlapping_impls(\
            impl1_def_id={:?}, \
            impl2_def_id={:?},
-           intercrate_mode={:?})",
+           intercrate_mode={:?},
+           trait_object_mode={:?})",
            impl1_def_id,
            impl2_def_id,
-           intercrate_mode);
+           intercrate_mode,
+           trait_object_mode);
 
-    let overlaps = tcx.infer_ctxt().enter(|infcx| {
+    let overlaps = tcx.infer_ctxt().with_trait_object_mode(trait_object_mode).enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
         overlap(selcx, impl1_def_id, impl2_def_id).is_some()
     });
@@ -79,7 +83,7 @@ where
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambuiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    tcx.infer_ctxt().enter(|infcx| {
+    tcx.infer_ctxt().with_trait_object_mode(trait_object_mode).enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx, intercrate_mode);
         selcx.enable_tracking_intercrate_ambiguity_causes();
         on_overlap(overlap(selcx, impl1_def_id, impl2_def_id).unwrap())
@@ -256,12 +260,12 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 /// The current rule is that a trait-ref orphan checks in a crate C:
 ///
 /// 1. Order the parameters in the trait-ref in subst order - Self first,
-///    others linearly (e.g. `<U as Foo<V, W>>` is U < V < W).
+///    others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
 /// 2. Of these type parameters, there is at least one type parameter
 ///    in which, walking the type as a tree, you can reach a type local
 ///    to C where all types in-between are fundamental types. Call the
 ///    first such parameter the "local key parameter".
-///     - e.g. `Box<LocalType>` is OK, because you can visit LocalType
+///     - e.g., `Box<LocalType>` is OK, because you can visit LocalType
 ///       going through `Box`, which is fundamental.
 ///     - similarly, `FundamentalPair<Vec<()>, Box<LocalType>>` is OK for
 ///       the same reason.
@@ -269,7 +273,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///       not local), `Vec<LocalType>` is bad, because `Vec<->` is between
 ///       the local type and the type parameter.
 /// 3. Every type parameter before the local key parameter is fully known in C.
-///     - e.g. `impl<T> T: Trait<LocalType>` is bad, because `T` might be
+///     - e.g., `impl<T> T: Trait<LocalType>` is bad, because `T` might be
 ///       an unknown type.
 ///     - but `impl<T> LocalType: Trait<T>` is OK, because `LocalType`
 ///       occurs before `T`.
@@ -277,7 +281,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///    through the parameter's type tree, must appear only as a subtree of
 ///    a type local to C, with only fundamental types between the type
 ///    local to C and the local key parameter.
-///     - e.g. `Vec<LocalType<T>>>` (or equivalently `Box<Vec<LocalType<T>>>`)
+///     - e.g., `Vec<LocalType<T>>>` (or equivalently `Box<Vec<LocalType<T>>>`)
 ///     is bad, because the only local type with `T` as a subtree is
 ///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
 ///     - similarly, `FundamentalPair<LocalType<T>, T>` is bad, because
@@ -288,7 +292,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///
 /// The orphan rules actually serve several different purposes:
 ///
-/// 1. They enable link-safety - i.e. 2 mutually-unknowing crates (where
+/// 1. They enable link-safety - i.e., 2 mutually-unknowing crates (where
 ///    every type local to one crate is unknown in the other) can't implement
 ///    the same trait-ref. This follows because it can be seen that no such
 ///    type can orphan-check in 2 such crates.
@@ -393,7 +397,7 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>, in_crate: InCrate)
                        -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         vec![]
-    } else if fundamental_ty(tcx, ty) {
+    } else if fundamental_ty(ty) {
         ty.walk_shallow()
           .flat_map(|t| uncovered_tys(tcx, t, in_crate))
           .collect()
@@ -411,14 +415,13 @@ fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
 
 fn ty_is_local(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     ty_is_local_constructor(ty, in_crate) ||
-        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
+        fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
-fn fundamental_ty(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>) -> bool {
+fn fundamental_ty(ty: Ty<'_>) -> bool {
     match ty.sty {
         ty::Ref(..) => true,
         ty::Adt(def, _) => def.is_fundamental(),
-        ty::Dynamic(ref data, ..) => tcx.has_attr(data.principal().def_id(), "fundamental"),
         _ => false
     }
 }

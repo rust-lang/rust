@@ -9,9 +9,14 @@
 // except according to those terms.
 
 // compile-pass
+// aux-build:underscore-imports.rs
 
-#![feature(underscore_imports)]
 #![warn(unused_imports, unused_extern_crates)]
+
+#[macro_use]
+extern crate underscore_imports as _;
+
+do_nothing!(); // OK
 
 struct S;
 

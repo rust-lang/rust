@@ -213,7 +213,7 @@ use raw_vec::RawVec;
 /// about its design. This ensures that it's as low-overhead as possible in
 /// the general case, and can be correctly manipulated in primitive ways
 /// by unsafe code. Note that these guarantees refer to an unqualified `Vec<T>`.
-/// If additional type parameters are added (e.g. to support custom allocators),
+/// If additional type parameters are added (e.g., to support custom allocators),
 /// overriding their defaults may change the behavior.
 ///
 /// Most fundamentally, `Vec` is and always will be a (pointer, capacity, length)
@@ -1241,8 +1241,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_resize_with)]
-    ///
     /// let mut vec = vec![1, 2, 3];
     /// vec.resize_with(5, Default::default);
     /// assert_eq!(vec, [1, 2, 3, 0, 0]);
@@ -1255,7 +1253,7 @@ impl<T> Vec<T> {
     ///
     /// [`resize`]: #method.resize
     /// [`Clone`]: ../../std/clone/trait.Clone.html
-    #[unstable(feature = "vec_resize_with", issue = "41758")]
+    #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
         where F: FnMut() -> T
     {

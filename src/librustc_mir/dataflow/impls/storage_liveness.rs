@@ -29,7 +29,7 @@ impl<'a, 'tcx: 'a> MaybeStorageLive<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     type Idx = Local;
     fn name() -> &'static str { "maybe_storage_live" }
     fn bits_per_block(&self) -> usize {
@@ -58,11 +58,13 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         // Terminators have no effect
     }
 
-    fn propagate_call_return(&self,
-                             _in_out: &mut BitSet<Local>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
+    fn propagate_call_return(
+        &self,
+        _in_out: &mut BitSet<Local>,
+        _call_bb: mir::BasicBlock,
+        _dest_bb: mir::BasicBlock,
+        _dest_place: &mir::Place<'tcx>,
+    ) {
         // Nothing to do when a call returns successfully
     }
 }

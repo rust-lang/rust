@@ -52,7 +52,7 @@
 pub use ptr::drop_in_place;
 
 extern "rust-intrinsic" {
-    // NB: These intrinsics take raw pointers because they mutate aliased
+    // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
     /// Stores a value if the current value is the same as the `old` value.
@@ -635,7 +635,7 @@ extern "rust-intrinsic" {
     /// Tells LLVM that this point in the code is not reachable, enabling
     /// further optimizations.
     ///
-    /// NB: This is very different from the `unreachable!()` macro: Unlike the
+    /// N.B., this is very different from the `unreachable!()` macro: Unlike the
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
     ///
@@ -718,7 +718,6 @@ extern "rust-intrinsic" {
     pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
-    #[cfg(not(stage0))]
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
@@ -1476,14 +1475,12 @@ extern "rust-intrinsic" {
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
-    #[cfg(not(stage0))]
     pub fn rotate_left<T>(x: T, y: T) -> T;
 
     /// Performs rotate right.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
     /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
-    #[cfg(not(stage0))]
     pub fn rotate_right<T>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.

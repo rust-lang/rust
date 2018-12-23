@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module contains TyKind and its major components
+//! This module contains `TyKind` and its major components.
 
+use hir;
 use hir::def_id::DefId;
 use infer::canonical::Canonical;
 use mir::interpret::ConstValue;
@@ -30,9 +31,6 @@ use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
 
 use serialize;
-
-use hir;
-
 use self::InferTy::*;
 use self::TyKind::*;
 
@@ -91,7 +89,7 @@ impl BoundRegion {
     }
 }
 
-/// N.B., If you change this, you'll probably want to change the corresponding
+/// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `libsyntax/ast.rs` as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum TyKind<'tcx> {
@@ -531,11 +529,11 @@ impl<'tcx> UpvarSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ExistentialPredicate<'tcx> {
-    /// e.g. Iterator
+    /// e.g., Iterator
     Trait(ExistentialTraitRef<'tcx>),
-    /// e.g. Iterator::Item = T
+    /// e.g., Iterator::Item = T
     Projection(ExistentialProjection<'tcx>),
-    /// e.g. Send
+    /// e.g., Send
     AutoTrait(DefId),
 }
 
@@ -784,7 +782,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// Binder<TraitRef>`). Note that when we instantiate,
 /// erase, or otherwise "discharge" these bound vars, we change the
 /// type from `Binder<T>` to just `T` (see
-/// e.g. `liberate_late_bound_regions`).
+/// e.g., `liberate_late_bound_regions`).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Binder<T>(T);
 
@@ -1020,7 +1018,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfType.name().as_interned_str())
+        ParamTy::new(0, keywords::SelfUpper.name().as_interned_str())
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
@@ -1035,7 +1033,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
         // but this should only be possible when using `-Z continue-parse-after-error` like
         // `compile-fail/issue-36638.rs`.
-        self.name == keywords::SelfType.name().as_str() && self.idx == 0
+        self.name == keywords::SelfUpper.name().as_str() && self.idx == 0
     }
 }
 
@@ -1099,12 +1097,12 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// with some concrete region before being used. There are 2 kind of
 /// bound regions: early-bound, which are bound in an item's Generics,
 /// and are substituted by a Substs,  and late-bound, which are part of
-/// higher-ranked types (e.g. `for<'a> fn(&'a ())`) and are substituted by
+/// higher-ranked types (e.g., `for<'a> fn(&'a ())`) and are substituted by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].
 ///
 /// Unlike Param-s, bound regions are not supposed to exist "in the wild"
-/// outside their binder, e.g. in types passed to type inference, and
+/// outside their binder, e.g., in types passed to type inference, and
 /// should first be substituted (by placeholder regions, free regions,
 /// or region variables).
 ///
@@ -1160,7 +1158,7 @@ pub enum RegionKind {
     ReFree(FreeRegion),
 
     /// A concrete region naming some statically determined scope
-    /// (e.g. an expression or sequence of statements) within the
+    /// (e.g., an expression or sequence of statements) within the
     /// current function.
     ReScope(region::Scope),
 
@@ -1324,7 +1322,7 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 
 impl DebruijnIndex {
     /// Returns the resulting index when this value is moved into
-    /// `amount` number of new binders. So e.g. if you had
+    /// `amount` number of new binders. So e.g., if you had
     ///
     ///    for<'a> fn(&'a x)
     ///
@@ -1332,7 +1330,7 @@ impl DebruijnIndex {
     ///
     ///    for<'a> fn(for<'b> fn(&'a x))
     ///
-    /// you would need to shift the index for `'a` into 1 new binder.
+    /// you would need to shift the index for `'a` into a new binder.
     #[must_use]
     pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() + amount)
@@ -1541,6 +1539,51 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_never(&self) -> bool {
         match self.sty {
             Never => true,
+            _ => false,
+        }
+    }
+
+    /// Checks whether a type is definitely uninhabited. This is
+    /// conservative: for some types that are uninhabited we return `false`,
+    /// but we only return `true` for types that are definitely uninhabited.
+    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
+    /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
+    /// size, to account for partial initialisation. See #49298 for details.)
+    pub fn conservative_is_privately_uninhabited(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        // FIXME(varkor): we can make this less conversative by substituting concrete
+        // type arguments.
+        match self.sty {
+            ty::Never => true,
+            ty::Adt(def, _) if def.is_union() => {
+                // For now, `union`s are never considered uninhabited.
+                false
+            }
+            ty::Adt(def, _) => {
+                // Any ADT is uninhabited if either:
+                // (a) It has no variants (i.e. an empty `enum`);
+                // (b) Each of its variants (a single one in the case of a `struct`) has at least
+                //     one uninhabited field.
+                def.variants.iter().all(|var| {
+                    var.fields.iter().any(|field| {
+                        tcx.type_of(field.did).conservative_is_privately_uninhabited(tcx)
+                    })
+                })
+            }
+            ty::Tuple(tys) => tys.iter().any(|ty| ty.conservative_is_privately_uninhabited(tcx)),
+            ty::Array(ty, len) => {
+                match len.assert_usize(tcx) {
+                    // If the array is definitely non-empty, it's uninhabited if
+                    // the type of its elements is uninhabited.
+                    Some(n) if n != 0 => ty.conservative_is_privately_uninhabited(tcx),
+                    _ => false
+                }
+            }
+            ty::Ref(..) => {
+                // References to uninitialised memory is valid for any type, including
+                // uninhabited types, in unsafe code, so we treat all references as
+                // inhabited.
+                false
+            }
             _ => false,
         }
     }
@@ -1787,6 +1830,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_pointer_sized(&self) -> bool {
+        match self.sty {
+            Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_machine(&self) -> bool {
         match self.sty {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => false,
@@ -1802,10 +1852,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Returns the type and mutability of *ty.
+    /// Returns the type and mutability of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
-    /// Some types---notably unsafe ptrs---can only be dereferenced explicitly.
+    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
         match self.sty {
             Adt(def, _) if def.is_box() => {

@@ -261,6 +261,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         old_loan_span: Span,
         old_opt_via: &str,
         previous_end_span: Option<Span>,
+        second_borrow_desc: &str,
         o: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
@@ -274,7 +275,10 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             kind_new,
             OGN = o
         );
-        err.span_label(new_loan_span, format!("borrow occurs here{}", opt_via));
+        err.span_label(
+            new_loan_span,
+            format!("{}borrow occurs here{}", second_borrow_desc, opt_via),
+        );
         err.span_label(
             old_loan_span,
             format!("{} construction occurs here{}", container_name, old_opt_via),

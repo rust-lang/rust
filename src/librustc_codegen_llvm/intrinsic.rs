@@ -732,7 +732,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             // We found a tuple that needs squishing! So
                             // run over the tuple and load each field.
                             //
-                            // This assumes the type is "simple", i.e. no
+                            // This assumes the type is "simple", i.e., no
                             // destructors, and the contents are SIMD
                             // etc.
                             assert!(!bx.type_needs_drop(arg.layout.ty));
@@ -997,7 +997,7 @@ fn codegen_msvc_try(
 }
 
 // Definition of the standard "try" function for Rust using the GNU-like model
-// of exceptions (e.g. the normal semantics of LLVM's landingpad and invoke
+// of exceptions (e.g., the normal semantics of LLVM's landingpad and invoke
 // instructions).
 //
 // This codegen is a little surprising because we always call a shim
@@ -1081,7 +1081,7 @@ fn gen_fn<'ll, 'tcx>(
         Abi::Rust
     ));
     let llfn = cx.define_internal_fn(name, rust_fn_sig);
-    attributes::from_fn_attrs(cx, llfn, None);
+    attributes::from_fn_attrs(cx, llfn, None, rust_fn_sig);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
     llfn
@@ -1171,7 +1171,28 @@ fn generic_simd_intrinsic(
     );
     let arg_tys = sig.inputs();
 
-    // every intrinsic takes a SIMD vector as its first argument
+    if name == "simd_select_bitmask" {
+        let in_ty = arg_tys[0];
+        let m_len = match in_ty.sty {
+            // Note that this `.unwrap()` crashes for isize/usize, that's sort
+            // of intentional as there's not currently a use case for that.
+            ty::Int(i) => i.bit_width().unwrap(),
+            ty::Uint(i) => i.bit_width().unwrap(),
+            _ => return_error!("`{}` is not an integral type", in_ty),
+        };
+        require_simd!(arg_tys[1], "argument");
+        let v_len = arg_tys[1].simd_size(tcx);
+        require!(m_len == v_len,
+                 "mismatched lengths: mask length `{}` != other vector length `{}`",
+                 m_len, v_len
+        );
+        let i1 = bx.type_i1();
+        let i1xn = bx.type_vector(i1, m_len as u64);
+        let m_i1s = bx.bitcast(args[0].immediate(), i1xn);
+        return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
+    }
+
+    // every intrinsic below takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");
     let in_ty = arg_tys[0];
     let in_elem = arg_tys[0].simd_type(tcx);
@@ -1275,6 +1296,7 @@ fn generic_simd_intrinsic(
     if name == "simd_select" {
         let m_elem_ty = in_elem;
         let m_len = in_len;
+        require_simd!(arg_tys[1], "argument");
         let v_len = arg_tys[1].simd_size(tcx);
         require!(m_len == v_len,
                  "mismatched lengths: mask length `{}` != other vector length `{}`",

@@ -1,7 +1,6 @@
 #![stable(feature = "", since = "1.30.0")]
 
 #![allow(non_camel_case_types)]
-#![cfg_attr(stage0, allow(dead_code))]
 
 //! Utilities related to FFI bindings.
 
@@ -18,7 +17,7 @@ use ::fmt;
 ///
 /// [`!`]: ../../std/primitive.never.html
 /// [pointer]: ../../std/primitive.pointer.html
-// NB: For LLVM to recognize the void pointer type and by extension
+// N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
 //     of the "raw" type by only having private variants.. We need two
@@ -45,6 +44,7 @@ impl fmt::Debug for c_void {
 /// Basic implementation of a `va_list`.
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
               not(target_arch = "x86_64")),
+          all(target_arch = "aarch4", target_os = "ios"),
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -122,7 +122,6 @@ struct VaListImpl {
                      all supported platforms",
            issue = "27745")]
 #[repr(transparent)]
-#[cfg(not(stage0))]
 pub struct VaList<'a>(&'a mut VaListImpl);
 
 // The VaArgSafe trait needs to be used in public interfaces, however, the trait
@@ -172,7 +171,6 @@ impl<T> sealed_trait::VaArgSafe for *mut T {}
            issue = "27745")]
 impl<T> sealed_trait::VaArgSafe for *const T {}
 
-#[cfg(not(stage0))]
 impl<'a> VaList<'a> {
     /// Advance to the next arg.
     #[unstable(feature = "c_variadic",
@@ -192,6 +190,7 @@ impl<'a> VaList<'a> {
             where F: for<'copy> FnOnce(VaList<'copy>) -> R {
         #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                       not(target_arch = "x86_64")),
+                  all(target_arch = "aarch4", target_os = "ios"),
                   windows))]
         let mut ap = va_copy(self);
         #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
@@ -206,7 +205,6 @@ impl<'a> VaList<'a> {
     }
 }
 
-#[cfg(not(stage0))]
 extern "rust-intrinsic" {
     /// Destroy the arglist `ap` after initialization with `va_start` or
     /// `va_copy`.

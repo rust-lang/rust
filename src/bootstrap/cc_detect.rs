@@ -39,9 +39,9 @@ use std::process::Command;
 use build_helper::output;
 use cc;
 
-use {Build, GitRepo};
-use config::Target;
-use cache::Interned;
+use crate::{Build, GitRepo};
+use crate::config::Target;
+use crate::cache::Interned;
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
 // so use some simplified logic here. First we respect the environment variable `AR`, then
@@ -143,7 +143,10 @@ fn set_compiler(cfg: &mut cc::Build,
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                let target = target.replace("armv7", "arm");
+                let target = target.replace("armv7neon", "arm")
+                                   .replace("armv7", "arm")
+                                   .replace("thumbv7neon", "arm")
+                                   .replace("thumbv7", "arm");
                 let compiler = format!("{}-{}", target, compiler.clang());
                 cfg.compiler(ndk.join("bin").join(compiler));
             }

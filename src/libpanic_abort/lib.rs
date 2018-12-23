@@ -66,6 +66,12 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
     unsafe fn abort() -> ! {
         core::intrinsics::abort();
     }
+
+    #[cfg(target_env="sgx")]
+    unsafe fn abort() -> ! {
+        extern "C" { pub fn panic_exit() -> !; }
+        panic_exit();
+    }
 }
 
 // This... is a bit of an oddity. The tl;dr; is that this is required to link

@@ -15,7 +15,7 @@ use abi::call::{ArgType, CastTarget, FnType, Reg, RegKind};
 use abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
 
 /// Classification of "eightbyte" components.
-// NB: the order of the variants is from general to specific,
+// N.B., the order of the variants is from general to specific,
 // such that `unify(a, b)` is the "smaller" of `a` and `b`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Class {

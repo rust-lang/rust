@@ -1,4 +1,4 @@
-error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g. `MyStruct<T>`)
+error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/coherence-lone-type-parameter.rs:16:1
    |
 LL | impl<T> Remote for T { }

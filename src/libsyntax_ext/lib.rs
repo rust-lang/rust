@@ -39,10 +39,6 @@ extern crate log;
 
 mod diagnostics;
 
-#[macro_use]
-// for custom_derive
-pub mod deriving;
-
 mod asm;
 mod assert;
 mod cfg;
@@ -54,13 +50,14 @@ mod format;
 mod format_foreign;
 mod global_asm;
 mod log_syntax;
-mod trace_macros;
+mod proc_macro_server;
 mod test;
 mod test_case;
+mod trace_macros;
 
+pub mod deriving;
 pub mod proc_macro_decls;
 pub mod proc_macro_impl;
-mod proc_macro_server;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;

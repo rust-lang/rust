@@ -43,6 +43,9 @@ pub enum SimplifiedTypeGen<D>
     PtrSimplifiedType,
     NeverSimplifiedType,
     TupleSimplifiedType(usize),
+    /// A trait object, all of whose components are markers
+    /// (e.g., `dyn Send + Sync`).
+    MarkerTraitObjectSimplifiedType,
     TraitSimplifiedType(D),
     ClosureSimplifiedType(D),
     GeneratorSimplifiedType(D),
@@ -78,7 +81,12 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
         ty::RawPtr(_) => Some(PtrSimplifiedType),
         ty::Dynamic(ref trait_info, ..) => {
-            Some(TraitSimplifiedType(trait_info.principal().def_id()))
+            let principal_def_id = trait_info.principal().def_id();
+            if tcx.trait_is_auto(principal_def_id) {
+                Some(MarkerTraitObjectSimplifiedType)
+            } else {
+                Some(TraitSimplifiedType(principal_def_id))
+            }
         }
         ty::Ref(_, ty, _) => {
             // since we introduce auto-refs during method lookup, we
@@ -110,7 +118,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 // anything. when lazy normalization happens, this
                 // will change. It would still be nice to have a way
                 // to deal with known-not-to-unify-with-anything
-                // projections (e.g. the likes of <__S as Encoder>::Error).
+                // projections (e.g., the likes of <__S as Encoder>::Error).
                 Some(ParameterSimplifiedType)
             } else {
                 None
@@ -144,6 +152,7 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
             NeverSimplifiedType => NeverSimplifiedType,
             TupleSimplifiedType(n) => TupleSimplifiedType(n),
             TraitSimplifiedType(d) => TraitSimplifiedType(map(d)),
+            MarkerTraitObjectSimplifiedType => MarkerTraitObjectSimplifiedType,
             ClosureSimplifiedType(d) => ClosureSimplifiedType(map(d)),
             GeneratorSimplifiedType(d) => GeneratorSimplifiedType(map(d)),
             GeneratorWitnessSimplifiedType(n) => GeneratorWitnessSimplifiedType(n),
@@ -170,7 +179,8 @@ impl<'a, 'gcx, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
             ArraySimplifiedType |
             PtrSimplifiedType |
             NeverSimplifiedType |
-            ParameterSimplifiedType => {
+            ParameterSimplifiedType |
+            MarkerTraitObjectSimplifiedType => {
                 // nothing to do
             }
             IntSimplifiedType(t) => t.hash_stable(hcx, hasher),

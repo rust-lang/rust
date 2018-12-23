@@ -17,7 +17,7 @@ path = "lib.rs"
 # Currently Cargo/RLS depend on `failure` which depends on `synstructure` which
 # enables this feature. Clippy, however, does not depend on anything that
 # enables this feature. Enable it unconditionally.
-syn = { version = "0.14", features = ['extra-traits'] }
+syn = { version = "0.15", features = ['extra-traits'] }
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
@@ -50,9 +50,11 @@ features = [
 ]
 
 [dependencies]
-serde_json = { version = "1.0.31", features = ["raw_value"] }
-rand = { version = "0.5.5", features = ["i128_support"] }
 curl-sys = { version = "0.4.13", optional = true }
+parking_lot = { version = "0.6", features = ['nightly'] }
+rand = { version = "0.5.5", features = ["i128_support"] }
+serde_json = { version = "1.0.31", features = ["raw_value"] }
+smallvec = { version = "0.6", features = ['union'] }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.12", optional = true }

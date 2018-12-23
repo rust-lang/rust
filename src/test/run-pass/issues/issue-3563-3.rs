@@ -128,7 +128,7 @@ trait Canvas {
 }
 
 // Here we provide an implementation of the Canvas methods for AsciiArt.
-// Other implementations could also be provided (e.g. for PDF or Apple's Quartz)
+// Other implementations could also be provided (e.g., for PDF or Apple's Quartz)
 // and code can use them polymorphically via the Canvas trait.
 impl Canvas for AsciiArt {
     fn add_point(&mut self, shape: Point) {

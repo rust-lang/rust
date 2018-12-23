@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(not_a_real_lint)] //~ WARN unknown lint
-#![deny(unused)]
-fn main() { let unused = (); } //~ ERROR unused variable
+#![deny(unknown_lints)]
+
+#![allow(not_a_real_lint)] //~ ERROR unknown lint
+
+#![deny(dead_cod)] //~ ERROR unknown lint
+                   //~| HELP did you mean
+                   //~| SUGGESTION dead_code
+
+fn main() {}

@@ -35,9 +35,9 @@ use syntax_pos::{self, Span};
 use traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
-use ty::relate::RelateResult;
+use ty::relate::{RelateResult, TraitObjectMode};
 use ty::subst::{Kind, Substs};
-use ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
 use ty::{FloatVid, IntVid, TyVid};
 use util::nodemap::FxHashMap;
 
@@ -182,6 +182,9 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // This flag is true while there is an active snapshot.
     in_snapshot: Cell<bool>,
 
+    // The TraitObjectMode used here,
+    trait_object_mode: TraitObjectMode,
+
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
     // outlive the lifetime 'a". These constraints derive from
@@ -219,7 +222,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// `UniverseIndex::root()` but grows from there as we enter
     /// universal quantifiers.
     ///
-    /// NB: At present, we exclude the universal quantifiers on the
+    /// N.B., at present, we exclude the universal quantifiers on the
     /// item we are type-checking, and just consider those names as
     /// part of the root universe. So this would only get incremented
     /// when we enter into a higher-ranked (`for<..>`) type or trait
@@ -471,7 +474,9 @@ impl fmt::Display for FixupError {
 pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: SyncDroplessArena,
+    interners: Option<CtxtInterners<'tcx>>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
+    trait_object_mode: TraitObjectMode,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
@@ -479,7 +484,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
         InferCtxtBuilder {
             global_tcx: self,
             arena: SyncDroplessArena::default(),
+            interners: None,
             fresh_tables: None,
+            trait_object_mode: TraitObjectMode::NoSquash,
         }
     }
 }
@@ -489,6 +496,12 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
         self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(Some(table_owner))));
+        self
+    }
+
+    pub fn with_trait_object_mode(mut self, mode: TraitObjectMode) -> Self {
+        debug!("with_trait_object_mode: setting mode to {:?}", mode);
+        self.trait_object_mode = mode;
         self
     }
 
@@ -518,14 +531,19 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
+            trait_object_mode,
             ref arena,
+            ref mut interners,
             ref fresh_tables,
         } = *self;
         let in_progress_tables = fresh_tables.as_ref();
-        global_tcx.enter_local(arena, |tcx| {
+        // Check that we haven't entered before
+        assert!(interners.is_none());
+        global_tcx.enter_local(arena, interners, |tcx| {
             f(InferCtxt {
                 tcx,
                 in_progress_tables,
+                trait_object_mode,
                 projection_cache: Default::default(),
                 type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
                 int_unification_table: RefCell::new(ut::UnificationTable::new()),
@@ -605,6 +623,10 @@ pub struct CombinedSnapshot<'a, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
+    }
+
+    pub fn trait_object_mode(&self) -> TraitObjectMode {
+        self.trait_object_mode
     }
 
     pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
@@ -732,7 +754,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             region_obligations_snapshot: self.region_obligations.borrow().len(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
-            // Borrow tables "in progress" (i.e. during typeck)
+            // Borrow tables "in progress" (i.e., during typeck)
             // to ban writes from within a snapshot to them.
             _in_progress_tables: self.in_progress_tables.map(|tables| tables.borrow()),
         }
@@ -1047,7 +1069,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // type parameter definition. The substitutions are
                 // for actual parameters that may be referred to by
                 // the default of this type parameter, if it exists.
-                // E.g. `struct Foo<A, B, C = (A, B)>(...);` when
+                // e.g., `struct Foo<A, B, C = (A, B)>(...);` when
                 // used in a path such as `Foo::<T, U>::new()` will
                 // use an inference variable for `C` with `[T, U]`
                 // as the substitutions for the default, `(T, U)`.
@@ -1253,6 +1275,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.inlined_shallow_resolve(typ)
     }
 
+    pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.type_variables.borrow_mut().root_var(var)
+    }
+
     pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -1261,7 +1287,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          * Where possible, replaces type/int/float variables in
          * `value` with their final value. Note that region variables
          * are unaffected. If a type variable has not been unified, it
-         * is left as is.  This is an idempotent operation that does
+         * is left as is. This is an idempotent operation that does
          * not affect inference state in any way and so you can do it
          * at will.
          */
@@ -1298,7 +1324,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         /*!
          * Attempts to resolve all type/region variables in
          * `value`. Region inference must have been run already (e.g.,
-         * by calling `resolve_regions_and_report_errors`).  If some
+         * by calling `resolve_regions_and_report_errors`). If some
          * variable was never unified, an `Err` results.
          *
          * This method is idempotent, but it not typically not invoked
@@ -1331,7 +1357,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
-        // Don't report an error if actual type is Error.
+        // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {
             return self.tcx.sess.diagnostic().struct_dummy();
         }

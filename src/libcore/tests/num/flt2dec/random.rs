@@ -18,7 +18,8 @@ use core::num::flt2dec::strategy::grisu::format_exact_opt;
 use core::num::flt2dec::strategy::grisu::format_shortest_opt;
 use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};
 
-use rand::{FromEntropy, XorShiftRng};
+use rand::FromEntropy;
+use rand::rngs::SmallRng;
 use rand::distributions::{Distribution, Uniform};
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
@@ -71,7 +72,10 @@ fn iterate<F, G, V>(func: &str, k: usize, n: usize, mut f: F, mut g: G, mut v: V
 pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
         where F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
               G: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-    let mut rng = XorShiftRng::from_entropy();
+    if cfg!(target_os = "emscripten") {
+        return // using rng pulls in i128 support, which doesn't work
+    }
+    let mut rng = SmallRng::from_entropy();
     let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000);
     iterate("f32_random_equivalence_test", k, n, f, g, |_| {
         let x = f32::from_bits(f32_range.sample(&mut rng));
@@ -82,7 +86,10 @@ pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
 pub fn f64_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
         where F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
               G: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-    let mut rng = XorShiftRng::from_entropy();
+    if cfg!(target_os = "emscripten") {
+        return // using rng pulls in i128 support, which doesn't work
+    }
+    let mut rng = SmallRng::from_entropy();
     let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000);
     iterate("f64_random_equivalence_test", k, n, f, g, |_| {
         let x = f64::from_bits(f64_range.sample(&mut rng));
@@ -99,7 +106,7 @@ pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
     // this is of course very stressful (and thus should be behind an `#[ignore]` attribute),
     // but with `-C opt-level=3 -C lto` this only takes about an hour or so.
 
-    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e. all finite ranges
+    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e., all finite ranges
     let (npassed, nignored) = iterate("f32_exhaustive_equivalence_test",
                                       k, 0x7f7f_ffff, f, g, |i: usize| {
 

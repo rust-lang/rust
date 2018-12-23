@@ -295,9 +295,8 @@ that has been imported into the current module.
 Erroneous code example:
 
 ```compile_fail,E0259
-# #![feature(libc)]
 extern crate core;
-extern crate libc as core;
+extern crate std as core;
 
 fn main() {}
 ```
@@ -308,9 +307,8 @@ external crate imported into the current module.
 Correct example:
 
 ```
-# #![feature(libc)]
 extern crate core;
-extern crate libc as other_name;
+extern crate std as other_name;
 
 fn main() {}
 ```

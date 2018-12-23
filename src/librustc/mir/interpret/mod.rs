@@ -41,7 +41,6 @@ use ty::{self, TyCtxt, Instance};
 use ty::layout::{self, Size};
 use middle::region;
 use std::io;
-use std::hash::Hash;
 use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
@@ -90,7 +89,7 @@ impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
 impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 #[derive(RustcDecodable, RustcEncodable)]
-enum AllocKind {
+enum AllocDiscriminant {
     Alloc,
     Fn,
     Static,
@@ -104,23 +103,23 @@ pub fn specialized_encode_alloc_id<
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
-    let alloc_type: AllocType<'tcx, &'tcx Allocation> =
+    let alloc_kind: AllocKind<'tcx> =
         tcx.alloc_map.lock().get(alloc_id).expect("no value for AllocId");
-    match alloc_type {
-        AllocType::Memory(alloc) => {
+    match alloc_kind {
+        AllocKind::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            AllocKind::Alloc.encode(encoder)?;
+            AllocDiscriminant::Alloc.encode(encoder)?;
             alloc.encode(encoder)?;
         }
-        AllocType::Function(fn_instance) => {
+        AllocKind::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            AllocKind::Fn.encode(encoder)?;
+            AllocDiscriminant::Fn.encode(encoder)?;
             fn_instance.encode(encoder)?;
         }
-        AllocType::Static(did) => {
+        AllocKind::Static(did) => {
             // referring to statics doesn't need to know about their allocations,
             // just about its DefId
-            AllocKind::Static.encode(encoder)?;
+            AllocDiscriminant::Static.encode(encoder)?;
             did.encode(encoder)?;
         }
     }
@@ -189,10 +188,10 @@ impl<'s> AllocDecodingSession<'s> {
         let idx = decoder.read_u32()? as usize;
         let pos = self.state.data_offsets[idx] as usize;
 
-        // Decode the AllocKind now so that we know if we have to reserve an
+        // Decode the AllocDiscriminant now so that we know if we have to reserve an
         // AllocId.
         let (alloc_kind, pos) = decoder.with_position(pos, |decoder| {
-            let alloc_kind = AllocKind::decode(decoder)?;
+            let alloc_kind = AllocDiscriminant::decode(decoder)?;
             Ok((alloc_kind, decoder.position()))
         })?;
 
@@ -208,7 +207,7 @@ impl<'s> AllocDecodingSession<'s> {
                 ref mut entry @ State::Empty => {
                     // We are allowed to decode
                     match alloc_kind {
-                        AllocKind::Alloc => {
+                        AllocDiscriminant::Alloc => {
                             // If this is an allocation, we need to reserve an
                             // AllocId so we can decode cyclic graphs.
                             let alloc_id = decoder.tcx().alloc_map.lock().reserve();
@@ -217,7 +216,7 @@ impl<'s> AllocDecodingSession<'s> {
                                 alloc_id);
                             Some(alloc_id)
                         },
-                        AllocKind::Fn | AllocKind::Static => {
+                        AllocDiscriminant::Fn | AllocDiscriminant::Static => {
                             // Fns and statics cannot be cyclic and their AllocId
                             // is determined later by interning
                             *entry = State::InProgressNonAlloc(
@@ -251,15 +250,15 @@ impl<'s> AllocDecodingSession<'s> {
         // Now decode the actual data
         let alloc_id = decoder.with_position(pos, |decoder| {
             match alloc_kind {
-                AllocKind::Alloc => {
+                AllocDiscriminant::Alloc => {
                     let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
                     // We already have a reserved AllocId.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-                    decoder.tcx().alloc_map.lock().set_id_same_memory(alloc_id, allocation);
+                    decoder.tcx().alloc_map.lock().set_alloc_id_same_memory(alloc_id, allocation);
                     Ok(alloc_id)
                 },
-                AllocKind::Fn => {
+                AllocDiscriminant::Fn => {
                     assert!(alloc_id.is_none());
                     trace!("creating fn alloc id");
                     let instance = ty::Instance::decode(decoder)?;
@@ -267,7 +266,7 @@ impl<'s> AllocDecodingSession<'s> {
                     let alloc_id = decoder.tcx().alloc_map.lock().create_fn_alloc(instance);
                     Ok(alloc_id)
                 },
-                AllocKind::Static => {
+                AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
                     trace!("creating extern static alloc id at");
                     let did = DefId::decode(decoder)?;
@@ -292,39 +291,42 @@ impl fmt::Display for AllocId {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
-pub enum AllocType<'tcx, M> {
+pub enum AllocKind<'tcx> {
     /// The alloc id is used as a function pointer
     Function(Instance<'tcx>),
     /// The alloc id points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
     /// The alloc id points to memory
-    Memory(M)
+    Memory(&'tcx Allocation),
 }
 
-pub struct AllocMap<'tcx, M> {
+pub struct AllocMap<'tcx> {
     /// Lets you know what an AllocId refers to
-    id_to_type: FxHashMap<AllocId, AllocType<'tcx, M>>,
+    id_to_kind: FxHashMap<AllocId, AllocKind<'tcx>>,
 
-    /// Used to ensure that functions and statics only get one associated AllocId
-    type_interner: FxHashMap<AllocType<'tcx, M>, AllocId>,
+    /// Used to ensure that statics only get one associated AllocId
+    type_interner: FxHashMap<AllocKind<'tcx>, AllocId>,
 
     /// The AllocId to assign to the next requested id.
     /// Always incremented, never gets smaller.
     next_id: AllocId,
 }
 
-impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
+impl<'tcx> AllocMap<'tcx> {
     pub fn new() -> Self {
         AllocMap {
-            id_to_type: Default::default(),
+            id_to_kind: Default::default(),
             type_interner: Default::default(),
             next_id: AllocId(0),
         }
     }
 
-    /// obtains a new allocation ID that can be referenced but does not
+    /// Obtains a new allocation ID that can be referenced but does not
     /// yet have an allocation backing it.
+    ///
+    /// Make sure to call `set_alloc_id_memory` or `set_alloc_id_same_memory` before returning such
+    /// an `AllocId` from a query.
     pub fn reserve(
         &mut self,
     ) -> AllocId {
@@ -337,53 +339,73 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         next
     }
 
-    fn intern(&mut self, alloc_type: AllocType<'tcx, M>) -> AllocId {
-        if let Some(&alloc_id) = self.type_interner.get(&alloc_type) {
+    fn intern(&mut self, alloc_kind: AllocKind<'tcx>) -> AllocId {
+        if let Some(&alloc_id) = self.type_interner.get(&alloc_kind) {
             return alloc_id;
         }
         let id = self.reserve();
-        debug!("creating alloc_type {:?} with id {}", alloc_type, id);
-        self.id_to_type.insert(id, alloc_type.clone());
-        self.type_interner.insert(alloc_type, id);
+        debug!("creating alloc_kind {:?} with id {}", alloc_kind, id);
+        self.id_to_kind.insert(id, alloc_kind.clone());
+        self.type_interner.insert(alloc_kind, id);
         id
     }
 
-    // FIXME: Check if functions have identity. If not, we should not intern these,
-    // but instead create a new id per use.
-    // Alternatively we could just make comparing function pointers an error.
+    /// Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
+    /// by the linker and functions can be duplicated across crates.
+    /// We thus generate a new `AllocId` for every mention of a function. This means that
+    /// `main as fn() == main as fn()` is false, while `let x = main as fn(); x == x` is true.
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> AllocId {
-        self.intern(AllocType::Function(instance))
+        let id = self.reserve();
+        self.id_to_kind.insert(id, AllocKind::Function(instance));
+        id
     }
 
-    pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx, M>> {
-        self.id_to_type.get(&id).cloned()
+    /// Returns `None` in case the `AllocId` is dangling. An `EvalContext` can still have a
+    /// local `Allocation` for that `AllocId`, but having such an `AllocId` in a constant is
+    /// illegal and will likely ICE.
+    /// This function exists to allow const eval to detect the difference between evaluation-
+    /// local dangling pointers and allocations in constants/statics.
+    pub fn get(&self, id: AllocId) -> Option<AllocKind<'tcx>> {
+        self.id_to_kind.get(&id).cloned()
     }
 
-    pub fn unwrap_memory(&self, id: AllocId) -> M {
+    /// Panics if the `AllocId` does not refer to an `Allocation`
+    pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
         match self.get(id) {
-            Some(AllocType::Memory(mem)) => mem,
+            Some(AllocKind::Memory(mem)) => mem,
             _ => bug!("expected allocation id {} to point to memory", id),
         }
     }
 
+    /// Generate an `AllocId` for a static or return a cached one in case this function has been
+    /// called on the same static before.
     pub fn intern_static(&mut self, static_id: DefId) -> AllocId {
-        self.intern(AllocType::Static(static_id))
+        self.intern(AllocKind::Static(static_id))
     }
 
-    pub fn allocate(&mut self, mem: M) -> AllocId {
+    /// Intern the `Allocation` and return a new `AllocId`, even if there's already an identical
+    /// `Allocation` with a different `AllocId`.
+    // FIXME: is this really necessary? Can we ensure `FOO` and `BAR` being different after codegen
+    // in `static FOO: u32 = 42; static BAR: u32 = 42;` even if they reuse the same allocation
+    // inside rustc?
+    pub fn allocate(&mut self, mem: &'tcx Allocation) -> AllocId {
         let id = self.reserve();
-        self.set_id_memory(id, mem);
+        self.set_alloc_id_memory(id, mem);
         id
     }
 
-    pub fn set_id_memory(&mut self, id: AllocId, mem: M) {
-        if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
+    /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
+    /// call this function twice, even with the same `Allocation` will ICE the compiler.
+    pub fn set_alloc_id_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
+        if let Some(old) = self.id_to_kind.insert(id, AllocKind::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
     }
 
-    pub fn set_id_same_memory(&mut self, id: AllocId, mem: M) {
-       self.id_to_type.insert_same(id, AllocType::Memory(mem));
+    /// Freeze an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
+    /// twice for the same `(AllocId, Allocation)` pair.
+    fn set_alloc_id_same_memory(&mut self, id: AllocId, mem: &'tcx Allocation) {
+        self.id_to_kind.insert_same(id, AllocKind::Memory(mem));
     }
 }
 

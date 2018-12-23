@@ -26,7 +26,7 @@
 /// is expected.
 ///
 /// Use `Fn` as a bound when you want to accept a parameter of function-like
-/// type and need to call it repeatedly and without mutating state (e.g. when
+/// type and need to call it repeatedly and without mutating state (e.g., when
 /// calling it concurrently). If you do not need such strict requirements, use
 /// [`FnMut`] or [`FnOnce`] as bounds.
 ///
@@ -72,6 +72,7 @@
     label="expected an `Fn<{Args}>` closure, found `{Self}`",
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
+#[must_use]
 pub trait Fn<Args> : FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -84,7 +85,7 @@ pub trait Fn<Args> : FnMut<Args> {
 ///
 /// `FnMut` is implemented automatically by closures which take mutable
 /// references to captured variables, as well as all types that implement
-/// [`Fn`], e.g. (safe) [function pointers][] (since `FnMut` is a supertrait of
+/// [`Fn`], e.g., (safe) [function pointers][] (since `FnMut` is a supertrait of
 /// [`Fn`]). Additionally, for any type `F` that implements `FnMut`, `&mut F`
 /// implements `FnMut`, too.
 ///
@@ -150,6 +151,7 @@ pub trait Fn<Args> : FnMut<Args> {
     label="expected an `FnMut<{Args}>` closure, found `{Self}`",
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
+#[must_use]
 pub trait FnMut<Args> : FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -163,7 +165,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// implements `FnOnce`, it can only be called once.
 ///
 /// `FnOnce` is implemented automatically by closure that might consume captured
-/// variables, as well as all types that implement [`FnMut`], e.g. (safe)
+/// variables, as well as all types that implement [`FnMut`], e.g., (safe)
 /// [function pointers][] (since `FnOnce` is a supertrait of [`FnMut`]).
 ///
 /// Since both [`Fn`] and [`FnMut`] are subtraits of `FnOnce`, any instance of
@@ -228,6 +230,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
     label="expected an `FnOnce<{Args}>` closure, found `{Self}`",
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
+#[must_use]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[stable(feature = "fn_once_output", since = "1.12.0")]

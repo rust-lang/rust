@@ -78,5 +78,5 @@ impl CodegenBackend for TheBackend {
 /// This is the entrypoint for a hot plugged rustc_codegen_llvm
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
-    Box::new(TheBackend(MetadataOnlyCodegenBackend::new()))
+    Box::new(TheBackend(MetadataOnlyCodegenBackend::boxed()))
 }

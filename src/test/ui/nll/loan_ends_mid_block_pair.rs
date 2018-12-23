@@ -27,10 +27,8 @@ fn nll_fail() {
     //~| ERROR (Mir) [E0506]
     data.0 = 'f';
     //~^ ERROR (Ast) [E0506]
-    //~| ERROR (Mir) [E0506]
     data.0 = 'g';
     //~^ ERROR (Ast) [E0506]
-    //~| ERROR (Mir) [E0506]
     capitalize(c);
 }
 

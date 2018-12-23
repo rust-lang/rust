@@ -272,7 +272,7 @@ macro_rules! make_value_visitor {
                 // is very relevant for `NonNull` and similar structs: We need to visit them
                 // at their scalar layout *before* descending into their fields.
                 // FIXME: We could avoid some redundant checks here. For newtypes wrapping
-                // scalars, we do the same check on every "level" (e.g. first we check
+                // scalars, we do the same check on every "level" (e.g., first we check
                 // MyNewtype and then the scalar in there).
                 match v.layout().abi {
                     layout::Abi::Uninhabited => {

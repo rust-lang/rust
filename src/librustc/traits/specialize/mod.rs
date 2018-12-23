@@ -19,24 +19,24 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
+pub mod specialization_graph;
+
+use hir::def_id::DefId;
+use infer::{InferCtxt, InferOk};
+use lint;
+use traits::{self, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::DUMMY_SP;
+use traits::select::IntercrateAmbiguityCause;
+use ty::{self, TyCtxt, TypeFoldable};
+use ty::subst::{Subst, Substs};
+
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
-use rustc_data_structures::fx::FxHashSet;
-use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk};
-use ty::subst::{Subst, Substs};
-use traits::{self, ObligationCause, TraitEngine};
-use traits::select::IntercrateAmbiguityCause;
-use ty::{self, TyCtxt, TypeFoldable};
-use syntax_pos::DUMMY_SP;
-use rustc_data_structures::sync::Lrc;
-
-use lint;
-
-pub mod specialization_graph;
-
 /// Information pertinent to an overlapping impl error.
+#[derive(Debug)]
 pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
@@ -85,6 +85,8 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                         source_substs: &'tcx Substs<'tcx>,
                                         target_node: specialization_graph::Node)
                                         -> &'tcx Substs<'tcx> {
+    debug!("translate_substs({:?}, {:?}, {:?}, {:?})",
+           param_env, source_impl, source_substs, target_node);
     let source_trait_ref = infcx.tcx
                                 .impl_trait_ref(source_impl)
                                 .unwrap()
@@ -119,10 +121,13 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// whichever applies.
 pub fn find_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     item: &ty::AssociatedItem,
     substs: &'tcx Substs<'tcx>,
     impl_data: &super::VtableImplData<'tcx, ()>,
 ) -> (DefId, &'tcx Substs<'tcx>) {
+    debug!("find_associated_item({:?}, {:?}, {:?}, {:?})",
+           param_env, item, substs, impl_data);
     assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
@@ -132,7 +137,7 @@ pub fn find_associated_item<'a, 'tcx>(
     match ancestors.defs(tcx, item.ident, item.kind, trait_def_id).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::reveal_all();
+                let param_env = param_env.with_reveal_all();
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(&infcx, param_env, impl_data.impl_def_id,
                                               substs, node_item.node);
@@ -179,7 +184,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // See RFC 1210 for more details and justification.
 
-    // Currently we do not allow e.g. a negative impl to specialize a positive one
+    // Currently we do not allow e.g., a negative impl to specialize a positive one
     if tcx.impl_polarity(impl1_def_id) != tcx.impl_polarity(impl2_def_id) {
         return false;
     }
@@ -219,12 +224,17 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        source_trait_ref: ty::TraitRef<'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
+    debug!("fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
+           param_env, source_trait_ref, target_impl);
+
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
     let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                        param_env,
                                                                        target_impl,
                                                                        target_substs);
+    debug!("fulfill_implication: target_trait_ref={:?}, obligations={:?}",
+           target_trait_ref, obligations);
 
     // do the impls unify? If not, no specialization.
     match infcx.at(&ObligationCause::dummy(), param_env)
@@ -285,17 +295,18 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 // Query provider for `specialization_graph_of`.
-pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                      trait_id: DefId)
-                                                      -> Lrc<specialization_graph::Graph> {
+pub(super) fn specialization_graph_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_id: DefId,
+) -> Lrc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = tcx.all_impls(trait_id);
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by
-    // negated CrateNum (so remote definitions are visited first) and then
-    // by a flattened version of the DefIndex.
+    // negated `CrateNum` (so remote definitions are visited first) and then
+    // by a flattened version of the `DefIndex`.
     trait_impls.sort_unstable_by_key(|def_id| {
         (-(def_id.krate.as_u32() as i64),
          def_id.index.address_space().index(),
@@ -308,8 +319,9 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
             let insert_result = sg.insert(tcx, impl_def_id);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
-                Err(overlap) => (Some(overlap), false),
-                Ok(opt_overlap) => (opt_overlap, true)
+                Err(overlap) => (Some(overlap), None),
+                Ok(Some(overlap)) => (Some(overlap.error), Some(overlap.kind)),
+                Ok(None) => (None, None)
             };
 
             if let Some(overlap) = overlap {
@@ -319,15 +331,21 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                         String::new(), |ty| {
                             format!(" for type `{}`", ty)
                         }),
-                    if used_to_be_allowed { " (E0119)" } else { "" }
+                    if used_to_be_allowed.is_some() { " (E0119)" } else { "" }
                 );
                 let impl_span = tcx.sess.source_map().def_span(
                     tcx.span_of_impl(impl_def_id).unwrap()
                 );
-                let mut err = if used_to_be_allowed {
+                let mut err = if let Some(kind) = used_to_be_allowed {
+                    let lint = match kind {
+                        FutureCompatOverlapErrorKind::Issue43355 =>
+                            lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
+                        FutureCompatOverlapErrorKind::Issue33140 =>
+                            lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS,
+                    };
                     tcx.struct_span_lint_node(
-                        lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
-                        tcx.hir.as_local_node_id(impl_def_id).unwrap(),
+                        lint,
+                        tcx.hir().as_local_node_id(impl_def_id).unwrap(),
                         impl_span,
                         &msg)
                 } else {
