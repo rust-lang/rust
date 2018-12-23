@@ -221,7 +221,7 @@ install!((self, builder, _config),
         }
     };
     Miri, "miri", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Clippy { stage: self.stage, target: self.target }).is_some() ||
+        if builder.ensure(dist::Miri { stage: self.stage, target: self.target }).is_some() ||
             Self::should_install(builder) {
             install_miri(builder, self.stage, self.target);
         } else {

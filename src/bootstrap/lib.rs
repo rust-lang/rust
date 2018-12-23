@@ -1019,6 +1019,11 @@ impl Build {
         self.package_vers(&self.release_num("clippy"))
     }
 
+    /// Returns the value of `package_vers` above for miri
+    fn miri_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("miri"))
+    }
+
     /// Returns the value of `package_vers` above for rustfmt
     fn rustfmt_package_vers(&self) -> String {
         self.package_vers(&self.release_num("rustfmt"))

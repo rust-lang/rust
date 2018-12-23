@@ -32,6 +32,8 @@ pub fn pkgname(builder: &Builder, component: &str) -> String {
         format!("{}-{}", component, builder.rls_package_vers())
     } else if component == "clippy" {
         format!("{}-{}", component, builder.clippy_package_vers())
+    } else if component == "miri" {
+        format!("{}-{}", component, builder.miri_package_vers())
     } else if component == "rustfmt" {
         format!("{}-{}", component, builder.rustfmt_package_vers())
     } else if component == "llvm-tools" {
@@ -1480,6 +1482,7 @@ impl Step for Extended {
         let rls_installer = builder.ensure(Rls { stage, target });
         let llvm_tools_installer = builder.ensure(LlvmTools { stage, target });
         let clippy_installer = builder.ensure(Clippy { stage, target });
+        let miri_installer = builder.ensure(Miri { stage, target });
         let lldb_installer = builder.ensure(Lldb { target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
@@ -1518,6 +1521,7 @@ impl Step for Extended {
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
         tarballs.extend(clippy_installer.clone());
+        tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
         tarballs.extend(lldb_installer);
@@ -1590,6 +1594,9 @@ impl Step for Extended {
             if clippy_installer.is_none() {
                 contents = filter(&contents, "clippy");
             }
+            if miri_installer.is_none() {
+                contents = filter(&contents, "miri");
+            }
             if rustfmt_installer.is_none() {
                 contents = filter(&contents, "rustfmt");
             }
@@ -1630,6 +1637,9 @@ impl Step for Extended {
             if clippy_installer.is_some() {
                 prepare("clippy");
             }
+            if miri_installer.is_some() {
+                prepare("miri");
+            }
 
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
@@ -1660,6 +1670,8 @@ impl Step for Extended {
                     "rls-preview".to_string()
                 } else if name == "clippy" {
                     "clippy-preview".to_string()
+                } else if name == "miri" {
+                    "miri-preview".to_string()
                 } else {
                     name.to_string()
                 };
@@ -1678,6 +1690,9 @@ impl Step for Extended {
             }
             if clippy_installer.is_some() {
                 prepare("clippy");
+            }
+            if miri_installer.is_some() {
+                prepare("miri");
             }
             if target.contains("windows-gnu") {
                 prepare("rust-mingw");
@@ -1771,6 +1786,18 @@ impl Step for Extended {
                                 .arg("-out").arg(exe.join("ClippyGroup.wxs"))
                                 .arg("-t").arg(etc.join("msi/remove-duplicates.xsl")));
             }
+            if miri_installer.is_some() {
+                builder.run(Command::new(&heat)
+                                .current_dir(&exe)
+                                .arg("dir")
+                                .arg("miri")
+                                .args(&heat_flags)
+                                .arg("-cg").arg("MiriGroup")
+                                .arg("-dr").arg("Miri")
+                                .arg("-var").arg("var.MiriDir")
+                                .arg("-out").arg(exe.join("MiriGroup.wxs"))
+                                .arg("-t").arg(etc.join("msi/remove-duplicates.xsl")));
+            }
             builder.run(Command::new(&heat)
                             .current_dir(&exe)
                             .arg("dir")
@@ -1816,6 +1843,9 @@ impl Step for Extended {
                 if clippy_installer.is_some() {
                     cmd.arg("-dClippyDir=clippy");
                 }
+                if miri_installer.is_some() {
+                    cmd.arg("-dMiriDir=miri");
+                }
                 if target.contains("windows-gnu") {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
@@ -1833,6 +1863,9 @@ impl Step for Extended {
             }
             if clippy_installer.is_some() {
                 candle("ClippyGroup.wxs".as_ref());
+            }
+            if miri_installer.is_some() {
+                candle("MiriGroup.wxs".as_ref());
             }
             candle("AnalysisGroup.wxs".as_ref());
 
@@ -1865,6 +1898,9 @@ impl Step for Extended {
             }
             if clippy_installer.is_some() {
                 cmd.arg("ClippyGroup.wixobj");
+            }
+            if miri_installer.is_some() {
+                cmd.arg("MiriGroup.wixobj");
             }
 
             if target.contains("windows-gnu") {
@@ -1951,6 +1987,7 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("cargo")));
         cmd.arg(builder.package_vers(&builder.release_num("rls")));
         cmd.arg(builder.package_vers(&builder.release_num("clippy")));
+        cmd.arg(builder.package_vers(&builder.release_num("miri")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
         cmd.arg(builder.llvm_tools_package_vers());
         cmd.arg(builder.lldb_package_vers());
