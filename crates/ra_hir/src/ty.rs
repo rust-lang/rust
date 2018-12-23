@@ -6,6 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use std::sync::Arc;
 use std::collections::HashMap;
+use std::fmt;
 
 use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
@@ -184,9 +185,38 @@ impl Ty {
     }
 }
 
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Ty::Bool => write!(f, "bool"),
+            Ty::Char => write!(f, "char"),
+            Ty::Int(t) => write!(f, "{}", t.ty_to_string()),
+            Ty::Uint(t) => write!(f, "{}", t.ty_to_string()),
+            Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
+            Ty::Str => write!(f, "str"),
+            Ty::Slice(t) => write!(f, "[{}]", t),
+            Ty::Never => write!(f, "!"),
+            Ty::Tuple(ts) => {
+                write!(f, "(")?;
+                for t in ts {
+                    write!(f, "{},", t)?;
+                }
+                write!(f, ")")
+            }
+            Ty::Unknown => write!(f, "[unknown]")
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
     type_for: FxHashMap<LocalSyntaxPtr, Ty>,
+}
+
+impl InferenceResult {
+    pub fn type_of_node(&self, node: SyntaxNodeRef) -> Option<Ty> {
+        self.type_for.get(&LocalSyntaxPtr::new(node)).cloned()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

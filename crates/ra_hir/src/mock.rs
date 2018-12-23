@@ -24,6 +24,15 @@ impl MockDatabase {
         (db, source_root)
     }
 
+    pub(crate) fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
+        let mut db = MockDatabase::default();
+        let mut source_root = SourceRoot::default();
+        let file_id = db.add_file(&mut source_root, "/main.rs", text);
+        db.query_mut(ra_db::SourceRootQuery)
+            .set(WORKSPACE, Arc::new(source_root.clone()));
+        (db, source_root, file_id)
+    }
+
     pub(crate) fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
         let (db, _, position) = MockDatabase::from_fixture(fixture);
         let position = position.expect("expected a marker ( <|> )");
