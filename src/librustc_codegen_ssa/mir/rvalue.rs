@@ -131,8 +131,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
                 header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
 
+                let align = dest.align.restrict_for_offset(dest.layout.field(bx.cx(), 0).size);
                 cg_elem.val.store(&mut body_bx,
-                    PlaceRef::new_sized(current, cg_elem.layout, dest.align));
+                    PlaceRef::new_sized(current, cg_elem.layout, align));
 
                 let next = body_bx.inbounds_gep(current, &[bx.cx().const_usize(1)]);
                 body_bx.br(header_bx.llbb());
