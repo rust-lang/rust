@@ -300,7 +300,9 @@ in other sections:
 
 ### ctags
 
-One of the challenges with rustc is that the RLS can't handle it, since it's a bootstrapping compiler. This makes code navigation difficult. One solution is to use ctags. The following script can be used to set it up: https://github.com/nikomatsakis/rust-etags.
+One of the challenges with rustc is that the RLS can't handle it, since it's a bootstrapping
+compiler. This makes code navigation difficult. One solution is to use `ctags`. The following
+script can be used to set it up: [https://github.com/nikomatsakis/rust-etags][etags].
 
 CTAGS integrates into emacs and vim quite easily. The following can then be
 used to build and generate tags:
