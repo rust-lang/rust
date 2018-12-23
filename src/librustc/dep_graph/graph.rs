@@ -6,6 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::env;
 use std::hash::Hash;
+use std::collections::hash_map::Entry;
 use ty::{self, TyCtxt};
 use util::common::{ProfileQueriesMsg, profq_msg};
 
@@ -655,17 +656,13 @@ impl DepGraph {
         let (dep_node_index, did_allocation) = {
             let mut current = data.current.borrow_mut();
 
-            if let Some(&dep_node_index) = current.node_to_node_index.get(&dep_node) {
-                // Someone else allocated it before us
-                (dep_node_index, false)
-            } else {
-                // Copy the fingerprint from the previous graph,
-                // so we don't have to recompute it
-                let fingerprint = data.previous.fingerprint_by_index(prev_dep_node_index);
-                // We allocating an entry for the node in the current dependency graph and
-                // adding all the appropriate edges imported from the previous graph
-                (current.alloc_node(*dep_node, current_deps, fingerprint), true)
-            }
+            // Copy the fingerprint from the previous graph,
+            // so we don't have to recompute it
+            let fingerprint = data.previous.fingerprint_by_index(prev_dep_node_index);
+
+            // We allocating an entry for the node in the current dependency graph and
+            // adding all the appropriate edges imported from the previous graph
+            current.intern_node(*dep_node, current_deps, fingerprint)
         };
 
         // ... emitting any stored diagnostic ...
@@ -958,11 +955,7 @@ impl CurrentDepGraph {
                 hash: fingerprint,
             };
 
-            if let Some(&index) = self.node_to_node_index.get(&target_dep_node) {
-                index
-            } else {
-                self.alloc_node(target_dep_node, reads, Fingerprint::ZERO)
-            }
+            self.intern_node(target_dep_node, reads, Fingerprint::ZERO).0
         } else {
             bug!("pop_anon_task() - Expected anonymous task to be popped")
         }
@@ -1023,21 +1016,37 @@ impl CurrentDepGraph {
         })
     }
 
-    fn alloc_node(&mut self,
-                  dep_node: DepNode,
-                  edges: SmallVec<[DepNodeIndex; 8]>,
-                  fingerprint: Fingerprint)
-                  -> DepNodeIndex {
-        debug_assert_eq!(self.node_to_node_index.len(), self.data.len());
+    fn alloc_node(
+        &mut self,
+        dep_node: DepNode,
+        edges: SmallVec<[DepNodeIndex; 8]>,
+        fingerprint: Fingerprint
+    ) -> DepNodeIndex {
         debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
-        let dep_node_index = DepNodeIndex::new(self.data.len());
-        self.data.push(DepNodeData {
-            node: dep_node,
-            edges,
-            fingerprint
-        });
-        self.node_to_node_index.insert(dep_node, dep_node_index);
-        dep_node_index
+        self.intern_node(dep_node, edges, fingerprint).0
+    }
+
+    fn intern_node(
+        &mut self,
+        dep_node: DepNode,
+        edges: SmallVec<[DepNodeIndex; 8]>,
+        fingerprint: Fingerprint
+    ) -> (DepNodeIndex, bool) {
+        debug_assert_eq!(self.node_to_node_index.len(), self.data.len());
+
+        match self.node_to_node_index.entry(dep_node) {
+            Entry::Occupied(entry) => (*entry.get(), false),
+            Entry::Vacant(entry) => {
+                let dep_node_index = DepNodeIndex::new(self.data.len());
+                self.data.push(DepNodeData {
+                    node: dep_node,
+                    edges,
+                    fingerprint
+                });
+                entry.insert(dep_node_index);
+                (dep_node_index, true)
+            }
+        }
     }
 }
 
