@@ -90,7 +90,7 @@ things (like adding support for a new intrinsic) can be done by working just on
 the miri side.
 
 To prepare, make sure you are using a nightly Rust compiler.  You also need to
-set up a libstd that enables execution with miri:
+set up a libstd that enables execution with Miri:
 
 ```sh
 rustup override set nightly # or the nightly in `rust-version`
@@ -98,7 +98,7 @@ cargo run --bin cargo-miri -- miri setup
 ```
 
 The last command should end in printing the directory where the libstd was
-built.  Set that as your MIRI_SYSROOT environment variable:
+built.  Set that as your `MIRI_SYSROOT` environment variable:
 
 ```sh
 export MIRI_SYSROOT=~/.cache/miri/HOST # or whatever the previous command said
@@ -109,7 +109,7 @@ export MIRI_SYSROOT=~/.cache/miri/HOST # or whatever the previous command said
 Now you can run Miri directly, without going through `cargo miri`:
 
 ```sh
-cargo run tests/run-pass-fullmir/format.rs # or whatever test you like
+cargo run tests/run-pass/format.rs # or whatever test you like
 ```
 
 You can also run the test suite with `cargo test --release`.  `cargo test
@@ -120,14 +120,33 @@ less time.
 
 Now you are set up!  You can write a failing test case, and tweak miri until it
 fails no more.
+You can get a trace of which MIR statements are being executed by setting the
+`MIRI_LOG` environment variable.  For example:
+
+```sh
+MIRI_LOG=info cargo run tests/run-pass/vecs.rs
+```
+
+Setting `MIRI_LOG` like this will configure logging for miri itself as well as
+the `rustc::mir::interpret` and `rustc_mir::interpret` modules in rustc.  You
+can also do more targeted configuration, e.g. to debug the stacked borrows
+implementation:
+```sh
+MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows cargo run tests/run-pass/vecs.rs
+```
+
+In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
+evaluation error was originally created.
+
 
 ### Using a locally built rustc
 
 Since the heart of Miri (the main interpreter engine) lives in rustc, working on
 Miri will often require using a locally built rustc.  The bug you want to fix
 may actually be on the rustc side, or you just need to get more detailed trace
-of the execution -- in both cases, you should develop miri against a rustc you
-compiled yourself, with debug assertions (and hence tracing) enabled.
+of the execution than what is possible with release builds -- in both cases, you
+should develop miri against a rustc you compiled yourself, with debug assertions
+(and hence tracing) enabled.
 
 The setup for a local rustc works as follows:
 ```sh
@@ -148,22 +167,6 @@ rustup override set custom
 
 With this, you should now have a working development setup!  See
 ["Testing Miri"](#testing-miri) above for how to proceed.
-
-Moreover, you can now run Miri with a trace of all execution steps:
-```sh
-MIRI_LOG=debug cargo run tests/run-pass/vecs.rs
-```
-
-Setting `MIRI_LOG` like this will configure logging for miri itself as well as
-the `rustc::mir::interpret` and `rustc_mir::interpret` modules in rustc.  You
-can also do more targeted configuration, e.g. to debug the stacked borrows
-implementation:
-```sh
-MIRI_LOG=rustc_mir::interpret=debug,miri::stacked_borrows cargo run tests/run-pass/vecs.rs
-```
-
-In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
-evaluation error was originally created.
 
 ### Miri `-Z` flags and environment variables
 
