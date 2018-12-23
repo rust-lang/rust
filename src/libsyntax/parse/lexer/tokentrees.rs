@@ -11,7 +11,7 @@
 use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
-use tokenstream::{DelimSpan, TokenStream, TokenTree};
+use tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
@@ -186,8 +186,7 @@ impl<'a> StringReader<'a> {
                 let raw = self.span_src_raw;
                 self.real_token();
                 let is_joint = raw.hi() == self.span_src_raw.lo() && token::is_op(&self.token);
-
-                Ok(if is_joint { tt.joint() } else { tt.into() })
+                Ok(TokenStream::Tree(tt, if is_joint { Joint } else { NonJoint }))
             }
         }
     }
