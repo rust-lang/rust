@@ -236,12 +236,12 @@ impl<'sess> OnDiskCache<'sess> {
                 // const eval is special, it only encodes successfully evaluated constants
                 use ty::query::QueryAccessors;
                 let cache = const_eval::query_cache(tcx).borrow();
-                assert!(cache.active.is_empty());
                 for (key, entry) in cache.results.iter() {
+                    let (value, index) = entry.unwrap();
                     use ty::query::config::QueryDescription;
                     if const_eval::cache_on_disk(key.clone()) {
-                        if let Ok(ref value) = entry.value {
-                            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+                        if let Ok(ref value) = value {
+                            let dep_node = SerializedDepNodeIndex::new(index.index());
 
                             // Record position of the cache entry
                             qri.push((dep_node, AbsoluteBytePos::new(enc.position())));
@@ -1095,17 +1095,17 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(tcx.sess, desc, || {
 
     let map = Q::query_cache(tcx).borrow();
-    assert!(map.active.is_empty());
     for (key, entry) in map.results.iter() {
+        let (value, index) = entry.unwrap();
         if Q::cache_on_disk(key.clone()) {
-            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+            let dep_node = SerializedDepNodeIndex::new(index.index());
 
             // Record position of the cache entry
             query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
             // Encode the type check tables with the SerializedDepNodeIndex
             // as tag.
-            encoder.encode_tagged(dep_node, &entry.value)?;
+            encoder.encode_tagged(dep_node, value)?;
         }
     }
 
