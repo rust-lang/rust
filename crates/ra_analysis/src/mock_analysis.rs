@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use relative_path::{RelativePathBuf};
+use relative_path::RelativePathBuf;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 use ra_db::mock::FileMap;
 
