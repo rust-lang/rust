@@ -1,5 +1,15 @@
+warning: duplicate auto trait `std::marker::Sync` found in trait object
+  --> $DIR/issue-33140.rs:27:21
+   |
+LL | impl Trait2 for dyn Sync + Send + Sync {
+   |                     ^^^^          ^^^^ subsequent use of auto trait
+   |                     |
+   |                     first use of auto trait
+   |
+   = note: #[warn(duplicate_auto_traits_in_trait_objects)] on by default
+
 error: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/issue-33140.rs:11:1
+  --> $DIR/issue-33140.rs:13:1
    |
 LL | impl Trait for dyn Send + Sync {
    | ------------------------------ first implementation here
@@ -8,7 +18,7 @@ LL | impl Trait for dyn Sync + Send {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |
 note: lint level defined here
-  --> $DIR/issue-33140.rs:1:9
+  --> $DIR/issue-33140.rs:3:9
    |
 LL | #![deny(order_dependent_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +26,7 @@ LL | #![deny(order_dependent_trait_objects)]
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: conflicting implementations of trait `Trait2` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/issue-33140.rs:25:1
+  --> $DIR/issue-33140.rs:27:1
    |
 LL | impl Trait2 for dyn Send + Sync {
    | ------------------------------- first implementation here
@@ -28,7 +38,7 @@ LL | impl Trait2 for dyn Sync + Send + Sync {
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: duplicate definitions with name `abc` (E0592)
-  --> $DIR/issue-33140.rs:33:5
+  --> $DIR/issue-33140.rs:36:5
    |
 LL | /     fn abc() -> bool { //~ ERROR duplicate definitions with name `abc`
 LL | |                        //~| hard error

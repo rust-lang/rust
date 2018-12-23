@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 #![deny(order_dependent_trait_objects)]
 
 trait Trait {
@@ -25,6 +27,7 @@ impl Trait2 for dyn Send + Sync {
 impl Trait2 for dyn Sync + Send + Sync {
 //~^ ERROR conflicting implementations
 //~| hard error
+//~^^^ WARNING duplicate auto trait `std::marker::Sync` found in trait object [duplicate_auto_traits_in_trait_objects]
     fn uvw() -> bool { true }
 }
 
@@ -43,10 +46,10 @@ impl Foo<dyn Sync + Send> {
 }
 
 fn main() {
-    assert_eq!(<Send+Sync>::xyz(), false);
-    assert_eq!(<Sync+Send>::xyz(), true);
-    assert_eq!(<Send+Sync>::uvw(), false);
-    assert_eq!(<Sync+Send+Sync>::uvw(), true);
-    assert_eq!(<Foo<Send+Sync>>::abc(), false);
-    assert_eq!(<Foo<Sync+Send>>::abc(), true);
+    assert_eq!(<Send + Sync>::xyz(), false);
+    assert_eq!(<Sync + Send>::xyz(), true);
+    assert_eq!(<Send + Sync>::uvw(), false);
+    assert_eq!(<Sync + Send + Sync>::uvw(), true);
+    assert_eq!(<Foo<Send + Sync>>::abc(), false);
+    assert_eq!(<Foo<Sync + Send>>::abc(), true);
 }
