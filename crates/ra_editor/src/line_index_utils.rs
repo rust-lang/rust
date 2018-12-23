@@ -325,7 +325,7 @@ pub fn translate_offset_with_edit(
     res.to_line_col(offset)
 }
 
-// for bench
+/// Simplest implementation to use as reference in proptest and benchmarks
 pub fn translate_after_edit(
     pre_edit_text: &str,
     offset: TextUnit,
@@ -352,8 +352,8 @@ fn edit_text(pre_edit_text: &str, mut edits: Vec<AtomTextEdit>) -> String {
 
 #[cfg(test)]
 mod test {
-    use proptest::{prelude::*, proptest, proptest_helper};
     use super::*;
+    use proptest::{prelude::*, proptest, proptest_helper};
     use ra_text_edit::test_utils::{arb_text, arb_offset, arb_edits};
 
     #[derive(Debug)]
