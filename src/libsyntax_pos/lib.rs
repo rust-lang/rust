@@ -334,6 +334,13 @@ impl Span {
         span.lo <= other.lo && other.hi <= span.hi
     }
 
+    /// Return `true` if `self` touches `other`.
+    pub fn overlaps(self, other: Span) -> bool {
+        let span = self.data();
+        let other = other.data();
+        span.lo < other.hi && other.lo < span.hi
+    }
+
     /// Return true if the spans are equal with regards to the source text.
     ///
     /// Use this instead of `==` when either span could be generated code,
