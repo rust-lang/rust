@@ -819,7 +819,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "fortanix-sgx-abi"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2216,6 +2216,7 @@ dependencies = [
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "jemalloc-sys 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_codegen_ssa 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_target 0.0.0",
@@ -2402,7 +2403,6 @@ dependencies = [
  "arena 0.0.0",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
- "jemalloc-sys 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2892,7 +2892,7 @@ dependencies = [
  "compiler_builtins 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "dlmalloc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "fortanix-sgx-abi 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
@@ -3449,7 +3449,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum foreign-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
 "checksum foreign-types-shared 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
-"checksum fortanix-sgx-abi 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "26105e20b4c3f7a319db1376b54ac9a46e5761e949405553375095d05a0cee4d"
+"checksum fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3f8cbee5e872cf7db61a999a041f9bc4706ca7bf7df4cb914f53fabb1c1bc550"
 "checksum fs2 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
 "checksum fs_extra 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
 "checksum fst 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d94485a00b1827b861dd9d1a2cc9764f9044d4c535514c0760a5a2012ef3399f"

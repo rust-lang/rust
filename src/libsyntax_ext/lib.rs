@@ -24,6 +24,8 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
+#![recursion_limit="256"]
+
 extern crate fmt_macros;
 #[macro_use]
 extern crate syntax;

@@ -262,7 +262,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                let align = self.check_bounds_ptr_maybe_dead(ptr)?;
+                let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -297,17 +297,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
     /// in-bounds!  This follows C's/LLVM's rules.
-    /// This function also works for deallocated allocations.
-    /// Use `.get(ptr.alloc_id)?.check_bounds_ptr(ptr)` if you want to force the allocation
-    /// to still be live.
     /// If you want to check bounds before doing a memory access, better first obtain
     /// an `Allocation` and call `check_bounds`.
-    pub fn check_bounds_ptr_maybe_dead(
+    pub fn check_bounds_ptr(
         &self,
         ptr: Pointer<M::PointerTag>,
+        liveness: InboundsCheck,
     ) -> EvalResult<'tcx, Align> {
-        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id);
-        ptr.check_in_alloc(allocation_size, InboundsCheck::MaybeDead)?;
+        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, liveness)?;
+        ptr.check_in_alloc(allocation_size, liveness)?;
         Ok(align)
     }
 }
@@ -429,27 +427,37 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn get_size_and_align(&self, id: AllocId) -> (Size, Align) {
+    /// Obtain the size and alignment of an allocation, even if that allocation has been deallocated
+    ///
+    /// If `liveness` is `InboundsCheck::Dead`, this function always returns `Ok`
+    pub fn get_size_and_align(
+        &self,
+        id: AllocId,
+        liveness: InboundsCheck,
+    ) -> EvalResult<'static, (Size, Align)> {
         if let Ok(alloc) = self.get(id) {
-            return (Size::from_bytes(alloc.bytes.len() as u64), alloc.align);
+            return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
         }
         // Could also be a fn ptr or extern static
         match self.tcx.alloc_map.lock().get(id) {
-            Some(AllocKind::Function(..)) => (Size::ZERO, Align::from_bytes(1).unwrap()),
+            Some(AllocKind::Function(..)) => Ok((Size::ZERO, Align::from_bytes(1).unwrap())),
             Some(AllocKind::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
                 assert!(self.tcx.is_foreign_item(did));
                 // Use size and align of the type
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                (layout.size, layout.align.abi)
+                Ok((layout.size, layout.align.abi))
             }
-            _ => {
-                // Must be a deallocated pointer
-                *self.dead_alloc_map.get(&id).expect(
-                    "allocation missing in dead_alloc_map"
-                )
-            }
+            _ => match liveness {
+                InboundsCheck::MaybeDead => {
+                    // Must be a deallocated pointer
+                    Ok(*self.dead_alloc_map.get(&id).expect(
+                        "allocation missing in dead_alloc_map"
+                    ))
+                },
+                InboundsCheck::Live => err!(DanglingPointerDeref),
+            },
         }
     }
 

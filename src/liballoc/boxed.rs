@@ -443,6 +443,18 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
 
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Box<T> {
+    /// Converts a generic type `T` into a `Box<T>`
+    ///
+    /// The conversion allocates on the heap and moves `t`
+    /// from the stack into it.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let x = 5;
+    /// let boxed = Box::new(5);
+    ///
+    /// assert_eq!(Box::from(x), boxed);
+    /// ```
     fn from(t: T) -> Self {
         Box::new(t)
     }
@@ -450,6 +462,9 @@ impl<T> From<T> for Box<T> {
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T> From<Box<T>> for Pin<Box<T>> {
+    /// Converts a `Box<T>` into a `Pin<Box<T>>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
     fn from(boxed: Box<T>) -> Self {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`,  so it's safe to pin it directly without any
@@ -460,6 +475,19 @@ impl<T> From<Box<T>> for Pin<Box<T>> {
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
+    /// Converts a `&[T]` into a `Box<[T]>`
+    ///
+    /// This conversion allocates on the heap
+    /// and performs a copy of `slice`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// // create a &[u8] which will be used to create a Box<[u8]>
+    /// let slice: &[u8] = &[104, 101, 108, 108, 111];
+    /// let boxed_slice: Box<[u8]> = Box::from(slice);
+    ///
+    /// println!("{:?}", boxed_slice);
+    /// ```
     fn from(slice: &'a [T]) -> Box<[T]> {
         let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
         boxed.copy_from_slice(slice);
@@ -469,6 +497,16 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a> From<&'a str> for Box<str> {
+    /// Converts a `&str` into a `Box<str>`
+    ///
+    /// This conversion allocates on the heap
+    /// and performs a copy of `s`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let boxed: Box<str> = Box::from("hello");
+    /// println!("{}", boxed);
+    /// ```
     #[inline]
     fn from(s: &'a str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
@@ -477,6 +515,22 @@ impl<'a> From<&'a str> for Box<str> {
 
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
 impl From<Box<str>> for Box<[u8]> {
+    /// Converts a `Box<str>>` into a `Box<[u8]>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
+    ///
+    /// # Examples
+    /// ```rust
+    /// // create a Box<str> which will be used to create a Box<[u8]>
+    /// let boxed: Box<str> = Box::from("hello");
+    /// let boxed_str: Box<[u8]> = Box::from(boxed);
+    ///
+    /// // create a &[u8] which will be used to create a Box<[u8]>
+    /// let slice: &[u8] = &[104, 101, 108, 108, 111];
+    /// let boxed_slice = Box::from(slice);
+    ///
+    /// assert_eq!(boxed_slice, boxed_str);
+    /// ```
     #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }

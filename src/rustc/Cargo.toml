@@ -15,5 +15,10 @@ rustc_driver = { path = "../librustc_driver" }
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 
+[dependencies.jemalloc-sys]
+version = '0.1.8'
+optional = true
+features = ['unprefixed_malloc_on_supported_platforms']
+
 [features]
-jemalloc = ['rustc_driver/jemalloc-sys']
+jemalloc = ['jemalloc-sys']

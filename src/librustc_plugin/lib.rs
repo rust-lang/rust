@@ -67,6 +67,8 @@
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
+#![recursion_limit="256"]
+
 #[macro_use] extern crate syntax;
 
 extern crate rustc;
