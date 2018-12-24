@@ -690,8 +690,6 @@ fn to_diagnostic_severity(severity: Severity) -> DiagnosticSeverity {
 
     match severity {
         Error => DiagnosticSeverity::Error,
-        Warning => DiagnosticSeverity::Warning,
-        Information => DiagnosticSeverity::Information,
-        Hint => DiagnosticSeverity::Hint,
+        WeakWarning => DiagnosticSeverity::Hint,
     }
 }
