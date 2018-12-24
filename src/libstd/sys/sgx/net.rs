@@ -29,7 +29,7 @@ struct Socket {
 }
 
 impl Socket {
-    fn new(fd: usercalls::Fd, local_addr: String) -> Socket {
+    fn new(fd: usercalls::raw::Fd, local_addr: String) -> Socket {
         Socket { inner: Arc::new(FileDesc::new(fd)), local_addr }
     }
 }

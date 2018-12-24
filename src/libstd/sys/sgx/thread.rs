@@ -75,7 +75,7 @@ impl Thread {
 
     pub fn yield_now() {
         assert_eq!(
-            usercalls::wait(0, usercalls::WAIT_NO).unwrap_err().kind(),
+            usercalls::wait(0, usercalls::raw::WAIT_NO).unwrap_err().kind(),
             io::ErrorKind::WouldBlock
         );
     }

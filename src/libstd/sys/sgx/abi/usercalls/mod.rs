@@ -8,22 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use fortanix_sgx_abi::*;
-
 use io::{Error as IoError, Result as IoResult};
 use time::Duration;
 
-pub mod alloc;
+pub(crate) mod alloc;
 #[macro_use]
-mod raw;
+pub(crate) mod raw;
 
-pub(crate) fn copy_user_buffer(buf: &alloc::UserRef<ByteBuffer>) -> Vec<u8> {
-    unsafe {
-        let buf = buf.to_enclave();
-        alloc::User::from_raw_parts(buf.data as _, buf.len).to_enclave()
-    }
-}
+use self::raw::*;
 
+/// Usercall `read`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn read(fd: Fd, buf: &mut [u8]) -> IoResult<usize> {
     unsafe {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.len());
@@ -33,6 +28,18 @@ pub fn read(fd: Fd, buf: &mut [u8]) -> IoResult<usize> {
     }
 }
 
+/// Usercall `read_alloc`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
+    unsafe {
+        let mut userbuf = alloc::User::<ByteBuffer>::uninitialized();
+        raw::read_alloc(fd, userbuf.as_raw_mut_ptr()).from_sgx_result()?;
+        Ok(userbuf.copy_user_buffer())
+    }
+}
+
+/// Usercall `write`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn write(fd: Fd, buf: &[u8]) -> IoResult<usize> {
     unsafe {
         let userbuf = alloc::User::new_from_enclave(buf);
@@ -40,19 +47,25 @@ pub fn write(fd: Fd, buf: &[u8]) -> IoResult<usize> {
     }
 }
 
+/// Usercall `flush`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn flush(fd: Fd) -> IoResult<()> {
     unsafe { raw::flush(fd).from_sgx_result() }
 }
 
+/// Usercall `close`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn close(fd: Fd) {
     unsafe { raw::close(fd) }
 }
 
 fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg: &str) -> String {
-    String::from_utf8(copy_user_buffer(buf))
+    String::from_utf8(buf.copy_user_buffer())
         .unwrap_or_else(|_| panic!("Usercall {}: expected {} to be valid UTF-8", usercall, arg))
 }
 
+/// Usercall `bind_stream`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn bind_stream(addr: &str) -> IoResult<(Fd, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
@@ -67,6 +80,8 @@ pub fn bind_stream(addr: &str) -> IoResult<(Fd, String)> {
     }
 }
 
+/// Usercall `accept_stream`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn accept_stream(fd: Fd) -> IoResult<(Fd, String, String)> {
     unsafe {
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
@@ -84,6 +99,8 @@ pub fn accept_stream(fd: Fd) -> IoResult<(Fd, String, String)> {
     }
 }
 
+/// Usercall `connect_stream`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
@@ -103,31 +120,45 @@ pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
     }
 }
 
-pub fn launch_thread() -> IoResult<()> {
-    unsafe { raw::launch_thread().from_sgx_result() }
+/// Usercall `launch_thread`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub unsafe fn launch_thread() -> IoResult<()> {
+    raw::launch_thread().from_sgx_result()
 }
 
+/// Usercall `exit`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn exit(panic: bool) -> ! {
     unsafe { raw::exit(panic) }
 }
 
+/// Usercall `wait`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn wait(event_mask: u64, timeout: u64) -> IoResult<u64> {
     unsafe { raw::wait(event_mask, timeout).from_sgx_result() }
 }
 
+/// Usercall `send`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn send(event_set: u64, tcs: Option<Tcs>) -> IoResult<()> {
     unsafe { raw::send(event_set, tcs).from_sgx_result() }
 }
 
+/// Usercall `insecure_time`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn insecure_time() -> Duration {
     let t = unsafe { raw::insecure_time() };
     Duration::new(t / 1_000_000_000, (t % 1_000_000_000) as _)
 }
 
+/// Usercall `alloc`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn alloc(size: usize, alignment: usize) -> IoResult<*mut u8> {
     unsafe { raw::alloc(size, alignment).from_sgx_result() }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
+#[doc(inline)]
 pub use self::raw::free;
 
 fn check_os_error(err: Result) -> i32 {

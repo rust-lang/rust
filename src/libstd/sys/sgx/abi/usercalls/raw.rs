@@ -10,7 +10,8 @@
 
 #![allow(unused)]
 
-use fortanix_sgx_abi::*;
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub use fortanix_sgx_abi::*;
 
 use ptr::NonNull;
 
@@ -21,7 +22,16 @@ extern "C" {
     fn usercall(nr: u64, p1: u64, p2: u64, _ignore: u64, p3: u64, p4: u64) -> UsercallReturn;
 }
 
-unsafe fn do_usercall(nr: u64, p1: u64, p2: u64, p3: u64, p4: u64) -> (u64, u64) {
+/// Perform the raw usercall operation as defined in the ABI calling convention.
+///
+/// # Safety
+/// The caller must ensure to pass parameters appropriate for the usercall `nr`
+/// and to observe all requirements specified in the ABI.
+///
+/// # Panics
+/// Panics if `nr` is 0.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub unsafe fn do_usercall(nr: u64, p1: u64, p2: u64, p3: u64, p4: u64) -> (u64, u64) {
     if nr==0 { panic!("Invalid usercall number {}",nr) }
     let UsercallReturn(a, b) = usercall(nr,p1,p2,0,p3,p4);
     (a, b)
@@ -169,6 +179,9 @@ impl<T: RegisterArgument, U: RegisterArgument> ReturnValue for (T, U) {
 macro_rules! enclave_usercalls_internal_define_usercalls {
     (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty,
                      $n3:ident: $t3:ty, $n4:ident: $t4:ty) -> $r:ty) => (
+        /// This is the raw function definition, see the ABI documentation for
+        /// more information.
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3, $n4: $t4) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
@@ -181,6 +194,9 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         }
     );
     (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty, $n3:ident: $t3:ty) -> $r:ty) => (
+        /// This is the raw function definition, see the ABI documentation for
+        /// more information.
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
@@ -193,6 +209,9 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         }
     );
     (def fn $f:ident($n1:ident: $t1:ty, $n2:ident: $t2:ty) -> $r:ty) => (
+        /// This is the raw function definition, see the ABI documentation for
+        /// more information.
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
@@ -204,6 +223,9 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         }
     );
     (def fn $f:ident($n1:ident: $t1:ty) -> $r:ty) => (
+        /// This is the raw function definition, see the ABI documentation for
+        /// more information.
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f($n1: $t1) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
@@ -214,6 +236,9 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         }
     );
     (def fn $f:ident() -> $r:ty) => (
+        /// This is the raw function definition, see the ABI documentation for
+        /// more information.
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         #[inline(always)]
         pub unsafe fn $f() -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ffi::OsString;
-use super::abi::usercalls::{copy_user_buffer, alloc, ByteBuffer};
+use super::abi::usercalls::{alloc, raw::ByteBuffer};
 use sync::atomic::{AtomicUsize, Ordering};
 use sys::os_str::Buf;
 use sys_common::FromInner;
@@ -22,7 +22,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     if argc != 0 {
         let args = alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _);
         let args = args.iter()
-            .map( |a| OsString::from_inner(Buf { inner: copy_user_buffer(a) }) )
+            .map( |a| OsString::from_inner(Buf { inner: a.copy_user_buffer() }) )
             .collect::<ArgsStore>();
         ARGS.store(Box::into_raw(Box::new(args)) as _, Ordering::Relaxed);
     }
