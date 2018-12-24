@@ -95,6 +95,8 @@ salsa::database_storage! {
             fn submodules() for hir::db::SubmodulesQuery;
             fn infer() for hir::db::InferQuery;
             fn type_for_def() for hir::db::TypeForDefQuery;
+            fn struct_data() for db::StructDataQuery;
+            fn enum_data() for db::EnumDataQuery;
         }
     }
 }

@@ -15,6 +15,7 @@ use crate::{
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
+    adt::{StructData, EnumData},
 };
 
 salsa::query_group! {
@@ -29,6 +30,16 @@ pub trait HirDatabase: SyntaxDatabase
     fn fn_syntax(fn_id: FnId) -> FnDefNode {
         type FnSyntaxQuery;
         use fn query_definitions::fn_syntax;
+    }
+
+    fn struct_data(def_id: DefId) -> Cancelable<Arc<StructData>> {
+        type StructDataQuery;
+        use fn query_definitions::struct_data;
+    }
+
+    fn enum_data(def_id: DefId) -> Cancelable<Arc<EnumData>> {
+        type EnumDataQuery;
+        use fn query_definitions::enum_data;
     }
 
     fn infer(fn_id: FnId) -> Cancelable<Arc<InferenceResult>> {

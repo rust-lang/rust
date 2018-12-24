@@ -17,7 +17,7 @@ use ra_syntax::{
 
 use crate::{Def, DefId, FnScopes, Module, Function, Path, db::HirDatabase};
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Ty {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -35,8 +35,15 @@ pub enum Ty {
     /// A primitive floating-point type. For example, `f64`.
     Float(primitive::FloatTy),
 
-    // Structures, enumerations and unions.
-    // Adt(AdtDef, Substs),
+    /// Structures, enumerations and unions.
+    Adt {
+        /// The DefId of the struct/enum.
+        def_id: DefId,
+        /// The name, for displaying.
+        name: SmolStr,
+        // later we'll need generic substitutions here
+    },
+
     /// The pointee of a string slice. Written as `str`.
     Str,
 
@@ -107,45 +114,48 @@ pub enum Ty {
 
 type TyRef = Arc<Ty>;
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FnSig {
     input: Vec<Ty>,
     output: Ty,
 }
 
 impl Ty {
-    pub fn new(_db: &impl HirDatabase, node: ast::TypeRef) -> Cancelable<Self> {
+    pub(crate) fn new(
+        db: &impl HirDatabase,
+        module: &Module,
+        node: ast::TypeRef,
+    ) -> Cancelable<Self> {
         use ra_syntax::ast::TypeRef::*;
         Ok(match node {
             ParenType(_inner) => Ty::Unknown, // TODO
             TupleType(_inner) => Ty::Unknown, // TODO
             NeverType(..) => Ty::Never,
             PathType(inner) => {
-                let path = if let Some(p) = inner.path() {
+                let path = if let Some(p) = inner.path().and_then(Path::from_ast) {
                     p
                 } else {
                     return Ok(Ty::Unknown);
                 };
-                if path.qualifier().is_none() {
-                    let name = path
-                        .segment()
-                        .and_then(|s| s.name_ref())
-                        .map(|n| n.text())
-                        .unwrap_or(SmolStr::new(""));
+                if path.is_ident() {
+                    let name = &path.segments[0];
                     if let Some(int_ty) = primitive::IntTy::from_string(&name) {
-                        Ty::Int(int_ty)
+                        return Ok(Ty::Int(int_ty));
                     } else if let Some(uint_ty) = primitive::UintTy::from_string(&name) {
-                        Ty::Uint(uint_ty)
+                        return Ok(Ty::Uint(uint_ty));
                     } else if let Some(float_ty) = primitive::FloatTy::from_string(&name) {
-                        Ty::Float(float_ty)
-                    } else {
-                        // TODO
-                        Ty::Unknown
+                        return Ok(Ty::Float(float_ty));
                     }
-                } else {
-                    // TODO
-                    Ty::Unknown
                 }
+
+                // Resolve in module (in type namespace)
+                let resolved = if let Some(r) = module.resolve_path(db, path)? {
+                    r
+                } else {
+                    return Ok(Ty::Unknown);
+                };
+                let ty = db.type_for_def(resolved)?;
+                ty
             }
             PointerType(_inner) => Ty::Unknown,     // TODO
             ArrayType(_inner) => Ty::Unknown,       // TODO
@@ -189,6 +199,7 @@ impl fmt::Display for Ty {
                 }
                 write!(f, ") -> {}", sig.output)
             }
+            Ty::Adt { name, .. } => write!(f, "{}", name),
             Ty::Unknown => write!(f, "[unknown]"),
         }
     }
@@ -196,6 +207,7 @@ impl fmt::Display for Ty {
 
 pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     let syntax = f.syntax(db);
+    let module = f.module(db)?;
     let node = syntax.borrowed();
     // TODO we ignore type parameters for now
     let input = node
@@ -204,7 +216,7 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
             pl.params()
                 .map(|p| {
                     p.type_ref()
-                        .map(|t| Ty::new(db, t))
+                        .map(|t| Ty::new(db, &module, t))
                         .unwrap_or(Ok(Ty::Unknown))
                 })
                 .collect()
@@ -213,7 +225,7 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     let output = node
         .ret_type()
         .and_then(|rt| rt.type_ref())
-        .map(|t| Ty::new(db, t))
+        .map(|t| Ty::new(db, &module, t))
         .unwrap_or(Ok(Ty::Unknown))?;
     let sig = FnSig { input, output };
     Ok(Ty::FnPtr(Arc::new(sig)))
@@ -232,6 +244,14 @@ pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
             Ok(Ty::Unknown)
         }
         Def::Function(f) => type_for_fn(db, f),
+        Def::Struct(s) => Ok(Ty::Adt {
+            def_id,
+            name: s.name(db)?,
+        }),
+        Def::Enum(e) => Ok(Ty::Adt {
+            def_id,
+            name: e.name(db)?,
+        }),
         Def::Item => {
             log::debug!("trying to get type for item of unknown type {:?}", def_id);
             Ok(Ty::Unknown)
@@ -492,7 +512,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 let cast_ty = e
                     .type_ref()
-                    .map(|t| Ty::new(self.db, t))
+                    .map(|t| Ty::new(self.db, &self.module, t))
                     .unwrap_or(Ok(Ty::Unknown))?;
                 // TODO do the coercion...
                 cast_ty
@@ -526,7 +546,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             match stmt {
                 ast::Stmt::LetStmt(stmt) => {
                     let decl_ty = if let Some(type_ref) = stmt.type_ref() {
-                        Ty::new(self.db, type_ref)?
+                        Ty::new(self.db, &self.module, type_ref)?
                     } else {
                         Ty::Unknown
                     };
@@ -576,7 +596,7 @@ pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceR
                 continue;
             };
             if let Some(type_ref) = param.type_ref() {
-                let ty = Ty::new(db, type_ref)?;
+                let ty = Ty::new(db, &ctx.module, type_ref)?;
                 ctx.type_of.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
             } else {
                 // TODO self param

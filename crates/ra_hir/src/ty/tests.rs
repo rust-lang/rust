@@ -68,6 +68,29 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_struct() {
+    check_inference(
+        r#"
+struct A {
+    b: B,
+    c: C,
+}
+struct B;
+struct C(usize);
+
+fn test() {
+    let c = C(1);
+    B;
+    let a: A = A { b: B, c: C() };
+    a.b;
+    a.c;
+}
+"#,
+        "0004_struct.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
