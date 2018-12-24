@@ -54,7 +54,7 @@ enum Task {
 pub fn main_loop(
     internal_mode: bool,
     ws_root: PathBuf,
-    publish_decorations: bool,
+    supports_decorations: bool,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
@@ -83,7 +83,7 @@ pub fn main_loop(
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
         internal_mode,
-        publish_decorations,
+        supports_decorations,
         &pool,
         msg_sender,
         msg_receiver,
@@ -156,7 +156,7 @@ impl fmt::Debug for Event {
 
 fn main_loop_inner(
     internal_mode: bool,
-    publish_decorations: bool,
+    supports_decorations: bool,
     pool: &ThreadPool,
     msg_sender: &Sender<RawMessage>,
     msg_receiver: &Receiver<RawMessage>,
@@ -240,7 +240,7 @@ fn main_loop_inner(
             update_file_notifications_on_threadpool(
                 pool,
                 state.snapshot(),
-                publish_decorations,
+                supports_decorations,
                 task_sender.clone(),
                 subs.subscriptions(),
             )

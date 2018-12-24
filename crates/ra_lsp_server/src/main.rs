@@ -27,7 +27,10 @@ fn main() -> Result<()> {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InitializationOptions {
-    publish_decorations: bool,
+    // Whether the client supports our custom highlighting publishing decorations.
+    // This is different to the highlightingOn setting, which is whether the user
+    // wants our custom highlighting to be used.
+    publish_decorations: Option<bool>,
 }
 
 fn main_inner() -> Result<()> {
@@ -42,12 +45,12 @@ fn main_inner() -> Result<()> {
                 .root_uri
                 .and_then(|it| it.to_file_path().ok())
                 .unwrap_or(cwd);
-            let publish_decorations = params
+            let supports_decorations = params
                 .initialization_options
                 .and_then(|v| InitializationOptions::deserialize(v).ok())
-                .map(|it| it.publish_decorations)
+                .and_then(|it| it.publish_decorations)
                 == Some(true);
-            ra_lsp_server::main_loop(false, root, publish_decorations, r, s)
+            ra_lsp_server::main_loop(false, root, supports_decorations, r, s)
         },
     )?;
     log::info!("shutting down IO...");

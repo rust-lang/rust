@@ -131,6 +131,17 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
+                },
+                "ra-lsp.trace.server": {
+                    "type": "string",
+                    "scope": "window",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Trace requests to the ra-lsp server"
                 }
             }
         },
