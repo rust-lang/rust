@@ -254,7 +254,7 @@ Grammar(
             ],
             options: [ "ParamList", ["body", "Block"], "RetType" ],
         ),
-        "RetType": (),
+        "RetType": (options: ["TypeRef"]),
         "StructDef": (
             traits: [
                 "NameOwner",
@@ -304,7 +304,7 @@ Grammar(
         "ParenType": (),
         "TupleType": (),
         "NeverType": (),
-        "PathType": (),
+        "PathType": (options: ["Path"]),
         "PointerType": (),
         "ArrayType": (),
         "SliceType": (),
@@ -346,7 +346,7 @@ Grammar(
 
         "TupleExpr": (),
         "ArrayExpr": (),
-        "ParenExpr": (),
+        "ParenExpr": (options: ["Expr"]),
         "PathExpr": (options: ["Path"]),
         "LambdaExpr": (
             options: [
@@ -377,7 +377,7 @@ Grammar(
         "BlockExpr": (
             options: [ "Block" ]
         ),
-        "ReturnExpr": (),
+        "ReturnExpr": (options: ["Expr"]),
         "MatchExpr": (
             options: [ "Expr", "MatchArmList" ],
         ),
@@ -405,10 +405,10 @@ Grammar(
         ),
         "IndexExpr": (),
         "FieldExpr": (),
-        "TryExpr": (),
-        "CastExpr": (),
-        "RefExpr": (),
-        "PrefixExpr": (),
+        "TryExpr": (options: ["Expr"]),
+        "CastExpr": (options: ["Expr", "TypeRef"]),
+        "RefExpr": (options: ["Expr"]),
+        "PrefixExpr": (options: ["Expr"]),
         "RangeExpr": (),
         "BinExpr": (),
         "String": (),
@@ -499,6 +499,7 @@ Grammar(
         ),
         "LetStmt": ( options: [
             ["pat", "Pat"],
+            ["type_ref", "TypeRef"],
             ["initializer", "Expr"],
         ]),
         "Condition": (
@@ -521,7 +522,7 @@ Grammar(
         ),
         "SelfParam": (),
         "Param": (
-            options: [ "Pat" ],
+            options: [ "Pat", "TypeRef" ],
         ),
         "UseItem": (
             options: [ "UseTree" ]

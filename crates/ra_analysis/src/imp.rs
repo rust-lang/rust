@@ -5,7 +5,8 @@ use std::{
 
 use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
 use ra_syntax::{
-    ast::{self, ArgListOwner, Expr, NameOwner},
+    ast::{self, ArgListOwner, Expr, NameOwner, FnDef},
+    algo::find_covering_node,
     AstNode, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
@@ -508,6 +509,23 @@ impl AnalysisImpl {
         }
 
         Ok(None)
+    }
+
+    pub fn type_of(&self, file_id: FileId, range: TextRange) -> Cancelable<Option<String>> {
+        let file = self.db.source_file(file_id);
+        let syntax = file.syntax();
+        let node = find_covering_node(syntax, range);
+        let parent_fn = node.ancestors().filter_map(FnDef::cast).next();
+        let parent_fn = if let Some(p) = parent_fn {
+            p
+        } else {
+            return Ok(None);
+        };
+        let function = ctry!(source_binder::function_from_source(
+            &*self.db, file_id, parent_fn
+        )?);
+        let infer = function.infer(&*self.db)?;
+        Ok(infer.type_of_node(node).map(|t| t.to_string()))
     }
 
     fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<(FileId, FileSymbol)>> {

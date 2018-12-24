@@ -523,7 +523,15 @@ impl<R: TreeRoot<RaTypes>> CastExprNode<R> {
 }
 
 
-impl<'a> CastExpr<'a> {}
+impl<'a> CastExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // Char
 #[derive(Debug, Clone, Copy,)]
@@ -1553,6 +1561,10 @@ impl<'a> LetStmt<'a> {
         super::child_opt(self)
     }
 
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+
     pub fn initializer(self) -> Option<Expr<'a>> {
         super::child_opt(self)
     }
@@ -2312,6 +2324,10 @@ impl<'a> Param<'a> {
     pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
     }
+
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
 }
 
 // ParamList
@@ -2394,7 +2410,11 @@ impl<R: TreeRoot<RaTypes>> ParenExprNode<R> {
 }
 
 
-impl<'a> ParenExpr<'a> {}
+impl<'a> ParenExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ParenType
 #[derive(Debug, Clone, Copy,)]
@@ -2681,7 +2701,11 @@ impl<R: TreeRoot<RaTypes>> PathTypeNode<R> {
 }
 
 
-impl<'a> PathType<'a> {}
+impl<'a> PathType<'a> {
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // PlaceholderPat
 #[derive(Debug, Clone, Copy,)]
@@ -2829,7 +2853,11 @@ impl<R: TreeRoot<RaTypes>> PrefixExprNode<R> {
 }
 
 
-impl<'a> PrefixExpr<'a> {}
+impl<'a> PrefixExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // RangeExpr
 #[derive(Debug, Clone, Copy,)]
@@ -2940,7 +2968,11 @@ impl<R: TreeRoot<RaTypes>> RefExprNode<R> {
 }
 
 
-impl<'a> RefExpr<'a> {}
+impl<'a> RefExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // RefPat
 #[derive(Debug, Clone, Copy,)]
@@ -3051,7 +3083,11 @@ impl<R: TreeRoot<RaTypes>> RetTypeNode<R> {
 }
 
 
-impl<'a> RetType<'a> {}
+impl<'a> RetType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ReturnExpr
 #[derive(Debug, Clone, Copy,)]
@@ -3088,7 +3124,11 @@ impl<R: TreeRoot<RaTypes>> ReturnExprNode<R> {
 }
 
 
-impl<'a> ReturnExpr<'a> {}
+impl<'a> ReturnExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // SelfParam
 #[derive(Debug, Clone, Copy,)]
@@ -3578,7 +3618,11 @@ impl<R: TreeRoot<RaTypes>> TryExprNode<R> {
 }
 
 
-impl<'a> TryExpr<'a> {}
+impl<'a> TryExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // TupleExpr
 #[derive(Debug, Clone, Copy,)]

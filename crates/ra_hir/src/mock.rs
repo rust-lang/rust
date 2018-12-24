@@ -8,7 +8,7 @@ use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
 use crate::{db, DefId, DefLoc};
 
-const WORKSPACE: SourceRootId = SourceRootId(0);
+pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 #[derive(Debug)]
 pub(crate) struct MockDatabase {
@@ -22,6 +22,15 @@ impl MockDatabase {
         let (db, source_root, position) = MockDatabase::from_fixture(fixture);
         assert!(position.is_none());
         (db, source_root)
+    }
+
+    pub(crate) fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
+        let mut db = MockDatabase::default();
+        let mut source_root = SourceRoot::default();
+        let file_id = db.add_file(&mut source_root, "/main.rs", text);
+        db.query_mut(ra_db::SourceRootQuery)
+            .set(WORKSPACE, Arc::new(source_root.clone()));
+        (db, source_root, file_id)
     }
 
     pub(crate) fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
@@ -182,6 +191,8 @@ salsa::database_storage! {
             fn item_map() for db::ItemMapQuery;
             fn fn_syntax() for db::FnSyntaxQuery;
             fn submodules() for db::SubmodulesQuery;
+            fn infer() for db::InferQuery;
+            fn type_for_def() for db::TypeForDefQuery;
         }
     }
 }

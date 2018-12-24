@@ -366,6 +366,9 @@ impl Analysis {
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
         self.imp.resolve_callable(position)
     }
+    pub fn type_of(&self, file_id: FileId, range: TextRange) -> Cancelable<Option<String>> {
+        self.imp.type_of(file_id, range)
+    }
 }
 
 pub struct LibraryData {

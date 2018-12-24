@@ -2,6 +2,7 @@ pub(super) mod imp;
 pub(super) mod nameres;
 
 use std::sync::Arc;
+use log;
 
 use ra_syntax::{
     algo::generate,

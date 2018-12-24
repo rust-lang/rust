@@ -11,7 +11,7 @@ use ra_syntax::{
 use ra_db::{SourceRootId, FileId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind,
+    SourceFileItems, SourceItemId, DefKind, Function, DefId,
     db::HirDatabase,
     function::{FnScopes, FnId},
     module::{
@@ -19,6 +19,7 @@ use crate::{
         imp::Submodule,
         nameres::{InputModuleItems, ItemMap, Resolver},
     },
+    ty::{self, InferenceResult, Ty}
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`
@@ -33,6 +34,15 @@ pub(super) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
     let syntax = db.fn_syntax(fn_id);
     let res = FnScopes::new(syntax.borrowed());
     Arc::new(res)
+}
+
+pub(super) fn infer(db: &impl HirDatabase, fn_id: FnId) -> Cancelable<Arc<InferenceResult>> {
+    let function = Function { fn_id };
+    ty::infer(db, function).map(Arc::new)
+}
+
+pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
+    ty::type_for_def(db, def_id)
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {

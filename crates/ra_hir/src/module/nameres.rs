@@ -272,13 +272,13 @@ where
                 }
             }
         }
-        // Populate explicitelly declared items, except modules
+        // Populate explicitly declared items, except modules
         for item in input.items.iter() {
             if item.kind == MODULE {
                 continue;
             }
             let def_loc = DefLoc {
-                kind: DefKind::Item,
+                kind: DefKind::for_syntax_kind(item.kind).unwrap_or(DefKind::Item),
                 source_root_id: self.source_root,
                 module_id,
                 source_item_id: SourceItemId {

@@ -25,10 +25,11 @@ pub mod source_binder;
 mod krate;
 mod module;
 mod function;
+mod ty;
 
 use std::ops::Index;
 
-use ra_syntax::{SyntaxNodeRef, SyntaxNode};
+use ra_syntax::{SyntaxNodeRef, SyntaxNode, SyntaxKind};
 use ra_db::{LocationIntener, SourceRootId, FileId, Cancelable};
 
 use crate::{
@@ -64,6 +65,23 @@ pub struct DefLoc {
     source_root_id: SourceRootId,
     module_id: ModuleId,
     source_item_id: SourceItemId,
+}
+
+impl DefKind {
+    pub(crate) fn for_syntax_kind(kind: SyntaxKind) -> Option<DefKind> {
+        match kind {
+            SyntaxKind::FN_DEF => Some(DefKind::Function),
+            SyntaxKind::MODULE => Some(DefKind::Module),
+            // These define items, but don't have their own DefKinds yet:
+            SyntaxKind::STRUCT_DEF => Some(DefKind::Item),
+            SyntaxKind::ENUM_DEF => Some(DefKind::Item),
+            SyntaxKind::TRAIT_DEF => Some(DefKind::Item),
+            SyntaxKind::TYPE_DEF => Some(DefKind::Item),
+            SyntaxKind::CONST_DEF => Some(DefKind::Item),
+            SyntaxKind::STATIC_DEF => Some(DefKind::Item),
+            _ => None,
+        }
+    }
 }
 
 impl DefId {
