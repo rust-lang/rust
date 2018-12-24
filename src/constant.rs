@@ -150,7 +150,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
             })),
             None,
         )?;
-        let ptr = ecx.allocate(op.layout, MemoryKind::Stack)?;
+        let ptr = ecx.allocate(op.layout, MemoryKind::Stack);
         ecx.copy_op(op, ptr.into())?;
         let alloc = ecx.memory().get(ptr.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
@@ -372,8 +372,8 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         _: MemoryKind<!>,
-    ) -> EvalResult<'tcx, Pointer> {
-        Ok(ptr)
+    ) -> Pointer {
+        ptr
     }
 
     fn stack_push(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>{
