@@ -162,7 +162,7 @@ pub trait Iterator {
     /// That said, the implementation should provide a correct estimation,
     /// because otherwise it would be a violation of the trait's protocol.
     ///
-    /// The default implementation returns `(0, None)` which is correct for any
+    /// The default implementation returns `(0, `[`None`]`)` which is correct for any
     /// iterator.
     ///
     /// [`usize`]: ../../std/primitive.usize.html
