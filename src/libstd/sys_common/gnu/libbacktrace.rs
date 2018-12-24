@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use libc;
+use backtrace_sys::{self, backtrace_state};
 
 use ffi::CStr;
 use io;
@@ -39,11 +40,13 @@ where F: FnMut(&[u8], u32) -> io::Result<()>
         let mut fileline_win: &mut [FileLine] = &mut fileline_buf;
         let fileline_addr = &mut fileline_win as *mut &mut [FileLine];
         ret = unsafe {
-            backtrace_pcinfo(state,
-                             frame.exact_position as libc::uintptr_t,
-                             pcinfo_cb,
-                             error_cb,
-                             fileline_addr as *mut libc::c_void)
+            backtrace_sys::backtrace_pcinfo(
+                state,
+                frame.exact_position as libc::uintptr_t,
+                pcinfo_cb,
+                error_cb,
+                fileline_addr as *mut libc::c_void,
+            )
         };
         FILELINE_SIZE - fileline_win.len()
     };
@@ -76,11 +79,13 @@ pub fn resolve_symname<F>(frame: Frame,
         let mut data: *const libc::c_char = ptr::null();
         let data_addr = &mut data as *mut *const libc::c_char;
         let ret = unsafe {
-            backtrace_syminfo(state,
-                              frame.symbol_addr as libc::uintptr_t,
-                              syminfo_cb,
-                              error_cb,
-                              data_addr as *mut libc::c_void)
+            backtrace_sys::backtrace_syminfo(
+                state,
+                frame.symbol_addr as libc::uintptr_t,
+                syminfo_cb,
+                error_cb,
+                data_addr as *mut libc::c_void,
+            )
         };
         if ret == 0 || data.is_null() {
             None
@@ -91,45 +96,6 @@ pub fn resolve_symname<F>(frame: Frame,
         }
     };
     callback(symname)
-}
-
-////////////////////////////////////////////////////////////////////////
-// libbacktrace.h API
-////////////////////////////////////////////////////////////////////////
-type backtrace_syminfo_callback =
-extern "C" fn(data: *mut libc::c_void,
-              pc: libc::uintptr_t,
-              symname: *const libc::c_char,
-              symval: libc::uintptr_t,
-              symsize: libc::uintptr_t);
-type backtrace_full_callback =
-extern "C" fn(data: *mut libc::c_void,
-              pc: libc::uintptr_t,
-              filename: *const libc::c_char,
-              lineno: libc::c_int,
-              function: *const libc::c_char) -> libc::c_int;
-type backtrace_error_callback =
-extern "C" fn(data: *mut libc::c_void,
-              msg: *const libc::c_char,
-              errnum: libc::c_int);
-enum backtrace_state {}
-
-extern {
-    fn backtrace_create_state(filename: *const libc::c_char,
-                              threaded: libc::c_int,
-                              error: backtrace_error_callback,
-                              data: *mut libc::c_void)
-        -> *mut backtrace_state;
-    fn backtrace_syminfo(state: *mut backtrace_state,
-                         addr: libc::uintptr_t,
-                         cb: backtrace_syminfo_callback,
-                         error: backtrace_error_callback,
-                         data: *mut libc::c_void) -> libc::c_int;
-    fn backtrace_pcinfo(state: *mut backtrace_state,
-                        addr: libc::uintptr_t,
-                        cb: backtrace_full_callback,
-                        error: backtrace_error_callback,
-                        data: *mut libc::c_void) -> libc::c_int;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -210,7 +176,11 @@ unsafe fn init_state() -> *mut backtrace_state {
         Err(_) => ptr::null(),
     };
 
-    STATE = backtrace_create_state(filename, 0, error_cb,
-                                   ptr::null_mut());
+    STATE = backtrace_sys::backtrace_create_state(
+        filename,
+        0,
+        error_cb,
+        ptr::null_mut(),
+    );
     STATE
 }

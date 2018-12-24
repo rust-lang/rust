@@ -10,24 +10,12 @@
 
 #![deny(warnings)]
 
-extern crate build_helper;
 extern crate cc;
 
-use build_helper::native_lib_boilerplate;
 use std::env;
-use std::fs::File;
 
 fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
-    if cfg!(feature = "backtrace") &&
-        !target.contains("cloudabi") &&
-        !target.contains("emscripten") &&
-        !target.contains("msvc") &&
-        !target.contains("wasm32")
-    {
-        let _ = build_libbacktrace(&target);
-    }
-
     if target.contains("linux") {
         if target.contains("android") {
             println!("cargo:rustc-link-lib=dl");
@@ -78,68 +66,4 @@ fn main() {
         println!("cargo:rustc-link-lib=c");
         println!("cargo:rustc-link-lib=compiler_rt");
     }
-}
-
-fn build_libbacktrace(target: &str) -> Result<(), ()> {
-    let native = native_lib_boilerplate(
-        "../libbacktrace".as_ref(),
-        "libbacktrace",
-        "backtrace",
-        "",
-    )?;
-
-    let mut build = cc::Build::new();
-    build
-        .flag("-fvisibility=hidden")
-        .include("../libbacktrace")
-        .include(&native.out_dir)
-        .out_dir(&native.out_dir)
-        .warnings(false)
-        .file("../libbacktrace/alloc.c")
-        .file("../libbacktrace/backtrace.c")
-        .file("../libbacktrace/dwarf.c")
-        .file("../libbacktrace/fileline.c")
-        .file("../libbacktrace/posix.c")
-        .file("../libbacktrace/read.c")
-        .file("../libbacktrace/sort.c")
-        .file("../libbacktrace/state.c");
-
-    let any_debug = env::var("RUSTC_DEBUGINFO").unwrap_or_default() == "true" ||
-        env::var("RUSTC_DEBUGINFO_LINES").unwrap_or_default() == "true";
-    build.debug(any_debug);
-
-    if target.contains("darwin") {
-        build.file("../libbacktrace/macho.c");
-    } else if target.contains("windows") {
-        build.file("../libbacktrace/pecoff.c");
-    } else {
-        build.file("../libbacktrace/elf.c");
-
-        let pointer_width = env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap();
-        if pointer_width == "64" {
-            build.define("BACKTRACE_ELF_SIZE", "64");
-        } else {
-            build.define("BACKTRACE_ELF_SIZE", "32");
-        }
-    }
-
-    File::create(native.out_dir.join("backtrace-supported.h")).unwrap();
-    build.define("BACKTRACE_SUPPORTED", "1");
-    build.define("BACKTRACE_USES_MALLOC", "1");
-    build.define("BACKTRACE_SUPPORTS_THREADS", "0");
-    build.define("BACKTRACE_SUPPORTS_DATA", "0");
-
-    File::create(native.out_dir.join("config.h")).unwrap();
-    if !target.contains("apple-ios") &&
-       !target.contains("solaris") &&
-       !target.contains("redox") &&
-       !target.contains("android") &&
-       !target.contains("haiku") {
-        build.define("HAVE_DL_ITERATE_PHDR", "1");
-    }
-    build.define("_GNU_SOURCE", "1");
-    build.define("_LARGE_FILES", "1");
-
-    build.compile("backtrace");
-    Ok(())
 }
