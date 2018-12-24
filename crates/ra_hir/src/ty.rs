@@ -35,32 +35,22 @@ pub enum Ty {
     /// A primitive floating-point type. For example, `f64`.
     Float(primitive::FloatTy),
 
-    /// Structures, enumerations and unions.
-    ///
-    /// Substs here, possibly against intuition, *may* contain `Param`s.
-    /// That is, even after substitution it is possible that there are type
-    /// variables. This happens when the `Adt` corresponds to an ADT
-    /// definition and not a concrete use of it.
-    // Adt(&'tcx AdtDef, &'tcx Substs<'tcx>),
-
-    // Foreign(DefId),
-
+    // Structures, enumerations and unions.
+    // Adt(AdtDef, Substs),
     /// The pointee of a string slice. Written as `str`.
     Str,
 
-    /// An array with the given length. Written as `[T; n]`.
-    // Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
-
+    // An array with the given length. Written as `[T; n]`.
+    // Array(Ty, ty::Const),
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(TyRef),
 
-    /// A raw pointer. Written as `*mut T` or `*const T`
+    // A raw pointer. Written as `*mut T` or `*const T`
     // RawPtr(TypeAndMut<'tcx>),
 
-    /// A reference; a pointer with an associated lifetime. Written as
-    /// `&'a mut T` or `&'a T`.
-    // Ref(Region<'tcx>, Ty<'tcx>, hir::Mutability),
-
+    // A reference; a pointer with an associated lifetime. Written as
+    // `&'a mut T` or `&'a T`.
+    // Ref(Ty<'tcx>, hir::Mutability),
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
     /// For example the type of `bar` here:
@@ -71,9 +61,8 @@ pub enum Ty {
     /// ```
     FnPtr(Arc<FnSig>),
 
-    /// A trait, defined with `trait`.
-    // Dynamic(Binder<&'tcx List<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
-
+    // A trait, defined with `dyn trait`.
+    // Dynamic(),
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
     // Closure(DefId, ClosureSubsts<'tcx>),
@@ -92,30 +81,25 @@ pub enum Ty {
     /// A tuple type.  For example, `(i32, bool)`.
     Tuple(Vec<Ty>),
 
-    /// The projection of an associated type.  For example,
-    /// `<T as Trait<..>>::N`.
-    // Projection(ProjectionTy<'tcx>),
+    // The projection of an associated type.  For example,
+    // `<T as Trait<..>>::N`.
+    // Projection(ProjectionTy),
 
-    /// Opaque (`impl Trait`) type found in a return type.
-    /// The `DefId` comes either from
-    /// * the `impl Trait` ast::Ty node,
-    /// * or the `existential type` declaration
-    /// The substitutions are for the generics of the function in question.
-    /// After typeck, the concrete type can be found in the `types` map.
-    // Opaque(DefId, &'tcx Substs<'tcx>),
+    // Opaque (`impl Trait`) type found in a return type.
+    // The `DefId` comes either from
+    // * the `impl Trait` ast::Ty node,
+    // * or the `existential type` declaration
+    // The substitutions are for the generics of the function in question.
+    // Opaque(DefId, Substs),
 
-    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
+    // A type parameter; for example, `T` in `fn f<T>(x: T) {}
     // Param(ParamTy),
 
-    /// Bound type variable, used only when preparing a trait query.
-    // Bound(ty::DebruijnIndex, BoundTy),
-
-    /// A placeholder type - universally quantified higher-ranked type.
+    // A placeholder type - universally quantified higher-ranked type.
     // Placeholder(ty::PlaceholderType),
 
-    /// A type variable used during type checking.
+    // A type variable used during type checking.
     // Infer(InferTy),
-
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Unknown,
