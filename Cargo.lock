@@ -2216,6 +2216,7 @@ dependencies = [
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "jemalloc-sys 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_codegen_ssa 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_target 0.0.0",
@@ -2402,7 +2403,6 @@ dependencies = [
  "arena 0.0.0",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
- "jemalloc-sys 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
