@@ -17,7 +17,7 @@ use crate::{
     arena::{Arena, Id},
 };
 
-pub use self::nameres::{ModuleScope, Resolution};
+pub use self::nameres::{ModuleScope, Resolution, Namespace, PerNs};
 
 /// `Module` is API entry point to get all the information
 /// about a particular module.
@@ -115,16 +115,29 @@ impl Module {
         Ok(res)
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: Path) -> Cancelable<Option<DefId>> {
-        let mut curr = match path.kind {
-            PathKind::Crate => self.crate_root(),
-            PathKind::Self_ | PathKind::Plain => self.clone(),
-            PathKind::Super => ctry!(self.parent()),
-        }
-        .def_id(db);
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: Path) -> Cancelable<PerNs<DefId>> {
+        let mut curr_per_ns = PerNs::types(
+            match path.kind {
+                PathKind::Crate => self.crate_root(),
+                PathKind::Self_ | PathKind::Plain => self.clone(),
+                PathKind::Super => {
+                    if let Some(p) = self.parent() {
+                        p
+                    } else {
+                        return Ok(PerNs::none());
+                    }
+                }
+            }
+            .def_id(db),
+        );
 
         let segments = path.segments;
         for name in segments.iter() {
+            let curr = if let Some(r) = curr_per_ns.as_ref().take(Namespace::Types) {
+                r
+            } else {
+                return Ok(PerNs::none());
+            };
             let module = match curr.loc(db) {
                 DefLoc {
                     kind: DefKind::Module,
@@ -132,12 +145,17 @@ impl Module {
                     module_id,
                     ..
                 } => Module::new(db, source_root_id, module_id)?,
-                _ => return Ok(None),
+                // TODO here would be the place to handle enum variants...
+                _ => return Ok(PerNs::none()),
             };
             let scope = module.scope(db)?;
-            curr = ctry!(ctry!(scope.get(&name)).def_id);
+            curr_per_ns = if let Some(r) = scope.get(&name) {
+                r.def_id
+            } else {
+                return Ok(PerNs::none());
+            };
         }
-        Ok(Some(curr))
+        Ok(curr_per_ns)
     }
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
@@ -145,7 +163,7 @@ impl Module {
     }
 }
 
-/// Phisically, rust source is organized as a set of files, but logically it is
+/// Physically, rust source is organized as a set of files, but logically it is
 /// organized as a tree of modules. Usually, a single file corresponds to a
 /// single module, but it is not nessary the case.
 ///

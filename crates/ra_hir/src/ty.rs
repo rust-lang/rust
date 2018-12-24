@@ -15,7 +15,11 @@ use ra_syntax::{
     SyntaxNodeRef
 };
 
-use crate::{Def, DefId, FnScopes, Module, Function, Path, db::HirDatabase};
+use crate::{
+    Def, DefId, FnScopes, Module, Function,
+    Path, db::HirDatabase,
+    module::nameres::Namespace
+};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Ty {
@@ -149,11 +153,12 @@ impl Ty {
                 }
 
                 // Resolve in module (in type namespace)
-                let resolved = if let Some(r) = module.resolve_path(db, path)? {
-                    r
-                } else {
-                    return Ok(Ty::Unknown);
-                };
+                let resolved =
+                    if let Some(r) = module.resolve_path(db, path)?.take(Namespace::Types) {
+                        r
+                    } else {
+                        return Ok(Ty::Unknown);
+                    };
                 let ty = db.type_for_def(resolved)?;
                 ty
             }
@@ -325,7 +330,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let resolved = ctry!(self.module.resolve_path(self.db, path)?);
+        let resolved = ctry!(self
+            .module
+            .resolve_path(self.db, path)?
+            .take(Namespace::Values));
         let ty = self.db.type_for_def(resolved)?;
         // TODO we will need to add type variables for type parameters etc. here
         Ok(Some(ty))

@@ -118,22 +118,96 @@ enum ImportKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolution {
     /// None for unresolved
-    pub def_id: Option<DefId>,
+    pub def_id: PerNs<DefId>,
     /// ident by whitch this is imported into local scope.
     pub import: Option<NamedImport>,
 }
 
-// #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// enum Namespace {
-//     Types,
-//     Values,
-// }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Namespace {
+    Types,
+    Values,
+}
 
-// #[derive(Debug)]
-// struct PerNs<T> {
-//     types: Option<T>,
-//     values: Option<T>,
-// }
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct PerNs<T> {
+    pub types: Option<T>,
+    pub values: Option<T>,
+}
+
+impl<T> PerNs<T> {
+    pub fn none() -> PerNs<T> {
+        PerNs {
+            types: None,
+            values: None,
+        }
+    }
+
+    pub fn values(t: T) -> PerNs<T> {
+        PerNs {
+            types: None,
+            values: Some(t),
+        }
+    }
+
+    pub fn types(t: T) -> PerNs<T> {
+        PerNs {
+            types: Some(t),
+            values: None,
+        }
+    }
+
+    pub fn both(types: T, values: T) -> PerNs<T> {
+        PerNs {
+            types: Some(types),
+            values: Some(values),
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.types.is_none() && self.values.is_none()
+    }
+
+    pub fn take(self, namespace: Namespace) -> Option<T> {
+        match namespace {
+            Namespace::Types => self.types,
+            Namespace::Values => self.values,
+        }
+    }
+
+    pub fn take_types(self) -> Option<T> {
+        self.types
+    }
+
+    pub fn take_values(self) -> Option<T> {
+        self.values
+    }
+
+    pub fn get(&self, namespace: Namespace) -> Option<&T> {
+        self.as_ref().take(namespace)
+    }
+
+    pub fn as_ref(&self) -> PerNs<&T> {
+        PerNs {
+            types: self.types.as_ref(),
+            values: self.values.as_ref(),
+        }
+    }
+
+    pub fn and_then<U>(self, f: impl Fn(T) -> Option<U>) -> PerNs<U> {
+        PerNs {
+            types: self.types.and_then(&f),
+            values: self.values.and_then(&f),
+        }
+    }
+
+    pub fn map<U>(self, f: impl Fn(T) -> U) -> PerNs<U> {
+        PerNs {
+            types: self.types.map(&f),
+            values: self.values.map(&f),
+        }
+    }
+}
 
 impl InputModuleItems {
     pub(crate) fn new<'a>(
@@ -254,7 +328,7 @@ where
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db)? {
                         let def_id = module.def_id(self.db);
-                        self.add_module_item(&mut module_items, dep.name, def_id);
+                        self.add_module_item(&mut module_items, dep.name, PerNs::types(def_id));
                     }
                 }
             };
@@ -265,7 +339,7 @@ where
                     module_items.items.insert(
                         name.clone(),
                         Resolution {
-                            def_id: None,
+                            def_id: PerNs::none(),
                             import: Some(import),
                         },
                     );
@@ -277,18 +351,23 @@ where
             if item.kind == MODULE {
                 continue;
             }
-            let def_loc = DefLoc {
-                kind: DefKind::for_syntax_kind(item.kind).unwrap_or(DefKind::Item),
-                source_root_id: self.source_root,
-                module_id,
-                source_item_id: SourceItemId {
-                    file_id,
-                    item_id: Some(item.id),
-                },
-            };
-            let def_id = def_loc.id(self.db);
+            // depending on the item kind, the location can define something in
+            // the values namespace, the types namespace, or both
+            let kind = DefKind::for_syntax_kind(item.kind);
+            let def_id = kind.map(|k| {
+                let def_loc = DefLoc {
+                    kind: k,
+                    source_root_id: self.source_root,
+                    module_id,
+                    source_item_id: SourceItemId {
+                        file_id,
+                        item_id: Some(item.id),
+                    },
+                };
+                def_loc.id(self.db)
+            });
             let resolution = Resolution {
-                def_id: Some(def_id),
+                def_id,
                 import: None,
             };
             module_items.items.insert(item.name.clone(), resolution);
@@ -303,16 +382,16 @@ where
                 source_item_id: module_id.source(&self.module_tree).0,
             };
             let def_id = def_loc.id(self.db);
-            self.add_module_item(&mut module_items, name, def_id);
+            self.add_module_item(&mut module_items, name, PerNs::types(def_id));
         }
 
         self.result.per_module.insert(module_id, module_items);
         Ok(())
     }
 
-    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, def_id: DefId) {
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, def_id: PerNs<DefId>) {
         let resolution = Resolution {
-            def_id: Some(def_id),
+            def_id,
             import: None,
         };
         module_items.items.insert(name, resolution);
@@ -347,15 +426,17 @@ where
             let is_last = i == import.path.segments.len() - 1;
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
-                None => return Ok(()),
-                Some(res) => match res.def_id {
-                    Some(it) => it,
-                    None => return Ok(()),
-                },
+                Some(res) if !res.def_id.is_none() => res.def_id,
+                _ => return Ok(()),
             };
 
             if !is_last {
-                curr = match def_id.loc(self.db) {
+                let type_def_id = if let Some(d) = def_id.take(Namespace::Types) {
+                    d
+                } else {
+                    return Ok(());
+                };
+                curr = match type_def_id.loc(self.db) {
                     DefLoc {
                         kind: DefKind::Module,
                         module_id: target_module_id,
@@ -370,10 +451,11 @@ where
                                 segments: import.path.segments[i + 1..].iter().cloned().collect(),
                                 kind: PathKind::Crate,
                             };
-                            if let Some(def_id) = module.resolve_path(self.db, path)? {
+                            let def_id = module.resolve_path(self.db, path)?;
+                            if !def_id.is_none() {
                                 self.update(module_id, |items| {
                                     let res = Resolution {
-                                        def_id: Some(def_id),
+                                        def_id: def_id,
                                         import: Some(ptr),
                                     };
                                     items.items.insert(name.clone(), res);
@@ -387,7 +469,7 @@ where
             } else {
                 self.update(module_id, |items| {
                     let res = Resolution {
-                        def_id: Some(def_id),
+                        def_id: def_id,
                         import: Some(ptr),
                     };
                     items.items.insert(name.clone(), res);

@@ -41,7 +41,7 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     krate::Crate,
-    module::{Module, ModuleId, Problem, nameres::ItemMap, ModuleScope, Resolution},
+    module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
     function::{Function, FnScopes},
     adt::{Struct, Enum},
 };
@@ -61,6 +61,8 @@ pub(crate) enum DefKind {
     Struct,
     Enum,
     Item,
+
+    StructCtor,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -72,18 +74,18 @@ pub struct DefLoc {
 }
 
 impl DefKind {
-    pub(crate) fn for_syntax_kind(kind: SyntaxKind) -> Option<DefKind> {
+    pub(crate) fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
         match kind {
-            SyntaxKind::FN_DEF => Some(DefKind::Function),
-            SyntaxKind::MODULE => Some(DefKind::Module),
+            SyntaxKind::FN_DEF => PerNs::values(DefKind::Function),
+            SyntaxKind::MODULE => PerNs::types(DefKind::Module),
+            SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
+            SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
             // These define items, but don't have their own DefKinds yet:
-            SyntaxKind::STRUCT_DEF => Some(DefKind::Struct),
-            SyntaxKind::ENUM_DEF => Some(DefKind::Enum),
-            SyntaxKind::TRAIT_DEF => Some(DefKind::Item),
-            SyntaxKind::TYPE_DEF => Some(DefKind::Item),
-            SyntaxKind::CONST_DEF => Some(DefKind::Item),
-            SyntaxKind::STATIC_DEF => Some(DefKind::Item),
-            _ => None,
+            SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Item),
+            SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Item),
+            SyntaxKind::CONST_DEF => PerNs::values(DefKind::Item),
+            SyntaxKind::STATIC_DEF => PerNs::values(DefKind::Item),
+            _ => PerNs::none(),
         }
     }
 }
@@ -128,6 +130,7 @@ impl DefId {
                 let enum_def = Enum::new(self);
                 Def::Enum(enum_def)
             }
+            DefKind::StructCtor => Def::Item,
             DefKind::Item => Def::Item,
         };
         Ok(res)

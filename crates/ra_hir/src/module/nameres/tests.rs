@@ -40,7 +40,7 @@ fn item_map_smoke_test() {
     );
     let name = SmolStr::from("Baz");
     let resolution = &item_map.per_module[&module_id].items[&name];
-    assert!(resolution.def_id.is_some());
+    assert!(resolution.def_id.take_types().is_some());
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn test_self() {
     );
     let name = SmolStr::from("Baz");
     let resolution = &item_map.per_module[&module_id].items[&name];
-    assert!(resolution.def_id.is_some());
+    assert!(resolution.def_id.take_types().is_some());
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn item_map_across_crates() {
 
     let name = SmolStr::from("Baz");
     let resolution = &item_map.per_module[&module_id].items[&name];
-    assert!(resolution.def_id.is_some());
+    assert!(resolution.def_id.take_types().is_some());
 }
 
 #[test]
