@@ -28,37 +28,37 @@ pub fn boolean(x: bool) -> bool {
   x
 }
 
-// CHECK: @readonly_borrow(i32* noalias readonly dereferenceable(4) %arg0)
+// CHECK: @readonly_borrow(i32* noalias readonly align 4 dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {
 }
 
-// CHECK: @static_borrow(i32* noalias readonly dereferenceable(4) %arg0)
+// CHECK: @static_borrow(i32* noalias readonly align 4 dereferenceable(4) %arg0)
 // static borrow may be captured
 #[no_mangle]
 pub fn static_borrow(_: &'static i32) {
 }
 
-// CHECK: @named_borrow(i32* noalias readonly dereferenceable(4) %arg0)
+// CHECK: @named_borrow(i32* noalias readonly align 4 dereferenceable(4) %arg0)
 // borrow with named lifetime may be captured
 #[no_mangle]
 pub fn named_borrow<'r>(_: &'r i32) {
 }
 
-// CHECK: @unsafe_borrow(i16* dereferenceable(2) %arg0)
+// CHECK: @unsafe_borrow(i16* align 2 dereferenceable(2) %arg0)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(i16* dereferenceable(2) %arg0)
+// CHECK: @mutable_unsafe_borrow(i16* align 2 dereferenceable(2) %arg0)
 // ... unless this is a mutable borrow, those never alias
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* dereferenceable(4) %arg0)
+// CHECK: @mutable_borrow(i32* align 4 dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
@@ -69,13 +69,13 @@ pub fn mutable_borrow(_: &mut i32) {
 pub fn indirect_struct(_: S) {
 }
 
-// CHECK: @borrowed_struct(%S* noalias readonly dereferenceable(32) %arg0)
+// CHECK: @borrowed_struct(%S* noalias readonly align 4 dereferenceable(32) %arg0)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn borrowed_struct(_: &S) {
 }
 
-// CHECK: noalias align 4 dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4) %x)
+// CHECK: noalias align 4 dereferenceable(4) i32* @_box(i32* noalias align 4 dereferenceable(4) %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x
@@ -95,48 +95,48 @@ pub fn struct_return() -> S {
 pub fn helper(_: usize) {
 }
 
-// CHECK: @slice([0 x i8]* noalias nonnull readonly %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @slice([0 x i8]* noalias nonnull readonly align 1 %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice([0 x i8]* nonnull %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @mutable_slice([0 x i8]* nonnull align 1 %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice([0 x i16]* nonnull %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @unsafe_slice([0 x i16]* nonnull align 2 %arg0.0, [[USIZE]] %arg0.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
 }
 
-// CHECK: @str([0 x i8]* noalias nonnull readonly %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @str([0 x i8]* noalias nonnull readonly align 1 %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {
 }
 
-// CHECK: @trait_borrow({}* nonnull %arg0.0, [3 x [[USIZE]]]* noalias readonly dereferenceable({{.*}}) %arg0.1)
+// CHECK: @trait_borrow({}* nonnull align 1 %arg0.0, [3 x [[USIZE]]]* noalias readonly align {{.*}} dereferenceable({{.*}}) %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &Drop) {
 }
 
-// CHECK: @trait_box({}* noalias nonnull, [3 x [[USIZE]]]* noalias readonly dereferenceable({{.*}}))
+// CHECK: @trait_box({}* noalias nonnull align 1, [3 x [[USIZE]]]* noalias readonly align {{.*}} dereferenceable({{.*}}))
 #[no_mangle]
 pub fn trait_box(_: Box<Drop>) {
 }
 
-// CHECK: { i8*, i8* } @trait_option(i8* noalias %x.0, i8* %x.1)
+// CHECK: { i8*, i8* } @trait_option(i8* noalias align 1 %x.0, i8* %x.1)
 #[no_mangle]
 pub fn trait_option(x: Option<Box<Drop>>) -> Option<Box<Drop>> {
   x
 }
 
-// CHECK: { [0 x i16]*, [[USIZE]] } @return_slice([0 x i16]* noalias nonnull readonly %x.0, [[USIZE]] %x.1)
+// CHECK: { [0 x i16]*, [[USIZE]] } @return_slice([0 x i16]* noalias nonnull readonly align 2 %x.0, [[USIZE]] %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
   x
