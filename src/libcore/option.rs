@@ -1084,6 +1084,13 @@ impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
     }
 }
 
+#[stable(feature = "option_from_result", since = "1.33.0")]
+impl<T, E> From<Result<T, E>> for Option<T> {
+    fn from(result: Result<T, E>) -> Option<T> {
+        result.ok()
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
