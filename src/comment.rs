@@ -1301,7 +1301,7 @@ impl<'a> Iterator for LineClasses<'a> {
 
         let start_class = match self.base.peek() {
             Some((kind, _)) => *kind,
-            None => FullCodeCharKind::Normal,
+            None => unreachable!(),
         };
 
         while let Some((kind, c)) = self.base.next() {
