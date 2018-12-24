@@ -574,28 +574,20 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
 
-        let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
+        let ptr_ty = tcx.mk_ptr(ty::TypeAndMut {
             ty: ety,
             mutbl: hir::Mutability::MutMutable
         });
-        let ptr = &Place::Local(self.new_temp(ref_ty));
+        let ptr = &Place::Local(self.new_temp(ptr_ty));
         let can_go = &Place::Local(self.new_temp(tcx.types.bool));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Ref(
-                tcx.types.re_erased,
-                BorrowKind::Mut { allow_two_phase_borrow: false },
-                Place::Projection(Box::new(Projection {
-                    base: Place::Local(cur),
-                    elem: ProjectionElem::Deref,
-                }))
-             ),
+            (Rvalue::Use(copy(&Place::Local(cur))),
              Rvalue::BinaryOp(BinOp::Offset, copy(&Place::Local(cur)), one))
         } else {
-            (Rvalue::Ref(
-                 tcx.types.re_erased,
-                 BorrowKind::Mut { allow_two_phase_borrow: false },
+            (Rvalue::AddressOf(
+                 Mutability::Mut,
                  self.place.clone().index(cur)),
              Rvalue::BinaryOp(BinOp::Add, copy(&Place::Local(cur)), one))
         };
@@ -735,13 +727,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
             let tmp = Place::Local(self.new_temp(tmp_ty));
-            // tmp = &mut P;
+            // tmp = &mut raw P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
-            drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(
-                tcx.types.re_erased,
-                BorrowKind::Mut { allow_two_phase_borrow: false },
-                self.place.clone()
+            drop_block_stmts.push(self.assign(&tmp, Rvalue::AddressOf(
+                Mutability::Mut,
+                self.place.clone(),
             )));
             drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
                 CastKind::Misc, Operand::Move(tmp), iter_ty
