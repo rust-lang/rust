@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
+use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit, Severity};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner, FnDef},
     algo::find_covering_node,
@@ -365,6 +365,7 @@ impl AnalysisImpl {
             .map(|d| Diagnostic {
                 range: d.range,
                 message: d.msg,
+                severity: d.severity,
                 fix: None,
             })
             .collect::<Vec<_>>();
@@ -386,6 +387,7 @@ impl AnalysisImpl {
                         Diagnostic {
                             range: name_node.range(),
                             message: "unresolved module".to_string(),
+                            severity: Severity::Error,
                             fix: Some(fix),
                         }
                     }
@@ -408,6 +410,7 @@ impl AnalysisImpl {
                         Diagnostic {
                             range: name_node.range(),
                             message: "can't declare module at this location".to_string(),
+                            severity: Severity::Error,
                             fix: Some(fix),
                         }
                     }

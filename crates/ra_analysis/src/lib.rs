@@ -29,11 +29,10 @@ use crate::{
     symbol_index::SymbolIndex,
 };
 
-pub use crate::{
-    completion::{CompletionItem, CompletionItemKind, InsertText},
-};
+pub use crate::completion::{CompletionItem, CompletionItemKind, InsertText};
 pub use ra_editor::{
     FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,
+    Severity
 };
 pub use hir::FnSignatureInfo;
 
@@ -198,6 +197,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub fix: Option<SourceChange>,
+    pub severity: Severity,
 }
 
 #[derive(Debug)]

@@ -8,7 +8,7 @@ use languageserver_types::{
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
     WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover, HoverContents,
 };
-use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
+use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition, Severity};
 use ra_syntax::{TextUnit, text_utils::intersect};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
@@ -650,7 +650,7 @@ pub fn publish_diagnostics(
         .into_iter()
         .map(|d| Diagnostic {
             range: d.range.conv_with(&line_index),
-            severity: Some(DiagnosticSeverity::Error),
+            severity: Some(to_diagnostic_severity(d.severity)),
             code: None,
             source: Some("rust-analyzer".to_string()),
             message: d.message,
@@ -683,4 +683,15 @@ fn highlight(world: &ServerWorld, file_id: FileId) -> Result<Vec<Decoration>> {
         })
         .collect();
     Ok(res)
+}
+
+fn to_diagnostic_severity(severity: Severity) -> DiagnosticSeverity {
+    use ra_analysis::Severity::*;
+
+    match severity {
+        Error => DiagnosticSeverity::Error,
+        Warning => DiagnosticSeverity::Warning,
+        Information => DiagnosticSeverity::Information,
+        Hint => DiagnosticSeverity::Hint,
+    }
 }

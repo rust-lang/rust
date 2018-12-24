@@ -31,10 +31,17 @@ pub struct HighlightedRange {
     pub tag: &'static str,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum Severity {
+    Error,
+    WeakWarning,
+}
+
 #[derive(Debug)]
 pub struct Diagnostic {
     pub range: TextRange,
     pub msg: String,
+    pub severity: Severity,
 }
 
 #[derive(Debug)]
@@ -97,13 +104,37 @@ pub fn diagnostics(file: &SourceFileNode) -> Vec<Diagnostic> {
         }
     }
 
-    file.errors()
+    let mut errors: Vec<Diagnostic> = file
+        .errors()
         .into_iter()
         .map(|err| Diagnostic {
             range: location_to_range(err.location()),
             msg: format!("Syntax Error: {}", err),
+            severity: Severity::Error,
         })
-        .collect()
+        .collect();
+
+    let warnings = check_unnecessary_braces_in_use_statement(file);
+
+    errors.extend(warnings);
+    errors
+}
+
+fn check_unnecessary_braces_in_use_statement(file: &SourceFileNode) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
+    for node in file.syntax().descendants() {
+        if let Some(use_tree_list) = ast::UseTreeList::cast(node) {
+            if use_tree_list.use_trees().count() <= 1 {
+                diagnostics.push(Diagnostic {
+                    range: use_tree_list.syntax().range(),
+                    msg: format!("Unnecessary braces in use statement"),
+                    severity: Severity::WeakWarning,
+                })
+            }
+        }
+    }
+
+    diagnostics
 }
 
 pub fn syntax_tree(file: &SourceFileNode) -> String {
@@ -203,5 +234,26 @@ fn test_foo() {}
         }
 
         do_check("struct Foo { a: i32, }<|>", "struct Foo <|>{ a: i32, }");
+    }
+
+    #[test]
+    fn test_check_unnecessary_braces_in_use_statement() {
+        let file = SourceFileNode::parse(
+            r#"
+use a;
+use {b};
+use a::{c};
+use a::{c, d::e};
+use a::{c, d::{e}};
+fn main() {}
+"#,
+        );
+        let diagnostics = check_unnecessary_braces_in_use_statement(&file);
+        assert_eq_dbg(
+            r#"[Diagnostic { range: [12; 15), msg: "Unnecessary braces in use statement", severity: WeakWarning },
+                Diagnostic { range: [24; 27), msg: "Unnecessary braces in use statement", severity: WeakWarning },
+                Diagnostic { range: [61; 64), msg: "Unnecessary braces in use statement", severity: WeakWarning }]"#,
+            &diagnostics,
+        )
     }
 }
