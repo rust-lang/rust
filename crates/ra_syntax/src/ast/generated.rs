@@ -2142,7 +2142,15 @@ impl<R: TreeRoot<RaTypes>> NamedFieldNode<R> {
 }
 
 
-impl<'a> NamedField<'a> {}
+impl<'a> NamedField<'a> {
+    pub fn name_ref(self) -> Option<NameRef<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // NamedFieldDef
 #[derive(Debug, Clone, Copy,)]
@@ -2218,7 +2226,11 @@ impl<R: TreeRoot<RaTypes>> NamedFieldListNode<R> {
 }
 
 
-impl<'a> NamedFieldList<'a> {}
+impl<'a> NamedFieldList<'a> {
+    pub fn fields(self) -> impl Iterator<Item = NamedField<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // NeverType
 #[derive(Debug, Clone, Copy,)]
@@ -3467,7 +3479,15 @@ impl<R: TreeRoot<RaTypes>> StructLitNode<R> {
 }
 
 
-impl<'a> StructLit<'a> {}
+impl<'a> StructLit<'a> {
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn named_field_list(self) -> Option<NamedFieldList<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // StructPat
 #[derive(Debug, Clone, Copy,)]

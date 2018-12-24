@@ -16,9 +16,9 @@ use ra_syntax::{
 };
 
 use crate::{
-    Def, DefId, FnScopes, Module, Function,
-    Path, db::HirDatabase,
-    module::nameres::Namespace
+    Def, DefId, FnScopes, Module, Function, Struct, Path,
+    db::HirDatabase,
+    adt::VariantData,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -125,6 +125,37 @@ pub struct FnSig {
 }
 
 impl Ty {
+    pub(crate) fn new_from_ast_path(
+        db: &impl HirDatabase,
+        module: &Module,
+        path: ast::Path,
+    ) -> Cancelable<Self> {
+        let path = if let Some(p) = Path::from_ast(path) {
+            p
+        } else {
+            return Ok(Ty::Unknown);
+        };
+        if path.is_ident() {
+            let name = &path.segments[0];
+            if let Some(int_ty) = primitive::IntTy::from_string(&name) {
+                return Ok(Ty::Int(int_ty));
+            } else if let Some(uint_ty) = primitive::UintTy::from_string(&name) {
+                return Ok(Ty::Uint(uint_ty));
+            } else if let Some(float_ty) = primitive::FloatTy::from_string(&name) {
+                return Ok(Ty::Float(float_ty));
+            }
+        }
+
+        // Resolve in module (in type namespace)
+        let resolved = if let Some(r) = module.resolve_path(db, path)?.take_types() {
+            r
+        } else {
+            return Ok(Ty::Unknown);
+        };
+        let ty = db.type_for_def(resolved)?;
+        Ok(ty)
+    }
+
     pub(crate) fn new(
         db: &impl HirDatabase,
         module: &Module,
@@ -136,31 +167,11 @@ impl Ty {
             TupleType(_inner) => Ty::Unknown, // TODO
             NeverType(..) => Ty::Never,
             PathType(inner) => {
-                let path = if let Some(p) = inner.path().and_then(Path::from_ast) {
-                    p
+                if let Some(path) = inner.path() {
+                    Ty::new_from_ast_path(db, module, path)?
                 } else {
-                    return Ok(Ty::Unknown);
-                };
-                if path.is_ident() {
-                    let name = &path.segments[0];
-                    if let Some(int_ty) = primitive::IntTy::from_string(&name) {
-                        return Ok(Ty::Int(int_ty));
-                    } else if let Some(uint_ty) = primitive::UintTy::from_string(&name) {
-                        return Ok(Ty::Uint(uint_ty));
-                    } else if let Some(float_ty) = primitive::FloatTy::from_string(&name) {
-                        return Ok(Ty::Float(float_ty));
-                    }
+                    Ty::Unknown
                 }
-
-                // Resolve in module (in type namespace)
-                let resolved =
-                    if let Some(r) = module.resolve_path(db, path)?.take(Namespace::Types) {
-                        r
-                    } else {
-                        return Ok(Ty::Unknown);
-                    };
-                let ty = db.type_for_def(resolved)?;
-                ty
             }
             PointerType(_inner) => Ty::Unknown,     // TODO
             ArrayType(_inner) => Ty::Unknown,       // TODO
@@ -236,6 +247,13 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
 
+pub fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
+    Ok(Ty::Adt {
+        def_id: s.def_id(),
+        name: s.name(db)?,
+    })
+}
+
 // TODO this should probably be per namespace (i.e. types vs. values), since for
 // a tuple struct `struct Foo(Bar)`, Foo has function type as a value, but
 // defines the struct type Foo when used in the type namespace. rustc has a
@@ -249,10 +267,7 @@ pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
             Ok(Ty::Unknown)
         }
         Def::Function(f) => type_for_fn(db, f),
-        Def::Struct(s) => Ok(Ty::Adt {
-            def_id,
-            name: s.name(db)?,
-        }),
+        Def::Struct(s) => type_for_struct(db, s),
         Def::Enum(e) => Ok(Ty::Adt {
             def_id,
             name: e.name(db)?,
@@ -330,13 +345,34 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let resolved = ctry!(self
-            .module
-            .resolve_path(self.db, path)?
-            .take(Namespace::Values));
+        let resolved = ctry!(self.module.resolve_path(self.db, path)?.take_values());
         let ty = self.db.type_for_def(resolved)?;
         // TODO we will need to add type variables for type parameters etc. here
         Ok(Some(ty))
+    }
+
+    fn resolve_variant(
+        &self,
+        path: Option<ast::Path>,
+    ) -> Cancelable<(Ty, Option<Arc<VariantData>>)> {
+        let path = if let Some(path) = path.and_then(Path::from_ast) {
+            path
+        } else {
+            return Ok((Ty::Unknown, None));
+        };
+        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, path)?.take_types() {
+            def_id
+        } else {
+            return Ok((Ty::Unknown, None));
+        };
+        Ok(match def_id.resolve(self.db)? {
+            Def::Struct(s) => {
+                let struct_data = self.db.struct_data(def_id)?;
+                let ty = type_for_struct(self.db, s)?;
+                (ty, Some(struct_data.variant_data().clone()))
+            }
+            _ => (Ty::Unknown, None),
+        })
     }
 
     fn infer_expr(&mut self, expr: ast::Expr) -> Cancelable<Ty> {
@@ -488,7 +524,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ast::Expr::Label(_e) => Ty::Unknown,
             ast::Expr::ReturnExpr(e) => {
                 if let Some(e) = e.expr() {
-                    // TODO unify with return type
+                    // TODO unify with / expect return type
                     self.infer_expr(e)?;
                 };
                 Ty::Never
@@ -497,7 +533,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 // Can this even occur outside of a match expression?
                 Ty::Unknown
             }
-            ast::Expr::StructLit(_e) => Ty::Unknown,
+            ast::Expr::StructLit(e) => {
+                let (ty, variant_data) = self.resolve_variant(e.path())?;
+                if let Some(nfl) = e.named_field_list() {
+                    for field in nfl.fields() {
+                        if let Some(e) = field.expr() {
+                            // TODO unify with / expect field type
+                            self.infer_expr(e)?;
+                        }
+                    }
+                }
+                ty
+            }
             ast::Expr::NamedFieldList(_) | ast::Expr::NamedField(_) => {
                 // Can this even occur outside of a struct literal?
                 Ty::Unknown

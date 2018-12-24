@@ -392,9 +392,9 @@ Grammar(
             collections: [ [ "pats", "Pat" ] ]
         ),
         "MatchGuard": (),
-        "StructLit": (),
-        "NamedFieldList": (),
-        "NamedField": (),
+        "StructLit": (options: ["Path", "NamedFieldList"]),
+        "NamedFieldList": (collections: [ ["fields", "NamedField"] ]),
+        "NamedField": (options: ["NameRef", "Expr"]),
         "CallExpr": (
             traits: ["ArgListOwner"],
             options: [ "Expr" ],

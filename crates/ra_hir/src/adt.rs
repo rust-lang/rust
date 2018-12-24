@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ra_syntax::{SmolStr, ast::{self, NameOwner}};
 
 use crate::{
@@ -15,6 +17,14 @@ impl Struct {
         Struct { def_id }
     }
 
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
+    pub fn struct_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<StructData>> {
+        Ok(db.struct_data(self.def_id)?)
+    }
+
     pub fn name(&self, db: &impl HirDatabase) -> Cancelable<SmolStr> {
         Ok(db.struct_data(self.def_id)?.name.clone())
     }
@@ -23,7 +33,7 @@ impl Struct {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
     name: SmolStr,
-    variant_data: VariantData,
+    variant_data: Arc<VariantData>,
 }
 
 impl StructData {
@@ -33,7 +43,16 @@ impl StructData {
             .map(|n| n.text())
             .unwrap_or(SmolStr::new("[error]"));
         let variant_data = VariantData::Unit; // TODO implement this
+        let variant_data = Arc::new(variant_data);
         StructData { name, variant_data }
+    }
+
+    pub fn name(&self) -> &SmolStr {
+        &self.name
+    }
+
+    pub fn variant_data(&self) -> &Arc<VariantData> {
+        &self.variant_data
     }
 }
 
@@ -46,6 +65,10 @@ impl Enum {
         Enum { def_id }
     }
 
+    pub fn def_id(&self) -> DefId {
+        self.def_id
+    }
+
     pub fn name(&self, db: &impl HirDatabase) -> Cancelable<SmolStr> {
         Ok(db.enum_data(self.def_id)?.name.clone())
     }
@@ -54,7 +77,7 @@ impl Enum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     name: SmolStr,
-    variants: Vec<(SmolStr, VariantData)>,
+    variants: Vec<(SmolStr, Arc<VariantData>)>,
 }
 
 impl EnumData {

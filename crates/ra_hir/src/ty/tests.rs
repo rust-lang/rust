@@ -82,7 +82,7 @@ struct C(usize);
 fn test() {
     let c = C(1);
     B;
-    let a: A = A { b: B, c: C() };
+    let a: A = A { b: B, c: C(1) };
     a.b;
     a.c;
 }
