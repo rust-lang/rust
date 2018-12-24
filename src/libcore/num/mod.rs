@@ -994,7 +994,7 @@ assert_eq!(", stringify!($SelfT), "::max_value().wrapping_add(2), ", stringify!(
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
                 unsafe {
@@ -1018,7 +1018,7 @@ stringify!($SelfT), "::max_value());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
                 unsafe {
@@ -1041,7 +1041,7 @@ assert_eq!(11i8.wrapping_mul(12), -124);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
                 unsafe {
@@ -1205,7 +1205,7 @@ assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(128), -1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
                 unsafe {
@@ -1233,7 +1233,7 @@ assert_eq!((-128i16).wrapping_shr(64), -128);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
                 unsafe {
@@ -2884,7 +2884,7 @@ assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::ma
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
                 unsafe {
@@ -2907,7 +2907,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::ma
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
                 unsafe {
@@ -2931,7 +2931,7 @@ $EndFeature, "
         /// assert_eq!(25u8.wrapping_mul(12), 44);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_int_wrapping")]
+        #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
             unsafe {
@@ -3081,7 +3081,7 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
                 unsafe {
@@ -3111,7 +3111,7 @@ Basic usage:
 assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
-            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
                 unsafe {
