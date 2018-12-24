@@ -26,7 +26,7 @@ fn infer_file(content: &str) -> String {
             .unwrap()
             .unwrap();
         let inference_result = func.infer(&db).unwrap();
-        for (syntax_ptr, ty) in &inference_result.type_for {
+        for (syntax_ptr, ty) in &inference_result.type_of {
             let node = syntax_ptr.resolve(&source_file);
             write!(
                 acc,

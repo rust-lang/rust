@@ -241,12 +241,12 @@ pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
-    type_for: FxHashMap<LocalSyntaxPtr, Ty>,
+    type_of: FxHashMap<LocalSyntaxPtr, Ty>,
 }
 
 impl InferenceResult {
     pub fn type_of_node(&self, node: SyntaxNodeRef) -> Option<Ty> {
-        self.type_for.get(&LocalSyntaxPtr::new(node)).cloned()
+        self.type_of.get(&LocalSyntaxPtr::new(node)).cloned()
     }
 }
 
@@ -256,13 +256,13 @@ pub struct InferenceContext<'a, D: HirDatabase> {
     scopes: Arc<FnScopes>,
     module: Module,
     // TODO unification tables...
-    type_for: FxHashMap<LocalSyntaxPtr, Ty>,
+    type_of: FxHashMap<LocalSyntaxPtr, Ty>,
 }
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn new(db: &'a D, scopes: Arc<FnScopes>, module: Module) -> Self {
         InferenceContext {
-            type_for: FxHashMap::default(),
+            type_of: FxHashMap::default(),
             db,
             scopes,
             module,
@@ -270,7 +270,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn write_ty(&mut self, node: SyntaxNodeRef, ty: Ty) {
-        self.type_for.insert(LocalSyntaxPtr::new(node), ty);
+        self.type_of.insert(LocalSyntaxPtr::new(node), ty);
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> Option<Ty> {
@@ -299,7 +299,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // resolve locally
             let name = ctry!(ast_path.segment().and_then(|s| s.name_ref()));
             if let Some(scope_entry) = self.scopes.resolve_local_name(name) {
-                let ty = ctry!(self.type_for.get(&scope_entry.ptr()));
+                let ty = ctry!(self.type_of.get(&scope_entry.ptr()));
                 return Ok(Some(ty.clone()));
             };
         };
@@ -577,10 +577,10 @@ pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceR
             };
             if let Some(type_ref) = param.type_ref() {
                 let ty = Ty::new(db, type_ref)?;
-                ctx.type_for.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
+                ctx.type_of.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
             } else {
                 // TODO self param
-                ctx.type_for
+                ctx.type_of
                     .insert(LocalSyntaxPtr::new(pat.syntax()), Ty::Unknown);
             };
         }
@@ -596,6 +596,6 @@ pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceR
     // TODO 'resolve' the types: replace inference variables by their inferred results
 
     Ok(InferenceResult {
-        type_for: ctx.type_for,
+        type_of: ctx.type_of,
     })
 }
