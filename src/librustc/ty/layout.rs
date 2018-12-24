@@ -12,6 +12,7 @@ use std::iter;
 use std::mem;
 use std::ops::Bound;
 
+use hir;
 use crate::ich::StableHashingContext;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -1545,6 +1546,7 @@ impl<'gcx, 'tcx, T: HasTyCtxt<'gcx>> HasTyCtxt<'gcx> for LayoutCx<'tcx, T> {
 pub trait MaybeResult<T> {
     fn from_ok(x: T) -> Self;
     fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self;
+    fn ok(self) -> Option<T>;
 }
 
 impl<T> MaybeResult<T> for T {
@@ -1554,6 +1556,9 @@ impl<T> MaybeResult<T> for T {
     fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
         f(self)
     }
+    fn ok(self) -> Option<T> {
+        Some(self)
+    }
 }
 
 impl<T, E> MaybeResult<T> for Result<T, E> {
@@ -1562,6 +1567,9 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
     fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
         self.map(f)
+    }
+    fn ok(self) -> Option<T> {
+        self.ok()
     }
 }
 
@@ -1824,6 +1832,125 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             }
         })
     }
+
+    fn pointee_info_at(this: TyLayout<'tcx>, cx: &C, offset: Size
+    ) -> Option<PointeeInfo> {
+        let mut result = None;
+        match this.ty.sty {
+            ty::RawPtr(mt) if offset.bytes() == 0 => {
+                result = cx.layout_of(mt.ty).ok()
+                    .map(|layout| PointeeInfo {
+                        size: layout.size,
+                        align: layout.align.abi,
+                        safe: None,
+                    });
+            }
+
+            ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
+                let tcx = cx.tcx();
+                let is_freeze = ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP);
+                let kind = match mt {
+                    hir::MutImmutable => if is_freeze {
+                        PointerKind::Frozen
+                    } else {
+                        PointerKind::Shared
+                    },
+                    hir::MutMutable => {
+                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
+                        // panic=abort mode. That was deemed right, as prior versions had many bugs
+                        // in conjunction with unwinding, but later versions didn’t seem to have
+                        // said issues. See issue #31681.
+                        //
+                        // Alas, later on we encountered a case where noalias would generate wrong
+                        // code altogether even with recent versions of LLVM in *safe* code with no
+                        // unwinding involved. See #54462.
+                        //
+                        // For now, do not enable mutable_noalias by default at all, while the
+                        // issue is being figured out.
+                        let mutable_noalias = tcx.sess.opts.debugging_opts.mutable_noalias
+                            .unwrap_or(false);
+                        if mutable_noalias {
+                            PointerKind::UniqueBorrowed
+                        } else {
+                            PointerKind::Shared
+                        }
+                    }
+                };
+
+                result = cx.layout_of(ty).ok()
+                    .map(|layout| PointeeInfo {
+                        size: layout.size,
+                        align: layout.align.abi,
+                        safe: Some(kind),
+                    });
+            }
+
+            _ => {
+                let mut data_variant = match this.variants {
+                    Variants::NicheFilling { dataful_variant, .. } => {
+                        // Only the niche itthis is always initialized,
+                        // so only check for a pointer at its offset.
+                        //
+                        // If the niche is a pointer, it's either valid
+                        // (according to its type), or null (which the
+                        // niche field's scalar validity range encodes).
+                        // This allows using `dereferenceable_or_null`
+                        // for e.g., `Option<&T>`, and this will continue
+                        // to work as long as we don't start using more
+                        // niches than just null (e.g., the first page
+                        // of the address space, or unaligned pointers).
+                        if this.fields.offset(0) == offset {
+                            Some(this.for_variant(cx, dataful_variant))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => Some(this)
+                };
+
+                if let Some(variant) = data_variant {
+                    // We're not interested in any unions.
+                    if let FieldPlacement::Union(_) = variant.fields {
+                        data_variant = None;
+                    }
+                }
+
+                if let Some(variant) = data_variant {
+                    let ptr_end = offset + Pointer.size(cx);
+                    for i in 0..variant.fields.count() {
+                        let field_start = variant.fields.offset(i);
+                        if field_start <= offset {
+                            let field = variant.field(cx, i);
+                            result = field.ok()
+                                .and_then(|field| {
+                                    if ptr_end <= field_start + field.size {
+                                        // We found the right field, look inside it.
+                                        Self::pointee_info_at(field, cx, offset - field_start)
+                                    } else {
+                                        None
+                                    }
+                                });
+                            if result.is_some() {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
+                if let Some(ref mut pointee) = result {
+                    if let ty::Adt(def, _) = this.ty.sty {
+                        if def.is_box() && offset.bytes() == 0 {
+                            pointee.safe = Some(PointerKind::UniqueOwned);
+                        }
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
 }
 
 struct Niche {
