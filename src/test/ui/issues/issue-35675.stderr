@@ -2,10 +2,11 @@ error[E0412]: cannot find type `Apple` in this scope
   --> $DIR/issue-35675.rs:17:29
    |
 LL | fn should_return_fruit() -> Apple {
+   |                             ^^^^^ not found in this scope
+help: there is an enum variant `Fruit::Apple`; try using the variant's enum
+   |
+LL | fn should_return_fruit() -> Fruit {
    |                             ^^^^^
-   |                             |
-   |                             not found in this scope
-   |                             help: you can try using the variant's enum: `Fruit`
 
 error[E0425]: cannot find function `Apple` in this scope
   --> $DIR/issue-35675.rs:19:5
@@ -24,7 +25,7 @@ LL | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 ^^^^^^^^^^^^
    |                                 |
    |                                 not a type
-   |                                 help: you can try using the variant's enum: `Fruit`
+   |                                 help: try using the variant's enum: `Fruit`
 
 error[E0425]: cannot find function `Apple` in this scope
   --> $DIR/issue-35675.rs:25:5
@@ -40,28 +41,29 @@ error[E0573]: expected type, found variant `Ok`
   --> $DIR/issue-35675.rs:29:13
    |
 LL | fn foo() -> Ok {
-   |             ^^ not a type
-   |
-   = help: there is an enum variant `std::prelude::v1::Ok`, try using `std::prelude::v1`?
-   = help: there is an enum variant `std::result::Result::Ok`, try using `std::result::Result`?
+   |             ^^
+   |             |
+   |             not a type
+   |             help: try using the variant's enum: `std::result::Result`
 
 error[E0412]: cannot find type `Variant3` in this scope
   --> $DIR/issue-35675.rs:34:13
    |
 LL | fn bar() -> Variant3 {
-   |             ^^^^^^^^
-   |             |
-   |             not found in this scope
-   |             help: you can try using the variant's enum: `x::Enum`
+   |             ^^^^^^^^ not found in this scope
+help: there is an enum variant `x::Enum::Variant3`; try using the variant's enum
+   |
+LL | fn bar() -> x::Enum {
+   |             ^^^^^^^
 
 error[E0573]: expected type, found variant `Some`
   --> $DIR/issue-35675.rs:38:13
    |
 LL | fn qux() -> Some {
-   |             ^^^^ not a type
-   |
-   = help: there is an enum variant `std::prelude::v1::Option::Some`, try using `std::prelude::v1::Option`?
-   = help: there is an enum variant `std::prelude::v1::Some`, try using `std::prelude::v1`?
+   |             ^^^^
+   |             |
+   |             not a type
+   |             help: try using the variant's enum: `Option`
 
 error: aborting due to 7 previous errors
 

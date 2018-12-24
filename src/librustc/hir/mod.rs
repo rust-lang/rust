@@ -1979,6 +1979,15 @@ pub enum FunctionRetTy {
     Return(P<Ty>),
 }
 
+impl fmt::Display for FunctionRetTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
+            DefaultReturn(_) => "()".fmt(f),
+        }
+    }
+}
+
 impl FunctionRetTy {
     pub fn span(&self) -> Span {
         match *self {
@@ -2119,7 +2128,7 @@ impl StructField {
 /// Id of the whole enum lives in `Item`.
 ///
 /// For structs: `NodeId` represents an Id of the structure's constructor, so it is not actually
-/// used for `Struct`-structs (but still presents). Structures don't have an analogue of "Id of
+/// used for `Struct`-structs (but still present). Structures don't have an analogue of "Id of
 /// the variant itself" from enum variants.
 /// Id of the whole struct lives in `Item`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

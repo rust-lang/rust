@@ -1,17 +1,17 @@
 error: can only call other `min_const_fn` within a `min_const_fn`
-  --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:26:32
+  --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:25:32
    |
 LL | const unsafe fn bar() -> u32 { foo() } //~ ERROR can only call other `min_const_fn`
    |                                ^^^^^
 
 error: can only call other `min_const_fn` within a `min_const_fn`
-  --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:33:33
+  --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:32:33
    |
 LL | const unsafe fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min_const_fn`
    |                                 ^^^^^^
 
 error: can only call other `min_const_fn` within a `min_const_fn`
-  --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:41:39
+  --> $DIR/min_const_unsafe_fn_libstd_stability2.rs:40:39
    |
 LL | const unsafe fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `min_const_fn`
    |                                       ^^^^^^^^^^^^

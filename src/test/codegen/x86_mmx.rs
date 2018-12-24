@@ -18,6 +18,7 @@
 // ignore-powerpc64le
 // ignore-sparc
 // ignore-sparc64
+// ignore-s390x
 // compile-flags: -O
 
 #![feature(repr_simd)]

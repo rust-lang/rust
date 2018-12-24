@@ -139,7 +139,7 @@
 //!
 //! #### Boxes
 //! Since `Box` expression have special compiler support, no explicit calls to
-//! `exchange_malloc()` and `exchange_free()` may show up in MIR, even if the
+//! `exchange_malloc()` and `box_free()` may show up in MIR, even if the
 //! compiler will generate them. We have to observe `Rvalue::Box` expressions
 //! and Box-typed drop-statements for that purpose.
 //!

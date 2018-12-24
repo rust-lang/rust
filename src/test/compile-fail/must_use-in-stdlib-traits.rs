@@ -1,5 +1,5 @@
 #![deny(unused_must_use)]
-#![feature(futures_api, pin, arbitrary_self_types)]
+#![feature(arbitrary_self_types, futures_api)]
 
 use std::iter::Iterator;
 use std::future::Future;

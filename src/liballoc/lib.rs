@@ -102,7 +102,6 @@
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
-#![feature(pin)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]

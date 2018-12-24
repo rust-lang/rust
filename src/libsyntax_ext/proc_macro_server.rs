@@ -21,7 +21,7 @@ use syntax::ast;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
-use syntax::tokenstream::{self, DelimSpan, TokenStream};
+use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
@@ -278,11 +278,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
         };
 
         let tree = tokenstream::TokenTree::Token(span, token);
-        if joint {
-            tree.joint()
-        } else {
-            tree.into()
-        }
+        TokenStream::Tree(tree, if joint { Joint } else { NonJoint })
     }
 }
 
