@@ -396,11 +396,13 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool 
         | "min_align_of"
         | "needs_drop"
         // Arithmetic:
-        | "overflowing_add" // ~> wrapping_add
-        | "overflowing_sub" // ~> wrapping_sub
-        | "overflowing_mul" // ~> wrapping_mul
-        | "unchecked_shl" // ~> wrapping_shl
-        | "unchecked_shr" // ~> wrapping_shr
+        | "overflowing_add" // ~> .wrapping_add
+        | "overflowing_sub" // ~> .wrapping_sub
+        | "overflowing_mul" // ~> .wrapping_mul
+        | "unchecked_shl" // ~> .wrapping_shl
+        | "unchecked_shr" // ~> .wrapping_shr
+        | "rotate_left" // ~> .rotate_left
+        | "rotate_right" // ~> .rotate_right
         => true,
         _ => false,
     }

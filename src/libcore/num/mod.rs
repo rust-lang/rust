@@ -357,7 +357,7 @@ let m = ", $rot_result, ";
 assert_eq!(n.rotate_left(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_rotate")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_rotate"))]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
                 (self as $UnsignedT).rotate_left(n) as Self
@@ -382,7 +382,7 @@ let m = ", $rot_op, ";
 assert_eq!(n.rotate_right(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_rotate")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_rotate"))]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
                 (self as $UnsignedT).rotate_right(n) as Self
@@ -2310,7 +2310,7 @@ let m = ", $rot_result, ";
 assert_eq!(n.rotate_left(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_rotate")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_rotate"))]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
                 unsafe { intrinsics::rotate_left(self, n as $SelfT) }
@@ -2335,7 +2335,7 @@ let m = ", $rot_op, ";
 assert_eq!(n.rotate_right(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_rotate")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_rotate"))]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
                 unsafe { intrinsics::rotate_right(self, n as $SelfT) }
