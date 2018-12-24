@@ -456,6 +456,9 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         let linux_s390x = target.target_os == "linux"
                        && target.arch == "s390x"
                        && target.target_env == "gnu";
+        let linux_sparc64 = target.target_os == "linux"
+                       && target.arch == "sparc64"
+                       && target.target_env == "gnu";
         let rust_abi = match sig.abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
             _ => false
@@ -520,8 +523,9 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
-                // The same is true for s390x-unknown-linux-gnu.
-                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x) {
+                // The same is true for s390x-unknown-linux-gnu
+                // and sparc64-unknown-linux-gnu.
+                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
                     arg.mode = PassMode::Ignore;
                 }
             }
