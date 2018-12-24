@@ -83,7 +83,7 @@ fn test_unresolved_module_diagnostic() {
                 source_file_edits: [],
                 file_system_edits: [CreateFile { source_root: SourceRootId(0), path: "foo.rs" }],
                 cursor_position: None }),
-                severity: Some(Error) }]"#,
+                severity: Error }]"#,
         &diagnostics,
     );
 }
