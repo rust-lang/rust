@@ -1,10 +1,10 @@
-error[E0502]: cannot borrow `u.y` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0`)
   --> $DIR/union-borrow-move-parent-sibling.rs:15:13
    |
 LL |     let a = &mut u.x.0;
-   |             ---------- mutable borrow occurs here
+   |             ---------- mutable borrow occurs here (via `u.x.0`)
 LL |     let b = &u.y; //~ ERROR cannot borrow `u.y`
-   |             ^^^^ immutable borrow occurs here
+   |             ^^^^ immutable borrow occurs here (via `u.y`)
 LL |     use_borrow(a);
    |                - mutable borrow later used here
 
@@ -18,13 +18,13 @@ LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    |
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
-error[E0502]: cannot borrow `u.y` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0.0`)
   --> $DIR/union-borrow-move-parent-sibling.rs:28:13
    |
 LL |     let a = &mut (u.x.0).0;
-   |             -------------- mutable borrow occurs here
+   |             -------------- mutable borrow occurs here (via `u.x.0.0`)
 LL |     let b = &u.y; //~ ERROR cannot borrow `u.y`
-   |             ^^^^ immutable borrow occurs here
+   |             ^^^^ immutable borrow occurs here (via `u.y`)
 LL |     use_borrow(a);
    |                - mutable borrow later used here
 
@@ -38,13 +38,13 @@ LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    |
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
-error[E0502]: cannot borrow `u.x` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `*u.y`)
   --> $DIR/union-borrow-move-parent-sibling.rs:41:13
    |
 LL |     let a = &mut *u.y;
-   |             --------- mutable borrow occurs here
+   |             --------- mutable borrow occurs here (via `*u.y`)
 LL |     let b = &u.x; //~ ERROR cannot borrow `u` (via `u.x`)
-   |             ^^^^ immutable borrow occurs here
+   |             ^^^^ immutable borrow occurs here (via `u.x`)
 LL |     use_borrow(a);
    |                - mutable borrow later used here
 

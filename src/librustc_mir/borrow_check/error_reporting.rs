@@ -329,10 +329,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure"
         };
 
-        let desc_place = self.describe_place(place).unwrap_or_else(|| "_".to_owned());
-        let tcx = self.infcx.tcx;
-
-        let first_borrow_desc;
+        let (desc_place, msg_place, msg_borrow) = if issued_borrow.borrowed_place == *place {
+            let desc_place = self.describe_place(place).unwrap_or_else(|| "_".to_owned());
+            (desc_place, "".to_string(), "".to_string())
+        } else {
+            let (desc_place, msg_place) = self.describe_place_for_conflicting_borrow(place);
+            let (_, msg_borrow) = self.describe_place_for_conflicting_borrow(
+                &issued_borrow.borrowed_place
+            );
+            (desc_place, msg_place, msg_borrow)
+        };
 
         let explanation = self.explain_why_borrow_contains_point(context, issued_borrow, None);
         let second_borrow_desc = if explanation.is_explained() {
@@ -342,6 +348,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         };
 
         // FIXME: supply non-"" `opt_via` when appropriate
+        let tcx = self.infcx.tcx;
+        let first_borrow_desc;
         let mut err = match (
             gen_borrow_kind,
             "immutable",
@@ -355,12 +363,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tcx.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
-                    "",
+                    &msg_place,
                     lft,
                     issued_span,
                     "it",
                     rgt,
-                    "",
+                    &msg_borrow,
                     None,
                     Origin::Mir,
                 )
@@ -370,12 +378,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tcx.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
-                    "",
+                    &msg_place,
                     lft,
                     issued_span,
                     "it",
                     rgt,
-                    "",
+                    &msg_borrow,
                     None,
                     Origin::Mir,
                 )
@@ -386,9 +394,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tcx.cannot_mutably_borrow_multiply(
                     span,
                     &desc_place,
-                    "",
+                    &msg_place,
                     issued_span,
-                    "",
+                    &msg_borrow,
                     None,
                     Origin::Mir,
                 )
@@ -516,6 +524,36 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
 
         err.buffer(&mut self.errors_buffer);
+    }
+
+    /// Returns a description of a place and an associated message for the purposes of conflicting
+    /// borrow diagnostics.
+    ///
+    /// If the borrow is of the field `b` of a union `u`, then the return value will be
+    /// `("u", " (via \`u.b\`)")`. Otherwise, for some variable `a`, the return value will be
+    /// `("a", "")`.
+    pub(super) fn describe_place_for_conflicting_borrow(
+        &self,
+        place: &Place<'tcx>,
+    ) -> (String, String) {
+        place.base_local()
+            .filter(|local| {
+                // Filter out non-unions.
+                self.mir.local_decls[*local].ty
+                    .ty_adt_def()
+                    .map(|adt| adt.is_union())
+                    .unwrap_or(false)
+            })
+            .and_then(|local| {
+                let desc_base = self.describe_place(&Place::Local(local))
+                    .unwrap_or_else(|| "_".to_owned());
+                let desc_original = self.describe_place(place)
+                    .unwrap_or_else(|| "_".to_owned());
+                return Some((desc_base, format!(" (via `{}`)", desc_original)));
+            })
+            .unwrap_or_else(|| {
+                (self.describe_place(place).unwrap_or_else(|| "_".to_owned()), "".to_string())
+            })
     }
 
     /// Reports StorageDeadOrDrop of `place` conflicts with `borrow`.
