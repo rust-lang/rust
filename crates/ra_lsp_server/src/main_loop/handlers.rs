@@ -650,7 +650,7 @@ pub fn publish_diagnostics(
         .into_iter()
         .map(|d| Diagnostic {
             range: d.range.conv_with(&line_index),
-            severity: d.severity.map(to_diagnostic_severity),
+            severity: Some(to_diagnostic_severity(d.severity)),
             code: None,
             source: Some("rust-analyzer".to_string()),
             message: d.message,

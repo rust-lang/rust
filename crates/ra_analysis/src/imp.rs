@@ -364,7 +364,7 @@ impl AnalysisImpl {
             .map(|d| Diagnostic {
                 range: d.range,
                 message: d.msg,
-                severity: Some(d.severity),
+                severity: d.severity,
                 fix: None,
             })
             .collect::<Vec<_>>();
@@ -386,7 +386,7 @@ impl AnalysisImpl {
                         Diagnostic {
                             range: name_node.range(),
                             message: "unresolved module".to_string(),
-                            severity: Some(Severity::Error),
+                            severity: Severity::Error,
                             fix: Some(fix),
                         }
                     }
@@ -409,7 +409,7 @@ impl AnalysisImpl {
                         Diagnostic {
                             range: name_node.range(),
                             message: "can't declare module at this location".to_string(),
-                            severity: Some(Severity::Error),
+                            severity: Severity::Error,
                             fix: Some(fix),
                         }
                     }

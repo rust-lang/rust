@@ -13,7 +13,7 @@ use gen_lsp_server::{
 };
 use languageserver_types::NumberOrString;
 use ra_analysis::{Canceled, FileId, LibraryData};
-use ra_vfs::{VfsTask};
+use ra_vfs::VfsTask;
 use rayon;
 use threadpool::ThreadPool;
 use rustc_hash::FxHashSet;
@@ -23,7 +23,7 @@ use failure_derive::Fail;
 
 use crate::{
     main_loop::subscriptions::Subscriptions,
-    project_model::{workspace_loader},
+    project_model::workspace_loader,
     req,
     server_world::{ServerWorld, ServerWorldState},
     Result,
