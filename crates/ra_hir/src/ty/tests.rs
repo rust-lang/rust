@@ -1,19 +1,74 @@
 use std::fmt::Write;
-use std::path::{PathBuf};
-use std::sync::Once;
-
-use flexi_logger::Logger;
+use std::path::{PathBuf, Path};
+use std::fs;
 
 use ra_db::{SyntaxDatabase};
 use ra_syntax::ast::{self, AstNode};
-use test_utils::{project_dir, dir_tests};
+use test_utils::{project_dir, assert_eq_text, read_text};
 
 use crate::{
     source_binder,
     mock::MockDatabase,
 };
 
-fn infer_file(content: &str) -> String {
+// These tests compare the inference results for all expressions in a file
+// against snapshots of the current results. If you change something and these
+// tests fail expectedly, you can update the comparison files by deleting them
+// and running the tests again. Similarly, to add a new test, just write the
+// test here in the same pattern and it will automatically write the snapshot.
+
+#[test]
+fn infer_basics() {
+    check_inference(
+        r#"
+fn test(a: u32, b: isize, c: !, d: &str) {
+    a;
+    b;
+    c;
+    d;
+    1usize;
+    1isize;
+    "test";
+    1.0f32;
+}"#,
+        "0001_basics.txt",
+    );
+}
+
+#[test]
+fn infer_let() {
+    check_inference(
+        r#"
+fn test() {
+    let a = 1isize;
+    let b: usize = 1;
+    let c = b;
+}
+}"#,
+        "0002_let.txt",
+    );
+}
+
+#[test]
+fn infer_paths() {
+    check_inference(
+        r#"
+fn a() -> u32 { 1 }
+
+mod b {
+    fn c() -> u32 { 1 }
+}
+
+fn test() {
+    a();
+    b::c();
+}
+}"#,
+        "0003_paths.txt",
+    );
+}
+
+fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
     let mut acc = String::new();
@@ -41,6 +96,21 @@ fn infer_file(content: &str) -> String {
     acc
 }
 
+fn check_inference(content: &str, data_file: impl AsRef<Path>) {
+    let data_file_path = test_data_dir().join(data_file);
+    let result = infer(content);
+
+    if !data_file_path.exists() {
+        println!("File with expected result doesn't exist, creating...\n");
+        println!("{}\n{}", content, result);
+        fs::write(&data_file_path, &result).unwrap();
+        panic!("File {:?} with expected result was created", data_file_path);
+    }
+
+    let expected = read_text(&data_file_path);
+    assert_eq_text!(&expected, &result);
+}
+
 fn ellipsize(mut text: String, max_len: usize) -> String {
     if text.len() <= max_len {
         return text;
@@ -57,13 +127,6 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
     }
     text.replace_range(prefix_len..text.len() - suffix_len, ellipsis);
     text
-}
-
-#[test]
-pub fn infer_tests() {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| Logger::with_env().start().unwrap());
-    dir_tests(&test_data_dir(), &["."], |text, _path| infer_file(text));
 }
 
 fn test_data_dir() -> PathBuf {
