@@ -1886,7 +1886,6 @@ assert!(!(-10", stringify!($SelfT), ").is_positive());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_sign")]
             #[inline]
             pub const fn is_positive(self) -> bool { self > 0 }
         }
@@ -1905,7 +1904,6 @@ assert!(!10", stringify!($SelfT), ".is_negative());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_sign")]
             #[inline]
             pub const fn is_negative(self) -> bool { self < 0 }
         }
