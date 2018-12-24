@@ -158,7 +158,7 @@ declare_lint! {
 declare_lint! {
     pub SAFE_PACKED_BORROWS,
     Warn,
-    "safe borrows of fields of packed structs were was erroneously allowed"
+    "borrows of fields of packed structs were erroneously allowed"
 }
 
 declare_lint! {
