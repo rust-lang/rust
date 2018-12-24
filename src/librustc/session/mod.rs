@@ -1108,11 +1108,12 @@ pub fn build_session_with_source_map(
 }
 
 pub fn build_session_(
-    sopts: config::Options,
+    mut sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     span_diagnostic: errors::Handler,
     source_map: Lrc<source_map::SourceMap>,
 ) -> Session {
+    sopts.incremental = None;
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = Target::search(&host_triple).unwrap_or_else(|e|
         span_diagnostic
