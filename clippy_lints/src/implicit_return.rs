@@ -116,14 +116,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl,
         body: &'tcx Body,
-        _: Span,
+        span: Span,
         _: NodeId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
-        if !mir.return_ty().is_unit() {
+        // make sure it's not a macro
+        if !mir.return_ty().is_unit() && span.macro_backtrace().is_empty() {
             Self::expr_match(cx, &body.value);
         }
     }
