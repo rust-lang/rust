@@ -101,7 +101,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // Return value (in static memory so that it does not count as leak)
     let ret = ecx.layout_of(start_mir.return_ty())?;
-    let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into())?;
+    let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into());
 
     // Push our stack frame
     ecx.push_stack_frame(
@@ -125,7 +125,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     ecx.write_scalar(argc, dest)?;
     // Store argc for macOS _NSGetArgc
     {
-        let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
+        let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argc, argc_place.into())?;
         ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
     }
@@ -136,14 +136,14 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
     let cmd = ecx.memory_mut().allocate_static_bytes(CMD.as_bytes()).with_default_tag();
     let raw_str_layout = ecx.layout_of(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8))?;
-    let cmd_place = ecx.allocate(raw_str_layout, MiriMemoryKind::Env.into())?;
+    let cmd_place = ecx.allocate(raw_str_layout, MiriMemoryKind::Env.into());
     ecx.write_scalar(Scalar::Ptr(cmd), cmd_place.into())?;
     ecx.memory_mut().mark_immutable(cmd_place.to_ptr()?.alloc_id)?;
     // Store argv for macOS _NSGetArgv
     {
         let argv = cmd_place.ptr;
         ecx.write_scalar(argv, dest)?;
-        let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into())?;
+        let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argv, argv_place.into())?;
         ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
     }
@@ -155,7 +155,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
             Align::from_bytes(2).unwrap(),
             MiriMemoryKind::Env.into(),
-        )?.with_default_tag();
+        ).with_default_tag();
         ecx.machine.cmd_line = Some(cmd_ptr);
         // store the UTF-16 string
         let char_size = Size::from_bytes(2);
@@ -516,13 +516,13 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ptr: Pointer,
         kind: MemoryKind<Self::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer<Borrow>> {
+    ) -> Pointer<Borrow> {
         if !ecx.machine.validate {
             // No tracking
-            Ok(ptr.with_default_tag())
+            ptr.with_default_tag()
         } else {
             let tag = ecx.tag_new_allocation(ptr.alloc_id, kind);
-            Ok(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
+            Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)
         }
     }
 
