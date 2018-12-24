@@ -128,8 +128,8 @@ impl LineIndex {
     }
 }
 
+#[cfg(test)]
 /// Simple reference implementation to use in proptests
-/// and benchmarks as baseline
 pub fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
     let mut res = LineCol {
         line: 0,
@@ -268,6 +268,27 @@ mod test_line_index {
         arb_text()
             .prop_flat_map(|text| (arb_offset(&text), Just(text)))
             .boxed()
+    }
+
+    fn to_line_col(text: &str, offset: TextUnit) -> LineCol {
+        let mut res = LineCol {
+            line: 0,
+            col_utf16: 0,
+        };
+        for (i, c) in text.char_indices() {
+            if i + c.len_utf8() > offset.to_usize() {
+                // if it's an invalid offset, inside a multibyte char
+                // return as if it was at the start of the char
+                break;
+            }
+            if c == '\n' {
+                res.line += 1;
+                res.col_utf16 = 0;
+            } else {
+                res.col_utf16 += 1;
+            }
+        }
+        res
     }
 
     proptest! {

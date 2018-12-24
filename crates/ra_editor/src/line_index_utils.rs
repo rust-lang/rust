@@ -1,6 +1,6 @@
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{TextUnit, TextRange};
-use crate::{LineIndex, LineCol, line_index::{self, Utf16Char}};
+use crate::{LineIndex, LineCol, line_index::Utf16Char};
 use superslice::Ext;
 
 #[derive(Debug, Clone)]
@@ -325,59 +325,34 @@ pub fn translate_offset_with_edit(
     res.to_line_col(offset)
 }
 
-/// Simplest implementation to use as reference in proptest and benchmarks
-pub fn translate_after_edit(
-    pre_edit_text: &str,
-    offset: TextUnit,
-    edits: Vec<AtomTextEdit>,
-) -> LineCol {
-    let text = edit_text(pre_edit_text, edits);
-    line_index::to_line_col(&text, offset)
-}
-
-fn edit_text(pre_edit_text: &str, mut edits: Vec<AtomTextEdit>) -> String {
-    // apply edits ordered from last to first
-    // since they should not overlap we can just use start()
-    edits.sort_by_key(|x| -(x.delete.start().to_usize() as isize));
-
-    let mut text = pre_edit_text.to_owned();
-
-    for edit in &edits {
-        let range = edit.delete.start().to_usize()..edit.delete.end().to_usize();
-        text.replace_range(range, &edit.insert);
-    }
-
-    text
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use proptest::{prelude::*, proptest, proptest_helper};
-    use ra_text_edit::test_utils::{arb_text, arb_offset, arb_edits};
+    use crate::line_index;
+    use ra_text_edit::test_utils::{arb_offset, arb_text_with_edits};
+    use ra_text_edit::TextEdit;
 
     #[derive(Debug)]
     struct ArbTextWithOffsetAndEdits {
         text: String,
+        edits: TextEdit,
         edited_text: String,
         offset: TextUnit,
-        edits: Vec<AtomTextEdit>,
     }
 
-    fn arb_text_with_offset_and_edits() -> BoxedStrategy<ArbTextWithOffsetAndEdits> {
-        arb_text()
-            .prop_flat_map(|text| {
-                (arb_edits(&text), Just(text)).prop_flat_map(|(edits, text)| {
-                    let edited_text = edit_text(&text, edits.clone());
-                    let arb_offset = arb_offset(&edited_text);
-                    (Just(text), Just(edited_text), Just(edits), arb_offset).prop_map(
-                        |(text, edited_text, edits, offset)| ArbTextWithOffsetAndEdits {
-                            text,
-                            edits,
-                            edited_text,
-                            offset,
-                        },
-                    )
+    fn arb_text_with_edits_and_offset() -> BoxedStrategy<ArbTextWithOffsetAndEdits> {
+        arb_text_with_edits()
+            .prop_flat_map(|x| {
+                let edited_text = x.edits.apply(&x.text);
+                let arb_offset = arb_offset(&edited_text);
+                (Just(x), Just(edited_text), arb_offset).prop_map(|(x, edited_text, offset)| {
+                    ArbTextWithOffsetAndEdits {
+                        text: x.text,
+                        edits: x.edits,
+                        edited_text,
+                        offset,
+                    }
                 })
             })
             .boxed()
@@ -385,10 +360,10 @@ mod test {
 
     proptest! {
         #[test]
-        fn test_translate_offset_with_edit(x in arb_text_with_offset_and_edits()) {
+        fn test_translate_offset_with_edit(x in arb_text_with_edits_and_offset()) {
             let expected = line_index::to_line_col(&x.edited_text, x.offset);
             let line_index = LineIndex::new(&x.text);
-            let actual = translate_offset_with_edit(&line_index, x.offset, &x.edits);
+            let actual = translate_offset_with_edit(&line_index, x.offset, x.edits.as_atoms());
 
             assert_eq!(actual, expected);
         }

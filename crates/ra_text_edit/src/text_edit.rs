@@ -26,12 +26,7 @@ impl TextEditBuilder {
         self.atoms.push(AtomTextEdit::insert(offset, text))
     }
     pub fn finish(self) -> TextEdit {
-        let mut atoms = self.atoms;
-        atoms.sort_by_key(|a| (a.delete.start(), a.delete.end()));
-        for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {
-            assert!(a1.delete.end() <= a2.delete.start())
-        }
-        TextEdit { atoms }
+        TextEdit::from_atoms(self.atoms)
     }
     pub fn invalidates_offset(&self, offset: TextUnit) -> bool {
         self.atoms
@@ -41,6 +36,14 @@ impl TextEditBuilder {
 }
 
 impl TextEdit {
+    pub(crate) fn from_atoms(mut atoms: Vec<AtomTextEdit>) -> TextEdit {
+        atoms.sort_by_key(|a| (a.delete.start(), a.delete.end()));
+        for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {
+            assert!(a1.delete.end() <= a2.delete.start())
+        }
+        TextEdit { atoms }
+    }
+
     pub fn as_atoms(&self) -> &[AtomTextEdit] {
         &self.atoms
     }
