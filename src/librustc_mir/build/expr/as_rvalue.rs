@@ -76,6 +76,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
                 block.and(Rvalue::Ref(this.hir.tcx().types.re_erased, borrow_kind, arg_place))
             }
+            ExprKind::AddressOf {
+                mutability,
+                arg,
+            } => {
+                let arg_place = match mutability {
+                    Mutability::Not => unpack!(block = this.as_read_only_place(block, arg)),
+                    Mutability::Mut => unpack!(block = this.as_place(block, arg)),
+                };
+                block.and(Rvalue::AddressOf(mutability, arg_place))
+            }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(block = this.as_operand(block, scope, lhs));
                 let rhs = unpack!(block = this.as_operand(block, scope, rhs));

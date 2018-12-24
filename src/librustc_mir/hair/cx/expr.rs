@@ -11,7 +11,7 @@ use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
-use rustc::mir::BorrowKind;
+use rustc::mir::{BorrowKind, Mutability};
 use syntax_pos::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
@@ -29,7 +29,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         let mut expr = make_mirror_unadjusted(cx, self);
 
         // Now apply adjustments, if any.
-        for adjustment in cx.tables().expr_adjustments(self) {
+        let mut adjustments = cx.tables().expr_adjustments(self);
+
+        expr = adjust_borrow_to_address_of(cx, expr, &mut adjustments);
+
+        for adjustment in adjustments {
             debug!("make_mirror: expr={:?} applying adjustment={:?}",
                    expr,
                    adjustment);
@@ -66,6 +70,65 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         // OK, all done!
         expr
     }
+}
+
+/// Replace a Deref adjustment followed by a RawPtr Borrow adjustment, when
+/// applied to a Borrow expression with an AddressOf expression:
+///
+/// &x as *const _      =>  &const raw x
+/// &mut x as *mut _    =>  &mut raw x
+/// &mut x as *const _  =>  &mut raw x as *const _
+///
+/// This applies whether the coercion is implicit, or from an `as` cast.
+fn adjust_borrow_to_address_of(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    mut expr: Expr<'tcx>,
+    adjustments: &mut &[Adjustment<'tcx>],
+) -> Expr<'tcx> {
+    if let [
+        Adjustment { kind: Adjust::Deref(None), target: _ },
+        Adjustment { kind: Adjust::Borrow(AutoBorrow::RawPtr(m)), target: pointer_ty },
+        ..
+    ] = **adjustments {
+        if let ExprKind::Borrow { borrow_kind, ref arg, .. } = expr.kind {
+            let borrow_mutability = match borrow_kind {
+                BorrowKind::Mut { .. } | BorrowKind::Unique => Mutability::Mut,
+                BorrowKind::Shared | BorrowKind::Shallow => Mutability::Not,
+            };
+            expr.kind = ExprKind::AddressOf { mutability: borrow_mutability, arg: arg.clone() };
+            expr.ty = if m == borrow_mutability.into() {
+                pointer_ty
+            } else {
+                match pointer_ty.sty {
+                    ty::RawPtr(mut tm) => {
+                        tm.mutbl = borrow_mutability.into();
+                        cx.tcx().mk_ptr(tm)
+                    }
+                    _ => bug!("RawPtr borrow resulting in type {:?}", pointer_ty),
+                }
+            };
+
+            match (borrow_mutability, m) {
+                (Mutability::Not, hir::MutImmutable)
+                | (Mutability::Mut, hir::MutMutable) => (),
+                (Mutability::Mut, hir::MutImmutable) => {
+                    expr = Expr {
+                        ty: pointer_ty,
+                        temp_lifetime: expr.temp_lifetime,
+                        span: expr.span,
+                        kind: ExprKind::Cast { source: expr.to_ref() },
+                    }
+                }
+                (Mutability::Not, hir::MutMutable) => {
+                    bug!("Adjustment from &T to *mut T");
+                }
+            }
+
+            *adjustments = &adjustments[2..];
+        }
+    }
+
+    expr
 }
 
 fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
@@ -138,54 +201,14 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
         Adjust::Borrow(AutoBorrow::RawPtr(m)) => {
-            // Convert this to a suitable `&foo` and
-            // then an unsafe coercion.
-            expr = Expr {
-                temp_lifetime,
-                ty: cx.tcx.mk_ref(cx.tcx.types.re_erased,
-                                  ty::TypeAndMut {
-                                    ty: expr.ty,
-                                    mutbl: m,
-                                  }),
-                span,
-                kind: ExprKind::Borrow {
-                    borrow_kind: m.to_borrow_kind(),
-                    arg: expr.to_ref(),
-                },
+            let mir_mutability = match m {
+                hir::MutImmutable => Mutability::Not,
+                hir::MutMutable => Mutability::Mut,
             };
-            let cast_expr = Expr {
-                temp_lifetime,
-                ty: adjustment.target,
-                span,
-                kind: ExprKind::Cast { source: expr.to_ref() }
-            };
-
-            // To ensure that both implicit and explicit coercions are
-            // handled the same way, we insert an extra layer of indirection here.
-            // For explicit casts (e.g., 'foo as *const T'), the source of the 'Use'
-            // will be an ExprKind::Hair with the appropriate cast expression. Here,
-            // we make our Use source the generated Cast from the original coercion.
-            //
-            // In both cases, this outer 'Use' ensures that the inner 'Cast' is handled by
-            // as_operand, not by as_rvalue - causing the cast result to be stored in a temporary.
-            // Ordinary, this is identical to using the cast directly as an rvalue. However, if the
-            // source of the cast was previously borrowed as mutable, storing the cast in a
-            // temporary gives the source a chance to expire before the cast is used. For
-            // structs with a self-referential *mut ptr, this allows assignment to work as
-            // expected.
-            //
-            // For example, consider the type 'struct Foo { field: *mut Foo }',
-            // The method 'fn bar(&mut self) { self.field = self }'
-            // triggers a coercion from '&mut self' to '*mut self'. In order
-            // for the assignment to be valid, the implicit borrow
-            // of 'self' involved in the coercion needs to end before the local
-            // containing the '*mut T' is assigned to 'self.field' - otherwise,
-            // we end up trying to assign to 'self.field' while we have another mutable borrow
-            // active.
-            //
-            // We only need to worry about this kind of thing for coercions from refs to ptrs,
-            // since they get rid of a borrow implicitly.
-            ExprKind::Use { source: cast_expr.to_ref() }
+            ExprKind::AddressOf {
+                mutability: mir_mutability,
+                arg: expr.to_ref(),
+            }
         }
         Adjust::Unsize => {
             // See the above comment for Adjust::Deref

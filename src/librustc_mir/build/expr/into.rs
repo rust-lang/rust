@@ -386,6 +386,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Unsize { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
+            | ExprKind::AddressOf { .. }
             | ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
             | ExprKind::Adt { .. }

@@ -18,25 +18,22 @@ fn main() {
 // START rustc.main.EraseRegions.after.mir
 //     bb0: {
 //         ...
-//         _6 = &mut _2;
-//         _5 = &mut (*_6);
-//         _4 = move _5 as *mut usize (Misc);
-//         _3 = move _4;
+//         _3 = &mut raw _2;
 //         ...
-//         _8 = _3;
-//         _7 = const foo(move _8) -> bb1;
+//         _5 = _3;
+//         _4 = const foo(move _5) -> bb1;
 //     }
 //
 //     bb1: {
 //         ...
-//         _9 = _2;
-//         _10 = Len(_1);
-//         _11 = Lt(_9, _10);
-//         assert(move _11, "index out of bounds: the len is move _10 but the index is _9") -> bb2;
+//         _6 = _2;
+//         _7 = Len(_1);
+//         _8 = Lt(_6, _7);
+//         assert(move _8, "index out of bounds: the len is move _7 but the index is _6") -> bb2;
 //     }
 //
 //     bb2: {
-//         _1[_9] = move _7;
+//         _1[_6] = move _4;
 //         ...
 //         return;
 //     }

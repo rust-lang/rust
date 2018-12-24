@@ -65,6 +65,7 @@ impl Category {
             | ExprKind::Unsize { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
+            | ExprKind::AddressOf { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::Yield { .. }

@@ -4,7 +4,7 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc::mir::{BinOp, BorrowKind, Field, UnOp, Mutability};
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
@@ -236,6 +236,10 @@ pub enum ExprKind<'tcx> {
     },
     Borrow {
         borrow_kind: BorrowKind,
+        arg: ExprRef<'tcx>,
+    },
+    AddressOf {
+        mutability: Mutability,
         arg: ExprRef<'tcx>,
     },
     Break {
