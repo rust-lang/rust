@@ -30,6 +30,8 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
+#![recursion_limit="256"]
+
 #[macro_use]
 extern crate syntax;
 #[macro_use]
