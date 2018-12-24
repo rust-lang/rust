@@ -364,7 +364,7 @@ impl AnalysisImpl {
             .map(|d| Diagnostic {
                 range: d.range,
                 message: d.msg,
-                severity: d.severity,
+                severity: Some(d.severity),
                 fix: None,
             })
             .collect::<Vec<_>>();
