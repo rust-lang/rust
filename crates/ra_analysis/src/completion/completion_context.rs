@@ -1,12 +1,13 @@
 use ra_editor::find_node_at_offset;
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
-    algo::find_leaf_at_offset,
+    algo::{find_leaf_at_offset, find_covering_node},
     ast,
     AstNode,
     SyntaxNodeRef,
     SourceFileNode,
     TextUnit,
+    TextRange,
     SyntaxKind::*,
 };
 use hir::source_binder;
@@ -65,7 +66,7 @@ impl<'a> CompletionContext<'a> {
         Ok(Some(ctx))
     }
 
-    fn fill(&mut self, original_file: &SourceFileNode, offset: TextUnit) {
+    fn fill(&mut self, original_file: &'a SourceFileNode, offset: TextUnit) {
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
@@ -82,7 +83,7 @@ impl<'a> CompletionContext<'a> {
                 self.is_param = true;
                 return;
             }
-            self.classify_name_ref(&file, name_ref);
+            self.classify_name_ref(original_file, name_ref);
         }
 
         // Otherwise, see if this is a declaration. We can use heuristics to
@@ -94,7 +95,7 @@ impl<'a> CompletionContext<'a> {
             }
         }
     }
-    fn classify_name_ref(&mut self, file: &SourceFileNode, name_ref: ast::NameRef) {
+    fn classify_name_ref(&mut self, original_file: &'a SourceFileNode, name_ref: ast::NameRef) {
         let name_range = name_ref.syntax().range();
         let top_node = name_ref
             .syntax()
@@ -144,7 +145,9 @@ impl<'a> CompletionContext<'a> {
                 };
 
                 if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
-                    if let Some(if_expr) = find_node_at_offset::<ast::IfExpr>(file.syntax(), off) {
+                    if let Some(if_expr) =
+                        find_node_at_offset::<ast::IfExpr>(original_file.syntax(), off)
+                    {
                         if if_expr.syntax().range().end() < name_ref.syntax().range().start() {
                             self.after_if = true;
                         }
@@ -152,24 +155,31 @@ impl<'a> CompletionContext<'a> {
                 }
             }
         }
-        if let Some(_field_expr) = ast::FieldExpr::cast(parent) {
-            self.dot_receiver = self
-                .leaf
-                .ancestors()
-                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-                .find_map(ast::FieldExpr::cast)
-                .and_then(ast::FieldExpr::expr);
+        if let Some(field_expr) = ast::FieldExpr::cast(parent) {
+            // The receiver comes before the point of insertion of the fake
+            // ident, so it should have the same range in the non-modified file
+            self.dot_receiver = field_expr
+                .expr()
+                .map(|e| e.syntax().range())
+                .and_then(|r| find_node_with_range(original_file.syntax(), r));
         }
-        if let Some(_method_call_expr) = ast::MethodCallExpr::cast(parent) {
-            self.dot_receiver = self
-                .leaf
-                .ancestors()
-                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-                .find_map(ast::MethodCallExpr::cast)
-                .and_then(ast::MethodCallExpr::expr);
+        if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
+            // As above
+            self.dot_receiver = method_call_expr
+                .expr()
+                .map(|e| e.syntax().range())
+                .and_then(|r| find_node_with_range(original_file.syntax(), r));
             self.is_method_call = true;
         }
     }
+}
+
+fn find_node_with_range<'a, N: AstNode<'a>>(
+    syntax: SyntaxNodeRef<'a>,
+    range: TextRange,
+) -> Option<N> {
+    let node = find_covering_node(syntax, range);
+    node.ancestors().find_map(N::cast)
 }
 
 fn is_node<'a, N: AstNode<'a>>(node: SyntaxNodeRef<'a>) -> bool {

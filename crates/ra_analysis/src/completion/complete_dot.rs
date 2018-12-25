@@ -33,9 +33,9 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Ca
     Ok(())
 }
 
-fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, ty: Ty) -> Cancelable<()> {
+fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) -> Cancelable<()> {
     // TODO: autoderef etc.
-    match ty {
+    match receiver {
         Ty::Adt { def_id, .. } => {
             match def_id.resolve(ctx.db)? {
                 Def::Struct(s) => {
