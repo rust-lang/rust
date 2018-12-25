@@ -432,7 +432,7 @@ fn test_gen_deprecated() {
             "should_assert_eq",
             "group1",
             "abc",
-            Some("has been superseeded by should_assert_eq2"),
+            Some("has been superseded by should_assert_eq2"),
             "module_name",
         ),
         Lint::new(
@@ -447,7 +447,7 @@ fn test_gen_deprecated() {
     let expected: Vec<String> = vec![
         "    store.register_removed(",
         "        \"should_assert_eq\",",
-        "        \"has been superseeded by should_assert_eq2\",",
+        "        \"has been superseded by should_assert_eq2\",",
         "    );",
         "    store.register_removed(",
         "        \"another_deprecated\",",

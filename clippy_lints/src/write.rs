@@ -257,7 +257,7 @@ impl EarlyLintPass for Pass {
 }
 
 /// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
-/// options. The first part of the tuple is `format_str` of the macros. The secund part of the tuple
+/// options. The first part of the tuple is `format_str` of the macros. The second part of the tuple
 /// is in the `write[ln]!` case the expression the `format_str` should be written to.
 ///
 /// Example:
