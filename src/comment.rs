@@ -1321,6 +1321,11 @@ impl<'a> Iterator for LineClasses<'a> {
             }
         }
 
+        // Workaround for CRLF newline.
+        if line.ends_with('\r') {
+            line.pop();
+        }
+
         Some((self.kind, line))
     }
 }
