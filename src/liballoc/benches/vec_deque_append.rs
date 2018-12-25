@@ -1,4 +1,4 @@
-#![feature(duration_as_u128)]
+#![cfg_attr(stage0, feature(duration_as_u128))]
 use std::{collections::VecDeque, time::Instant};
 
 const VECDEQUE_LEN: i32 = 100000;
