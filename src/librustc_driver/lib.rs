@@ -210,7 +210,14 @@ pub fn run<F>(run_compiler: F) -> isize
 }
 
 fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
-    let lib = DynamicLibrary::open(Some(path)).unwrap_or_else(|err| {
+    // Note that we're specifically using `open_global_now` here rather than
+    // `open`, namely we want the behavior on Unix of RTLD_GLOBAL and RTLD_NOW,
+    // where NOW means "bind everything right now" because we don't want
+    // surprises later on and RTLD_GLOBAL allows the symbols to be made
+    // available for future dynamic libraries opened. This is currently used by
+    // loading LLVM and then making its symbols available for other dynamic
+    // libraries.
+    let lib = DynamicLibrary::open_global_now(path).unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
         early_error(ErrorOutputType::default(), &err);
     });

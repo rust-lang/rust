@@ -1887,13 +1887,13 @@ impl Step for HashSign {
 // LLVM tools are linked dynamically.
 // Note: This function does no yet support Windows but we also don't support
 //       linking LLVM tools dynamically on Windows yet.
-pub fn maybe_install_llvm_dylib(builder: &Builder,
-                                target: Interned<String>,
-                                sysroot: &Path) {
+fn maybe_install_llvm_dylib(builder: &Builder,
+                            target: Interned<String>,
+                            image: &Path) {
     let src_libdir = builder
         .llvm_out(target)
         .join("lib");
-    let dst_libdir = sysroot.join("lib/rustlib").join(&*target).join("lib");
+    let dst_libdir = image.join("lib/rustlib").join(&*target).join("lib");
     t!(fs::create_dir_all(&dst_libdir));
 
     if target.contains("apple-darwin") {
