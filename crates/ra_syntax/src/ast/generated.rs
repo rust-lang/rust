@@ -1123,7 +1123,15 @@ impl<R: TreeRoot<RaTypes>> FieldExprNode<R> {
 }
 
 
-impl<'a> FieldExpr<'a> {}
+impl<'a> FieldExpr<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn name_ref(self) -> Option<NameRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // FieldPatList
 #[derive(Debug, Clone, Copy,)]

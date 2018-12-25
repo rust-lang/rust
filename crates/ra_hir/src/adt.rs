@@ -22,6 +22,10 @@ impl Struct {
         self.def_id
     }
 
+    pub fn variant_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<VariantData>> {
+        Ok(db.struct_data(self.def_id)?.variant_data.clone())
+    }
+
     pub fn struct_data(&self, db: &impl HirDatabase) -> Cancelable<Arc<StructData>> {
         Ok(db.struct_data(self.def_id)?)
     }
@@ -162,6 +166,11 @@ impl VariantData {
             StructFlavor::Unit => VariantData::Unit,
         })
     }
+
+    pub(crate) fn get_field_ty(&self, field_name: &str) -> Option<Ty> {
+        self.fields().iter().find(|f| f.name == field_name).map(|f| f.ty.clone())
+    }
+
     pub fn fields(&self) -> &[StructField] {
         match *self {
             VariantData::Struct(ref fields) | VariantData::Tuple(ref fields) => fields,

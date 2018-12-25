@@ -406,7 +406,7 @@ Grammar(
             options: [ "Expr" ],
         ),
         "IndexExpr": (),
-        "FieldExpr": (),
+        "FieldExpr": (options: ["Expr", "NameRef"]),
         "TryExpr": (options: ["Expr"]),
         "CastExpr": (options: ["Expr", "TypeRef"]),
         "RefExpr": (options: ["Expr"]),

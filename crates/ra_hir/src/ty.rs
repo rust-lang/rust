@@ -384,6 +384,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
+    fn infer_expr_opt(&mut self, expr: Option<ast::Expr>) -> Cancelable<Ty> {
+        if let Some(e) = expr {
+            self.infer_expr(e)
+        } else {
+            Ok(Ty::Unknown)
+        }
+    }
+
     fn infer_expr(&mut self, expr: ast::Expr) -> Cancelable<Ty> {
         let ty = match expr {
             ast::Expr::IfExpr(e) => {
@@ -559,7 +567,29 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             ast::Expr::IndexExpr(_e) => Ty::Unknown,
-            ast::Expr::FieldExpr(_e) => Ty::Unknown,
+            ast::Expr::FieldExpr(e) => {
+                let receiver_ty = self.infer_expr_opt(e.expr())?;
+                if let Some(nr) = e.name_ref() {
+                    let text = nr.text();
+                    match receiver_ty {
+                        Ty::Tuple(fields) => {
+                            let i = text.parse::<usize>().ok();
+                            i.and_then(|i| fields.get(i).cloned()).unwrap_or(Ty::Unknown)
+                        }
+                        Ty::Adt { def_id, .. } => {
+                            let field_ty = match def_id.resolve(self.db)? {
+                                Def::Struct(s) => s.variant_data(self.db)?.get_field_ty(&text),
+                                // TODO unions
+                                _ => None,
+                            };
+                            field_ty.unwrap_or(Ty::Unknown)
+                        }
+                        _ => Ty::Unknown,
+                    }
+                } else {
+                    Ty::Unknown
+                }
+            },
             ast::Expr::TryExpr(e) => {
                 let _inner_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)?
