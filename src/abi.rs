@@ -6,7 +6,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 enum PassMode {
     NoPass,
     ByVal(Type),
@@ -306,6 +306,37 @@ fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!("msg   loc.idx    param    pass mode            ssa flags  ty"));
 }
 
+fn arg_place<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    local: Local,
+    layout: TyLayout<'tcx>,
+    is_ssa: bool,
+) -> CPlace<'tcx> {
+    let place = if is_ssa {
+        fx.bcx.declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
+        CPlace::Var(local, layout)
+    } else {
+        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+            kind: StackSlotKind::ExplicitSlot,
+            size: layout.size.bytes() as u32,
+            offset: None,
+        });
+
+        CPlace::from_stack_slot(fx, stack_slot, layout.ty)
+    };
+
+    debug_assert!(fx.local_map.insert(local, place).is_none());
+    fx.local_map[&local]
+}
+
+fn param_to_cvalue<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>, ebb_param: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+    match get_pass_mode(fx.tcx, fx.self_sig().abi, layout.ty, false) {
+        PassMode::NoPass => unimplemented!("pass mode nopass"),
+        PassMode::ByVal(_) => CValue::ByVal(ebb_param, layout),
+        PassMode::ByRef => CValue::ByRef(ebb_param, layout),
+    }
+}
+
 pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     start_ebb: Ebb,
@@ -344,19 +375,24 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 };
 
                 let mut ebb_params = Vec::new();
-                for arg_ty in tupled_arg_tys.iter() {
-                    let clif_type =
-                        get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
-                    ebb_params.push(fx.bcx.append_ebb_param(start_ebb, clif_type));
+                for (i, arg_ty) in tupled_arg_tys.iter().enumerate() {
+                    let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);;
+                    let clif_type = pass_mode.get_param_ty(fx);
+                    let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
+                    add_local_comment(fx, "arg", local, Some(i), Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], arg_ty);
+                    ebb_params.push(ebb_param);
                 }
 
                 (local, ArgKind::Spread(ebb_params), arg_ty)
             } else {
                 let clif_type =
                     get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
+                let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
+                let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
+                add_local_comment(fx, "arg", local, None, Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], arg_ty);
                 (
                     local,
-                    ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, clif_type)),
+                    ArgKind::Normal(ebb_param),
                     arg_ty,
                 )
             }
@@ -370,7 +406,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     match output_pass_mode {
         PassMode::NoPass => {
             let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
-            //unimplemented!("pass mode nopass");
             fx.local_map.insert(
                 RETURN_PLACE,
                 CPlace::Addr(null, None, fx.layout_of(fx.return_type())),
@@ -395,74 +430,26 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
 
+        let is_ssa = !ssa_analyzed
+            .get(&local)
+            .unwrap()
+            .contains(crate::analyze::Flags::NOT_SSA);
+
         match arg_kind {
             ArgKind::Normal(ebb_param) => {
-                let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false);
-                add_local_comment(fx, "arg", local, None, Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], ty);
+                let cvalue = param_to_cvalue(fx, ebb_param, layout);
+                arg_place(fx, local, layout, is_ssa).write_cvalue(fx, cvalue);
             }
-            ArgKind::Spread(ref ebb_params) => {
-                for (i, &ebb_param) in ebb_params.iter().enumerate() {
-                    let sub_layout = layout.field(fx, i);
-                    let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, sub_layout.ty, false);
-                    add_local_comment(fx, "arg", local, Some(i), Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], sub_layout.ty);
-                }
-            }
-        }
-
-        if let ArgKind::Normal(ebb_param) = arg_kind {
-            if !ssa_analyzed
-                .get(&local)
-                .unwrap()
-                .contains(crate::analyze::Flags::NOT_SSA)
-            {
-                fx.bcx
-                    .declare_var(mir_var(local), fx.clif_type(ty).unwrap());
-                match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
-                    PassMode::NoPass => unimplemented!("pass mode nopass"),
-                    PassMode::ByVal(_) => fx.bcx.def_var(mir_var(local), ebb_param),
-                    PassMode::ByRef => {
-                        let val = CValue::ByRef(ebb_param, fx.layout_of(ty)).load_value(fx);
-                        fx.bcx.def_var(mir_var(local), val);
-                    }
-                }
-                fx.local_map.insert(local, CPlace::Var(local, layout));
-                continue;
-            }
-        }
-
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: layout.size.bytes() as u32,
-            offset: None,
-        });
-
-        let place = CPlace::from_stack_slot(fx, stack_slot, ty);
-
-        match arg_kind {
-            ArgKind::Normal(ebb_param) => match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false)
-            {
-                PassMode::NoPass => unimplemented!("pass mode nopass"),
-                PassMode::ByVal(_) => {
-                    place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout()))
-                }
-                PassMode::ByRef => place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout())),
-            },
             ArgKind::Spread(ebb_params) => {
+                let place = arg_place(fx, local, layout, is_ssa);
+
                 for (i, ebb_param) in ebb_params.into_iter().enumerate() {
                     let sub_place = place.place_field(fx, mir::Field::new(i));
-                    match get_pass_mode(fx.tcx, fx.self_sig().abi, sub_place.layout().ty, false) {
-                        PassMode::NoPass => unimplemented!("pass mode nopass"),
-                        PassMode::ByVal(_) => {
-                            sub_place.write_cvalue(fx, CValue::ByVal(ebb_param, sub_place.layout()))
-                        }
-                        PassMode::ByRef => {
-                            sub_place.write_cvalue(fx, CValue::ByRef(ebb_param, sub_place.layout()))
-                        }
-                    }
+                    let cvalue = param_to_cvalue(fx, ebb_param, sub_place.layout());
+                    sub_place.write_cvalue(fx, cvalue);
                 }
             }
         }
-        fx.local_map.insert(local, place);
     }
 
     for local in fx.mir.vars_and_temps_iter() {
