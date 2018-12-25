@@ -105,7 +105,7 @@ pub fn rewrite_string<'a>(
         // All the input starting at cur_start fits on the current line
         if graphemes.len() - cur_start <= cur_max_chars {
             for (i, grapheme) in graphemes[cur_start..].iter().enumerate() {
-                if is_line_feed(grapheme) {
+                if is_new_line(grapheme) {
                     // take care of blank lines
                     result = trim_end_but_line_feed(fmt.trim_end, result);
                     result.push_str("\n");
@@ -223,7 +223,7 @@ enum SnippetState {
 }
 
 fn not_whitespace_except_line_feed(g: &str) -> bool {
-    is_line_feed(g) || !is_whitespace(g)
+    is_new_line(g) || !is_whitespace(g)
 }
 
 /// Break the input string at a boundary character around the offset `max_chars`. A boundary
@@ -240,7 +240,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
         // line. If there is one, then text after it could be rewritten in a way that the available
         // space is fully used.
         for (i, grapheme) in input[0..=index].iter().enumerate() {
-            if is_line_feed(grapheme) {
+            if is_new_line(grapheme) {
                 if i <= index_minus_ws {
                     let mut line = &input[0..i].concat()[..];
                     if trim_end {
@@ -254,7 +254,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
 
         let mut index_plus_ws = index;
         for (i, grapheme) in input[index + 1..].iter().enumerate() {
-            if !trim_end && is_line_feed(grapheme) {
+            if !trim_end && is_new_line(grapheme) {
                 return SnippetState::EndWithLineFeed(
                     input[0..=index + 1 + i].concat(),
                     index + 2 + i,
@@ -325,8 +325,9 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
     }
 }
 
-fn is_line_feed(grapheme: &str) -> bool {
-    grapheme.as_bytes()[0] == b'\n'
+fn is_new_line(grapheme: &str) -> bool {
+    let bytes = grapheme.as_bytes();
+    bytes.starts_with(b"\n") || bytes.starts_with(b"\r\n")
 }
 
 fn is_whitespace(grapheme: &str) -> bool {
