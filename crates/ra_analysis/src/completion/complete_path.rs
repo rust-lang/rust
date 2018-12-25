@@ -8,7 +8,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         (Some(path), Some(module)) => (path.clone(), module),
         _ => return Ok(()),
     };
-    let def_id = match module.resolve_path(ctx.db, path)?.take_types() {
+    let def_id = match module.resolve_path(ctx.db, &path)?.take_types() {
         Some(it) => it,
         None => return Ok(()),
     };

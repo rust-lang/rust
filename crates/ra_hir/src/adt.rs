@@ -145,7 +145,7 @@ impl VariantData {
                     .map(|(i, fd)| {
                         Ok(StructField {
                             name: SmolStr::new(i.to_string()),
-                            ty: Ty::new_opt(db, &module, fd.type_ref())?,
+                            ty: Ty::from_ast_opt(db, &module, fd.type_ref())?,
                         })
                     })
                     .collect::<Cancelable<_>>()?;
@@ -160,7 +160,7 @@ impl VariantData {
                                 .name()
                                 .map(|n| n.text())
                                 .unwrap_or_else(|| SmolStr::new("[error]")),
-                            ty: Ty::new_opt(db, &module, fd.type_ref())?,
+                            ty: Ty::from_ast_opt(db, &module, fd.type_ref())?,
                         })
                     })
                     .collect::<Cancelable<_>>()?;

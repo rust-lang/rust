@@ -19,37 +19,8 @@ use crate::{
     Def, DefId, FnScopes, Module, Function, Struct, Enum, Path,
     db::HirDatabase,
     adt::VariantData,
+    type_ref::{TypeRef, Mutability},
 };
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Mutability {
-    Shared,
-    Mut,
-}
-
-impl Mutability {
-    pub fn from_mutable(mutable: bool) -> Mutability {
-        if mutable {
-            Mutability::Mut
-        } else {
-            Mutability::Shared
-        }
-    }
-
-    pub fn as_keyword_for_ref(self) -> &'static str {
-        match self {
-            Mutability::Shared => "",
-            Mutability::Mut => "mut ",
-        }
-    }
-
-    pub fn as_keyword_for_ptr(self) -> &'static str {
-        match self {
-            Mutability::Shared => "const ",
-            Mutability::Mut => "mut ",
-        }
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Ty {
@@ -156,16 +127,58 @@ pub struct FnSig {
 }
 
 impl Ty {
-    pub(crate) fn new_from_ast_path(
+    pub(crate) fn from_hir(
         db: &impl HirDatabase,
         module: &Module,
-        path: ast::Path,
+        type_ref: &TypeRef,
     ) -> Cancelable<Self> {
-        let path = if let Some(p) = Path::from_ast(path) {
-            p
-        } else {
-            return Ok(Ty::Unknown);
-        };
+        Ok(match type_ref {
+            TypeRef::Never => Ty::Never,
+            TypeRef::Tuple(inner) => {
+                let inner_tys = inner
+                    .iter()
+                    .map(|tr| Ty::from_hir(db, module, tr))
+                    .collect::<Cancelable<_>>()?;
+                Ty::Tuple(inner_tys)
+            }
+            TypeRef::Path(path) => Ty::from_hir_path(db, module, path)?,
+            TypeRef::RawPtr(inner, mutability) => {
+                let inner_ty = Ty::from_hir(db, module, inner)?;
+                Ty::RawPtr(Arc::new(inner_ty), *mutability)
+            }
+            TypeRef::Array(_inner) => Ty::Unknown, // TODO
+            TypeRef::Slice(inner) => {
+                let inner_ty = Ty::from_hir(db, module, inner)?;
+                Ty::Slice(Arc::new(inner_ty))
+            }
+            TypeRef::Reference(inner, mutability) => {
+                let inner_ty = Ty::from_hir(db, module, inner)?;
+                Ty::Ref(Arc::new(inner_ty), *mutability)
+            }
+            TypeRef::Placeholder => Ty::Unknown, // TODO
+            TypeRef::Fn(params) => {
+                let mut inner_tys = params
+                    .iter()
+                    .map(|tr| Ty::from_hir(db, module, tr))
+                    .collect::<Cancelable<Vec<_>>>()?;
+                let return_ty = inner_tys
+                    .pop()
+                    .expect("TypeRef::Fn should always have at least return type");
+                let sig = FnSig {
+                    input: inner_tys,
+                    output: return_ty,
+                };
+                Ty::FnPtr(Arc::new(sig))
+            }
+            TypeRef::Error => Ty::Unknown,
+        })
+    }
+
+    pub(crate) fn from_hir_path(
+        db: &impl HirDatabase,
+        module: &Module,
+        path: &Path,
+    ) -> Cancelable<Self> {
         if path.is_ident() {
             let name = &path.segments[0];
             if let Some(int_ty) = primitive::IntTy::from_string(&name) {
@@ -187,50 +200,22 @@ impl Ty {
         Ok(ty)
     }
 
-    pub(crate) fn new_opt(
+    // TODO: These should not be necessary long-term, since everything will work on HIR
+    pub(crate) fn from_ast_opt(
         db: &impl HirDatabase,
         module: &Module,
         node: Option<ast::TypeRef>,
     ) -> Cancelable<Self> {
-        node.map(|n| Ty::new(db, module, n))
+        node.map(|n| Ty::from_ast(db, module, n))
             .unwrap_or(Ok(Ty::Unknown))
     }
 
-    pub(crate) fn new(
+    pub(crate) fn from_ast(
         db: &impl HirDatabase,
         module: &Module,
         node: ast::TypeRef,
     ) -> Cancelable<Self> {
-        use ra_syntax::ast::TypeRef::*;
-        Ok(match node {
-            ParenType(inner) => Ty::new_opt(db, module, inner.type_ref())?,
-            TupleType(_inner) => Ty::Unknown, // TODO
-            NeverType(..) => Ty::Never,
-            PathType(inner) => {
-                if let Some(path) = inner.path() {
-                    Ty::new_from_ast_path(db, module, path)?
-                } else {
-                    Ty::Unknown
-                }
-            }
-            PointerType(inner) => {
-                let inner_ty = Ty::new_opt(db, module, inner.type_ref())?;
-                let mutability = Mutability::from_mutable(inner.is_mut());
-                Ty::RawPtr(Arc::new(inner_ty), mutability)
-            }
-            ArrayType(_inner) => Ty::Unknown, // TODO
-            SliceType(_inner) => Ty::Unknown, // TODO
-            ReferenceType(inner) => {
-                let inner_ty = Ty::new_opt(db, module, inner.type_ref())?;
-                let mutability = Mutability::from_mutable(inner.is_mut());
-                Ty::Ref(Arc::new(inner_ty), mutability)
-            }
-            PlaceholderType(_inner) => Ty::Unknown, // TODO
-            FnPointerType(_inner) => Ty::Unknown,   // TODO
-            ForType(_inner) => Ty::Unknown,         // TODO
-            ImplTraitType(_inner) => Ty::Unknown,   // TODO
-            DynTraitType(_inner) => Ty::Unknown,    // TODO
-        })
+        Ty::from_hir(db, module, &TypeRef::from_ast(node))
     }
 
     pub fn unit() -> Self {
@@ -280,11 +265,11 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
         .param_list()
         .map(|pl| {
             pl.params()
-                .map(|p| Ty::new_opt(db, &module, p.type_ref()))
+                .map(|p| Ty::from_ast_opt(db, &module, p.type_ref()))
                 .collect()
         })
         .unwrap_or_else(|| Ok(Vec::new()))?;
-    let output = Ty::new_opt(db, &module, node.ret_type().and_then(|rt| rt.type_ref()))?;
+    let output = Ty::from_ast_opt(db, &module, node.ret_type().and_then(|rt| rt.type_ref()))?;
     let sig = FnSig { input, output };
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
@@ -390,7 +375,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
 
         // resolve in module
-        let resolved = ctry!(self.module.resolve_path(self.db, path)?.take_values());
+        let resolved = ctry!(self.module.resolve_path(self.db, &path)?.take_values());
         let ty = self.db.type_for_def(resolved)?;
         // TODO we will need to add type variables for type parameters etc. here
         Ok(Some(ty))
@@ -405,7 +390,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         } else {
             return Ok((Ty::Unknown, None));
         };
-        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, path)?.take_types() {
+        let def_id = if let Some(def_id) = self.module.resolve_path(self.db, &path)?.take_types() {
             def_id
         } else {
             return Ok((Ty::Unknown, None));
@@ -575,7 +560,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             ast::Expr::CastExpr(e) => {
                 let _inner_ty = self.infer_expr_opt(e.expr())?;
-                let cast_ty = Ty::new_opt(self.db, &self.module, e.type_ref())?;
+                let cast_ty = Ty::from_ast_opt(self.db, &self.module, e.type_ref())?;
                 // TODO do the coercion...
                 cast_ty
             }
@@ -620,7 +605,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for stmt in node.statements() {
             match stmt {
                 ast::Stmt::LetStmt(stmt) => {
-                    let decl_ty = Ty::new_opt(self.db, &self.module, stmt.type_ref())?;
+                    let decl_ty = Ty::from_ast_opt(self.db, &self.module, stmt.type_ref())?;
                     let ty = if let Some(expr) = stmt.initializer() {
                         // TODO pass expectation
                         let expr_ty = self.infer_expr(expr)?;
@@ -665,7 +650,7 @@ pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceR
                 continue;
             };
             if let Some(type_ref) = param.type_ref() {
-                let ty = Ty::new(db, &ctx.module, type_ref)?;
+                let ty = Ty::from_ast(db, &ctx.module, type_ref)?;
                 ctx.type_of.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
             } else {
                 // TODO self param

@@ -451,7 +451,7 @@ where
                                 segments: import.path.segments[i + 1..].iter().cloned().collect(),
                                 kind: PathKind::Crate,
                             };
-                            let def_id = module.resolve_path(self.db, path)?;
+                            let def_id = module.resolve_path(self.db, &path)?;
                             if !def_id.is_none() {
                                 self.update(module_id, |items| {
                                     let res = Resolution {

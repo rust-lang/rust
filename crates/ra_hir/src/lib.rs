@@ -26,6 +26,7 @@ mod krate;
 mod module;
 mod function;
 mod adt;
+mod type_ref;
 mod ty;
 
 use std::ops::Index;

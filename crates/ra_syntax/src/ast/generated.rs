@@ -131,7 +131,15 @@ impl<R: TreeRoot<RaTypes>> ArrayTypeNode<R> {
 }
 
 
-impl<'a> ArrayType<'a> {}
+impl<'a> ArrayType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // Attr
 #[derive(Debug, Clone, Copy,)]
@@ -1258,7 +1266,15 @@ impl<R: TreeRoot<RaTypes>> FnPointerTypeNode<R> {
 }
 
 
-impl<'a> FnPointerType<'a> {}
+impl<'a> FnPointerType<'a> {
+    pub fn param_list(self) -> Option<ParamList<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn ret_type(self) -> Option<RetType<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // ForExpr
 #[derive(Debug, Clone, Copy,)]
@@ -1341,7 +1357,11 @@ impl<R: TreeRoot<RaTypes>> ForTypeNode<R> {
 }
 
 
-impl<'a> ForType<'a> {}
+impl<'a> ForType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // IfExpr
 #[derive(Debug, Clone, Copy,)]
@@ -3490,7 +3510,11 @@ impl<R: TreeRoot<RaTypes>> SliceTypeNode<R> {
 }
 
 
-impl<'a> SliceType<'a> {}
+impl<'a> SliceType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // SourceFile
 #[derive(Debug, Clone, Copy,)]
@@ -4025,7 +4049,11 @@ impl<R: TreeRoot<RaTypes>> TupleTypeNode<R> {
 }
 
 
-impl<'a> TupleType<'a> {}
+impl<'a> TupleType<'a> {
+    pub fn fields(self) -> impl Iterator<Item = TypeRef<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // TypeDef
 #[derive(Debug, Clone, Copy,)]

@@ -115,7 +115,7 @@ impl Module {
         Ok(res)
     }
 
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: Path) -> Cancelable<PerNs<DefId>> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> Cancelable<PerNs<DefId>> {
         let mut curr_per_ns = PerNs::types(
             match path.kind {
                 PathKind::Crate => self.crate_root(),
@@ -131,7 +131,7 @@ impl Module {
             .def_id(db),
         );
 
-        let segments = path.segments;
+        let segments = &path.segments;
         for name in segments.iter() {
             let curr = if let Some(r) = curr_per_ns.as_ref().take(Namespace::Types) {
                 r
