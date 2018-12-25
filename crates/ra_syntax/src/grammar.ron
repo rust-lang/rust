@@ -261,18 +261,20 @@ Grammar(
                 "TypeParamsOwner",
                 "AttrsOwner",
                 "DocCommentsOwner"
-            ],
-            collections: [
-                ["fields", "NamedFieldDef"]
             ]
         ),
-        "NamedFieldDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
+        "NamedFieldDef": ( traits: ["NameOwner", "AttrsOwner"], options: ["TypeRef"] ),
+        "PosFieldList": (collections: [["fields", "PosField"]]),
+        "PosField": ( traits: ["AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
             "DocCommentsOwner"
-        ] ),
+        ], options: [["variant_list", "EnumVariantList"]] ),
+        "EnumVariantList": ( collections: [["variants", "EnumVariant"]] ),
+        "EnumVariant": ( traits: ["NameOwner"], options: ["Expr"] ),
         "TraitDef": ( traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner"] ),
         "Module": (
             traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner" ],

@@ -806,7 +806,94 @@ impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::DocCommentsOwner<'a> for EnumDef<'a> {}
-impl<'a> EnumDef<'a> {}
+impl<'a> EnumDef<'a> {
+    pub fn variant_list(self) -> Option<EnumVariantList<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// EnumVariant
+#[derive(Debug, Clone, Copy,)]
+pub struct EnumVariantNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type EnumVariant<'a> = EnumVariantNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<EnumVariantNode<R1>> for EnumVariantNode<R2> {
+    fn eq(&self, other: &EnumVariantNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for EnumVariantNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for EnumVariantNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for EnumVariant<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            ENUM_VARIANT => Some(EnumVariant { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> EnumVariantNode<R> {
+    pub fn borrowed(&self) -> EnumVariant {
+        EnumVariantNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> EnumVariantNode {
+        EnumVariantNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> ast::NameOwner<'a> for EnumVariant<'a> {}
+impl<'a> EnumVariant<'a> {
+    pub fn expr(self) -> Option<Expr<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// EnumVariantList
+#[derive(Debug, Clone, Copy,)]
+pub struct EnumVariantListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type EnumVariantList<'a> = EnumVariantListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<EnumVariantListNode<R1>> for EnumVariantListNode<R2> {
+    fn eq(&self, other: &EnumVariantListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for EnumVariantListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for EnumVariantListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for EnumVariantList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            ENUM_VARIANT_LIST => Some(EnumVariantList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> EnumVariantListNode<R> {
+    pub fn borrowed(&self) -> EnumVariantList {
+        EnumVariantListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> EnumVariantListNode {
+        EnumVariantListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> EnumVariantList<'a> {
+    pub fn variants(self) -> impl Iterator<Item = EnumVariant<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // Expr
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2189,7 +2276,52 @@ impl<R: TreeRoot<RaTypes>> NamedFieldDefNode<R> {
 
 impl<'a> ast::NameOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
-impl<'a> NamedFieldDef<'a> {}
+impl<'a> NamedFieldDef<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// NamedFieldDefList
+#[derive(Debug, Clone, Copy,)]
+pub struct NamedFieldDefListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type NamedFieldDefList<'a> = NamedFieldDefListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldDefListNode<R1>> for NamedFieldDefListNode<R2> {
+    fn eq(&self, other: &NamedFieldDefListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NamedFieldDefListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NamedFieldDefListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for NamedFieldDefList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            NAMED_FIELD_DEF_LIST => Some(NamedFieldDefList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> NamedFieldDefListNode<R> {
+    pub fn borrowed(&self) -> NamedFieldDefList {
+        NamedFieldDefListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NamedFieldDefListNode {
+        NamedFieldDefListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> NamedFieldDefList<'a> {
+    pub fn fields(self) -> impl Iterator<Item = NamedFieldDef<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // NamedFieldList
 #[derive(Debug, Clone, Copy,)]
@@ -2830,6 +2962,89 @@ impl<R: TreeRoot<RaTypes>> PointerTypeNode<R> {
 
 impl<'a> PointerType<'a> {}
 
+// PosField
+#[derive(Debug, Clone, Copy,)]
+pub struct PosFieldNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type PosField<'a> = PosFieldNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PosFieldNode<R1>> for PosFieldNode<R2> {
+    fn eq(&self, other: &PosFieldNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PosFieldNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PosFieldNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for PosField<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            POS_FIELD => Some(PosField { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> PosFieldNode<R> {
+    pub fn borrowed(&self) -> PosField {
+        PosFieldNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PosFieldNode {
+        PosFieldNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> ast::AttrsOwner<'a> for PosField<'a> {}
+impl<'a> PosField<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// PosFieldList
+#[derive(Debug, Clone, Copy,)]
+pub struct PosFieldListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type PosFieldList<'a> = PosFieldListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PosFieldListNode<R1>> for PosFieldListNode<R2> {
+    fn eq(&self, other: &PosFieldListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PosFieldListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PosFieldListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for PosFieldList<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            POS_FIELD_LIST => Some(PosFieldList { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> PosFieldListNode<R> {
+    pub fn borrowed(&self) -> PosFieldList {
+        PosFieldListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PosFieldListNode {
+        PosFieldListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> PosFieldList<'a> {
+    pub fn fields(self) -> impl Iterator<Item = PosField<'a>> + 'a {
+        super::children(self)
+    }
+}
+
 // PrefixExpr
 #[derive(Debug, Clone, Copy,)]
 pub struct PrefixExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
@@ -3438,11 +3653,7 @@ impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::DocCommentsOwner<'a> for StructDef<'a> {}
-impl<'a> StructDef<'a> {
-    pub fn fields(self) -> impl Iterator<Item = NamedFieldDef<'a>> + 'a {
-        super::children(self)
-    }
-}
+impl<'a> StructDef<'a> {}
 
 // StructLit
 #[derive(Debug, Clone, Copy,)]
