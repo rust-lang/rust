@@ -299,7 +299,6 @@ fn main() {
     }
     // Field from upvar nested
     {
-        // FIXME(#49824) -- the free region error below should probably not be there
         let mut x = 0;
            || {
                || { //[mir]~ ERROR captured variable cannot escape `FnMut` closure body

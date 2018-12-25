@@ -27,7 +27,7 @@ use util::{logv, PathBufExt};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs::{self, create_dir_all, File};
 use std::hash::{Hash, Hasher};
@@ -763,13 +763,13 @@ impl<'test> TestCx<'test> {
             }
             drop(stdout);
 
-            let debugger_script = self.make_out_name("debugger.script");
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let debugger_opts = vec![
-                "-quiet".to_owned(),
-                "-batch".to_owned(),
-                "-nx".to_owned(),
-                format!("-command={}", debugger_script.to_str().unwrap()),
+            let mut debugger_script = OsString::from("-command=");
+            debugger_script.push(self.make_out_name("debugger.script"));
+            let debugger_opts: &[&OsStr] = &[
+                "-quiet".as_ref(),
+                "-batch".as_ref(),
+                "-nx".as_ref(),
+                &debugger_script,
             ];
 
             let gdb_path = self.config.gdb.as_ref().unwrap();
@@ -778,12 +778,12 @@ impl<'test> TestCx<'test> {
                 stdout,
                 stderr,
             } = Command::new(&gdb_path)
-                .args(&debugger_opts)
+                .args(debugger_opts)
                 .output()
                 .expect(&format!("failed to exec `{:?}`", gdb_path));
             let cmdline = {
                 let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
-                gdb.args(&debugger_opts);
+                gdb.args(debugger_opts);
                 let cmdline = self.make_cmdline(&gdb, "");
                 logv(self.config, format!("executing {}", cmdline));
                 cmdline
@@ -871,18 +871,18 @@ impl<'test> TestCx<'test> {
             debug!("script_str = {}", script_str);
             self.dump_output_file(&script_str, "debugger.script");
 
-            let debugger_script = self.make_out_name("debugger.script");
+            let mut debugger_script = OsString::from("-command=");
+            debugger_script.push(self.make_out_name("debugger.script"));
 
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let debugger_opts = vec![
-                "-quiet".to_owned(),
-                "-batch".to_owned(),
-                "-nx".to_owned(),
-                format!("-command={}", debugger_script.to_str().unwrap()),
+            let debugger_opts: &[&OsStr] = &[
+                "-quiet".as_ref(),
+                "-batch".as_ref(),
+                "-nx".as_ref(),
+                &debugger_script,
             ];
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
-            gdb.args(&debugger_opts)
+            gdb.args(debugger_opts)
                 .env("PYTHONPATH", rust_pp_module_abs_path);
 
             debugger_run_result = self.compose_and_run(

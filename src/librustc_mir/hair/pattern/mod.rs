@@ -83,7 +83,7 @@ impl<'tcx> PatternTypeProjections<'tcx> {
     }
 
     pub(crate) fn ref_binding(&self) -> Self {
-        // FIXME(#47184): ignore for now
+        // FIXME(#55401): ignore for now
         PatternTypeProjections { contents: vec![] }
     }
 

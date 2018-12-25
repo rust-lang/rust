@@ -1,5 +1,5 @@
 note: External requirements
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:47
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:45:47
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
@@ -20,7 +20,7 @@ LL | |     });
    = note: where '_#1r: '_#0r
 
 note: No external requirements
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:47:1
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:44:1
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
@@ -34,7 +34,7 @@ LL | | }
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]) with substs []
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:5
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:45:5
    |
 LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |                     ------ `cell_a` is a reference that is only valid in the function body

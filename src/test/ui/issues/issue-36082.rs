@@ -11,8 +11,6 @@
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
 
-// FIXME(#49821) -- No tip about using a let binding
-
 use std::cell::RefCell;
 
 fn main() {

@@ -1240,10 +1240,8 @@ fn write_minify_replacer<W: Write>(dst: &mut W,
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-// FIXME (#9639): The closure should deal with &[u8] instead of &str
-// FIXME (#9639): This is too conservative, rejecting non-UTF-8 paths
 fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) where
-    F: FnMut(&str),
+    F: FnMut(&OsStr),
 {
     // make it relative, if possible
     let p = p.strip_prefix(src_root).unwrap_or(p);
@@ -1256,8 +1254,8 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
         }
 
         match c {
-            Component::ParentDir => f("up"),
-            Component::Normal(c) => f(c.to_str().unwrap()),
+            Component::ParentDir => f("up".as_ref()),
+            Component::Normal(c) => f(c),
             _ => continue,
         }
     }
@@ -1356,7 +1354,7 @@ impl<'a> SourceCollector<'a> {
             cur.push(component);
             fs::create_dir_all(&cur).unwrap();
             root_path.push_str("../");
-            href.push_str(component);
+            href.push_str(&component.to_string_lossy());
             href.push('/');
         });
         let mut fname = p.file_name()
@@ -2243,7 +2241,7 @@ impl<'a> Item<'a> {
             };
 
             clean_srcpath(&src_root, file, false, |component| {
-                path.push_str(component);
+                path.push_str(&component.to_string_lossy());
                 path.push('/');
             });
             let mut fname = file.file_name().expect("source has no filename")

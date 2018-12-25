@@ -41,7 +41,6 @@ impl<'a> SingleRegionTrait<'a> for &'a u32 {}
 struct SingleRegionStruct<'a>(&'a u32);
 
 fn simple_type_hrtb<'b>() -> impl for<'a> SingleRegionTrait<'a> { 5 }
-// FIXME(cramertj) add test after #45992 lands to ensure lint is triggered
 fn elision_single_region_trait(x: &u32) -> impl SingleRegionTrait { x }
 fn elision_single_region_struct(x: SingleRegionStruct) -> impl Into<SingleRegionStruct> { x }
 

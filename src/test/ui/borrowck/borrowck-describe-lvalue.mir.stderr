@@ -10,7 +10,7 @@ LL |             *y = 1;
    |             ------ first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:307:20
+  --> $DIR/borrowck-describe-lvalue.rs:306:20
    |
 LL |                    let y = &mut x;
    |                            ------ first mutable borrow occurs here
@@ -21,7 +21,7 @@ LL |                    *y = 1;
    |                    ------ first borrow later used here
 
 error: captured variable cannot escape `FnMut` closure body
-  --> $DIR/borrowck-describe-lvalue.rs:305:16
+  --> $DIR/borrowck-describe-lvalue.rs:304:16
    |
 LL |              || {
    |               - inferred to be a `FnMut` closure
@@ -362,7 +362,7 @@ LL |             drop(x);
    |                  - mutable borrow later used here
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-describe-lvalue.rs:318:22
+  --> $DIR/borrowck-describe-lvalue.rs:317:22
    |
 LL |                 drop(x);
    |                      - value moved here

@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use issue_31702_1::U256;
 
 pub struct Ethash {
-    engine_params: for<'a> fn() -> Option<&'a Vec<u8>>,
+    engine_params: fn() -> Option<&'static Vec<u8>>,
     u256_params: HashMap<String, U256>,
 }
 

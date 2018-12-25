@@ -163,11 +163,7 @@ rust_get_null_ptr() {
     return 0;
 }
 
-/* Debug helpers strictly to verify ABI conformance.
- *
- * FIXME (#2665): move these into a testcase when the testsuite
- * understands how to have explicit C files included.
- */
+// Debug helpers strictly to verify ABI conformance.
 
 struct quad {
     uint64_t a;
