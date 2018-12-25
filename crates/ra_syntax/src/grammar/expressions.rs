@@ -283,14 +283,10 @@ fn postfix_expr(
             // }
             L_PAREN if allow_calls => call_expr(p, lhs),
             L_BRACK if allow_calls => index_expr(p, lhs),
-            DOT if p.nth(1) == IDENT => {
-                if p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON {
-                    method_call_expr(p, lhs)
-                } else {
-                    field_expr(p, lhs)
-                }
+            DOT if p.nth(1) == IDENT && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON) => {
+                method_call_expr(p, lhs)
             }
-            DOT if p.nth(1) == INT_NUMBER => field_expr(p, lhs),
+            DOT => field_expr(p, lhs),
             // test postfix_range
             // fn foo() { let x = 1..; }
             DOTDOT | DOTDOTEQ if !EXPR_FIRST.contains(p.nth(1)) => {
@@ -355,13 +351,15 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     x.0.bar;
 // }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(DOT) && (p.nth(1) == IDENT || p.nth(1) == INT_NUMBER));
+    assert!(p.at(DOT));
     let m = lhs.precede(p);
     p.bump();
     if p.at(IDENT) {
         name_ref(p)
-    } else {
+    } else if p.at(INT_NUMBER) {
         p.bump()
+    } else {
+        p.error("expected field name or number")
     }
     m.complete(p, FIELD_EXPR)
 }
