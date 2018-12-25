@@ -16,7 +16,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Def, DefId, FnScopes, Module, Function, Struct, Path,
+    Def, DefId, FnScopes, Module, Function, Struct, Enum, Path,
     db::HirDatabase,
     adt::VariantData,
 };
@@ -251,7 +251,18 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
 pub fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s.name(db)?,
+        name: s
+            .name(db)?
+            .unwrap_or_else(|| SmolStr::new("[unnamed struct]")),
+    })
+}
+
+pub fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
+    Ok(Ty::Adt {
+        def_id: s.def_id(),
+        name: s
+            .name(db)?
+            .unwrap_or_else(|| SmolStr::new("[unnamed enum]")),
     })
 }
 
@@ -264,10 +275,7 @@ pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
         }
         Def::Function(f) => type_for_fn(db, f),
         Def::Struct(s) => type_for_struct(db, s),
-        Def::Enum(e) => Ok(Ty::Adt {
-            def_id,
-            name: e.name(db)?,
-        }),
+        Def::Enum(e) => type_for_enum(db, e),
         Def::Item => {
             log::debug!("trying to get type for item of unknown type {:?}", def_id);
             Ok(Ty::Unknown)

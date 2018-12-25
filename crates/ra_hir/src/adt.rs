@@ -30,14 +30,14 @@ impl Struct {
         Ok(db.struct_data(self.def_id)?)
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<SmolStr> {
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<SmolStr>> {
         Ok(db.struct_data(self.def_id)?.name.clone())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
-    name: SmolStr,
+    name: Option<SmolStr>,
     variant_data: Arc<VariantData>,
 }
 
@@ -47,17 +47,14 @@ impl StructData {
         module: &Module,
         struct_def: ast::StructDef,
     ) -> Cancelable<StructData> {
-        let name = struct_def
-            .name()
-            .map(|n| n.text())
-            .unwrap_or(SmolStr::new("[error]"));
+        let name = struct_def.name().map(|n| n.text());
         let variant_data = VariantData::new(db, module, struct_def.flavor())?;
         let variant_data = Arc::new(variant_data);
         Ok(StructData { name, variant_data })
     }
 
-    pub fn name(&self) -> &SmolStr {
-        &self.name
+    pub fn name(&self) -> Option<&SmolStr> {
+        self.name.as_ref()
     }
 
     pub fn variant_data(&self) -> &Arc<VariantData> {
@@ -78,14 +75,14 @@ impl Enum {
         self.def_id
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<SmolStr> {
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<SmolStr>> {
         Ok(db.enum_data(self.def_id)?.name.clone())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
-    name: SmolStr,
+    name: Option<SmolStr>,
     variants: Vec<(SmolStr, Arc<VariantData>)>,
 }
 
@@ -95,10 +92,7 @@ impl EnumData {
         module: &Module,
         enum_def: ast::EnumDef,
     ) -> Cancelable<Self> {
-        let name = enum_def
-            .name()
-            .map(|n| n.text())
-            .unwrap_or(SmolStr::new("[error]"));
+        let name = enum_def.name().map(|n| n.text());
         let variants = if let Some(evl) = enum_def.variant_list() {
             evl.variants()
                 .map(|v| {
