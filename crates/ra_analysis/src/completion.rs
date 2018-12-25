@@ -1,6 +1,7 @@
 mod completion_item;
 mod completion_context;
 
+mod complete_dot;
 mod complete_fn_param;
 mod complete_keyword;
 mod complete_snippet;
@@ -20,13 +21,13 @@ use crate::{
 
 pub use crate::completion::completion_item::{CompletionItem, InsertText, CompletionItemKind};
 
-/// Main entry point for copmletion. We run comletion as a two-phase process.
+/// Main entry point for completion. We run completion as a two-phase process.
 ///
 /// First, we look at the position and collect a so-called `CompletionContext.
 /// This is a somewhat messy process, because, during completion, syntax tree is
-/// incomplete and can look readlly weired.
+/// incomplete and can look really weird.
 ///
-/// Once the context is collected, we run a series of completion routines whihc
+/// Once the context is collected, we run a series of completion routines which
 /// look at the context and produce completion items.
 pub(crate) fn completions(
     db: &db::RootDatabase,
@@ -43,6 +44,7 @@ pub(crate) fn completions(
     complete_snippet::complete_item_snippet(&mut acc, &ctx);
     complete_path::complete_path(&mut acc, &ctx)?;
     complete_scope::complete_scope(&mut acc, &ctx)?;
+    complete_dot::complete_dot(&mut acc, &ctx)?;
 
     Ok(Some(acc))
 }

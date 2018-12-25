@@ -58,6 +58,7 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::Struct => Struct,
             CompletionItemKind::Enum => Enum,
             CompletionItemKind::Binding => Variable,
+            CompletionItemKind::Field => Field,
         }
     }
 }

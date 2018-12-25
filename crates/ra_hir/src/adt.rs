@@ -124,6 +124,15 @@ pub struct StructField {
     ty: Ty,
 }
 
+impl StructField {
+    pub fn name(&self) -> SmolStr {
+        self.name.clone()
+    }
+    pub fn ty(&self) -> Ty {
+        self.ty.clone()
+    }
+}
+
 /// Fields of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariantData {
@@ -168,7 +177,10 @@ impl VariantData {
     }
 
     pub(crate) fn get_field_ty(&self, field_name: &str) -> Option<Ty> {
-        self.fields().iter().find(|f| f.name == field_name).map(|f| f.ty.clone())
+        self.fields()
+            .iter()
+            .find(|f| f.name == field_name)
+            .map(|f| f.ty.clone())
     }
 
     pub fn fields(&self) -> &[StructField] {

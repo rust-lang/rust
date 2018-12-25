@@ -31,6 +31,10 @@ pub(super) struct CompletionContext<'a> {
     pub(super) is_stmt: bool,
     /// Something is typed at the "top" level, in module or impl/trait.
     pub(super) is_new_item: bool,
+    /// The receiver if this is a field or method access, i.e. writing something.<|>
+    pub(super) dot_receiver: Option<ast::Expr<'a>>,
+    /// If this is a method call in particular, i.e. the () are already there.
+    pub(super) is_method_call: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -54,6 +58,8 @@ impl<'a> CompletionContext<'a> {
             after_if: false,
             is_stmt: false,
             is_new_item: false,
+            dot_receiver: None,
+            is_method_call: false,
         };
         ctx.fill(original_file, position.offset);
         Ok(Some(ctx))
@@ -105,6 +111,12 @@ impl<'a> CompletionContext<'a> {
             _ => (),
         }
 
+        self.enclosing_fn = self
+            .leaf
+            .ancestors()
+            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+            .find_map(ast::FnDef::cast);
+
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,
             None => return,
@@ -120,11 +132,6 @@ impl<'a> CompletionContext<'a> {
             }
             if path.qualifier().is_none() {
                 self.is_trivial_path = true;
-                self.enclosing_fn = self
-                    .leaf
-                    .ancestors()
-                    .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-                    .find_map(ast::FnDef::cast);
 
                 self.is_stmt = match name_ref
                     .syntax()
@@ -144,6 +151,23 @@ impl<'a> CompletionContext<'a> {
                     }
                 }
             }
+        }
+        if let Some(_field_expr) = ast::FieldExpr::cast(parent) {
+            self.dot_receiver = self
+                .leaf
+                .ancestors()
+                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+                .find_map(ast::FieldExpr::cast)
+                .and_then(ast::FieldExpr::expr);
+        }
+        if let Some(_method_call_expr) = ast::MethodCallExpr::cast(parent) {
+            self.dot_receiver = self
+                .leaf
+                .ancestors()
+                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+                .find_map(ast::MethodCallExpr::cast)
+                .and_then(ast::MethodCallExpr::expr);
+            self.is_method_call = true;
         }
     }
 }

@@ -574,7 +574,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     match receiver_ty {
                         Ty::Tuple(fields) => {
                             let i = text.parse::<usize>().ok();
-                            i.and_then(|i| fields.get(i).cloned()).unwrap_or(Ty::Unknown)
+                            i.and_then(|i| fields.get(i).cloned())
+                                .unwrap_or(Ty::Unknown)
                         }
                         Ty::Adt { def_id, .. } => {
                             let field_ty = match def_id.resolve(self.db)? {
@@ -589,7 +590,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 } else {
                     Ty::Unknown
                 }
-            },
+            }
             ast::Expr::TryExpr(e) => {
                 let _inner_ty = if let Some(e) = e.expr() {
                     self.infer_expr(e)?

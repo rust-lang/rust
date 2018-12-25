@@ -30,6 +30,7 @@ pub enum CompletionItemKind {
     Struct,
     Enum,
     Binding,
+    Field,
 }
 
 #[derive(Debug, PartialEq, Eq)]

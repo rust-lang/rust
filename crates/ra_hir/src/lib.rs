@@ -44,6 +44,7 @@ pub use self::{
     module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
     function::{Function, FnScopes},
     adt::{Struct, Enum},
+    ty::Ty,
 };
 
 pub use self::function::FnSignatureInfo;

@@ -403,7 +403,7 @@ Grammar(
         ),
         "MethodCallExpr": (
             traits: ["ArgListOwner"],
-            options: [ "Expr" ],
+            options: [ "Expr", "NameRef" ],
         ),
         "IndexExpr": (),
         "FieldExpr": (options: ["Expr", "NameRef"]),
