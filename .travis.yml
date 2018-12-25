@@ -37,8 +37,8 @@ matrix:
   allow_failures:
     # Doesn't build - seems to be because of an option
     - env: INTEGRATION=packed_simd
-    # Test failure
-    - env: INTEGRATION=rust-clippy
+    # Doesn't build - a temporal build failure due to breaking changes in the nightly compilre
+    - env: INTEGRATION=rust-semverver
 
 script:
   - |

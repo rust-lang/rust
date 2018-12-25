@@ -41,7 +41,7 @@ use types::{rewrite_path, PathContext};
 use utils::{
     colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
     last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
-    semicolon_for_stmt, wrap_str,
+    semicolon_for_expr, semicolon_for_stmt, wrap_str,
 };
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -69,6 +69,11 @@ pub fn format_expr(
     if contains_skip(&*expr.attrs) {
         return Some(context.snippet(expr.span()).to_owned());
     }
+    let shape = if expr_type == ExprType::Statement && semicolon_for_expr(context, expr) {
+        shape.sub_width(1)?
+    } else {
+        shape
+    };
 
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
