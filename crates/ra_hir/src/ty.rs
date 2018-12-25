@@ -239,19 +239,11 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
         .param_list()
         .map(|pl| {
             pl.params()
-                .map(|p| {
-                    p.type_ref()
-                        .map(|t| Ty::new(db, &module, t))
-                        .unwrap_or(Ok(Ty::Unknown))
-                })
+                .map(|p| Ty::new_opt(db, &module, p.type_ref()))
                 .collect()
         })
         .unwrap_or_else(|| Ok(Vec::new()))?;
-    let output = node
-        .ret_type()
-        .and_then(|rt| rt.type_ref())
-        .map(|t| Ty::new(db, &module, t))
-        .unwrap_or(Ok(Ty::Unknown))?;
+    let output = Ty::new_opt(db, &module, node.ret_type().and_then(|rt| rt.type_ref()))?;
     let sig = FnSig { input, output };
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
@@ -263,11 +255,6 @@ pub fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     })
 }
 
-// TODO this should probably be per namespace (i.e. types vs. values), since for
-// a tuple struct `struct Foo(Bar)`, Foo has function type as a value, but
-// defines the struct type Foo when used in the type namespace. rustc has a
-// separate DefId for the constructor, but with the current DefId approach, that
-// seems complicated.
 pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     let def = def_id.resolve(db)?;
     match def {
@@ -396,22 +383,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty = match expr {
             ast::Expr::IfExpr(e) => {
                 if let Some(condition) = e.condition() {
-                    if let Some(e) = condition.expr() {
-                        // TODO if no pat, this should be bool
-                        self.infer_expr(e)?;
-                    }
+                    // TODO if no pat, this should be bool
+                    self.infer_expr_opt(condition.expr())?;
                     // TODO write type for pat
                 };
-                let if_ty = if let Some(block) = e.then_branch() {
-                    self.infer_block(block)?
-                } else {
-                    Ty::Unknown
-                };
-                let else_ty = if let Some(block) = e.else_branch() {
-                    self.infer_block(block)?
-                } else {
-                    Ty::Unknown
-                };
+                let if_ty = self.infer_block_opt(e.then_branch())?;
+                let else_ty = self.infer_block_opt(e.else_branch())?;
                 if let Some(ty) = self.unify(&if_ty, &else_ty) {
                     ty
                 } else {
@@ -419,62 +396,37 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::Unknown
                 }
             }
-            ast::Expr::BlockExpr(e) => {
-                if let Some(block) = e.block() {
-                    self.infer_block(block)?
-                } else {
-                    Ty::Unknown
-                }
-            }
+            ast::Expr::BlockExpr(e) => self.infer_block_opt(e.block())?,
             ast::Expr::LoopExpr(e) => {
-                if let Some(block) = e.loop_body() {
-                    self.infer_block(block)?;
-                };
+                self.infer_block_opt(e.loop_body())?;
                 // TODO never, or the type of the break param
                 Ty::Unknown
             }
             ast::Expr::WhileExpr(e) => {
                 if let Some(condition) = e.condition() {
-                    if let Some(e) = condition.expr() {
-                        // TODO if no pat, this should be bool
-                        self.infer_expr(e)?;
-                    }
+                    // TODO if no pat, this should be bool
+                    self.infer_expr_opt(condition.expr())?;
                     // TODO write type for pat
                 };
-                if let Some(block) = e.loop_body() {
-                    // TODO
-                    self.infer_block(block)?;
-                };
+                self.infer_block_opt(e.loop_body())?;
                 // TODO always unit?
                 Ty::Unknown
             }
             ast::Expr::ForExpr(e) => {
-                if let Some(expr) = e.iterable() {
-                    self.infer_expr(expr)?;
-                }
+                let _iterable_ty = self.infer_expr_opt(e.iterable());
                 if let Some(_pat) = e.pat() {
                     // TODO write type for pat
                 }
-                if let Some(block) = e.loop_body() {
-                    self.infer_block(block)?;
-                }
+                self.infer_block_opt(e.loop_body())?;
                 // TODO always unit?
                 Ty::Unknown
             }
             ast::Expr::LambdaExpr(e) => {
-                let _body_ty = if let Some(body) = e.body() {
-                    self.infer_expr(body)?
-                } else {
-                    Ty::Unknown
-                };
+                let _body_ty = self.infer_expr_opt(e.body())?;
                 Ty::Unknown
             }
             ast::Expr::CallExpr(e) => {
-                let callee_ty = if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                };
+                let callee_ty = self.infer_expr_opt(e.expr())?;
                 if let Some(arg_list) = e.arg_list() {
                     for arg in arg_list.args() {
                         // TODO unify / expect argument type
@@ -491,11 +443,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             ast::Expr::MethodCallExpr(e) => {
-                let _receiver_ty = if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                };
+                let _receiver_ty = self.infer_expr_opt(e.expr())?;
                 if let Some(arg_list) = e.arg_list() {
                     for arg in arg_list.args() {
                         // TODO unify / expect argument type
@@ -505,20 +453,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             ast::Expr::MatchExpr(e) => {
-                let _ty = if let Some(match_expr) = e.expr() {
-                    self.infer_expr(match_expr)?
-                } else {
-                    Ty::Unknown
-                };
+                let _ty = self.infer_expr_opt(e.expr())?;
                 if let Some(match_arm_list) = e.match_arm_list() {
                     for arm in match_arm_list.arms() {
                         // TODO type the bindings in pat
                         // TODO type the guard
-                        let _ty = if let Some(e) = arm.expr() {
-                            self.infer_expr(e)?
-                        } else {
-                            Ty::Unknown
-                        };
+                        let _ty = self.infer_expr_opt(arm.expr())?;
                     }
                     // TODO unify all the match arm types
                     Ty::Unknown
@@ -531,19 +471,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ast::Expr::PathExpr(e) => self.infer_path_expr(e)?.unwrap_or(Ty::Unknown),
             ast::Expr::ContinueExpr(_e) => Ty::Never,
             ast::Expr::BreakExpr(_e) => Ty::Never,
-            ast::Expr::ParenExpr(e) => {
-                if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                }
-            }
+            ast::Expr::ParenExpr(e) => self.infer_expr_opt(e.expr())?,
             ast::Expr::Label(_e) => Ty::Unknown,
             ast::Expr::ReturnExpr(e) => {
-                if let Some(e) = e.expr() {
-                    // TODO unify with / expect return type
-                    self.infer_expr(e)?;
-                };
+                self.infer_expr_opt(e.expr())?;
                 Ty::Never
             }
             ast::Expr::MatchArmList(_) | ast::Expr::MatchArm(_) | ast::Expr::MatchGuard(_) => {
@@ -554,10 +485,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let (ty, _variant_data) = self.resolve_variant(e.path())?;
                 if let Some(nfl) = e.named_field_list() {
                     for field in nfl.fields() {
-                        if let Some(e) = field.expr() {
-                            // TODO unify with / expect field type
-                            self.infer_expr(e)?;
-                        }
+                        // TODO unify with / expect field type
+                        self.infer_expr_opt(field.expr())?;
                     }
                 }
                 ty
@@ -592,40 +521,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             ast::Expr::TryExpr(e) => {
-                let _inner_ty = if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                };
+                let _inner_ty = self.infer_expr_opt(e.expr())?;
                 Ty::Unknown
             }
             ast::Expr::CastExpr(e) => {
-                let _inner_ty = if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                };
-                let cast_ty = e
-                    .type_ref()
-                    .map(|t| Ty::new(self.db, &self.module, t))
-                    .unwrap_or(Ok(Ty::Unknown))?;
+                let _inner_ty = self.infer_expr_opt(e.expr())?;
+                let cast_ty = Ty::new_opt(self.db, &self.module, e.type_ref())?;
                 // TODO do the coercion...
                 cast_ty
             }
             ast::Expr::RefExpr(e) => {
-                let _inner_ty = if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                };
+                let _inner_ty = self.infer_expr_opt(e.expr())?;
                 Ty::Unknown
             }
             ast::Expr::PrefixExpr(e) => {
-                let _inner_ty = if let Some(e) = e.expr() {
-                    self.infer_expr(e)?
-                } else {
-                    Ty::Unknown
-                };
+                let _inner_ty = self.infer_expr_opt(e.expr())?;
                 Ty::Unknown
             }
             ast::Expr::RangeExpr(_e) => Ty::Unknown,
@@ -636,15 +546,19 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         Ok(ty)
     }
 
+    fn infer_block_opt(&mut self, node: Option<ast::Block>) -> Cancelable<Ty> {
+        if let Some(b) = node {
+            self.infer_block(b)
+        } else {
+            Ok(Ty::Unknown)
+        }
+    }
+
     fn infer_block(&mut self, node: ast::Block) -> Cancelable<Ty> {
         for stmt in node.statements() {
             match stmt {
                 ast::Stmt::LetStmt(stmt) => {
-                    let decl_ty = if let Some(type_ref) = stmt.type_ref() {
-                        Ty::new(self.db, &self.module, type_ref)?
-                    } else {
-                        Ty::Unknown
-                    };
+                    let decl_ty = Ty::new_opt(self.db, &self.module, stmt.type_ref())?;
                     let ty = if let Some(expr) = stmt.initializer() {
                         // TODO pass expectation
                         let expr_ty = self.infer_expr(expr)?;
@@ -659,9 +573,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     };
                 }
                 ast::Stmt::ExprStmt(expr_stmt) => {
-                    if let Some(expr) = expr_stmt.expr() {
-                        self.infer_expr(expr)?;
-                    }
+                    self.infer_expr_opt(expr_stmt.expr())?;
                 }
             }
         }
