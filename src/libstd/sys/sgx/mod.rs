@@ -27,6 +27,7 @@ pub mod backtrace;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
+pub mod ext;
 pub mod fd;
 pub mod fs;
 pub mod memchr;
@@ -150,4 +151,10 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         }
     }
     (rdrand64(), rdrand64())
+}
+
+pub use sys_common::{AsInner, FromInner, IntoInner};
+
+pub trait TryIntoInner<Inner>: Sized {
+    fn try_into_inner(self) -> Result<Inner, Self>;
 }
