@@ -5,8 +5,7 @@ use ra_syntax::{SmolStr, ast::{self, NameOwner, StructFlavor}};
 use crate::{
     DefId, Cancelable,
     db::{HirDatabase},
-    module::Module,
-    ty::{Ty},
+    type_ref::TypeRef,
 };
 
 pub struct Struct {
@@ -42,15 +41,11 @@ pub struct StructData {
 }
 
 impl StructData {
-    pub(crate) fn new(
-        db: &impl HirDatabase,
-        module: &Module,
-        struct_def: ast::StructDef,
-    ) -> Cancelable<StructData> {
+    pub(crate) fn new(struct_def: ast::StructDef) -> StructData {
         let name = struct_def.name().map(|n| n.text());
-        let variant_data = VariantData::new(db, module, struct_def.flavor())?;
+        let variant_data = VariantData::new(struct_def.flavor());
         let variant_data = Arc::new(variant_data);
-        Ok(StructData { name, variant_data })
+        StructData { name, variant_data }
     }
 
     pub fn name(&self) -> Option<&SmolStr> {
@@ -87,27 +82,23 @@ pub struct EnumData {
 }
 
 impl EnumData {
-    pub(crate) fn new(
-        db: &impl HirDatabase,
-        module: &Module,
-        enum_def: ast::EnumDef,
-    ) -> Cancelable<Self> {
+    pub(crate) fn new(enum_def: ast::EnumDef) -> Self {
         let name = enum_def.name().map(|n| n.text());
         let variants = if let Some(evl) = enum_def.variant_list() {
             evl.variants()
                 .map(|v| {
-                    Ok((
+                    (
                         v.name()
                             .map(|n| n.text())
                             .unwrap_or_else(|| SmolStr::new("[error]")),
-                        Arc::new(VariantData::new(db, module, v.flavor())?),
-                    ))
+                        Arc::new(VariantData::new(v.flavor())),
+                    )
                 })
-                .collect::<Cancelable<_>>()?
+                .collect()
         } else {
             Vec::new()
         };
-        Ok(EnumData { name, variants })
+        EnumData { name, variants }
     }
 }
 
@@ -115,15 +106,15 @@ impl EnumData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructField {
     name: SmolStr,
-    ty: Ty,
+    type_ref: TypeRef,
 }
 
 impl StructField {
     pub fn name(&self) -> SmolStr {
         self.name.clone()
     }
-    pub fn ty(&self) -> Ty {
-        self.ty.clone()
+    pub fn type_ref(&self) -> &TypeRef {
+        &self.type_ref
     }
 }
 
@@ -136,45 +127,41 @@ pub enum VariantData {
 }
 
 impl VariantData {
-    pub fn new(db: &impl HirDatabase, module: &Module, flavor: StructFlavor) -> Cancelable<Self> {
-        Ok(match flavor {
+    pub fn new(flavor: StructFlavor) -> Self {
+        match flavor {
             StructFlavor::Tuple(fl) => {
                 let fields = fl
                     .fields()
                     .enumerate()
-                    .map(|(i, fd)| {
-                        Ok(StructField {
-                            name: SmolStr::new(i.to_string()),
-                            ty: Ty::from_ast_opt(db, &module, fd.type_ref())?,
-                        })
+                    .map(|(i, fd)| StructField {
+                        name: SmolStr::new(i.to_string()),
+                        type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
-                    .collect::<Cancelable<_>>()?;
+                    .collect();
                 VariantData::Tuple(fields)
             }
             StructFlavor::Named(fl) => {
                 let fields = fl
                     .fields()
-                    .map(|fd| {
-                        Ok(StructField {
-                            name: fd
-                                .name()
-                                .map(|n| n.text())
-                                .unwrap_or_else(|| SmolStr::new("[error]")),
-                            ty: Ty::from_ast_opt(db, &module, fd.type_ref())?,
-                        })
+                    .map(|fd| StructField {
+                        name: fd
+                            .name()
+                            .map(|n| n.text())
+                            .unwrap_or_else(|| SmolStr::new("[error]")),
+                        type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
-                    .collect::<Cancelable<_>>()?;
+                    .collect();
                 VariantData::Struct(fields)
             }
             StructFlavor::Unit => VariantData::Unit,
-        })
+        }
     }
 
-    pub(crate) fn get_field_ty(&self, field_name: &str) -> Option<Ty> {
+    pub(crate) fn get_field_type_ref(&self, field_name: &str) -> Option<&TypeRef> {
         self.fields()
             .iter()
             .find(|f| f.name == field_name)
-            .map(|f| f.ty.clone())
+            .map(|f| &f.type_ref)
     }
 
     pub fn fields(&self) -> &[StructField] {

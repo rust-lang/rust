@@ -309,6 +309,33 @@ pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     }
 }
 
+pub(super) fn type_for_field(
+    db: &impl HirDatabase,
+    def_id: DefId,
+    field: SmolStr,
+) -> Cancelable<Ty> {
+    let def = def_id.resolve(db)?;
+    let variant_data = match def {
+        Def::Struct(s) => {
+            let variant_data = s.variant_data(db)?;
+            variant_data
+        }
+        // TODO: unions
+        // TODO: enum variants
+        _ => panic!(
+            "trying to get type for field in non-struct/variant {:?}",
+            def_id
+        ),
+    };
+    let module = def_id.module(db)?;
+    let type_ref = if let Some(tr) = variant_data.get_field_type_ref(&field) {
+        tr
+    } else {
+        return Ok(Ty::Unknown);
+    };
+    Ty::from_hir(db, &module, &type_ref)
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
     type_of: FxHashMap<LocalSyntaxPtr, Ty>,
@@ -540,14 +567,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             i.and_then(|i| fields.get(i).cloned())
                                 .unwrap_or(Ty::Unknown)
                         }
-                        Ty::Adt { def_id, .. } => {
-                            let field_ty = match def_id.resolve(self.db)? {
-                                Def::Struct(s) => s.variant_data(self.db)?.get_field_ty(&text),
-                                // TODO unions
-                                _ => None,
-                            };
-                            field_ty.unwrap_or(Ty::Unknown)
-                        }
+                        Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, text)?,
                         _ => Ty::Unknown,
                     }
                 } else {

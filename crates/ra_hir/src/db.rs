@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{
+    SmolStr,
     SyntaxNode,
     ast::FnDefNode,
 };
@@ -50,6 +51,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn type_for_def(def_id: DefId) -> Cancelable<Ty> {
         type TypeForDefQuery;
         use fn query_definitions::type_for_def;
+    }
+
+    fn type_for_field(def_id: DefId, field: SmolStr) -> Cancelable<Ty> {
+        type TypeForFieldQuery;
+        use fn query_definitions::type_for_field;
     }
 
     fn file_items(file_id: FileId) -> Arc<SourceFileItems> {

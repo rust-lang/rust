@@ -100,7 +100,7 @@ impl TypeRef {
         }
     }
 
-    fn from_ast_opt(node: Option<ast::TypeRef>) -> Self {
+    pub(crate) fn from_ast_opt(node: Option<ast::TypeRef>) -> Self {
         if let Some(node) = node {
             TypeRef::from_ast(node)
         } else {
