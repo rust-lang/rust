@@ -235,13 +235,15 @@ impl TryConvWith for SourceChange {
             None => None,
             Some(pos) => {
                 let line_index = world.analysis().file_line_index(pos.file_id);
-                let edits = self
+                let edit = self
                     .source_file_edits
                     .iter()
                     .find(|it| it.file_id == pos.file_id)
-                    .map(|it| it.edit.as_atoms())
-                    .unwrap_or(&[]);
-                let line_col = translate_offset_with_edit(&*line_index, pos.offset, edits);
+                    .map(|it| &it.edit);
+                let line_col = match edit {
+                    Some(edit) => translate_offset_with_edit(&*line_index, pos.offset, edit),
+                    None => line_index.line_col(pos.offset),
+                };
                 let position =
                     Position::new(u64::from(line_col.line), u64::from(line_col.col_utf16));
                 Some(TextDocumentPositionParams {

@@ -1,7 +1,6 @@
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_syntax::{TextUnit, TextRange};
 use crate::{LineIndex, LineCol, line_index::Utf16Char};
-use superslice::Ext;
 
 #[derive(Debug, Clone)]
 enum Step {
@@ -55,12 +54,12 @@ impl<'a> Iterator for LineIndexStepIter<'a> {
 }
 
 #[derive(Debug)]
-struct OffsetNewlineIter<'a> {
+struct OffsetStepIter<'a> {
     text: &'a str,
     offset: TextUnit,
 }
 
-impl<'a> Iterator for OffsetNewlineIter<'a> {
+impl<'a> Iterator for OffsetStepIter<'a> {
     type Item = Step;
     fn next(&mut self) -> Option<Step> {
         let (next, next_offset) = self
@@ -93,10 +92,10 @@ impl<'a> Iterator for OffsetNewlineIter<'a> {
 }
 
 #[derive(Debug)]
-enum NextNewlines<'a> {
+enum NextSteps<'a> {
     Use,
-    ReplaceMany(OffsetNewlineIter<'a>),
-    AddMany(OffsetNewlineIter<'a>),
+    ReplaceMany(OffsetStepIter<'a>),
+    AddMany(OffsetStepIter<'a>),
 }
 
 #[derive(Debug)]
@@ -106,16 +105,16 @@ struct TranslatedEdit<'a> {
     diff: i64,
 }
 
-struct Edits<'a, 'b> {
-    edits: &'b [&'a AtomTextEdit],
+struct Edits<'a> {
+    edits: &'a [AtomTextEdit],
     current: Option<TranslatedEdit<'a>>,
     acc_diff: i64,
 }
 
-impl<'a, 'b> Edits<'a, 'b> {
-    fn new(sorted_edits: &'b [&'a AtomTextEdit]) -> Edits<'a, 'b> {
+impl<'a> Edits<'a> {
+    fn from_text_edit(text_edit: &'a TextEdit) -> Edits<'a> {
         let mut x = Edits {
-            edits: sorted_edits,
+            edits: text_edit.as_atoms(),
             current: None,
             acc_diff: 0,
         };
@@ -141,9 +140,9 @@ impl<'a, 'b> Edits<'a, 'b> {
         }
     }
 
-    fn next_inserted_newlines(&mut self) -> Option<OffsetNewlineIter<'a>> {
+    fn next_inserted_steps(&mut self) -> Option<OffsetStepIter<'a>> {
         let cur = self.current.as_ref()?;
-        let res = Some(OffsetNewlineIter {
+        let res = Some(OffsetStepIter {
             offset: cur.delete.start(),
             text: &cur.insert,
         });
@@ -151,7 +150,7 @@ impl<'a, 'b> Edits<'a, 'b> {
         res
     }
 
-    fn next_step(&mut self, step: &Step) -> NextNewlines {
+    fn next_steps(&mut self, step: &Step) -> NextSteps {
         let step_pos = match step {
             &Step::Newline(n) => n,
             &Step::Utf16Char(r) => r.end(),
@@ -159,27 +158,27 @@ impl<'a, 'b> Edits<'a, 'b> {
         let res = match &mut self.current {
             Some(edit) => {
                 if step_pos <= edit.delete.start() {
-                    NextNewlines::Use
+                    NextSteps::Use
                 } else if step_pos <= edit.delete.end() {
-                    let iter = OffsetNewlineIter {
+                    let iter = OffsetStepIter {
                         offset: edit.delete.start(),
                         text: &edit.insert,
                     };
-                    // empty slice
+                    // empty slice to avoid returning steps again
                     edit.insert = &edit.insert[edit.insert.len()..];
-                    NextNewlines::ReplaceMany(iter)
+                    NextSteps::ReplaceMany(iter)
                 } else {
-                    let iter = OffsetNewlineIter {
+                    let iter = OffsetStepIter {
                         offset: edit.delete.start(),
                         text: &edit.insert,
                     };
-                    // empty slice
+                    // empty slice to avoid returning steps again
                     edit.insert = &edit.insert[edit.insert.len()..];
                     self.advance_edit();
-                    NextNewlines::AddMany(iter)
+                    NextSteps::AddMany(iter)
                 }
             }
-            None => NextNewlines::Use,
+            None => NextSteps::Use,
         };
         res
     }
@@ -251,16 +250,9 @@ impl RunningLineCol {
 pub fn translate_offset_with_edit(
     line_index: &LineIndex,
     offset: TextUnit,
-    edits: &[AtomTextEdit],
+    text_edit: &TextEdit,
 ) -> LineCol {
-    let mut sorted_edits: Vec<&AtomTextEdit> = Vec::with_capacity(edits.len());
-    for edit in edits {
-        let insert_index =
-            sorted_edits.upper_bound_by_key(&edit.delete.start(), |x| x.delete.start());
-        sorted_edits.insert(insert_index, &edit);
-    }
-
-    let mut state = Edits::new(&sorted_edits);
+    let mut state = Edits::from_text_edit(&text_edit);
 
     let mut res = RunningLineCol::new();
 
@@ -291,18 +283,18 @@ pub fn translate_offset_with_edit(
     for orig_step in LineIndexStepIter::from(line_index) {
         loop {
             let translated_step = state.translate_step(&orig_step);
-            match state.next_step(&translated_step) {
-                NextNewlines::Use => {
+            match state.next_steps(&translated_step) {
+                NextSteps::Use => {
                     test_step!(translated_step);
                     break;
                 }
-                NextNewlines::ReplaceMany(ns) => {
+                NextSteps::ReplaceMany(ns) => {
                     for n in ns {
                         test_step!(n);
                     }
                     break;
                 }
-                NextNewlines::AddMany(ns) => {
+                NextSteps::AddMany(ns) => {
                     for n in ns {
                         test_step!(n);
                     }
@@ -312,7 +304,7 @@ pub fn translate_offset_with_edit(
     }
 
     loop {
-        match state.next_inserted_newlines() {
+        match state.next_inserted_steps() {
             None => break,
             Some(ns) => {
                 for n in ns {
@@ -330,26 +322,26 @@ mod test {
     use super::*;
     use proptest::{prelude::*, proptest, proptest_helper};
     use crate::line_index;
-    use ra_text_edit::test_utils::{arb_offset, arb_text_with_edits};
+    use ra_text_edit::test_utils::{arb_offset, arb_text_with_edit};
     use ra_text_edit::TextEdit;
 
     #[derive(Debug)]
-    struct ArbTextWithOffsetAndEdits {
+    struct ArbTextWithEditAndOffset {
         text: String,
-        edits: TextEdit,
+        edit: TextEdit,
         edited_text: String,
         offset: TextUnit,
     }
 
-    fn arb_text_with_edits_and_offset() -> BoxedStrategy<ArbTextWithOffsetAndEdits> {
-        arb_text_with_edits()
+    fn arb_text_with_edit_and_offset() -> BoxedStrategy<ArbTextWithEditAndOffset> {
+        arb_text_with_edit()
             .prop_flat_map(|x| {
-                let edited_text = x.edits.apply(&x.text);
+                let edited_text = x.edit.apply(&x.text);
                 let arb_offset = arb_offset(&edited_text);
                 (Just(x), Just(edited_text), arb_offset).prop_map(|(x, edited_text, offset)| {
-                    ArbTextWithOffsetAndEdits {
+                    ArbTextWithEditAndOffset {
                         text: x.text,
-                        edits: x.edits,
+                        edit: x.edit,
                         edited_text,
                         offset,
                     }
@@ -360,10 +352,10 @@ mod test {
 
     proptest! {
         #[test]
-        fn test_translate_offset_with_edit(x in arb_text_with_edits_and_offset()) {
+        fn test_translate_offset_with_edit(x in arb_text_with_edit_and_offset()) {
             let expected = line_index::to_line_col(&x.edited_text, x.offset);
             let line_index = LineIndex::new(&x.text);
-            let actual = translate_offset_with_edit(&line_index, x.offset, x.edits.as_atoms());
+            let actual = translate_offset_with_edit(&line_index, x.offset, &x.edit);
 
             assert_eq!(actual, expected);
         }

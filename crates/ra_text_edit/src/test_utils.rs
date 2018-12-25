@@ -69,17 +69,17 @@ pub fn arb_text_edit(text: &str) -> BoxedStrategy<TextEdit> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ArbTextWithEdits {
+pub struct ArbTextWithEdit {
     pub text: String,
-    pub edits: TextEdit,
+    pub edit: TextEdit,
 }
 
-pub fn arb_text_with_edits() -> BoxedStrategy<ArbTextWithEdits> {
+pub fn arb_text_with_edit() -> BoxedStrategy<ArbTextWithEdit> {
     let text = arb_text();
     text.prop_flat_map(|s| {
-        let edits = arb_text_edit(&s);
-        (Just(s), edits)
+        let edit = arb_text_edit(&s);
+        (Just(s), edit)
     })
-    .prop_map(|(text, edits)| ArbTextWithEdits { text, edits })
+    .prop_map(|(text, edit)| ArbTextWithEdit { text, edit })
     .boxed()
 }
