@@ -481,10 +481,7 @@ impl ItemizedBlock {
 
     /// Returns the block as a string under its original form
     fn original_block_as_string(&self) -> String {
-        self.lines
-            .iter()
-            .map(|line| format!("{}\n", line))
-            .collect::<String>()
+        self.lines.join("\n")
     }
 }
 
