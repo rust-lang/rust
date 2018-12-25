@@ -1,5 +1,5 @@
 error: expected item after attributes
-  --> $DIR/attr-dangling-in-mod.rs:18:14
+  --> $DIR/attr-dangling-in-mod.rs:8:14
    |
 LL | #[foo = "bar"]
    |              ^

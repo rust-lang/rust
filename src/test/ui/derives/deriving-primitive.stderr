@@ -1,5 +1,5 @@
 error: cannot find derive macro `FromPrimitive` in this scope
-  --> $DIR/deriving-primitive.rs:11:10
+  --> $DIR/deriving-primitive.rs:1:10
    |
 LL | #[derive(FromPrimitive)] //~ ERROR cannot find derive macro `FromPrimitive` in this scope
    |          ^^^^^^^^^^^^^

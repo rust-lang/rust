@@ -1,5 +1,5 @@
 error[E0609]: no field `f` on type `*const Rec`
-  --> $DIR/unsafe-fn-autoderef.rs:29:14
+  --> $DIR/unsafe-fn-autoderef.rs:19:14
    |
 LL |     return p.f; //~ ERROR no field `f` on type `*const Rec`
    |            --^

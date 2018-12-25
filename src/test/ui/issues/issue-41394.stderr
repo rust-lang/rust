@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-41394.rs:12:9
+  --> $DIR/issue-41394.rs:2:9
    |
 LL |     A = "" + 1
    |         ^^^^^^
@@ -7,7 +7,7 @@ LL |     A = "" + 1
    = note: an implementation of `std::ops::Add` might be missing for `&str`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-41394.rs:17:9
+  --> $DIR/issue-41394.rs:7:9
    |
 LL |     A = Foo::A as isize
    |         ^^^^^^^^^^^^^^^ referenced constant has errors

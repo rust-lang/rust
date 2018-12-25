@@ -1,5 +1,5 @@
 error[E0658]: inline assembly is not stable enough for use and is subject to change (see issue #29722)
-  --> $DIR/feature-gate-asm2.rs:15:24
+  --> $DIR/feature-gate-asm2.rs:5:24
    |
 LL |         println!("{}", asm!("")); //~ ERROR inline assembly is not stable
    |                        ^^^^^^^^

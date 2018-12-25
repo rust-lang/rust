@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `as`
-  --> $DIR/keyword-as-as-identifier.rs:16:9
+  --> $DIR/keyword-as-as-identifier.rs:6:9
    |
 LL |     let as = "foo"; //~ error: expected pattern, found keyword `as`
    |         ^^ expected pattern

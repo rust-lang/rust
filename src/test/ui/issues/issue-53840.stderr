@@ -1,5 +1,5 @@
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/issue-53840.rs:22:16
+  --> $DIR/issue-53840.rs:13:16
    |
 LL |         E::Foo(a, b, ref c) => {}
    |                ^  ^  ----- both by-ref and by-move used
@@ -8,7 +8,7 @@ LL |         E::Foo(a, b, ref c) => {}
    |                by-move pattern here
 
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/issue-53840.rs:26:14
+  --> $DIR/issue-53840.rs:17:14
    |
 LL |         Bar {a, ref b} => {}
    |              ^  ----- both by-ref and by-move used

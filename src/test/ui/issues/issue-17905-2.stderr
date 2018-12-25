@@ -1,13 +1,13 @@
 error[E0308]: mismatched method receiver
-  --> $DIR/issue-17905-2.rs:18:18
+  --> $DIR/issue-17905-2.rs:8:18
    |
 LL |     fn say(self: &Pair<&str, isize>) {
    |                  ^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Pair<&'_ str, _>`
               found type `Pair<&str, _>`
-note: the anonymous lifetime #2 defined on the method body at 18:5...
-  --> $DIR/issue-17905-2.rs:18:5
+note: the anonymous lifetime #2 defined on the method body at 8:5...
+  --> $DIR/issue-17905-2.rs:8:5
    |
 LL | /     fn say(self: &Pair<&str, isize>) {
 LL | | //~^ ERROR mismatched method receiver
@@ -15,27 +15,27 @@ LL | | //~| ERROR mismatched method receiver
 LL | |         println!("{:?}", self);
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime '_ as defined on the impl at 15:5
-  --> $DIR/issue-17905-2.rs:15:5
+note: ...does not necessarily outlive the lifetime '_ as defined on the impl at 5:5
+  --> $DIR/issue-17905-2.rs:5:5
    |
 LL |     &str,
    |     ^
 
 error[E0308]: mismatched method receiver
-  --> $DIR/issue-17905-2.rs:18:18
+  --> $DIR/issue-17905-2.rs:8:18
    |
 LL |     fn say(self: &Pair<&str, isize>) {
    |                  ^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Pair<&'_ str, _>`
               found type `Pair<&str, _>`
-note: the lifetime '_ as defined on the impl at 15:5...
-  --> $DIR/issue-17905-2.rs:15:5
+note: the lifetime '_ as defined on the impl at 5:5...
+  --> $DIR/issue-17905-2.rs:5:5
    |
 LL |     &str,
    |     ^
-note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 18:5
-  --> $DIR/issue-17905-2.rs:18:5
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the method body at 8:5
+  --> $DIR/issue-17905-2.rs:8:5
    |
 LL | /     fn say(self: &Pair<&str, isize>) {
 LL | | //~^ ERROR mismatched method receiver

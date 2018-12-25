@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/escape-argument.rs:36:38
+  --> $DIR/escape-argument.rs:26:38
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
            ]
 
 note: No external requirements
-  --> $DIR/escape-argument.rs:30:1
+  --> $DIR/escape-argument.rs:20:1
    |
 LL | / fn test() {
 LL | |     let x = 44;
@@ -24,7 +24,7 @@ LL | | }
    = note: defining type: DefId(0/0:3 ~ escape_argument[317d]::test[0]) with substs []
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/escape-argument.rs:37:25
+  --> $DIR/escape-argument.rs:27:25
    |
 LL |         closure(&mut p, &y);
    |                         ^^ borrowed value does not live long enough

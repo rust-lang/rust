@@ -1,5 +1,5 @@
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
-  --> $DIR/more-gates.rs:17:1
+  --> $DIR/more-gates.rs:7:1
    |
 LL | #[attr2mac1]
    | ^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[attr2mac1]
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
-  --> $DIR/more-gates.rs:20:1
+  --> $DIR/more-gates.rs:10:1
    |
 LL | #[attr2mac2]
    | ^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[attr2mac2]
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
-  --> $DIR/more-gates.rs:24:1
+  --> $DIR/more-gates.rs:14:1
    |
 LL | mac2mac1!(); //~ ERROR: cannot expand to macro definitions
    | ^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | mac2mac1!(); //~ ERROR: cannot expand to macro definitions
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
-  --> $DIR/more-gates.rs:25:1
+  --> $DIR/more-gates.rs:15:1
    |
 LL | mac2mac2!(); //~ ERROR: cannot expand to macro definitions
    | ^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL | mac2mac2!(); //~ ERROR: cannot expand to macro definitions
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions (see issue #54727)
-  --> $DIR/more-gates.rs:27:1
+  --> $DIR/more-gates.rs:17:1
    |
 LL | tricky!();
    | ^^^^^^^^^^

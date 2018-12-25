@@ -1,161 +1,161 @@
 error[E0433]: failed to resolve: not a module `Y`
-  --> $DIR/ufcs-partially-resolved.rs:58:22
+  --> $DIR/ufcs-partially-resolved.rs:48:22
    |
 LL |     let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve: not a module `Y`
    |                      ^ not a module `Y`
 
 error[E0433]: failed to resolve: not a module `Y`
-  --> $DIR/ufcs-partially-resolved.rs:60:15
+  --> $DIR/ufcs-partially-resolved.rs:50:15
    |
 LL |     <u8 as E::Y>::NN; //~ ERROR failed to resolve: not a module `Y`
    |               ^ not a module `Y`
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
-  --> $DIR/ufcs-partially-resolved.rs:29:24
+  --> $DIR/ufcs-partially-resolved.rs:19:24
    |
 LL |     let _: <u8 as Tr>::N; //~ ERROR cannot find associated type `N` in trait `Tr`
    |                        ^ did you mean `Y`?
 
 error[E0576]: cannot find associated type `N` in enum `E`
-  --> $DIR/ufcs-partially-resolved.rs:30:23
+  --> $DIR/ufcs-partially-resolved.rs:20:23
    |
 LL |     let _: <u8 as E>::N; //~ ERROR cannot find associated type `N` in enum `E`
    |                       ^ not found in `E`
 
 error[E0576]: cannot find associated type `N` in `A`
-  --> $DIR/ufcs-partially-resolved.rs:31:23
+  --> $DIR/ufcs-partially-resolved.rs:21:23
    |
 LL |     let _: <u8 as A>::N; //~ ERROR cannot find associated type `N` in `A`
    |                       ^ not found in `A`
 
 error[E0576]: cannot find method or associated constant `N` in trait `Tr`
-  --> $DIR/ufcs-partially-resolved.rs:32:17
+  --> $DIR/ufcs-partially-resolved.rs:22:17
    |
 LL |     <u8 as Tr>::N; //~ ERROR cannot find method or associated constant `N` in trait `Tr`
    |                 ^ did you mean `Y`?
 
 error[E0576]: cannot find method or associated constant `N` in enum `E`
-  --> $DIR/ufcs-partially-resolved.rs:33:16
+  --> $DIR/ufcs-partially-resolved.rs:23:16
    |
 LL |     <u8 as E>::N; //~ ERROR cannot find method or associated constant `N` in enum `E`
    |                ^ not found in `E`
 
 error[E0576]: cannot find method or associated constant `N` in `A`
-  --> $DIR/ufcs-partially-resolved.rs:34:16
+  --> $DIR/ufcs-partially-resolved.rs:24:16
    |
 LL |     <u8 as A>::N; //~ ERROR cannot find method or associated constant `N` in `A`
    |                ^ not found in `A`
 
 error[E0575]: expected associated type, found variant `E::Y`
-  --> $DIR/ufcs-partially-resolved.rs:36:12
+  --> $DIR/ufcs-partially-resolved.rs:26:12
    |
 LL |     let _: <u8 as E>::Y; //~ ERROR expected associated type, found variant `E::Y`
    |            ^^^^^^^^^^^^ not a associated type
 
 error[E0575]: expected method or associated constant, found unit variant `E::Y`
-  --> $DIR/ufcs-partially-resolved.rs:38:5
+  --> $DIR/ufcs-partially-resolved.rs:28:5
    |
 LL |     <u8 as E>::Y; //~ ERROR expected method or associated constant, found unit variant `E::Y`
    |     ^^^^^^^^^^^^ not a method or associated constant
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
-  --> $DIR/ufcs-partially-resolved.rs:40:24
+  --> $DIR/ufcs-partially-resolved.rs:30:24
    |
 LL |     let _: <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
    |                        ^ did you mean `Y`?
 
 error[E0576]: cannot find associated type `N` in enum `E`
-  --> $DIR/ufcs-partially-resolved.rs:41:23
+  --> $DIR/ufcs-partially-resolved.rs:31:23
    |
 LL |     let _: <u8 as E>::N::NN; //~ ERROR cannot find associated type `N` in enum `E`
    |                       ^ not found in `E`
 
 error[E0576]: cannot find associated type `N` in `A`
-  --> $DIR/ufcs-partially-resolved.rs:42:23
+  --> $DIR/ufcs-partially-resolved.rs:32:23
    |
 LL |     let _: <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
    |                       ^ not found in `A`
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
-  --> $DIR/ufcs-partially-resolved.rs:43:17
+  --> $DIR/ufcs-partially-resolved.rs:33:17
    |
 LL |     <u8 as Tr>::N::NN; //~ ERROR cannot find associated type `N` in trait `Tr`
    |                 ^ did you mean `Y`?
 
 error[E0576]: cannot find associated type `N` in enum `E`
-  --> $DIR/ufcs-partially-resolved.rs:44:16
+  --> $DIR/ufcs-partially-resolved.rs:34:16
    |
 LL |     <u8 as E>::N::NN; //~ ERROR cannot find associated type `N` in enum `E`
    |                ^ not found in `E`
 
 error[E0576]: cannot find associated type `N` in `A`
-  --> $DIR/ufcs-partially-resolved.rs:45:16
+  --> $DIR/ufcs-partially-resolved.rs:35:16
    |
 LL |     <u8 as A>::N::NN; //~ ERROR cannot find associated type `N` in `A`
    |                ^ not found in `A`
 
 error[E0575]: expected associated type, found variant `E::Y`
-  --> $DIR/ufcs-partially-resolved.rs:47:12
+  --> $DIR/ufcs-partially-resolved.rs:37:12
    |
 LL |     let _: <u8 as E>::Y::NN; //~ ERROR expected associated type, found variant `E::Y`
    |            ^^^^^^^^^^^^^^^^ not a associated type
 
 error[E0575]: expected associated type, found variant `E::Y`
-  --> $DIR/ufcs-partially-resolved.rs:49:5
+  --> $DIR/ufcs-partially-resolved.rs:39:5
    |
 LL |     <u8 as E>::Y::NN; //~ ERROR expected associated type, found variant `E::Y`
    |     ^^^^^^^^^^^^^^^^ not a associated type
 
 error[E0576]: cannot find associated type `NN` in `Tr::N`
-  --> $DIR/ufcs-partially-resolved.rs:51:27
+  --> $DIR/ufcs-partially-resolved.rs:41:27
    |
 LL |     let _: <u8 as Tr::N>::NN; //~ ERROR cannot find associated type `NN` in `Tr::N`
    |                           ^^ not found in `Tr::N`
 
 error[E0576]: cannot find associated type `NN` in `E::N`
-  --> $DIR/ufcs-partially-resolved.rs:52:26
+  --> $DIR/ufcs-partially-resolved.rs:42:26
    |
 LL |     let _: <u8 as E::N>::NN; //~ ERROR cannot find associated type `NN` in `E::N`
    |                          ^^ not found in `E::N`
 
 error[E0576]: cannot find associated type `NN` in `A::N`
-  --> $DIR/ufcs-partially-resolved.rs:53:26
+  --> $DIR/ufcs-partially-resolved.rs:43:26
    |
 LL |     let _: <u8 as A::N>::NN; //~ ERROR cannot find associated type `NN` in `A::N`
    |                          ^^ not found in `A::N`
 
 error[E0576]: cannot find method or associated constant `NN` in `Tr::N`
-  --> $DIR/ufcs-partially-resolved.rs:54:20
+  --> $DIR/ufcs-partially-resolved.rs:44:20
    |
 LL |     <u8 as Tr::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `Tr::N`
    |                    ^^ not found in `Tr::N`
 
 error[E0576]: cannot find method or associated constant `NN` in `E::N`
-  --> $DIR/ufcs-partially-resolved.rs:55:19
+  --> $DIR/ufcs-partially-resolved.rs:45:19
    |
 LL |     <u8 as E::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `E::N`
    |                   ^^ not found in `E::N`
 
 error[E0576]: cannot find method or associated constant `NN` in `A::N`
-  --> $DIR/ufcs-partially-resolved.rs:56:19
+  --> $DIR/ufcs-partially-resolved.rs:46:19
    |
 LL |     <u8 as A::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `A::N`
    |                   ^^ not found in `A::N`
 
 error[E0576]: cannot find associated type `NN` in `Tr::Y`
-  --> $DIR/ufcs-partially-resolved.rs:57:27
+  --> $DIR/ufcs-partially-resolved.rs:47:27
    |
 LL |     let _: <u8 as Tr::Y>::NN; //~ ERROR cannot find associated type `NN` in `Tr::Y`
    |                           ^^ not found in `Tr::Y`
 
 error[E0576]: cannot find method or associated constant `NN` in `Tr::Y`
-  --> $DIR/ufcs-partially-resolved.rs:59:20
+  --> $DIR/ufcs-partially-resolved.rs:49:20
    |
 LL |     <u8 as Tr::Y>::NN; //~ ERROR cannot find method or associated constant `NN` in `Tr::Y`
    |                    ^^ not found in `Tr::Y`
 
 error[E0575]: expected associated type, found method `Dr::Z`
-  --> $DIR/ufcs-partially-resolved.rs:62:12
+  --> $DIR/ufcs-partially-resolved.rs:52:12
    |
 LL |     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
    |            ^^^^^^^^^^^^-
@@ -163,7 +163,7 @@ LL |     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method 
    |                        did you mean `X`?
 
 error[E0575]: expected method or associated constant, found associated type `Dr::X`
-  --> $DIR/ufcs-partially-resolved.rs:63:5
+  --> $DIR/ufcs-partially-resolved.rs:53:5
    |
 LL |     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
    |     ^^^^^^^^^^^^-
@@ -173,7 +173,7 @@ LL |     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found 
    = note: can't use a type alias as a constructor
 
 error[E0575]: expected associated type, found method `Dr::Z`
-  --> $DIR/ufcs-partially-resolved.rs:64:12
+  --> $DIR/ufcs-partially-resolved.rs:54:12
    |
 LL |     let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found method `Dr::Z`
    |            ^^^^^^^^^^^^-^^^
@@ -181,19 +181,19 @@ LL |     let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found meth
    |                        did you mean `X`?
 
 error[E0223]: ambiguous associated type
-  --> $DIR/ufcs-partially-resolved.rs:46:12
+  --> $DIR/ufcs-partially-resolved.rs:36:12
    |
 LL |     let _: <u8 as Tr>::Y::NN; //~ ERROR ambiguous associated type
    |            ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<u8 as Tr>::Y as Trait>::NN`
 
 error[E0599]: no associated item named `NN` found for type `<u8 as Tr>::Y` in the current scope
-  --> $DIR/ufcs-partially-resolved.rs:48:5
+  --> $DIR/ufcs-partially-resolved.rs:38:5
    |
 LL |     <u8 as Tr>::Y::NN; //~ ERROR no associated item named `NN` found for type `<u8 as Tr>::Y`
    |     ^^^^^^^^^^^^^^^^^ associated item not found in `<u8 as Tr>::Y`
 
 error[E0599]: no associated item named `N` found for type `<u8 as Dr>::X` in the current scope
-  --> $DIR/ufcs-partially-resolved.rs:65:5
+  --> $DIR/ufcs-partially-resolved.rs:55:5
    |
 LL |     <u8 as Dr>::X::N; //~ ERROR no associated item named `N` found for type `<u8 as Dr>::X`
    |     ^^^^^^^^^^^^^^^^ associated item not found in `<u8 as Dr>::X`

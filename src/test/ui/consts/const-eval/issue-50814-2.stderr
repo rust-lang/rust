@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/issue-50814-2.rs:22:5
+  --> $DIR/issue-50814-2.rs:12:5
    |
 LL |     const BAR: usize = [5, 6, 7][T::BOO]; //~ ERROR any use of this value will cause an error
    |     ^^^^^^^^^^^^^^^^^^^-----------------^
@@ -9,7 +9,7 @@ LL |     const BAR: usize = [5, 6, 7][T::BOO]; //~ ERROR any use of this value w
    = note: #[deny(const_err)] on by default
 
 error[E0080]: evaluation of constant expression failed
-  --> $DIR/issue-50814-2.rs:26:5
+  --> $DIR/issue-50814-2.rs:16:5
    |
 LL |     &<A<T> as Foo<T>>::BAR //~ ERROR E0080
    |     ^---------------------

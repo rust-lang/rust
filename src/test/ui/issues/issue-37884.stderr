@@ -1,5 +1,5 @@
 error[E0308]: method not compatible with trait
-  --> $DIR/issue-37884.rs:16:5
+  --> $DIR/issue-37884.rs:6:5
    |
 LL | /     fn next(&'a mut self) -> Option<Self::Item>
 LL | |     //~^ ERROR method not compatible with trait
@@ -11,8 +11,8 @@ LL | |     }
    |
    = note: expected type `fn(&mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
               found type `fn(&'a mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
-note: the anonymous lifetime #1 defined on the method body at 16:5...
-  --> $DIR/issue-37884.rs:16:5
+note: the anonymous lifetime #1 defined on the method body at 6:5...
+  --> $DIR/issue-37884.rs:6:5
    |
 LL | /     fn next(&'a mut self) -> Option<Self::Item>
 LL | |     //~^ ERROR method not compatible with trait
@@ -21,8 +21,8 @@ LL | |     {
 LL | |         Some(&mut self.0)
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 13:6
-  --> $DIR/issue-37884.rs:13:6
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 3:6
+  --> $DIR/issue-37884.rs:3:6
    |
 LL | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
    |      ^^

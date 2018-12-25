@@ -1,5 +1,5 @@
 error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
-  --> $DIR/lint-forbid-cmdline.rs:13:9
+  --> $DIR/lint-forbid-cmdline.rs:3:9
    |
 LL | #[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
    |         ^^^^^^^^^^ overruled by previous forbid

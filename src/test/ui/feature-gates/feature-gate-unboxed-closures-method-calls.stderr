@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:14:7
+  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:4:7
    |
 LL |     f.call(()); //~ ERROR use of unstable library feature 'fn_traits'
    |       ^^^^
@@ -7,7 +7,7 @@ LL |     f.call(()); //~ ERROR use of unstable library feature 'fn_traits'
    = help: add #![feature(fn_traits)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:15:7
+  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:5:7
    |
 LL |     f.call_mut(()); //~ ERROR use of unstable library feature 'fn_traits'
    |       ^^^^^^^^
@@ -15,7 +15,7 @@ LL |     f.call_mut(()); //~ ERROR use of unstable library feature 'fn_traits'
    = help: add #![feature(fn_traits)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:16:7
+  --> $DIR/feature-gate-unboxed-closures-method-calls.rs:6:7
    |
 LL |     f.call_once(()); //~ ERROR use of unstable library feature 'fn_traits'
    |       ^^^^^^^^^

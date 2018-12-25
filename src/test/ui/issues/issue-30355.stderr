@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/issue-30355.rs:15:6
+  --> $DIR/issue-30355.rs:5:6
    |
 LL |     &X(*Y)
    |      ^ doesn't have a size known at compile-time

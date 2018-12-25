@@ -1,11 +1,11 @@
 error: lel
-  --> $DIR/macro-comma-support.rs:16:5
+  --> $DIR/macro-comma-support.rs:6:5
    |
 LL |     compile_error!("lel"); //~ ERROR lel
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lel
-  --> $DIR/macro-comma-support.rs:17:5
+  --> $DIR/macro-comma-support.rs:7:5
    |
 LL |     compile_error!("lel",); //~ ERROR lel
    |     ^^^^^^^^^^^^^^^^^^^^^^^

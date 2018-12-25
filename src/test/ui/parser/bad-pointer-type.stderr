@@ -1,5 +1,5 @@
 error: expected mut or const in raw pointer type (use `*mut T` or `*const T` as appropriate)
-  --> $DIR/bad-pointer-type.rs:13:11
+  --> $DIR/bad-pointer-type.rs:3:11
    |
 LL | fn foo(_: *()) {
    |           ^

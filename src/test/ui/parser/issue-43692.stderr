@@ -1,5 +1,5 @@
 error: invalid start of unicode escape
-  --> $DIR/issue-43692.rs:14:9
+  --> $DIR/issue-43692.rs:4:9
    |
 LL |     '/u{_10FFFF}'; //~ ERROR invalid start of unicode escape
    |         ^

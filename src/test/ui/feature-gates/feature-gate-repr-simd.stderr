@@ -1,5 +1,5 @@
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
-  --> $DIR/feature-gate-repr-simd.rs:11:1
+  --> $DIR/feature-gate-repr-simd.rs:1:1
    |
 LL | #[repr(simd)] //~ error: SIMD types are experimental
    | ^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[repr(simd)] //~ error: SIMD types are experimental
    = help: add #![feature(repr_simd)] to the crate attributes to enable
 
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
-  --> $DIR/feature-gate-repr-simd.rs:15:1
+  --> $DIR/feature-gate-repr-simd.rs:5:1
    |
 LL | #[repr(simd)] //~ error: SIMD types are experimental
    | ^^^^^^^^^^^^^

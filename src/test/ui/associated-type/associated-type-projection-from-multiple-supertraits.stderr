@@ -1,5 +1,5 @@
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:29:32
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:19:32
    |
 LL |     type Color;
    |     ----------- ambiguous `Color` from `Vehicle`
@@ -11,7 +11,7 @@ LL | fn dent<C:BoxCar>(c: C, color: C::Color) {
    |                                ^^^^^^^^ ambiguous associated type `Color`
 
 error[E0221]: ambiguous associated type `Color` in bounds of `BoxCar`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:33:33
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:33
    |
 LL |     type Color;
    |     ----------- ambiguous `Color` from `Vehicle`
@@ -23,7 +23,7 @@ LL | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
    |                                 ^^^^^^^^^^^ ambiguous associated type `Color`
 
 error[E0191]: the value of the associated type `Color` (from the trait `Vehicle`) must be specified
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:33:26
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:26
    |
 LL |     type Color;
    |     ----------- `Color` defined here
@@ -32,7 +32,7 @@ LL | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
    |                          ^^^^^^^^^^^^^^^^^^^ associated type `Color` must be specified
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:38:29
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:28:29
    |
 LL |     type Color;
    |     ----------- ambiguous `Color` from `Vehicle`

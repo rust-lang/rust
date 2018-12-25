@@ -1,5 +1,5 @@
 error[E0599]: no method named `boom` found for type `&Obj` in the current scope
-  --> $DIR/issue-3707.rs:20:14
+  --> $DIR/issue-3707.rs:10:14
    |
 LL |         self.boom(); //~ ERROR no method named `boom` found for type `&Obj` in the current scope
    |         -----^^^^
@@ -9,7 +9,7 @@ LL |         self.boom(); //~ ERROR no method named `boom` found for type `&Obj`
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `Obj`
-  --> $DIR/issue-3707.rs:16:5
+  --> $DIR/issue-3707.rs:6:5
    |
 LL |     pub fn boom() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^

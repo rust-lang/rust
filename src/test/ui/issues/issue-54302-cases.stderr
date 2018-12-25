@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> &'a u32: Foo2<'_, u32>` is not satisfied
-  --> $DIR/issue-54302-cases.rs:73:5
+  --> $DIR/issue-54302-cases.rs:63:5
    |
 LL |     <u32 as RefFoo<u32>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo2<'_, u32>` is not implemented for `&'a u32`
@@ -9,13 +9,13 @@ LL |     <u32 as RefFoo<u32>>::ref_foo(a)
    = note: required because of the requirements on the impl of `for<'a> Foo<'static, u32>` for `&'a u32`
    = note: required because of the requirements on the impl of `RefFoo<u32>` for `u32`
 note: required by `RefFoo::ref_foo`
-  --> $DIR/issue-54302-cases.rs:61:5
+  --> $DIR/issue-54302-cases.rs:51:5
    |
 LL |     fn ref_foo(&self) -> &'static T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0279]: the requirement `for<'a> 'a : ` is not satisfied (`expected bound lifetime parameter 'a, found concrete lifetime`)
-  --> $DIR/issue-54302-cases.rs:79:5
+  --> $DIR/issue-54302-cases.rs:69:5
    |
 LL |     <i32 as RefFoo<i32>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,13 +24,13 @@ LL |     <i32 as RefFoo<i32>>::ref_foo(a)
    = note: required because of the requirements on the impl of `for<'a> Foo<'static, i32>` for `&'a i32`
    = note: required because of the requirements on the impl of `RefFoo<i32>` for `i32`
 note: required by `RefFoo::ref_foo`
-  --> $DIR/issue-54302-cases.rs:61:5
+  --> $DIR/issue-54302-cases.rs:51:5
    |
 LL |     fn ref_foo(&self) -> &'static T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `for<'a> <&'a u64 as Mirror>::Image == &u64`
-  --> $DIR/issue-54302-cases.rs:85:5
+  --> $DIR/issue-54302-cases.rs:75:5
    |
 LL |     <u64 as RefFoo<u64>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'a, found concrete lifetime
@@ -39,13 +39,13 @@ LL |     <u64 as RefFoo<u64>>::ref_foo(a)
    = note: required because of the requirements on the impl of `for<'a> Foo<'static, u64>` for `&'a u64`
    = note: required because of the requirements on the impl of `RefFoo<u64>` for `u64`
 note: required by `RefFoo::ref_foo`
-  --> $DIR/issue-54302-cases.rs:61:5
+  --> $DIR/issue-54302-cases.rs:51:5
    |
 LL |     fn ref_foo(&self) -> &'static T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `for<'a> <&'a i64 as Mirror>::Image == &i64`
-  --> $DIR/issue-54302-cases.rs:91:5
+  --> $DIR/issue-54302-cases.rs:81:5
    |
 LL |     <i64 as RefFoo<i64>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'a, found concrete lifetime
@@ -54,7 +54,7 @@ LL |     <i64 as RefFoo<i64>>::ref_foo(a)
    = note: required because of the requirements on the impl of `for<'a> Foo<'static, i64>` for `&'a i64`
    = note: required because of the requirements on the impl of `RefFoo<i64>` for `i64`
 note: required by `RefFoo::ref_foo`
-  --> $DIR/issue-54302-cases.rs:61:5
+  --> $DIR/issue-54302-cases.rs:51:5
    |
 LL |     fn ref_foo(&self) -> &'static T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

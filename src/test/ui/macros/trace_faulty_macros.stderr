@@ -1,5 +1,5 @@
 error: no rules expected the token `bcd`
-  --> $DIR/trace_faulty_macros.rs:17:26
+  --> $DIR/trace_faulty_macros.rs:7:26
    |
 LL | macro_rules! my_faulty_macro {
    | ---------------------------- when calling this macro
@@ -11,7 +11,7 @@ LL |     my_faulty_macro!();
    |     ------------------- in this macro invocation
 
 note: trace_macro
-  --> $DIR/trace_faulty_macros.rs:43:5
+  --> $DIR/trace_faulty_macros.rs:33:5
    |
 LL |     my_faulty_macro!();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     my_faulty_macro!();
    = note: expanding `my_faulty_macro! { bcd }`
 
 error: recursion limit reached while expanding the macro `my_recursive_macro`
-  --> $DIR/trace_faulty_macros.rs:32:9
+  --> $DIR/trace_faulty_macros.rs:22:9
    |
 LL |         my_recursive_macro!(); //~ ERROR recursion limit
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     my_recursive_macro!();
    = help: consider adding a `#![recursion_limit="8"]` attribute to your crate
 
 note: trace_macro
-  --> $DIR/trace_faulty_macros.rs:44:5
+  --> $DIR/trace_faulty_macros.rs:34:5
    |
 LL |     my_recursive_macro!();
    |     ^^^^^^^^^^^^^^^^^^^^^^

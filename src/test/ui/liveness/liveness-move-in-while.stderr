@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `y`
-  --> $DIR/liveness-move-in-while.rs:17:24
+  --> $DIR/liveness-move-in-while.rs:7:24
    |
 LL |         println!("{}", y); //~ ERROR use of moved value: `y`
    |                        ^ value used here after move
@@ -9,7 +9,7 @@ LL |         while true { while true { while true { x = y; x.clone(); } } }
    = note: move occurs because `y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `y`
-  --> $DIR/liveness-move-in-while.rs:18:52
+  --> $DIR/liveness-move-in-while.rs:8:52
    |
 LL |         while true { while true { while true { x = y; x.clone(); } } }
    |                                                    ^ value moved here in previous iteration of loop

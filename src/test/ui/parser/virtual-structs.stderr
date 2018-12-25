@@ -1,5 +1,5 @@
 error: expected item, found reserved keyword `virtual`
-  --> $DIR/virtual-structs.rs:15:1
+  --> $DIR/virtual-structs.rs:5:1
    |
 LL | virtual struct SuperStruct {
    | ^^^^^^^ expected item

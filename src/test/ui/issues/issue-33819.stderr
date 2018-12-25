@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `v` as mutable
-  --> $DIR/issue-33819.rs:13:39
+  --> $DIR/issue-33819.rs:4:39
    |
 LL |         Some(ref v) => { let a = &mut v; },
    |                                       ^ cannot borrow mutably

@@ -1,5 +1,5 @@
 error: extern items cannot be `const`
-  --> $DIR/removed-syntax-extern-const.rs:14:5
+  --> $DIR/removed-syntax-extern-const.rs:4:5
    |
 LL |     const i: isize;
    |     ^^^^^ help: try using a static value: `static`

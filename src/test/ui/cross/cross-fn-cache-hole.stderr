@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `i32: Bar<u32>` is not satisfied
-  --> $DIR/cross-fn-cache-hole.rs:25:1
+  --> $DIR/cross-fn-cache-hole.rs:15:1
    |
 LL | / fn vacuous<A>() //~ ERROR the trait bound `i32: Bar<u32>` is not satisfied
 LL | |     where i32: Foo<u32, A>

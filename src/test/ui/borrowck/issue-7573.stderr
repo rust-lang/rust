@@ -1,5 +1,5 @@
 error: borrowed data cannot be stored outside of its closure
-  --> $DIR/issue-7573.rs:32:27
+  --> $DIR/issue-7573.rs:21:27
    |
 LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
    |                               - cannot infer an appropriate lifetime...

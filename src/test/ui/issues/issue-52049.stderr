@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-52049.rs:16:10
+  --> $DIR/issue-52049.rs:6:10
    |
 LL |     foo(&unpromotable(5u32));
    |          ^^^^^^^^^^^^^^^^^^ - temporary value only lives until here

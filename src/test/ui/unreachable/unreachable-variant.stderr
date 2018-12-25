@@ -1,5 +1,5 @@
 error[E0603]: module `super_sekrit` is private
-  --> $DIR/unreachable-variant.rs:16:21
+  --> $DIR/unreachable-variant.rs:6:21
    |
 LL |     let _x = other::super_sekrit::sooper_sekrit::baz; //~ ERROR is private
    |                     ^^^^^^^^^^^^

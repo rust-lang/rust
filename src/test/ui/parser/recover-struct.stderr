@@ -1,5 +1,5 @@
 error: expected `:`, found `Bad`
-  --> $DIR/recover-struct.rs:16:9
+  --> $DIR/recover-struct.rs:6:9
    |
 LL |         Very
    |             - expected `:`

@@ -1,35 +1,35 @@
 error: this trait cannot be derived for unions
-  --> $DIR/union-derive.rs:19:5
+  --> $DIR/union-derive.rs:9:5
    |
 LL |     Debug, //~ ERROR this trait cannot be derived for unions
    |     ^^^^^
 
 error: this trait cannot be derived for unions
-  --> $DIR/union-derive.rs:18:5
+  --> $DIR/union-derive.rs:8:5
    |
 LL |     Default, //~ ERROR this trait cannot be derived for unions
    |     ^^^^^^^
 
 error: this trait cannot be derived for unions
-  --> $DIR/union-derive.rs:17:5
+  --> $DIR/union-derive.rs:7:5
    |
 LL |     Hash, //~ ERROR this trait cannot be derived for unions
    |     ^^^^
 
 error: this trait cannot be derived for unions
-  --> $DIR/union-derive.rs:16:5
+  --> $DIR/union-derive.rs:6:5
    |
 LL |     Ord, //~ ERROR this trait cannot be derived for unions
    |     ^^^
 
 error: this trait cannot be derived for unions
-  --> $DIR/union-derive.rs:15:5
+  --> $DIR/union-derive.rs:5:5
    |
 LL |     PartialOrd, //~ ERROR this trait cannot be derived for unions
    |     ^^^^^^^^^^
 
 error: this trait cannot be derived for unions
-  --> $DIR/union-derive.rs:14:5
+  --> $DIR/union-derive.rs:4:5
    |
 LL |     PartialEq, //~ ERROR this trait cannot be derived for unions
    |     ^^^^^^^^^

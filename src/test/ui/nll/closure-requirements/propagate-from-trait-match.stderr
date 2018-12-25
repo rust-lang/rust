@@ -1,5 +1,5 @@
 note: External requirements
-  --> $DIR/propagate-from-trait-match.rs:42:36
+  --> $DIR/propagate-from-trait-match.rs:32:36
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
@@ -21,7 +21,7 @@ LL | |     });
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/propagate-from-trait-match.rs:38:1
+  --> $DIR/propagate-from-trait-match.rs:28:1
    |
 LL | / fn supply<'a, T>(value: T)
 LL | | where
@@ -38,7 +38,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/propagate-from-trait-match.rs:42:36
+  --> $DIR/propagate-from-trait-match.rs:32:36
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^

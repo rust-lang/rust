@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `,`
-  --> $DIR/multitrait.rs:17:9
+  --> $DIR/multitrait.rs:7:9
    |
 LL | impl Cmp, ToString for S {
    |         ^ expected one of 8 possible tokens here

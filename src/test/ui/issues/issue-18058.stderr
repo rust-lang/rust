@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Undefined` in this scope
-  --> $DIR/issue-18058.rs:11:6
+  --> $DIR/issue-18058.rs:1:6
    |
 LL | impl Undefined {}
    |      ^^^^^^^^^ not found in this scope

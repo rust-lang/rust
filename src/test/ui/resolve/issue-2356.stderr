@@ -1,23 +1,23 @@
 error[E0425]: cannot find function `shave` in this scope
-  --> $DIR/issue-2356.rs:27:5
+  --> $DIR/issue-2356.rs:17:5
    |
 LL |     shave();
    |     ^^^^^ not found in this scope
 
 error[E0425]: cannot find function `clone` in this scope
-  --> $DIR/issue-2356.rs:34:5
+  --> $DIR/issue-2356.rs:24:5
    |
 LL |     clone();
    |     ^^^^^ help: try: `self.clone`
 
 error[E0425]: cannot find function `default` in this scope
-  --> $DIR/issue-2356.rs:41:5
+  --> $DIR/issue-2356.rs:31:5
    |
 LL |     default();
    |     ^^^^^^^ help: try: `Self::default`
 
 error[E0425]: cannot find value `whiskers` in this scope
-  --> $DIR/issue-2356.rs:49:5
+  --> $DIR/issue-2356.rs:39:5
    |
 LL |     whiskers -= other;
    |     ^^^^^^^^
@@ -26,67 +26,67 @@ LL |     whiskers -= other;
    |     help: try: `self.whiskers`
 
 error[E0425]: cannot find function `shave` in this scope
-  --> $DIR/issue-2356.rs:51:5
+  --> $DIR/issue-2356.rs:41:5
    |
 LL |     shave(4);
    |     ^^^^^ help: try: `Self::shave`
 
 error[E0425]: cannot find function `purr` in this scope
-  --> $DIR/issue-2356.rs:53:5
+  --> $DIR/issue-2356.rs:43:5
    |
 LL |     purr();
    |     ^^^^ not found in this scope
 
 error[E0425]: cannot find function `static_method` in this scope
-  --> $DIR/issue-2356.rs:62:9
+  --> $DIR/issue-2356.rs:52:9
    |
 LL |         static_method();
    |         ^^^^^^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find function `purr` in this scope
-  --> $DIR/issue-2356.rs:64:9
+  --> $DIR/issue-2356.rs:54:9
    |
 LL |         purr();
    |         ^^^^ not found in this scope
 
 error[E0425]: cannot find function `purr` in this scope
-  --> $DIR/issue-2356.rs:66:9
+  --> $DIR/issue-2356.rs:56:9
    |
 LL |         purr();
    |         ^^^^ not found in this scope
 
 error[E0425]: cannot find function `purr` in this scope
-  --> $DIR/issue-2356.rs:68:9
+  --> $DIR/issue-2356.rs:58:9
    |
 LL |         purr();
    |         ^^^^ not found in this scope
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/issue-2356.rs:75:8
+  --> $DIR/issue-2356.rs:65:8
    |
 LL |     if self.whiskers > 3 {
    |        ^^^^ `self` value is a keyword only available in methods with `self` parameter
 
 error[E0425]: cannot find function `grow_older` in this scope
-  --> $DIR/issue-2356.rs:82:5
+  --> $DIR/issue-2356.rs:72:5
    |
 LL |     grow_older();
    |     ^^^^^^^^^^ not found in this scope
 
 error[E0425]: cannot find function `shave` in this scope
-  --> $DIR/issue-2356.rs:84:5
+  --> $DIR/issue-2356.rs:74:5
    |
 LL |     shave();
    |     ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `whiskers` in this scope
-  --> $DIR/issue-2356.rs:89:5
+  --> $DIR/issue-2356.rs:79:5
    |
 LL |     whiskers = 0;
    |     ^^^^^^^^ help: try: `self.whiskers`
 
 error[E0425]: cannot find value `whiskers` in this scope
-  --> $DIR/issue-2356.rs:94:5
+  --> $DIR/issue-2356.rs:84:5
    |
 LL |     whiskers = 4;
    |     ^^^^^^^^
@@ -95,13 +95,13 @@ LL |     whiskers = 4;
    |     help: try: `self.whiskers`
 
 error[E0425]: cannot find function `purr_louder` in this scope
-  --> $DIR/issue-2356.rs:96:5
+  --> $DIR/issue-2356.rs:86:5
    |
 LL |     purr_louder();
    |     ^^^^^^^^^^^ not found in this scope
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/issue-2356.rs:102:5
+  --> $DIR/issue-2356.rs:92:5
    |
 LL |     self += 1;
    |     ^^^^ `self` value is a keyword only available in methods with `self` parameter

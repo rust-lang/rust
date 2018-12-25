@@ -1,5 +1,5 @@
 error: literal out of range for u8
-  --> $DIR/edition-deny-overflowing-literals-2018.rs:14:17
+  --> $DIR/edition-deny-overflowing-literals-2018.rs:4:17
    |
 LL |     let x: u8 = 256;
    |                 ^^^

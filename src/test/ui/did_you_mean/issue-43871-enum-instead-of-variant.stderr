@@ -1,5 +1,5 @@
 error[E0423]: expected function, found enum `Option`
-  --> $DIR/issue-43871-enum-instead-of-variant.rs:14:13
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:4:13
    |
 LL |     let x = Option(1); //~ ERROR expected function, found enum
    |             ^^^^^^
@@ -9,7 +9,7 @@ LL |     let x = Option(1); //~ ERROR expected function, found enum
            - `std::prelude::v1::Option::Some`
 
 error[E0532]: expected tuple struct/variant, found enum `Option`
-  --> $DIR/issue-43871-enum-instead-of-variant.rs:16:12
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:6:12
    |
 LL |     if let Option(_) = x { //~ ERROR expected tuple struct/variant, found enum
    |            ^^^^^^
@@ -19,7 +19,7 @@ LL |     if let Option(_) = x { //~ ERROR expected tuple struct/variant, found e
            - `std::prelude::v1::Option::Some`
 
 error[E0532]: expected tuple struct/variant, found enum `Example`
-  --> $DIR/issue-43871-enum-instead-of-variant.rs:22:12
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:12:12
    |
 LL |     if let Example(_) = y { //~ ERROR expected tuple struct/variant, found enum
    |            ^^^^^^^

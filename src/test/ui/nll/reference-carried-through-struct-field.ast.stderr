@@ -1,5 +1,5 @@
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/reference-carried-through-struct-field.rs:21:5
+  --> $DIR/reference-carried-through-struct-field.rs:11:5
    |
 LL |     let wrapper = Wrap { w: &mut x };
    |                                  - borrow of `x` occurs here

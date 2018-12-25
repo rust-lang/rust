@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/issue-3668-2.rs:12:27
+  --> $DIR/issue-3668-2.rs:2:27
    |
 LL |     static child: isize = x + 1;
    |                           ^

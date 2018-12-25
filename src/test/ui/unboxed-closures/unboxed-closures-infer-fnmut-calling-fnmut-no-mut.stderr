@@ -1,5 +1,5 @@
 error[E0595]: closure cannot assign to immutable local variable `tick1`
-  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:26:17
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:16:17
    |
 LL |     let tick1 = || {
    |         ----- help: make this binding mutable: `mut tick1`
@@ -8,7 +8,7 @@ LL |     let tick2 = || { //~ ERROR closure cannot assign to immutable local var
    |                 ^^ cannot borrow mutably
 
 error[E0596]: cannot borrow immutable local variable `tick2` as mutable
-  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:30:5
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:20:5
    |
 LL |     let tick2 = || { //~ ERROR closure cannot assign to immutable local variable `tick1`
    |         ----- help: make this binding mutable: `mut tick2`

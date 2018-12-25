@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `nyan.how_hungry`, as `nyan` is not declared as mutable
-  --> $DIR/mutable-class-fields.rs:28:3
+  --> $DIR/mutable-class-fields.rs:18:3
    |
 LL |   let nyan : Cat = cat(52, 99);
    |       ---- help: consider changing this to be mutable: `mut nyan`

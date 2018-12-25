@@ -1,5 +1,5 @@
 error: Documentation test in private item
-  --> $DIR/lint-group.rs:29:1
+  --> $DIR/lint-group.rs:19:1
    |
 LL | / /// wait, this *does* have a doctest?
 LL | | ///
@@ -9,20 +9,20 @@ LL | | /// ```
    | |_______^
    |
 note: lint level defined here
-  --> $DIR/lint-group.rs:17:9
+  --> $DIR/lint-group.rs:7:9
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
    = note: #[deny(private_doc_tests)] implied by #[deny(rustdoc)]
 
 error: `[error]` cannot be resolved, ignoring it...
-  --> $DIR/lint-group.rs:19:29
+  --> $DIR/lint-group.rs:9:29
    |
 LL | /// what up, let's make an [error]
    |                             ^^^^^ cannot be resolved, ignoring
    |
 note: lint level defined here
-  --> $DIR/lint-group.rs:17:9
+  --> $DIR/lint-group.rs:7:9
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
@@ -30,13 +30,13 @@ LL | #![deny(rustdoc)]
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 error: Missing code example in this documentation
-  --> $DIR/lint-group.rs:26:1
+  --> $DIR/lint-group.rs:16:1
    |
 LL | /// wait, this doesn't have a doctest?
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-group.rs:17:9
+  --> $DIR/lint-group.rs:7:9
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^

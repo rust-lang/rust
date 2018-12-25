@@ -1,5 +1,5 @@
 error[E0597]: `factorial` does not live long enough
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:25:17
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:15:17
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- value captured here
@@ -13,7 +13,7 @@ LL | }
    | borrow might be used here, when `factorial` is dropped and runs the destructor for type `std::option::Option<std::boxed::Box<dyn std::ops::Fn(u32) -> u32>>`
 
 error[E0506]: cannot assign to `factorial` because it is borrowed
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:30:5
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:20:5
    |
 LL |     let f = |x: u32| -> u32 {
    |             --------------- borrow of `factorial` occurs here
@@ -27,7 +27,7 @@ LL |     factorial = Some(Box::new(f));
    |     borrow later used here
 
 error[E0597]: `factorial` does not live long enough
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:38:17
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:28:17
    |
 LL |     let mut factorial: Option<Box<Fn(u32) -> u32 + 'static>> = None;
    |                        ------------------------------------- type annotation requires that `factorial` is borrowed for `'static`
@@ -42,7 +42,7 @@ LL | }
    | - `factorial` dropped here while still borrowed
 
 error[E0506]: cannot assign to `factorial` because it is borrowed
-  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:42:5
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:32:5
    |
 LL |     let mut factorial: Option<Box<Fn(u32) -> u32 + 'static>> = None;
    |                        ------------------------------------- type annotation requires that `factorial` is borrowed for `'static`

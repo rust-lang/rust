@@ -1,5 +1,5 @@
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/issue-23544.rs:15:17
+  --> $DIR/issue-23544.rs:5:17
    |
 LL |         where T<Bogus = Self::AlsoBogus>: A;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ associated type not allowed here

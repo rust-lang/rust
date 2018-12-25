@@ -1,11 +1,11 @@
 error: symbol-name(_ZN5basic4main17h08bcaf310214ed52E)
-  --> $DIR/basic.rs:13:1
+  --> $DIR/basic.rs:3:1
    |
 LL | #[rustc_symbol_name] //~ ERROR _ZN5basic4main
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: item-path(main)
-  --> $DIR/basic.rs:14:1
+  --> $DIR/basic.rs:4:1
    |
 LL | #[rustc_item_path] //~ ERROR item-path(main)
    | ^^^^^^^^^^^^^^^^^^

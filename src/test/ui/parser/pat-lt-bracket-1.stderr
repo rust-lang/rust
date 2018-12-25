@@ -1,5 +1,5 @@
 error: expected one of `=>`, `@`, `if`, or `|`, found `<`
-  --> $DIR/pat-lt-bracket-1.rs:15:7
+  --> $DIR/pat-lt-bracket-1.rs:5:7
    |
 LL |     x < 7 => (),
    |       ^ expected one of `=>`, `@`, `if`, or `|` here

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/equality.rs:25:5
+  --> $DIR/equality.rs:15:5
    |
 LL |         return 1_i32;
    |                ----- expected because of this statement
@@ -11,7 +11,7 @@ LL |     0_u32
               found type `u32`
 
 error[E0277]: cannot add `impl Foo` to `u32`
-  --> $DIR/equality.rs:34:11
+  --> $DIR/equality.rs:24:11
    |
 LL |         n + sum_to(n - 1)
    |           ^ no implementation for `u32 + impl Foo`

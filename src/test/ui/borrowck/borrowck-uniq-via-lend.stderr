@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-uniq-via-lend.rs:46:13
+  --> $DIR/borrowck-uniq-via-lend.rs:36:13
    |
 LL |     let w = &mut v;
    |                  - mutable borrow occurs here
@@ -10,7 +10,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `*v` as immutable because `v` is also borrowed as mutable
-  --> $DIR/borrowck-uniq-via-lend.rs:63:13
+  --> $DIR/borrowck-uniq-via-lend.rs:53:13
    |
 LL |     x = &mut v;
    |              - mutable borrow occurs here

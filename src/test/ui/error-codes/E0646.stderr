@@ -1,5 +1,5 @@
 error[E0646]: `main` function is not allowed to have a `where` clause
-  --> $DIR/E0646.rs:11:17
+  --> $DIR/E0646.rs:1:17
    |
 LL | fn main() where (): Copy {} //~ ERROR [E0646]
    |                 ^^^^^^^^ `main` cannot have a `where` clause

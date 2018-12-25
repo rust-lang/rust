@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/elide-errors-on-mismatched-tuple.rs:24:9
+  --> $DIR/elide-errors-on-mismatched-tuple.rs:14:9
    |
 LL |     let (a, b, c) = (A::new(), A::new()); // This tuple is 2 elements, should be three
    |         ^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements

@@ -1,5 +1,5 @@
 error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
-  --> $DIR/resolve-inconsistent-binding-mode.rs:17:32
+  --> $DIR/resolve-inconsistent-binding-mode.rs:7:32
    |
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                   -            ^ bound in different ways
@@ -7,7 +7,7 @@ LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                   first binding
 
 error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
-  --> $DIR/resolve-inconsistent-binding-mode.rs:26:32
+  --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
    |
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                   -            ^ bound in different ways
@@ -15,13 +15,13 @@ LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                   first binding
 
 error[E0409]: variable `i` is bound in inconsistent ways within the same match arm
-  --> $DIR/resolve-inconsistent-binding-mode.rs:35:40
+  --> $DIR/resolve-inconsistent-binding-mode.rs:25:40
    |
 LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
    |                       - first binding  ^ bound in different ways
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-binding-mode.rs:17:32
+  --> $DIR/resolve-inconsistent-binding-mode.rs:7:32
    |
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
@@ -30,7 +30,7 @@ LL |       Opts::A(ref i) | Opts::B(i) => {}
               found type `isize`
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-binding-mode.rs:26:32
+  --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
    |
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
@@ -39,7 +39,7 @@ LL |       Opts::A(ref i) | Opts::B(i) => {}
               found type `isize`
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-binding-mode.rs:35:36
+  --> $DIR/resolve-inconsistent-binding-mode.rs:25:36
    |
 LL |       Opts::A(ref mut i) | Opts::B(ref i) => {}
    |                                    ^^^^^ types differ in mutability

@@ -1,5 +1,5 @@
 error: program clause dump
-  --> $DIR/lower_env2.rs:16:1
+  --> $DIR/lower_env2.rs:6:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    = note: forall<'a, T> { WellFormed(S<'a, T>) :- Implemented(T: Foo), TypeOutlives(T: 'a). }
 
 error: program clause dump
-  --> $DIR/lower_env2.rs:21:1
+  --> $DIR/lower_env2.rs:11:1
    |
 LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

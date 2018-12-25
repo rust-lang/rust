@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `t0` as mutable because `*t0` is also borrowed as immutable
-  --> $DIR/borrowck-swap-mut-base-ptr.rs:23:15
+  --> $DIR/borrowck-swap-mut-base-ptr.rs:13:15
    |
 LL |     let p: &isize = &*t0;     // Freezes `*t0`
    |                      --- immutable borrow occurs here

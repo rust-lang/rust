@@ -1,5 +1,5 @@
 error[E0308]: match arms have incompatible types
-  --> $DIR/old-lub-glb-object.rs:20:13
+  --> $DIR/old-lub-glb-object.rs:10:13
    |
 LL |       let z = match 22 { //~ ERROR incompatible types
    |  _____________^

@@ -1,17 +1,17 @@
 warning: unused extern crate
-  --> $DIR/no-macro-use-attr.rs:16:1
+  --> $DIR/no-macro-use-attr.rs:6:1
    |
 LL | extern crate derive_a;
    | ^^^^^^^^^^^^^^^^^^^^^^ help: remove it
    |
 note: lint level defined here
-  --> $DIR/no-macro-use-attr.rs:14:9
+  --> $DIR/no-macro-use-attr.rs:4:9
    |
 LL | #![warn(unused_extern_crates)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: compilation successful
-  --> $DIR/no-macro-use-attr.rs:20:1
+  --> $DIR/no-macro-use-attr.rs:10:1
    |
 LL | fn main() {} //~ ERROR compilation successful
    | ^^^^^^^^^^^^

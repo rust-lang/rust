@@ -1,5 +1,5 @@
 error: denote infinite loops with `loop { ... }`
-  --> $DIR/issue-1962.rs:14:3
+  --> $DIR/issue-1962.rs:4:3
    |
 LL |   while true  { //~ ERROR denote infinite loops with `loop
    |   ^^^^^^^^^^ help: use `loop`

@@ -1,5 +1,5 @@
 error[E0277]: `main` has invalid return type `char`
-  --> $DIR/termination-trait-main-wrong-type.rs:11:14
+  --> $DIR/termination-trait-main-wrong-type.rs:1:14
    |
 LL | fn main() -> char { //~ ERROR
    |              ^^^^ `main` can only return types that implement `std::process::Termination`

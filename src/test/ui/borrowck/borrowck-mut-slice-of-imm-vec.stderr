@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `v` as mutable
-  --> $DIR/borrowck-mut-slice-of-imm-vec.rs:17:16
+  --> $DIR/borrowck-mut-slice-of-imm-vec.rs:7:16
    |
 LL |     let v = vec![1, 2, 3];
    |         - help: make this binding mutable: `mut v`

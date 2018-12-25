@@ -1,5 +1,5 @@
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
-  --> $DIR/repr-transparent.rs:21:1
+  --> $DIR/repr-transparent.rs:11:1
    |
 LL | struct NoFields; //~ ERROR needs exactly one non-zero-sized field
    | ^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | struct NoFields; //~ ERROR needs exactly one non-zero-sized field
    = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
-  --> $DIR/repr-transparent.rs:24:1
+  --> $DIR/repr-transparent.rs:14:1
    |
 LL | struct ContainsOnlyZst(()); //~ ERROR needs exactly one non-zero-sized field
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | struct ContainsOnlyZst(()); //~ ERROR needs exactly one non-zero-sized fiel
    = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
-  --> $DIR/repr-transparent.rs:27:1
+  --> $DIR/repr-transparent.rs:17:1
    |
 LL | struct ContainsOnlyZstArray([bool; 0]); //~ ERROR needs exactly one non-zero-sized field
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | struct ContainsOnlyZstArray([bool; 0]); //~ ERROR needs exactly one non-zer
    = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
-  --> $DIR/repr-transparent.rs:30:1
+  --> $DIR/repr-transparent.rs:20:1
    |
 LL | struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,37 +31,37 @@ LL | struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
    = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
-  --> $DIR/repr-transparent.rs:34:1
+  --> $DIR/repr-transparent.rs:24:1
    |
 LL | struct MultipleNonZst(u8, u8); //~ ERROR needs exactly one non-zero-sized field
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: non-zero-sized field
-  --> $DIR/repr-transparent.rs:34:23
+  --> $DIR/repr-transparent.rs:24:23
    |
 LL | struct MultipleNonZst(u8, u8); //~ ERROR needs exactly one non-zero-sized field
    |                       ^^  ^^
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
-  --> $DIR/repr-transparent.rs:40:1
+  --> $DIR/repr-transparent.rs:30:1
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: non-zero-sized field
-  --> $DIR/repr-transparent.rs:40:33
+  --> $DIR/repr-transparent.rs:30:33
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
    |                                 ^^^  ^^^^^^^^^^^^^^^^^^^
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
-  --> $DIR/repr-transparent.rs:44:32
+  --> $DIR/repr-transparent.rs:34:32
    |
 LL | struct NontrivialAlignZst(u32, [u16; 0]); //~ ERROR alignment larger than 1
    |                                ^^^^^^^^
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
-  --> $DIR/repr-transparent.rs:50:24
+  --> $DIR/repr-transparent.rs:40:24
    |
 LL | struct GenericAlign<T>(ZstAlign32<T>, u32); //~ ERROR alignment larger than 1
    |                        ^^^^^^^^^^^^^

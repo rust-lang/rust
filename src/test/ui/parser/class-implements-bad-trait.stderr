@@ -1,5 +1,5 @@
 error: expected one of `!` or `::`, found `cat`
-  --> $DIR/class-implements-bad-trait.rs:14:7
+  --> $DIR/class-implements-bad-trait.rs:4:7
    |
 LL | class cat : nonexistent {
    |       ^^^ expected one of `!` or `::` here

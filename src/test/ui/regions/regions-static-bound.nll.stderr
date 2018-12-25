@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/regions-static-bound.rs:19:5
+  --> $DIR/regions-static-bound.rs:9:5
    |
 LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
    |                        -- lifetime `'a` defined here
@@ -7,7 +7,7 @@ LL |     t //[ll]~ ERROR E0312
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error[E0621]: explicit lifetime required in the type of `u`
-  --> $DIR/regions-static-bound.rs:24:5
+  --> $DIR/regions-static-bound.rs:14:5
    |
 LL | fn error(u: &(), v: &()) {
    |             --- help: add explicit lifetime `'static` to the type of `u`: `&'static ()`
@@ -15,7 +15,7 @@ LL |     static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of 
    |     ^^^^^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/regions-static-bound.rs:26:5
+  --> $DIR/regions-static-bound.rs:16:5
    |
 LL | fn error(u: &(), v: &()) {
    |                     --- help: add explicit lifetime `'static` to the type of `v`: `&'static ()`

@@ -1,11 +1,11 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-in-structs.rs:20:9
+  --> $DIR/regions-in-structs.rs:10:9
    |
 LL |     a: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
    |         ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-in-structs.rs:21:9
+  --> $DIR/regions-in-structs.rs:11:9
    |
 LL |     b: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
    |         ^^ undeclared lifetime

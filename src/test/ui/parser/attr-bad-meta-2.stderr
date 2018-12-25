@@ -1,5 +1,5 @@
 error: unexpected token: `]`
-  --> $DIR/attr-bad-meta-2.rs:13:9
+  --> $DIR/attr-bad-meta-2.rs:3:9
    |
 LL | #[path =] //~ ERROR unexpected token: `]`
    |         ^ unexpected token after this

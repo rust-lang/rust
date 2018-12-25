@@ -1,5 +1,5 @@
 warning: any use of this value will cause an error
-  --> $DIR/const-err.rs:20:1
+  --> $DIR/const-err.rs:10:1
    |
 LL | const FOO: u8 = [5u8][1];
    | ^^^^^^^^^^^^^^^^--------^
@@ -7,13 +7,13 @@ LL | const FOO: u8 = [5u8][1];
    |                 index out of bounds: the len is 1 but the index is 1
    |
 note: lint level defined here
-  --> $DIR/const-err.rs:14:9
+  --> $DIR/const-err.rs:4:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-err.rs:24:15
+  --> $DIR/const-err.rs:14:15
    |
 LL |     black_box((FOO, FOO));
    |               ^^^^^^^^^^ referenced constant has errors

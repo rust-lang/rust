@@ -1,5 +1,5 @@
 error: invalid fragment specifier `foo`
-  --> $DIR/macro-invalid-fragment-spec.rs:12:6
+  --> $DIR/macro-invalid-fragment-spec.rs:2:6
    |
 LL |     ($x:foo) => ()
    |      ^^^^^^

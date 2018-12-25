@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/E0223.rs:14:14
+  --> $DIR/E0223.rs:4:14
    |
 LL |     let foo: MyTrait::X;
    |              ^^^^^^^^^^ help: use fully-qualified syntax: `<Type as MyTrait>::X`

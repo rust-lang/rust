@@ -1,17 +1,17 @@
 warning: `...` range patterns are deprecated
-  --> $DIR/inclusive-range-pattern-syntax.rs:19:10
+  --> $DIR/inclusive-range-pattern-syntax.rs:9:10
    |
 LL |         1...2 => {}
    |          ^^^ help: use `..=` for an inclusive range
    |
 note: lint level defined here
-  --> $DIR/inclusive-range-pattern-syntax.rs:14:9
+  --> $DIR/inclusive-range-pattern-syntax.rs:4:9
    |
 LL | #![warn(ellipsis_inclusive_range_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: `...` range patterns are deprecated
-  --> $DIR/inclusive-range-pattern-syntax.rs:25:9
+  --> $DIR/inclusive-range-pattern-syntax.rs:15:9
    |
 LL |         &1...2 => {}
    |         ^^^^^^ help: use `..=` for an inclusive range: `&(1..=2)`

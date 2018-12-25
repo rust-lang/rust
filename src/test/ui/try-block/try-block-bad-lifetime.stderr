@@ -1,5 +1,5 @@
 error[E0597]: `my_string` does not live long enough
-  --> $DIR/try-block-bad-lifetime.rs:25:33
+  --> $DIR/try-block-bad-lifetime.rs:15:33
    |
 LL |         let result: Result<(), &str> = try {
    |             ------ borrow later stored here
@@ -11,7 +11,7 @@ LL |         };
    |         - `my_string` dropped here while still borrowed
 
 error[E0506]: cannot assign to `i` because it is borrowed
-  --> $DIR/try-block-bad-lifetime.rs:39:13
+  --> $DIR/try-block-bad-lifetime.rs:29:13
    |
 LL |         let k = &mut i;
    |                 ------ borrow of `i` occurs here
@@ -23,7 +23,7 @@ LL |         ::std::mem::drop(k); //~ ERROR use of moved value: `k`
    |                          - borrow later used here
 
 error[E0382]: use of moved value: `k`
-  --> $DIR/try-block-bad-lifetime.rs:41:26
+  --> $DIR/try-block-bad-lifetime.rs:31:26
    |
 LL |             Err(k) ?;
    |                 - value moved here
@@ -34,7 +34,7 @@ LL |         ::std::mem::drop(k); //~ ERROR use of moved value: `k`
    = note: move occurs because `k` has type `&mut i32`, which does not implement the `Copy` trait
 
 error[E0506]: cannot assign to `i` because it is borrowed
-  --> $DIR/try-block-bad-lifetime.rs:42:9
+  --> $DIR/try-block-bad-lifetime.rs:32:9
    |
 LL |         let k = &mut i;
    |                 ------ borrow of `i` occurs here

@@ -1,131 +1,131 @@
 warning: unused comparison that must be used
-  --> $DIR/must-use-ops.rs:22:5
+  --> $DIR/must-use-ops.rs:12:5
    |
 LL |     val == 1;
    |     ^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/must-use-ops.rs:15:9
+  --> $DIR/must-use-ops.rs:5:9
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/must-use-ops.rs:23:5
+  --> $DIR/must-use-ops.rs:13:5
    |
 LL |     val < 1;
    |     ^^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/must-use-ops.rs:24:5
+  --> $DIR/must-use-ops.rs:14:5
    |
 LL |     val <= 1;
    |     ^^^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/must-use-ops.rs:25:5
+  --> $DIR/must-use-ops.rs:15:5
    |
 LL |     val != 1;
    |     ^^^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/must-use-ops.rs:26:5
+  --> $DIR/must-use-ops.rs:16:5
    |
 LL |     val >= 1;
    |     ^^^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/must-use-ops.rs:27:5
+  --> $DIR/must-use-ops.rs:17:5
    |
 LL |     val > 1;
    |     ^^^^^^^
 
 warning: unused arithmetic operation that must be used
-  --> $DIR/must-use-ops.rs:30:5
+  --> $DIR/must-use-ops.rs:20:5
    |
 LL |     val + 2;
    |     ^^^^^^^
 
 warning: unused arithmetic operation that must be used
-  --> $DIR/must-use-ops.rs:31:5
+  --> $DIR/must-use-ops.rs:21:5
    |
 LL |     val - 2;
    |     ^^^^^^^
 
 warning: unused arithmetic operation that must be used
-  --> $DIR/must-use-ops.rs:32:5
+  --> $DIR/must-use-ops.rs:22:5
    |
 LL |     val / 2;
    |     ^^^^^^^
 
 warning: unused arithmetic operation that must be used
-  --> $DIR/must-use-ops.rs:33:5
+  --> $DIR/must-use-ops.rs:23:5
    |
 LL |     val * 2;
    |     ^^^^^^^
 
 warning: unused arithmetic operation that must be used
-  --> $DIR/must-use-ops.rs:34:5
+  --> $DIR/must-use-ops.rs:24:5
    |
 LL |     val % 2;
    |     ^^^^^^^
 
 warning: unused logical operation that must be used
-  --> $DIR/must-use-ops.rs:37:5
+  --> $DIR/must-use-ops.rs:27:5
    |
 LL |     true && true;
    |     ^^^^^^^^^^^^
 
 warning: unused logical operation that must be used
-  --> $DIR/must-use-ops.rs:38:5
+  --> $DIR/must-use-ops.rs:28:5
    |
 LL |     false || true;
    |     ^^^^^^^^^^^^^
 
 warning: unused bitwise operation that must be used
-  --> $DIR/must-use-ops.rs:41:5
+  --> $DIR/must-use-ops.rs:31:5
    |
 LL |     5 ^ val;
    |     ^^^^^^^
 
 warning: unused bitwise operation that must be used
-  --> $DIR/must-use-ops.rs:42:5
+  --> $DIR/must-use-ops.rs:32:5
    |
 LL |     5 & val;
    |     ^^^^^^^
 
 warning: unused bitwise operation that must be used
-  --> $DIR/must-use-ops.rs:43:5
+  --> $DIR/must-use-ops.rs:33:5
    |
 LL |     5 | val;
    |     ^^^^^^^
 
 warning: unused bitwise operation that must be used
-  --> $DIR/must-use-ops.rs:44:5
+  --> $DIR/must-use-ops.rs:34:5
    |
 LL |     5 << val;
    |     ^^^^^^^^
 
 warning: unused bitwise operation that must be used
-  --> $DIR/must-use-ops.rs:45:5
+  --> $DIR/must-use-ops.rs:35:5
    |
 LL |     5 >> val;
    |     ^^^^^^^^
 
 warning: unused unary operation that must be used
-  --> $DIR/must-use-ops.rs:48:5
+  --> $DIR/must-use-ops.rs:38:5
    |
 LL |     !val;
    |     ^^^^
 
 warning: unused unary operation that must be used
-  --> $DIR/must-use-ops.rs:49:5
+  --> $DIR/must-use-ops.rs:39:5
    |
 LL |     -val;
    |     ^^^^
 
 warning: unused unary operation that must be used
-  --> $DIR/must-use-ops.rs:50:5
+  --> $DIR/must-use-ops.rs:40:5
    |
 LL |     *val_pointer;
    |     ^^^^^^^^^^^^

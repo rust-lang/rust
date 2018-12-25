@@ -1,5 +1,5 @@
 error[E0585]: found a documentation comment that doesn't document anything
-  --> $DIR/doc-before-semi.rs:14:5
+  --> $DIR/doc-before-semi.rs:4:5
    |
 LL |     /// hi
    |     ^^^^^^

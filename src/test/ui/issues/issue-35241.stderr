@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-35241.rs:13:20
+  --> $DIR/issue-35241.rs:3:20
    |
 LL | fn test() -> Foo { Foo } //~ ERROR mismatched types
    |              ---   ^^^

@@ -1,5 +1,5 @@
 error[E0081]: discriminant value `0` already exists
-  --> $DIR/enum-discrim-autosizing.rs:18:12
+  --> $DIR/enum-discrim-autosizing.rs:8:12
    |
 LL |     Au64 = 0,
    |            - first use of `0`

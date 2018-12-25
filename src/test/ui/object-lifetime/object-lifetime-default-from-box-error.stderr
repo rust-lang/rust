@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `ss`
-  --> $DIR/object-lifetime-default-from-box-error.rs:28:5
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
    |             --------------- help: add explicit lifetime `'static` to the type of `ss`: `&mut SomeStruct<'static>`
@@ -8,12 +8,12 @@ LL |     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
    |     ^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `ss`
-  --> $DIR/object-lifetime-default-from-box-error.rs:41:12
+  --> $DIR/object-lifetime-default-from-box-error.rs:31:12
    |
 LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<SomeTrait+'b>) {
    |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`
 ...
-LL |     ss.r = b; //~ ERROR 41:12: 41:13: explicit lifetime required in the type of `ss` [E0621]
+LL |     ss.r = b; //~ ERROR explicit lifetime required in the type of `ss` [E0621]
    |            ^ lifetime `'b` required
 
 error: aborting due to 2 previous errors

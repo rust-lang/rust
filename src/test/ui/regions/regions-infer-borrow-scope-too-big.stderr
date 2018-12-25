@@ -1,5 +1,5 @@
 error[E0597]: `*p` does not live long enough
-  --> $DIR/regions-infer-borrow-scope-too-big.rs:21:23
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:11:23
    |
 LL |     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
    |                       ^^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 20:8...
-  --> $DIR/regions-infer-borrow-scope-too-big.rs:20:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 10:8...
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:10:8
    |
 LL | fn foo<'a>(p: Box<Point>) -> &'a isize {
    |        ^^

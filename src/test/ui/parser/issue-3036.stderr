@@ -1,5 +1,5 @@
 error: expected one of `.`, `;`, `?`, or an operator, found `}`
-  --> $DIR/issue-3036.rs:18:1
+  --> $DIR/issue-3036.rs:8:1
    |
 LL |     let x = 3
    |              - expected one of `.`, `;`, `?`, or an operator here

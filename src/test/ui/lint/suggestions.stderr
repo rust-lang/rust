@@ -1,17 +1,17 @@
 warning: unnecessary parentheses around assigned value
-  --> $DIR/suggestions.rs:59:31
+  --> $DIR/suggestions.rs:49:31
    |
 LL |         let mut registry_no = (format!("NX-{}", 74205));
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
    |
 note: lint level defined here
-  --> $DIR/suggestions.rs:13:21
+  --> $DIR/suggestions.rs:3:21
    |
 LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
    |                     ^^^^^^^^^^^^^
 
 warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
-  --> $DIR/suggestions.rs:52:1
+  --> $DIR/suggestions.rs:42:1
    |
 LL | #[no_debug] // should suggest removal of deprecated attribute
    | ^^^^^^^^^^^ help: remove this attribute
@@ -19,7 +19,7 @@ LL | #[no_debug] // should suggest removal of deprecated attribute
    = note: #[warn(deprecated)] on by default
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:59:13
+  --> $DIR/suggestions.rs:49:13
    |
 LL |         let mut registry_no = (format!("NX-{}", 74205));
    |             ----^^^^^^^^^^^
@@ -27,13 +27,13 @@ LL |         let mut registry_no = (format!("NX-{}", 74205));
    |             help: remove this `mut`
    |
 note: lint level defined here
-  --> $DIR/suggestions.rs:13:9
+  --> $DIR/suggestions.rs:3:9
    |
 LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
    |         ^^^^^^^^^^
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:65:13
+  --> $DIR/suggestions.rs:55:13
    |
 LL |            let mut
    |   _____________^
@@ -45,7 +45,7 @@ LL | ||             b = 1;
    |               help: remove this `mut`
 
 error: const items should never be #[no_mangle]
-  --> $DIR/suggestions.rs:16:14
+  --> $DIR/suggestions.rs:6:14
    |
 LL | #[no_mangle] const DISCOVERY: usize = 1;
    |              -----^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ LL | #[no_mangle] const DISCOVERY: usize = 1;
    = note: #[deny(no_mangle_const_items)] on by default
 
 warning: functions generic over types must be mangled
-  --> $DIR/suggestions.rs:22:1
+  --> $DIR/suggestions.rs:12:1
    |
 LL | #[no_mangle]
    | ------------ help: remove this attribute
@@ -66,7 +66,7 @@ LL | pub fn defiant<T>(_t: T) {}
    = note: #[warn(no_mangle_generic_items)] on by default
 
 error: const items should never be #[no_mangle]
-  --> $DIR/suggestions.rs:32:18
+  --> $DIR/suggestions.rs:22:18
    |
 LL |     #[no_mangle] pub const DAUNTLESS: bool = true;
    |                  ---------^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL |     #[no_mangle] pub const DAUNTLESS: bool = true;
    |                  help: try a static value: `pub static`
 
 warning: functions generic over types must be mangled
-  --> $DIR/suggestions.rs:35:18
+  --> $DIR/suggestions.rs:25:18
    |
 LL |     #[no_mangle] pub fn val_jean<T>() {}
    |     ------------ ^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL |     #[no_mangle] pub fn val_jean<T>() {}
    |     help: remove this attribute
 
 error: const items should never be #[no_mangle]
-  --> $DIR/suggestions.rs:40:18
+  --> $DIR/suggestions.rs:30:18
    |
 LL |     #[no_mangle] pub(crate) const VETAR: bool = true;
    |                  ----------------^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     #[no_mangle] pub(crate) const VETAR: bool = true;
    |                  help: try a static value: `pub static`
 
 warning: functions generic over types must be mangled
-  --> $DIR/suggestions.rs:43:18
+  --> $DIR/suggestions.rs:33:18
    |
 LL |     #[no_mangle] pub(crate) fn crossfield<T>() {}
    |     ------------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL |     #[no_mangle] pub(crate) fn crossfield<T>() {}
    |     help: remove this attribute
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/suggestions.rs:56:5
+  --> $DIR/suggestions.rs:46:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
@@ -106,7 +106,7 @@ LL |     while true {
    = note: #[warn(while_true)] on by default
 
 warning: the `warp_factor:` in this pattern is redundant
-  --> $DIR/suggestions.rs:71:23
+  --> $DIR/suggestions.rs:61:23
    |
 LL |             Equinox { warp_factor: warp_factor } => {}
    |                       ------------^^^^^^^^^^^^

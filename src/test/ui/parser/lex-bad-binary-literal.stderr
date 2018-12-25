@@ -1,53 +1,53 @@
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:14:8
+  --> $DIR/lex-bad-binary-literal.rs:4:8
    |
 LL |     0b121; //~ ERROR invalid digit for a base 2 literal
    |        ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:15:12
+  --> $DIR/lex-bad-binary-literal.rs:5:12
    |
 LL |     0b10_10301; //~ ERROR invalid digit for a base 2 literal
    |            ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:16:7
+  --> $DIR/lex-bad-binary-literal.rs:6:7
    |
 LL |     0b30; //~ ERROR invalid digit for a base 2 literal
    |       ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:17:7
+  --> $DIR/lex-bad-binary-literal.rs:7:7
    |
 LL |     0b41; //~ ERROR invalid digit for a base 2 literal
    |       ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:18:7
+  --> $DIR/lex-bad-binary-literal.rs:8:7
    |
 LL |     0b5; //~ ERROR invalid digit for a base 2 literal
    |       ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:19:7
+  --> $DIR/lex-bad-binary-literal.rs:9:7
    |
 LL |     0b6; //~ ERROR invalid digit for a base 2 literal
    |       ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:20:7
+  --> $DIR/lex-bad-binary-literal.rs:10:7
    |
 LL |     0b7; //~ ERROR invalid digit for a base 2 literal
    |       ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:21:7
+  --> $DIR/lex-bad-binary-literal.rs:11:7
    |
 LL |     0b8; //~ ERROR invalid digit for a base 2 literal
    |       ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/lex-bad-binary-literal.rs:22:7
+  --> $DIR/lex-bad-binary-literal.rs:12:7
    |
 LL |     0b9; //~ ERROR invalid digit for a base 2 literal
    |       ^

@@ -1,5 +1,5 @@
 error[E0603]: module `n` is private
-  --> $DIR/issue-28388-2.rs:17:8
+  --> $DIR/issue-28388-2.rs:7:8
    |
 LL | use m::n::{};
    |        ^

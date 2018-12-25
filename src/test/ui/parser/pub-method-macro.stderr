@@ -1,5 +1,5 @@
 error: can't qualify macro invocation with `pub`
-  --> $DIR/pub-method-macro.rs:29:9
+  --> $DIR/pub-method-macro.rs:19:9
    |
 LL |         pub defn!(f); //~ ERROR can't qualify macro invocation with `pub`
    |         ^^^

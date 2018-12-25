@@ -1,23 +1,23 @@
 error[E0433]: failed to resolve: use of undeclared type or module `NonExistent`
-  --> $DIR/type-path-err-node-types.rs:25:5
+  --> $DIR/type-path-err-node-types.rs:15:5
    |
 LL |     NonExistent::Assoc::<u8>; //~ ERROR undeclared type or module `NonExistent`
    |     ^^^^^^^^^^^ use of undeclared type or module `NonExistent`
 
 error[E0412]: cannot find type `Nonexistent` in this scope
-  --> $DIR/type-path-err-node-types.rs:17:12
+  --> $DIR/type-path-err-node-types.rs:7:12
    |
 LL |     let _: Nonexistent<u8, Assoc = u16>; //~ ERROR cannot find type `Nonexistent` in this scope
    |            ^^^^^^^^^^^ not found in this scope
 
 error[E0576]: cannot find method or associated constant `nonexistent` in trait `Tr`
-  --> $DIR/type-path-err-node-types.rs:21:21
+  --> $DIR/type-path-err-node-types.rs:11:21
    |
 LL |     <u8 as Tr<u8>>::nonexistent(); //~ ERROR cannot find method or associated constant `nonexistent`
    |                     ^^^^^^^^^^^ not found in `Tr`
 
 error[E0425]: cannot find value `nonexistent` in this scope
-  --> $DIR/type-path-err-node-types.rs:29:5
+  --> $DIR/type-path-err-node-types.rs:19:5
    |
 LL |     nonexistent.nonexistent::<u8>(); //~ ERROR cannot find value `nonexistent`
    |     ^^^^^^^^^^^ not found in this scope

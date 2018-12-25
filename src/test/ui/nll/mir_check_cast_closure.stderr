@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/mir_check_cast_closure.rs:17:5
+  --> $DIR/mir_check_cast_closure.rs:7:5
    |
 LL | fn bar<'a, 'b>() -> fn(&'a u32, &'b u32) -> &'a u32 {
    |        --  -- lifetime `'b` defined here

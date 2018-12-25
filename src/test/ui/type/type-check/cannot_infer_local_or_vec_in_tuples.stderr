@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:12:18
+  --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:2:18
    |
 LL |     let (x, ) = (vec![], );
    |         -----    ^^^^^^ cannot infer type for `T`

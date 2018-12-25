@@ -1,5 +1,5 @@
 error[E0658]: `cfg(rustdoc)` is experimental and subject to change (see issue #43781)
-  --> $DIR/feature-gate-doc_cfg-cfg-rustdoc.rs:11:7
+  --> $DIR/feature-gate-doc_cfg-cfg-rustdoc.rs:1:7
    |
 LL | #[cfg(rustdoc)] //~ ERROR: `cfg(rustdoc)` is experimental and subject to change
    |       ^^^^^^^

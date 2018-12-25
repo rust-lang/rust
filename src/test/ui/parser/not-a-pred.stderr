@@ -1,5 +1,5 @@
 error: expected one of `->`, `where`, or `{`, found `:`
-  --> $DIR/not-a-pred.rs:15:26
+  --> $DIR/not-a-pred.rs:5:26
    |
 LL | fn f(a: isize, b: isize) : lt(a, b) { }
    |                          ^ expected one of `->`, `where`, or `{` here

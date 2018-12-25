@@ -1,5 +1,5 @@
 error: `..` can only be used once per tuple or tuple struct pattern
-  --> $DIR/pat-tuple-3.rs:15:19
+  --> $DIR/pat-tuple-3.rs:5:19
    |
 LL |         (.., pat, ..) => {} //~ ERROR `..` can only be used once per tuple or tuple struct pattern
    |                   ^^

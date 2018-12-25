@@ -1,5 +1,5 @@
 error[E0081]: discriminant value `0` already exists
-  --> $DIR/tag-variant-disr-dup.rs:18:13
+  --> $DIR/tag-variant-disr-dup.rs:8:13
    |
 LL |     Black = 0x000000,
    |             -------- first use of `0`

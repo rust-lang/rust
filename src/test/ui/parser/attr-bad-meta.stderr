@@ -1,5 +1,5 @@
 error: expected one of `(`, `::`, `=`, `[`, `]`, or `{`, found `*`
-  --> $DIR/attr-bad-meta.rs:15:7
+  --> $DIR/attr-bad-meta.rs:5:7
    |
 LL | #[path*] //~ ERROR expected one of `(`, `::`, `=`, `[`, `]`, or `{`, found `*`
    |       ^ expected one of `(`, `::`, `=`, `[`, `]`, or `{` here

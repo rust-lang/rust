@@ -1,17 +1,17 @@
 error[E0594]: cannot assign to `*n` which is behind a `&` reference
-  --> $DIR/explicit-mut.rs:17:13
+  --> $DIR/explicit-mut.rs:7:13
    |
 LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ `n` is a `&` reference, so the data it refers to cannot be written
 
 error[E0594]: cannot assign to `*n` which is behind a `&` reference
-  --> $DIR/explicit-mut.rs:25:13
+  --> $DIR/explicit-mut.rs:15:13
    |
 LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ `n` is a `&` reference, so the data it refers to cannot be written
 
 error[E0594]: cannot assign to `*n` which is behind a `&` reference
-  --> $DIR/explicit-mut.rs:33:13
+  --> $DIR/explicit-mut.rs:23:13
    |
 LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ `n` is a `&` reference, so the data it refers to cannot be written

@@ -1,5 +1,5 @@
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:55:29
+  --> $DIR/projection-one-region-closure.rs:45:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:51:1
+  --> $DIR/projection-one-region-closure.rs:41:1
    |
 LL | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -33,7 +33,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/projection-one-region-closure.rs:55:29
+  --> $DIR/projection-one-region-closure.rs:45:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
 
 error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:55:39
+  --> $DIR/projection-one-region-closure.rs:45:39
    |
 LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                          --  -- lifetime `'b` defined here
@@ -52,7 +52,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:66:29
+  --> $DIR/projection-one-region-closure.rs:56:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:61:1
+  --> $DIR/projection-one-region-closure.rs:51:1
    |
 LL | / fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -87,7 +87,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/projection-one-region-closure.rs:66:29
+  --> $DIR/projection-one-region-closure.rs:56:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-closure.rs:66:39
+  --> $DIR/projection-one-region-closure.rs:56:39
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                           --  -- lifetime `'b` defined here
@@ -106,7 +106,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:80:29
+  --> $DIR/projection-one-region-closure.rs:70:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +122,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where <T as Anything<ReClosureBound('_#2r)>>::AssocType: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:72:1
+  --> $DIR/projection-one-region-closure.rs:62:1
    |
 LL | / fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -140,7 +140,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-one-region-closure.rs:90:29
+  --> $DIR/projection-one-region-closure.rs:80:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,7 +157,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: where '_#2r: '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-closure.rs:84:1
+  --> $DIR/projection-one-region-closure.rs:74:1
    |
 LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where

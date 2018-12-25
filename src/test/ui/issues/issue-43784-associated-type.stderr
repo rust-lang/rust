@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/issue-43784-associated-type.rs:23:9
+  --> $DIR/issue-43784-associated-type.rs:13:9
    |
 LL | impl<T> Complete for T { //~ ERROR the trait bound `T: std::marker::Copy` is not satisfied
    |         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`

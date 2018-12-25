@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ub.rs:38:1
+  --> $DIR/union-ub.rs:28:1
    |
 LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 42, but expected something less or equal to 1

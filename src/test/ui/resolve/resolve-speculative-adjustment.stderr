@@ -1,23 +1,23 @@
 error[E0425]: cannot find value `field` in this scope
-  --> $DIR/resolve-speculative-adjustment.rs:27:13
+  --> $DIR/resolve-speculative-adjustment.rs:17:13
    |
 LL |             field;
    |             ^^^^^ not found in this scope
 
 error[E0425]: cannot find function `method` in this scope
-  --> $DIR/resolve-speculative-adjustment.rs:29:13
+  --> $DIR/resolve-speculative-adjustment.rs:19:13
    |
 LL |             method();
    |             ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `field` in this scope
-  --> $DIR/resolve-speculative-adjustment.rs:33:9
+  --> $DIR/resolve-speculative-adjustment.rs:23:9
    |
 LL |         field;
    |         ^^^^^ help: try: `self.field`
 
 error[E0425]: cannot find function `method` in this scope
-  --> $DIR/resolve-speculative-adjustment.rs:35:9
+  --> $DIR/resolve-speculative-adjustment.rs:25:9
    |
 LL |         method();
    |         ^^^^^^ help: try: `self.method`

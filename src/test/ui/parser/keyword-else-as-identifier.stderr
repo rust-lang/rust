@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `else`
-  --> $DIR/keyword-else-as-identifier.rs:16:9
+  --> $DIR/keyword-else-as-identifier.rs:6:9
    |
 LL |     let else = "foo"; //~ error: expected pattern, found keyword `else`
    |         ^^^^ expected pattern

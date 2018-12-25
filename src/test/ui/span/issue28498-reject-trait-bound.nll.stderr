@@ -1,5 +1,5 @@
 error[E0597]: `first_dropped` does not live long enough
-  --> $DIR/issue28498-reject-trait-bound.rs:46:19
+  --> $DIR/issue28498-reject-trait-bound.rs:36:19
    |
 LL |     foo1 = Foo(1, &first_dropped);
    |                   ^^^^^^^^^^^^^^ borrowed value does not live long enough

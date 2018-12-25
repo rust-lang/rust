@@ -1,5 +1,5 @@
 error[E0259]: the name `std` is defined multiple times
-  --> $DIR/resolve-conflict-extern-crate-vs-extern-crate.rs:12:1
+  --> $DIR/resolve-conflict-extern-crate-vs-extern-crate.rs:2:1
    |
 LL | extern crate std;
    | ^^^^^^^^^^^^^^^^^ `std` reimported here

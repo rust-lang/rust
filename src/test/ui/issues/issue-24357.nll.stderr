@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/issue-24357.rs:16:12
+  --> $DIR/issue-24357.rs:6:12
    |
 LL |    let f = move || { let y = x; };
    |            -------           - variable moved due to use in closure

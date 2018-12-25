@@ -1,47 +1,47 @@
 error: Trait bound i32: std::marker::Copy does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:15:21
+  --> $DIR/trivial-bounds-lint.rs:5:21
    |
 LL | struct A where i32: Copy; //~ ERROR
    |                     ^^^^
    |
 note: lint level defined here
-  --> $DIR/trivial-bounds-lint.rs:13:9
+  --> $DIR/trivial-bounds-lint.rs:3:9
    |
 LL | #![deny(trivial_bounds)]
    |         ^^^^^^^^^^^^^^
 
 error: Trait bound i32: X<()> does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:28:30
+  --> $DIR/trivial-bounds-lint.rs:18:30
    |
 LL | fn global_param() where i32: X<()> {} //~ ERROR
    |                              ^^^^^
 
 error: Trait bound i32: Z does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:32:35
+  --> $DIR/trivial-bounds-lint.rs:22:35
    |
 LL | fn global_projection() where i32: Z<S = i32> {} //~ ERROR
    |                                   ^^^^^^^^^^
 
 error: Lifetime bound i32 : 'static does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:39:34
+  --> $DIR/trivial-bounds-lint.rs:29:34
    |
 LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
    |                                  ^^^^^^^
 
 error: Lifetime bound &'static str : 'static does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:39:57
+  --> $DIR/trivial-bounds-lint.rs:29:57
    |
 LL | fn global_lifetimes() where i32: 'static, &'static str: 'static {}
    |                                                         ^^^^^^^
 
 error: Lifetime bound 'static : 'static does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:45:37
+  --> $DIR/trivial-bounds-lint.rs:35:37
    |
 LL | fn global_outlives() where 'static: 'static {} //~ ERROR
    |                                     ^^^^^^^
 
 error: Trait bound i32: std::marker::Copy does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-lint.rs:48:46
+  --> $DIR/trivial-bounds-lint.rs:38:46
    |
 LL | fn mixed_bounds<T: Copy>() where i32: X<T> + Copy {} //~ ERROR
    |                                              ^^^^

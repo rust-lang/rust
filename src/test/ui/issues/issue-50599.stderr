@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `LOG10_2` in module `std::f64`
-  --> $DIR/issue-50599.rs:13:48
+  --> $DIR/issue-50599.rs:3:48
    |
 LL |     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize; //~ ERROR cannot find value
    |                                                ^^^^^^^ not found in `std::f64`
@@ -11,7 +11,7 @@ LL | use std::f64::consts::LOG10_2;
    |
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-50599.rs:14:29
+  --> $DIR/issue-50599.rs:4:29
    |
 LL |     let mut digits = [0u32; M];
    |                             ^ referenced constant has errors

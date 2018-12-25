@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `;`
-  --> $DIR/empty-impl-semicolon.rs:13:9
+  --> $DIR/empty-impl-semicolon.rs:3:9
    |
 LL | impl Foo; //~ ERROR expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `;`
    |         ^ expected one of 8 possible tokens here

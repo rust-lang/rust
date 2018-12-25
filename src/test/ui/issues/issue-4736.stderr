@@ -1,5 +1,5 @@
 error[E0560]: struct `NonCopyable` has no field named `p`
-  --> $DIR/issue-4736.rs:14:26
+  --> $DIR/issue-4736.rs:4:26
    |
 LL |     let z = NonCopyable{ p: () }; //~ ERROR struct `NonCopyable` has no field named `p`
    |                          ^ field does not exist - did you mean `0`?

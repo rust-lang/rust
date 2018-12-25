@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow field `z.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:21:18
+  --> $DIR/issue-39544.rs:11:18
    |
 LL |     let z = Z { x: X::Y };
    |         - help: make this binding mutable: `mut z`
@@ -7,7 +7,7 @@ LL |     let _ = &mut z.x; //~ ERROR cannot borrow
    |                  ^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:26:22
+  --> $DIR/issue-39544.rs:16:22
    |
 LL |     fn foo<'z>(&'z self) {
    |                -------- use `&'z mut self` here to make mutable
@@ -15,7 +15,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                      ^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:30:22
+  --> $DIR/issue-39544.rs:20:22
    |
 LL |     fn foo1(&self, other: &Z) {
    |             ----- use `&mut self` here to make mutable
@@ -23,7 +23,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                      ^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:31:22
+  --> $DIR/issue-39544.rs:21:22
    |
 LL |     fn foo1(&self, other: &Z) {
    |                           -- use `&mut Z` here to make mutable
@@ -32,7 +32,7 @@ LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:35:22
+  --> $DIR/issue-39544.rs:25:22
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
    |                 -------- use `&'a mut self` here to make mutable
@@ -40,7 +40,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                      ^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:36:22
+  --> $DIR/issue-39544.rs:26:22
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
    |                                  -- use `&mut Z` here to make mutable
@@ -49,7 +49,7 @@ LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:40:22
+  --> $DIR/issue-39544.rs:30:22
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
    |                       -------- use `&'a mut Self` here to make mutable
@@ -57,7 +57,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                      ^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:41:22
+  --> $DIR/issue-39544.rs:31:22
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
    |                                        -- use `&mut Z` here to make mutable
@@ -66,7 +66,7 @@ LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:45:22
+  --> $DIR/issue-39544.rs:35:22
    |
 LL |     fn foo4(other: &Z) {
    |                    -- use `&mut Z` here to make mutable
@@ -74,7 +74,7 @@ LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                      ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `z.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:51:18
+  --> $DIR/issue-39544.rs:41:18
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
    |                 - help: make this binding mutable: `mut z`
@@ -82,7 +82,7 @@ LL |     let _ = &mut z.x; //~ ERROR cannot borrow
    |                  ^^^ cannot mutably borrow field of immutable binding
 
 error[E0596]: cannot borrow field `w.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:52:18
+  --> $DIR/issue-39544.rs:42:18
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
    |                          -- use `&mut Z` here to make mutable
@@ -91,7 +91,7 @@ LL |     let _ = &mut w.x; //~ ERROR cannot borrow
    |                  ^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to borrowed content `*x.0` of immutable binding
-  --> $DIR/issue-39544.rs:58:5
+  --> $DIR/issue-39544.rs:48:5
    |
 LL |     *x.0 = 1;
    |     ^^^^^^^^ cannot borrow as mutable

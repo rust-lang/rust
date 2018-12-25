@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:19:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:9:13
    |
 LL |     let _ = box { [1, 2, 3] }: Box<[i32]>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -8,7 +8,7 @@ LL |     let _ = box { [1, 2, 3] }: Box<[i32]>; //~ ERROR mismatched types
               found type `std::boxed::Box<[i32; 3]>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:20:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:10:13
    |
 LL |     let _ = box if true { [1, 2, 3] } else { [1, 3, 4] }: Box<[i32]>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -17,7 +17,7 @@ LL |     let _ = box if true { [1, 2, 3] } else { [1, 3, 4] }: Box<[i32]>; //~ E
               found type `std::boxed::Box<[i32; 3]>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:21:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:11:13
    |
 LL |     let _ = box match true { true => [1, 2, 3], false => [1, 3, 4] }: Box<[i32]>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -26,16 +26,16 @@ LL |     let _ = box match true { true => [1, 2, 3], false => [1, 3, 4] }: Box<[
               found type `std::boxed::Box<[i32; 3]>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:23:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:13:13
    |
 LL |     let _ = box { |x| (x as u8) }: Box<Fn(i32) -> _>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^ expected trait std::ops::Fn, found closure
    |
    = note: expected type `std::boxed::Box<dyn std::ops::Fn(i32) -> u8>`
-              found type `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:23:19: 23:32]>`
+              found type `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:13:19: 13:32]>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:24:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:14:13
    |
 LL |     let _ = box if true { false } else { true }: Box<Debug>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait std::fmt::Debug, found bool
@@ -44,7 +44,7 @@ LL |     let _ = box if true { false } else { true }: Box<Debug>; //~ ERROR mism
               found type `std::boxed::Box<bool>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:25:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:15:13
    |
 LL |     let _ = box match true { true => 'a', false => 'b' }: Box<Debug>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait std::fmt::Debug, found char
@@ -53,7 +53,7 @@ LL |     let _ = box match true { true => 'a', false => 'b' }: Box<Debug>; //~ E
               found type `std::boxed::Box<char>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:27:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:17:13
    |
 LL |     let _ = &{ [1, 2, 3] }: &[i32]; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -62,7 +62,7 @@ LL |     let _ = &{ [1, 2, 3] }: &[i32]; //~ ERROR mismatched types
               found type `&[i32; 3]`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:28:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:18:13
    |
 LL |     let _ = &if true { [1, 2, 3] } else { [1, 3, 4] }: &[i32]; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -71,7 +71,7 @@ LL |     let _ = &if true { [1, 2, 3] } else { [1, 3, 4] }: &[i32]; //~ ERROR mi
               found type `&[i32; 3]`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:29:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:19:13
    |
 LL |     let _ = &match true { true => [1, 2, 3], false => [1, 3, 4] }: &[i32];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -80,16 +80,16 @@ LL |     let _ = &match true { true => [1, 2, 3], false => [1, 3, 4] }: &[i32];
               found type `&[i32; 3]`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:31:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:21:13
    |
 LL |     let _ = &{ |x| (x as u8) }: &Fn(i32) -> _; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^ expected trait std::ops::Fn, found closure
    |
    = note: expected type `&dyn std::ops::Fn(i32) -> u8`
-              found type `&[closure@$DIR/coerce-expect-unsized-ascribed.rs:31:16: 31:29]`
+              found type `&[closure@$DIR/coerce-expect-unsized-ascribed.rs:21:16: 21:29]`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:32:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:22:13
    |
 LL |     let _ = &if true { false } else { true }: &Debug; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait std::fmt::Debug, found bool
@@ -98,7 +98,7 @@ LL |     let _ = &if true { false } else { true }: &Debug; //~ ERROR mismatched 
               found type `&bool`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:33:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:23:13
    |
 LL |     let _ = &match true { true => 'a', false => 'b' }: &Debug; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait std::fmt::Debug, found char
@@ -107,7 +107,7 @@ LL |     let _ = &match true { true => 'a', false => 'b' }: &Debug; //~ ERROR mi
               found type `&char`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:35:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:25:13
    |
 LL |     let _ = Box::new([1, 2, 3]): Box<[i32]>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^ expected slice, found array of 3 elements
@@ -116,13 +116,13 @@ LL |     let _ = Box::new([1, 2, 3]): Box<[i32]>; //~ ERROR mismatched types
               found type `std::boxed::Box<[i32; 3]>`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-expect-unsized-ascribed.rs:36:13
+  --> $DIR/coerce-expect-unsized-ascribed.rs:26:13
    |
 LL |     let _ = Box::new(|x| (x as u8)): Box<Fn(i32) -> _>; //~ ERROR mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^ expected trait std::ops::Fn, found closure
    |
    = note: expected type `std::boxed::Box<dyn std::ops::Fn(i32) -> _>`
-              found type `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:36:22: 36:35]>`
+              found type `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:26:22: 26:35]>`
 
 error: aborting due to 14 previous errors
 

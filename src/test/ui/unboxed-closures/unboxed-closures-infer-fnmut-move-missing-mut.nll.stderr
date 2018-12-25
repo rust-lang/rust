@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `tick` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closures-infer-fnmut-move-missing-mut.rs:17:5
+  --> $DIR/unboxed-closures-infer-fnmut-move-missing-mut.rs:7:5
    |
 LL |     let tick = move || counter += 1;
    |         ---- help: consider changing this to be mutable: `mut tick`

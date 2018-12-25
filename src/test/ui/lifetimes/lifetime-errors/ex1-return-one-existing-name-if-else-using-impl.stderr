@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex1-return-one-existing-name-if-else-using-impl.rs:21:20
+  --> $DIR/ex1-return-one-existing-name-if-else-using-impl.rs:11:20
    |
 LL |     fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32 {
    |                   ----                 -------

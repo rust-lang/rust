@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/issue-52663-span-decl-captured-variable.rs:20:26
+  --> $DIR/issue-52663-span-decl-captured-variable.rs:10:26
    |
 LL |        let x = (vec![22], vec![44]);
    |            - captured outer variable

@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/match-guards-always-borrow.rs:57:1
+  --> $DIR/match-guards-always-borrow.rs:47:1
    |
 LL | / fn main() { //[ast]~ ERROR compilation successful
 LL | |     should_reject_destructive_mutate_in_guard();

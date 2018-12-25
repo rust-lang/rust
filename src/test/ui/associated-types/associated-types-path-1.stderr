@@ -1,11 +1,11 @@
 error[E0220]: associated type `A` not found for `T`
-  --> $DIR/associated-types-path-1.rs:20:23
+  --> $DIR/associated-types-path-1.rs:10:23
    |
 LL | pub fn f1<T>(a: T, x: T::A) {} //~ERROR associated type `A` not found
    |                       ^^^^ associated type `A` not found
 
 error[E0221]: ambiguous associated type `A` in bounds of `T`
-  --> $DIR/associated-types-path-1.rs:21:34
+  --> $DIR/associated-types-path-1.rs:11:34
    |
 LL |     type A;
    |     ------- ambiguous `A` from `Foo`

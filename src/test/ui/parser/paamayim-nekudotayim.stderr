@@ -1,5 +1,5 @@
 error: expected identifier, found `;`
-  --> $DIR/paamayim-nekudotayim.rs:16:7
+  --> $DIR/paamayim-nekudotayim.rs:6:7
    |
 LL |     ::; //~ ERROR expected identifier, found `;`
    |       ^ expected identifier

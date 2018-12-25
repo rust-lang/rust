@@ -1,5 +1,5 @@
 error: const globals cannot be mutable
-  --> $DIR/issue-17718-const-mut.rs:14:1
+  --> $DIR/issue-17718-const-mut.rs:4:1
    |
 LL | mut //~ ERROR: const globals cannot be mutable
    | ^^^

@@ -1,5 +1,5 @@
 error[E0128]: type parameters with a default cannot use forward declared identifiers
-  --> $DIR/generic-type-params-forward-mention.rs:12:23
+  --> $DIR/generic-type-params-forward-mention.rs:2:23
    |
 LL | struct Foo<T = Option<U>, U = bool>(T, U);
    |                       ^ defaulted type parameters cannot be forward declared

@@ -1,5 +1,5 @@
 error[E0597]: `c2` does not live long enough
-  --> $DIR/vec-must-not-hide-type-from-dropck.rs:127:24
+  --> $DIR/vec-must-not-hide-type-from-dropck.rs:117:24
    |
 LL |     c1.v[0].v.set(Some(&c2));
    |                        ^^^ borrowed value does not live long enough
@@ -13,7 +13,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `c1` does not live long enough
-  --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:24
+  --> $DIR/vec-must-not-hide-type-from-dropck.rs:119:24
    |
 LL |     c2.v[0].v.set(Some(&c1));
    |                        ^^^ borrowed value does not live long enough

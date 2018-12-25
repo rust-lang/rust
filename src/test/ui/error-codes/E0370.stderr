@@ -1,5 +1,5 @@
 error[E0370]: enum discriminant overflowed
-  --> $DIR/E0370.rs:17:5
+  --> $DIR/E0370.rs:7:5
    |
 LL |     Y, //~ ERROR E0370
    |     ^ overflowed on value after 9223372036854775807

@@ -1,5 +1,5 @@
 error[E0599]: no method named `deref` found for type `std::option::Option<{integer}>` in the current scope
-  --> $DIR/option-deref.rs:14:29
+  --> $DIR/option-deref.rs:4:29
    |
 LL |     let _result = &Some(42).deref();
    |                             ^^^^^

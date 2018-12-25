@@ -1,17 +1,17 @@
 error: unreachable expression
-  --> $DIR/expr_tup.rs:19:38
+  --> $DIR/expr_tup.rs:9:38
    |
 LL |     let x: (usize, usize) = (return, 2); //~ ERROR unreachable
    |                                      ^
    |
 note: lint level defined here
-  --> $DIR/expr_tup.rs:14:9
+  --> $DIR/expr_tup.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_tup.rs:24:29
+  --> $DIR/expr_tup.rs:14:29
    |
 LL |     let x: (usize, usize) = (2, return); //~ ERROR unreachable
    |                             ^^^^^^^^^^^

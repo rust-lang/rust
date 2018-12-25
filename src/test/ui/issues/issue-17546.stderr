@@ -1,5 +1,5 @@
 error[E0573]: expected type, found variant `NoResult`
-  --> $DIR/issue-17546.rs:22:17
+  --> $DIR/issue-17546.rs:12:17
    |
 LL |     fn new() -> NoResult<MyEnum, String> {
    |                 --------^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     fn new() -> NoResult<MyEnum, String> {
    |                 help: try using the variant's enum: `foo::MyEnum`
 
 error[E0573]: expected type, found variant `Result`
-  --> $DIR/issue-17546.rs:32:17
+  --> $DIR/issue-17546.rs:22:17
    |
 LL |     fn new() -> Result<foo::MyEnum, String> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
@@ -25,7 +25,7 @@ LL |     use std::result::Result;
 and 1 other candidates
 
 error[E0573]: expected type, found variant `Result`
-  --> $DIR/issue-17546.rs:38:13
+  --> $DIR/issue-17546.rs:28:13
    |
 LL | fn new() -> Result<foo::MyEnum, String> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
@@ -42,7 +42,7 @@ LL | use std::result::Result;
 and 1 other candidates
 
 error[E0573]: expected type, found variant `NoResult`
-  --> $DIR/issue-17546.rs:43:15
+  --> $DIR/issue-17546.rs:33:15
    |
 LL | fn newer() -> NoResult<foo::MyEnum, String> {
    |               --------^^^^^^^^^^^^^^^^^^^^^

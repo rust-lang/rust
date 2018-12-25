@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `foo`
-  --> $DIR/issue-28388-1.rs:13:5
+  --> $DIR/issue-28388-1.rs:3:5
    |
 LL | use foo::{}; //~ ERROR unresolved import `foo`
    |     ^^^^^^^ no `foo` in the root

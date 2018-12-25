@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to field `x.a` of immutable binding
-  --> $DIR/reassignment_immutable_fields_overlapping.rs:22:5
+  --> $DIR/reassignment_immutable_fields_overlapping.rs:12:5
    |
 LL |     let x: Foo;
    |         - help: make this binding mutable: `mut x`
@@ -7,7 +7,7 @@ LL |     x.a = 1;  //~ ERROR
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.b` of immutable binding
-  --> $DIR/reassignment_immutable_fields_overlapping.rs:23:5
+  --> $DIR/reassignment_immutable_fields_overlapping.rs:13:5
    |
 LL |     let x: Foo;
    |         - help: make this binding mutable: `mut x`

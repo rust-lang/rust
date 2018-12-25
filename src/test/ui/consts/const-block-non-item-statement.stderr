@@ -1,5 +1,5 @@
 error[E0658]: let bindings in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement.rs:12:21
+  --> $DIR/const-block-non-item-statement.rs:2:21
    |
 LL |     Bar = { let x = 1; 3 }
    |                     ^
@@ -7,7 +7,7 @@ LL |     Bar = { let x = 1; 3 }
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement.rs:12:21
+  --> $DIR/const-block-non-item-statement.rs:2:21
    |
 LL |     Bar = { let x = 1; 3 }
    |                     ^
@@ -15,7 +15,7 @@ LL |     Bar = { let x = 1; 3 }
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement.rs:12:11
+  --> $DIR/const-block-non-item-statement.rs:2:11
    |
 LL |     Bar = { let x = 1; 3 }
    |           ^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     Bar = { let x = 1; 3 }
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement.rs:12:11
+  --> $DIR/const-block-non-item-statement.rs:2:11
    |
 LL |     Bar = { let x = 1; 3 }
    |           ^^^^^^^^^^^^^^^^

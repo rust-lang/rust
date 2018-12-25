@@ -1,5 +1,5 @@
 error[E0423]: expected value, found struct `Empty1`
-  --> $DIR/empty-struct-braces-expr.rs:25:14
+  --> $DIR/empty-struct-braces-expr.rs:15:14
    |
 LL |     let e1 = Empty1; //~ ERROR expected value, found struct `Empty1`
    |              ^^^^^^
@@ -8,7 +8,7 @@ LL |     let e1 = Empty1; //~ ERROR expected value, found struct `Empty1`
    |              did you mean `Empty1 { /* fields */ }`?
 
 error[E0423]: expected function, found struct `Empty1`
-  --> $DIR/empty-struct-braces-expr.rs:26:14
+  --> $DIR/empty-struct-braces-expr.rs:16:14
    |
 LL |     let e1 = Empty1(); //~ ERROR expected function, found struct `Empty1`
    |              ^^^^^^
@@ -17,19 +17,19 @@ LL |     let e1 = Empty1(); //~ ERROR expected function, found struct `Empty1`
    |              did you mean `Empty1 { /* fields */ }`?
 
 error[E0423]: expected value, found struct variant `E::Empty3`
-  --> $DIR/empty-struct-braces-expr.rs:27:14
+  --> $DIR/empty-struct-braces-expr.rs:17:14
    |
 LL |     let e3 = E::Empty3; //~ ERROR expected value, found struct variant `E::Empty3`
    |              ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 
 error[E0423]: expected function, found struct variant `E::Empty3`
-  --> $DIR/empty-struct-braces-expr.rs:28:14
+  --> $DIR/empty-struct-braces-expr.rs:18:14
    |
 LL |     let e3 = E::Empty3(); //~ ERROR expected function, found struct variant `E::Empty3`
    |              ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 
 error[E0423]: expected value, found struct `XEmpty1`
-  --> $DIR/empty-struct-braces-expr.rs:30:15
+  --> $DIR/empty-struct-braces-expr.rs:20:15
    |
 LL |     let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
    |               ^^^^^^^
@@ -38,7 +38,7 @@ LL |     let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
    |               did you mean `XEmpty1 { /* fields */ }`?
 
 error[E0423]: expected function, found struct `XEmpty1`
-  --> $DIR/empty-struct-braces-expr.rs:31:15
+  --> $DIR/empty-struct-braces-expr.rs:21:15
    |
 LL |     let xe1 = XEmpty1(); //~ ERROR expected function, found struct `XEmpty1`
    |               ^^^^^^^
@@ -47,7 +47,7 @@ LL |     let xe1 = XEmpty1(); //~ ERROR expected function, found struct `XEmpty1
    |               did you mean `XEmpty1 { /* fields */ }`?
 
 error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
-  --> $DIR/empty-struct-braces-expr.rs:32:15
+  --> $DIR/empty-struct-braces-expr.rs:22:15
    |
 LL |     let xe3 = XE::Empty3; //~ ERROR no variant named `Empty3` found for type
    |               ^^^^^^^^^^ variant not found in `empty_struct::XE`
@@ -55,7 +55,7 @@ LL |     let xe3 = XE::Empty3; //~ ERROR no variant named `Empty3` found for typ
    = note: did you mean `empty_struct::XE::XEmpty3`?
 
 error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
-  --> $DIR/empty-struct-braces-expr.rs:33:15
+  --> $DIR/empty-struct-braces-expr.rs:23:15
    |
 LL |     let xe3 = XE::Empty3(); //~ ERROR no variant named `Empty3` found for type
    |               ^^^^^^^^^^ variant not found in `empty_struct::XE`

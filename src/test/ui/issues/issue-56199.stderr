@@ -1,5 +1,5 @@
 error: the `Self` constructor can only be used with tuple or unit structs
-  --> $DIR/issue-56199.rs:7:17
+  --> $DIR/issue-56199.rs:6:17
    |
 LL |         let _ = Self;
    |                 ^^^^
@@ -7,7 +7,7 @@ LL |         let _ = Self;
    = note: did you mean to use one of the enum's variants?
 
 error: the `Self` constructor can only be used with tuple or unit structs
-  --> $DIR/issue-56199.rs:9:17
+  --> $DIR/issue-56199.rs:8:17
    |
 LL |         let _ = Self();
    |                 ^^^^
@@ -15,13 +15,13 @@ LL |         let _ = Self();
    = note: did you mean to use one of the enum's variants?
 
 error: the `Self` constructor can only be used with tuple or unit structs
-  --> $DIR/issue-56199.rs:16:17
+  --> $DIR/issue-56199.rs:15:17
    |
 LL |         let _ = Self;
    |                 ^^^^ did you mean `Self { /* fields */ }`?
 
 error: the `Self` constructor can only be used with tuple or unit structs
-  --> $DIR/issue-56199.rs:18:17
+  --> $DIR/issue-56199.rs:17:17
    |
 LL |         let _ = Self();
    |                 ^^^^ did you mean `Self { /* fields */ }`?

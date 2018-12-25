@@ -1,29 +1,29 @@
 error[E0253]: `foo` is not directly importable
-  --> $DIR/use-from-trait.rs:12:5
+  --> $DIR/use-from-trait.rs:1:5
    |
 LL | use Trait::foo;
    |     ^^^^^^^^^^ cannot be imported directly
 
 error[E0253]: `Assoc` is not directly importable
-  --> $DIR/use-from-trait.rs:14:5
+  --> $DIR/use-from-trait.rs:3:5
    |
 LL | use Trait::Assoc;
    |     ^^^^^^^^^^^^ cannot be imported directly
 
 error[E0253]: `C` is not directly importable
-  --> $DIR/use-from-trait.rs:16:5
+  --> $DIR/use-from-trait.rs:5:5
    |
 LL | use Trait::C;
    |     ^^^^^^^^ cannot be imported directly
 
 error[E0432]: unresolved import `Foo`
-  --> $DIR/use-from-trait.rs:19:5
+  --> $DIR/use-from-trait.rs:8:5
    |
 LL | use Foo::new;
    |     ^^^ not a module `Foo`
 
 error[E0432]: unresolved import `Foo`
-  --> $DIR/use-from-trait.rs:23:5
+  --> $DIR/use-from-trait.rs:12:5
    |
 LL | use Foo::C2;
    |     ^^^ not a module `Foo`

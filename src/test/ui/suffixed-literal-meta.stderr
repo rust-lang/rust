@@ -1,5 +1,5 @@
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:11:10
+  --> $DIR/suffixed-literal-meta.rs:1:10
    |
 LL | #[path = 1usize] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^^^
@@ -7,7 +7,7 @@ LL | #[path = 1usize] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:12:10
+  --> $DIR/suffixed-literal-meta.rs:2:10
    |
 LL | #[path = 1u8] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^
@@ -15,7 +15,7 @@ LL | #[path = 1u8] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:13:10
+  --> $DIR/suffixed-literal-meta.rs:3:10
    |
 LL | #[path = 1u16] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^
@@ -23,7 +23,7 @@ LL | #[path = 1u16] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:14:10
+  --> $DIR/suffixed-literal-meta.rs:4:10
    |
 LL | #[path = 1u32] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^
@@ -31,7 +31,7 @@ LL | #[path = 1u32] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:15:10
+  --> $DIR/suffixed-literal-meta.rs:5:10
    |
 LL | #[path = 1u64] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^
@@ -39,7 +39,7 @@ LL | #[path = 1u64] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:16:10
+  --> $DIR/suffixed-literal-meta.rs:6:10
    |
 LL | #[path = 1isize] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^^^
@@ -47,7 +47,7 @@ LL | #[path = 1isize] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:17:10
+  --> $DIR/suffixed-literal-meta.rs:7:10
    |
 LL | #[path = 1i8] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^
@@ -55,7 +55,7 @@ LL | #[path = 1i8] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:18:10
+  --> $DIR/suffixed-literal-meta.rs:8:10
    |
 LL | #[path = 1i16] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^
@@ -63,7 +63,7 @@ LL | #[path = 1i16] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:19:10
+  --> $DIR/suffixed-literal-meta.rs:9:10
    |
 LL | #[path = 1i32] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^
@@ -71,7 +71,7 @@ LL | #[path = 1i32] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:20:10
+  --> $DIR/suffixed-literal-meta.rs:10:10
    |
 LL | #[path = 1i64] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^
@@ -79,7 +79,7 @@ LL | #[path = 1i64] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:21:10
+  --> $DIR/suffixed-literal-meta.rs:11:10
    |
 LL | #[path = 1.0f32] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^^^
@@ -87,7 +87,7 @@ LL | #[path = 1.0f32] //~ ERROR: suffixed literals are not allowed in attributes
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: suffixed literals are not allowed in attributes
-  --> $DIR/suffixed-literal-meta.rs:22:10
+  --> $DIR/suffixed-literal-meta.rs:12:10
    |
 LL | #[path = 1.0f64] //~ ERROR: suffixed literals are not allowed in attributes
    |          ^^^^^^

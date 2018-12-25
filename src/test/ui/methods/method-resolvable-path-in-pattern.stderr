@@ -1,5 +1,5 @@
 error[E0532]: expected unit struct/variant or constant, found method `MyTrait::trait_bar`
-  --> $DIR/method-resolvable-path-in-pattern.rs:21:9
+  --> $DIR/method-resolvable-path-in-pattern.rs:11:9
    |
 LL |         <Foo as MyTrait>::trait_bar => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a unit struct/variant or constant

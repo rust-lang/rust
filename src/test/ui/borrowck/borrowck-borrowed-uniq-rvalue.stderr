@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-borrowed-uniq-rvalue.rs:20:27
+  --> $DIR/borrowck-borrowed-uniq-rvalue.rs:10:27
    |
 LL |     buggy_map.insert(42, &*Box::new(1)); //~ ERROR borrowed value does not live long enough
    |                           ^^^^^^^^^^^^ - borrowed value dropped here while still borrowed

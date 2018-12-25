@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
-  --> $DIR/mut-suggestion.rs:22:5
+  --> $DIR/mut-suggestion.rs:12:5
    |
 LL | fn func(arg: S) {
    |         --- help: consider changing this to be mutable: `mut arg`
@@ -8,7 +8,7 @@ LL |     arg.mutate();
    |     ^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `local` as mutable, as it is not declared as mutable
-  --> $DIR/mut-suggestion.rs:31:5
+  --> $DIR/mut-suggestion.rs:21:5
    |
 LL |     let local = S;
    |         ----- help: consider changing this to be mutable: `mut local`

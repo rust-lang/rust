@@ -1,29 +1,29 @@
 error: visibilities can only be restricted to ancestor modules
-  --> $DIR/resolve-bad-visibility.rs:16:8
+  --> $DIR/resolve-bad-visibility.rs:6:8
    |
 LL | pub(in std::vec) struct F; //~ ERROR visibilities can only be restricted to ancestor modules
    |        ^^^^^^^^
 
 error[E0577]: expected module, found enum `E`
-  --> $DIR/resolve-bad-visibility.rs:14:8
+  --> $DIR/resolve-bad-visibility.rs:4:8
    |
 LL | pub(in E) struct S; //~ ERROR expected module, found enum `E`
    |        ^ not a module
 
 error[E0577]: expected module, found trait `Tr`
-  --> $DIR/resolve-bad-visibility.rs:15:8
+  --> $DIR/resolve-bad-visibility.rs:5:8
    |
 LL | pub(in Tr) struct Z; //~ ERROR expected module, found trait `Tr`
    |        ^^ not a module
 
 error[E0578]: cannot find module `nonexistent` in the crate root
-  --> $DIR/resolve-bad-visibility.rs:17:8
+  --> $DIR/resolve-bad-visibility.rs:7:8
    |
 LL | pub(in nonexistent) struct G; //~ ERROR cannot find module `nonexistent` in the crate root
    |        ^^^^^^^^^^^ not found in the crate root
 
 error[E0578]: cannot find module `too_soon` in the crate root
-  --> $DIR/resolve-bad-visibility.rs:18:8
+  --> $DIR/resolve-bad-visibility.rs:8:8
    |
 LL | pub(in too_soon) struct H; //~ ERROR cannot find module `too_soon` in the crate root
    |        ^^^^^^^^ not found in the crate root

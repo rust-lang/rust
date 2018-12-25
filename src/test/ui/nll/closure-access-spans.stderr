@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/closure-access-spans.rs:17:5
+  --> $DIR/closure-access-spans.rs:7:5
    |
 LL |     let r = &mut x;
    |             ------ mutable borrow occurs here
@@ -11,7 +11,7 @@ LL |     r.use_mut();
    |     - mutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/closure-access-spans.rs:23:5
+  --> $DIR/closure-access-spans.rs:13:5
    |
 LL |     let r = &mut x;
    |             ------ first mutable borrow occurs here
@@ -23,7 +23,7 @@ LL |     r.use_mut();
    |     - first borrow later used here
 
 error[E0500]: closure requires unique access to `x` but it is already borrowed
-  --> $DIR/closure-access-spans.rs:29:5
+  --> $DIR/closure-access-spans.rs:19:5
    |
 LL |     let r = &mut x;
    |             ------ borrow occurs here
@@ -35,7 +35,7 @@ LL |     r.use_mut();
    |     - first borrow later used here
 
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/closure-access-spans.rs:35:13
+  --> $DIR/closure-access-spans.rs:25:13
    |
 LL |     let r = &mut x;
    |             ------ borrow of `x` occurs here
@@ -45,7 +45,7 @@ LL |     r.use_ref();
    |     - borrow later used here
 
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/closure-access-spans.rs:41:5
+  --> $DIR/closure-access-spans.rs:31:5
    |
 LL |     let r = &x;
    |             -- borrow of `x` occurs here
@@ -57,7 +57,7 @@ LL |     r.use_ref();
    |     - borrow later used here
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-access-spans.rs:47:5
+  --> $DIR/closure-access-spans.rs:37:5
    |
 LL |     let r = x;
    |             - value moved here
@@ -69,7 +69,7 @@ LL |     || x.len(); //~ ERROR
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-access-spans.rs:52:5
+  --> $DIR/closure-access-spans.rs:42:5
    |
 LL |     let r = x;
    |             - value moved here
@@ -81,7 +81,7 @@ LL |     || x = String::new(); //~ ERROR
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-access-spans.rs:57:5
+  --> $DIR/closure-access-spans.rs:47:5
    |
 LL |     let r = x;
    |             - value moved here
@@ -93,7 +93,7 @@ LL |     || *x = String::new(); //~ ERROR
    = note: move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/closure-access-spans.rs:62:5
+  --> $DIR/closure-access-spans.rs:52:5
    |
 LL |     let r = x;
    |             - value moved here

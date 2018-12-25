@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:30:27
+  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:20:27
    |
 LL |                     (f.c)(f, true);
    |                     ----- ^ second mutable borrow occurs here
@@ -8,7 +8,7 @@ LL |                     (f.c)(f, true);
    |                     first borrow later used by call
 
 error[E0382]: borrow of moved value: `f`
-  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:42:5
+  --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:32:5
    |
 LL |     let mut r = R {c: Box::new(f)};
    |                                - value moved here

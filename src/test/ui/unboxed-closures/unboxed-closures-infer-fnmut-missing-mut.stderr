@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `tick` as mutable
-  --> $DIR/unboxed-closures-infer-fnmut-missing-mut.rs:17:5
+  --> $DIR/unboxed-closures-infer-fnmut-missing-mut.rs:7:5
    |
 LL |     let tick = || counter += 1;
    |         ---- help: make this binding mutable: `mut tick`

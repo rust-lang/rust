@@ -1,11 +1,11 @@
 error: use of deprecated item 'lint_stability::deprecated': text
-  --> $DIR/lint-stability2.rs:22:5
+  --> $DIR/lint-stability2.rs:12:5
    |
 LL |     macro_test!();
    |     ^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-stability2.rs:14:9
+  --> $DIR/lint-stability2.rs:4:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found trait alias `DefaultAlias`
-  --> $DIR/trait-alias-impl.rs:15:6
+  --> $DIR/trait-alias-impl.rs:5:6
    |
 LL | impl DefaultAlias for () {} //~ ERROR expected trait, found trait alias
    |      ^^^^^^^^^^^^ not a trait

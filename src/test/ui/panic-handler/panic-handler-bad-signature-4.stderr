@@ -1,5 +1,5 @@
 error: should have no type parameters
-  --> $DIR/panic-handler-bad-signature-4.rs:19:1
+  --> $DIR/panic-handler-bad-signature-4.rs:9:1
    |
 LL | / fn panic<T>(pi: &PanicInfo) -> ! {
 LL | |     //~^ ERROR should have no type parameters

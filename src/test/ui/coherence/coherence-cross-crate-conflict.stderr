@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `trait_impl_conflict::Foo` for type `isize`:
-  --> $DIR/coherence-cross-crate-conflict.rs:18:1
+  --> $DIR/coherence-cross-crate-conflict.rs:8:1
    |
 LL | impl<A> Foo for A {
    | ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | impl<A> Foo for A {
            - impl trait_impl_conflict::Foo for isize;
 
 error[E0210]: type parameter `A` must be used as the type parameter for some local type (e.g., `MyStruct<A>`)
-  --> $DIR/coherence-cross-crate-conflict.rs:18:1
+  --> $DIR/coherence-cross-crate-conflict.rs:8:1
    |
 LL | impl<A> Foo for A {
    | ^^^^^^^^^^^^^^^^^ type parameter `A` must be used as the type parameter for some local type

@@ -1,11 +1,11 @@
 error: anonymous parameters are deprecated and will be removed in the next edition.
-  --> $DIR/future-incompatible-lint-group.rs:14:10
+  --> $DIR/future-incompatible-lint-group.rs:4:10
    |
 LL |     fn f(u8) {} //~ ERROR anonymous parameters are deprecated
    |          ^^ help: Try naming the parameter or explicitly ignoring it: `_: u8`
    |
 note: lint level defined here
-  --> $DIR/future-incompatible-lint-group.rs:11:9
+  --> $DIR/future-incompatible-lint-group.rs:1:9
    |
 LL | #![deny(future_incompatible)]
    |         ^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `debug_dump_dict`
-  --> $DIR/issue-42065.rs:21:5
+  --> $DIR/issue-42065.rs:11:5
    |
 LL |     debug_dump_dict();
    |     --------------- value moved here
@@ -7,7 +7,7 @@ LL |     debug_dump_dict();
    |     ^^^^^^^^^^^^^^^ value used here after move
    |
 note: closure cannot be invoked more than once because it moves the variable `dict` out of its environment
-  --> $DIR/issue-42065.rs:16:29
+  --> $DIR/issue-42065.rs:6:29
    |
 LL |         for (key, value) in dict {
    |                             ^^^^

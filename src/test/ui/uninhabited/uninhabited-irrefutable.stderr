@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding: `A(_)` not covered
-  --> $DIR/uninhabited-irrefutable.rs:37:9
+  --> $DIR/uninhabited-irrefutable.rs:27:9
    |
 LL |     let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
    |         ^^^^^^^^^^ pattern `A(_)` not covered

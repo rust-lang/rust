@@ -1,17 +1,17 @@
 error: unknown lint: `not_a_real_lint`
-  --> $DIR/lint-unknown-lint.rs:13:10
+  --> $DIR/lint-unknown-lint.rs:3:10
    |
 LL | #![allow(not_a_real_lint)] //~ ERROR unknown lint
    |          ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-unknown-lint.rs:11:9
+  --> $DIR/lint-unknown-lint.rs:1:9
    |
 LL | #![deny(unknown_lints)]
    |         ^^^^^^^^^^^^^
 
 error: unknown lint: `dead_cod`
-  --> $DIR/lint-unknown-lint.rs:15:9
+  --> $DIR/lint-unknown-lint.rs:5:9
    |
 LL | #![deny(dead_cod)] //~ ERROR unknown lint
    |         ^^^^^^^^ help: did you mean: `dead_code`

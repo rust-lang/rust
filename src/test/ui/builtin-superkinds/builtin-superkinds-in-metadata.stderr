@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/builtin-superkinds-in-metadata.rs:24:23
+  --> $DIR/builtin-superkinds-in-metadata.rs:13:23
    |
 LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be sent between threads safely

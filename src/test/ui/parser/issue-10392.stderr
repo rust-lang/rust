@@ -1,5 +1,5 @@
 error: expected identifier, found `,`
-  --> $DIR/issue-10392.rs:18:13
+  --> $DIR/issue-10392.rs:8:13
    |
 LL |     let A { , } = a(); //~ ERROR: expected ident
    |             ^ expected identifier

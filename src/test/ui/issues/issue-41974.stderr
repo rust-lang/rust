@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `std::boxed::Box<_>`:
-  --> $DIR/issue-41974.rs:17:1
+  --> $DIR/issue-41974.rs:7:1
    |
 LL | impl<T> Drop for T where T: A { //~ ERROR E0119
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,13 +10,13 @@ LL | impl<T> Drop for T where T: A { //~ ERROR E0119
    = note: downstream crates may implement trait `A` for type `std::boxed::Box<_>`
 
 error[E0120]: the Drop trait may only be implemented on structures
-  --> $DIR/issue-41974.rs:17:18
+  --> $DIR/issue-41974.rs:7:18
    |
 LL | impl<T> Drop for T where T: A { //~ ERROR E0119
    |                  ^ implementing Drop requires a struct
 
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/issue-41974.rs:17:1
+  --> $DIR/issue-41974.rs:7:1
    |
 LL | impl<T> Drop for T where T: A { //~ ERROR E0119
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type

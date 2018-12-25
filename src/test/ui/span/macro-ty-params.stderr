@@ -1,23 +1,23 @@
 error: unexpected generic arguments in path
-  --> $DIR/macro-ty-params.rs:20:8
+  --> $DIR/macro-ty-params.rs:10:8
    |
 LL |     m!(MyTrait<>); //~ ERROR generic arguments in macro path
    |        ^^^^^^^^^
 
 error: generic arguments in macro path
-  --> $DIR/macro-ty-params.rs:20:15
+  --> $DIR/macro-ty-params.rs:10:15
    |
 LL |     m!(MyTrait<>); //~ ERROR generic arguments in macro path
    |               ^^
 
 error: generic arguments in macro path
-  --> $DIR/macro-ty-params.rs:18:8
+  --> $DIR/macro-ty-params.rs:8:8
    |
 LL |     foo::<T>!(); //~ ERROR generic arguments in macro path
    |        ^^^^^
 
 error: generic arguments in macro path
-  --> $DIR/macro-ty-params.rs:19:8
+  --> $DIR/macro-ty-params.rs:9:8
    |
 LL |     foo::<>!(); //~ ERROR generic arguments in macro path
    |        ^^^^

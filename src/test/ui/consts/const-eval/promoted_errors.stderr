@@ -1,59 +1,59 @@
 warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:17:14
+  --> $DIR/promoted_errors.rs:7:14
    |
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^ attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/promoted_errors.rs:11:9
+  --> $DIR/promoted_errors.rs:1:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:19:20
+  --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:21:14
+  --> $DIR/promoted_errors.rs:11:14
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^
 
 warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:21:14
+  --> $DIR/promoted_errors.rs:11:14
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^ attempt to divide by zero
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:24:20
+  --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:26:14
+  --> $DIR/promoted_errors.rs:16:14
    |
 LL |     let _x = 1/(false as u32);
    |              ^^^^^^^^^^^^^^^^
 
 warning: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:26:14
+  --> $DIR/promoted_errors.rs:16:14
    |
 LL |     let _x = 1/(false as u32);
    |              ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
 warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:24:20
+  --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
 warning: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:19:20
+  --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^ attempt to divide by zero

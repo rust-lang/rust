@@ -1,5 +1,5 @@
 error[E0658]: `crate` visibility modifier is experimental (see issue #53120)
-  --> $DIR/feature-gate-crate_visibility_modifier.rs:11:1
+  --> $DIR/feature-gate-crate_visibility_modifier.rs:1:1
    |
 LL | crate struct Bender { //~ ERROR `crate` visibility modifier is experimental
    | ^^^^^

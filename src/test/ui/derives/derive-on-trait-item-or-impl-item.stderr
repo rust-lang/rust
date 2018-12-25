@@ -1,11 +1,11 @@
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/derive-on-trait-item-or-impl-item.rs:12:5
+  --> $DIR/derive-on-trait-item-or-impl-item.rs:2:5
    |
 LL |     #[derive(Clone)]
    |     ^^^^^^^^^^^^^^^^
 
 error: `derive` may only be applied to structs, enums and unions
-  --> $DIR/derive-on-trait-item-or-impl-item.rs:18:5
+  --> $DIR/derive-on-trait-item-or-impl-item.rs:8:5
    |
 LL |     #[derive(Clone)]
    |     ^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 warning: captured variable cannot escape `FnMut` closure body
-  --> $DIR/issue-49824.rs:22:9
+  --> $DIR/issue-49824.rs:12:9
    |
 LL |       || {
    |        - inferred to be a `FnMut` closure
@@ -14,7 +14,7 @@ LL | |         }
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error: compilation successful
-  --> $DIR/issue-49824.rs:18:1
+  --> $DIR/issue-49824.rs:8:1
    |
 LL | / fn main() {
 LL | |     //~^ compilation successful

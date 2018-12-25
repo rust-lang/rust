@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/slice-borrow.rs:16:28
+  --> $DIR/slice-borrow.rs:6:28
    |
 LL |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
    |                            ^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use

@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow statics
-  --> $DIR/static-mut-not-pat.rs:23:9
+  --> $DIR/static-mut-not-pat.rs:13:9
    |
 LL | static mut a: isize = 3;
    | ------------------------ the static `a` is defined here
@@ -8,7 +8,7 @@ LL |         a => {} //~ ERROR match bindings cannot shadow statics
    |         ^ cannot be named the same as a static
 
 error[E0530]: match bindings cannot shadow statics
-  --> $DIR/static-mut-not-pat.rs:46:9
+  --> $DIR/static-mut-not-pat.rs:36:9
    |
 LL | static mut STATIC_MUT_FOO: Foo = Foo { bar: Some(Direction::West), baz: NEW_FALSE };
    | ------------------------------------------------------------------------------------ the static `STATIC_MUT_FOO` is defined here

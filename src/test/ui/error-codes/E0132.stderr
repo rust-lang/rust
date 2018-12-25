@@ -1,5 +1,5 @@
 error[E0132]: start function is not allowed to have type parameters
-  --> $DIR/E0132.rs:14:5
+  --> $DIR/E0132.rs:4:5
    |
 LL | fn f< T >() {} //~ ERROR E0132
    |     ^^^^^ start function cannot have type parameters

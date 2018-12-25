@@ -1,5 +1,5 @@
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-fn.rs:23:5
+  --> $DIR/projection-no-regions-fn.rs:13:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     Box::new(x.next())
    = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-fn.rs:38:5
+  --> $DIR/projection-no-regions-fn.rs:28:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^

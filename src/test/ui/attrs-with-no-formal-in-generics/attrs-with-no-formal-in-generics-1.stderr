@@ -1,5 +1,5 @@
 error: trailing attribute after lifetime parameters
-  --> $DIR/attrs-with-no-formal-in-generics-1.rs:19:25
+  --> $DIR/attrs-with-no-formal-in-generics-1.rs:9:25
    |
 LL | impl<#[rustc_1] 'a, 'b, #[oops]> RefIntPair<'a, 'b> {
    |                         ^^^^^^^

@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing function parameter `x`
-  --> $DIR/borrowck-return-variable-on-stack-via-clone.rs:17:5
+  --> $DIR/borrowck-return-variable-on-stack-via-clone.rs:7:5
    |
 LL |     (&x).clone() //~ ERROR `x` does not live long enough
    |     ----^^^^^^^^

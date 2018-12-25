@@ -1,5 +1,5 @@
 error: couldn't read $DIR/not_a_real_file.rs: $FILE_NOT_FOUND_MSG (os error 2)
-  --> $DIR/mod_file_with_path_attr.rs:15:5
+  --> $DIR/mod_file_with_path_attr.rs:5:5
    |
 LL | mod m; //~ ERROR not_a_real_file.rs
    |     ^

@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/issue-3021-d.rs:31:23
+  --> $DIR/issue-3021-d.rs:21:23
    |
 LL |             self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR can't capture dynamic environment
    |                       ^^
@@ -7,7 +7,7 @@ LL |             self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR can't capture dyna
    = help: use the `|| { ... }` closure form instead
 
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/issue-3021-d.rs:32:23
+  --> $DIR/issue-3021-d.rs:22:23
    |
 LL |             self.v1 = k1 ^ 0x646f72616e646f6d; //~ ERROR can't capture dynamic environment
    |                       ^^

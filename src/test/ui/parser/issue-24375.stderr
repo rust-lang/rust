@@ -1,5 +1,5 @@
 error: expected one of `=>`, `@`, `if`, or `|`, found `[`
-  --> $DIR/issue-24375.rs:18:12
+  --> $DIR/issue-24375.rs:8:12
    |
 LL |         tmp[0] => {} //~ ERROR expected one of `=>`, `@`, `if`, or `|`, found `[`
    |            ^ expected one of `=>`, `@`, `if`, or `|` here

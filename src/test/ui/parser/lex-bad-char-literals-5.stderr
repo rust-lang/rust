@@ -1,5 +1,5 @@
 error: character literal may only contain one codepoint
-  --> $DIR/lex-bad-char-literals-5.rs:15:5
+  --> $DIR/lex-bad-char-literals-5.rs:5:5
    |
 LL |     '/x10/x10'  //~ ERROR: character literal may only contain one codepoint
    |     ^^^^^^^^^^

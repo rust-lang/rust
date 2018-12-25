@@ -1,5 +1,5 @@
 error[E0558]: `export_name` attribute has invalid format
-  --> $DIR/E0558.rs:11:1
+  --> $DIR/E0558.rs:1:1
    |
 LL | #[export_name]
    | ^^^^^^^^^^^^^^ did you mean #[export_name="*"]?

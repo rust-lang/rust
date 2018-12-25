@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coerce-mut.rs:15:7
+  --> $DIR/coerce-mut.rs:5:7
    |
 LL |     f(&x);
    |       ^^ types differ in mutability

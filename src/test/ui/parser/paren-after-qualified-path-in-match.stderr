@@ -1,5 +1,5 @@
 error: unexpected `(` after qualified path
-  --> $DIR/paren-after-qualified-path-in-match.rs:15:27
+  --> $DIR/paren-after-qualified-path-in-match.rs:5:27
    |
 LL |         <T as Trait>::Type(2) => (),
    |                           ^ unexpected `(` after qualified path

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/closure-move-spans.rs:17:13
+  --> $DIR/closure-move-spans.rs:7:13
    |
 LL |     || x;
    |     -- - variable moved due to use in closure
@@ -11,7 +11,7 @@ LL |     let y = x; //~ ERROR
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-move-spans.rs:22:13
+  --> $DIR/closure-move-spans.rs:12:13
    |
 LL |     || x;
    |     -- - variable moved due to use in closure
@@ -23,7 +23,7 @@ LL |     let y = &x; //~ ERROR
    = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-move-spans.rs:27:13
+  --> $DIR/closure-move-spans.rs:17:13
    |
 LL |     || x;
    |     -- - variable moved due to use in closure

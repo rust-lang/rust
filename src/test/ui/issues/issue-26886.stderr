@@ -1,5 +1,5 @@
 error[E0252]: the name `Arc` is defined multiple times
-  --> $DIR/issue-26886.rs:12:5
+  --> $DIR/issue-26886.rs:2:5
    |
 LL | use std::sync::{self, Arc};
    |                       --- previous import of the type `Arc` here
@@ -13,7 +13,7 @@ LL | use std::sync::Arc as OtherArc; //~ ERROR the name `Arc` is defined multipl
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `sync` is defined multiple times
-  --> $DIR/issue-26886.rs:14:5
+  --> $DIR/issue-26886.rs:4:5
    |
 LL | use std::sync::{self, Arc};
    |                 ---- previous import of the module `sync` here

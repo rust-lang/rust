@@ -1,11 +1,11 @@
 error[E0261]: use of undeclared lifetime name `'test`
-  --> $DIR/no_in_band_in_struct.rs:15:9
+  --> $DIR/no_in_band_in_struct.rs:5:9
    |
 LL |     x: &'test u32, //~ ERROR undeclared lifetime
    |         ^^^^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'test`
-  --> $DIR/no_in_band_in_struct.rs:19:10
+  --> $DIR/no_in_band_in_struct.rs:9:10
    |
 LL |     Baz(&'test u32), //~ ERROR undeclared lifetime
    |          ^^^^^ undeclared lifetime

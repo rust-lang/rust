@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `void` as mutable more than once at a time
-  --> $DIR/mut-borrow-outside-loop.rs:17:18
+  --> $DIR/mut-borrow-outside-loop.rs:7:18
    |
 LL |     let first = &mut void;
    |                 --------- first mutable borrow occurs here
@@ -9,7 +9,7 @@ LL |     first.use_mut();
    |     ----- first borrow later used here
 
 error[E0499]: cannot borrow `inner_void` as mutable more than once at a time
-  --> $DIR/mut-borrow-outside-loop.rs:25:28
+  --> $DIR/mut-borrow-outside-loop.rs:15:28
    |
 LL |         let inner_first = &mut inner_void;
    |                           --------------- first mutable borrow occurs here

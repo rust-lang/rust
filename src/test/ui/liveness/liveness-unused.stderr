@@ -1,48 +1,48 @@
 warning: unreachable statement
-  --> $DIR/liveness-unused.rs:102:9
+  --> $DIR/liveness-unused.rs:92:9
    |
 LL |         drop(*x as i32); //~ WARNING unreachable statement
    |         ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/liveness-unused.rs:11:9
+  --> $DIR/liveness-unused.rs:1:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(unreachable_code)] implied by #[warn(unused)]
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:18:7
+  --> $DIR/liveness-unused.rs:8:7
    |
 LL | fn f1(x: isize) {
    |       ^ help: consider using `_x` instead
    |
 note: lint level defined here
-  --> $DIR/liveness-unused.rs:12:9
+  --> $DIR/liveness-unused.rs:2:9
    |
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:22:8
+  --> $DIR/liveness-unused.rs:12:8
    |
 LL | fn f1b(x: &mut isize) {
    |        ^ help: consider using `_x` instead
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:30:9
+  --> $DIR/liveness-unused.rs:20:9
    |
 LL |     let x: isize;
    |         ^ help: consider using `_x` instead
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:35:9
+  --> $DIR/liveness-unused.rs:25:9
    |
 LL |     let x = 3;
    |         ^ help: consider using `_x` instead
 
 error: variable `x` is assigned to, but never used
-  --> $DIR/liveness-unused.rs:40:13
+  --> $DIR/liveness-unused.rs:30:13
    |
 LL |     let mut x = 3;
    |             ^
@@ -50,20 +50,20 @@ LL |     let mut x = 3;
    = note: consider using `_x` instead
 
 error: value assigned to `x` is never read
-  --> $DIR/liveness-unused.rs:42:5
+  --> $DIR/liveness-unused.rs:32:5
    |
 LL |     x += 4;
    |     ^
    |
 note: lint level defined here
-  --> $DIR/liveness-unused.rs:13:9
+  --> $DIR/liveness-unused.rs:3:9
    |
 LL | #![deny(unused_assignments)]
    |         ^^^^^^^^^^^^^^^^^^
    = help: maybe it is overwritten before being read?
 
 error: variable `z` is assigned to, but never used
-  --> $DIR/liveness-unused.rs:47:13
+  --> $DIR/liveness-unused.rs:37:13
    |
 LL |     let mut z = 3;
    |             ^
@@ -71,31 +71,31 @@ LL |     let mut z = 3;
    = note: consider using `_z` instead
 
 error: unused variable: `i`
-  --> $DIR/liveness-unused.rs:69:12
+  --> $DIR/liveness-unused.rs:59:12
    |
 LL |       Some(i) => {
    |            ^ help: consider using `_i` instead
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:89:9
+  --> $DIR/liveness-unused.rs:79:9
    |
 LL |     for x in 1..10 { }
    |         ^ help: consider using `_x` instead
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:94:10
+  --> $DIR/liveness-unused.rs:84:10
    |
 LL |     for (x, _) in [1, 2, 3].iter().enumerate() { }
    |          ^ help: consider using `_x` instead
 
 error: unused variable: `x`
-  --> $DIR/liveness-unused.rs:99:13
+  --> $DIR/liveness-unused.rs:89:13
    |
 LL |     for (_, x) in [1, 2, 3].iter().enumerate() {
    |             ^ help: consider using `_x` instead
 
 error: variable `x` is assigned to, but never used
-  --> $DIR/liveness-unused.rs:122:9
+  --> $DIR/liveness-unused.rs:112:9
    |
 LL |     let x;
    |         ^
@@ -103,7 +103,7 @@ LL |     let x;
    = note: consider using `_x` instead
 
 error: value assigned to `x` is never read
-  --> $DIR/liveness-unused.rs:126:9
+  --> $DIR/liveness-unused.rs:116:9
    |
 LL |         x = 0;  //~ ERROR value assigned to `x` is never read
    |         ^

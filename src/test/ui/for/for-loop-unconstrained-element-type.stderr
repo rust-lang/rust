@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/for-loop-unconstrained-element-type.rs:18:14
+  --> $DIR/for-loop-unconstrained-element-type.rs:8:14
    |
 LL |     for i in Vec::new() { } //~ ERROR type annotations needed
    |              ^^^^^^^^^^

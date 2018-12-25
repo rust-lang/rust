@@ -1,5 +1,5 @@
 error[E0026]: struct `Thing` does not have a field named `z`
-  --> $DIR/E0026-teach.rs:21:23
+  --> $DIR/E0026-teach.rs:11:23
    |
 LL |         Thing { x, y, z } => {}
    |                       ^ struct `Thing` does not have this field

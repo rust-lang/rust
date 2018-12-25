@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `let`
-  --> $DIR/try-block-in-edition2015.rs:16:9
+  --> $DIR/try-block-in-edition2015.rs:6:9
    |
 LL |     let try_result: Option<_> = try {
    |                                 --- while parsing this struct
@@ -8,7 +8,7 @@ LL |         let x = 5; //~ ERROR expected identifier, found keyword
    |         ^^^ expected identifier, found keyword
 
 error[E0574]: expected struct, variant or union type, found macro `try`
-  --> $DIR/try-block-in-edition2015.rs:14:33
+  --> $DIR/try-block-in-edition2015.rs:4:33
    |
 LL |     let try_result: Option<_> = try {
    |                                 ^^^ did you mean `try!(...)`?

@@ -1,5 +1,5 @@
 error[E0529]: expected an array or slice, found `f32`
-  --> $DIR/E0529.rs:14:9
+  --> $DIR/E0529.rs:4:9
    |
 LL |         [a, b] => {
    |         ^^^^^^ pattern cannot match with input type `f32`

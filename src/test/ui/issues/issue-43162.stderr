@@ -1,17 +1,17 @@
 error[E0268]: `break` outside of loop
-  --> $DIR/issue-43162.rs:13:5
+  --> $DIR/issue-43162.rs:3:5
    |
 LL |     break true; //~ ERROR E0268
    |     ^^^^^^^^^^ cannot break outside of a loop
 
 error[E0268]: `break` outside of loop
-  --> $DIR/issue-43162.rs:17:5
+  --> $DIR/issue-43162.rs:7:5
    |
 LL |     break {}; //~ ERROR E0268
    |     ^^^^^^^^ cannot break outside of a loop
 
 error[E0308]: mismatched types
-  --> $DIR/issue-43162.rs:11:18
+  --> $DIR/issue-43162.rs:1:18
    |
 LL |   fn foo() -> bool {
    |  __________________^

@@ -1,5 +1,5 @@
 error[E0592]: duplicate definitions with name `id`
-  --> $DIR/overlapping_inherent_impls.rs:19:5
+  --> $DIR/overlapping_inherent_impls.rs:9:5
    |
 LL |     fn id() {} //~ ERROR duplicate definitions
    |     ^^^^^^^^^^ duplicate definitions for `id`
@@ -8,7 +8,7 @@ LL |     fn id() {}
    |     ---------- other definition for `id`
 
 error[E0592]: duplicate definitions with name `bar`
-  --> $DIR/overlapping_inherent_impls.rs:29:5
+  --> $DIR/overlapping_inherent_impls.rs:19:5
    |
 LL |     fn bar(&self) {} //~ ERROR duplicate definitions
    |     ^^^^^^^^^^^^^^^^ duplicate definitions for `bar`
@@ -17,7 +17,7 @@ LL |     fn bar(&self) {}
    |     ---------------- other definition for `bar`
 
 error[E0592]: duplicate definitions with name `baz`
-  --> $DIR/overlapping_inherent_impls.rs:39:5
+  --> $DIR/overlapping_inherent_impls.rs:29:5
    |
 LL |     fn baz(&self) {} //~ ERROR duplicate definitions
    |     ^^^^^^^^^^^^^^^^ duplicate definitions for `baz`

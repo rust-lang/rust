@@ -1,5 +1,5 @@
 error: program clause dump
-  --> $DIR/lower_env3.rs:15:5
+  --> $DIR/lower_env3.rs:5:5
    |
 LL |     #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    = note: forall<Self> { Implemented(Self: Foo) :- FromEnv(Self: Foo). }
 
 error: program clause dump
-  --> $DIR/lower_env3.rs:20:5
+  --> $DIR/lower_env3.rs:10:5
    |
 LL |     #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

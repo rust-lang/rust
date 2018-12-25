@@ -1,5 +1,5 @@
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/match-range-fail.rs:13:9
+  --> $DIR/match-range-fail.rs:3:9
    |
 LL |         "bar" ..= "foo" => { }
    |         ^^^^^^^^^^^^^^^ ranges require char or numeric types
@@ -8,7 +8,7 @@ LL |         "bar" ..= "foo" => { }
    = note: end type: &'static str
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/match-range-fail.rs:20:16
+  --> $DIR/match-range-fail.rs:10:16
    |
 LL |         10 ..= "what" => ()
    |                ^^^^^^ ranges require char or numeric types
@@ -17,7 +17,7 @@ LL |         10 ..= "what" => ()
    = note: end type: &'static str
 
 error[E0308]: mismatched types
-  --> $DIR/match-range-fail.rs:27:9
+  --> $DIR/match-range-fail.rs:17:9
    |
 LL |         'c' ..= 100 => { }
    |         ^^^^^^^^^^^ expected integral variable, found char

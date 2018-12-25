@@ -1,5 +1,5 @@
 error[E0658]: naming constants with `_` is unstable (see issue #54912)
-  --> $DIR/underscore_const_names_feature_gate.rs:11:1
+  --> $DIR/underscore_const_names_feature_gate.rs:1:1
    |
 LL | const _: () = (); //~ ERROR is unstable
    | ^^^^^^^^^^^^^^^^^

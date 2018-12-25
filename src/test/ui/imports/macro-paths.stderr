@@ -1,34 +1,34 @@
 error[E0659]: `bar` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
-  --> $DIR/macro-paths.rs:23:5
+  --> $DIR/macro-paths.rs:13:5
    |
 LL |     bar::m! { //~ ERROR ambiguous
    |     ^^^ ambiguous name
    |
 note: `bar` could refer to the module defined here
-  --> $DIR/macro-paths.rs:24:9
+  --> $DIR/macro-paths.rs:14:9
    |
 LL |         mod bar { pub use two_macros::m; }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `bar` could also refer to the module imported here
-  --> $DIR/macro-paths.rs:22:9
+  --> $DIR/macro-paths.rs:12:9
    |
 LL |     use foo::*;
    |         ^^^^^^
    = help: consider adding an explicit import of `bar` to disambiguate
 
 error[E0659]: `baz` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/macro-paths.rs:33:5
+  --> $DIR/macro-paths.rs:23:5
    |
 LL |     baz::m! { //~ ERROR ambiguous
    |     ^^^ ambiguous name
    |
 note: `baz` could refer to the module defined here
-  --> $DIR/macro-paths.rs:34:9
+  --> $DIR/macro-paths.rs:24:9
    |
 LL |         mod baz { pub use two_macros::m; }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `baz` could also refer to the module defined here
-  --> $DIR/macro-paths.rs:28:1
+  --> $DIR/macro-paths.rs:18:1
    |
 LL | / pub mod baz {
 LL | |     pub use two_macros::m;

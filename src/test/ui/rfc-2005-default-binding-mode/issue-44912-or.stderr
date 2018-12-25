@@ -1,5 +1,5 @@
 error[E0409]: variable `x` is bound in inconsistent ways within the same match arm
-  --> $DIR/issue-44912-or.rs:16:35
+  --> $DIR/issue-44912-or.rs:6:35
    |
 LL |         Some((x, 3)) | &Some((ref x, 5)) => x,
    |               - first binding     ^ bound in different ways

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-overloaded-call.rs:69:5
+  --> $DIR/borrowck-overloaded-call.rs:59:5
    |
 LL |     let sp = &mut s;
    |                   - mutable borrow occurs here
@@ -10,7 +10,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0596]: cannot borrow immutable local variable `s` as mutable
-  --> $DIR/borrowck-overloaded-call.rs:77:5
+  --> $DIR/borrowck-overloaded-call.rs:67:5
    |
 LL |     let s = SFnMut {
    |         - help: make this binding mutable: `mut s`
@@ -19,7 +19,7 @@ LL |     s(3);   //~ ERROR cannot borrow immutable local variable `s` as mutable
    |     ^ cannot borrow mutably
 
 error[E0382]: use of moved value: `s`
-  --> $DIR/borrowck-overloaded-call.rs:85:5
+  --> $DIR/borrowck-overloaded-call.rs:75:5
    |
 LL |     s(" world".to_string());
    |     - value moved here

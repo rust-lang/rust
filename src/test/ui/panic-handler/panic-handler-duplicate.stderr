@@ -1,5 +1,5 @@
 error[E0152]: duplicate lang item found: `panic_impl`.
-  --> $DIR/panic-handler-duplicate.rs:25:1
+  --> $DIR/panic-handler-duplicate.rs:15:1
    |
 LL | / fn panic2(info: &PanicInfo) -> ! { //~ ERROR duplicate lang item found: `panic_impl`.
 LL | |     loop {}
@@ -7,7 +7,7 @@ LL | | }
    | |_^
    |
 note: first defined here.
-  --> $DIR/panic-handler-duplicate.rs:20:1
+  --> $DIR/panic-handler-duplicate.rs:10:1
    |
 LL | / fn panic(info: &PanicInfo) -> ! {
 LL | |     loop {}

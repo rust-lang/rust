@@ -1,5 +1,5 @@
 error[E0009]: cannot bind by-move and by-ref in the same pattern
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-2.rs:22:23
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-2.rs:12:23
    |
 LL |         Some((ref _y, _z)) => { }, //~ ERROR cannot bind by-move and by-ref in the same pattern
    |               ------  ^^ by-move pattern here

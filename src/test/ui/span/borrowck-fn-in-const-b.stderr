@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
-  --> $DIR/borrowck-fn-in-const-b.rs:17:9
+  --> $DIR/borrowck-fn-in-const-b.rs:7:9
    |
 LL |     fn broken(x: &Vec<String>) {
    |                  ------------ use `&mut Vec<String>` here to make mutable

@@ -1,11 +1,11 @@
 error: expected one of `=>`, `@`, `if`, or `|`, found `:`
-  --> $DIR/struct-literal-in-match-discriminant.rs:19:10
+  --> $DIR/struct-literal-in-match-discriminant.rs:9:10
    |
 LL |         x: 3    //~ ERROR expected one of `=>`, `@`, `if`, or `|`, found `:`
    |          ^ expected one of `=>`, `@`, `if`, or `|` here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `=>`
-  --> $DIR/struct-literal-in-match-discriminant.rs:23:11
+  --> $DIR/struct-literal-in-match-discriminant.rs:13:11
    |
 LL |         } => {} //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `=>`
    |           ^^ expected one of `.`, `;`, `?`, `}`, or an operator here

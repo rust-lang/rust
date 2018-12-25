@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowck-let-suggestion.rs:12:17
+  --> $DIR/borrowck-let-suggestion.rs:2:17
    |
 LL |     let mut x = vec![1].iter();
    |                 ^^^^^^^       - temporary value is freed at the end of this statement

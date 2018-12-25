@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `while`
-  --> $DIR/keyword-while-as-identifier.rs:16:9
+  --> $DIR/keyword-while-as-identifier.rs:6:9
    |
 LL |     let while = "foo"; //~ error: expected pattern, found keyword `while`
    |         ^^^^^ expected pattern

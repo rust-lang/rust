@@ -1,5 +1,5 @@
 error[E0252]: the name `A` is defined multiple times
-  --> $DIR/rename-with-path.rs:11:38
+  --> $DIR/rename-with-path.rs:1:38
    |
 LL | use std::{collections::HashMap as A, sync::Arc as A};
    |           -------------------------  ^^^^^^^^^^^^^^ `A` reimported here

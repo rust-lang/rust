@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `b`
-  --> $DIR/borrowck-consume-unsize-vec.rs:18:13
+  --> $DIR/borrowck-consume-unsize-vec.rs:8:13
    |
 LL |     consume(b);
    |             - value moved here

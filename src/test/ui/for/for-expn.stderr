@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/for-expn.rs:16:7
+  --> $DIR/for-expn.rs:6:7
    |
 LL |       foo //~ ERROR cannot find value `foo` in this scope
    |       ^^^ not found in this scope

@@ -1,16 +1,16 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-free-region-ordering-callee.rs:23:5
+  --> $DIR/regions-free-region-ordering-callee.rs:13:5
    |
 LL | fn ordering2<'a, 'b>(x: &'a &'b usize, y: &'a usize) -> &'b usize {
    |                         -------------                   ---------
    |                         |
    |                         this parameter and the return type are declared with different lifetimes...
 LL |     // However, it is not safe to assume that 'b <= 'a
-LL |     &*y //~ ERROR 23:5: 23:8: lifetime mismatch [E0623]
+LL |     &*y //~ ERROR lifetime mismatch [E0623]
    |     ^^^ ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-free-region-ordering-callee.rs:28:24
+  --> $DIR/regions-free-region-ordering-callee.rs:18:24
    |
 LL | fn ordering3<'a, 'b>(x: &'a usize, y: &'b usize) -> &'a &'b usize {
    |                                       ---------     -------------

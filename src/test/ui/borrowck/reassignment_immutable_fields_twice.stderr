@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to field `x.0` of immutable binding
-  --> $DIR/reassignment_immutable_fields_twice.rs:17:5
+  --> $DIR/reassignment_immutable_fields_twice.rs:7:5
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
@@ -8,7 +8,7 @@ LL |     x.0 = 1; //~ ERROR
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
-  --> $DIR/reassignment_immutable_fields_twice.rs:22:5
+  --> $DIR/reassignment_immutable_fields_twice.rs:12:5
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
@@ -16,7 +16,7 @@ LL |     x.0 = 1; //~ ERROR
    |     ^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.0` of immutable binding
-  --> $DIR/reassignment_immutable_fields_twice.rs:23:5
+  --> $DIR/reassignment_immutable_fields_twice.rs:13:5
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`
@@ -25,7 +25,7 @@ LL |     x.0 = 22; //~ ERROR
    |     ^^^^^^^^ cannot mutably borrow field of immutable binding
 
 error[E0594]: cannot assign to field `x.1` of immutable binding
-  --> $DIR/reassignment_immutable_fields_twice.rs:24:5
+  --> $DIR/reassignment_immutable_fields_twice.rs:14:5
    |
 LL |     let x: (u32, u32);
    |         - help: make this binding mutable: `mut x`

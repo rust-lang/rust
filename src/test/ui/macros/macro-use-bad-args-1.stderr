@@ -1,5 +1,5 @@
 error[E0466]: bad macro import
-  --> $DIR/macro-use-bad-args-1.rs:14:13
+  --> $DIR/macro-use-bad-args-1.rs:4:13
    |
 LL | #[macro_use(foo(bar))]  //~ ERROR bad macro import
    |             ^^^^^^^^

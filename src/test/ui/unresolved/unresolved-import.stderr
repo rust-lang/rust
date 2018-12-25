@@ -1,35 +1,35 @@
 error[E0432]: unresolved import `foo`
-  --> $DIR/unresolved-import.rs:13:5
+  --> $DIR/unresolved-import.rs:3:5
    |
 LL | use foo::bar; //~ ERROR unresolved import `foo` [E0432]
    |     ^^^ maybe a missing `extern crate foo;`?
 
 error[E0432]: unresolved import `bar::Baz`
-  --> $DIR/unresolved-import.rs:16:5
+  --> $DIR/unresolved-import.rs:6:5
    |
 LL | use bar::Baz as x; //~ ERROR unresolved import `bar::Baz` [E0432]
    |     ^^^^^^^^^^^^^ no `Baz` in `bar`. Did you mean to use `Bar`?
 
 error[E0432]: unresolved import `food::baz`
-  --> $DIR/unresolved-import.rs:19:5
+  --> $DIR/unresolved-import.rs:9:5
    |
 LL | use food::baz; //~ ERROR unresolved import `food::baz`
    |     ^^^^^^^^^ no `baz` in `food`. Did you mean to use `bag`?
 
 error[E0432]: unresolved import `food::beens`
-  --> $DIR/unresolved-import.rs:22:12
+  --> $DIR/unresolved-import.rs:12:12
    |
 LL | use food::{beens as Foo}; //~ ERROR unresolved import `food::beens` [E0432]
    |            ^^^^^^^^^^^^ no `beens` in `food`. Did you mean to use `beans`?
 
 error[E0432]: unresolved import `MyEnum`
-  --> $DIR/unresolved-import.rs:44:9
+  --> $DIR/unresolved-import.rs:34:9
    |
 LL |     use MyEnum::*; //~ ERROR unresolved import `MyEnum` [E0432]
    |         ^^^^^^ did you mean `self::MyEnum`?
 
 error[E0432]: unresolved import `Enum`
-  --> $DIR/unresolved-import.rs:53:9
+  --> $DIR/unresolved-import.rs:43:9
    |
 LL |     use Enum::*; //~ ERROR unresolved import `Enum` [E0432]
    |         ^^^^ did you mean `self::Enum`?

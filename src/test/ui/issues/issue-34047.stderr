@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow constants
-  --> $DIR/issue-34047.rs:15:13
+  --> $DIR/issue-34047.rs:5:13
    |
 LL | const C: u8 = 0;
    | ---------------- the constant `C` is defined here

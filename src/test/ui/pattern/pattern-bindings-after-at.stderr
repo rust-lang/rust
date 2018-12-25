@@ -1,5 +1,5 @@
 error[E0303]: pattern bindings are not allowed after an `@`
-  --> $DIR/pattern-bindings-after-at.rs:18:31
+  --> $DIR/pattern-bindings-after-at.rs:8:31
    |
 LL |         ref mut z @ &mut Some(ref a) => {
    |                               ^^^^^ not allowed after `@`

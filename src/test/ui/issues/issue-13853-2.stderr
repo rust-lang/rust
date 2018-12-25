@@ -1,5 +1,5 @@
 error[E0615]: attempted to take value of method `get` on type `std::boxed::Box<(dyn ResponseHook + 'static)>`
-  --> $DIR/issue-13853-2.rs:15:39
+  --> $DIR/issue-13853-2.rs:5:39
    |
 LL | fn foo(res : Box<ResponseHook>) { res.get } //~ ERROR attempted to take value of method
    |                                       ^^^

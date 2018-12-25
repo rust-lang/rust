@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `bar`:
-  --> $DIR/E0201.rs:15:5
+  --> $DIR/E0201.rs:5:5
    |
 LL |     fn bar(&self) -> bool { self.0 > 5 }
    |     ------------------------------------ previous definition of `bar` here
@@ -7,7 +7,7 @@ LL |     fn bar() {} //~ ERROR E0201
    |     ^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `baz`:
-  --> $DIR/E0201.rs:27:5
+  --> $DIR/E0201.rs:17:5
    |
 LL |     fn baz(&self) -> bool { true }
    |     ------------------------------ previous definition of `baz` here
@@ -15,7 +15,7 @@ LL |     fn baz(&self) -> bool { self.0 > 5 } //~ ERROR E0201
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `Quux`:
-  --> $DIR/E0201.rs:28:5
+  --> $DIR/E0201.rs:18:5
    |
 LL |     type Quux = u32;
    |     ---------------- previous definition of `Quux` here

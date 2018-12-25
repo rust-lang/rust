@@ -1,5 +1,5 @@
 error[E0609]: no field `1` on type `Foo`
-  --> $DIR/ex-E0612.rs:15:6
+  --> $DIR/ex-E0612.rs:5:6
    |
 LL |    y.1; //~ ERROR no field `1` on type `Foo`
    |      ^ did you mean `0`?

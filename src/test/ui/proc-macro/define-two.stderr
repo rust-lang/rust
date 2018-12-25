@@ -1,5 +1,5 @@
 error[E0428]: the name `A` is defined multiple times
-  --> $DIR/define-two.rs:25:21
+  --> $DIR/define-two.rs:15:21
    |
 LL | #[proc_macro_derive(A)]
    |                     - previous definition of the macro `A` here

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `u.a` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-union-borrow.rs:37:23
+  --> $DIR/borrowck-union-borrow.rs:27:23
    |
 LL |             let ra = &u.a;
    |                      ---- immutable borrow occurs here
@@ -10,7 +10,7 @@ LL |             drop(ra);
    |                  -- immutable borrow later used here
 
 error[E0506]: cannot assign to `u.a` because it is borrowed
-  --> $DIR/borrowck-union-borrow.rs:43:13
+  --> $DIR/borrowck-union-borrow.rs:33:13
    |
 LL |             let ra = &u.a;
    |                      ---- borrow of `u.a` occurs here
@@ -21,7 +21,7 @@ LL |             drop(ra);
    |                  -- borrow later used here
 
 error[E0502]: cannot borrow `u.b` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-union-borrow.rs:60:23
+  --> $DIR/borrowck-union-borrow.rs:50:23
    |
 LL |             let ra = &u.a;
    |                      ---- immutable borrow occurs here
@@ -32,7 +32,7 @@ LL |             drop(ra);
    |                  -- immutable borrow later used here
 
 error[E0506]: cannot assign to `u.b` because it is borrowed
-  --> $DIR/borrowck-union-borrow.rs:66:13
+  --> $DIR/borrowck-union-borrow.rs:56:13
    |
 LL |             let ra = &u.a;
    |                      ---- borrow of `u.b` occurs here
@@ -43,7 +43,7 @@ LL |             drop(ra);
    |                  -- borrow later used here
 
 error[E0502]: cannot borrow `u.a` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-union-borrow.rs:73:22
+  --> $DIR/borrowck-union-borrow.rs:63:22
    |
 LL |             let rma = &mut u.a;
    |                       -------- mutable borrow occurs here
@@ -54,7 +54,7 @@ LL |             drop(rma);
    |                  --- mutable borrow later used here
 
 error[E0503]: cannot use `u.a` because it was mutably borrowed
-  --> $DIR/borrowck-union-borrow.rs:79:21
+  --> $DIR/borrowck-union-borrow.rs:69:21
    |
 LL |             let ra = &mut u.a;
    |                      -------- borrow of `u.a` occurs here
@@ -65,7 +65,7 @@ LL |             drop(ra);
    |                  -- borrow later used here
 
 error[E0499]: cannot borrow `u.a` as mutable more than once at a time
-  --> $DIR/borrowck-union-borrow.rs:85:24
+  --> $DIR/borrowck-union-borrow.rs:75:24
    |
 LL |             let rma = &mut u.a;
    |                       -------- first mutable borrow occurs here
@@ -76,7 +76,7 @@ LL |             drop(rma);
    |                  --- first borrow later used here
 
 error[E0506]: cannot assign to `u.a` because it is borrowed
-  --> $DIR/borrowck-union-borrow.rs:91:13
+  --> $DIR/borrowck-union-borrow.rs:81:13
    |
 LL |             let rma = &mut u.a;
    |                       -------- borrow of `u.a` occurs here
@@ -87,7 +87,7 @@ LL |             drop(rma);
    |                  --- borrow later used here
 
 error[E0502]: cannot borrow `u.b` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-union-borrow.rs:98:22
+  --> $DIR/borrowck-union-borrow.rs:88:22
    |
 LL |             let rma = &mut u.a;
    |                       -------- mutable borrow occurs here
@@ -98,7 +98,7 @@ LL |             drop(rma);
    |                  --- mutable borrow later used here
 
 error[E0503]: cannot use `u.b` because it was mutably borrowed
-  --> $DIR/borrowck-union-borrow.rs:104:21
+  --> $DIR/borrowck-union-borrow.rs:94:21
    |
 LL |             let ra = &mut u.a;
    |                      -------- borrow of `u.a` occurs here
@@ -109,7 +109,7 @@ LL |             drop(ra);
    |                  -- borrow later used here
 
 error[E0499]: cannot borrow `u.b` as mutable more than once at a time
-  --> $DIR/borrowck-union-borrow.rs:111:24
+  --> $DIR/borrowck-union-borrow.rs:101:24
    |
 LL |             let rma = &mut u.a;
    |                       -------- first mutable borrow occurs here
@@ -120,7 +120,7 @@ LL |             drop(rma);
    |                  --- first borrow later used here
 
 error[E0506]: cannot assign to `u.b` because it is borrowed
-  --> $DIR/borrowck-union-borrow.rs:117:13
+  --> $DIR/borrowck-union-borrow.rs:107:13
    |
 LL |             let rma = &mut u.a;
    |                       -------- borrow of `u.b` occurs here

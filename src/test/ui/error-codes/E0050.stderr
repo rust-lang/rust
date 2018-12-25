@@ -1,5 +1,5 @@
 error[E0050]: method `foo` has 1 parameter but the declaration in trait `Foo::foo` has 2
-  --> $DIR/E0050.rs:20:12
+  --> $DIR/E0050.rs:10:12
    |
 LL |     fn foo(&self, x: u8) -> bool;
    |            ------------ trait requires 2 parameters
@@ -8,7 +8,7 @@ LL |     fn foo(&self) -> bool { true } //~ ERROR E0050
    |            ^^^^^ expected 2 parameters, found 1
 
 error[E0050]: method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 4
-  --> $DIR/E0050.rs:21:12
+  --> $DIR/E0050.rs:11:12
    |
 LL |     fn bar(&self, x: u8, y: u8, z: u8);
    |            -------------------------- trait requires 4 parameters
@@ -17,7 +17,7 @@ LL |     fn bar(&self) { } //~ ERROR E0050
    |            ^^^^^ expected 4 parameters, found 1
 
 error[E0050]: method `less` has 4 parameters but the declaration in trait `Foo::less` has 1
-  --> $DIR/E0050.rs:22:13
+  --> $DIR/E0050.rs:12:13
    |
 LL |     fn less(&self);
    |             ----- trait requires 1 parameter

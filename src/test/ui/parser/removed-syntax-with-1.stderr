@@ -1,5 +1,5 @@
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `with`
-  --> $DIR/removed-syntax-with-1.rs:20:25
+  --> $DIR/removed-syntax-with-1.rs:10:25
    |
 LL |     let b = S { foo: () with a };
    |                         ^^^^ expected one of `,`, `.`, `?`, `}`, or an operator here

@@ -1,5 +1,5 @@
 error[E0658]: linking to LLVM intrinsics is experimental (see issue #29602)
-  --> $DIR/issue-20313.rs:13:5
+  --> $DIR/issue-20313.rs:3:5
    |
 LL |     fn sqrt(x: f32) -> f32; //~ ERROR linking to LLVM intrinsics is experimental
    |     ^^^^^^^^^^^^^^^^^^^^^^^

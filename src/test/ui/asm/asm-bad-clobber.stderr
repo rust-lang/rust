@@ -1,5 +1,5 @@
 error[E0664]: clobber should not be surrounded by braces
-  --> $DIR/asm-bad-clobber.rs:32:37
+  --> $DIR/asm-bad-clobber.rs:22:37
    |
 LL |         asm!("xor %eax, %eax" : : : "{eax}");
    |                                     ^^^^^^^

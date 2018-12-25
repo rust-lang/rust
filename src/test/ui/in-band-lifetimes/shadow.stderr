@@ -1,5 +1,5 @@
 error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scope
-  --> $DIR/shadow.rs:17:12
+  --> $DIR/shadow.rs:7:12
    |
 LL | impl Foo<&'s u8> {
    |           -- first declared here
@@ -7,7 +7,7 @@ LL |     fn bar<'s>(&self, x: &'s u8) {} //~ ERROR shadows a lifetime name
    |            ^^ lifetime 's already in scope
 
 error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scope
-  --> $DIR/shadow.rs:18:19
+  --> $DIR/shadow.rs:8:19
    |
 LL | impl Foo<&'s u8> {
    |           -- first declared here

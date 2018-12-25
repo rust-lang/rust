@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/regions-escape-loop-via-variable.rs:21:13
+  --> $DIR/regions-escape-loop-via-variable.rs:11:13
    |
 LL |         let x = 1 + *p;
    |                     -- borrow used here, in later iteration of loop

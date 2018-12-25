@@ -1,5 +1,5 @@
 error[E0317]: if may be missing an else clause
-  --> $DIR/issue-19991.rs:15:5
+  --> $DIR/issue-19991.rs:5:5
    |
 LL | /     if let Some(homura) = Some("madoka") { //~  ERROR missing an else clause
 LL | |                                            //~| expected type `()`

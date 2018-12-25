@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pattern-ident-path-generics.rs:13:9
+  --> $DIR/pattern-ident-path-generics.rs:3:9
    |
 LL |         None::<isize> => {}   //~ ERROR mismatched types
    |         ^^^^^^^^^^^^^ expected &str, found isize

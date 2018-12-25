@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `v` as mutable more than once at a time
-  --> $DIR/borrowck-vec-pattern-loan-from-mut.rs:18:13
+  --> $DIR/borrowck-vec-pattern-loan-from-mut.rs:8:13
    |
 LL |     let vb: &mut [isize] = &mut v;
    |                            ------ first mutable borrow occurs here

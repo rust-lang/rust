@@ -1,5 +1,5 @@
 error[E0459]: #[link(...)] specified without `name = "foo"`
-  --> $DIR/E0459.rs:11:1
+  --> $DIR/E0459.rs:1:1
    |
 LL | #[link(kind = "dylib")] extern {} //~ ERROR E0459
    | ^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument

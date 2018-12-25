@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*x` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-mut-object-twice.rs:23:5
+  --> $DIR/borrowck-borrow-mut-object-twice.rs:13:5
    |
 LL |     let y = x.f1();
    |             - first mutable borrow occurs here

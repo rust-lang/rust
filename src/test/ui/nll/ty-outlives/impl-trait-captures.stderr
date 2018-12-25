@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/impl-trait-captures.rs:21:5
+  --> $DIR/impl-trait-captures.rs:11:5
    |
 LL |     x
    |     ^ lifetime `ReEarlyBound(0, 'a)` required

@@ -1,5 +1,5 @@
 error[E0038]: the trait `Baz` cannot be made into an object
-  --> $DIR/object-safety-supertrait-mentions-Self.rs:25:31
+  --> $DIR/object-safety-supertrait-mentions-Self.rs:15:31
    |
 LL | fn make_baz<T:Baz>(t: &T) -> &Baz {
    |                               ^^^ the trait `Baz` cannot be made into an object

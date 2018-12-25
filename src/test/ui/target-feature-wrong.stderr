@@ -1,35 +1,35 @@
 error: #[target_feature] attribute must be of the form #[target_feature(..)]
-  --> $DIR/target-feature-wrong.rs:26:1
+  --> $DIR/target-feature-wrong.rs:16:1
    |
 LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the feature named `foo` is not valid for this target
-  --> $DIR/target-feature-wrong.rs:28:18
+  --> $DIR/target-feature-wrong.rs:18:18
    |
 LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^
 
 error: #[target_feature(..)] only accepts sub-keys of `enable` currently
-  --> $DIR/target-feature-wrong.rs:30:18
+  --> $DIR/target-feature-wrong.rs:20:18
    |
 LL | #[target_feature(bar)]
    |                  ^^^
 
 error: #[target_feature(..)] only accepts sub-keys of `enable` currently
-  --> $DIR/target-feature-wrong.rs:32:18
+  --> $DIR/target-feature-wrong.rs:22:18
    |
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^
 
 error: #[target_feature(..)] can only be applied to `unsafe` function
-  --> $DIR/target-feature-wrong.rs:36:1
+  --> $DIR/target-feature-wrong.rs:26:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute should be applied to a function
-  --> $DIR/target-feature-wrong.rs:40:1
+  --> $DIR/target-feature-wrong.rs:30:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | mod another {}
    | -------------- not a function
 
 error: cannot use #[inline(always)] with #[target_feature]
-  --> $DIR/target-feature-wrong.rs:44:1
+  --> $DIR/target-feature-wrong.rs:34:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^

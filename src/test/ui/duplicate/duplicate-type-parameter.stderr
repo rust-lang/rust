@@ -1,5 +1,5 @@
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:11:12
+  --> $DIR/duplicate-type-parameter.rs:1:12
    |
 LL | type Foo<T,T> = Option<T>;
    |          - ^ already used
@@ -7,7 +7,7 @@ LL | type Foo<T,T> = Option<T>;
    |          first use of `T`
 
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:14:14
+  --> $DIR/duplicate-type-parameter.rs:4:14
    |
 LL | struct Bar<T,T>(T);
    |            - ^ already used
@@ -15,7 +15,7 @@ LL | struct Bar<T,T>(T);
    |            first use of `T`
 
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:17:14
+  --> $DIR/duplicate-type-parameter.rs:7:14
    |
 LL | struct Baz<T,T> {
    |            - ^ already used
@@ -23,7 +23,7 @@ LL | struct Baz<T,T> {
    |            first use of `T`
 
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:22:12
+  --> $DIR/duplicate-type-parameter.rs:12:12
    |
 LL | enum Boo<T,T> {
    |          - ^ already used
@@ -31,7 +31,7 @@ LL | enum Boo<T,T> {
    |          first use of `T`
 
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:28:11
+  --> $DIR/duplicate-type-parameter.rs:18:11
    |
 LL | fn quux<T,T>(x: T) {}
    |         - ^ already used
@@ -39,7 +39,7 @@ LL | fn quux<T,T>(x: T) {}
    |         first use of `T`
 
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:31:13
+  --> $DIR/duplicate-type-parameter.rs:21:13
    |
 LL | trait Qux<T,T> {}
    |           - ^ already used
@@ -47,7 +47,7 @@ LL | trait Qux<T,T> {}
    |           first use of `T`
 
 error[E0403]: the name `T` is already used for a type parameter in this type parameter list
-  --> $DIR/duplicate-type-parameter.rs:34:8
+  --> $DIR/duplicate-type-parameter.rs:24:8
    |
 LL | impl<T,T> Qux<T,T> for Option<T> {}
    |      - ^ already used
@@ -55,7 +55,7 @@ LL | impl<T,T> Qux<T,T> for Option<T> {}
    |      first use of `T`
 
 error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/duplicate-type-parameter.rs:34:6
+  --> $DIR/duplicate-type-parameter.rs:24:6
    |
 LL | impl<T,T> Qux<T,T> for Option<T> {}
    |      ^ unconstrained type parameter

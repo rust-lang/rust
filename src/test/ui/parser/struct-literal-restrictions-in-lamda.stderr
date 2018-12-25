@@ -1,11 +1,11 @@
 error: expected type, found `3`
-  --> $DIR/struct-literal-restrictions-in-lamda.rs:25:12
+  --> $DIR/struct-literal-restrictions-in-lamda.rs:15:12
    |
 LL |         x: 3    //~ ERROR expected type, found `3`
    |            ^ expecting a type here because of type ascription
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
-  --> $DIR/struct-literal-restrictions-in-lamda.rs:26:12
+  --> $DIR/struct-literal-restrictions-in-lamda.rs:16:12
    |
 LL |     }.hi() { //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
    |            ^ expected one of `.`, `;`, `?`, `}`, or an operator here

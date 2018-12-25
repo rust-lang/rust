@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/two-phase-nonrecv-autoref.rs:70:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:60:11
    |
 LL |         f(f(10));
    |         - ^ second mutable borrow occurs here
@@ -8,7 +8,7 @@ LL |         f(f(10));
    |         first borrow later used by call
 
 error[E0382]: use of moved value: `*f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:79:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:69:11
    |
 LL |         f(f(10));
    |         - ^ value used here after move
@@ -16,7 +16,7 @@ LL |         f(f(10));
    |         value moved here
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
-  --> $DIR/two-phase-nonrecv-autoref.rs:86:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:76:11
    |
 LL |         f(f(10));
    |         - ^ second mutable borrow occurs here
@@ -25,19 +25,19 @@ LL |         f(f(10));
    |         first borrow later used by call
 
 error[E0161]: cannot move a value of type dyn std::ops::FnOnce(i32) -> i32: the size of dyn std::ops::FnOnce(i32) -> i32 cannot be statically determined
-  --> $DIR/two-phase-nonrecv-autoref.rs:95:9
+  --> $DIR/two-phase-nonrecv-autoref.rs:85:9
    |
 LL |         f(f(10));
    |         ^
 
 error[E0161]: cannot move a value of type dyn std::ops::FnOnce(i32) -> i32: the size of dyn std::ops::FnOnce(i32) -> i32 cannot be statically determined
-  --> $DIR/two-phase-nonrecv-autoref.rs:95:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:85:11
    |
 LL |         f(f(10));
    |           ^
 
 error[E0382]: use of moved value: `*f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:95:11
+  --> $DIR/two-phase-nonrecv-autoref.rs:85:11
    |
 LL |         f(f(10));
    |         - ^ value used here after move
@@ -45,7 +45,7 @@ LL |         f(f(10));
    |         value moved here
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:139:27
+  --> $DIR/two-phase-nonrecv-autoref.rs:129:27
    |
 LL |     double_access(&mut a, &a);
    |     ------------- ------  ^^ immutable borrow occurs here
@@ -54,7 +54,7 @@ LL |     double_access(&mut a, &a);
    |     mutable borrow later used by call
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:167:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:157:7
    |
 LL |     i[i[3]] = 4;
    |     --^----
@@ -64,7 +64,7 @@ LL |     i[i[3]] = 4;
    |     mutable borrow later used here
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:173:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:163:7
    |
 LL |     i[i[3]] = i[4];
    |     --^----

@@ -7,7 +7,7 @@ warning: lint `private_no_mangle_statics` has been removed: `no longer a warning
    = note: requested on the command line with `-F private_no_mangle_statics`
 
 error: const items should never be #[no_mangle]
-  --> $DIR/lint-unexported-no-mangle.rs:19:1
+  --> $DIR/lint-unexported-no-mangle.rs:9:1
    |
 LL | const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
    | -----^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
    = note: requested on the command line with `-F no-mangle-const-items`
 
 error: const items should never be #[no_mangle]
-  --> $DIR/lint-unexported-no-mangle.rs:22:1
+  --> $DIR/lint-unexported-no-mangle.rs:12:1
    |
 LL | pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
    | ---------^^^^^^^^^^^^^^^^^^

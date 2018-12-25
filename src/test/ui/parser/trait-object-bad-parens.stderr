@@ -1,23 +1,23 @@
 error[E0178]: expected a path on the left-hand side of `+`, not `((Copy))`
-  --> $DIR/trait-object-bad-parens.rs:14:16
+  --> $DIR/trait-object-bad-parens.rs:4:16
    |
 LL |     let _: Box<((Copy)) + Copy>;
    |                ^^^^^^^^^^^^^^^ expected a path
 
 error[E0178]: expected a path on the left-hand side of `+`, not `(Copy + Copy)`
-  --> $DIR/trait-object-bad-parens.rs:16:16
+  --> $DIR/trait-object-bad-parens.rs:6:16
    |
 LL |     let _: Box<(Copy + Copy) + Copy>;
    |                ^^^^^^^^^^^^^^^^^^^^ expected a path
 
 error[E0178]: expected a path on the left-hand side of `+`, not `(Copy)`
-  --> $DIR/trait-object-bad-parens.rs:18:16
+  --> $DIR/trait-object-bad-parens.rs:8:16
    |
 LL |     let _: Box<(Copy +) + Copy>;
    |                ^^^^^^^^^^^^^^^ expected a path
 
 error[E0178]: expected a path on the left-hand side of `+`, not `(dyn Copy)`
-  --> $DIR/trait-object-bad-parens.rs:20:16
+  --> $DIR/trait-object-bad-parens.rs:10:16
    |
 LL |     let _: Box<(dyn Copy) + Copy>;
    |                ^^^^^^^^^^^^^^^^^ expected a path

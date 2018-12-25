@@ -1,23 +1,23 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/write-to-static-mut-in-static.rs:14:33
+  --> $DIR/write-to-static-mut-in-static.rs:4:33
    |
 LL | pub static mut B: () = unsafe { A = 1; };
    |                                 ^^^^^ tried to modify a static's initial value from another static's initializer
 
 error[E0391]: cycle detected when const-evaluating `C`
-  --> $DIR/write-to-static-mut-in-static.rs:17:34
+  --> $DIR/write-to-static-mut-in-static.rs:7:34
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    |                                  ^^^^^
    |
 note: ...which requires const-evaluating `C`...
-  --> $DIR/write-to-static-mut-in-static.rs:17:1
+  --> $DIR/write-to-static-mut-in-static.rs:7:1
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating `C`, completing the cycle
 note: cycle used when const-evaluating + checking `C`
-  --> $DIR/write-to-static-mut-in-static.rs:17:1
+  --> $DIR/write-to-static-mut-in-static.rs:7:1
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

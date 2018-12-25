@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `a`
-  --> $DIR/reassign-ref-mut.rs:22:5
+  --> $DIR/reassign-ref-mut.rs:12:5
    |
 LL |     let &mut (ref a, ref mut b) = &mut one_two;
    |               ----- first assignment to `a`
@@ -7,7 +7,7 @@ LL |     a = &three_four.0;
    |     ^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `b`
-  --> $DIR/reassign-ref-mut.rs:24:5
+  --> $DIR/reassign-ref-mut.rs:14:5
    |
 LL |     let &mut (ref a, ref mut b) = &mut one_two;
    |                      --------- first assignment to `b`

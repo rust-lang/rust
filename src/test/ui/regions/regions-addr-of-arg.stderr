@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/regions-addr-of-arg.rs:15:31
+  --> $DIR/regions-addr-of-arg.rs:5:31
    |
 LL |     let _p: &'static isize = &a; //~ ERROR `a` does not live long enough
    |                               ^ borrowed value does not live long enough
@@ -9,15 +9,15 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `a` does not live long enough
-  --> $DIR/regions-addr-of-arg.rs:23:6
+  --> $DIR/regions-addr-of-arg.rs:13:6
    |
 LL |     &a //~ ERROR `a` does not live long enough
    |      ^ borrowed value does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 22:8...
-  --> $DIR/regions-addr-of-arg.rs:22:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 12:8...
+  --> $DIR/regions-addr-of-arg.rs:12:8
    |
 LL | fn zed<'a>(a: isize) -> &'a isize {
    |        ^^

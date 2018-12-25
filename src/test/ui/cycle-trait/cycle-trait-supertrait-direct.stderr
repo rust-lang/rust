@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when computing the supertraits of `Chromosome`
-  --> $DIR/cycle-trait-supertrait-direct.rs:13:19
+  --> $DIR/cycle-trait-supertrait-direct.rs:3:19
    |
 LL | trait Chromosome: Chromosome {
    |                   ^^^^^^^^^^

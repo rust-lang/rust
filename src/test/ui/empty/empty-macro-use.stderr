@@ -1,5 +1,5 @@
 error: cannot find macro `macro_two!` in this scope
-  --> $DIR/empty-macro-use.rs:17:5
+  --> $DIR/empty-macro-use.rs:7:5
    |
 LL |     macro_two!();
    |     ^^^^^^^^^

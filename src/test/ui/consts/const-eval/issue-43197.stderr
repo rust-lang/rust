@@ -1,5 +1,5 @@
 warning: any use of this value will cause an error
-  --> $DIR/issue-43197.rs:18:5
+  --> $DIR/issue-43197.rs:8:5
    |
 LL |     const X: u32 = 0-1;
    |     ^^^^^^^^^^^^^^^---^
@@ -7,13 +7,13 @@ LL |     const X: u32 = 0-1;
    |                    attempt to subtract with overflow
    |
 note: lint level defined here
-  --> $DIR/issue-43197.rs:11:9
+  --> $DIR/issue-43197.rs:1:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/issue-43197.rs:20:5
+  --> $DIR/issue-43197.rs:10:5
    |
 LL |     const Y: u32 = foo(0-1);
    |     ^^^^^^^^^^^^^^^^^^^---^^
@@ -21,13 +21,13 @@ LL |     const Y: u32 = foo(0-1);
    |                        attempt to subtract with overflow
 
 error[E0080]: evaluation of constant expression failed
-  --> $DIR/issue-43197.rs:22:26
+  --> $DIR/issue-43197.rs:12:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
 error[E0080]: evaluation of constant expression failed
-  --> $DIR/issue-43197.rs:22:23
+  --> $DIR/issue-43197.rs:12:23
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `W` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:33:8
+  --> $DIR/unsized-enum2.rs:23:8
    |
 LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
@@ -10,7 +10,7 @@ LL |     VA(W),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:35:8
+  --> $DIR/unsized-enum2.rs:25:8
    |
 LL |     VB{x: X},
    |        ^^^^ doesn't have a size known at compile-time
@@ -21,7 +21,7 @@ LL |     VB{x: X},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:37:15
+  --> $DIR/unsized-enum2.rs:27:15
    |
 LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
@@ -32,7 +32,7 @@ LL |     VC(isize, Y),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `Z` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:39:18
+  --> $DIR/unsized-enum2.rs:29:18
    |
 LL |     VD{u: isize, x: Z},
    |                  ^^^^ doesn't have a size known at compile-time
@@ -43,7 +43,7 @@ LL |     VD{u: isize, x: Z},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:43:8
+  --> $DIR/unsized-enum2.rs:33:8
    |
 LL |     VE([u8]),
    |        ^^^^ doesn't have a size known at compile-time
@@ -53,7 +53,7 @@ LL |     VE([u8]),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:45:8
+  --> $DIR/unsized-enum2.rs:35:8
    |
 LL |     VF{x: str},
    |        ^^^^^^ doesn't have a size known at compile-time
@@ -63,7 +63,7 @@ LL |     VF{x: str},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[f32]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:47:15
+  --> $DIR/unsized-enum2.rs:37:15
    |
 LL |     VG(isize, [f32]),
    |               ^^^^^ doesn't have a size known at compile-time
@@ -73,7 +73,7 @@ LL |     VG(isize, [f32]),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:49:18
+  --> $DIR/unsized-enum2.rs:39:18
    |
 LL |     VH{u: isize, x: [u32]},
    |                  ^^^^^^^^ doesn't have a size known at compile-time
@@ -83,7 +83,7 @@ LL |     VH{u: isize, x: [u32]},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:63:8
+  --> $DIR/unsized-enum2.rs:53:8
    |
 LL |     VM(Foo),
    |        ^^^ doesn't have a size known at compile-time
@@ -93,7 +93,7 @@ LL |     VM(Foo),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn Bar + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:65:8
+  --> $DIR/unsized-enum2.rs:55:8
    |
 LL |     VN{x: Bar},
    |        ^^^^^^ doesn't have a size known at compile-time
@@ -103,7 +103,7 @@ LL |     VN{x: Bar},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn FooBar + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:67:15
+  --> $DIR/unsized-enum2.rs:57:15
    |
 LL |     VO(isize, FooBar),
    |               ^^^^^^ doesn't have a size known at compile-time
@@ -113,7 +113,7 @@ LL |     VO(isize, FooBar),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn BarFoo + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:69:18
+  --> $DIR/unsized-enum2.rs:59:18
    |
 LL |     VP{u: isize, x: BarFoo},
    |                  ^^^^^^^^^ doesn't have a size known at compile-time
@@ -123,7 +123,7 @@ LL |     VP{u: isize, x: BarFoo},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[i8]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:73:8
+  --> $DIR/unsized-enum2.rs:63:8
    |
 LL |     VQ(<&'static [i8] as Deref>::Target),
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -133,7 +133,7 @@ LL |     VQ(<&'static [i8] as Deref>::Target),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[char]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:75:8
+  --> $DIR/unsized-enum2.rs:65:8
    |
 LL |     VR{x: <&'static [char] as Deref>::Target},
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -143,7 +143,7 @@ LL |     VR{x: <&'static [char] as Deref>::Target},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[f64]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:77:15
+  --> $DIR/unsized-enum2.rs:67:15
    |
 LL |     VS(isize, <&'static [f64] as Deref>::Target),
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -153,7 +153,7 @@ LL |     VS(isize, <&'static [f64] as Deref>::Target),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:79:18
+  --> $DIR/unsized-enum2.rs:69:18
    |
 LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -163,7 +163,7 @@ LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn PathHelper1 + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:53:8
+  --> $DIR/unsized-enum2.rs:43:8
    |
 LL |     VI(Path1),
    |        ^^^^^ doesn't have a size known at compile-time
@@ -174,7 +174,7 @@ LL |     VI(Path1),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn PathHelper2 + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:55:8
+  --> $DIR/unsized-enum2.rs:45:8
    |
 LL |     VJ{x: Path2},
    |        ^^^^^^^^ doesn't have a size known at compile-time
@@ -185,7 +185,7 @@ LL |     VJ{x: Path2},
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn PathHelper3 + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:57:15
+  --> $DIR/unsized-enum2.rs:47:15
    |
 LL |     VK(isize, Path3),
    |               ^^^^^ doesn't have a size known at compile-time
@@ -196,7 +196,7 @@ LL |     VK(isize, Path3),
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn PathHelper4 + 'static)` cannot be known at compilation time
-  --> $DIR/unsized-enum2.rs:59:18
+  --> $DIR/unsized-enum2.rs:49:18
    |
 LL |     VL{u: isize, x: Path4},
    |                  ^^^^^^^^ doesn't have a size known at compile-time

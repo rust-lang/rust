@@ -1,5 +1,5 @@
 error[E0469]: imported macro not found
-  --> $DIR/macro-use-undef.rs:13:24
+  --> $DIR/macro-use-undef.rs:3:24
    |
 LL | #[macro_use(macro_two, no_way)] //~ ERROR imported macro not found
    |                        ^^^^^^

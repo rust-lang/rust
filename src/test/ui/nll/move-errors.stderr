@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/move-errors.rs:19:13
+  --> $DIR/move-errors.rs:9:13
    |
 LL |     let b = *a;
    |             ^^
@@ -8,7 +8,7 @@ LL |     let b = *a;
    |             help: consider removing the `*`: `a`
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
-  --> $DIR/move-errors.rs:25:13
+  --> $DIR/move-errors.rs:15:13
    |
 LL |     let b = a[0];
    |             ^^^^
@@ -17,7 +17,7 @@ LL |     let b = a[0];
    |             help: consider borrowing here: `&a[0]`
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/move-errors.rs:32:13
+  --> $DIR/move-errors.rs:22:13
    |
 LL |     let s = **r;
    |             ^^^
@@ -26,7 +26,7 @@ LL |     let s = **r;
    |             help: consider removing the `*`: `*r`
 
 error[E0507]: cannot move out of an `Rc`
-  --> $DIR/move-errors.rs:40:13
+  --> $DIR/move-errors.rs:30:13
    |
 LL |     let s = *r;
    |             ^^
@@ -35,7 +35,7 @@ LL |     let s = *r;
    |             help: consider removing the `*`: `r`
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
-  --> $DIR/move-errors.rs:45:13
+  --> $DIR/move-errors.rs:35:13
    |
 LL |     let a = [A("".to_string())][0];
    |             ^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     let a = [A("".to_string())][0];
    |             help: consider borrowing here: `&[A("".to_string())][0]`
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/move-errors.rs:51:16
+  --> $DIR/move-errors.rs:41:16
    |
 LL |     let A(s) = *a;
    |           -    ^^
@@ -54,13 +54,13 @@ LL |     let A(s) = *a;
    |           data moved here
    |
 note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/move-errors.rs:51:11
+  --> $DIR/move-errors.rs:41:11
    |
 LL |     let A(s) = *a;
    |           ^
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
-  --> $DIR/move-errors.rs:57:19
+  --> $DIR/move-errors.rs:47:19
    |
 LL |     let C(D(s)) = c;
    |             -     ^ cannot move out of here
@@ -68,19 +68,19 @@ LL |     let C(D(s)) = c;
    |             data moved here
    |
 note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/move-errors.rs:57:13
+  --> $DIR/move-errors.rs:47:13
    |
 LL |     let C(D(s)) = c;
    |             ^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/move-errors.rs:64:9
+  --> $DIR/move-errors.rs:54:9
    |
 LL |     b = *a;
    |         ^^ cannot move out of borrowed content
 
 error[E0508]: cannot move out of type `[B; 1]`, a non-copy array
-  --> $DIR/move-errors.rs:87:11
+  --> $DIR/move-errors.rs:77:11
    |
 LL |     match x[0] {
    |           ^^^^
@@ -94,7 +94,7 @@ LL |         B::V(s) => (),
    |              - ...and here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/move-errors.rs:89:14
+  --> $DIR/move-errors.rs:79:14
    |
 LL |         B::U(d) => (),
    |              ^
@@ -102,7 +102,7 @@ LL |         B::V(s) => (),
    |              ^
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
-  --> $DIR/move-errors.rs:96:11
+  --> $DIR/move-errors.rs:86:11
    |
 LL |     match x {
    |           ^ cannot move out of here
@@ -111,13 +111,13 @@ LL |         B::U(D(s)) => (),
    |                - data moved here
    |
 note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/move-errors.rs:99:16
+  --> $DIR/move-errors.rs:89:16
    |
 LL |         B::U(D(s)) => (),
    |                ^
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
-  --> $DIR/move-errors.rs:105:11
+  --> $DIR/move-errors.rs:95:11
    |
 LL |     match x {
    |           ^ cannot move out of here
@@ -126,13 +126,13 @@ LL |         (D(s), &t) => (),
    |            - data moved here
    |
 note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/move-errors.rs:108:12
+  --> $DIR/move-errors.rs:98:12
    |
 LL |         (D(s), &t) => (),
    |            ^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/move-errors.rs:105:11
+  --> $DIR/move-errors.rs:95:11
    |
 LL |     match x {
    |           ^ cannot move out of borrowed content
@@ -141,13 +141,13 @@ LL |         (D(s), &t) => (),
    |                 - data moved here
    |
 note: move occurs because `t` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/move-errors.rs:108:17
+  --> $DIR/move-errors.rs:98:17
    |
 LL |         (D(s), &t) => (),
    |                 ^
 
 error[E0509]: cannot move out of type `F`, which implements the `Drop` trait
-  --> $DIR/move-errors.rs:115:11
+  --> $DIR/move-errors.rs:105:11
    |
 LL |     match x {
    |           ^ cannot move out of here
@@ -158,13 +158,13 @@ LL |         F(s, mut t) => (),
    |           data moved here
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/move-errors.rs:117:11
+  --> $DIR/move-errors.rs:107:11
    |
 LL |         F(s, mut t) => (),
    |           ^  ^^^^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/move-errors.rs:123:11
+  --> $DIR/move-errors.rs:113:11
    |
 LL |     match *x {
    |           ^^
@@ -176,7 +176,7 @@ LL |         Ok(s) | Err(s) => (),
    |            - data moved here
    |
 note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/move-errors.rs:125:12
+  --> $DIR/move-errors.rs:115:12
    |
 LL |         Ok(s) | Err(s) => (),
    |            ^

@@ -1,28 +1,28 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-creating-enums.rs:33:17
+  --> $DIR/regions-creating-enums.rs:23:17
    |
 LL |         return &Ast::Num((*f)(x)); //~ ERROR borrowed value does not live long enough
    |                 ^^^^^^^^^^^^^^^^^- temporary value only lives until here
    |                 |
    |                 temporary value does not live long enough
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 30:13...
-  --> $DIR/regions-creating-enums.rs:30:13
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 20:13...
+  --> $DIR/regions-creating-enums.rs:20:13
    |
 LL | fn map_nums<'a,'b, F>(x: &Ast, f: &mut F) -> &'a Ast<'b> where F: FnMut(usize) -> usize {
    |             ^^
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-creating-enums.rs:38:17
+  --> $DIR/regions-creating-enums.rs:28:17
    |
 LL |         return &Ast::Add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
    |                 ^^^^^^^^^^^^^^^^^^- temporary value only lives until here
    |                 |
    |                 temporary value does not live long enough
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 30:13...
-  --> $DIR/regions-creating-enums.rs:30:13
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 20:13...
+  --> $DIR/regions-creating-enums.rs:20:13
    |
 LL | fn map_nums<'a,'b, F>(x: &Ast, f: &mut F) -> &'a Ast<'b> where F: FnMut(usize) -> usize {
    |             ^^

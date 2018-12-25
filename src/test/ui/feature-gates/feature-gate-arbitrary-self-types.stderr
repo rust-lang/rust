@@ -1,5 +1,5 @@
 error[E0658]: `Ptr<Self>` cannot be used as the type of `self` without the `arbitrary_self_types` feature (see issue #44874)
-  --> $DIR/feature-gate-arbitrary-self-types.rs:26:18
+  --> $DIR/feature-gate-arbitrary-self-types.rs:16:18
    |
 LL |     fn foo(self: Ptr<Self>); //~ ERROR `Ptr<Self>` cannot be used as the type of `self` without
    |                  ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     fn foo(self: Ptr<Self>); //~ ERROR `Ptr<Self>` cannot be used as the ty
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0658]: `Ptr<Bar>` cannot be used as the type of `self` without the `arbitrary_self_types` feature (see issue #44874)
-  --> $DIR/feature-gate-arbitrary-self-types.rs:32:18
+  --> $DIR/feature-gate-arbitrary-self-types.rs:22:18
    |
 LL |     fn foo(self: Ptr<Self>) {} //~ ERROR `Ptr<Bar>` cannot be used as the type of `self` without
    |                  ^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     fn foo(self: Ptr<Self>) {} //~ ERROR `Ptr<Bar>` cannot be used as the t
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
 error[E0658]: `std::boxed::Box<Ptr<Bar>>` cannot be used as the type of `self` without the `arbitrary_self_types` feature (see issue #44874)
-  --> $DIR/feature-gate-arbitrary-self-types.rs:36:18
+  --> $DIR/feature-gate-arbitrary-self-types.rs:26:18
    |
 LL |     fn bar(self: Box<Ptr<Self>>) {} //~ ERROR `std::boxed::Box<Ptr<Bar>>` cannot be used as the
    |                  ^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0428]: the name `my_macro` is defined multiple times
-  --> $DIR/macro-namespace-reserved.rs:35:1
+  --> $DIR/macro-namespace-reserved.rs:25:1
    |
 LL | pub fn my_macro(input: TokenStream) -> TokenStream {
    | -------------------------------------------------- previous definition of the macro `my_macro` here
@@ -10,7 +10,7 @@ LL | macro my_macro() {} //~ ERROR the name `my_macro` is defined multiple times
    = note: `my_macro` must be defined only once in the macro namespace of this module
 
 error[E0428]: the name `my_macro_attr` is defined multiple times
-  --> $DIR/macro-namespace-reserved.rs:36:1
+  --> $DIR/macro-namespace-reserved.rs:26:1
    |
 LL | pub fn my_macro_attr(input: TokenStream, _: TokenStream) -> TokenStream {
    | ----------------------------------------------------------------------- previous definition of the macro `my_macro_attr` here
@@ -21,7 +21,7 @@ LL | macro my_macro_attr() {} //~ ERROR the name `my_macro_attr` is defined mult
    = note: `my_macro_attr` must be defined only once in the macro namespace of this module
 
 error[E0428]: the name `MyTrait` is defined multiple times
-  --> $DIR/macro-namespace-reserved.rs:37:1
+  --> $DIR/macro-namespace-reserved.rs:27:1
    |
 LL | #[proc_macro_derive(MyTrait)]
    |                     ------- previous definition of the macro `MyTrait` here
@@ -32,7 +32,7 @@ LL | macro MyTrait() {} //~ ERROR the name `MyTrait` is defined multiple times
    = note: `MyTrait` must be defined only once in the macro namespace of this module
 
 error[E0428]: the name `SameName` is defined multiple times
-  --> $DIR/macro-namespace-reserved.rs:45:1
+  --> $DIR/macro-namespace-reserved.rs:35:1
    |
 LL | #[proc_macro_derive(SameName)]
    |                     -------- previous definition of the macro `SameName` here

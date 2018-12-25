@@ -1,5 +1,5 @@
 error[E0597]: `*b` does not live long enough
-  --> $DIR/regions-trait-variance.rs:47:19
+  --> $DIR/regions-trait-variance.rs:37:19
    |
 LL |     let bb: &B = &*b; //~ ERROR `*b` does not live long enough
    |                   ^^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     make_a(bb)
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 43:16...
-  --> $DIR/regions-trait-variance.rs:43:16
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 33:16...
+  --> $DIR/regions-trait-variance.rs:33:16
    |
 LL | fn make_make_a<'a>() -> A<'a> {
    |                ^^

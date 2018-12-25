@@ -1,5 +1,5 @@
 error: expected type, found `10`
-  --> $DIR/type-ascription-instead-of-initializer.rs:12:31
+  --> $DIR/type-ascription-instead-of-initializer.rs:2:31
    |
 LL |     let x: Vec::with_capacity(10, 20);  //~ ERROR expected type, found `10`
    |         --                    ^^
@@ -8,7 +8,7 @@ LL |     let x: Vec::with_capacity(10, 20);  //~ ERROR expected type, found `10`
    |         while parsing the type for `x`
 
 error[E0061]: this function takes 1 parameter but 2 parameters were supplied
-  --> $DIR/type-ascription-instead-of-initializer.rs:12:12
+  --> $DIR/type-ascription-instead-of-initializer.rs:2:12
    |
 LL |     let x: Vec::with_capacity(10, 20);  //~ ERROR expected type, found `10`
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 parameter

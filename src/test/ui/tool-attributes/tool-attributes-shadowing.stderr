@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: could not find `skip` in `rustfmt`
-  --> $DIR/tool-attributes-shadowing.rs:13:12
+  --> $DIR/tool-attributes-shadowing.rs:3:12
    |
 LL | #[rustfmt::skip] //~ ERROR failed to resolve: could not find `skip` in `rustfmt`
    |            ^^^^ could not find `skip` in `rustfmt`

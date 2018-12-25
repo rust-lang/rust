@@ -1,5 +1,5 @@
-error[E0271]: type mismatch resolving `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:16:39: 19:6 found_e:_]> as std::iter::Iterator>::Item == &_`
-  --> $DIR/issue-31173.rs:20:10
+error[E0271]: type mismatch resolving `<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]> as std::iter::Iterator>::Item == &_`
+  --> $DIR/issue-31173.rs:10:10
    |
 LL |         .cloned()
    |          ^^^^^^ expected u8, found reference
@@ -7,15 +7,15 @@ LL |         .cloned()
    = note: expected type `u8`
               found type `&_`
 
-error[E0599]: no method named `collect` found for type `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:16:39: 19:6 found_e:_]>>` in the current scope
-  --> $DIR/issue-31173.rs:24:10
+error[E0599]: no method named `collect` found for type `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>>` in the current scope
+  --> $DIR/issue-31173.rs:14:10
    |
 LL |         .collect(); //~ ERROR no method named `collect`
    |          ^^^^^^^
    |
    = note: the method `collect` exists but the following trait bounds were not satisfied:
-           `&mut std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:16:39: 19:6 found_e:_]>> : std::iter::Iterator`
-           `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:16:39: 19:6 found_e:_]>> : std::iter::Iterator`
+           `&mut std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>> : std::iter::Iterator`
+           `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>> : std::iter::Iterator`
 
 error: aborting due to 2 previous errors
 

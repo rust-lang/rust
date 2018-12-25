@@ -1,5 +1,5 @@
 error[E0133]: assignment to non-`Copy` union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:31:5
+  --> $DIR/union-unsafe.rs:21:5
    |
 LL |     u3.a = T::default(); //~ ERROR assignment to non-`Copy` union field is unsafe
    |     ^^^^ assignment to non-`Copy` union field
@@ -7,7 +7,7 @@ LL |     u3.a = T::default(); //~ ERROR assignment to non-`Copy` union field is 
    = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:43:13
+  --> $DIR/union-unsafe.rs:33:13
    |
 LL |     let a = u1.a; //~ ERROR access to union field is unsafe
    |             ^^^^ access to union field
@@ -15,7 +15,7 @@ LL |     let a = u1.a; //~ ERROR access to union field is unsafe
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:45:14
+  --> $DIR/union-unsafe.rs:35:14
    |
 LL |     let U1 { a } = u1; //~ ERROR access to union field is unsafe
    |              ^ access to union field
@@ -23,7 +23,7 @@ LL |     let U1 { a } = u1; //~ ERROR access to union field is unsafe
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:46:20
+  --> $DIR/union-unsafe.rs:36:20
    |
 LL |     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe
    |                    ^^ access to union field
@@ -31,7 +31,7 @@ LL |     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: assignment to non-`Copy` union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:50:5
+  --> $DIR/union-unsafe.rs:40:5
    |
 LL |     u2.a = String::from("new"); //~ ERROR assignment to non-`Copy` union field is unsafe
    |     ^^^^ assignment to non-`Copy` union field
@@ -39,7 +39,7 @@ LL |     u2.a = String::from("new"); //~ ERROR assignment to non-`Copy` union fi
    = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
 
 error[E0133]: assignment to non-`Copy` union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:54:5
+  --> $DIR/union-unsafe.rs:44:5
    |
 LL |     u3.a = String::from("new"); //~ ERROR assignment to non-`Copy` union field is unsafe
    |     ^^^^ assignment to non-`Copy` union field

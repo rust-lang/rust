@@ -1,5 +1,5 @@
 error[E0428]: the name `A` is defined multiple times
-  --> $DIR/issue-3099-a.rs:13:1
+  --> $DIR/issue-3099-a.rs:3:1
    |
 LL | enum A { B, C }
    | ------ previous definition of the type `A` here

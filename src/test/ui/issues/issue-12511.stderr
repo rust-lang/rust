@@ -1,11 +1,11 @@
 error[E0391]: cycle detected when computing the supertraits of `T1`
-  --> $DIR/issue-12511.rs:11:12
+  --> $DIR/issue-12511.rs:1:12
    |
 LL | trait T1 : T2 {
    |            ^^
    |
 note: ...which requires computing the supertraits of `T2`...
-  --> $DIR/issue-12511.rs:15:12
+  --> $DIR/issue-12511.rs:5:12
    |
 LL | trait T2 : T1 {
    |            ^^

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*ptr` as immutable because it is also borrowed as mutable
-  --> $DIR/issue-11192.rs:30:10
+  --> $DIR/issue-11192.rs:20:10
    |
 LL |     let mut test = |foo: &Foo| {
    |                    ----------- mutable borrow occurs here

@@ -1,17 +1,17 @@
 error: field expressions may not have generic arguments
-  --> $DIR/type-parameters-in-field-exprs.rs:23:8
+  --> $DIR/type-parameters-in-field-exprs.rs:13:8
    |
 LL |     f.x::<isize>;
    |        ^^^^^^^^^
 
 error: field expressions may not have generic arguments
-  --> $DIR/type-parameters-in-field-exprs.rs:25:8
+  --> $DIR/type-parameters-in-field-exprs.rs:15:8
    |
 LL |     f.x::<>;
    |        ^^^^
 
 error: field expressions may not have generic arguments
-  --> $DIR/type-parameters-in-field-exprs.rs:27:8
+  --> $DIR/type-parameters-in-field-exprs.rs:17:8
    |
 LL |     f.x::();
    |        ^^^^

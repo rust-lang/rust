@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/hr-subtype.rs:110:1
+  --> $DIR/hr-subtype.rs:100:1
    |
 LL | / fn main() {
 LL | | //[bound_a_vs_bound_a]~^ ERROR compilation successful

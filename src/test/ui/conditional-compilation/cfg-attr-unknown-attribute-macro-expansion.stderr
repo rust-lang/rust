@@ -1,5 +1,5 @@
 error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/cfg-attr-unknown-attribute-macro-expansion.rs:13:27
+  --> $DIR/cfg-attr-unknown-attribute-macro-expansion.rs:3:27
    |
 LL |         #[cfg_attr(all(), unknown)] //~ ERROR `unknown` is currently unknown
    |                           ^^^^^^^

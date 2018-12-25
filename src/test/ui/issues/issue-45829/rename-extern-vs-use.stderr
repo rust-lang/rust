@@ -1,5 +1,5 @@
 error[E0254]: the name `bar` is defined multiple times
-  --> $DIR/rename-extern-vs-use.rs:18:1
+  --> $DIR/rename-extern-vs-use.rs:8:1
    |
 LL | use foo::bar;
    |     -------- previous import of the module `bar` here

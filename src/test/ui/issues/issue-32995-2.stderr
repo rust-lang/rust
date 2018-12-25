@@ -1,5 +1,5 @@
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995-2.rs:14:28
+  --> $DIR/issue-32995-2.rs:4:28
    |
 LL |     { fn f<X: ::std::marker()::Send>() {} }
    |                            ^^
@@ -9,7 +9,7 @@ LL |     { fn f<X: ::std::marker()::Send>() {} }
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995-2.rs:18:35
+  --> $DIR/issue-32995-2.rs:8:35
    |
 LL |     { fn f() -> impl ::std::marker()::Send { } }
    |                                   ^^
@@ -18,7 +18,7 @@ LL |     { fn f() -> impl ::std::marker()::Send { } }
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995-2.rs:26:19
+  --> $DIR/issue-32995-2.rs:16:19
    |
 LL | impl ::std::marker()::Copy for X {}
    |                   ^^

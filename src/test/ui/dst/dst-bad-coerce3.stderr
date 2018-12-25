@@ -1,5 +1,5 @@
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:26:33
+  --> $DIR/dst-bad-coerce3.rs:16:33
    |
 LL |     let f2: &Fat<[isize; 3]> = &f1; //~ ERROR `f1` does not live long enough
    |                                 ^^ borrowed value does not live long enough
@@ -7,14 +7,14 @@ LL |     let f2: &Fat<[isize; 3]> = &f1; //~ ERROR `f1` does not live long enoug
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
-  --> $DIR/dst-bad-coerce3.rs:23:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:8...
+  --> $DIR/dst-bad-coerce3.rs:13:8
    |
 LL | fn baz<'a>() {
    |        ^^
 
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:31:26
+  --> $DIR/dst-bad-coerce3.rs:21:26
    |
 LL |     let f2: &Fat<Foo> = &f1; //~ ERROR `f1` does not live long enough
    |                          ^^ borrowed value does not live long enough
@@ -22,14 +22,14 @@ LL |     let f2: &Fat<Foo> = &f1; //~ ERROR `f1` does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
-  --> $DIR/dst-bad-coerce3.rs:23:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:8...
+  --> $DIR/dst-bad-coerce3.rs:13:8
    |
 LL | fn baz<'a>() {
    |        ^^
 
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:36:31
+  --> $DIR/dst-bad-coerce3.rs:26:31
    |
 LL |     let f2: &([isize; 3],) = &f1; //~ ERROR `f1` does not live long enough
    |                               ^^ borrowed value does not live long enough
@@ -37,14 +37,14 @@ LL |     let f2: &([isize; 3],) = &f1; //~ ERROR `f1` does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
-  --> $DIR/dst-bad-coerce3.rs:23:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:8...
+  --> $DIR/dst-bad-coerce3.rs:13:8
    |
 LL | fn baz<'a>() {
    |        ^^
 
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:41:24
+  --> $DIR/dst-bad-coerce3.rs:31:24
    |
 LL |     let f2: &(Foo,) = &f1; //~ ERROR `f1` does not live long enough
    |                        ^^ borrowed value does not live long enough
@@ -52,8 +52,8 @@ LL |     let f3: &'a (Bar,) = f2;
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:8...
-  --> $DIR/dst-bad-coerce3.rs:23:8
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:8...
+  --> $DIR/dst-bad-coerce3.rs:13:8
    |
 LL | fn baz<'a>() {
    |        ^^

@@ -1,5 +1,5 @@
 error[E0573]: expected type, found variant `Foo::Bar`
-  --> $DIR/enum-variant-type-2.rs:17:11
+  --> $DIR/enum-variant-type-2.rs:7:11
    |
 LL | fn foo(x: Foo::Bar) {} //~ ERROR expected type, found variant `Foo::Bar`
    |           ^^^^^^^^

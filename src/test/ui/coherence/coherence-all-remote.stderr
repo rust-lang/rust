@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/coherence-all-remote.rs:16:1
+  --> $DIR/coherence-all-remote.rs:6:1
    |
 LL | impl<T> Remote1<T> for isize { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type

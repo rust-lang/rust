@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
-  --> $DIR/issue-7970b.rs:13:1
+  --> $DIR/issue-7970b.rs:3:1
    |
 LL | macro_rules! test {}
    | ^^^^^^^^^^^^^^^^^^^^ missing tokens in macro arguments

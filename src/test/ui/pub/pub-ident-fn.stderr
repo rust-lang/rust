@@ -1,5 +1,5 @@
 error: missing `fn` for function definition
-  --> $DIR/pub-ident-fn.rs:13:4
+  --> $DIR/pub-ident-fn.rs:3:4
    |
 LL | pub   foo(_s: usize) -> bool { true }
    |    ^^^

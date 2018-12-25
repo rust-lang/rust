@@ -1,5 +1,5 @@
 error: expected pattern, found reserved keyword `try`
-  --> $DIR/keyword-try-as-identifier-edition2018.rs:14:9
+  --> $DIR/keyword-try-as-identifier-edition2018.rs:4:9
    |
 LL |     let try = "foo"; //~ error: expected pattern, found reserved keyword `try`
    |         ^^^ expected pattern

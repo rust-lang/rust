@@ -1,5 +1,5 @@
 warning: function cannot return without recursing
-  --> $DIR/region-bound-on-closure-outlives-call.rs:11:1
+  --> $DIR/region-bound-on-closure-outlives-call.rs:1:1
    |
 LL | fn call_rec<F>(mut f: F) -> usize where F: FnMut(usize) -> usize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -11,7 +11,7 @@ LL |     (|x| f(x))(call_rec(f)) //~ ERROR cannot move out of `f`
    = help: a `loop` may express intention better if this is on purpose
 
 error[E0505]: cannot move out of `f` because it is borrowed
-  --> $DIR/region-bound-on-closure-outlives-call.rs:13:25
+  --> $DIR/region-bound-on-closure-outlives-call.rs:3:25
    |
 LL |     (|x| f(x))(call_rec(f)) //~ ERROR cannot move out of `f`
    |     ----------          ^ move out of `f` occurs here

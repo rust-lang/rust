@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
-  --> $DIR/non-exhaustive-match-nested.rs:17:11
+  --> $DIR/non-exhaustive-match-nested.rs:7:11
    |
 LL |     match (l1, l2) { //~ ERROR non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
    |           ^^^^^^^^ pattern `(Some(&[]), Err(_))` not covered
 
 error[E0004]: non-exhaustive patterns: `A(C)` not covered
-  --> $DIR/non-exhaustive-match-nested.rs:27:11
+  --> $DIR/non-exhaustive-match-nested.rs:17:11
    |
 LL |     match x { //~ ERROR non-exhaustive patterns: `A(C)` not covered
    |           ^ pattern `A(C)` not covered

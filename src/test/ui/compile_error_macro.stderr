@@ -1,5 +1,5 @@
 error: a very descriptive error message
-  --> $DIR/compile_error_macro.rs:12:5
+  --> $DIR/compile_error_macro.rs:2:5
    |
 LL |     compile_error!("a very descriptive error message"); //~ ERROR: a very descriptive error message
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

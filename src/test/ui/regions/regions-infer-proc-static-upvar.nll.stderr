@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/regions-infer-proc-static-upvar.rs:20:13
+  --> $DIR/regions-infer-proc-static-upvar.rs:10:13
    |
 LL |       let y = &x; //~ ERROR `x` does not live long enough
    |               ^^ borrowed value does not live long enough

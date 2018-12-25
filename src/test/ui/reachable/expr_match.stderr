@@ -1,18 +1,18 @@
 error: unreachable statement
-  --> $DIR/expr_match.rs:18:5
+  --> $DIR/expr_match.rs:8:5
    |
 LL |     println!("I am dead");
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/expr_match.rs:14:9
+  --> $DIR/expr_match.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: unreachable statement
-  --> $DIR/expr_match.rs:29:5
+  --> $DIR/expr_match.rs:19:5
    |
 LL |     println!("I am dead");
    |     ^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: expected type, found `{`
-  --> $DIR/removed-syntax-record.rs:13:10
+  --> $DIR/removed-syntax-record.rs:3:10
    |
 LL | type t = { f: () }; //~ ERROR expected type, found `{`
    |          ^

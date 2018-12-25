@@ -1,5 +1,5 @@
 error[E0597]: `o2` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:121:13
+  --> $DIR/dropck_trait_cycle_checked.rs:111:13
    |
 LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
    |                                                                   -------- cast requires that `o2` is borrowed for `'static`
@@ -10,7 +10,7 @@ LL | }
    | - `o2` dropped here while still borrowed
 
 error[E0597]: `o3` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:122:13
+  --> $DIR/dropck_trait_cycle_checked.rs:112:13
    |
 LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
    |                                                                             -------- cast requires that `o3` is borrowed for `'static`
@@ -22,7 +22,7 @@ LL | }
    | - `o3` dropped here while still borrowed
 
 error[E0597]: `o2` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:123:13
+  --> $DIR/dropck_trait_cycle_checked.rs:113:13
    |
 LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
    |                                                                   -------- cast requires that `o2` is borrowed for `'static`
@@ -34,7 +34,7 @@ LL | }
    | - `o2` dropped here while still borrowed
 
 error[E0597]: `o3` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:124:13
+  --> $DIR/dropck_trait_cycle_checked.rs:114:13
    |
 LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
    |                                                                             -------- cast requires that `o3` is borrowed for `'static`
@@ -46,7 +46,7 @@ LL | }
    | - `o3` dropped here while still borrowed
 
 error[E0597]: `o1` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:125:13
+  --> $DIR/dropck_trait_cycle_checked.rs:115:13
    |
 LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
    |                                                         -------- cast requires that `o1` is borrowed for `'static`
@@ -58,7 +58,7 @@ LL | }
    | - `o1` dropped here while still borrowed
 
 error[E0597]: `o2` does not live long enough
-  --> $DIR/dropck_trait_cycle_checked.rs:126:13
+  --> $DIR/dropck_trait_cycle_checked.rs:116:13
    |
 LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
    |                                                                   -------- cast requires that `o2` is borrowed for `'static`

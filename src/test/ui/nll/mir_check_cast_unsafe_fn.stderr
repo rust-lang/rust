@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/mir_check_cast_unsafe_fn.rs:19:14
+  --> $DIR/mir_check_cast_unsafe_fn.rs:9:14
    |
 LL | fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
    |        -- lifetime `'a` defined here

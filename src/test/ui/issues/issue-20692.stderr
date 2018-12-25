@@ -1,5 +1,5 @@
 error[E0038]: the trait `Array` cannot be made into an object
-  --> $DIR/issue-20692.rs:17:5
+  --> $DIR/issue-20692.rs:7:5
    |
 LL |     &Array;
    |     ^^^^^^ the trait `Array` cannot be made into an object
@@ -7,7 +7,7 @@ LL |     &Array;
    = note: the trait cannot require that `Self : Sized`
 
 error[E0038]: the trait `Array` cannot be made into an object
-  --> $DIR/issue-20692.rs:14:13
+  --> $DIR/issue-20692.rs:4:13
    |
 LL |     let _ = x
    |             ^ the trait `Array` cannot be made into an object

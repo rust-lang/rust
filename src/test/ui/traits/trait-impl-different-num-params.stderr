@@ -1,5 +1,5 @@
 error[E0050]: method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 2
-  --> $DIR/trait-impl-different-num-params.rs:15:12
+  --> $DIR/trait-impl-different-num-params.rs:5:12
    |
 LL |     fn bar(&self, x: usize) -> Self;
    |            --------------- trait requires 2 parameters

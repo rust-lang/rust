@@ -1,11 +1,11 @@
 error[E0091]: type parameter `T` is unused
-  --> $DIR/unused_generic_param.rs:16:35
+  --> $DIR/unused_generic_param.rs:6:35
    |
 LL | existential type PartiallyDefined<T>: 'static; //~ `T` is unused
    |                                   ^ unused type parameter
 
 error[E0091]: type parameter `T` is unused
-  --> $DIR/unused_generic_param.rs:22:36
+  --> $DIR/unused_generic_param.rs:12:36
    |
 LL | existential type PartiallyDefined2<T>: 'static; //~ `T` is unused
    |                                    ^ unused type parameter

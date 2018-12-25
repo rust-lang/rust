@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `v`
-  --> $DIR/liveness-assign-imm-local-in-op-eq.rs:20:5
+  --> $DIR/liveness-assign-imm-local-in-op-eq.rs:10:5
    |
 LL |     v = 2;  //[ast]~ NOTE first assignment
    |     ----- first assignment to `v`

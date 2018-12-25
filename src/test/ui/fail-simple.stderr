@@ -1,5 +1,5 @@
 error: no rules expected the token `@`
-  --> $DIR/fail-simple.rs:12:12
+  --> $DIR/fail-simple.rs:2:12
    |
 LL |     panic!(@); //~ ERROR no rules expected the token `@`
    |            ^ no rules expected this token in macro call

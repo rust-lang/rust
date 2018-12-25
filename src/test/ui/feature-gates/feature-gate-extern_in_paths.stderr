@@ -1,5 +1,5 @@
 error[E0658]: `extern` in paths is experimental (see issue #55600)
-  --> $DIR/feature-gate-extern_in_paths.rs:14:13
+  --> $DIR/feature-gate-extern_in_paths.rs:4:13
    |
 LL |     let _ = extern::std::vec::Vec::new(); //~ ERROR `extern` in paths is experimental
    |             ^^^^^^

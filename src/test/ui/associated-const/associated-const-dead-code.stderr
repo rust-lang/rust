@@ -1,11 +1,11 @@
 error: associated const is never used: `BAR`
-  --> $DIR/associated-const-dead-code.rs:16:5
+  --> $DIR/associated-const-dead-code.rs:6:5
    |
 LL |     const BAR: u32 = 1;
    |     ^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/associated-const-dead-code.rs:11:9
+  --> $DIR/associated-const-dead-code.rs:1:9
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^

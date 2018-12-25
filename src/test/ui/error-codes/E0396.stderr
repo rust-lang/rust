@@ -1,5 +1,5 @@
 error[E0658]: dereferencing raw pointers in constants is unstable (see issue #51911)
-  --> $DIR/E0396.rs:15:28
+  --> $DIR/E0396.rs:5:28
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
    |                            ^^^^^^^^^

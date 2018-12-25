@@ -1,11 +1,11 @@
 error[E0199]: implementing the trait `MySafeTrait` is not unsafe
-  --> $DIR/coherence-default-trait-impl.rs:17:1
+  --> $DIR/coherence-default-trait-impl.rs:7:1
    |
 LL | unsafe impl MySafeTrait for Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0200]: the trait `MyUnsafeTrait` requires an `unsafe impl` declaration
-  --> $DIR/coherence-default-trait-impl.rs:22:1
+  --> $DIR/coherence-default-trait-impl.rs:12:1
    |
 LL | impl MyUnsafeTrait for Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

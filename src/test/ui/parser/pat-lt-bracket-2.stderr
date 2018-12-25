@@ -1,5 +1,5 @@
 error: expected one of `:` or `@`, found `<`
-  --> $DIR/pat-lt-bracket-2.rs:13:7
+  --> $DIR/pat-lt-bracket-2.rs:3:7
    |
 LL | fn a(B<) {}
    |       ^ expected one of `:` or `@` here

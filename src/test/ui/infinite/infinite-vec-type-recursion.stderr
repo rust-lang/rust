@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when processing `X`
-  --> $DIR/infinite-vec-type-recursion.rs:11:14
+  --> $DIR/infinite-vec-type-recursion.rs:1:14
    |
 LL | type X = Vec<X>;
    |              ^

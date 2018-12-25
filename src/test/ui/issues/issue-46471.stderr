@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough (Ast)
-  --> $DIR/issue-46471.rs:15:6
+  --> $DIR/issue-46471.rs:5:6
    |
 LL |     &x
    |      ^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0515]: cannot return reference to local variable `x` (Mir)
-  --> $DIR/issue-46471.rs:15:5
+  --> $DIR/issue-46471.rs:5:5
    |
 LL |     &x
    |     ^^ returns a reference to data owned by the current function

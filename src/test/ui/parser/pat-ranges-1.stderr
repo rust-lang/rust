@@ -1,5 +1,5 @@
 error: expected one of `:`, `;`, or `=`, found `..=`
-  --> $DIR/pat-ranges-1.rs:16:21
+  --> $DIR/pat-ranges-1.rs:6:21
    |
 LL |     let macropus!() ..= 11 = 12; //~ error: expected one of `:`, `;`, or `=`, found `..=`
    |                     ^^^ expected one of `:`, `;`, or `=` here

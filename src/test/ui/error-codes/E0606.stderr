@@ -1,11 +1,11 @@
 error[E0606]: casting `&u8` as `u8` is invalid
-  --> $DIR/E0606.rs:12:5
+  --> $DIR/E0606.rs:2:5
    |
 LL |     &0u8 as u8; //~ ERROR E0606
    |     ^^^^^^^^^^ cannot cast `&u8` as `u8`
    |
 help: did you mean `*&0u8`?
-  --> $DIR/E0606.rs:12:5
+  --> $DIR/E0606.rs:2:5
    |
 LL |     &0u8 as u8; //~ ERROR E0606
    |     ^^^^

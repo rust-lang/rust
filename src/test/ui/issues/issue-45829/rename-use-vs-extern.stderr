@@ -1,5 +1,5 @@
 error[E0254]: the name `issue_45829_b` is defined multiple times
-  --> $DIR/rename-use-vs-extern.rs:14:5
+  --> $DIR/rename-use-vs-extern.rs:4:5
    |
 LL | extern crate issue_45829_b;
    | --------------------------- previous import of the extern crate `issue_45829_b` here

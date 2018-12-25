@@ -1,5 +1,5 @@
 error[E0027]: pattern does not mention field `name`
-  --> $DIR/E0027-teach.rs:22:9
+  --> $DIR/E0027-teach.rs:12:9
    |
 LL |         Dog { age: x } => {}
    |         ^^^^^^^^^^^^^^ missing field `name`

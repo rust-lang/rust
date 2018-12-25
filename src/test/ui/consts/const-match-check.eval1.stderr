@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding: `-2147483648i32..=-1i32` not covered
-  --> $DIR/const-match-check.rs:35:15
+  --> $DIR/const-match-check.rs:25:15
    |
 LL |     A = { let 0 = 0; 0 },
    |               ^ pattern `-2147483648i32..=-1i32` not covered

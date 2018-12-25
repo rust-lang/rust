@@ -1,5 +1,5 @@
 error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `pub`
-  --> $DIR/trait-pub-assoc-const.rs:14:5
+  --> $DIR/trait-pub-assoc-const.rs:4:5
    |
 LL | trait Foo {
    |            - expected one of 7 possible tokens here

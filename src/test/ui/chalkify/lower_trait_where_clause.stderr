@@ -1,5 +1,5 @@
 error: program clause dump
-  --> $DIR/lower_trait_where_clause.rs:15:1
+  --> $DIR/lower_trait_where_clause.rs:5:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

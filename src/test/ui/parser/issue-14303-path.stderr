@@ -1,5 +1,5 @@
 error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-path.rs:13:37
+  --> $DIR/issue-14303-path.rs:3:37
    |
 LL | fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
    |                                     ^^

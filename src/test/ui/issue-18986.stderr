@@ -1,5 +1,5 @@
 error[E0574]: expected struct, variant or union type, found trait `Trait`
-  --> $DIR/issue-18986.rs:18:9
+  --> $DIR/issue-18986.rs:8:9
    |
 LL |         Trait { x: 42 } => () //~ ERROR expected struct, variant or union type, found trait `Trait`
    |         ^^^^^ not a struct, variant or union type

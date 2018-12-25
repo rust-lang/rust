@@ -1,5 +1,5 @@
 error[E0658]: non exhaustive is an experimental feature (see issue #44109)
-  --> $DIR/feature-gate-non_exhaustive.rs:13:1
+  --> $DIR/feature-gate-non_exhaustive.rs:3:1
    |
 LL | #[non_exhaustive] //~ERROR non exhaustive is an experimental feature (see issue #44109)
    | ^^^^^^^^^^^^^^^^^

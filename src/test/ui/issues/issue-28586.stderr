@@ -1,5 +1,5 @@
 error[E0599]: no associated item named `BYTES` found for type `usize` in the current scope
-  --> $DIR/issue-28586.rs:14:19
+  --> $DIR/issue-28586.rs:4:19
    |
 LL | impl Foo for [u8; usize::BYTES] {}
    |                   ^^^^^^^^^^^^ associated item not found in `usize`

@@ -1,4 +1,3 @@
-
 enum Foo {}
 struct Bar {}
 

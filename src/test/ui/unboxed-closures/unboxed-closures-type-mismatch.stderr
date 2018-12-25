@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/unboxed-closures-type-mismatch.rs:15:15
+  --> $DIR/unboxed-closures-type-mismatch.rs:5:15
    |
 LL |     let z = f(1_usize, 2);    //~ ERROR mismatched types
    |               ^^^^^^^ expected isize, found usize

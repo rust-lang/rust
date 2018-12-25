@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `pub`
-  --> $DIR/issue-28433.rs:14:5
+  --> $DIR/issue-28433.rs:4:5
    |
 LL |     pub duck,
    |     ^^^ expected identifier, found keyword
 
 error: expected one of `(`, `,`, `=`, `{`, or `}`, found `duck`
-  --> $DIR/issue-28433.rs:14:9
+  --> $DIR/issue-28433.rs:4:9
    |
 LL |     pub duck,
    |         ^^^^ expected one of `(`, `,`, `=`, `{`, or `}` here

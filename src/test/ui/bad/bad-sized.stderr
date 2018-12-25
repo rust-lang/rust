@@ -1,11 +1,11 @@
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/bad-sized.rs:14:24
+  --> $DIR/bad-sized.rs:4:24
    |
 LL |     let x: Vec<Trait + Sized> = Vec::new();
    |                        ^^^^^ non-auto additional trait
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
-  --> $DIR/bad-sized.rs:14:12
+  --> $DIR/bad-sized.rs:4:12
    |
 LL |     let x: Vec<Trait + Sized> = Vec::new();
    |            ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -15,7 +15,7 @@ LL |     let x: Vec<Trait + Sized> = Vec::new();
    = note: required by `std::vec::Vec`
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
-  --> $DIR/bad-sized.rs:14:33
+  --> $DIR/bad-sized.rs:4:33
    |
 LL |     let x: Vec<Trait + Sized> = Vec::new();
    |                                 ^^^^^^^^ doesn't have a size known at compile-time

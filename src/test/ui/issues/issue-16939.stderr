@@ -1,5 +1,5 @@
 error[E0057]: this function takes 0 parameters but 1 parameter was supplied
-  --> $DIR/issue-16939.rs:15:9
+  --> $DIR/issue-16939.rs:5:9
    |
 LL |     |t| f(t); //~ ERROR E0057
    |         ^^^^ expected 0 parameters

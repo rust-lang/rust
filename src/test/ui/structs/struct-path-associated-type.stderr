@@ -1,53 +1,53 @@
 error[E0071]: expected struct, variant or union type, found associated type
-  --> $DIR/struct-path-associated-type.rs:22:13
+  --> $DIR/struct-path-associated-type.rs:12:13
    |
 LL |     let s = T::A {};
    |             ^^^^ not a struct
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/struct-path-associated-type.rs:24:20
+  --> $DIR/struct-path-associated-type.rs:14:20
    |
 LL |     let z = T::A::<u8> {};
    |                    ^^ type parameter not allowed
 
 error[E0071]: expected struct, variant or union type, found associated type
-  --> $DIR/struct-path-associated-type.rs:24:13
+  --> $DIR/struct-path-associated-type.rs:14:13
    |
 LL |     let z = T::A::<u8> {};
    |             ^^^^^^^^^^ not a struct
 
 error[E0071]: expected struct, variant or union type, found associated type
-  --> $DIR/struct-path-associated-type.rs:28:9
+  --> $DIR/struct-path-associated-type.rs:18:9
    |
 LL |         T::A {} => {}
    |         ^^^^ not a struct
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/struct-path-associated-type.rs:35:20
+  --> $DIR/struct-path-associated-type.rs:25:20
    |
 LL |     let z = T::A::<u8> {}; //~ ERROR type parameters are not allowed on this type
    |                    ^^ type parameter not allowed
 
 error[E0223]: ambiguous associated type
-  --> $DIR/struct-path-associated-type.rs:42:13
+  --> $DIR/struct-path-associated-type.rs:32:13
    |
 LL |     let s = S::A {}; //~ ERROR ambiguous associated type
    |             ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/struct-path-associated-type.rs:43:20
+  --> $DIR/struct-path-associated-type.rs:33:20
    |
 LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
    |                    ^^ type parameter not allowed
 
 error[E0223]: ambiguous associated type
-  --> $DIR/struct-path-associated-type.rs:43:13
+  --> $DIR/struct-path-associated-type.rs:33:13
    |
 LL |     let z = S::A::<u8> {}; //~ ERROR ambiguous associated type
    |             ^^^^^^^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/struct-path-associated-type.rs:46:9
+  --> $DIR/struct-path-associated-type.rs:36:9
    |
 LL |         S::A {} => {} //~ ERROR ambiguous associated type
    |         ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`

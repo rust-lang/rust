@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in `for` loop binding: `&-2147483648i32..=0i32` not covered
-  --> $DIR/for-loop-refutable-pattern-error-message.rs:12:9
+  --> $DIR/for-loop-refutable-pattern-error-message.rs:2:9
    |
 LL |     for &1 in [1].iter() {} //~ ERROR refutable pattern in `for` loop binding
    |         ^^ pattern `&-2147483648i32..=0i32` not covered

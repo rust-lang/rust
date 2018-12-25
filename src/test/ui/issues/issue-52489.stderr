@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'issue_52489_unstable'
-  --> $DIR/issue-52489.rs:15:5
+  --> $DIR/issue-52489.rs:5:5
    |
 LL | use issue_52489;
    |     ^^^^^^^^^^^

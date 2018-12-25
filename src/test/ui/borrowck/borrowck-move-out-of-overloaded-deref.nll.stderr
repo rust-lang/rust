@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of an `Rc`
-  --> $DIR/borrowck-move-out-of-overloaded-deref.rs:14:14
+  --> $DIR/borrowck-move-out-of-overloaded-deref.rs:4:14
    |
 LL |     let _x = *Rc::new("hi".to_string());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^

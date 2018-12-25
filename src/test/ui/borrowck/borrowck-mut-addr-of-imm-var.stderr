@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `x` as mutable
-  --> $DIR/borrowck-mut-addr-of-imm-var.rs:13:30
+  --> $DIR/borrowck-mut-addr-of-imm-var.rs:3:30
    |
 LL |     let x: isize = 3;
    |         - help: make this binding mutable: `mut x`

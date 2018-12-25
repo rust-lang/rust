@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/get_default.rs:33:17
+  --> $DIR/get_default.rs:23:17
    |
 LL |         match map.get() {
    |               --- immutable borrow occurs here
@@ -11,7 +11,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/get_default.rs:45:17
+  --> $DIR/get_default.rs:35:17
    |
 LL |         match map.get() {
    |               --- immutable borrow occurs here
@@ -23,7 +23,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/get_default.rs:51:17
+  --> $DIR/get_default.rs:41:17
    |
 LL |         match map.get() {
    |               --- immutable borrow occurs here
@@ -35,7 +35,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
-  --> $DIR/get_default.rs:33:17
+  --> $DIR/get_default.rs:23:17
    |
 LL | fn ok(map: &mut Map) -> &String {
    |            - let's call the lifetime of this reference `'1`
@@ -50,7 +50,7 @@ LL |                 map.set(String::new()); // Ideally, this would not error.
    |                 ^^^ mutable borrow occurs here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
-  --> $DIR/get_default.rs:45:17
+  --> $DIR/get_default.rs:35:17
    |
 LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`
@@ -65,7 +65,7 @@ LL |                 return v;
    |                        - returning this value requires that `*map` is borrowed for `'1`
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
-  --> $DIR/get_default.rs:51:17
+  --> $DIR/get_default.rs:41:17
    |
 LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`

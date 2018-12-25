@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:61:17
+  --> $DIR/lint-stability-fields.rs:51:17
    |
 LL |         let x = Unstable { //~ ERROR use of unstable
    |                 ^^^^^^^^
@@ -7,7 +7,7 @@ LL |         let x = Unstable { //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:71:13
+  --> $DIR/lint-stability-fields.rs:61:13
    |
 LL |         let Unstable { //~ ERROR use of unstable
    |             ^^^^^^^^
@@ -15,7 +15,7 @@ LL |         let Unstable { //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:77:13
+  --> $DIR/lint-stability-fields.rs:67:13
    |
 LL |         let Unstable  //~ ERROR use of unstable
    |             ^^^^^^^^
@@ -23,7 +23,7 @@ LL |         let Unstable  //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:82:17
+  --> $DIR/lint-stability-fields.rs:72:17
    |
 LL |         let x = reexport::Unstable2(1, 2, 3); //~ ERROR use of unstable
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |         let x = reexport::Unstable2(1, 2, 3); //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:84:17
+  --> $DIR/lint-stability-fields.rs:74:17
    |
 LL |         let x = Unstable2(1, 2, 3); //~ ERROR use of unstable
    |                 ^^^^^^^^^
@@ -39,7 +39,7 @@ LL |         let x = Unstable2(1, 2, 3); //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:90:13
+  --> $DIR/lint-stability-fields.rs:80:13
    |
 LL |         let Unstable2  //~ ERROR use of unstable
    |             ^^^^^^^^^
@@ -47,7 +47,7 @@ LL |         let Unstable2  //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:95:13
+  --> $DIR/lint-stability-fields.rs:85:13
    |
 LL |         let Unstable2 //~ ERROR use of unstable
    |             ^^^^^^^^^
@@ -55,7 +55,7 @@ LL |         let Unstable2 //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:100:17
+  --> $DIR/lint-stability-fields.rs:90:17
    |
 LL |         let x = Deprecated { //~ ERROR use of unstable
    |                 ^^^^^^^^^^
@@ -63,7 +63,7 @@ LL |         let x = Deprecated { //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:110:13
+  --> $DIR/lint-stability-fields.rs:100:13
    |
 LL |         let Deprecated { //~ ERROR use of unstable
    |             ^^^^^^^^^^
@@ -71,7 +71,7 @@ LL |         let Deprecated { //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:116:13
+  --> $DIR/lint-stability-fields.rs:106:13
    |
 LL |         let Deprecated //~ ERROR use of unstable
    |             ^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |         let Deprecated //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:120:17
+  --> $DIR/lint-stability-fields.rs:110:17
    |
 LL |         let x = Deprecated2(1, 2, 3); //~ ERROR use of unstable
    |                 ^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL |         let x = Deprecated2(1, 2, 3); //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:126:13
+  --> $DIR/lint-stability-fields.rs:116:13
    |
 LL |         let Deprecated2 //~ ERROR use of unstable
    |             ^^^^^^^^^^^
@@ -95,7 +95,7 @@ LL |         let Deprecated2 //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:131:13
+  --> $DIR/lint-stability-fields.rs:121:13
    |
 LL |         let Deprecated2 //~ ERROR use of unstable
    |             ^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |         let Deprecated2 //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:31:13
+  --> $DIR/lint-stability-fields.rs:21:13
    |
 LL |             override1: 2, //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL |             override1: 2, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:32:13
+  --> $DIR/lint-stability-fields.rs:22:13
    |
 LL |             override2: 3, //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |             override2: 3, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:36:17
+  --> $DIR/lint-stability-fields.rs:26:17
    |
 LL |         let _ = x.override1; //~ ERROR use of unstable
    |                 ^^^^^^^^^^^
@@ -127,7 +127,7 @@ LL |         let _ = x.override1; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:37:17
+  --> $DIR/lint-stability-fields.rs:27:17
    |
 LL |         let _ = x.override2; //~ ERROR use of unstable
    |                 ^^^^^^^^^^^
@@ -135,7 +135,7 @@ LL |         let _ = x.override2; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:41:13
+  --> $DIR/lint-stability-fields.rs:31:13
    |
 LL |             override1: _, //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
@@ -143,7 +143,7 @@ LL |             override1: _, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:42:13
+  --> $DIR/lint-stability-fields.rs:32:13
    |
 LL |             override2: _ //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
@@ -151,7 +151,7 @@ LL |             override2: _ //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:50:17
+  --> $DIR/lint-stability-fields.rs:40:17
    |
 LL |         let _ = x.1; //~ ERROR use of unstable
    |                 ^^^
@@ -159,7 +159,7 @@ LL |         let _ = x.1; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:51:17
+  --> $DIR/lint-stability-fields.rs:41:17
    |
 LL |         let _ = x.2; //~ ERROR use of unstable
    |                 ^^^
@@ -167,7 +167,7 @@ LL |         let _ = x.2; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:54:20
+  --> $DIR/lint-stability-fields.rs:44:20
    |
 LL |                    _, //~ ERROR use of unstable
    |                    ^
@@ -175,7 +175,7 @@ LL |                    _, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:55:20
+  --> $DIR/lint-stability-fields.rs:45:20
    |
 LL |                    _) //~ ERROR use of unstable
    |                    ^
@@ -183,9 +183,41 @@ LL |                    _) //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:62:13
+  --> $DIR/lint-stability-fields.rs:52:13
    |
 LL |             inherit: 1, //~ ERROR use of unstable
+   |             ^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-stability-fields.rs:54:13
+   |
+LL |             override2: 3, //~ ERROR use of unstable
+   |             ^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-stability-fields.rs:57:17
+   |
+LL |         let _ = x.inherit; //~ ERROR use of unstable
+   |                 ^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-stability-fields.rs:59:17
+   |
+LL |         let _ = x.override2; //~ ERROR use of unstable
+   |                 ^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-stability-fields.rs:62:13
+   |
+LL |             inherit: _, //~ ERROR use of unstable
    |             ^^^^^^^^^^
    |
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
@@ -193,45 +225,13 @@ LL |             inherit: 1, //~ ERROR use of unstable
 error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-stability-fields.rs:64:13
    |
-LL |             override2: 3, //~ ERROR use of unstable
-   |             ^^^^^^^^^^^^
-   |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
-
-error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:67:17
-   |
-LL |         let _ = x.inherit; //~ ERROR use of unstable
-   |                 ^^^^^^^^^
-   |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
-
-error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:69:17
-   |
-LL |         let _ = x.override2; //~ ERROR use of unstable
-   |                 ^^^^^^^^^^^
-   |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
-
-error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:72:13
-   |
-LL |             inherit: _, //~ ERROR use of unstable
-   |             ^^^^^^^^^^
-   |
-   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
-
-error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:74:13
-   |
 LL |             override2: _ //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
    |
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:86:17
+  --> $DIR/lint-stability-fields.rs:76:17
    |
 LL |         let _ = x.0; //~ ERROR use of unstable
    |                 ^^^
@@ -239,7 +239,7 @@ LL |         let _ = x.0; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:88:17
+  --> $DIR/lint-stability-fields.rs:78:17
    |
 LL |         let _ = x.2; //~ ERROR use of unstable
    |                 ^^^
@@ -247,7 +247,7 @@ LL |         let _ = x.2; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:91:14
+  --> $DIR/lint-stability-fields.rs:81:14
    |
 LL |             (_, //~ ERROR use of unstable
    |              ^
@@ -255,7 +255,7 @@ LL |             (_, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:93:14
+  --> $DIR/lint-stability-fields.rs:83:14
    |
 LL |              _) //~ ERROR use of unstable
    |              ^
@@ -263,7 +263,7 @@ LL |              _) //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:101:13
+  --> $DIR/lint-stability-fields.rs:91:13
    |
 LL |             inherit: 1, //~ ERROR use of unstable
    |             ^^^^^^^^^^
@@ -271,7 +271,7 @@ LL |             inherit: 1, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:103:13
+  --> $DIR/lint-stability-fields.rs:93:13
    |
 LL |             override2: 3, //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
@@ -279,7 +279,7 @@ LL |             override2: 3, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:106:17
+  --> $DIR/lint-stability-fields.rs:96:17
    |
 LL |         let _ = x.inherit; //~ ERROR use of unstable
    |                 ^^^^^^^^^
@@ -287,7 +287,7 @@ LL |         let _ = x.inherit; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:108:17
+  --> $DIR/lint-stability-fields.rs:98:17
    |
 LL |         let _ = x.override2; //~ ERROR use of unstable
    |                 ^^^^^^^^^^^
@@ -295,7 +295,7 @@ LL |         let _ = x.override2; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:111:13
+  --> $DIR/lint-stability-fields.rs:101:13
    |
 LL |             inherit: _, //~ ERROR use of unstable
    |             ^^^^^^^^^^
@@ -303,7 +303,7 @@ LL |             inherit: _, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:113:13
+  --> $DIR/lint-stability-fields.rs:103:13
    |
 LL |             override2: _ //~ ERROR use of unstable
    |             ^^^^^^^^^^^^
@@ -311,7 +311,7 @@ LL |             override2: _ //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:122:17
+  --> $DIR/lint-stability-fields.rs:112:17
    |
 LL |         let _ = x.0; //~ ERROR use of unstable
    |                 ^^^
@@ -319,7 +319,7 @@ LL |         let _ = x.0; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:124:17
+  --> $DIR/lint-stability-fields.rs:114:17
    |
 LL |         let _ = x.2; //~ ERROR use of unstable
    |                 ^^^
@@ -327,7 +327,7 @@ LL |         let _ = x.2; //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:127:14
+  --> $DIR/lint-stability-fields.rs:117:14
    |
 LL |             (_, //~ ERROR use of unstable
    |              ^
@@ -335,7 +335,7 @@ LL |             (_, //~ ERROR use of unstable
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/lint-stability-fields.rs:129:14
+  --> $DIR/lint-stability-fields.rs:119:14
    |
 LL |              _) //~ ERROR use of unstable
    |              ^

@@ -1,5 +1,5 @@
 error[E0477]: the type `&'a isize` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-method-type-parameters.rs:22:9
+  --> $DIR/regions-bounded-method-type-parameters.rs:12:9
    |
 LL |     Foo.some_method::<&'a isize>();
    |         ^^^^^^^^^^^

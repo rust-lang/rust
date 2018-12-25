@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `match`
-  --> $DIR/keyword-match-as-identifier.rs:16:9
+  --> $DIR/keyword-match-as-identifier.rs:6:9
    |
 LL |     let match = "foo"; //~ error: expected pattern, found keyword `match`
    |         ^^^^^ expected pattern

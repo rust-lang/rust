@@ -1,5 +1,5 @@
 error: expected one of `:`, `==`, or `=`, found `;`
-  --> $DIR/issue-17904.rs:16:33
+  --> $DIR/issue-17904.rs:6:33
    |
 LL | struct Foo<T> where T: Copy, (T); //~ ERROR expected one of `:`, `==`, or `=`, found `;`
    |                                 ^ expected one of `:`, `==`, or `=` here

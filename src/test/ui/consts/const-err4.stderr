@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-err4.rs:18:11
+  --> $DIR/const-err4.rs:8:11
    |
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes

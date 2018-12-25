@@ -1,5 +1,5 @@
 error: quote! with interpolated token
-  --> $DIR/quote-with-interpolated.rs:15:29
+  --> $DIR/quote-with-interpolated.rs:5:29
    |
 LL |             quote_expr!(cx, $bar) //~ ERROR quote! with interpolated token
    |                             ^^^^

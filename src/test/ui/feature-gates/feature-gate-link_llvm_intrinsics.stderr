@@ -1,5 +1,5 @@
 error[E0658]: linking to LLVM intrinsics is experimental (see issue #29602)
-  --> $DIR/feature-gate-link_llvm_intrinsics.rs:13:5
+  --> $DIR/feature-gate-link_llvm_intrinsics.rs:3:5
    |
 LL |     fn sqrt(x: f32) -> f32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^

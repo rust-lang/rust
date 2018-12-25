@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `Foo` as `isize`
-  --> $DIR/nonscalar-cast.rs:17:20
+  --> $DIR/nonscalar-cast.rs:7:20
    |
 LL |     println!("{}", Foo { x: 1 } as isize); //~ non-primitive cast: `Foo` as `isize` [E0605]
    |                    ^^^^^^^^^^^^^^^^^^^^^

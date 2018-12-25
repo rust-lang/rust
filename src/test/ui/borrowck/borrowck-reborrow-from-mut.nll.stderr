@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:23:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:13:17
    |
 LL |     let _bar1 = &mut foo.bar1;
    |                 ------------- first mutable borrow occurs here
@@ -9,7 +9,7 @@ LL |     use_mut(_bar1);
    |             ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:28:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:18:17
    |
 LL |     let _bar1 = &mut foo.bar1;
    |                 ------------- mutable borrow occurs here
@@ -19,7 +19,7 @@ LL |     use_mut(_bar1);
    |             ----- mutable borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:33:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:23:17
    |
 LL |     let _bar1 = &foo.bar1;
    |                 --------- immutable borrow occurs here
@@ -29,7 +29,7 @@ LL |     use_imm(_bar1);
    |             ----- immutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:55:21
+  --> $DIR/borrowck-reborrow-from-mut.rs:45:21
    |
 LL |     let _bar1 = &mut foo.bar1;
    |                 ------------- first mutable borrow occurs here
@@ -41,7 +41,7 @@ LL |     use_mut(_bar1);
    |             ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:62:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:52:17
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                 ------------------ mutable borrow occurs here
@@ -52,7 +52,7 @@ LL |     use_mut(_bar1);
    |             ----- mutable borrow later used here
 
 error[E0502]: cannot borrow `*foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:63:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:53:17
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                 ------------------ mutable borrow occurs here
@@ -63,7 +63,7 @@ LL |     use_mut(_bar1);
    |             ----- mutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:68:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:58:17
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                 ------------------ first mutable borrow occurs here
@@ -73,7 +73,7 @@ LL |     use_mut(_bar1);
    |             ----- first borrow later used here
 
 error[E0499]: cannot borrow `*foo` as mutable more than once at a time
-  --> $DIR/borrowck-reborrow-from-mut.rs:73:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:63:17
    |
 LL |     let _bar1 = &mut foo.bar1.int1;
    |                 ------------------ first mutable borrow occurs here
@@ -83,7 +83,7 @@ LL |     use_mut(_bar1);
    |             ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:78:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:68:17
    |
 LL |     let _bar1 = &foo.bar1.int1;
    |                 -------------- immutable borrow occurs here
@@ -93,7 +93,7 @@ LL |     use_imm(_bar1);
    |             ----- immutable borrow later used here
 
 error[E0502]: cannot borrow `*foo` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-reborrow-from-mut.rs:83:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:73:17
    |
 LL |     let _bar1 = &foo.bar1.int1;
    |                 -------------- immutable borrow occurs here
@@ -103,7 +103,7 @@ LL |     use_imm(_bar1);
    |             ----- immutable borrow later used here
 
 error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-reborrow-from-mut.rs:98:17
+  --> $DIR/borrowck-reborrow-from-mut.rs:88:17
    |
 LL | fn borrow_mut_from_imm(foo: &Foo) {
    |                             ---- help: consider changing this to be a mutable reference: `&mut Foo`

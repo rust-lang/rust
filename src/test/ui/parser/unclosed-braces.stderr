@@ -1,5 +1,5 @@
 error: this file contains an un-closed delimiter
-  --> $DIR/unclosed-braces.rs:34:53
+  --> $DIR/unclosed-braces.rs:24:53
    |
 LL | fn main() {
    |           - un-closed delimiter

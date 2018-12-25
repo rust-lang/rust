@@ -1,11 +1,11 @@
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:15:13
+  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:13
    |
 LL | fn f<F:Trait(isize) -> isize>(x: F) {}
    |             ^^^^^^^ unexpected type argument
 
 error[E0220]: associated type `Output` not found for `Trait`
-  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:15:24
+  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:24
    |
 LL | fn f<F:Trait(isize) -> isize>(x: F) {}
    |                        ^^^^^ associated type `Output` not found

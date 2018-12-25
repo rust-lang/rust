@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/issue-36537.rs:15:14
+  --> $DIR/issue-36537.rs:5:14
    |
 LL |         p = &a;
    |              ^ borrowed value does not live long enough

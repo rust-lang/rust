@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/issue-3154.rs:16:5
+  --> $DIR/issue-3154.rs:6:5
    |
 LL | fn thing<'a,Q>(x: &Q) -> Thing<'a,Q> {
    |                   -- help: add explicit lifetime `'a` to the type of `x`: `&'a Q`

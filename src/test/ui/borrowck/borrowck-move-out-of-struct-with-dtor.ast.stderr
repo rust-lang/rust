@@ -1,5 +1,5 @@
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:22:9
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:12:9
    |
 LL |         S {f:_s} => {}
    |         ^^^^^--^
@@ -8,7 +8,7 @@ LL |         S {f:_s} => {}
    |         cannot move out of here
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:28:9
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:18:9
    |
 LL |     let S {f:_s} = S {f:"foo".to_string()};
    |         ^^^^^--^
@@ -17,7 +17,7 @@ LL |     let S {f:_s} = S {f:"foo".to_string()};
    |         cannot move out of here
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:33:19
+  --> $DIR/borrowck-move-out-of-struct-with-dtor.rs:23:19
    |
 LL | fn move_in_fn_arg(S {f:_s}: S) {
    |                   ^^^^^--^

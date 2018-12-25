@@ -1,5 +1,5 @@
 error[E0072]: recursive type `MList` has infinite size
-  --> $DIR/infinite-tag-type-recursion.rs:11:1
+  --> $DIR/infinite-tag-type-recursion.rs:1:1
    |
 LL | enum MList { Cons(isize, MList), Nil }
    | ^^^^^^^^^^               ----- recursive without indirection

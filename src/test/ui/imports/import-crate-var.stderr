@@ -1,5 +1,5 @@
 warning: `$crate` may not be imported
-  --> $DIR/import-crate-var.rs:19:5
+  --> $DIR/import-crate-var.rs:9:5
    |
 LL |     m!();
    |     ^^^^^

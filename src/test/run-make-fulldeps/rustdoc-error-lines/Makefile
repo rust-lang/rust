@@ -5,4 +5,4 @@
 
 all:
 	$(RUSTDOC) --test input.rs > $(TMPDIR)/output || true
-	$(CGREP) 'input.rs:17:15' < $(TMPDIR)/output
+	$(CGREP) 'input.rs:7:15' < $(TMPDIR)/output

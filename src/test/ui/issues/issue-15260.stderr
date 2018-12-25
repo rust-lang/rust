@@ -1,5 +1,5 @@
 error[E0025]: field `a` bound multiple times in the pattern
-  --> $DIR/issue-15260.rs:18:9
+  --> $DIR/issue-15260.rs:8:9
    |
 LL |         a: _,
    |         ---- first use of `a`
@@ -7,7 +7,7 @@ LL |         a: _
    |         ^^^^ multiple uses of `a` in pattern
 
 error[E0025]: field `a` bound multiple times in the pattern
-  --> $DIR/issue-15260.rs:24:9
+  --> $DIR/issue-15260.rs:14:9
    |
 LL |         a,
    |         - first use of `a`
@@ -15,7 +15,7 @@ LL |         a: _
    |         ^^^^ multiple uses of `a` in pattern
 
 error[E0025]: field `a` bound multiple times in the pattern
-  --> $DIR/issue-15260.rs:30:9
+  --> $DIR/issue-15260.rs:20:9
    |
 LL |         a,
    |         - first use of `a`
@@ -23,7 +23,7 @@ LL |         a: _,
    |         ^^^^ multiple uses of `a` in pattern
 
 error[E0025]: field `a` bound multiple times in the pattern
-  --> $DIR/issue-15260.rs:32:9
+  --> $DIR/issue-15260.rs:22:9
    |
 LL |         a,
    |         - first use of `a`

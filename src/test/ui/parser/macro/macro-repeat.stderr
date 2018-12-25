@@ -1,5 +1,5 @@
 error: variable 'v' is still repeating at this depth
-  --> $DIR/macro-repeat.rs:13:9
+  --> $DIR/macro-repeat.rs:3:9
    |
 LL |         $v  //~ ERROR still repeating at this depth
    |         ^^

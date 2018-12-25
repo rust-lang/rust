@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `Foo` in this scope
-  --> $DIR/rmeta.rs:17:13
+  --> $DIR/rmeta.rs:7:13
    |
 LL |     let _ = Foo; //~ ERROR cannot find value `Foo` in this scope
    |             ^^^ not found in this scope

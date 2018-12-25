@@ -1,5 +1,5 @@
 error[E0658]: `#[prelude_import]` is for use by rustc only
-  --> $DIR/feature-gate-prelude_import.rs:11:1
+  --> $DIR/feature-gate-prelude_import.rs:1:1
    |
 LL | #[prelude_import] //~ ERROR `#[prelude_import]` is for use by rustc only
    | ^^^^^^^^^^^^^^^^^

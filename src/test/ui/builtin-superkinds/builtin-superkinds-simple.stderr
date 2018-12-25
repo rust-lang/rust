@@ -1,5 +1,5 @@
 error[E0277]: `std::rc::Rc<i8>` cannot be sent between threads safely
-  --> $DIR/builtin-superkinds-simple.rs:16:6
+  --> $DIR/builtin-superkinds-simple.rs:6:6
    |
 LL | impl Foo for std::rc::Rc<i8> { }
    |      ^^^ `std::rc::Rc<i8>` cannot be sent between threads safely

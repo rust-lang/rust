@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:16:13
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:6:13
    |
 LL | fn arg_item(&_x: &String) {}
    |             ^--
@@ -9,13 +9,13 @@ LL | fn arg_item(&_x: &String) {}
    |             help: consider removing the `&`: `_x`
    |
 note: move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:16:14
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:6:14
    |
 LL | fn arg_item(&_x: &String) {}
    |              ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:21:11
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:11:11
    |
 LL |     with(|&_x| ())
    |           ^--
@@ -25,13 +25,13 @@ LL |     with(|&_x| ())
    |           help: consider removing the `&`: `_x`
    |
 note: move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:21:12
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:11:12
    |
 LL |     with(|&_x| ())
    |            ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:27:15
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:17:15
    |
 LL |     let &_x = &"hi".to_string();
    |         ---   ^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
@@ -40,7 +40,7 @@ LL |     let &_x = &"hi".to_string();
    |         help: consider removing the `&`: `_x`
    |
 note: move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:27:10
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:17:10
    |
 LL |     let &_x = &"hi".to_string();
    |          ^^

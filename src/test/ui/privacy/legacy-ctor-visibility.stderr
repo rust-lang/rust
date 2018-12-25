@@ -1,5 +1,5 @@
 error: private struct constructors are not usable through re-exports in outer modules
-  --> $DIR/legacy-ctor-visibility.rs:23:13
+  --> $DIR/legacy-ctor-visibility.rs:13:13
    |
 LL |             S(10);
    |             ^

@@ -1,23 +1,23 @@
 error[E0033]: type `&dyn T` cannot be dereferenced
-  --> $DIR/destructure-trait-ref.rs:36:9
+  --> $DIR/destructure-trait-ref.rs:26:9
    |
 LL |     let &x = &1isize as &T;      //~ ERROR type `&dyn T` cannot be dereferenced
    |         ^^ type `&dyn T` cannot be dereferenced
 
 error[E0033]: type `&dyn T` cannot be dereferenced
-  --> $DIR/destructure-trait-ref.rs:37:10
+  --> $DIR/destructure-trait-ref.rs:27:10
    |
 LL |     let &&x = &(&1isize as &T);  //~ ERROR type `&dyn T` cannot be dereferenced
    |          ^^ type `&dyn T` cannot be dereferenced
 
 error[E0033]: type `std::boxed::Box<dyn T>` cannot be dereferenced
-  --> $DIR/destructure-trait-ref.rs:38:9
+  --> $DIR/destructure-trait-ref.rs:28:9
    |
 LL |     let box x = box 1isize as Box<T>; //~ ERROR type `std::boxed::Box<dyn T>` cannot be dereferenced
    |         ^^^^^ type `std::boxed::Box<dyn T>` cannot be dereferenced
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:41:10
+  --> $DIR/destructure-trait-ref.rs:31:10
    |
 LL |     let &&x = &1isize as &T;
    |          ^^ expected trait T, found reference
@@ -27,7 +27,7 @@ LL |     let &&x = &1isize as &T;
    = help: did you mean `x: &dyn T`?
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:46:11
+  --> $DIR/destructure-trait-ref.rs:36:11
    |
 LL |     let &&&x = &(&1isize as &T);
    |           ^^ expected trait T, found reference
@@ -37,7 +37,7 @@ LL |     let &&&x = &(&1isize as &T);
    = help: did you mean `x: &dyn T`?
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:51:13
+  --> $DIR/destructure-trait-ref.rs:41:13
    |
 LL |     let box box x = box 1isize as Box<T>;
    |             ^^^^^ expected trait T, found struct `std::boxed::Box`

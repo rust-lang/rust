@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable argument `self` as mutable
-  --> $DIR/issue-31424.rs:17:15
+  --> $DIR/issue-31424.rs:7:15
    |
 LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^
@@ -8,7 +8,7 @@ LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               try removing `&mut` here
 
 warning: function cannot return without recursing
-  --> $DIR/issue-31424.rs:22:5
+  --> $DIR/issue-31424.rs:12:5
    |
 LL |     fn bar(self: &mut Self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -20,7 +20,7 @@ LL |         (&mut self).bar(); //~ ERROR cannot borrow
    = help: a `loop` may express intention better if this is on purpose
 
 error[E0596]: cannot borrow immutable argument `self` as mutable
-  --> $DIR/issue-31424.rs:24:15
+  --> $DIR/issue-31424.rs:14:15
    |
 LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^ cannot borrow mutably

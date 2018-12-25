@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: partially resolved path in a macro
-  --> $DIR/extern-macro.rs:15:13
+  --> $DIR/extern-macro.rs:5:13
    |
 LL |     let _ = Foo::bar!(); //~ ERROR failed to resolve: partially resolved path in a macro
    |             ^^^^^^^^ partially resolved path in a macro

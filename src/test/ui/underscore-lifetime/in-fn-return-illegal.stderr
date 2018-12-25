@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/in-fn-return-illegal.rs:15:30
+  --> $DIR/in-fn-return-illegal.rs:5:30
    |
 LL | fn foo(x: &u32, y: &u32) -> &'_ u32 { loop { } } //~ ERROR missing lifetime specifier
    |                              ^^ expected lifetime parameter

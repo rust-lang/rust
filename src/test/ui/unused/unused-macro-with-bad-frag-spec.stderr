@@ -1,5 +1,5 @@
 error: invalid fragment specifier `t_ty`
-  --> $DIR/unused-macro-with-bad-frag-spec.rs:16:6
+  --> $DIR/unused-macro-with-bad-frag-spec.rs:6:6
    |
 LL |     ($wrong:t_ty) => () //~ ERROR invalid fragment specifier `t_ty`
    |      ^^^^^^^^^^^

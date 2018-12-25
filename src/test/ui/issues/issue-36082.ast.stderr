@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-36082.rs:21:19
+  --> $DIR/issue-36082.rs:11:19
    |
 LL |     let val: &_ = x.borrow().0;
    |                   ^^^^^^^^^^  - temporary value dropped here while still borrowed

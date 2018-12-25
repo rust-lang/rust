@@ -1,5 +1,5 @@
 error: trailing comma is not permitted after `..`
-  --> $DIR/pat-tuple-2.rs:15:17
+  --> $DIR/pat-tuple-2.rs:5:17
    |
 LL |         (pat, ..,) => {} //~ ERROR trailing comma is not permitted after `..`
    |                 ^

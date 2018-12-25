@@ -1,37 +1,37 @@
 error[E0308]: mismatched types
-  --> $DIR/regions-bounds.rs:19:12
+  --> $DIR/regions-bounds.rs:9:12
    |
 LL |     return e; //~ ERROR mismatched types
    |            ^ lifetime mismatch
    |
    = note: expected type `TupleStruct<'b>`
               found type `TupleStruct<'a>`
-note: the lifetime 'a as defined on the function body at 18:10...
-  --> $DIR/regions-bounds.rs:18:10
+note: the lifetime 'a as defined on the function body at 8:10...
+  --> $DIR/regions-bounds.rs:8:10
    |
 LL | fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
    |          ^^
-note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 18:13
-  --> $DIR/regions-bounds.rs:18:13
+note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 8:13
+  --> $DIR/regions-bounds.rs:8:13
    |
 LL | fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
    |             ^^
 
 error[E0308]: mismatched types
-  --> $DIR/regions-bounds.rs:23:12
+  --> $DIR/regions-bounds.rs:13:12
    |
 LL |     return e; //~ ERROR mismatched types
    |            ^ lifetime mismatch
    |
    = note: expected type `Struct<'b>`
               found type `Struct<'a>`
-note: the lifetime 'a as defined on the function body at 22:10...
-  --> $DIR/regions-bounds.rs:22:10
+note: the lifetime 'a as defined on the function body at 12:10...
+  --> $DIR/regions-bounds.rs:12:10
    |
 LL | fn a_fn3<'a,'b>(e: Struct<'a>) -> Struct<'b> {
    |          ^^
-note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 22:13
-  --> $DIR/regions-bounds.rs:22:13
+note: ...does not necessarily outlive the lifetime 'b as defined on the function body at 12:13
+  --> $DIR/regions-bounds.rs:12:13
    |
 LL | fn a_fn3<'a,'b>(e: Struct<'a>) -> Struct<'b> {
    |             ^^

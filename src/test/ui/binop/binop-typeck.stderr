@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `bool`
-  --> $DIR/binop-typeck.rs:16:13
+  --> $DIR/binop-typeck.rs:6:13
    |
 LL |     let z = x + y;
    |             ^^^^^

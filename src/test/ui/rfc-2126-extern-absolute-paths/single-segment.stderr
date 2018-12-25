@@ -1,17 +1,17 @@
 error: crate root imports need to be explicitly named: `use crate as name;`
-  --> $DIR/single-segment.rs:15:5
+  --> $DIR/single-segment.rs:5:5
    |
 LL | use crate; //~ ERROR crate root imports need to be explicitly named: `use crate as name;`
    |     ^^^^^
 
 error: cannot glob-import all possible crates
-  --> $DIR/single-segment.rs:16:5
+  --> $DIR/single-segment.rs:6:5
    |
 LL | use *; //~ ERROR cannot glob-import all possible crates
    |     ^
 
 error[E0423]: expected value, found module `xcrate`
-  --> $DIR/single-segment.rs:19:13
+  --> $DIR/single-segment.rs:9:13
    |
 LL |     let s = ::xcrate; //~ ERROR expected value, found module `xcrate`
    |             ^^^^^^^^ not a value

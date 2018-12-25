@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `alloc`
-  --> $DIR/issue-54006.rs:16:5
+  --> $DIR/issue-54006.rs:6:5
    |
 LL | use alloc::vec;
    |     ^^^^^ did you mean `core::alloc`?
 
 error: cannot determine resolution for the macro `vec`
-  --> $DIR/issue-54006.rs:20:18
+  --> $DIR/issue-54006.rs:10:18
    |
 LL |     let mut xs = vec![];
    |                  ^^^

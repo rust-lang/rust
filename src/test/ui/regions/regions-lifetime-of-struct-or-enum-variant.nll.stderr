@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:26:3
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:16:3
    |
 LL |   let testValue = &id(Test);
    |                    -------- temporary value created here
@@ -8,7 +8,7 @@ LL |   testValue
    |   ^^^^^^^^^ returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:32:3
+  --> $DIR/regions-lifetime-of-struct-or-enum-variant.rs:22:3
    |
 LL |   let testValue = &id(MyEnum::Variant1);
    |                    -------------------- temporary value created here

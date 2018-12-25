@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `u.y` as immutable because it is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:25:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:15:13
    |
 LL |     let a = &mut u.x.0;
    |             ---------- mutable borrow occurs here
@@ -9,7 +9,7 @@ LL |     use_borrow(a);
    |                - mutable borrow later used here
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/union-borrow-move-parent-sibling.rs:32:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:22:13
    |
 LL |     let a = u.x.0;
    |             ----- value moved here
@@ -19,7 +19,7 @@ LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `u.y` as immutable because it is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:38:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:28:13
    |
 LL |     let a = &mut (u.x.0).0;
    |             -------------- mutable borrow occurs here
@@ -29,7 +29,7 @@ LL |     use_borrow(a);
    |                - mutable borrow later used here
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/union-borrow-move-parent-sibling.rs:45:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:35:13
    |
 LL |     let a = (u.x.0).0;
    |             --------- value moved here
@@ -39,7 +39,7 @@ LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    = note: move occurs because `u` has type `U`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `u.x` as immutable because it is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:51:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:41:13
    |
 LL |     let a = &mut *u.y;
    |             --------- mutable borrow occurs here
@@ -49,7 +49,7 @@ LL |     use_borrow(a);
    |                - mutable borrow later used here
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/union-borrow-move-parent-sibling.rs:58:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:48:13
    |
 LL |     let a = *u.y;
    |             ---- value moved here

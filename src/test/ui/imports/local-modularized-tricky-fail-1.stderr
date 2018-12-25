@@ -1,11 +1,11 @@
 error[E0659]: `exported` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
-  --> $DIR/local-modularized-tricky-fail-1.rs:38:1
+  --> $DIR/local-modularized-tricky-fail-1.rs:28:1
    |
 LL | exported!(); //~ ERROR `exported` is ambiguous
    | ^^^^^^^^ ambiguous name
    |
 note: `exported` could refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:15:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:5:5
    |
 LL | /     macro_rules! exported {
 LL | |         () => ()
@@ -15,21 +15,21 @@ LL | |     }
 LL |       define_exported!();
    |       ------------------- in this macro invocation
 note: `exported` could also refer to the macro imported here
-  --> $DIR/local-modularized-tricky-fail-1.rs:32:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:22:5
    |
 LL | use inner1::*;
    |     ^^^^^^^^^
    = help: consider adding an explicit import of `exported` to disambiguate
 
 error[E0659]: `include` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/local-modularized-tricky-fail-1.rs:57:1
+  --> $DIR/local-modularized-tricky-fail-1.rs:47:1
    |
 LL | include!(); //~ ERROR `include` is ambiguous
    | ^^^^^^^ ambiguous name
    |
    = note: `include` could refer to a built-in macro
 note: `include` could also refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:27:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:17:5
    |
 LL | /     macro_rules! include {
 LL | |         () => ()
@@ -41,14 +41,14 @@ LL |       define_include!();
    = help: use `crate::include` to refer to this macro unambiguously
 
 error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/local-modularized-tricky-fail-1.rs:45:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:35:5
    |
 LL |     panic!(); //~ ERROR `panic` is ambiguous
    |     ^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:21:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:11:5
    |
 LL | /     macro_rules! panic {
 LL | |         () => ()
@@ -60,14 +60,14 @@ LL |       define_panic!();
    = help: use `crate::panic` to refer to this macro unambiguously
 
 error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/local-modularized-tricky-fail-1.rs:45:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:35:5
    |
 LL |     panic!(); //~ ERROR `panic` is ambiguous
    |     ^^^^^^^^^ ambiguous name
    |
    = note: `panic` could refer to a macro from prelude
 note: `panic` could also refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:21:5
+  --> $DIR/local-modularized-tricky-fail-1.rs:11:5
    |
 LL | /     macro_rules! panic {
 LL | |         () => ()

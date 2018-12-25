@@ -1,5 +1,5 @@
 error[E0597]: `line` does not live long enough
-  --> $DIR/issue-52126-assign-op-invariance.rs:44:28
+  --> $DIR/issue-52126-assign-op-invariance.rs:34:28
    |
 LL |         let v: Vec<&str> = line.split_whitespace().collect();
    |                            ^^^^ borrowed value does not live long enough

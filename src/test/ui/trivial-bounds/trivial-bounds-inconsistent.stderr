@@ -1,5 +1,5 @@
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:24:19
+  --> $DIR/trivial-bounds-inconsistent.rs:14:19
    |
 LL | enum E where i32: Foo { V }
    |                   ^^^
@@ -7,25 +7,25 @@ LL | enum E where i32: Foo { V }
    = note: #[warn(trivial_bounds)] on by default
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:26:21
+  --> $DIR/trivial-bounds-inconsistent.rs:16:21
    |
 LL | struct S where i32: Foo;
    |                     ^^^
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:28:20
+  --> $DIR/trivial-bounds-inconsistent.rs:18:20
    |
 LL | trait T where i32: Foo {}
    |                    ^^^
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:30:20
+  --> $DIR/trivial-bounds-inconsistent.rs:20:20
    |
 LL | union U where i32: Foo { f: i32 }
    |                    ^^^
 
 warning: where clauses are not enforced in type aliases
-  --> $DIR/trivial-bounds-inconsistent.rs:32:14
+  --> $DIR/trivial-bounds-inconsistent.rs:22:14
    |
 LL | type Y where i32: Foo = ();
    |              ^^^^^^^^
@@ -34,55 +34,55 @@ LL | type Y where i32: Foo = ();
    = help: the clause will not be checked when the type alias is used, and should be removed
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:32:19
+  --> $DIR/trivial-bounds-inconsistent.rs:22:19
    |
 LL | type Y where i32: Foo = ();
    |                   ^^^
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:34:28
+  --> $DIR/trivial-bounds-inconsistent.rs:24:28
    |
 LL | impl Foo for () where i32: Foo {
    |                            ^^^
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:42:19
+  --> $DIR/trivial-bounds-inconsistent.rs:32:19
    |
 LL | fn f() where i32: Foo {
    |                   ^^^
 
 warning: Trait bound &'static str: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:49:28
+  --> $DIR/trivial-bounds-inconsistent.rs:39:28
    |
 LL | fn g() where &'static str: Foo {
    |                            ^^^
 
 warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:63:37
+  --> $DIR/trivial-bounds-inconsistent.rs:53:37
    |
 LL | struct TwoStrs(str, str) where str: Sized;
    |                                     ^^^^^
 
 warning: Trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:65:47
+  --> $DIR/trivial-bounds-inconsistent.rs:55:47
    |
 LL | fn unsized_local() where for<'a> Dst<A + 'a>: Sized {
    |                                               ^^^^^
 
 warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:69:35
+  --> $DIR/trivial-bounds-inconsistent.rs:59:35
    |
 LL | fn return_str() -> str where str: Sized {
    |                                   ^^^^^
 
 warning: Trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:73:46
+  --> $DIR/trivial-bounds-inconsistent.rs:63:46
    |
 LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: Trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:77:25
+  --> $DIR/trivial-bounds-inconsistent.rs:67:25
    |
 LL | fn use_for() where i32: Iterator {
    |                         ^^^^^^^^

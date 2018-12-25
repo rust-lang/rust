@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/phantom-oibit.rs:31:5
+  --> $DIR/phantom-oibit.rs:21:5
    |
 LL |     is_zen(x)
    |     ^^^^^^ `T` cannot be shared between threads safely
@@ -10,13 +10,13 @@ LL |     is_zen(x)
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`
 note: required by `is_zen`
-  --> $DIR/phantom-oibit.rs:28:1
+  --> $DIR/phantom-oibit.rs:18:1
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/phantom-oibit.rs:36:5
+  --> $DIR/phantom-oibit.rs:26:5
    |
 LL |     is_zen(x)
    |     ^^^^^^ `T` cannot be shared between threads safely
@@ -28,7 +28,7 @@ LL |     is_zen(x)
    = note: required because it appears within the type `Guard<'_, T>`
    = note: required because it appears within the type `Nested<Guard<'_, T>>`
 note: required by `is_zen`
-  --> $DIR/phantom-oibit.rs:28:1
+  --> $DIR/phantom-oibit.rs:18:1
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^

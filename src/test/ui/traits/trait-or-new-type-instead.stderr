@@ -1,5 +1,5 @@
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-  --> $DIR/trait-or-new-type-instead.rs:11:1
+  --> $DIR/trait-or-new-type-instead.rs:1:1
    |
 LL | / impl<T> Option<T> {
 LL | | //~^ ERROR cannot define inherent `impl` for a type outside of the crate where the type is defined

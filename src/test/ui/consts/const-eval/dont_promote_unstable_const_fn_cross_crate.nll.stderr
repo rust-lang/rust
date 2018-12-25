@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:18:28
+  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:8:28
    |
 LL |     let _: &'static u32 = &foo(); //~ ERROR does not live long enough
    |            ------------    ^^^^^ creates a temporary which is freed while still in use
@@ -10,7 +10,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:19:29
+  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:9:29
    |
 LL |     let _x: &'static u32 = &foo(); //~ ERROR does not live long enough
    |             ------------    ^^^^^ creates a temporary which is freed while still in use

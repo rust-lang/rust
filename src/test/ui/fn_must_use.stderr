@@ -1,24 +1,24 @@
 warning: unused return value of `need_to_use_this_value` that must be used
-  --> $DIR/fn_must_use.rs:65:5
+  --> $DIR/fn_must_use.rs:55:5
    |
 LL |     need_to_use_this_value(); //~ WARN unused return value
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/fn_must_use.rs:13:9
+  --> $DIR/fn_must_use.rs:3:9
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
    = note: it's important
 
 warning: unused return value of `MyStruct::need_to_use_this_method_value` that must be used
-  --> $DIR/fn_must_use.rs:70:5
+  --> $DIR/fn_must_use.rs:60:5
    |
 LL |     m.need_to_use_this_method_value(); //~ WARN unused return value
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused return value of `EvenNature::is_even` that must be used
-  --> $DIR/fn_must_use.rs:71:5
+  --> $DIR/fn_must_use.rs:61:5
    |
 LL |     m.is_even(); // trait method!
    |     ^^^^^^^^^^^^
@@ -26,31 +26,31 @@ LL |     m.is_even(); // trait method!
    = note: no side effects
 
 warning: unused return value of `MyStruct::need_to_use_this_associated_function_value` that must be used
-  --> $DIR/fn_must_use.rs:74:5
+  --> $DIR/fn_must_use.rs:64:5
    |
 LL |     MyStruct::need_to_use_this_associated_function_value();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` that must be used
-  --> $DIR/fn_must_use.rs:80:5
+  --> $DIR/fn_must_use.rs:70:5
    |
 LL |     2.eq(&3); //~ WARN unused return value
    |     ^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` that must be used
-  --> $DIR/fn_must_use.rs:81:5
+  --> $DIR/fn_must_use.rs:71:5
    |
 LL |     m.eq(&n); //~ WARN unused return value
    |     ^^^^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/fn_must_use.rs:84:5
+  --> $DIR/fn_must_use.rs:74:5
    |
 LL |     2 == 3; //~ WARN unused comparison
    |     ^^^^^^
 
 warning: unused comparison that must be used
-  --> $DIR/fn_must_use.rs:85:5
+  --> $DIR/fn_must_use.rs:75:5
    |
 LL |     m == n; //~ WARN unused comparison
    |     ^^^^^^

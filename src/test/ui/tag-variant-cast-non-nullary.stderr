@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `NonNullary` as `isize`
-  --> $DIR/tag-variant-cast-non-nullary.rs:18:15
+  --> $DIR/tag-variant-cast-non-nullary.rs:8:15
    |
 LL |     let val = v as isize; //~ ERROR non-primitive cast: `NonNullary` as `isize` [E0605]
    |               ^^^^^^^^^^

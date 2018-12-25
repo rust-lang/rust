@@ -1,5 +1,5 @@
 error[E0600]: cannot apply unary operator `-` to type `usize`
-  --> $DIR/feature-gate-negate-unsigned.rs:20:23
+  --> $DIR/feature-gate-negate-unsigned.rs:10:23
    |
 LL |     let _max: usize = -1;
    |                       ^^ cannot apply unary operator `-`
@@ -7,7 +7,7 @@ LL |     let _max: usize = -1;
    = note: unsigned values cannot be negated
 
 error[E0600]: cannot apply unary operator `-` to type `u8`
-  --> $DIR/feature-gate-negate-unsigned.rs:24:14
+  --> $DIR/feature-gate-negate-unsigned.rs:14:14
    |
 LL |     let _y = -x;
    |              ^^ cannot apply unary operator `-`

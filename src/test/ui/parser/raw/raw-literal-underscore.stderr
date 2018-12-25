@@ -1,5 +1,5 @@
 error: `r#_` is not currently supported.
-  --> $DIR/raw-literal-underscore.rs:13:20
+  --> $DIR/raw-literal-underscore.rs:3:20
    |
 LL | fn underscore_test(r#_: u32) {
    |                    ^^^

@@ -1,5 +1,5 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `.`
-  --> $DIR/bad-name.rs:16:8
+  --> $DIR/bad-name.rs:6:8
    |
 LL |   let x.y::<isize>.z foo;
    |        ^ expected one of `:`, `;`, `=`, or `@` here

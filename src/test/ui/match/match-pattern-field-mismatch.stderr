@@ -1,5 +1,5 @@
 error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 3 fields
-  --> $DIR/match-pattern-field-mismatch.rs:20:11
+  --> $DIR/match-pattern-field-mismatch.rs:10:11
    |
 LL |           Color::Rgb(_, _) => { }
    |           ^^^^^^^^^^^^^^^^ expected 3 fields, found 2

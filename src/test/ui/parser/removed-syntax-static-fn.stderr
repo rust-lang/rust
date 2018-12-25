@@ -1,5 +1,5 @@
 error: expected one of `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `static`
-  --> $DIR/removed-syntax-static-fn.rs:17:5
+  --> $DIR/removed-syntax-static-fn.rs:7:5
    |
 LL | impl S {
    |         - expected one of 11 possible tokens here

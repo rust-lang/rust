@@ -1,11 +1,11 @@
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/qualified-path-params-2.rs:28:26
+  --> $DIR/qualified-path-params-2.rs:18:26
    |
 LL | type A = <S as Tr>::A::f<u8>;
    |                          ^^ type parameter not allowed
 
 error[E0223]: ambiguous associated type
-  --> $DIR/qualified-path-params-2.rs:28:10
+  --> $DIR/qualified-path-params-2.rs:18:10
    |
 LL | type A = <S as Tr>::A::f<u8>;
    |          ^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<S as Tr>::A as Trait>::f`

@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex2b-push-no-existing-names.rs:16:12
+  --> $DIR/ex2b-push-no-existing-names.rs:6:12
    |
 LL | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
    |                    --------      -------- these two types are declared with different lifetimes...

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/liveness-move-call-arg.rs:19:14
+  --> $DIR/liveness-move-call-arg.rs:9:14
    |
 LL |         take(x); //~ ERROR use of moved value: `x`
    |              ^ value moved here, in previous iteration of loop

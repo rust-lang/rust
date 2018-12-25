@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/return-ref-mut-issue-46557.rs:18:5
+  --> $DIR/return-ref-mut-issue-46557.rs:8:5
    |
 LL |     let ref mut x = 1234543;
    |                     ------- temporary value created here

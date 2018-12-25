@@ -1,5 +1,5 @@
 error: generic parameters on `where` clauses are reserved for future use
-  --> $DIR/where_with_bound.rs:13:19
+  --> $DIR/where_with_bound.rs:3:19
    |
 LL | fn foo<T>() where <T>::Item: ToString, T: Iterator { }
    |                   ^^^

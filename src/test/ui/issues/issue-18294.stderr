@@ -1,5 +1,5 @@
 error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
-  --> $DIR/issue-18294.rs:13:22
+  --> $DIR/issue-18294.rs:3:22
    |
 LL |     const Y: usize = &X as *const u32 as usize; //~ ERROR is unstable
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^

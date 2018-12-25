@@ -1,12 +1,12 @@
 error[E0277]: the trait bound `T: MyHash` is not satisfied
-  --> $DIR/wf-impl-associated-type-trait.rs:27:5
+  --> $DIR/wf-impl-associated-type-trait.rs:17:5
    |
 LL |     type Bar = MySet<T>;
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `MyHash` is not implemented for `T`
    |
    = help: consider adding a `where T: MyHash` bound
 note: required by `MySet`
-  --> $DIR/wf-impl-associated-type-trait.rs:18:1
+  --> $DIR/wf-impl-associated-type-trait.rs:8:1
    |
 LL | pub struct MySet<T:MyHash> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

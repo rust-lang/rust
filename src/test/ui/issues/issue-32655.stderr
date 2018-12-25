@@ -1,5 +1,5 @@
 error[E0658]: The attribute `derive_Clone` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/issue-32655.rs:16:11
+  --> $DIR/issue-32655.rs:6:11
    |
 LL |         #[derive_Clone] //~ ERROR attribute `derive_Clone` is currently unknown
    |           ^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | foo!();
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `derive_Clone` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/issue-32655.rs:28:7
+  --> $DIR/issue-32655.rs:18:7
    |
 LL |     #[derive_Clone] //~ ERROR attribute `derive_Clone` is currently unknown
    |       ^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0689]: can't call method `f` on ambiguous numeric type `{integer}`
-  --> $DIR/issue-41652.rs:19:11
+  --> $DIR/issue-41652.rs:9:11
    |
 LL |         3.f()
    |           ^

@@ -1,7 +1,7 @@
 error: rustc_outlives
-  --> $DIR/self-structs.rs:14:1
+  --> $DIR/self-structs.rs:4:1
    |
-LL | / struct Foo<'a, 'b, T> { //~ ERROR 14:1: 16:2: rustc_outlives
+LL | / struct Foo<'a, 'b, T> { //~ ERROR rustc_outlives
 LL | |     field1: Bar<'a, 'b, T>
 LL | | }
    | |_^

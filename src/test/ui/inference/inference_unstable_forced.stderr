@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'ipu_flatten' (see issue #99999)
-  --> $DIR/inference_unstable_forced.rs:21:20
+  --> $DIR/inference_unstable_forced.rs:11:20
    |
 LL |     assert_eq!('x'.ipu_flatten(), 0);   //~ ERROR E0658
    |                    ^^^^^^^^^^^

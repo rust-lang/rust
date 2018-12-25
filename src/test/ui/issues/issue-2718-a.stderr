@@ -1,5 +1,5 @@
 error[E0072]: recursive type `pingpong::Pong` has infinite size
-  --> $DIR/issue-2718-a.rs:18:5
+  --> $DIR/issue-2718-a.rs:8:5
    |
 LL |     pub struct Pong(SendPacket<Ping>);
    |     ^^^^^^^^^^^^^^^^----------------^^

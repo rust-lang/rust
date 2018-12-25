@@ -1,5 +1,5 @@
 error[E0368]: binary assignment operation `+=` cannot be applied to type `std::collections::LinkedList<_>`
-  --> $DIR/E0067.rs:14:5
+  --> $DIR/E0067.rs:4:5
    |
 LL |     LinkedList::new() += 1; //~ ERROR E0368
    |     -----------------^^^^^
@@ -9,7 +9,7 @@ LL |     LinkedList::new() += 1; //~ ERROR E0368
    = note: an implementation of `std::ops::AddAssign` might be missing for `std::collections::LinkedList<_>`
 
 error[E0067]: invalid left-hand side expression
-  --> $DIR/E0067.rs:14:5
+  --> $DIR/E0067.rs:4:5
    |
 LL |     LinkedList::new() += 1; //~ ERROR E0368
    |     ^^^^^^^^^^^^^^^^^ invalid expression for left-hand side

@@ -1,7 +1,7 @@
 error: rustc_outlives
-  --> $DIR/explicit-union.rs:16:1
+  --> $DIR/explicit-union.rs:6:1
    |
-LL | / union Foo<'b, U> { //~ ERROR 16:1: 18:2: rustc_outlives
+LL | / union Foo<'b, U> { //~ ERROR rustc_outlives
 LL | |     bar: Bar<'b, U>
 LL | | }
    | |_^

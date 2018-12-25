@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:20:1
+  --> $DIR/feature-gate-trivial_bounds.rs:10:1
    |
 LL | enum E where i32: Foo { V } //~ ERROR
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
@@ -8,7 +8,7 @@ LL | enum E where i32: Foo { V } //~ ERROR
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:22:1
+  --> $DIR/feature-gate-trivial_bounds.rs:12:1
    |
 LL | struct S where i32: Foo; //~ ERROR
    | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
@@ -17,7 +17,7 @@ LL | struct S where i32: Foo; //~ ERROR
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:24:1
+  --> $DIR/feature-gate-trivial_bounds.rs:14:1
    |
 LL | trait T where i32: Foo {} //~ ERROR
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
@@ -26,7 +26,7 @@ LL | trait T where i32: Foo {} //~ ERROR
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:26:1
+  --> $DIR/feature-gate-trivial_bounds.rs:16:1
    |
 LL | union U where i32: Foo { f: i32 } //~ ERROR
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
@@ -35,7 +35,7 @@ LL | union U where i32: Foo { f: i32 } //~ ERROR
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:30:1
+  --> $DIR/feature-gate-trivial_bounds.rs:20:1
    |
 LL | / impl Foo for () where i32: Foo { //~ ERROR
 LL | |     fn test(&self) {
@@ -50,7 +50,7 @@ LL | | }
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:38:1
+  --> $DIR/feature-gate-trivial_bounds.rs:28:1
    |
 LL | / fn f() where i32: Foo //~ ERROR
 LL | | {
@@ -65,7 +65,7 @@ LL | | }
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the trait bound `std::string::String: std::ops::Neg` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:46:1
+  --> $DIR/feature-gate-trivial_bounds.rs:36:1
    |
 LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> { //~ ERROR
 LL | |     -s
@@ -76,7 +76,7 @@ LL | | }
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: `i32` is not an iterator
-  --> $DIR/feature-gate-trivial_bounds.rs:50:1
+  --> $DIR/feature-gate-trivial_bounds.rs:40:1
    |
 LL | / fn use_for() where i32: Iterator { //~ ERROR
 LL | |     for _ in 2i32 {}
@@ -89,7 +89,7 @@ LL | | }
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/feature-gate-trivial_bounds.rs:62:1
+  --> $DIR/feature-gate-trivial_bounds.rs:52:1
    |
 LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -100,7 +100,7 @@ LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
-  --> $DIR/feature-gate-trivial_bounds.rs:65:1
+  --> $DIR/feature-gate-trivial_bounds.rs:55:1
    |
 LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
 LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
@@ -114,7 +114,7 @@ LL | | }
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/feature-gate-trivial_bounds.rs:69:1
+  --> $DIR/feature-gate-trivial_bounds.rs:59:1
    |
 LL | / fn return_str() -> str where str: Sized { //~ ERROR
 LL | |     *"Sized".to_string().into_boxed_str()

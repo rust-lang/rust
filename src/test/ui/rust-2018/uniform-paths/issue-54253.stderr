@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `crate::version`
-  --> $DIR/issue-54253.rs:20:9
+  --> $DIR/issue-54253.rs:10:9
    |
 LL |     use crate::version; //~ ERROR unresolved import `crate::version`
    |         ^^^^^^^^^^^^^^ no `version` in the root

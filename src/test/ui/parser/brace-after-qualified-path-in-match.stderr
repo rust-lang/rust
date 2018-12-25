@@ -1,5 +1,5 @@
 error: unexpected `{` after qualified path
-  --> $DIR/brace-after-qualified-path-in-match.rs:15:27
+  --> $DIR/brace-after-qualified-path-in-match.rs:5:27
    |
 LL |         <T as Trait>::Type{key: value} => (),
    |                           ^ unexpected `{` after qualified path

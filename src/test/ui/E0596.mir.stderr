@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/E0596.rs:16:13
+  --> $DIR/E0596.rs:6:13
    |
 LL |     let x = 1;
    |         - help: consider changing this to be mutable: `mut x`

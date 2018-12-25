@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `y` as mutable more than once at a time
-  --> $DIR/issue-18783.rs:17:21
+  --> $DIR/issue-18783.rs:7:21
    |
 LL |     c.push(Box::new(|| y = 0));
    |                     -- - first borrow occurs due to use of `y` in closure
@@ -14,7 +14,7 @@ LL | }
    | - first borrow might be used here, when `c` is dropped and runs the destructor for type `std::cell::RefCell<std::vec::Vec<std::boxed::Box<dyn std::ops::FnMut()>>>`
 
 error[E0499]: cannot borrow `y` as mutable more than once at a time
-  --> $DIR/issue-18783.rs:26:29
+  --> $DIR/issue-18783.rs:16:29
    |
 LL |     Push::push(&c, Box::new(|| y = 0));
    |                             -- - first borrow occurs due to use of `y` in closure

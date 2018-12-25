@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coercion-missing-tail-expected-type.rs:13:28
+  --> $DIR/coercion-missing-tail-expected-type.rs:3:28
    |
 LL |   fn plus_one(x: i32) -> i32 { //~ ERROR mismatched types
    |  ____________________________^
@@ -12,7 +12,7 @@ LL | | }
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/coercion-missing-tail-expected-type.rs:17:29
+  --> $DIR/coercion-missing-tail-expected-type.rs:7:29
    |
 LL |   fn foo() -> Result<u8, u64> { //~ ERROR mismatched types
    |  _____________________________^

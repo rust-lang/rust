@@ -1,23 +1,23 @@
 warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/construct_with_other_type.rs:11:12
+  --> $DIR/construct_with_other_type.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/construct_with_other_type.rs:27:46
+  --> $DIR/construct_with_other_type.rs:17:46
    |
 LL |     type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
    |                                              ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/construct_with_other_type.rs:27:63
+  --> $DIR/construct_with_other_type.rs:17:63
    |
 LL |     type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
    |                                                               ^^ lifetime parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/construct_with_other_type.rs:35:40
+  --> $DIR/construct_with_other_type.rs:25:40
    |
 LL |     type Baa<'a> = &'a <T as Foo>::Bar<'a, 'static>;
    |                                        ^^ lifetime parameter not allowed

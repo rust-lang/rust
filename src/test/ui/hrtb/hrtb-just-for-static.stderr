@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
-  --> $DIR/hrtb-just-for-static.rs:34:5
+  --> $DIR/hrtb-just-for-static.rs:24:5
    |
 LL |     want_hrtb::<StaticInt>() //~ ERROR `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
    |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
@@ -7,7 +7,7 @@ LL |     want_hrtb::<StaticInt>() //~ ERROR `for<'a> StaticInt: Foo<&'a isize>` 
    = help: the following implementations were found:
              <StaticInt as Foo<&'static isize>>
 note: required by `want_hrtb`
-  --> $DIR/hrtb-just-for-static.rs:18:1
+  --> $DIR/hrtb-just-for-static.rs:8:1
    |
 LL | / fn want_hrtb<T>()
 LL | |     where T : for<'a> Foo<&'a isize>

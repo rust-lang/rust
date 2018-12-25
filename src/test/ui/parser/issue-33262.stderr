@@ -1,5 +1,5 @@
 error: expected type, found `{`
-  --> $DIR/issue-33262.rs:16:22
+  --> $DIR/issue-33262.rs:6:22
    |
 LL |     for i in 0..a as { }
    |                      ^

@@ -1,17 +1,17 @@
 error[E0107]: wrong number of lifetime arguments: expected 2, found 1
-  --> $DIR/E0107.rs:21:11
+  --> $DIR/E0107.rs:11:11
    |
 LL |     buzz: Buzz<'a>,
    |           ^^^^^^^^ expected 2 lifetime arguments
 
 error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/E0107.rs:24:14
+  --> $DIR/E0107.rs:14:14
    |
 LL |     bar: Bar<'a>,
    |              ^^ unexpected lifetime argument
 
 error[E0107]: wrong number of lifetime arguments: expected 1, found 3
-  --> $DIR/E0107.rs:27:19
+  --> $DIR/E0107.rs:17:19
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
    |                   ^^  ^^ unexpected lifetime argument

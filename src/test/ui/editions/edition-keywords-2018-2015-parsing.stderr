@@ -1,23 +1,23 @@
 error: expected identifier, found reserved keyword `async`
-  --> $DIR/edition-keywords-2018-2015-parsing.rs:18:13
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:8:13
    |
 LL |     let mut async = 1; //~ ERROR expected identifier, found reserved keyword `async`
    |             ^^^^^ expected identifier, found reserved keyword
 
 error: expected identifier, found reserved keyword `async`
-  --> $DIR/edition-keywords-2018-2015-parsing.rs:28:13
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:18:13
    |
 LL |     module::async(); //~ ERROR expected identifier, found reserved keyword `async`
    |             ^^^^^ expected identifier, found reserved keyword
 
 error: no rules expected the token `r#async`
-  --> $DIR/edition-keywords-2018-2015-parsing.rs:22:31
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:12:31
    |
 LL |     r#async = consumes_async!(r#async); //~ ERROR no rules expected the token `r#async`
    |                               ^^^^^^^ no rules expected this token in macro call
 
 error: no rules expected the token `async`
-  --> $DIR/edition-keywords-2018-2015-parsing.rs:23:35
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:13:35
    |
 LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
    |                                   ^^^^^ no rules expected this token in macro call
@@ -28,7 +28,7 @@ error: macro expansion ends with an incomplete expression: expected one of `move
 LL | ( $ i : ident ) => ( $ i )
    |                         ^ expected one of `move`, `|`, or `||` here
    | 
-  ::: $DIR/edition-keywords-2018-2015-parsing.rs:26:8
+  ::: $DIR/edition-keywords-2018-2015-parsing.rs:16:8
    |
 LL |     if passes_ident!(async) == 1 {}
    |        -------------------- in this macro invocation

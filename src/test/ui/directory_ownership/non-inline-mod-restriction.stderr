@@ -1,5 +1,5 @@
 error: Cannot declare a non-inline module inside a block unless it has a path attribute
-  --> $DIR/non-inline-mod-restriction.rs:14:9
+  --> $DIR/non-inline-mod-restriction.rs:4:9
    |
 LL |     mod foo; //~ ERROR Cannot declare a non-inline module inside a block
    |         ^^^

@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `fpriv` in this scope
-  --> $DIR/glob-resolve1.rs:32:5
+  --> $DIR/glob-resolve1.rs:22:5
    |
 LL |     fpriv(); //~ ERROR cannot find function `fpriv` in this scope
    |     ^^^^^ not found in this scope
@@ -9,7 +9,7 @@ LL | use bar::fpriv;
    |
 
 error[E0425]: cannot find function `epriv` in this scope
-  --> $DIR/glob-resolve1.rs:33:5
+  --> $DIR/glob-resolve1.rs:23:5
    |
 LL |     epriv(); //~ ERROR cannot find function `epriv` in this scope
    |     ^^^^^ not found in this scope
@@ -19,7 +19,7 @@ LL | use bar::epriv;
    |
 
 error[E0423]: expected value, found enum `B`
-  --> $DIR/glob-resolve1.rs:34:5
+  --> $DIR/glob-resolve1.rs:24:5
    |
 LL |     B; //~ ERROR expected value, found enum `B`
    |     ^
@@ -28,7 +28,7 @@ LL |     B; //~ ERROR expected value, found enum `B`
            - `B::B1`
 
 error[E0425]: cannot find value `C` in this scope
-  --> $DIR/glob-resolve1.rs:35:5
+  --> $DIR/glob-resolve1.rs:25:5
    |
 LL |     C; //~ ERROR cannot find value `C` in this scope
    |     ^ not found in this scope
@@ -38,13 +38,13 @@ LL | use bar::C;
    |
 
 error[E0425]: cannot find function `import` in this scope
-  --> $DIR/glob-resolve1.rs:36:5
+  --> $DIR/glob-resolve1.rs:26:5
    |
 LL |     import(); //~ ERROR: cannot find function `import` in this scope
    |     ^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `A` in this scope
-  --> $DIR/glob-resolve1.rs:38:11
+  --> $DIR/glob-resolve1.rs:28:11
    |
 LL |     foo::<A>(); //~ ERROR: cannot find type `A` in this scope
    |           ^ did you mean `B`?
@@ -54,7 +54,7 @@ LL | use bar::A;
    |
 
 error[E0412]: cannot find type `C` in this scope
-  --> $DIR/glob-resolve1.rs:39:11
+  --> $DIR/glob-resolve1.rs:29:11
    |
 LL |     foo::<C>(); //~ ERROR: cannot find type `C` in this scope
    |           ^ did you mean `B`?
@@ -64,7 +64,7 @@ LL | use bar::C;
    |
 
 error[E0412]: cannot find type `D` in this scope
-  --> $DIR/glob-resolve1.rs:40:11
+  --> $DIR/glob-resolve1.rs:30:11
    |
 LL |     foo::<D>(); //~ ERROR: cannot find type `D` in this scope
    |           ^ did you mean `B`?

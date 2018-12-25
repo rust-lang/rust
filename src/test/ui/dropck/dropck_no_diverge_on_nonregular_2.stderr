@@ -1,5 +1,5 @@
 error[E0320]: overflow while adding drop-check rules for FingerTree<i32>
-  --> $DIR/dropck_no_diverge_on_nonregular_2.rs:33:9
+  --> $DIR/dropck_no_diverge_on_nonregular_2.rs:23:9
    |
 LL |     let ft = //~ ERROR overflow while adding drop-check rules for FingerTree
    |         ^^
@@ -7,7 +7,7 @@ LL |     let ft = //~ ERROR overflow while adding drop-check rules for FingerTre
    = note: overflowed on FingerTree<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<Node<i32>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 error[E0320]: overflow while adding drop-check rules for FingerTree<i32>
-  --> $DIR/dropck_no_diverge_on_nonregular_2.rs:34:9
+  --> $DIR/dropck_no_diverge_on_nonregular_2.rs:24:9
    |
 LL |         FingerTree::Single(1);
    |         ^^^^^^^^^^^^^^^^^^^^^

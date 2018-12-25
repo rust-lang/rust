@@ -1,5 +1,5 @@
 error: expected one of `.`, `?`, `{`, or an operator, found `;`
-  --> $DIR/match-refactor-to-expr.rs:18:9
+  --> $DIR/match-refactor-to-expr.rs:8:9
    |
 LL |         match //~ NOTE while parsing this match expression
    |         -----

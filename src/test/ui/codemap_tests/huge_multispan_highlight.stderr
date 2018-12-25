@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `x` as mutable
-  --> $DIR/huge_multispan_highlight.rs:100:18
+  --> $DIR/huge_multispan_highlight.rs:90:18
    |
 LL |     let x = "foo";
    |         - help: make this binding mutable: `mut x`
