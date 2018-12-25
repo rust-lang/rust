@@ -149,8 +149,6 @@ fn encode_dep_graph(tcx: TyCtxt,
 
         let total_node_count = serialized_graph.nodes.len();
         let total_edge_count = serialized_graph.edge_list_data.len();
-        let (total_edge_reads, total_duplicate_edge_reads) =
-            tcx.dep_graph.edge_deduplication_data();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
 
@@ -188,8 +186,11 @@ fn encode_dep_graph(tcx: TyCtxt,
         println!("[incremental]");
         println!("[incremental] Total Node Count: {}", total_node_count);
         println!("[incremental] Total Edge Count: {}", total_edge_count);
-        println!("[incremental] Total Edge Reads: {}", total_edge_reads);
-        println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        if let Some((total_edge_reads,
+                     total_duplicate_edge_reads)) = tcx.dep_graph.edge_deduplication_data() {
+            println!("[incremental] Total Edge Reads: {}", total_edge_reads);
+            println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        }
         println!("[incremental]");
         println!("[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
                  "Node Kind",
