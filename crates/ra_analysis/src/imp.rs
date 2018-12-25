@@ -3,31 +3,32 @@ use std::{
     sync::Arc,
 };
 
-use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit, Severity};
+use rayon::prelude::*;
+use salsa::{Database, ParallelDatabase};
+
+use hir::{
+    self,
+    FnSignatureInfo,
+    Problem,
+    source_binder,
+};
+use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
+use ra_editor::{self, FileSymbol, find_node_at_offset, LineIndex, LocalEdit, Severity};
 use ra_syntax::{
-    ast::{self, ArgListOwner, Expr, NameOwner, FnDef},
     algo::find_covering_node,
+    ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
     AstNode, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
-use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use rayon::prelude::*;
-use salsa::{Database, ParallelDatabase};
-use hir::{
-    self,
-    source_binder,
-    FnSignatureInfo,
-    Problem,
-};
 
 use crate::{
-    completion::{completions, CompletionItem},
-    db,
-    symbol_index::{SymbolIndex, SymbolsDatabase, LibrarySymbolsQuery},
-    AnalysisChange, RootChange, Cancelable, CrateId, Diagnostic, FileId,
-    FileSystemEdit, FilePosition, Query, SourceChange, SourceFileEdit,
-    ReferenceResolution,
+    AnalysisChange,
+    Cancelable,
+    completion::{CompletionItem, completions},
+    CrateId, db, Diagnostic, FileId, FilePosition, FileSystemEdit,
+    Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
+    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase},
 };
 
 #[derive(Debug, Default)]
@@ -366,7 +367,7 @@ impl AnalysisImpl {
                 range: d.range,
                 message: d.msg,
                 severity: d.severity,
-                fix: None,
+                fix: d.fix.map(|fix| SourceChange::from_local_edit(file_id, fix)),
             })
             .collect::<Vec<_>>();
         if let Some(m) = source_binder::module_from_file_id(&*self.db, file_id)? {
@@ -425,25 +426,14 @@ impl AnalysisImpl {
         let file = self.file_syntax(file_id);
         let offset = range.start();
         let actions = vec![
-            (
-                "flip comma",
-                ra_editor::flip_comma(&file, offset).map(|f| f()),
-            ),
-            (
-                "add `#[derive]`",
-                ra_editor::add_derive(&file, offset).map(|f| f()),
-            ),
-            ("add impl", ra_editor::add_impl(&file, offset).map(|f| f())),
-            (
-                "introduce variable",
-                ra_editor::introduce_variable(&file, range).map(|f| f()),
-            ),
+            ra_editor::flip_comma(&file, offset).map(|f| f()),
+            ra_editor::add_derive(&file, offset).map(|f| f()),
+            ra_editor::add_impl(&file, offset).map(|f| f()),
+            ra_editor::introduce_variable(&file, range).map(|f| f()),
         ];
         actions
             .into_iter()
-            .filter_map(|(name, local_edit)| {
-                Some(SourceChange::from_local_edit(file_id, name, local_edit?))
-            })
+            .filter_map(|local_edit| Some(SourceChange::from_local_edit(file_id, local_edit?)))
             .collect()
     }
 
@@ -541,13 +531,13 @@ impl AnalysisImpl {
 }
 
 impl SourceChange {
-    pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
+    pub(crate) fn from_local_edit(file_id: FileId, edit: LocalEdit) -> SourceChange {
         let file_edit = SourceFileEdit {
             file_id,
             edit: edit.edit,
         };
         SourceChange {
-            label: label.to_string(),
+            label: edit.label,
             source_file_edits: vec![file_edit],
             file_system_edits: vec![],
             cursor_position: edit

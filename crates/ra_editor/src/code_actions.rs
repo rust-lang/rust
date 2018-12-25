@@ -12,6 +12,7 @@ use crate::{find_node_at_offset, TextEdit, TextEditBuilder};
 
 #[derive(Debug)]
 pub struct LocalEdit {
+    pub label: String,
     pub edit: TextEdit,
     pub cursor_position: Option<TextUnit>,
 }
@@ -30,6 +31,7 @@ pub fn flip_comma<'a>(
         edit.replace(prev.range(), next.text().to_string());
         edit.replace(next.range(), prev.text().to_string());
         LocalEdit {
+            label: "flip comma".to_string(),
             edit: edit.finish(),
             cursor_position: None,
         }
@@ -58,6 +60,7 @@ pub fn add_derive<'a>(
             Some(tt) => tt.syntax().range().end() - TextUnit::of_char(')'),
         };
         LocalEdit {
+            label: "add `#[derive]`".to_string(),
             edit: edit.finish(),
             cursor_position: Some(offset),
         }
@@ -109,6 +112,7 @@ pub fn add_impl<'a>(
         buf.push_str("\n}");
         edit.insert(start_offset, buf);
         LocalEdit {
+            label: "add impl".to_string(),
             edit: edit.finish(),
             cursor_position: Some(offset),
         }
@@ -148,6 +152,7 @@ pub fn introduce_variable<'a>(
         }
         let cursor_position = anchor_stmt.range().start() + TextUnit::of_str("let ");
         LocalEdit {
+            label: "introduce variable".to_string(),
             edit: edit.finish(),
             cursor_position: Some(cursor_position),
         }
@@ -194,6 +199,7 @@ pub fn make_pub_crate<'a>(
             || parent.children().any(|child| child.kind() == VISIBILITY)
         {
             return LocalEdit {
+                label: "make pub crate".to_string(),
                 edit: edit.finish(),
                 cursor_position: Some(offset),
             };
@@ -201,6 +207,7 @@ pub fn make_pub_crate<'a>(
 
         edit.insert(node_start, "pub(crate) ".to_string());
         LocalEdit {
+            label: "make pub crate".to_string(),
             edit: edit.finish(),
             cursor_position: Some(node_start),
         }
