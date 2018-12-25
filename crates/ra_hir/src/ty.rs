@@ -11,7 +11,7 @@ use rustc_hash::{FxHashMap};
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::{
     SmolStr,
-    ast::{self, AstNode, LoopBodyOwner, ArgListOwner},
+    ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp},
     SyntaxNodeRef
 };
 
@@ -20,6 +20,36 @@ use crate::{
     db::HirDatabase,
     adt::VariantData,
 };
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Mutability {
+    Shared,
+    Mut,
+}
+
+impl Mutability {
+    pub fn from_mutable(mutable: bool) -> Mutability {
+        if mutable {
+            Mutability::Mut
+        } else {
+            Mutability::Shared
+        }
+    }
+
+    pub fn as_keyword_for_ref(self) -> &'static str {
+        match self {
+            Mutability::Shared => "",
+            Mutability::Mut => "mut ",
+        }
+    }
+
+    pub fn as_keyword_for_ptr(self) -> &'static str {
+        match self {
+            Mutability::Shared => "const ",
+            Mutability::Mut => "mut ",
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Ty {
@@ -56,12 +86,13 @@ pub enum Ty {
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(TyRef),
 
-    // A raw pointer. Written as `*mut T` or `*const T`
-    // RawPtr(TypeAndMut<'tcx>),
+    /// A raw pointer. Written as `*mut T` or `*const T`
+    RawPtr(TyRef, Mutability),
 
-    // A reference; a pointer with an associated lifetime. Written as
-    // `&'a mut T` or `&'a T`.
-    // Ref(Ty<'tcx>, hir::Mutability),
+    /// A reference; a pointer with an associated lifetime. Written as
+    /// `&'a mut T` or `&'a T`.
+    Ref(TyRef, Mutability),
+
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
     /// For example the type of `bar` here:
@@ -172,7 +203,7 @@ impl Ty {
     ) -> Cancelable<Self> {
         use ra_syntax::ast::TypeRef::*;
         Ok(match node {
-            ParenType(_inner) => Ty::Unknown, // TODO
+            ParenType(inner) => Ty::new_opt(db, module, inner.type_ref())?,
             TupleType(_inner) => Ty::Unknown, // TODO
             NeverType(..) => Ty::Never,
             PathType(inner) => {
@@ -182,10 +213,18 @@ impl Ty {
                     Ty::Unknown
                 }
             }
-            PointerType(_inner) => Ty::Unknown,     // TODO
-            ArrayType(_inner) => Ty::Unknown,       // TODO
-            SliceType(_inner) => Ty::Unknown,       // TODO
-            ReferenceType(_inner) => Ty::Unknown,   // TODO
+            PointerType(inner) => {
+                let inner_ty = Ty::new_opt(db, module, inner.type_ref())?;
+                let mutability = Mutability::from_mutable(inner.is_mut());
+                Ty::RawPtr(Arc::new(inner_ty), mutability)
+            }
+            ArrayType(_inner) => Ty::Unknown, // TODO
+            SliceType(_inner) => Ty::Unknown, // TODO
+            ReferenceType(inner) => {
+                let inner_ty = Ty::new_opt(db, module, inner.type_ref())?;
+                let mutability = Mutability::from_mutable(inner.is_mut());
+                Ty::Ref(Arc::new(inner_ty), mutability)
+            }
             PlaceholderType(_inner) => Ty::Unknown, // TODO
             FnPointerType(_inner) => Ty::Unknown,   // TODO
             ForType(_inner) => Ty::Unknown,         // TODO
@@ -209,6 +248,8 @@ impl fmt::Display for Ty {
             Ty::Float(t) => write!(f, "{}", t.ty_to_string()),
             Ty::Str => write!(f, "str"),
             Ty::Slice(t) => write!(f, "[{}]", t),
+            Ty::RawPtr(t, m) => write!(f, "*{}{}", m.as_keyword_for_ptr(), t),
+            Ty::Ref(t, m) => write!(f, "&{}{}", m.as_keyword_for_ref(), t),
             Ty::Never => write!(f, "!"),
             Ty::Tuple(ts) => {
                 write!(f, "(")?;
@@ -539,12 +580,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 cast_ty
             }
             ast::Expr::RefExpr(e) => {
-                let _inner_ty = self.infer_expr_opt(e.expr())?;
-                Ty::Unknown
+                let inner_ty = self.infer_expr_opt(e.expr())?;
+                let m = Mutability::from_mutable(e.is_mut());
+                // TODO reference coercions etc.
+                Ty::Ref(Arc::new(inner_ty), m)
             }
             ast::Expr::PrefixExpr(e) => {
-                let _inner_ty = self.infer_expr_opt(e.expr())?;
-                Ty::Unknown
+                let inner_ty = self.infer_expr_opt(e.expr())?;
+                match e.op() {
+                    Some(PrefixOp::Deref) => {
+                        match inner_ty {
+                            // builtin deref:
+                            Ty::Ref(ref_inner, _) => (*ref_inner).clone(),
+                            Ty::RawPtr(ptr_inner, _) => (*ptr_inner).clone(),
+                            // TODO Deref::deref
+                            _ => Ty::Unknown,
+                        }
+                    }
+                    _ => Ty::Unknown,
+                }
             }
             ast::Expr::RangeExpr(_e) => Ty::Unknown,
             ast::Expr::BinExpr(_e) => Ty::Unknown,

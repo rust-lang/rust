@@ -2607,7 +2607,11 @@ impl<R: TreeRoot<RaTypes>> ParenTypeNode<R> {
 }
 
 
-impl<'a> ParenType<'a> {}
+impl<'a> ParenType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // Pat
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2972,7 +2976,11 @@ impl<R: TreeRoot<RaTypes>> PointerTypeNode<R> {
 }
 
 
-impl<'a> PointerType<'a> {}
+impl<'a> PointerType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // PosField
 #[derive(Debug, Clone, Copy,)]
@@ -3285,7 +3293,11 @@ impl<R: TreeRoot<RaTypes>> ReferenceTypeNode<R> {
 }
 
 
-impl<'a> ReferenceType<'a> {}
+impl<'a> ReferenceType<'a> {
+    pub fn type_ref(self) -> Option<TypeRef<'a>> {
+        super::child_opt(self)
+    }
+}
 
 // RetType
 #[derive(Debug, Clone, Copy,)]

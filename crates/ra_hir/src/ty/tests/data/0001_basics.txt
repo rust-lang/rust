@@ -1,4 +1,4 @@
-[33; 34) 'd': [unknown]
+[33; 34) 'd': &[unknown]
 [88; 94) '1isize': [unknown]
 [48; 49) 'a': u32
 [55; 56) 'b': isize
@@ -10,4 +10,4 @@
 [17; 18) 'b': isize
 [100; 106) '"test"': [unknown]
 [42; 121) '{     ...f32; }': ()
-[69; 70) 'd': [unknown]
+[69; 70) 'd': &[unknown]
