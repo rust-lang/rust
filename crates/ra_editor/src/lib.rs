@@ -2,8 +2,7 @@ mod code_actions;
 mod extend_selection;
 mod folding_ranges;
 mod line_index;
-// public for benchmarkig
-pub mod line_index_utils;
+mod line_index_utils;
 mod symbols;
 #[cfg(test)]
 mod test_utils;
