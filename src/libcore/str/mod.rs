@@ -3544,7 +3544,7 @@ impl str {
     ///
     /// assert_eq!("Hello\tworld", s.trim());
     /// ```
-    #[must_use = "this returns the trimmed string as a new allocation, \
+    #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim(&self) -> &str {
