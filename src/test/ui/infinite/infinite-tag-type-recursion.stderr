@@ -1,12 +1,12 @@
-error[E0072]: recursive type `mlist` has infinite size
+error[E0072]: recursive type `MList` has infinite size
   --> $DIR/infinite-tag-type-recursion.rs:11:1
    |
-LL | enum mlist { cons(isize, mlist), nil, }
+LL | enum MList { Cons(isize, MList), Nil }
    | ^^^^^^^^^^               ----- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `mlist` representable
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `MList` representable
 
 error: aborting due to previous error
 

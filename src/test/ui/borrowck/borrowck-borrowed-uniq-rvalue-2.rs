@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: borrowed value does not live long enough
-
-struct defer<'a> {
+struct Defer<'a> {
     x: &'a [&'a str],
 }
 
-impl<'a> Drop for defer<'a> {
+impl<'a> Drop for Defer<'a> {
     fn drop(&mut self) {
         unsafe {
             println!("{:?}", self.x);
@@ -22,13 +20,13 @@ impl<'a> Drop for defer<'a> {
     }
 }
 
-fn defer<'r>(x: &'r [&'r str]) -> defer<'r> {
-    defer {
+fn defer<'r>(x: &'r [&'r str]) -> Defer<'r> {
+    Defer {
         x: x
     }
 }
 
 fn main() {
-    let x = defer(&vec!["Goodbye", "world!"]);
+    let x = defer(&vec!["Goodbye", "world!"]); //~ ERROR borrowed value does not live long enough
     x.x[0];
 }

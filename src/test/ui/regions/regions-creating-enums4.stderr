@@ -1,25 +1,25 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
   --> $DIR/regions-creating-enums4.rs:17:5
    |
-LL |     ast::add(x, y) //~ ERROR cannot infer
+LL |     Ast::Add(x, y) //~ ERROR cannot infer
    |     ^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 16:16...
   --> $DIR/regions-creating-enums4.rs:16:16
    |
-LL | fn mk_add_bad2<'a,'b>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'b> {
+LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
    |                ^^
    = note: ...so that the expression is assignable:
-           expected &ast<'_>
-              found &ast<'a>
+           expected &Ast<'_>
+              found &Ast<'a>
 note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 16:19...
   --> $DIR/regions-creating-enums4.rs:16:19
    |
-LL | fn mk_add_bad2<'a,'b>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'b> {
+LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
    |                   ^^
    = note: ...so that the expression is assignable:
-           expected ast<'b>
-              found ast<'_>
+           expected Ast<'b>
+              found Ast<'_>
 
 error: aborting due to previous error
 

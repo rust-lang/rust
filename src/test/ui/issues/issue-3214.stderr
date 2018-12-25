@@ -5,14 +5,14 @@ LL | fn foo<T>() {
    |    --- - type variable from outer function
    |    |
    |    try adding a local type parameter in this method instead
-LL |     struct foo {
+LL |     struct Foo {
 LL |         x: T, //~ ERROR can't use type parameters from outer function
    |            ^ use of type variable from outer function
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/issue-3214.rs:16:26
    |
-LL |     impl<T> Drop for foo<T> {
+LL |     impl<T> Drop for Foo<T> {
    |                          ^ unexpected type argument
 
 error: aborting due to 2 previous errors

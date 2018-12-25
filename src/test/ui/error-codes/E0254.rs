@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(alloc)]
-#![allow(unused_extern_crates)]
+#![allow(unused_extern_crates, non_camel_case_types)]
 
 extern crate alloc;
 

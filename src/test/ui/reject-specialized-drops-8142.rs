@@ -41,16 +41,16 @@ impl                    Drop for N<'static>     { fn drop(&mut self) { } } // RE
 //~| expected type `N<'n>`
 //~|    found type `N<'static>`
 
-impl<Cok_nobound> Drop for O<Cok_nobound> { fn drop(&mut self) { } } // ACCEPT
+impl<COkNoBound> Drop for O<COkNoBound> { fn drop(&mut self) { } } // ACCEPT
 
 impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJECT
 //~^ ERROR Implementations of Drop cannot be specialized
 
-impl<Adds_bnd:Bound> Drop for Q<Adds_bnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR The requirement `Adds_bnd: Bound` is added only by the Drop impl.
+impl<AddsBnd:Bound> Drop for Q<AddsBnd> { fn drop(&mut self) { } } // REJECT
+//~^ ERROR The requirement `AddsBnd: Bound` is added only by the Drop impl.
 
-impl<'rbnd,Adds_rbnd:'rbnd> Drop for R<Adds_rbnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR The requirement `Adds_rbnd : 'rbnd` is added only by the Drop impl.
+impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
+//~^ ERROR The requirement `AddsRBnd : 'rbnd` is added only by the Drop impl.
 
 impl<Bs:Bound>    Drop for S<Bs>          { fn drop(&mut self) { } } // ACCEPT
 

@@ -53,11 +53,11 @@ note: Use same sequence of generic type and region parameters that is on the str
 LL | struct P<Tp> { x: *const Tp }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0367]: The requirement `Adds_bnd: Bound` is added only by the Drop impl.
+error[E0367]: The requirement `AddsBnd: Bound` is added only by the Drop impl.
   --> $DIR/reject-specialized-drops-8142.rs:49:1
    |
-LL | impl<Adds_bnd:Bound> Drop for Q<Adds_bnd> { fn drop(&mut self) { } } // REJECT
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<AddsBnd:Bound> Drop for Q<AddsBnd> { fn drop(&mut self) { } } // REJECT
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: The same requirement must be part of the struct/enum definition
   --> $DIR/reject-specialized-drops-8142.rs:21:1
@@ -65,11 +65,11 @@ note: The same requirement must be part of the struct/enum definition
 LL | struct Q<Tq> { x: *const Tq }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0367]: The requirement `Adds_rbnd : 'rbnd` is added only by the Drop impl.
+error[E0367]: The requirement `AddsRBnd : 'rbnd` is added only by the Drop impl.
   --> $DIR/reject-specialized-drops-8142.rs:52:1
    |
-LL | impl<'rbnd,Adds_rbnd:'rbnd> Drop for R<Adds_rbnd> { fn drop(&mut self) { } } // REJECT
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: The same requirement must be part of the struct/enum definition
   --> $DIR/reject-specialized-drops-8142.rs:22:1

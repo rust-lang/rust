@@ -10,21 +10,21 @@
 
 #![feature(box_syntax)]
 
-struct node_ {
-    a: Box<cycle>
+struct Node_ {
+    a: Box<Cycle>
 }
 
-enum cycle {
-    node(node_),
-    empty
+enum Cycle {
+    Node(Node_),
+    Empty,
 }
 fn main() {
-    let mut x: Box<_> = box cycle::node(node_ {a: box cycle::empty});
+    let mut x: Box<_> = box Cycle::Node(Node_ {a: box Cycle::Empty});
     // Create a cycle!
     match *x {
-      cycle::node(ref mut y) => {
+      Cycle::Node(ref mut y) => {
         y.a = x; //~ ERROR cannot move out of
       }
-      cycle::empty => {}
+      Cycle::Empty => {}
     };
 }

@@ -14,7 +14,7 @@ LL |     ["hi"].bind(|x| [x] );
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `bind`, perhaps you need to implement it:
-           candidate #1: `vec_monad`
+           candidate #1: `VecMonad`
 
 error: aborting due to 2 previous errors
 

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum chan { }
+enum Chan { }
 
-trait channel<T> {
+trait Channel<T> {
     fn send(&self, v: T);
 }
 
-// `chan` is not a trait, it's an enum
-impl chan for isize { //~ ERROR expected trait, found enum `chan`
+// `Chan` is not a trait, it's an enum
+impl Chan for isize { //~ ERROR expected trait, found enum `Chan`
     fn send(&self, v: isize) { panic!() }
 }
 

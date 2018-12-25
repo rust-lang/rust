@@ -1,17 +1,17 @@
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/trait-test-2.rs:18:14
+  --> $DIR/trait-test-2.rs:19:14
    |
 LL |     10.dup::<i32>(); //~ ERROR wrong number of type arguments: expected 0, found 1
    |              ^^^ unexpected type argument
 
 error[E0107]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/trait-test-2.rs:19:20
+  --> $DIR/trait-test-2.rs:20:20
    |
 LL |     10.blah::<i32, i32>(); //~ ERROR wrong number of type arguments: expected 1, found 2
    |                    ^^^ unexpected type argument
 
 error[E0038]: the trait `bar` cannot be made into an object
-  --> $DIR/trait-test-2.rs:20:16
+  --> $DIR/trait-test-2.rs:21:16
    |
 LL |     (box 10 as Box<bar>).dup();
    |                ^^^^^^^^ the trait `bar` cannot be made into an object
@@ -20,7 +20,7 @@ LL |     (box 10 as Box<bar>).dup();
    = note: method `blah` has generic type parameters
 
 error[E0038]: the trait `bar` cannot be made into an object
-  --> $DIR/trait-test-2.rs:20:6
+  --> $DIR/trait-test-2.rs:21:6
    |
 LL |     (box 10 as Box<bar>).dup();
    |      ^^^^^^ the trait `bar` cannot be made into an object

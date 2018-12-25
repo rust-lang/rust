@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait t1 : t2 {
+trait T1 : T2 {
 //~^ ERROR cycle detected
 }
 
-trait t2 : t1 {
+trait T2 : T1 {
 }
 
 fn main() { }

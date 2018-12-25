@@ -1,13 +1,13 @@
-error[E0072]: recursive type `t1` has infinite size
+error[E0072]: recursive type `T1` has infinite size
   --> $DIR/type-recursive.rs:11:1
    |
-LL | struct t1 { //~ ERROR E0072
+LL | struct T1 { //~ ERROR E0072
    | ^^^^^^^^^ recursive type has infinite size
 LL |     foo: isize,
-LL |     foolish: t1
+LL |     foolish: T1
    |     ----------- recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `t1` representable
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `T1` representable
 
 error: aborting due to previous error
 

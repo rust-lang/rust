@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #[derive(PartialEq)]
-struct thing(usize);
-impl PartialOrd for thing { //~ ERROR not all trait items implemented, missing: `partial_cmp`
-    fn le(&self, other: &thing) -> bool { true }
-    fn ge(&self, other: &thing) -> bool { true }
+struct Thing(usize);
+impl PartialOrd for Thing { //~ ERROR not all trait items implemented, missing: `partial_cmp`
+    fn le(&self, other: &Thing) -> bool { true }
+    fn ge(&self, other: &Thing) -> bool { true }
 }
 fn main() {}

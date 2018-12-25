@@ -1,11 +1,11 @@
 error[E0623]: lifetime mismatch
   --> $DIR/regions-creating-enums3.rs:17:5
    |
-LL | fn mk_add_bad1<'a,'b>(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {
+LL | fn mk_add_bad1<'a,'b>(x: &'a Ast<'a>, y: &'b Ast<'b>) -> Ast<'a> {
    |                                          -----------     -------
    |                                          |
    |                                          this parameter and the return type are declared with different lifetimes...
-LL |     ast::add(x, y) //~ ERROR 17:5: 17:19: lifetime mismatch [E0623]
+LL |     Ast::Add(x, y) //~ ERROR 17:5: 17:19: lifetime mismatch [E0623]
    |     ^^^^^^^^^^^^^^ ...but data from `y` is returned here
 
 error: aborting due to previous error

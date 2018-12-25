@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct thing<'a, Q:'a> {
+struct Thing<'a, Q:'a> {
     x: &'a Q
 }
 
-fn thing<'a,Q>(x: &Q) -> thing<'a,Q> {
-    thing{ x: x } //~ ERROR 16:5: 16:18: explicit lifetime required in the type of `x` [E0621]
+fn thing<'a,Q>(x: &Q) -> Thing<'a,Q> {
+    Thing { x: x } //~ ERROR explicit lifetime required in the type of `x` [E0621]
 }
 
 fn main() {

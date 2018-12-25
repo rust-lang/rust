@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-loan-rcvr.rs:34:14
+  --> $DIR/borrowck-loan-rcvr.rs:33:14
    |
 LL |     p.blockm(|| { //~ ERROR cannot borrow `p` as mutable
    |     - ------ ^^ mutable borrow occurs here
@@ -10,7 +10,7 @@ LL |         p.x = 10;
    |         - second borrow occurs due to use of `p` in closure
 
 error[E0502]: cannot borrow `p` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-loan-rcvr.rs:45:5
+  --> $DIR/borrowck-loan-rcvr.rs:44:5
    |
 LL |     let l = &mut p;
    |             ------ mutable borrow occurs here

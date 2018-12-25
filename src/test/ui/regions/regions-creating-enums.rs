@@ -8,34 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum ast<'a> {
-    num(usize),
-    add(&'a ast<'a>, &'a ast<'a>)
+enum Ast<'a> {
+    Num(usize),
+    Add(&'a Ast<'a>, &'a Ast<'a>)
 }
 
 fn build() {
-    let x = ast::num(3);
-    let y = ast::num(4);
-    let z = ast::add(&x, &y);
+    let x = Ast::Num(3);
+    let y = Ast::Num(4);
+    let z = Ast::Add(&x, &y);
     compute(&z);
 }
 
-fn compute(x: &ast) -> usize {
+fn compute(x: &Ast) -> usize {
     match *x {
-      ast::num(x) => { x }
-      ast::add(x, y) => { compute(x) + compute(y) }
+      Ast::Num(x) => { x }
+      Ast::Add(x, y) => { compute(x) + compute(y) }
     }
 }
 
-fn map_nums<'a,'b, F>(x: &ast, f: &mut F) -> &'a ast<'b> where F: FnMut(usize) -> usize {
+fn map_nums<'a,'b, F>(x: &Ast, f: &mut F) -> &'a Ast<'b> where F: FnMut(usize) -> usize {
     match *x {
-      ast::num(x) => {
-        return &ast::num((*f)(x)); //~ ERROR borrowed value does not live long enough
+      Ast::Num(x) => {
+        return &Ast::Num((*f)(x)); //~ ERROR borrowed value does not live long enough
       }
-      ast::add(x, y) => {
+      Ast::Add(x, y) => {
         let m_x = map_nums(x, f);
         let m_y = map_nums(y, f);
-        return &ast::add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
+        return &Ast::Add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
       }
     }
 }

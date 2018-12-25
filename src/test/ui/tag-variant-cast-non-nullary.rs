@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum non_nullary {
-    nullary,
-    other(isize),
+enum NonNullary {
+    Nullary,
+    Other(isize),
 }
 
 fn main() {
-    let v = non_nullary::nullary;
-    let val = v as isize; //~ ERROR non-primitive cast: `non_nullary` as `isize` [E0605]
+    let v = NonNullary::Nullary;
+    let val = v as isize; //~ ERROR non-primitive cast: `NonNullary` as `isize` [E0605]
 }

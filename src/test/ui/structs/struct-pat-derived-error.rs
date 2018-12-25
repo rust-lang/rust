@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct a {
+struct A {
     b: usize,
     c: usize
 }
 
-impl a {
+impl A {
     fn foo(&self) {
-        let a { x, y } = self.d; //~ ERROR no field `d` on type `&a`
-        //~^ ERROR struct `a` does not have fields named `x`, `y`
+        let A { x, y } = self.d; //~ ERROR no field `d` on type `&A`
+        //~^ ERROR struct `A` does not have fields named `x`, `y`
         //~| ERROR pattern does not mention fields `b`, `c`
     }
 }

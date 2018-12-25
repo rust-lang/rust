@@ -12,24 +12,24 @@
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 
-type a<'a> = &'a isize;
-type b<'a> = Box<a<'a>>;
+type A<'a> = &'a isize;
+type B<'a> = Box<A<'a>>;
 
-struct c<'a> {
-    f: Box<b<'a>>
+struct C<'a> {
+    f: Box<B<'a>>
 }
 
-trait set_f<'a> {
-    fn set_f_ok(&mut self, b: Box<b<'a>>);
-    fn set_f_bad(&mut self, b: Box<b>);
+trait SetF<'a> {
+    fn set_f_ok(&mut self, b: Box<B<'a>>);
+    fn set_f_bad(&mut self, b: Box<B>);
 }
 
-impl<'a> set_f<'a> for c<'a> {
-    fn set_f_ok(&mut self, b: Box<b<'a>>) {
+impl<'a> SetF<'a> for C<'a> {
+    fn set_f_ok(&mut self, b: Box<B<'a>>) {
         self.f = b;
     }
 
-    fn set_f_bad(&mut self, b: Box<b>) {
+    fn set_f_bad(&mut self, b: Box<B>) {
         self.f = b;
         //~^ ERROR mismatched types
         //~| expected type `std::boxed::Box<std::boxed::Box<&'a isize>>`

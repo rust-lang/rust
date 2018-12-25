@@ -1,12 +1,12 @@
-error[E0072]: recursive type `list` has infinite size
+error[E0072]: recursive type `List` has infinite size
   --> $DIR/recursive-enum.rs:11:1
    |
-LL | enum list<T> { cons(T, list<T>), nil }
+LL | enum List<T> { Cons(T, List<T>), Nil }
    | ^^^^^^^^^^^^           ------- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `list` representable
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
 
 error: aborting due to previous error
 

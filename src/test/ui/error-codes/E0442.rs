@@ -10,6 +10,7 @@
 
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]
+#![allow(non_camel_case_types)]
 
 #[repr(simd)]
 struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,

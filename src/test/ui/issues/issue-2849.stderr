@@ -1,7 +1,7 @@
 error[E0408]: variable `i` is not bound in all patterns
   --> $DIR/issue-2849.rs:15:7
    |
-LL |       foo::alpha | foo::beta(i) => {}
+LL |       Foo::Alpha | Foo::Beta(i) => {}
    |       ^^^^^^^^^^             - variable not in all patterns
    |       |
    |       pattern doesn't bind `i`

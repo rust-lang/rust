@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait animal {
+trait Animal {
   fn eat(&self);
 }
 
-struct cat {
+struct Cat {
   meows: usize,
 }
 
-impl animal for cat {
+impl Animal for Cat {
     //~^ ERROR not all trait items implemented, missing: `eat`
 }
 
-fn cat(in_x : usize) -> cat {
-    cat {
+fn cat(in_x : usize) -> Cat {
+    Cat {
         meows: in_x
     }
 }

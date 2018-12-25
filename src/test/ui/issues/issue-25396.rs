@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_camel_case_types)]
+
 use foo::baz;
 use bar::baz; //~ ERROR the name `baz` is defined multiple times
 

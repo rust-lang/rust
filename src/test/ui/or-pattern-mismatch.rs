@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mismatched types
+enum Blah { A(isize, isize, usize), B(isize, isize) }
 
-enum blah { a(isize, isize, usize), b(isize, isize), }
-
-fn main() { match blah::a(1, 1, 2) { blah::a(_, x, y) | blah::b(x, y) => { } } }
+fn main() { match Blah::A(1, 1, 2) { Blah::A(_, x, y) | Blah::B(x, y) => { } } }
+//~^ ERROR mismatched types

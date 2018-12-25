@@ -1,10 +1,10 @@
 error[E0621]: explicit lifetime required in the type of `p`
   --> $DIR/regions-infer-at-fn-not-param.rs:23:57
    |
-LL | fn take1<'a>(p: parameterized1) -> parameterized1<'a> { p }
+LL | fn take1<'a>(p: Parameterized1) -> Parameterized1<'a> { p }
    |                 --------------                          ^ lifetime `'a` required
    |                 |
-   |                 help: add explicit lifetime `'a` to the type of `p`: `parameterized1<'a>`
+   |                 help: add explicit lifetime `'a` to the type of `p`: `Parameterized1<'a>`
 
 error: aborting due to previous error
 

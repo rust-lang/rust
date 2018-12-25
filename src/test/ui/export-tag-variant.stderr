@@ -1,7 +1,7 @@
-error[E0603]: enum `y` is private
+error[E0603]: enum `Y` is private
   --> $DIR/export-tag-variant.rs:17:26
    |
-LL | fn main() { let z = foo::y::y1; } //~ ERROR: enum `y` is private
+LL | fn main() { let z = foo::Y::Y1; } //~ ERROR: enum `Y` is private
    |                          ^
 
 error: aborting due to previous error

@@ -8,24 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct cat {
+struct Cat {
   meows : usize,
 
   how_hungry : isize,
 }
 
-impl cat {
+impl Cat {
     pub fn speak(&self) { self.meows += 1; }
 }
 
-fn cat(in_x : usize, in_y : isize) -> cat {
-    cat {
+fn cat(in_x : usize, in_y : isize) -> Cat {
+    Cat {
         meows: in_x,
         how_hungry: in_y
     }
 }
 
 fn main() {
-  let nyan : cat = cat(52, 99);
+  let nyan : Cat = cat(52, 99);
   nyan.speak = || println!("meow"); //~ ERROR attempted to take value of method
 }

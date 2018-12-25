@@ -1,12 +1,12 @@
-error[E0072]: recursive type `bar` has infinite size
+error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/issue-3008-2.rs:12:1
    |
-LL | struct bar { x: bar }
+LL | struct Bar { x: Bar }
    | ^^^^^^^^^^   ------ recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `bar` representable
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
 
 error: aborting due to previous error
 

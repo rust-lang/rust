@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mismatched types
+enum Bar { T1((), Option<Vec<isize>>), T2 }
 
-enum bar { t1((), Option<Vec<isize> >), t2, }
-
-fn foo(t: bar) {
+fn foo(t: Bar) {
     match t {
-      bar::t1(_, Some::<isize>(x)) => {
+      Bar::T1(_, Some::<isize>(x)) => { //~ ERROR mismatched types
         println!("{}", x);
       }
       _ => { panic!(); }

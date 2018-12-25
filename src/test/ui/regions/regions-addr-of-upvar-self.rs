@@ -10,11 +10,11 @@
 
 use std::usize;
 
-struct dog {
+struct Dog {
     food: usize,
 }
 
-impl dog {
+impl Dog {
     pub fn chase_cat(&mut self) {
         let _f = || {
             let p: &'static mut usize = &mut self.food; //~ ERROR cannot infer

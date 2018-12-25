@@ -1,7 +1,7 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-borrowed-uniq-rvalue-2.rs:32:20
+  --> $DIR/borrowck-borrowed-uniq-rvalue-2.rs:30:20
    |
-LL |     let x = defer(&vec!["Goodbye", "world!"]);
+LL |     let x = defer(&vec!["Goodbye", "world!"]); //~ ERROR borrowed value does not live long enough
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ - temporary value dropped here while still borrowed
    |                    |
    |                    temporary value does not live long enough

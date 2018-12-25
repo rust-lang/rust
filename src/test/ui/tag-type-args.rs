@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:wrong number of type arguments
+enum Quux<T> { Bar }
 
-enum quux<T> { bar }
-
-fn foo(c: quux) { assert!((false)); }
+fn foo(c: Quux) { assert!((false)); } //~ ERROR wrong number of type arguments
 
 fn main() { panic!(); }

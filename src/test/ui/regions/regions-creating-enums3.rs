@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum ast<'a> {
-    num(usize),
-    add(&'a ast<'a>, &'a ast<'a>)
+enum Ast<'a> {
+    Num(usize),
+    Add(&'a Ast<'a>, &'a Ast<'a>)
 }
 
-fn mk_add_bad1<'a,'b>(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {
-    ast::add(x, y) //~ ERROR 17:5: 17:19: lifetime mismatch [E0623]
+fn mk_add_bad1<'a,'b>(x: &'a Ast<'a>, y: &'b Ast<'b>) -> Ast<'a> {
+    Ast::Add(x, y) //~ ERROR 17:5: 17:19: lifetime mismatch [E0623]
 }
 
 fn main() {

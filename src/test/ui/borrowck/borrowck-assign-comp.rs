@@ -11,10 +11,10 @@
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
 
-struct point { x: isize, y: isize }
+struct Point { x: isize, y: isize }
 
 fn a() {
-    let mut p = point {x: 3, y: 4};
+    let mut p = Point {x: 3, y: 4};
     let q = &p;
 
     // This assignment is illegal because the field x is not
@@ -29,9 +29,9 @@ fn c() {
     // this is sort of the opposite.  We take a loan to the interior of `p`
     // and then try to overwrite `p` as a whole.
 
-    let mut p = point {x: 3, y: 4};
+    let mut p = Point {x: 3, y: 4};
     let q = &p.y;
-    p = point {x: 5, y: 7};//[ast]~ ERROR cannot assign to `p`
+    p = Point {x: 5, y: 7};//[ast]~ ERROR cannot assign to `p`
                            //[mir]~^ ERROR cannot assign to `p` because it is borrowed
     p.x; // silence warning
     *q; // stretch loan
@@ -41,7 +41,7 @@ fn d() {
     // just for completeness's sake, the easy case, where we take the
     // address of a subcomponent and then modify that subcomponent:
 
-    let mut p = point {x: 3, y: 4};
+    let mut p = Point {x: 3, y: 4};
     let q = &p.y;
     p.y = 5; //[ast]~ ERROR cannot assign to `p.y`
              //[mir]~^ ERROR cannot assign to `p.y` because it is borrowed

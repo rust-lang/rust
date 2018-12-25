@@ -6,7 +6,7 @@ LL |     let _y = {x} + x.clone(); // the `{x}` forces a move to occur
    |               |
    |               value moved here
    |
-   = note: move occurs because `x` has type `foo`, which does not implement the `Copy` trait
+   = note: move occurs because `x` has type `Foo`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

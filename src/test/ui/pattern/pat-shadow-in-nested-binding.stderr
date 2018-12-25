@@ -1,5 +1,5 @@
 error[E0530]: let bindings cannot shadow tuple structs
-  --> $DIR/pat-shadow-in-nested-binding.rs:14:10
+  --> $DIR/pat-shadow-in-nested-binding.rs:15:10
    |
 LL | struct foo(usize);
    | ------------------ the tuple struct `foo` is defined here

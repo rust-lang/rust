@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct S(Vec<isize>);
 
-struct sty(Vec<isize> );
-
-fn unpack<F>(_unpack: F) where F: FnOnce(&sty) -> Vec<isize> {}
+fn unpack<F>(_unpack: F) where F: FnOnce(&S) -> Vec<isize> {}
 
 fn main() {
     let _foo = unpack(|s| {
         // Test that `s` is moved here.
-        match *s { sty(v) => v } //~ ERROR cannot move out
+        match *s { S(v) => v } //~ ERROR cannot move out
     });
 }

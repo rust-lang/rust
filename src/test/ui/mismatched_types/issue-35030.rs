@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// rustc-env:RUST_NEW_ERROR_FORMAT
+#![allow(non_camel_case_types)]
 
 trait Parser<T> {
     fn parse(text: &str) -> Option<T>;

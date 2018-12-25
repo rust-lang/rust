@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)]
 trait foo { fn foo(&self); }
 
 impl isize for usize { fn foo(&self) {} } //~ ERROR trait

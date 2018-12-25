@@ -18,12 +18,12 @@ mod foo {
 mod a {
     pub mod b {
         use foo::foo;
-        type bar = isize;
+        type Bar = isize;
     }
     pub mod sub {
         use a::b::*;
-        fn sub() -> bar { 1 }
-        //~^ ERROR cannot find type `bar` in this scope
+        fn sub() -> Bar { 1 }
+        //~^ ERROR cannot find type `Bar` in this scope
     }
 }
 

@@ -1,11 +1,11 @@
-error[E0599]: no variant named `hsl` found for type `color` in the current scope
-  --> $DIR/bogus-tag.rs:18:7
+error[E0599]: no variant named `Hsl` found for type `Color` in the current scope
+  --> $DIR/bogus-tag.rs:17:7
    |
-LL | enum color { rgb(isize, isize, isize), rgba(isize, isize, isize, isize), }
-   | ---------- variant `hsl` not found here
+LL | enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }
+   | ---------- variant `Hsl` not found here
 ...
-LL |       color::hsl(h, s, l) => { println!("hsl"); }
-   |       ^^^^^^^^^^^^^^^^^^^ variant not found in `color`
+LL |       Color::Hsl(h, s, l) => { println!("hsl"); }
+   |       ^^^^^^^^^^^^^^^^^^^ variant not found in `Color`
 
 error: aborting due to previous error
 

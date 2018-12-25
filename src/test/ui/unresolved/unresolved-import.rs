@@ -27,11 +27,11 @@ mod bar {
 }
 
 mod food {
-    pub use self::zug::baz::{self as bag, foobar as beans};
+    pub use self::zug::baz::{self as bag, Foobar as beans};
 
     mod zug {
         pub mod baz {
-            pub struct foobar;
+            pub struct Foobar;
         }
     }
 }

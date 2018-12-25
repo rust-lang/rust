@@ -1,13 +1,13 @@
-error[E0428]: the name `a` is defined multiple times
+error[E0428]: the name `A` is defined multiple times
   --> $DIR/issue-3099-a.rs:13:1
    |
-LL | enum a { b, c }
-   | ------ previous definition of the type `a` here
+LL | enum A { B, C }
+   | ------ previous definition of the type `A` here
 LL | 
-LL | enum a { d, e } //~ ERROR the name `a` is defined multiple times
-   | ^^^^^^ `a` redefined here
+LL | enum A { D, E } //~ ERROR the name `A` is defined multiple times
+   | ^^^^^^ `A` redefined here
    |
-   = note: `a` must be defined only once in the type namespace of this module
+   = note: `A` must be defined only once in the type namespace of this module
 
 error: aborting due to previous error
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type x = Vec<x>;
+type X = Vec<X>;
 //~^ ERROR cycle detected
 
-fn main() { let b: x = Vec::new(); }
+fn main() { let b: X = Vec::new(); }
