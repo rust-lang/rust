@@ -9,6 +9,7 @@
 
 #![feature(non_ascii_idents)]
 #![warn(clippy::all, clippy::pub_enum_variant_names)]
+#![allow(non_camel_case_types)]
 
 enum FakeCallType {
     CALL,
