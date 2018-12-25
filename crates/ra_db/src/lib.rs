@@ -8,7 +8,7 @@ use std::sync::Arc;
 use ra_editor::LineIndex;
 use ra_syntax::{TextUnit, SourceFileNode};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Canceled;
 
 pub type Cancelable<T> = Result<T, Canceled>;
