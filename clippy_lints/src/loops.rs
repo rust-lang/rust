@@ -479,7 +479,7 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // we don't want to check expanded macros
-        if !expr.span.macro_backtrace().is_empty() {
+        if !in_macro(expr.span) {
             return;
         }
 

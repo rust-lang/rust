@@ -12,7 +12,7 @@ use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::{ast::NodeId, source_map::Span};
-use crate::utils::{snippet_opt, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint_and_then, in_macro};
 
 /// **What it does:** Checks for missing return statements at the end of a block.
 ///
@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro
-        if !mir.return_ty().is_unit() && span.macro_backtrace().is_empty() {
+        if !mir.return_ty().is_unit() && !in_macro(span) {
             Self::expr_match(cx, &body.value);
         }
     }
