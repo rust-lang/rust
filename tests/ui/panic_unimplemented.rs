@@ -8,7 +8,7 @@
 // except according to those terms.
 
 #![warn(clippy::panic_params, clippy::unimplemented)]
-
+#![allow(clippy::assert_checks::explicit_true)]
 fn missing() {
     if true {
         panic!("{}");

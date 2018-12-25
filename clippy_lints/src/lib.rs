@@ -88,6 +88,7 @@ mod utils;
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
 pub mod arithmetic;
+pub mod assert_checks;
 pub mod assign_ops;
 pub mod attrs;
 pub mod bit_mask;
@@ -486,6 +487,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
     reg.register_late_lint_pass(box redundant_clone::RedundantClone);
     reg.register_late_lint_pass(box slow_vector_initialization::Pass);
+    reg.register_late_lint_pass(box assert_checks::AssertChecks);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -563,6 +565,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::all", Some("clippy"), vec![
         approx_const::APPROX_CONSTANT,
+        assert_checks::EXPLICIT_TRUE,
+        assert_checks::EXPLICIT_FALSE,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_CFG_ATTR,
@@ -940,6 +944,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::correctness", Some("clippy_correctness"), vec![
         approx_const::APPROX_CONSTANT,
+        assert_checks::EXPLICIT_TRUE,
+        assert_checks::EXPLICIT_FALSE,
         attrs::DEPRECATED_SEMVER,
         attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,
