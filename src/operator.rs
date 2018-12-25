@@ -145,8 +145,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // Dead allocations in miri cannot overlap with live allocations, but
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
-                    self.memory().get(left.alloc_id)?.check_bounds_ptr(left)?;
-                    self.memory().get(right.alloc_id)?.check_bounds_ptr(right)?;
+                    self.memory().check_bounds_ptr(left, InboundsCheck::Live)?;
+                    self.memory().check_bounds_ptr(right, InboundsCheck::Live)?;
                     // Two in-bounds pointers, we can compare across allocations
                     left == right
                 }
