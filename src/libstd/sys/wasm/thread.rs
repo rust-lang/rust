@@ -41,7 +41,7 @@ impl Thread {
 
     #[cfg(target_feature = "atomics")]
     pub fn sleep(dur: Duration) {
-        use arch::wasm32::atomic;
+        use arch::wasm32;
         use cmp;
 
         // Use an atomic wait to block the current thread artificially with a
@@ -53,7 +53,7 @@ impl Thread {
         while nanos > 0 {
             let amt = cmp::min(i64::max_value() as u128, nanos);
             let mut x = 0;
-            let val = unsafe { atomic::wait_i32(&mut x, 0, amt as i64) };
+            let val = unsafe { wasm32::i32_atomic_wait(&mut x, 0, amt as i64) };
             debug_assert_eq!(val, 2);
             nanos -= amt;
         }
@@ -107,7 +107,7 @@ cfg_if! {
             panic!("thread local data not implemented on wasm with atomics yet")
         }
 
-        pub fn tcb_set(ptr: *mut u8) {
+        pub fn tcb_set(_ptr: *mut u8) {
             panic!("thread local data not implemented on wasm with atomics yet")
         }
     } else {
