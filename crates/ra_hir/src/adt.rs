@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use ra_syntax::{SmolStr, ast::{self, NameOwner}};
+use ra_syntax::{SmolStr, ast::{self, NameOwner, StructFlavor}};
 
 use crate::{
     DefId, Cancelable,
     db::{HirDatabase},
+    module::Module,
     ty::{Ty},
 };
 
@@ -37,14 +38,18 @@ pub struct StructData {
 }
 
 impl StructData {
-    pub(crate) fn new(struct_def: ast::StructDef) -> StructData {
+    pub(crate) fn new(
+        db: &impl HirDatabase,
+        module: &Module,
+        struct_def: ast::StructDef,
+    ) -> Cancelable<StructData> {
         let name = struct_def
             .name()
             .map(|n| n.text())
             .unwrap_or(SmolStr::new("[error]"));
-        let variant_data = VariantData::Unit; // TODO implement this
+        let variant_data = VariantData::new(db, module, struct_def.flavor())?;
         let variant_data = Arc::new(variant_data);
-        StructData { name, variant_data }
+        Ok(StructData { name, variant_data })
     }
 
     pub fn name(&self) -> &SmolStr {
@@ -81,13 +86,30 @@ pub struct EnumData {
 }
 
 impl EnumData {
-    pub(crate) fn new(enum_def: ast::EnumDef) -> Self {
+    pub(crate) fn new(
+        db: &impl HirDatabase,
+        module: &Module,
+        enum_def: ast::EnumDef,
+    ) -> Cancelable<Self> {
         let name = enum_def
             .name()
             .map(|n| n.text())
             .unwrap_or(SmolStr::new("[error]"));
-        let variants = Vec::new(); // TODO implement this
-        EnumData { name, variants }
+        let variants = if let Some(evl) = enum_def.variant_list() {
+            evl.variants()
+                .map(|v| {
+                    Ok((
+                        v.name()
+                            .map(|n| n.text())
+                            .unwrap_or_else(|| SmolStr::new("[error]")),
+                        Arc::new(VariantData::new(db, module, v.flavor())?),
+                    ))
+                })
+                .collect::<Cancelable<_>>()?
+        } else {
+            Vec::new()
+        };
+        Ok(EnumData { name, variants })
     }
 }
 
@@ -107,6 +129,39 @@ pub enum VariantData {
 }
 
 impl VariantData {
+    pub fn new(db: &impl HirDatabase, module: &Module, flavor: StructFlavor) -> Cancelable<Self> {
+        Ok(match flavor {
+            StructFlavor::Tuple(fl) => {
+                let fields = fl
+                    .fields()
+                    .enumerate()
+                    .map(|(i, fd)| {
+                        Ok(StructField {
+                            name: SmolStr::new(i.to_string()),
+                            ty: Ty::new_opt(db, &module, fd.type_ref())?,
+                        })
+                    })
+                    .collect::<Cancelable<_>>()?;
+                VariantData::Tuple(fields)
+            }
+            StructFlavor::Named(fl) => {
+                let fields = fl
+                    .fields()
+                    .map(|fd| {
+                        Ok(StructField {
+                            name: fd
+                                .name()
+                                .map(|n| n.text())
+                                .unwrap_or_else(|| SmolStr::new("[error]")),
+                            ty: Ty::new_opt(db, &module, fd.type_ref())?,
+                        })
+                    })
+                    .collect::<Cancelable<_>>()?;
+                VariantData::Struct(fields)
+            }
+            StructFlavor::Unit => VariantData::Unit,
+        })
+    }
     pub fn fields(&self) -> &[StructField] {
         match *self {
             VariantData::Struct(ref fields) | VariantData::Tuple(ref fields) => fields,

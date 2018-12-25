@@ -52,7 +52,12 @@ pub(super) fn struct_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ar
     let syntax = db.file_item(def_loc.source_item_id);
     let struct_def =
         ast::StructDef::cast(syntax.borrowed()).expect("struct def should point to StructDef node");
-    Ok(Arc::new(StructData::new(struct_def.borrowed())))
+    let module = def_id.module(db)?;
+    Ok(Arc::new(StructData::new(
+        db,
+        &module,
+        struct_def.borrowed(),
+    )?))
 }
 
 pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<EnumData>> {
@@ -61,7 +66,8 @@ pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<
     let syntax = db.file_item(def_loc.source_item_id);
     let enum_def =
         ast::EnumDef::cast(syntax.borrowed()).expect("enum def should point to EnumDef node");
-    Ok(Arc::new(EnumData::new(enum_def.borrowed())))
+    let module = def_id.module(db)?;
+    Ok(Arc::new(EnumData::new(db, &module, enum_def.borrowed())?))
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {

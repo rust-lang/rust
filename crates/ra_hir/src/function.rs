@@ -46,8 +46,7 @@ impl Function {
     }
 
     pub fn module(&self, db: &impl HirDatabase) -> Cancelable<Module> {
-        let loc = self.fn_id.0.loc(db);
-        Module::new(db, loc.source_root_id, loc.module_id)
+        self.fn_id.0.module(db)
     }
 }
 

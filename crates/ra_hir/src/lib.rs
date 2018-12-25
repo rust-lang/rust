@@ -135,6 +135,12 @@ impl DefId {
         };
         Ok(res)
     }
+
+    /// For a module, returns that module; for any other def, returns the containing module.
+    pub fn module(self, db: &impl HirDatabase) -> Cancelable<Module> {
+        let loc = self.loc(db);
+        Module::new(db, loc.source_root_id, loc.module_id)
+    }
 }
 
 /// Identifier of item within a specific file. This is stable over reparses, so

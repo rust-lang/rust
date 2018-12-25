@@ -156,6 +156,15 @@ impl Ty {
         Ok(ty)
     }
 
+    pub(crate) fn new_opt(
+        db: &impl HirDatabase,
+        module: &Module,
+        node: Option<ast::TypeRef>,
+    ) -> Cancelable<Self> {
+        node.map(|n| Ty::new(db, module, n))
+            .unwrap_or(Ok(Ty::Unknown))
+    }
+
     pub(crate) fn new(
         db: &impl HirDatabase,
         module: &Module,
@@ -534,7 +543,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Ty::Unknown
             }
             ast::Expr::StructLit(e) => {
-                let (ty, variant_data) = self.resolve_variant(e.path())?;
+                let (ty, _variant_data) = self.resolve_variant(e.path())?;
                 if let Some(nfl) = e.named_field_list() {
                     for field in nfl.fields() {
                         if let Some(e) = field.expr() {
