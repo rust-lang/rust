@@ -6,7 +6,6 @@ use convert::TryFrom;
 use fmt;
 use intrinsics;
 use mem;
-use nonzero::NonZero;
 use ops;
 use str::FromStr;
 
@@ -48,7 +47,8 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
                 #[repr(transparent)]
-                pub struct $Ty(NonZero<$Int>);
+                #[rustc_layout_scalar_valid_range_start(1)]
+                pub struct $Ty($Int);
             }
 
             impl $Ty {
@@ -60,7 +60,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    $Ty(NonZero(n))
+                    $Ty(n)
                 }
 
                 /// Create a non-zero if the given value is not zero.
@@ -68,7 +68,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
-                        Some($Ty(unsafe { NonZero(n) }))
+                        Some(unsafe { $Ty(n) })
                     } else {
                         None
                     }
@@ -78,7 +78,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
                 #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub fn get(self) -> $Int {
-                    self.0 .0
+                    self.0
                 }
 
             }
@@ -86,7 +86,7 @@ assert_eq!(size_of::<Option<std::num::", stringify!($Ty), ">>(), size_of::<", st
             #[stable(feature = "from_nonzero", since = "1.31.0")]
             impl From<$Ty> for $Int {
                 fn from(nonzero: $Ty) -> Self {
-                    nonzero.0 .0
+                    nonzero.0
                 }
             }
 

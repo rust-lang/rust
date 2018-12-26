@@ -342,8 +342,7 @@ def extract_length_ptr_and_cap_from_std_vec(vec_val):
 
     vec_ptr_val = buf.get_child_at_index(0)
     capacity = buf.get_child_at_index(1).as_integer()
-    unique_ptr_val = vec_ptr_val.get_child_at_index(0)
-    data_ptr = unique_ptr_val.get_child_at_index(0)
+    data_ptr = vec_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (length, data_ptr, capacity)
 
@@ -360,8 +359,7 @@ def extract_tail_head_ptr_and_cap_from_std_vecdeque(vec_val):
 
     vec_ptr_val = buf.get_child_at_index(0)
     capacity = buf.get_child_at_index(1).as_integer()
-    unique_ptr_val = vec_ptr_val.get_child_at_index(0)
-    data_ptr = unique_ptr_val.get_child_at_index(0)
+    data_ptr = vec_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (tail, head, data_ptr, capacity)
 

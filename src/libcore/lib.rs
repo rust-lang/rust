@@ -216,7 +216,6 @@ pub mod alloc;
 
 // note: does not need to be public
 mod iter_private;
-mod nonzero;
 mod tuple;
 mod unit;
 
