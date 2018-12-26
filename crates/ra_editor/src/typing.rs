@@ -8,7 +8,9 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
-use ra_text_edit::text_utils::contains_offset_nonstrict;
+use ra_text_edit::text_utils::{
+    contains_offset_nonstrict
+};
 
 use crate::{find_node_at_offset, TextEditBuilder, LocalEdit};
 
@@ -19,6 +21,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
         let pos = match text.find('\n') {
             None => {
                 return LocalEdit {
+                    label: "join lines".to_string(),
                     edit: TextEditBuilder::new().finish(),
                     cursor_position: None,
                 };
@@ -51,6 +54,7 @@ pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     }
 
     LocalEdit {
+        label: "join lines".to_string(),
         edit: edit.finish(),
         cursor_position: None,
     }
@@ -76,6 +80,7 @@ pub fn on_enter(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let mut edit = TextEditBuilder::new();
     edit.insert(offset, inserted);
     Some(LocalEdit {
+        label: "on enter".to_string(),
         edit: edit.finish(),
         cursor_position: Some(cursor_position),
     })
@@ -126,6 +131,7 @@ pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit>
     let mut edit = TextEditBuilder::new();
     edit.insert(offset, ";".to_string());
     Some(LocalEdit {
+        label: "add semicolon".to_string(),
         edit: edit.finish(),
         cursor_position: None,
     })
@@ -248,24 +254,13 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Opti
     Some(())
 }
 
-fn single_use_tree(tree_list: ast::UseTreeList) -> Option<ast::UseTree> {
-    let mut res = None;
-    for child in tree_list.syntax().children() {
-        if let Some(tree) = ast::UseTree::cast(child) {
-            if tree.syntax().text().contains('\n') {
-                return None;
-            }
-            if mem::replace(&mut res, Some(tree)).is_some() {
-                return None;
-            }
-        } else {
-            match child.kind() {
-                WHITESPACE | L_CURLY | R_CURLY | COMMA => (),
-                _ => return None,
-            }
-        }
+pub(crate) fn single_use_tree(tree_list: ast::UseTreeList) -> Option<ast::UseTree> {
+    let sub_use_trees = tree_list.use_trees().count();
+    if sub_use_trees != 1 {
+        return None;
     }
-    res
+
+    tree_list.use_trees().next()
 }
 
 fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
