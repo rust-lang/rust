@@ -254,7 +254,7 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Opti
     Some(())
 }
 
-pub(crate) fn single_use_tree(tree_list: ast::UseTreeList) -> Option<ast::UseTree> {
+fn single_use_tree(tree_list: ast::UseTreeList) -> Option<ast::UseTree> {
     let sub_use_trees = tree_list.use_trees().count();
     if sub_use_trees != 1 {
         return None;

@@ -29,7 +29,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
     let prefix = "// ";
     let comment_blocks = s
         .lines()
-        .map(str::trim_left)
+        .map(str::trim_start)
         .enumerate()
         .group_by(|(_idx, line)| line.starts_with(prefix));
 

@@ -129,14 +129,17 @@ fn check_unnecessary_braces_in_use_statement(file: &SourceFileNode) -> Vec<Diagn
             if use_tree_list.use_trees().count() == 1 {
                 let range = use_tree_list.syntax().range();
                 // use_tree_list always has one child, so we use unwrap directly here.
-                let to_replace = typing::single_use_tree(use_tree_list)
-                    .unwrap()
-                    .syntax()
-                    .text()
-                    .to_string();
-                let mut edit_builder = TextEditBuilder::new();
-                edit_builder.delete(range);
-                edit_builder.insert(range.start(), to_replace);
+                let single_use_tree: ast::UseTree = use_tree_list.use_trees().next().unwrap();
+                let edit = text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
+                    single_use_tree,
+                )
+                .unwrap_or_else(|| {
+                    let to_replace = single_use_tree.syntax().text().to_string();
+                    let mut edit_builder = TextEditBuilder::new();
+                    edit_builder.delete(range);
+                    edit_builder.insert(range.start(), to_replace);
+                    edit_builder.finish()
+                });
 
                 diagnostics.push(Diagnostic {
                     range: range,
@@ -144,7 +147,7 @@ fn check_unnecessary_braces_in_use_statement(file: &SourceFileNode) -> Vec<Diagn
                     severity: Severity::WeakWarning,
                     fix: Some(LocalEdit {
                         label: "Remove unnecessary braces".to_string(),
-                        edit: edit_builder.finish(),
+                        edit: edit,
                         cursor_position: None,
                     }),
                 })
@@ -153,6 +156,28 @@ fn check_unnecessary_braces_in_use_statement(file: &SourceFileNode) -> Vec<Diagn
     }
 
     diagnostics
+}
+
+fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
+    single_use_tree: ast::UseTree,
+) -> Option<TextEdit> {
+    let use_tree_list_node = single_use_tree.syntax().parent()?;
+    if single_use_tree
+        .path()?
+        .segment()?
+        .syntax()
+        .first_child()?
+        .kind()
+        == SyntaxKind::SELF_KW
+    {
+        let start = use_tree_list_node.prev_sibling()?.range().start();
+        let end = use_tree_list_node.range().end();
+        let range = TextRange::from_to(start, end);
+        let mut edit_builder = TextEditBuilder::new();
+        edit_builder.delete(range);
+        return Some(edit_builder.finish());
+    }
+    None
 }
 
 pub fn syntax_tree(file: &SourceFileNode) -> String {
@@ -191,8 +216,9 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
 
 #[cfg(test)]
 mod tests {
+    use crate::test_utils::{add_cursor, assert_eq_dbg, assert_eq_text, extract_offset};
+
     use super::*;
-    use crate::test_utils::{add_cursor, assert_eq_dbg, extract_offset, assert_eq_text};
 
     #[test]
     fn test_highlighting() {
@@ -261,6 +287,7 @@ fn test_foo() {}
 use a;
 use {b};
 use a::{c};
+use a::{self};
 use a::{c, d::e};
 use a::{c, d::{e}};
 fn main() {}
@@ -268,7 +295,10 @@ fn main() {}
         );
         let diagnostics = check_unnecessary_braces_in_use_statement(&file);
         assert_eq_dbg(
-            "[Diagnostic { range: [12; 15), msg: \"Unnecessary braces in use statement\", severity: WeakWarning, fix: Some(LocalEdit { label: \"Remove unnecessary braces\", edit: TextEdit { atoms: [AtomTextEdit { delete: [12; 12), insert: \"b\" }, AtomTextEdit { delete: [12; 15), insert: \"\" }] }, cursor_position: None }) }, Diagnostic { range: [24; 27), msg: \"Unnecessary braces in use statement\", severity: WeakWarning, fix: Some(LocalEdit { label: \"Remove unnecessary braces\", edit: TextEdit { atoms: [AtomTextEdit { delete: [24; 24), insert: \"c\" }, AtomTextEdit { delete: [24; 27), insert: \"\" }] }, cursor_position: None }) }, Diagnostic { range: [61; 64), msg: \"Unnecessary braces in use statement\", severity: WeakWarning, fix: Some(LocalEdit { label: \"Remove unnecessary braces\", edit: TextEdit { atoms: [AtomTextEdit { delete: [61; 61), insert: \"e\" }, AtomTextEdit { delete: [61; 64), insert: \"\" }] }, cursor_position: None }) }]",
+            r#"[Diagnostic { range: [12; 15), msg: "Unnecessary braces in use statement", severity: WeakWarning, fix: Some(LocalEdit { label: "Remove unnecessary braces", edit: TextEdit { atoms: [AtomTextEdit { delete: [12; 12), insert: "b" }, AtomTextEdit { delete: [12; 15), insert: "" }] }, cursor_position: None }) },
+            Diagnostic { range: [24; 27), msg: "Unnecessary braces in use statement", severity: WeakWarning, fix: Some(LocalEdit { label: "Remove unnecessary braces", edit: TextEdit { atoms: [AtomTextEdit { delete: [24; 24), insert: "c" }, AtomTextEdit { delete: [24; 27), insert: "" }] }, cursor_position: None }) },
+            Diagnostic { range: [36; 42), msg: "Unnecessary braces in use statement", severity: WeakWarning, fix: Some(LocalEdit { label: "Remove unnecessary braces", edit: TextEdit { atoms: [AtomTextEdit { delete: [34; 42), insert: "" }] }, cursor_position: None }) },
+            Diagnostic { range: [76; 79), msg: "Unnecessary braces in use statement", severity: WeakWarning, fix: Some(LocalEdit { label: "Remove unnecessary braces", edit: TextEdit { atoms: [AtomTextEdit { delete: [76; 76), insert: "e" }, AtomTextEdit { delete: [76; 79), insert: "" }] }, cursor_position: None }) }]"#,
             &diagnostics,
         )
     }
