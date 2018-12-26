@@ -372,8 +372,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
 
         // Check if we have an enum variant here.
-        if let ty::Adt(adt_def, _) = self_ty.sty {
-            if adt_def.is_enum() {
+        match self_ty.sty {
+            ty::Adt(adt_def, _) if adt_def.is_enum() => {
                 let variant_def = adt_def.variants.iter().find(|vd| {
                     tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
                 });
@@ -384,7 +384,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.check_stability(def.def_id(), Some(expr_id), span);
                     return Ok(def);
                 }
-            }
+            },
+            _ => (),
         }
 
         let mode = probe::Mode::Path;
