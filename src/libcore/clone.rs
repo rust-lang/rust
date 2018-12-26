@@ -53,6 +53,17 @@
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
 /// implementation of [`clone`] calls [`clone`] on each field.
 ///
+/// For a generic struct, `#[derive]` implements `Clone` conditionally by adding bound `Clone` on
+/// generic parameters.
+///
+/// ```
+/// // `derive` implements Clone for Reading<T> when T is Clone.
+/// #[derive(Clone)]
+/// struct Reading<T> {
+///     frequency: T,
+/// }
+/// ```
+///
 /// ## How can I implement `Clone`?
 ///
 /// Types that are [`Copy`] should have a trivial implementation of `Clone`. More formally:
@@ -60,21 +71,21 @@
 /// Manual implementations should be careful to uphold this invariant; however, unsafe code
 /// must not rely on it to ensure memory safety.
 ///
-/// An example is an array holding more than 32 elements of a type that is `Clone`; the standard
-/// library only implements `Clone` up until arrays of size 32. In this case, the implementation of
-/// `Clone` cannot be `derive`d, but can be implemented as:
+/// An example is a generic struct holding a function pointer. In this case, the
+/// implementation of `Clone` cannot be `derive`d, but can be implemented as:
 ///
 /// [`Copy`]: ../../std/marker/trait.Copy.html
 /// [`clone`]: trait.Clone.html#tymethod.clone
 ///
 /// ```
-/// #[derive(Copy)]
-/// struct Stats {
-///    frequencies: [i32; 100],
-/// }
+/// struct Generate<T>(fn() -> T);
 ///
-/// impl Clone for Stats {
-///     fn clone(&self) -> Stats { *self }
+/// impl<T> Copy for Generate<T> {}
+///
+/// impl<T> Clone for Generate<T> {
+///     fn clone(&self) -> Self {
+///         *self
+///     }
 /// }
 /// ```
 ///
