@@ -306,7 +306,7 @@ fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!("msg   loc.idx    param    pass mode            ssa flags  ty"));
 }
 
-fn arg_place<'a, 'tcx: 'a>(
+fn local_place<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     local: Local,
     layout: TyLayout<'tcx>,
@@ -342,6 +342,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     start_ebb: Ebb,
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
+    fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
     let ret_layout = fx.layout_of(fx.return_type());
     let output_pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true);
@@ -401,8 +402,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     fx.bcx.switch_to_block(start_ebb);
 
-    fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
-
     match output_pass_mode {
         PassMode::NoPass => {
             let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
@@ -435,14 +434,14 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             .unwrap()
             .contains(crate::analyze::Flags::NOT_SSA);
 
+        let place = local_place(fx, local, layout, is_ssa);
+
         match arg_kind {
             ArgKind::Normal(ebb_param) => {
                 let cvalue = param_to_cvalue(fx, ebb_param, layout);
-                arg_place(fx, local, layout, is_ssa).write_cvalue(fx, cvalue);
+                place.write_cvalue(fx, cvalue);
             }
             ArgKind::Spread(ebb_params) => {
-                let place = arg_place(fx, local, layout, is_ssa);
-
                 for (i, ebb_param) in ebb_params.into_iter().enumerate() {
                     let sub_place = place.place_field(fx, mir::Field::new(i));
                     let cvalue = param_to_cvalue(fx, ebb_param, sub_place.layout());
@@ -458,24 +457,12 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
         add_local_comment(fx, "local", local, None, None, None, ssa_analyzed[&local], ty);
 
-        let place = if ssa_analyzed
+        let is_ssa = !ssa_analyzed
             .get(&local)
             .unwrap()
-            .contains(crate::analyze::Flags::NOT_SSA)
-        {
-            let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                kind: StackSlotKind::ExplicitSlot,
-                size: layout.size.bytes() as u32,
-                offset: None,
-            });
-            CPlace::from_stack_slot(fx, stack_slot, ty)
-        } else {
-            fx.bcx
-                .declare_var(mir_var(local), fx.clif_type(ty).unwrap());
-            CPlace::Var(local, layout)
-        };
+            .contains(crate::analyze::Flags::NOT_SSA);
 
-        fx.local_map.insert(local, place);
+        local_place(fx, local, layout, is_ssa);
     }
 
     fx.bcx
