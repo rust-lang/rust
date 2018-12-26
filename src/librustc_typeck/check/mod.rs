@@ -4615,7 +4615,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   local: &'gcx hir::Local,
                                   init: &'gcx hir::Expr) -> Ty<'tcx>
     {
-        // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
+        // FIXME(tschottdorf): `contains_explicit_ref_binding()` must be removed
         // for #42640 (default match binding modes).
         //
         // See #44848.
@@ -4660,7 +4660,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
-        // Don't do all the complex logic below for DeclItem.
+        // Don't do all the complex logic below for `DeclItem`.
         match stmt.node {
             hir::StmtKind::Decl(ref decl, _) => {
                 if let hir::DeclKind::Item(_) = decl.node {
@@ -4672,7 +4672,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.warn_if_unreachable(stmt.node.id(), stmt.span, "statement");
 
-        // Hide the outer diverging and has_errors flags.
+        // Hide the outer diverging and `has_errors` flags.
         let old_diverges = self.diverges.get();
         let old_has_errors = self.has_errors.get();
         self.diverges.set(Diverges::Maybe);
@@ -4684,11 +4684,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     hir::DeclKind::Local(ref l) => {
                         self.check_decl_local(&l);
                     }
-                    hir::DeclKind::Item(_) => {/* ignore for now */}
+                    // Ignore for now.
+                    hir::DeclKind::Item(_) => ()
                 }
             }
             hir::StmtKind::Expr(ref expr, _) => {
-                // Check with expected type of ()
+                // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());
             }
             hir::StmtKind::Semi(ref expr, _) => {
@@ -4696,7 +4697,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        // Combine the diverging and has_error flags.
+        // Combine the diverging and `has_error` flags.
         self.diverges.set(self.diverges.get() | old_diverges);
         self.has_errors.set(self.has_errors.get() | old_has_errors);
     }
