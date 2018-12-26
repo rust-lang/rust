@@ -569,7 +569,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         let has_self = generic_params.has_self;
         let (_, potential_assoc_types) = Self::check_generic_arg_count(
-            self.tcx(),
+            tcx,
             span,
             &generic_params,
             &generic_args,
@@ -594,7 +594,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         };
 
         let substs = Self::create_substs_for_generic_args(
-            self.tcx(),
+            tcx,
             def_id,
             &[][..],
             self_ty.is_some(),
@@ -1293,8 +1293,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         self.prohibit_generics(slice::from_ref(item_segment));
 
         // Check if we have an enum variant here.
-        if let ty::Adt(adt_def, _) = ty.sty {
-            if adt_def.is_enum() {
+        match ty.sty {
+            ty::Adt(adt_def, _) if adt_def.is_enum() => {
                 let variant_def = adt_def.variants.iter().find(|vd| {
                     tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
                 });
@@ -1305,7 +1305,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     tcx.check_stability(def.def_id(), Some(ref_id), span);
                     return (ty, def);
                 }
-            }
+            },
+            _ => (),
         }
 
         // Find the type of the associated item, and the trait where the associated
@@ -1339,7 +1340,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
             (&ty::Adt(adt_def, _substs), Def::Enum(_did)) => {
                 let ty_str = ty.to_string();
-                // Incorrect enum variant
+                // Incorrect enum variant.
                 let mut err = tcx.sess.struct_span_err(
                     span,
                     &format!("no variant `{}` on enum `{}`", &assoc_name.as_str(), ty_str),
@@ -1669,23 +1670,24 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 tcx.mk_ty_param(index, tcx.hir().name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
-                // `Self` in impl (we know the concrete type)
+                // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
                 tcx.at(span).type_of(def_id)
             }
             Def::SelfTy(Some(_), None) => {
-                // `Self` in trait
+                // `Self` in trait.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
                 tcx.mk_self_type()
             }
             Def::AssociatedTy(def_id) => {
-                self.prohibit_generics(&path.segments[..path.segments.len()-2]);
+                debug_assert!(path.segments.len() >= 2);
+                self.prohibit_generics(&path.segments[..path.segments.len() - 2]);
                 self.qpath_to_ty(span,
                                  opt_self_ty,
                                  def_id,
-                                 &path.segments[path.segments.len()-2],
+                                 &path.segments[path.segments.len() - 2],
                                  path.segments.last().unwrap())
             }
             Def::PrimTy(prim_ty) => {
