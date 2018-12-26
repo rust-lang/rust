@@ -113,6 +113,27 @@ fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
     );
 }
 
+#[test]
+fn infer_backwards() {
+    check_inference(
+        r#"
+fn takes_u32(x: u32) {}
+
+struct S { i32_field: i32 }
+
+fn test() -> &mut &f64 {
+    let a = unknown_function();
+    takes_u32(a);
+    let b = unknown_function();
+    S { i32_field: b };
+    let c = unknown_function();
+    &mut &c
+}
+"#,
+        "0006_backwards.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
