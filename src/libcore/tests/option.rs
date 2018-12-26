@@ -238,6 +238,27 @@ fn test_collect() {
     assert!(v == None);
 }
 
+#[test]
+fn test_copied() {
+    let val = 1;
+    let val_ref = &val;
+    let opt_none: Option<&'static u32> = None;
+    let opt_ref = Some(&val);
+    let opt_ref_ref = Some(&val_ref);
+
+    // None works
+    assert_eq!(opt_none.clone(), None);
+    assert_eq!(opt_none.copied(), None);
+
+    // Immutable ref works
+    assert_eq!(opt_ref.clone(), Some(&val));
+    assert_eq!(opt_ref.copied(), Some(1));
+
+    // Double Immutable ref works
+    assert_eq!(opt_ref_ref.clone(), Some(&val_ref));
+    assert_eq!(opt_ref_ref.clone().copied(), Some(&val));
+    assert_eq!(opt_ref_ref.copied().copied(), Some(1));
+}
 
 #[test]
 fn test_cloned() {

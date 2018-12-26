@@ -497,6 +497,106 @@ impl<I> FusedIterator for Rev<I>
 unsafe impl<I> TrustedLen for Rev<I>
     where I: TrustedLen + DoubleEndedIterator {}
 
+/// An iterator that copies the elements of an underlying iterator.
+///
+/// This `struct` is created by the [`copied`] method on [`Iterator`]. See its
+/// documentation for more.
+///
+/// [`copied`]: trait.Iterator.html#method.copied
+/// [`Iterator`]: trait.Iterator.html
+#[unstable(feature = "iter_copied", issue = "57127")]
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[derive(Clone, Debug)]
+pub struct Copied<I> {
+    it: I,
+}
+
+#[unstable(feature = "iter_copied", issue = "57127")]
+impl<'a, I, T: 'a> Iterator for Copied<I>
+    where I: Iterator<Item=&'a T>, T: Copy
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        self.it.next().copied()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        self.it.try_fold(init, move |acc, &elt| f(acc, elt))
+    }
+
+    fn fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.it.fold(init, move |acc, &elt| f(acc, elt))
+    }
+}
+
+#[unstable(feature = "iter_copied", issue = "57127")]
+impl<'a, I, T: 'a> DoubleEndedIterator for Copied<I>
+    where I: DoubleEndedIterator<Item=&'a T>, T: Copy
+{
+    fn next_back(&mut self) -> Option<T> {
+        self.it.next_back().copied()
+    }
+
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        self.it.try_rfold(init, move |acc, &elt| f(acc, elt))
+    }
+
+    fn rfold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.it.rfold(init, move |acc, &elt| f(acc, elt))
+    }
+}
+
+#[unstable(feature = "iter_copied", issue = "57127")]
+impl<'a, I, T: 'a> ExactSizeIterator for Copied<I>
+    where I: ExactSizeIterator<Item=&'a T>, T: Copy
+{
+    fn len(&self) -> usize {
+        self.it.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.it.is_empty()
+    }
+}
+
+#[unstable(feature = "iter_copied", issue = "57127")]
+impl<'a, I, T: 'a> FusedIterator for Copied<I>
+    where I: FusedIterator<Item=&'a T>, T: Copy
+{}
+
+#[doc(hidden)]
+unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Copied<I>
+    where I: TrustedRandomAccess<Item=&'a T>, T: Copy
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        *self.it.get_unchecked(i)
+    }
+
+    #[inline]
+    fn may_have_side_effect() -> bool {
+        I::may_have_side_effect()
+    }
+}
+
+#[unstable(feature = "iter_copied", issue = "57127")]
+unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
+    where I: TrustedLen<Item=&'a T>,
+          T: Copy
+{}
+
 /// An iterator that clones the elements of an underlying iterator.
 ///
 /// This `struct` is created by the [`cloned`] method on [`Iterator`]. See its

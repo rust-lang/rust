@@ -874,6 +874,48 @@ impl<T> Option<T> {
     }
 }
 
+impl<'a, T: Copy> Option<&'a T> {
+    /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copied)]
+    ///
+    /// let x = 12;
+    /// let opt_x = Some(&x);
+    /// assert_eq!(opt_x, Some(&12));
+    /// let copied = opt_x.copied();
+    /// assert_eq!(copied, Some(12));
+    /// ```
+    #[unstable(feature = "copied", issue = "57126")]
+    pub fn copied(self) -> Option<T> {
+        self.map(|&t| t)
+    }
+}
+
+impl<'a, T: Copy> Option<&'a mut T> {
+    /// Maps an `Option<&mut T>` to an `Option<T>` by copying the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copied)]
+    ///
+    /// let mut x = 12;
+    /// let opt_x = Some(&mut x);
+    /// assert_eq!(opt_x, Some(&mut 12));
+    /// let copied = opt_x.copied();
+    /// assert_eq!(copied, Some(12));
+    /// ```
+    #[unstable(feature = "copied", issue = "57126")]
+    pub fn copied(self) -> Option<T> {
+        self.map(|&mut t| t)
+    }
+}
+
 impl<'a, T: Clone> Option<&'a T> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
