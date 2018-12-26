@@ -3581,7 +3581,7 @@ impl str {
     /// let s = "  עברית  ";
     /// assert!(Some('ע') == s.trim_start().chars().next());
     /// ```
-    #[must_use = "this returns the trimmed string as a new allocation, \
+    #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_start(&self) -> &str {
@@ -3618,7 +3618,7 @@ impl str {
     /// let s = "  עברית  ";
     /// assert!(Some('ת') == s.trim_end().chars().rev().next());
     /// ```
-    #[must_use = "this returns the trimmed string as a new allocation, \
+    #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_end(&self) -> &str {
@@ -3722,7 +3722,7 @@ impl str {
     /// ```
     /// assert_eq!("1foo1barXX".trim_matches(|c| c == '1' || c == 'X'), "foo1bar");
     /// ```
-    #[must_use = "this returns the trimmed string as a new allocation, \
+    #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -3769,7 +3769,7 @@ impl str {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_start_matches(x), "foo1bar12");
     /// ```
-    #[must_use = "this returns the trimmed string as a new allocation, \
+    #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_start_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
@@ -3814,7 +3814,7 @@ impl str {
     /// ```
     /// assert_eq!("1fooX".trim_end_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
-    #[must_use = "this returns the trimmed string as a new allocation, \
+    #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_end_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
