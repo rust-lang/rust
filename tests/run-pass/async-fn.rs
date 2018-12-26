@@ -2,7 +2,6 @@
     async_await,
     await_macro,
     futures_api,
-    pin,
 )]
 
 use std::{future::Future, pin::Pin, task::Poll};

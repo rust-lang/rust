@@ -145,8 +145,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // Dead allocations in miri cannot overlap with live allocations, but
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
-                    self.memory().get(left.alloc_id)?.check_bounds_ptr(left)?;
-                    self.memory().get(right.alloc_id)?.check_bounds_ptr(right)?;
+                    self.memory().check_bounds_ptr(left, InboundsCheck::Live)?;
+                    self.memory().check_bounds_ptr(right, InboundsCheck::Live)?;
                     // Two in-bounds pointers, we can compare across allocations
                     left == right
                 }
@@ -161,12 +161,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 if bits == 0 {
                     // Test if the ptr is in-bounds. Then it cannot be NULL.
                     // Even dangling pointers cannot be NULL.
-                    if self.memory().check_bounds_ptr_maybe_dead(ptr).is_ok() {
+                    if self.memory().check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok() {
                         return Ok(false);
                     }
                 }
 
-                let (alloc_size, alloc_align) = self.memory().get_size_and_align(ptr.alloc_id);
+                let (alloc_size, alloc_align) = self.memory()
+                    .get_size_and_align(ptr.alloc_id, InboundsCheck::MaybeDead)
+                    .expect("determining size+align of dead ptr cannot fail");
 
                 // Case II: Alignment gives it away
                 if ptr.offset.bytes() % alloc_align.bytes() == 0 {
