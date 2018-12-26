@@ -10,7 +10,7 @@ use hir::HirVec;
 use lint;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::traits::{self, TraitRefExpansionInfoDignosticBuilder};
+use rustc::traits::{self, TraitAliasExpansionInfoDignosticBuilder};
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -988,7 +988,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }
         bound_trait_refs.push((principal, trait_bounds[0].span));
 
-        let expanded_traits = traits::expand_trait_refs(tcx, bound_trait_refs);
+        let expanded_traits = traits::expand_trait_aliases(tcx, bound_trait_refs);
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {

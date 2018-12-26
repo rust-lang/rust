@@ -258,7 +258,7 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// `TraitRefExpander` iterator
+// `TraitAliasExpander` iterator
 ///////////////////////////////////////////////////////////////////////////
 
 /// "Trait reference expansion" is the process of expanding a sequence of trait
@@ -267,28 +267,28 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 /// `trait Foo = Bar + Sync;`, and another trait alias
 /// `trait Bar = Read + Write`, then the bounds would expand to
 /// `Read + Write + Sync + Send`.
-pub struct TraitRefExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    stack: Vec<TraitRefExpansionInfo<'tcx>>,
+pub struct TraitAliasExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    stack: Vec<TraitAliasExpansionInfo<'tcx>>,
     visited: PredicateSet<'a, 'gcx, 'tcx>,
 }
 
 #[derive(Debug, Clone)]
-pub struct TraitRefExpansionInfo<'tcx> {
+pub struct TraitAliasExpansionInfo<'tcx> {
     pub items: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
 }
 
-impl<'tcx> TraitRefExpansionInfo<'tcx> {
-    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitRefExpansionInfo<'tcx> {
-        TraitRefExpansionInfo {
+impl<'tcx> TraitAliasExpansionInfo<'tcx> {
+    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitAliasExpansionInfo<'tcx> {
+        TraitAliasExpansionInfo {
             items: smallvec![(trait_ref, span)]
         }
     }
 
-    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitRefExpansionInfo<'tcx> {
+    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitAliasExpansionInfo<'tcx> {
         let mut items = self.items.clone();
         items.push((trait_ref, span));
 
-        TraitRefExpansionInfo {
+        TraitAliasExpansionInfo {
             items
         }
     }
@@ -306,15 +306,15 @@ impl<'tcx> TraitRefExpansionInfo<'tcx> {
     }
 }
 
-pub trait TraitRefExpansionInfoDignosticBuilder {
+pub trait TraitAliasExpansionInfoDignosticBuilder {
     fn label_with_exp_info<'tcx>(&mut self,
-                                 info: &TraitRefExpansionInfo<'tcx>,
+                                 info: &TraitAliasExpansionInfo<'tcx>,
                                  top_label: &str) -> &mut Self;
 }
 
-impl<'a> TraitRefExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
+impl<'a> TraitAliasExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
     fn label_with_exp_info<'tcx>(&mut self,
-                                 info: &TraitRefExpansionInfo<'tcx>,
+                                 info: &TraitAliasExpansionInfo<'tcx>,
                                  top_label: &str) -> &mut Self {
         self.span_label(info.top().1, top_label);
         if info.items.len() > 1 {
@@ -326,14 +326,14 @@ impl<'a> TraitRefExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
     }
 }
 
-pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
+pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
-) -> TraitRefExpander<'cx, 'gcx, 'tcx> {
+) -> TraitAliasExpander<'cx, 'gcx, 'tcx> {
     let mut visited = PredicateSet::new(tcx);
     let mut items: Vec<_> = trait_refs
         .into_iter()
-        .map(|(tr, sp)| TraitRefExpansionInfo::new(tr, sp))
+        .map(|(tr, sp)| TraitAliasExpansionInfo::new(tr, sp))
         .collect();
     // Note: we also retain auto traits here for the purpose of linting duplicate auto traits
     // in the `AstConv::conv_object_ty_poly_trait_ref` function.
@@ -341,16 +341,19 @@ pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
         let trait_ref = i.trait_ref();
         visited.insert(&trait_ref.to_predicate()) || tcx.trait_is_auto(trait_ref.def_id())
     });
-    TraitRefExpander { stack: items, visited: visited, }
+    TraitAliasExpander { stack: items, visited: visited, }
 }
 
-impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
-    // Returns `true` if `item` refers to a trait.
-    fn push(&mut self, item: &TraitRefExpansionInfo<'tcx>) -> bool {
+impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    /// If item is a trait alias, then expands item to the definition and pushes the resulting
+    /// expansion onto `self.stack`, and returns `false` (indicating that item should not be
+    /// returned to the user). Otherwise, just returns `true` (indicating that no expansion took
+    /// place, and item should be returned to the user).
+    fn push(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.visited.tcx;
         let trait_ref = item.trait_ref();
 
-        debug!("expand_trait_refs: trait_ref={:?}", trait_ref);
+        debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
         if !tcx.is_trait_alias(trait_ref.def_id()) {
             return true;
@@ -369,7 +372,7 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
             })
             .collect();
 
-        debug!("expand_trait_refs: items={:?}", items);
+        debug!("expand_trait_aliases: items={:?}", items);
 
         // Only keep those items that we haven't already seen.
         // Note: we also retain auto traits here for the purpose of linting duplicate auto traits
@@ -384,14 +387,14 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> Iterator for TraitRefExpander<'cx, 'gcx, 'tcx> {
-    type Item = TraitRefExpansionInfo<'tcx>;
+impl<'cx, 'gcx, 'tcx> Iterator for TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    type Item = TraitAliasExpansionInfo<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.stack.len(), None)
     }
 
-    fn next(&mut self) -> Option<TraitRefExpansionInfo<'tcx>> {
+    fn next(&mut self) -> Option<TraitAliasExpansionInfo<'tcx>> {
         loop {
             let item = self.stack.pop();
             match item {
