@@ -514,14 +514,14 @@ unsafe impl<I> TrustedLen for Rev<I>
 ///
 /// [`copied`]: trait.Iterator.html#method.copied
 /// [`Iterator`]: trait.Iterator.html
-#[unstable(feature = "iter_copied", issue = "0")]
+#[unstable(feature = "iter_copied", issue = "57127")]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 pub struct Copied<I> {
     it: I,
 }
 
-#[unstable(feature = "iter_copied", issue = "0")]
+#[unstable(feature = "iter_copied", issue = "57127")]
 impl<'a, I, T: 'a> Iterator for Copied<I>
     where I: Iterator<Item=&'a T>, T: Copy
 {
@@ -548,7 +548,7 @@ impl<'a, I, T: 'a> Iterator for Copied<I>
     }
 }
 
-#[unstable(feature = "iter_copied", issue = "0")]
+#[unstable(feature = "iter_copied", issue = "57127")]
 impl<'a, I, T: 'a> DoubleEndedIterator for Copied<I>
     where I: DoubleEndedIterator<Item=&'a T>, T: Copy
 {
@@ -569,7 +569,7 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Copied<I>
     }
 }
 
-#[unstable(feature = "iter_copied", issue = "0")]
+#[unstable(feature = "iter_copied", issue = "57127")]
 impl<'a, I, T: 'a> ExactSizeIterator for Copied<I>
     where I: ExactSizeIterator<Item=&'a T>, T: Copy
 {
@@ -582,7 +582,7 @@ impl<'a, I, T: 'a> ExactSizeIterator for Copied<I>
     }
 }
 
-#[unstable(feature = "iter_copied", issue = "0")]
+#[unstable(feature = "iter_copied", issue = "57127")]
 impl<'a, I, T: 'a> FusedIterator for Copied<I>
     where I: FusedIterator<Item=&'a T>, T: Copy
 {}
@@ -601,7 +601,7 @@ unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Copied<I>
     }
 }
 
-#[unstable(feature = "iter_copied", issue = "0")]
+#[unstable(feature = "iter_copied", issue = "57127")]
 unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
     where I: TrustedLen<Item=&'a T>,
           T: Copy

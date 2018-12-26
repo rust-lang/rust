@@ -2257,7 +2257,7 @@ pub trait Iterator {
     /// assert_eq!(v_cloned, vec![1, 2, 3]);
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
-    #[unstable(feature = "iter_copied", issue = "0")]
+    #[unstable(feature = "iter_copied", issue = "57127")]
     fn copied<'a, T: 'a>(self) -> Copied<Self>
         where Self: Sized + Iterator<Item=&'a T>, T: Copy
     {
