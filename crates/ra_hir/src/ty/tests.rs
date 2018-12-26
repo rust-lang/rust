@@ -134,6 +134,25 @@ fn test() -> &mut &f64 {
     );
 }
 
+#[test]
+fn infer_self() {
+    check_inference(
+        r#"
+struct S;
+
+impl S {
+    fn test(&self) {
+        self;
+    }
+    fn test2(self: &Self) {
+        self;
+    }
+}
+"#,
+        "0007_self.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);
