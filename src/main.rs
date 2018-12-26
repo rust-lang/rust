@@ -33,10 +33,9 @@ with:
     -D --deny OPT       Set lint denied
     -F --forbid OPT     Set lint forbidden
 
-The feature `cargo-clippy` is automatically defined for convenience. You can use
-it to allow or deny lints from the code, eg.:
+You can use tool lints to allow or deny lints from your code, eg.:
 
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
+    #[allow(clippy::needless_lifetimes)]
 "#;
 
 fn show_help() {
