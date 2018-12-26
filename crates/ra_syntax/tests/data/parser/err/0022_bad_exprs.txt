@@ -94,7 +94,7 @@ SOURCE_FILE@[0; 112)
           COMMA@[54; 55)
           err: `expected SEMI`
       WHITESPACE@[55; 56)
-      IMPL_ITEM@[56; 60)
+      IMPL_BLOCK@[56; 60)
         IMPL_KW@[56; 60)
         err: `expected type`
         err: `expected `{``

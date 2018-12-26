@@ -128,7 +128,7 @@ Grammar(
         "STATIC_DEF",
         "CONST_DEF",
         "TRAIT_DEF",
-        "IMPL_ITEM",
+        "IMPL_BLOCK",
         "TYPE_DEF",
         "MACRO_CALL",
         "TOKEN_TREE",
@@ -307,7 +307,7 @@ Grammar(
             "AttrsOwner",
             "DocCommentsOwner"
         ] ),
-        "ImplItem": (),
+        "ImplBlock": (collections: []),
 
         "ParenType": (options: ["TypeRef"]),
         "TupleType": ( collections: [["fields", "TypeRef"]] ),
@@ -348,7 +348,7 @@ Grammar(
             ],
         ),
         "ModuleItem": (
-            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeDef", "ImplItem",
+            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeDef", "ImplBlock",
                    "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ]
         ),
 

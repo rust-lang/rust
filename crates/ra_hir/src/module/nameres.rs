@@ -233,7 +233,7 @@ impl InputModuleItems {
             ast::ModuleItem::TypeDef(it) => {
                 self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
-            ast::ModuleItem::ImplItem(_) => {
+            ast::ModuleItem::ImplBlock(_) => {
                 // impls don't define items
             }
             ast::ModuleItem::UseItem(it) => self.add_use_item(file_items, it),

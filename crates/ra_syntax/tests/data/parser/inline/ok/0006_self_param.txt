@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 128)
-  IMPL_ITEM@[0; 127)
+  IMPL_BLOCK@[0; 127)
     IMPL_KW@[0; 4)
     WHITESPACE@[4; 5)
     PATH_TYPE@[5; 6)
