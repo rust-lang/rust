@@ -18,7 +18,19 @@ LL | #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
    |                      |
    |                      unknown kind
 
-error: aborting due to 3 previous errors
+error[E0459]: #[link(...)] specified without arguments
+  --> $DIR/bad-extern-link-attrs.rs:5:1
+   |
+LL | #[link] //~ ERROR #[link(...)] specified without arguments
+   | ^^^^^^^
+
+error[E0459]: #[link(...)] specified without arguments
+  --> $DIR/bad-extern-link-attrs.rs:6:1
+   |
+LL | #[link = "foo"] //~ ERROR #[link(...)] specified without arguments
+   | ^^^^^^^^^^^^^^^ help: specify a `name` argument instead: `#[link(name = "foo")]`
+
+error: aborting due to 5 previous errors
 
 Some errors occurred: E0454, E0458, E0459.
 For more information about an error, try `rustc --explain E0454`.

@@ -9,6 +9,7 @@ use syntax::attr;
 use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
+use errors::{Applicability, DiagnosticId};
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
@@ -49,7 +50,23 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
         for m in it.attrs.iter().filter(|a| a.check_name("link")) {
             let items = match m.meta_item_list() {
                 Some(item) => item,
-                None => continue,
+                None => {
+                    let mut err = self.tcx.sess.struct_span_err_with_code(
+                        m.span,
+                        "#[link(...)] specified without arguments",
+                        DiagnosticId::Error("E0459".into()),
+                    );
+                    if let Some(value) = m.value_str() {
+                        err.span_suggestion_with_applicability(
+                            m.span,
+                            "specify a `name` argument instead",
+                            format!("#[link(name = \"{}\")]", value),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    err.emit();
+                    continue;
+                }
             };
             let mut lib = NativeLibrary {
                 name: None,
