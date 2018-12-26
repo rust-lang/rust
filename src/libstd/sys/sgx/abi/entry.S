@@ -4,6 +4,16 @@
 .global IMAGE_BASE
 IMAGE_BASE:
 
+.section ".note.x86_64-fortanix-unknown-sgx", "", @note
+    .align 4
+    .long 1f - 0f              /* name length (not including padding) */
+    .long 3f - 2f              /* desc length (not including padding) */
+    .long 1                    /* type = NT_VERSION */
+0:  .asciz "toolchain-version" /* name */
+1:  .align 4
+2:  .long 0                    /* desc - toolchain version number, 32-bit LE */
+3:  .align 4
+
 .section .rodata
 /*  The XSAVE area needs to be a large chunk of readable memory, but since we are */
 /*  going to restore everything to its initial state (XSTATE_BV=0), only certain */

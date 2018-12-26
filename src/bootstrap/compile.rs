@@ -78,11 +78,8 @@ impl Step for Std {
             builder.info(&format!("Uplifting stage1 std ({} -> {})", from.host, target));
 
             // Even if we're not building std this stage, the new sysroot must
-            // still contain the musl startup objects.
-            if target.contains("musl") {
-                let libdir = builder.sysroot_libdir(compiler, target);
-                copy_musl_third_party_objects(builder, target, &libdir);
-            }
+            // still contain the third party objects needed by various targets.
+            copy_third_party_objects(builder, &compiler, target);
 
             builder.ensure(StdLink {
                 compiler: from,
@@ -92,10 +89,7 @@ impl Step for Std {
             return;
         }
 
-        if target.contains("musl") {
-            let libdir = builder.sysroot_libdir(compiler, target);
-            copy_musl_third_party_objects(builder, target, &libdir);
-        }
+        copy_third_party_objects(builder, &compiler, target);
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
@@ -116,17 +110,36 @@ impl Step for Std {
     }
 }
 
-/// Copies the crt(1,i,n).o startup objects
-///
-/// Since musl supports fully static linking, we can cross link for it even
-/// with a glibc-targeting toolchain, given we have the appropriate startup
-/// files. As those shipped with glibc won't work, copy the ones provided by
-/// musl so we have them on linux-gnu hosts.
-fn copy_musl_third_party_objects(builder: &Builder,
-                                 target: Interned<String>,
-                                 into: &Path) {
-    for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        builder.copy(&builder.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
+/// Copies third pary objects needed by various targets.
+fn copy_third_party_objects(builder: &Builder, compiler: &Compiler, target: Interned<String>) {
+    let libdir = builder.sysroot_libdir(*compiler, target);
+
+    // Copies the crt(1,i,n).o startup objects
+    //
+    // Since musl supports fully static linking, we can cross link for it even
+    // with a glibc-targeting toolchain, given we have the appropriate startup
+    // files. As those shipped with glibc won't work, copy the ones provided by
+    // musl so we have them on linux-gnu hosts.
+    if target.contains("musl") {
+        for &obj in &["crt1.o", "crti.o", "crtn.o"] {
+            builder.copy(
+                &builder.musl_root(target).unwrap().join("lib").join(obj),
+                &libdir.join(obj),
+            );
+        }
+    }
+
+    // Copies libunwind.a compiled to be linked wit x86_64-fortanix-unknown-sgx.
+    //
+    // This target needs to be linked to Fortanix's port of llvm's libunwind.
+    // libunwind requires support for rwlock and printing to stderr,
+    // which is provided by std for this target.
+    if target == "x86_64-fortanix-unknown-sgx" {
+        let src_path_env = "X86_FORTANIX_SGX_LIBS";
+        let obj = "libunwind.a";
+        let src = env::var(src_path_env).expect(&format!("{} not found in env", src_path_env));
+        let src = Path::new(&src).join(obj);
+        builder.copy(&src, &libdir.join(obj));
     }
 }
 
