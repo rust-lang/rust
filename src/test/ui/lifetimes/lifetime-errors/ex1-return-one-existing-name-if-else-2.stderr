@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/ex1-return-one-existing-name-if-else-2.rs:12:16
+  --> $DIR/ex1-return-one-existing-name-if-else-2.rs:2:16
    |
 LL | fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32 {
    |               ---- help: add explicit lifetime `'a` to the type of `x`: `&'a i32`

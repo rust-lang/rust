@@ -1,5 +1,5 @@
 error[E0382]: capture of moved value: `t`
-  --> $DIR/borrowck-move-moved-value-into-closure.rs:24:22
+  --> $DIR/borrowck-move-moved-value-into-closure.rs:14:22
    |
 LL |     call_f(move|| { *t + 1 });
    |            ------ value moved (into closure) here

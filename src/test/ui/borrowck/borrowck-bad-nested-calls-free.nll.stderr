@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-bad-nested-calls-free.rs:35:17
+  --> $DIR/borrowck-bad-nested-calls-free.rs:25:17
    |
 LL |     add(
    |     --- immutable borrow later used by call
@@ -9,7 +9,7 @@ LL |         rewrite(&mut a)); //~ ERROR cannot borrow
    |                 ^^^^^^ mutable borrow occurs here
 
 error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-bad-nested-calls-free.rs:42:17
+  --> $DIR/borrowck-bad-nested-calls-free.rs:32:17
    |
 LL |     add(
    |     --- immutable borrow later used by call

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/static-mut-bad-types.rs:15:13
+  --> $DIR/static-mut-bad-types.rs:5:13
    |
 LL |         a = true; //~ ERROR: mismatched types
    |             ^^^^ expected isize, found bool

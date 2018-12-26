@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `tick1` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:27:9
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:17:9
    |
 LL |     let tick1 = || {
    |         ----- help: consider changing this to be mutable: `mut tick1`
@@ -8,7 +8,7 @@ LL |         tick1();
    |         ^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `tick2` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:30:5
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:20:5
    |
 LL |     let tick2 = || { //~ ERROR closure cannot assign to immutable local variable `tick1`
    |         ----- help: consider changing this to be mutable: `mut tick2`

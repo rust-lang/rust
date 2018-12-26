@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `v` because it is borrowed
-  --> $DIR/issue-11873.rs:14:9
+  --> $DIR/issue-11873.rs:4:9
    |
 LL |     let mut f = || v.push(2);
    |                 -- borrow of `v` occurs here

@@ -1,11 +1,11 @@
 error: the `?` macro repetition operator does not take a separator
-  --> $DIR/macro-at-most-once-rep-2018.rs:20:10
+  --> $DIR/macro-at-most-once-rep-2018.rs:10:10
    |
 LL |     ($(a),?) => {}; //~ERROR the `?` macro repetition operator
    |          ^
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:34:11
+  --> $DIR/macro-at-most-once-rep-2018.rs:24:11
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -14,7 +14,7 @@ LL |     foo!(a?); //~ ERROR no rules expected the token `?`
    |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:35:11
+  --> $DIR/macro-at-most-once-rep-2018.rs:25:11
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -23,7 +23,7 @@ LL |     foo!(a?a); //~ ERROR no rules expected the token `?`
    |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:36:11
+  --> $DIR/macro-at-most-once-rep-2018.rs:26:11
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -32,7 +32,7 @@ LL |     foo!(a?a?a); //~ ERROR no rules expected the token `?`
    |           ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:38:5
+  --> $DIR/macro-at-most-once-rep-2018.rs:28:5
    |
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
@@ -41,7 +41,7 @@ LL |     barplus!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:39:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:29:15
    |
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
@@ -50,7 +50,7 @@ LL |     barplus!(a); //~ERROR unexpected end of macro invocation
    |               ^ missing tokens in macro arguments
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:40:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:30:15
    |
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
@@ -59,7 +59,7 @@ LL |     barplus!(a?); //~ ERROR no rules expected the token `?`
    |               ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:41:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:31:15
    |
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
@@ -68,7 +68,7 @@ LL |     barplus!(a?a); //~ ERROR no rules expected the token `?`
    |               ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:45:5
+  --> $DIR/macro-at-most-once-rep-2018.rs:35:5
    |
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
@@ -77,7 +77,7 @@ LL |     barstar!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:46:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:36:15
    |
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
@@ -86,7 +86,7 @@ LL |     barstar!(a); //~ERROR unexpected end of macro invocation
    |               ^ missing tokens in macro arguments
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:47:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:37:15
    |
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
@@ -95,7 +95,7 @@ LL |     barstar!(a?); //~ ERROR no rules expected the token `?`
    |               ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
-  --> $DIR/macro-at-most-once-rep-2018.rs:48:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:38:15
    |
 LL | macro_rules! barstar {
    | -------------------- when calling this macro

@@ -1,5 +1,5 @@
 error: expected one of `:`, `;`, `=`, or `@`, found `[`
-  --> $DIR/pat-lt-bracket-5.rs:14:10
+  --> $DIR/pat-lt-bracket-5.rs:4:10
    |
 LL |     let v[0] = v[1]; //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `[`
    |          ^ expected one of `:`, `;`, `=`, or `@` here

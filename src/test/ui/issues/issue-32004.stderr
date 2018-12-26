@@ -1,5 +1,5 @@
 error[E0532]: expected unit struct/variant or constant, found tuple variant `Foo::Bar`
-  --> $DIR/issue-32004.rs:20:9
+  --> $DIR/issue-32004.rs:10:9
    |
 LL |         Foo::Bar => {}
    |         ^^^^^---
@@ -7,7 +7,7 @@ LL |         Foo::Bar => {}
    |              did you mean `Baz`?
 
 error[E0532]: expected tuple struct/variant, found unit struct `S`
-  --> $DIR/issue-32004.rs:26:9
+  --> $DIR/issue-32004.rs:16:9
    |
 LL |         S(()) => {}
    |         ^ not a tuple struct/variant

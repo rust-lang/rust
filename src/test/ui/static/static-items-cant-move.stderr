@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of static item
-  --> $DIR/static-items-cant-move.rs:28:10
+  --> $DIR/static-items-cant-move.rs:18:10
    |
 LL |     test(BAR); //~ ERROR cannot move out of static item
    |          ^^^ cannot move out of static item

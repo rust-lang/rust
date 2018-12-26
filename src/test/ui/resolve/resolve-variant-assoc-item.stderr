@@ -1,11 +1,11 @@
 error[E0433]: failed to resolve: not a module `V`
-  --> $DIR/resolve-variant-assoc-item.rs:15:8
+  --> $DIR/resolve-variant-assoc-item.rs:5:8
    |
 LL |     E::V::associated_item; //~ ERROR failed to resolve: not a module `V`
    |        ^ not a module `V`
 
 error[E0433]: failed to resolve: not a module `V`
-  --> $DIR/resolve-variant-assoc-item.rs:16:5
+  --> $DIR/resolve-variant-assoc-item.rs:6:5
    |
 LL |     V::associated_item; //~ ERROR failed to resolve: not a module `V`
    |     ^ not a module `V`

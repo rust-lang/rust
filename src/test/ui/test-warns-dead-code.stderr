@@ -1,11 +1,11 @@
 error: function is never used: `dead`
-  --> $DIR/test-warns-dead-code.rs:15:1
+  --> $DIR/test-warns-dead-code.rs:5:1
    |
 LL | fn dead() {} //~ error: function is never used: `dead`
    | ^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/test-warns-dead-code.rs:13:9
+  --> $DIR/test-warns-dead-code.rs:3:9
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^

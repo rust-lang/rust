@@ -1,5 +1,5 @@
 error[E0428]: the name `X` is defined multiple times
-  --> $DIR/issue-7044.rs:12:1
+  --> $DIR/issue-7044.rs:2:1
    |
 LL | static X: isize = 0;
    | -------------------- previous definition of the value `X` here

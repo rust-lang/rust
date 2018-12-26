@@ -1,5 +1,5 @@
 error: expected item after attributes
-  --> $DIR/attr-before-eof.rs:13:16
+  --> $DIR/attr-before-eof.rs:3:16
    |
 LL | #[derive(Debug)] //~ERROR expected item after attributes
    |                ^

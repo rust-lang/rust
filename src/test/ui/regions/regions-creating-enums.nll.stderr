@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/regions-creating-enums.rs:33:16
+  --> $DIR/regions-creating-enums.rs:23:16
    |
 LL |         return &Ast::Num((*f)(x)); //~ ERROR borrowed value does not live long enough
    |                ^-----------------
@@ -8,7 +8,7 @@ LL |         return &Ast::Num((*f)(x)); //~ ERROR borrowed value does not live l
    |                returns a reference to data owned by the current function
 
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/regions-creating-enums.rs:38:16
+  --> $DIR/regions-creating-enums.rs:28:16
    |
 LL |         return &Ast::Add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
    |                ^------------------

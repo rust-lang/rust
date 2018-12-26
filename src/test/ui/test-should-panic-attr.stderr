@@ -1,5 +1,5 @@
 warning: attribute must be of the form: `#[should_panic]` or `#[should_panic(expected = "error message")]`
-  --> $DIR/test-should-panic-attr.rs:15:1
+  --> $DIR/test-should-panic-attr.rs:5:1
    |
 LL | #[should_panic = "foo"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[should_panic = "foo"]
    = note: Errors in this attribute were erroneously allowed and will become a hard error in a future release.
 
 warning: argument must be of the form: `expected = "error message"`
-  --> $DIR/test-should-panic-attr.rs:22:1
+  --> $DIR/test-should-panic-attr.rs:12:1
    |
 LL | #[should_panic(expected)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[should_panic(expected)]
    = note: Errors in this attribute were erroneously allowed and will become a hard error in a future release.
 
 warning: argument must be of the form: `expected = "error message"`
-  --> $DIR/test-should-panic-attr.rs:29:1
+  --> $DIR/test-should-panic-attr.rs:19:1
    |
 LL | #[should_panic(expect)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | #[should_panic(expect)]
    = note: Errors in this attribute were erroneously allowed and will become a hard error in a future release.
 
 warning: argument must be of the form: `expected = "error message"`
-  --> $DIR/test-should-panic-attr.rs:36:1
+  --> $DIR/test-should-panic-attr.rs:26:1
    |
 LL | #[should_panic(expected(foo, bar))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL | #[should_panic(expected(foo, bar))]
    = note: Errors in this attribute were erroneously allowed and will become a hard error in a future release.
 
 warning: argument must be of the form: `expected = "error message"`
-  --> $DIR/test-should-panic-attr.rs:43:1
+  --> $DIR/test-should-panic-attr.rs:33:1
    |
 LL | #[should_panic(expected = "foo", bar)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

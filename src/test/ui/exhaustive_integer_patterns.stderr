@@ -1,83 +1,83 @@
 error: unreachable pattern
-  --> $DIR/exhaustive_integer_patterns.rs:33:9
+  --> $DIR/exhaustive_integer_patterns.rs:23:9
    |
 LL |         200 => {} //~ ERROR unreachable pattern
    |         ^^^
    |
 note: lint level defined here
-  --> $DIR/exhaustive_integer_patterns.rs:14:9
+  --> $DIR/exhaustive_integer_patterns.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `128u8..=255u8` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:38:11
+  --> $DIR/exhaustive_integer_patterns.rs:28:11
    |
 LL |     match x { //~ ERROR non-exhaustive patterns
    |           ^ pattern `128u8..=255u8` not covered
 
 error[E0004]: non-exhaustive patterns: `11u8..=19u8`, `31u8..=34u8`, `36u8..=69u8` and 1 more not covered
-  --> $DIR/exhaustive_integer_patterns.rs:43:11
+  --> $DIR/exhaustive_integer_patterns.rs:33:11
    |
 LL |     match x { //~ ERROR non-exhaustive patterns
    |           ^ patterns `11u8..=19u8`, `31u8..=34u8`, `36u8..=69u8` and 1 more not covered
 
 error: unreachable pattern
-  --> $DIR/exhaustive_integer_patterns.rs:54:9
+  --> $DIR/exhaustive_integer_patterns.rs:44:9
    |
 LL |         -2..=20 => {} //~ ERROR unreachable pattern
    |         ^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `-128i8..=-8i8`, `-6i8`, `121i8..=124i8` and 1 more not covered
-  --> $DIR/exhaustive_integer_patterns.rs:51:11
+  --> $DIR/exhaustive_integer_patterns.rs:41:11
    |
 LL |     match x { //~ ERROR non-exhaustive patterns
    |           ^ patterns `-128i8..=-8i8`, `-6i8`, `121i8..=124i8` and 1 more not covered
 
 error[E0004]: non-exhaustive patterns: `-128i8` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:92:11
+  --> $DIR/exhaustive_integer_patterns.rs:82:11
    |
 LL |     match 0i8 { //~ ERROR non-exhaustive patterns
    |           ^^^ pattern `-128i8` not covered
 
 error[E0004]: non-exhaustive patterns: `0i16` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:100:11
+  --> $DIR/exhaustive_integer_patterns.rs:90:11
    |
 LL |     match 0i16 { //~ ERROR non-exhaustive patterns
    |           ^^^^ pattern `0i16` not covered
 
 error[E0004]: non-exhaustive patterns: `128u8..=255u8` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:118:11
+  --> $DIR/exhaustive_integer_patterns.rs:108:11
    |
 LL |     match 0u8 { //~ ERROR non-exhaustive patterns
    |           ^^^ pattern `128u8..=255u8` not covered
 
 error[E0004]: non-exhaustive patterns: `(0u8, Some(_))` and `(2u8..=255u8, Some(_))` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:130:11
+  --> $DIR/exhaustive_integer_patterns.rs:120:11
    |
 LL |     match (0u8, Some(())) { //~ ERROR non-exhaustive patterns
    |           ^^^^^^^^^^^^^^^ patterns `(0u8, Some(_))` and `(2u8..=255u8, Some(_))` not covered
 
 error[E0004]: non-exhaustive patterns: `(126u8..=127u8, false)` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:135:11
+  --> $DIR/exhaustive_integer_patterns.rs:125:11
    |
 LL |     match (0u8, true) { //~ ERROR non-exhaustive patterns
    |           ^^^^^^^^^^^ pattern `(126u8..=127u8, false)` not covered
 
 error[E0004]: non-exhaustive patterns: `340282366920938463463374607431768211455u128` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:155:11
+  --> $DIR/exhaustive_integer_patterns.rs:145:11
    |
 LL |     match 0u128 { //~ ERROR non-exhaustive patterns
    |           ^^^^^ pattern `340282366920938463463374607431768211455u128` not covered
 
 error[E0004]: non-exhaustive patterns: `5u128..=340282366920938463463374607431768211455u128` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:159:11
+  --> $DIR/exhaustive_integer_patterns.rs:149:11
    |
 LL |     match 0u128 { //~ ERROR non-exhaustive patterns
    |           ^^^^^ pattern `5u128..=340282366920938463463374607431768211455u128` not covered
 
 error[E0004]: non-exhaustive patterns: `0u128..=3u128` not covered
-  --> $DIR/exhaustive_integer_patterns.rs:163:11
+  --> $DIR/exhaustive_integer_patterns.rs:153:11
    |
 LL |     match 0u128 { //~ ERROR non-exhaustive patterns
    |           ^^^^^ pattern `0u128..=3u128` not covered

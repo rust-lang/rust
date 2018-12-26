@@ -1,11 +1,11 @@
 error: expected one of `extern`, `fn`, or `{`, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:16:12
+  --> $DIR/label_break_value_illegal_uses.rs:6:12
    |
 LL |     unsafe 'b: {} //~ ERROR expected one of `extern`, `fn`, or `{`
    |            ^^ expected one of `extern`, `fn`, or `{` here
 
 error: expected `{`, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:20:13
+  --> $DIR/label_break_value_illegal_uses.rs:10:13
    |
 LL |     if true 'b: {} //~ ERROR expected `{`, found `'b`
    |     --      ^^----
@@ -15,7 +15,7 @@ LL |     if true 'b: {} //~ ERROR expected `{`, found `'b`
    |     this `if` statement has a condition, but no block
 
 error: expected `{`, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:24:21
+  --> $DIR/label_break_value_illegal_uses.rs:14:21
    |
 LL |     if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
    |                     ^^----
@@ -24,7 +24,7 @@ LL |     if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
    |                     help: try placing this code inside a block: `{ 'b: { } }`
 
 error: expected one of `.`, `?`, `{`, or an operator, found `'b`
-  --> $DIR/label_break_value_illegal_uses.rs:28:17
+  --> $DIR/label_break_value_illegal_uses.rs:18:17
    |
 LL |     match false 'b: {} //~ ERROR expected one of `.`, `?`, `{`, or an operator
    |     -----       ^^ expected one of `.`, `?`, `{`, or an operator here

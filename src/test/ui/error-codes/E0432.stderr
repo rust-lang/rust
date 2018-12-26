@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `something`
-  --> $DIR/E0432.rs:11:5
+  --> $DIR/E0432.rs:1:5
    |
 LL | use something::Foo; //~ ERROR E0432
    |     ^^^^^^^^^ maybe a missing `extern crate something;`?

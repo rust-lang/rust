@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:29:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:19:5
    |
 LL | struct Foo<T> {
    |            - help: consider adding an explicit lifetime bound `T: 'static`...
@@ -7,13 +7,13 @@ LL |     foo: &'static T
    |     ^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'static T` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:29:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:19:5
    |
 LL |     foo: &'static T
    |     ^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `K` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:34:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:24:5
    |
 LL | trait X<K>: Sized {
    |         - help: consider adding an explicit lifetime bound `K: 'a`...
@@ -21,26 +21,26 @@ LL |     fn foo<'a, L: X<&'a Nested<K>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'a Nested<K>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:34:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:24:5
    |
 LL |     fn foo<'a, L: X<&'a Nested<K>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `Self` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:28:5
    |
 LL |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `Self: 'a`...
 note: ...so that the reference type `&'a Nested<Self>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:28:5
    |
 LL |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `L` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:32:5
    |
 LL |       fn baz<'a, L, M: X<&'a Nested<L>>>() {
    |       ^          - help: consider adding an explicit lifetime bound `L: 'a`...
@@ -51,7 +51,7 @@ LL | |     }
    | |_____^
    |
 note: ...so that the reference type `&'a Nested<L>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:32:5
    |
 LL | /     fn baz<'a, L, M: X<&'a Nested<L>>>() {
 LL | |         //~^ ERROR may not live long enough
@@ -59,7 +59,7 @@ LL | |     }
    | |_____^
 
 error[E0309]: the parameter type `K` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:51:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:41:5
    |
 LL |   impl<K> Nested<K> {
    |        - help: consider adding an explicit lifetime bound `K: 'a`...
@@ -69,7 +69,7 @@ LL | |     }
    | |_____^
    |
 note: ...so that the reference type `&'a Nested<K>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:51:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:41:5
    |
 LL | /     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
 LL | |         //~^ ERROR may not live long enough
@@ -77,7 +77,7 @@ LL | |     }
    | |_____^
 
 error[E0309]: the parameter type `M` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:54:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:44:5
    |
 LL |       fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
    |       ^                                                -- help: consider adding an explicit lifetime bound `M: 'a`...
@@ -88,7 +88,7 @@ LL | |     }
    | |_____^
    |
 note: ...so that the reference type `&'a Nested<M>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:54:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:44:5
    |
 LL | /     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
 LL | |         //~^ ERROR may not live long enough

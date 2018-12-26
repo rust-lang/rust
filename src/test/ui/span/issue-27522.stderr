@@ -1,5 +1,5 @@
 error[E0307]: invalid method receiver type: &SomeType
-  --> $DIR/issue-27522.rs:16:22
+  --> $DIR/issue-27522.rs:6:22
    |
 LL |     fn handler(self: &SomeType); //~ ERROR invalid method receiver type
    |                      ^^^^^^^^^

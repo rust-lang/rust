@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `Foo` in this scope
-  --> $DIR/crate-in-paths.rs:20:5
+  --> $DIR/crate-in-paths.rs:10:5
    |
 LL |     Foo;
    |     ^^^ not found in this scope

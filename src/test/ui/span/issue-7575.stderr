@@ -1,24 +1,24 @@
 error[E0599]: no method named `f9` found for type `usize` in the current scope
-  --> $DIR/issue-7575.rs:74:18
+  --> $DIR/issue-7575.rs:64:18
    |
 LL |     u.f8(42) + u.f9(342) + m.fff(42)
    |                  ^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: candidate #1 is defined in the trait `CtxtFn`
-  --> $DIR/issue-7575.rs:16:5
+  --> $DIR/issue-7575.rs:6:5
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
 note: candidate #2 is defined in the trait `OtherTrait`
-  --> $DIR/issue-7575.rs:20:5
+  --> $DIR/issue-7575.rs:10:5
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
 note: candidate #3 is defined in the trait `UnusedTrait`
-  --> $DIR/issue-7575.rs:29:5
+  --> $DIR/issue-7575.rs:19:5
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |     fn f9(_: usize) -> usize;
            candidate #3: `UnusedTrait`
 
 error[E0599]: no method named `fff` found for type `Myisize` in the current scope
-  --> $DIR/issue-7575.rs:74:30
+  --> $DIR/issue-7575.rs:64:30
    |
 LL | struct Myisize(isize);
    | ---------------------- method `fff` not found for this
@@ -43,20 +43,20 @@ LL |     u.f8(42) + u.f9(342) + m.fff(42)
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `Myisize`
-  --> $DIR/issue-7575.rs:51:5
+  --> $DIR/issue-7575.rs:41:5
    |
 LL |     fn fff(i: isize) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `is_str` found for type `T` in the current scope
-  --> $DIR/issue-7575.rs:82:7
+  --> $DIR/issue-7575.rs:72:7
    |
 LL |     t.is_str()
    |       ^^^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `ManyImplTrait`
-  --> $DIR/issue-7575.rs:57:5
+  --> $DIR/issue-7575.rs:47:5
    |
 LL |     fn is_str() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: `<` is interpreted as a start of generic arguments for `u32`, not a comparison
-  --> $DIR/issue-42954.rs:17:19
+  --> $DIR/issue-42954.rs:7:19
    |
 LL |         $i as u32 < 0 //~ `<` is interpreted as a start of generic arguments
    |         --------- ^ - interpreted as generic arguments

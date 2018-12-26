@@ -1,5 +1,5 @@
 error[E0597]: `pointer` does not live long enough
-  --> $DIR/wf-method-late-bound-regions.rs:30:18
+  --> $DIR/wf-method-late-bound-regions.rs:20:18
    |
 LL |     let dangling = {
    |         -------- borrow later stored here

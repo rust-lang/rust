@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/specialization-default-projection.rs:31:5
+  --> $DIR/specialization-default-projection.rs:21:5
    |
 LL | fn generic<T>() -> <T as Foo>::Assoc {
    |                    ----------------- expected `<T as Foo>::Assoc` because of return type
@@ -11,7 +11,7 @@ LL |     () //~ ERROR mismatched types
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/specialization-default-projection.rs:38:5
+  --> $DIR/specialization-default-projection.rs:28:5
    |
 LL | fn monomorphic() -> () {
    |                     -- expected `()` because of return type

@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/coherence-vec-local-2.rs:21:1
+  --> $DIR/coherence-vec-local-2.rs:11:1
    |
 LL | impl<T> Remote for Vec<Local<T>> { } //~ ERROR E0210
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type

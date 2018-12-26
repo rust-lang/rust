@@ -1,5 +1,5 @@
 error[E0574]: expected struct, variant or union type, found module `module`
-  --> $DIR/issue-23189.rs:14:13
+  --> $DIR/issue-23189.rs:4:13
    |
 LL |     let _ = module { x: 0 }; //~ERROR expected struct
    |             ^^^^^^ not a struct, variant or union type

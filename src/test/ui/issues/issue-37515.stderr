@@ -1,11 +1,11 @@
 warning: type alias is never used: `Z`
-  --> $DIR/issue-37515.rs:14:1
+  --> $DIR/issue-37515.rs:5:1
    |
 LL | type Z = for<'x> Send;
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-37515.rs:12:9
+  --> $DIR/issue-37515.rs:3:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^

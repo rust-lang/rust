@@ -1,11 +1,11 @@
 error[E0603]: module `bar` is private
-  --> $DIR/use-mod-3.rs:11:10
+  --> $DIR/use-mod-3.rs:1:10
    |
 LL | use foo::bar::{ //~ ERROR module `bar` is private
    |          ^^^
 
 error[E0603]: module `bar` is private
-  --> $DIR/use-mod-3.rs:14:10
+  --> $DIR/use-mod-3.rs:4:10
    |
 LL | use foo::bar::{ //~ ERROR module `bar` is private
    |          ^^^

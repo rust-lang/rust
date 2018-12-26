@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `y.0` as mutable more than once at a time
-  --> $DIR/borrowck-anon-fields-tuple.rs:37:10
+  --> $DIR/borrowck-anon-fields-tuple.rs:27:10
    |
 LL |         (ref mut a, _) => a
    |          --------- first mutable borrow occurs here

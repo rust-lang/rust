@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `std::vec::Vec<R>`
-  --> $DIR/vec-res-add.rs:26:13
+  --> $DIR/vec-res-add.rs:16:13
    |
 LL |     let k = i + j;
    |             ^^^^^

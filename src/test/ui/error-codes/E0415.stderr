@@ -1,5 +1,5 @@
 error[E0415]: identifier `f` is bound more than once in this parameter list
-  --> $DIR/E0415.rs:11:16
+  --> $DIR/E0415.rs:1:16
    |
 LL | fn foo(f: i32, f: i32) {} //~ ERROR E0415
    |                ^ used as parameter more than once

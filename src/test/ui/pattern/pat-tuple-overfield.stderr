@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pat-tuple-overfield.rs:15:9
+  --> $DIR/pat-tuple-overfield.rs:5:9
    |
 LL |         (1, 2, 3, 4) => {} //~ ERROR mismatched types
    |         ^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
@@ -8,7 +8,7 @@ LL |         (1, 2, 3, 4) => {} //~ ERROR mismatched types
               found type `(_, _, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/pat-tuple-overfield.rs:16:9
+  --> $DIR/pat-tuple-overfield.rs:6:9
    |
 LL |         (1, 2, .., 3, 4) => {} //~ ERROR mismatched types
    |         ^^^^^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
@@ -17,13 +17,13 @@ LL |         (1, 2, .., 3, 4) => {} //~ ERROR mismatched types
               found type `(_, _, _, _)`
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:20:9
+  --> $DIR/pat-tuple-overfield.rs:10:9
    |
 LL |         S(1, 2, 3, 4) => {}
    |         ^^^^^^^^^^^^^ expected 3 fields, found 4
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
-  --> $DIR/pat-tuple-overfield.rs:22:9
+  --> $DIR/pat-tuple-overfield.rs:12:9
    |
 LL |         S(1, 2, .., 3, 4) => {}
    |         ^^^^^^^^^^^^^^^^^ expected 3 fields, found 4

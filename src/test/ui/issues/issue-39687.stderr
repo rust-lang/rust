@@ -1,5 +1,5 @@
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/issue-39687.rs:14:16
+  --> $DIR/issue-39687.rs:4:16
    |
 LL |     <fn() as Fn()>::call;
    |                ^^ associated type not allowed here

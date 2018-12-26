@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `partial_cmp`
-  --> $DIR/issue-3344.rs:13:1
+  --> $DIR/issue-3344.rs:3:1
    |
 LL | impl PartialOrd for Thing { //~ ERROR not all trait items implemented, missing: `partial_cmp`
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `partial_cmp` in implementation

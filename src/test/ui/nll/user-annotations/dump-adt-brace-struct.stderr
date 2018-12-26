@@ -1,5 +1,5 @@
 error: user substs: Canonical { max_universe: U0, variables: [], value: UserSubsts { substs: [u32], user_self_ty: None } }
-  --> $DIR/dump-adt-brace-struct.rs:28:5
+  --> $DIR/dump-adt-brace-struct.rs:18:5
    |
 LL |     SomeStruct::<u32> { t: 22 }; //~ ERROR [u32]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^

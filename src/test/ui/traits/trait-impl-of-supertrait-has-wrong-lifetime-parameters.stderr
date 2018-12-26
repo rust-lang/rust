@@ -1,16 +1,16 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
-  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:34:13
+  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:24:13
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> { //~ ERROR cannot infer an appropriate lifetime
    |             ^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 34:6...
-  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:34:6
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 24:6...
+  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:24:6
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> { //~ ERROR cannot infer an appropriate lifetime
    |      ^^
-note: ...but the lifetime must also be valid for the lifetime 'b as defined on the impl at 34:9...
-  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:34:9
+note: ...but the lifetime must also be valid for the lifetime 'b as defined on the impl at 24:9...
+  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:24:9
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> { //~ ERROR cannot infer an appropriate lifetime
    |         ^^

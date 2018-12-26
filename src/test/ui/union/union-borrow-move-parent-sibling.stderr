@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `u.y` as immutable because `u.x.0` is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:25:14
+  --> $DIR/union-borrow-move-parent-sibling.rs:15:14
    |
 LL |     let a = &mut u.x.0;
    |                  ----- mutable borrow occurs here
@@ -10,7 +10,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0382]: use of moved value: `u.y`
-  --> $DIR/union-borrow-move-parent-sibling.rs:32:9
+  --> $DIR/union-borrow-move-parent-sibling.rs:22:9
    |
 LL |     let a = u.x.0;
    |         - value moved here
@@ -20,7 +20,7 @@ LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    = note: move occurs because `u.y` has type `[type error]`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `u.y` as immutable because `u.x.0.0` is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:38:14
+  --> $DIR/union-borrow-move-parent-sibling.rs:28:14
    |
 LL |     let a = &mut (u.x.0).0;
    |                  --------- mutable borrow occurs here
@@ -31,7 +31,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0382]: use of moved value: `u.y`
-  --> $DIR/union-borrow-move-parent-sibling.rs:45:9
+  --> $DIR/union-borrow-move-parent-sibling.rs:35:9
    |
 LL |     let a = (u.x.0).0;
    |         - value moved here
@@ -41,7 +41,7 @@ LL |     let b = u.y; //~ ERROR use of moved value: `u.y`
    = note: move occurs because `u.y` has type `[type error]`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `u` (via `u.x`) as immutable because `u` is also borrowed as mutable (via `*u.y`)
-  --> $DIR/union-borrow-move-parent-sibling.rs:51:14
+  --> $DIR/union-borrow-move-parent-sibling.rs:41:14
    |
 LL |     let a = &mut *u.y;
    |                  ---- mutable borrow occurs here (via `*u.y`)
@@ -52,7 +52,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0382]: use of moved value: `u.x`
-  --> $DIR/union-borrow-move-parent-sibling.rs:58:9
+  --> $DIR/union-borrow-move-parent-sibling.rs:48:9
    |
 LL |     let a = *u.y;
    |         - value moved here

@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:16:1
+  --> $DIR/const_raw_ptr_ops.rs:6:1
    |
 LL | const X: bool = &1 as *const i32 == &2 as *const i32; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^------------------------------------^
@@ -9,7 +9,7 @@ LL | const X: bool = &1 as *const i32 == &2 as *const i32; //~ ERROR any use of 
    = note: #[deny(const_err)] on by default
 
 error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:22:1
+  --> $DIR/const_raw_ptr_ops.rs:12:1
    |
 LL | const Y2: usize = &1 as *const i32 as usize + 1; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^^^-----------------------------^
@@ -17,7 +17,7 @@ LL | const Y2: usize = &1 as *const i32 as usize + 1; //~ ERROR any use of this 
    |                   "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 
 error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:26:1
+  --> $DIR/const_raw_ptr_ops.rs:16:1
    |
 LL | const Z2: i32 = unsafe { *(42 as *const i32) }; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^^^^^^^^^^-------------------^^^
@@ -25,7 +25,7 @@ LL | const Z2: i32 = unsafe { *(42 as *const i32) }; //~ ERROR any use of this v
    |                          a memory access tried to interpret some bytes as a pointer
 
 error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:27:1
+  --> $DIR/const_raw_ptr_ops.rs:17:1
    |
 LL | const Z3: i32 = unsafe { *(44 as *const i32) }; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^^^^^^^^^^-------------------^^^

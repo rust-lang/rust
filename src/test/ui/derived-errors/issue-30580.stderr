@@ -1,5 +1,5 @@
 error[E0609]: no field `c` on type `&Foo`
-  --> $DIR/issue-30580.rs:22:11
+  --> $DIR/issue-30580.rs:12:11
    |
 LL |         b.c; //~ ERROR no field `c` on type `&Foo`
    |           ^

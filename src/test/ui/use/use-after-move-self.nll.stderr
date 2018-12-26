@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `self`
-  --> $DIR/use-after-move-self.rs:20:16
+  --> $DIR/use-after-move-self.rs:10:16
    |
 LL |         self.bar();
    |         ---- value moved here

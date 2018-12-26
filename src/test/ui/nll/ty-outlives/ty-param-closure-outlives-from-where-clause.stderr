@@ -1,5 +1,5 @@
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -21,7 +21,7 @@ LL | |     })
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:36:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
    |
 LL | / fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 LL | |     with_signature(a, b, |x, y| {
@@ -37,7 +37,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -52,7 +52,7 @@ LL | |     })
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(1:14), 'a))`...
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:53:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -74,7 +74,7 @@ LL | |     })
    = note: where T: '_#2r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:49:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:39:1
    |
 LL | / fn correct_region<'a, T>(a: Cell<&'a ()>, b: T)
 LL | | where
@@ -91,7 +91,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:74:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -112,7 +112,7 @@ LL | |     })
    = note: where T: '_#2r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:70:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:60:1
    |
 LL | / fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
 LL | | where
@@ -129,7 +129,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:74:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -142,7 +142,7 @@ LL | |     })
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(1:20), 'a))`...
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:87:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -162,7 +162,7 @@ LL | |     })
    = note: where T: '_#3r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:82:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:72:1
    |
 LL | / fn outlives_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
 LL | | where

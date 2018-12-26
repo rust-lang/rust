@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `f` as mutable more than once at a time
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:22:16
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:12:16
    |
 LL |     f(Box::new(|| {
    |     -          ^^ second mutable borrow occurs here
@@ -11,7 +11,7 @@ LL |         f((Box::new(|| {})))
    |         - second borrow occurs due to use of `f` in closure
 
 error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:25:5
    |
 LL | fn test2<F>(f: &F) where F: FnMut() {
    |                -- help: consider changing this to be a mutable reference: `&mut F`
@@ -19,7 +19,7 @@ LL |     (*f)();
    |     ^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow `*f.f` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:34:5
    |
 LL | fn test4(f: &Test) {
    |             ----- help: consider changing this to be a mutable reference: `&mut Test<'_>`
@@ -27,7 +27,7 @@ LL |     f.f.call_mut(())
    |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:56:13
    |
 LL |     let mut f = move |g: Box<FnMut(isize)>, b: isize| {
    |         ----- captured outer variable
@@ -36,7 +36,7 @@ LL |         foo(f);
    |             ^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0505]: cannot move out of `f` because it is borrowed
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:65:16
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:55:16
    |
 LL |     f(Box::new(|a| {
    |     -          ^^^ move out of `f` occurs here

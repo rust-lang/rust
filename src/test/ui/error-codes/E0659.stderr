@@ -1,17 +1,17 @@
 error[E0659]: `foo` is ambiguous (glob import vs glob import in the same module)
-  --> $DIR/E0659.rs:25:15
+  --> $DIR/E0659.rs:15:15
    |
 LL |     collider::foo(); //~ ERROR E0659
    |               ^^^ ambiguous name
    |
 note: `foo` could refer to the function imported here
-  --> $DIR/E0659.rs:20:13
+  --> $DIR/E0659.rs:10:13
    |
 LL |     pub use moon::*;
    |             ^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/E0659.rs:21:13
+  --> $DIR/E0659.rs:11:13
    |
 LL |     pub use earth::*;
    |             ^^^^^^^^

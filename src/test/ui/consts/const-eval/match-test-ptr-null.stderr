@@ -1,5 +1,5 @@
 error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
-  --> $DIR/match-test-ptr-null.rs:16:15
+  --> $DIR/match-test-ptr-null.rs:6:15
    |
 LL |         match &1 as *const i32 as usize { //~ ERROR casting pointers to integers in constants
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL |         match &1 as *const i32 as usize { //~ ERROR casting pointers to int
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/match-test-ptr-null.rs:17:13
+  --> $DIR/match-test-ptr-null.rs:7:13
    |
 LL |             0 => 42, //~ ERROR constant contains unimplemented expression type
    |             ^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/match-test-ptr-null.rs:17:13
+  --> $DIR/match-test-ptr-null.rs:7:13
    |
 LL |             0 => 42, //~ ERROR constant contains unimplemented expression type
    |             ^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants

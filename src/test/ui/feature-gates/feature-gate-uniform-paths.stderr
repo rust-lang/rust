@@ -1,5 +1,5 @@
 error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
-  --> $DIR/feature-gate-uniform-paths.rs:14:13
+  --> $DIR/feature-gate-uniform-paths.rs:4:13
    |
 LL |       pub use bar::Bar; //~ ERROR imports can only refer to extern crate names
    |               ^^^
@@ -11,7 +11,7 @@ LL | |     }
    |
    = help: add #![feature(uniform_paths)] to the crate attributes to enable
 note: this import refers to the module defined here
-  --> $DIR/feature-gate-uniform-paths.rs:16:5
+  --> $DIR/feature-gate-uniform-paths.rs:6:5
    |
 LL | /     pub mod bar {
 LL | |         pub struct Bar;
@@ -19,7 +19,7 @@ LL | |     }
    | |_____^
 
 error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
-  --> $DIR/feature-gate-uniform-paths.rs:21:5
+  --> $DIR/feature-gate-uniform-paths.rs:11:5
    |
 LL | use inline; //~ ERROR imports can only refer to extern crate names
    |     ^^^^^^ not an extern crate passed with `--extern`
@@ -28,7 +28,7 @@ LL | use inline; //~ ERROR imports can only refer to extern crate names
    = note: this import refers to a built-in attribute
 
 error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
-  --> $DIR/feature-gate-uniform-paths.rs:23:5
+  --> $DIR/feature-gate-uniform-paths.rs:13:5
    |
 LL | use Vec; //~ ERROR imports can only refer to extern crate names
    |     ^^^ not an extern crate passed with `--extern`
@@ -37,7 +37,7 @@ LL | use Vec; //~ ERROR imports can only refer to extern crate names
    = note: this import refers to a struct from prelude
 
 error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
-  --> $DIR/feature-gate-uniform-paths.rs:25:5
+  --> $DIR/feature-gate-uniform-paths.rs:15:5
    |
 LL | use vec; //~ ERROR imports can only refer to extern crate names
    |     ^^^ not an extern crate passed with `--extern`

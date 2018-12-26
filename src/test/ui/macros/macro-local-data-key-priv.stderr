@@ -1,5 +1,5 @@
 error[E0603]: constant `baz` is private
-  --> $DIR/macro-local-data-key-priv.rs:18:10
+  --> $DIR/macro-local-data-key-priv.rs:8:10
    |
 LL |     bar::baz.with(|_| ());
    |          ^^^

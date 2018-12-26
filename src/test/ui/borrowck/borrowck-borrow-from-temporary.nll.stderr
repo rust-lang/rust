@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/borrowck-borrow-from-temporary.rs:20:5
+  --> $DIR/borrowck-borrow-from-temporary.rs:10:5
    |
 LL |     let &Foo(ref x) = &id(Foo(3)); //~ ERROR borrowed value does not live long enough
    |                        ---------- temporary value created here

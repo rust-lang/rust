@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/coherence-cow.rs:29:1
+  --> $DIR/coherence-cow.rs:19:1
    |
 LL | impl<T> Remote for Pair<Cover<T>,T> { } //[b]~ ERROR E0210
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type

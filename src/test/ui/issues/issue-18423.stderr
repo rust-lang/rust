@@ -1,5 +1,5 @@
 error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/issue-18423.rs:14:12
+  --> $DIR/issue-18423.rs:4:12
    |
 LL |     x: Box<'a, isize> //~ ERROR wrong number of lifetime arguments
    |            ^^ unexpected lifetime argument

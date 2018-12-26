@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
-  --> $DIR/empty-comment.rs:20:5
+  --> $DIR/empty-comment.rs:10:5
    |
 LL | macro_rules! one_arg_macro {
    | -------------------------- when calling this macro

@@ -1,5 +1,5 @@
 error[E0252]: the name `core` is defined multiple times
-  --> $DIR/rename.rs:12:5
+  --> $DIR/rename.rs:2:5
    |
 LL | use core;
    |     ---- previous import of the module `core` here

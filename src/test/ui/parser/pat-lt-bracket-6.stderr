@@ -1,5 +1,5 @@
 error: expected one of `)`, `,`, or `@`, found `[`
-  --> $DIR/pat-lt-bracket-6.rs:14:19
+  --> $DIR/pat-lt-bracket-6.rs:4:19
    |
 LL |     let Test(&desc[..]) = x; //~ ERROR: expected one of `)`, `,`, or `@`, found `[`
    |                   ^ expected one of `)`, `,`, or `@` here

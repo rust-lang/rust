@@ -1,5 +1,5 @@
 error[E0408]: variable `y` is not bound in all patterns
-  --> $DIR/E0408.rs:15:19
+  --> $DIR/E0408.rs:5:19
    |
 LL |         Some(y) | None => {} //~  ERROR variable `y` is not bound in all patterns
    |              -    ^^^^ pattern doesn't bind `y`

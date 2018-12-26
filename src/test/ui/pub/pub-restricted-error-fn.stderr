@@ -1,5 +1,5 @@
 error: unmatched visibility `pub`
-  --> $DIR/pub-restricted-error-fn.rs:13:10
+  --> $DIR/pub-restricted-error-fn.rs:3:10
    |
 LL | pub(crate) () fn foo() {} //~ unmatched visibility
    |          ^

@@ -1,5 +1,5 @@
 error: expected pattern, found `=`
-  --> $DIR/keyword-box-as-identifier.rs:14:13
+  --> $DIR/keyword-box-as-identifier.rs:4:13
    |
 LL |     let box = "foo"; //~ error: expected pattern, found `=`
    |             ^ expected pattern

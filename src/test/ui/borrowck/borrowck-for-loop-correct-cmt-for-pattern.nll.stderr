@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:15
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:12:15
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         --    ^^^^^^^^ cannot move out of borrowed content
@@ -8,13 +8,13 @@ LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         help: consider removing the `&`: `a`
    |
 note: move occurs because `a` has type `&mut i32`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:10
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:12:10
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |          ^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:28:15
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:18:15
    |
 LL |     for &a in &f.a {  //~ ERROR cannot move out
    |         --    ^^^^ cannot move out of borrowed content
@@ -23,13 +23,13 @@ LL |     for &a in &f.a {  //~ ERROR cannot move out
    |         help: consider removing the `&`: `a`
    |
 note: move occurs because `a` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:28:10
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:18:10
    |
 LL |     for &a in &f.a {  //~ ERROR cannot move out
    |          ^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:32:15
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:15
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         --    ^^^^^^^^ cannot move out of borrowed content
@@ -38,7 +38,7 @@ LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |         help: consider removing the `&`: `a`
    |
 note: move occurs because `a` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:32:10
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:10
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |          ^

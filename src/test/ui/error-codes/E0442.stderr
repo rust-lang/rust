@@ -1,17 +1,17 @@
 error[E0442]: intrinsic argument 1 has wrong type: found vector with length 16, expected length 8
-  --> $DIR/E0442.rs:24:5
+  --> $DIR/E0442.rs:14:5
    |
 LL |     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0442]: intrinsic argument 2 has wrong type: found vector with length 4, expected length 8
-  --> $DIR/E0442.rs:24:5
+  --> $DIR/E0442.rs:14:5
    |
 LL |     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0442]: intrinsic return value has wrong type: found vector with length 2, expected length 8
-  --> $DIR/E0442.rs:24:5
+  --> $DIR/E0442.rs:14:5
    |
 LL |     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,11 +1,11 @@
 warning: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/suggestions-not-always-applicable.rs:27:5
+  --> $DIR/suggestions-not-always-applicable.rs:17:5
    |
 LL |     #[foo] //~ WARN: absolute paths must start with
    |     ^^^^^^
    |
 note: lint level defined here
-  --> $DIR/suggestions-not-always-applicable.rs:18:9
+  --> $DIR/suggestions-not-always-applicable.rs:8:9
    |
 LL | #![warn(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![warn(rust_2018_compatibility)]
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 warning: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/suggestions-not-always-applicable.rs:27:5
+  --> $DIR/suggestions-not-always-applicable.rs:17:5
    |
 LL |     #[foo] //~ WARN: absolute paths must start with
    |     ^^^^^^

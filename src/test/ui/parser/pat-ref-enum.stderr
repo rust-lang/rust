@@ -1,5 +1,5 @@
 error: expected identifier, found enum pattern
-  --> $DIR/pat-ref-enum.rs:15:11
+  --> $DIR/pat-ref-enum.rs:5:11
    |
 LL |       ref Some(i) => {} //~ ERROR expected identifier, found enum pattern
    |           ^^^^

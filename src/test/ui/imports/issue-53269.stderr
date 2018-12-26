@@ -1,22 +1,22 @@
 error[E0432]: unresolved import `nonexistent_module`
-  --> $DIR/issue-53269.rs:16:9
+  --> $DIR/issue-53269.rs:6:9
    |
 LL |     use nonexistent_module::mac; //~ ERROR unresolved import `nonexistent_module`
    |         ^^^^^^^^^^^^^^^^^^ maybe a missing `extern crate nonexistent_module;`?
 
 error[E0659]: `mac` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
-  --> $DIR/issue-53269.rs:18:5
+  --> $DIR/issue-53269.rs:8:5
    |
 LL |     mac!(); //~ ERROR `mac` is ambiguous
    |     ^^^ ambiguous name
    |
 note: `mac` could refer to the macro defined here
-  --> $DIR/issue-53269.rs:13:1
+  --> $DIR/issue-53269.rs:3:1
    |
 LL | macro_rules! mac { () => () }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `mac` could also refer to the unresolved item imported here
-  --> $DIR/issue-53269.rs:16:9
+  --> $DIR/issue-53269.rs:6:9
    |
 LL |     use nonexistent_module::mac; //~ ERROR unresolved import `nonexistent_module`
    |         ^^^^^^^^^^^^^^^^^^^^^^^

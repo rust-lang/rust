@@ -1,5 +1,5 @@
 error: found removed `do catch` syntax
-  --> $DIR/do-catch-suggests-try.rs:14:25
+  --> $DIR/do-catch-suggests-try.rs:4:25
    |
 LL |     let _: Option<()> = do catch {};
    |                         ^^

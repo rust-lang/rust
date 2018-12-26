@@ -1,5 +1,5 @@
 error[E0530]: match bindings cannot shadow statics
-  --> $DIR/E0530.rs:16:9
+  --> $DIR/E0530.rs:6:9
    |
 LL |     static TEST: i32 = 0;
    |     --------------------- the static `TEST` is defined here

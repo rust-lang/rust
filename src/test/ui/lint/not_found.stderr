@@ -1,5 +1,5 @@
 warning: unknown lint: `FOO_BAR`
-  --> $DIR/not_found.rs:16:9
+  --> $DIR/not_found.rs:10:9
    |
 LL | #[allow(FOO_BAR)]
    |         ^^^^^^^
@@ -7,13 +7,13 @@ LL | #[allow(FOO_BAR)]
    = note: #[warn(unknown_lints)] on by default
 
 warning: unknown lint: `DEAD_CODE`
-  --> $DIR/not_found.rs:18:8
+  --> $DIR/not_found.rs:12:8
    |
 LL | #[warn(DEAD_CODE)]
    |        ^^^^^^^^^ help: did you mean: `dead_code`
 
 warning: unknown lint: `Warnings`
-  --> $DIR/not_found.rs:20:8
+  --> $DIR/not_found.rs:14:8
    |
 LL | #[deny(Warnings)]
    |        ^^^^^^^^ help: did you mean: `warnings`

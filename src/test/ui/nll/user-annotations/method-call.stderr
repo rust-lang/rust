@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/method-call.rs:48:34
+  --> $DIR/method-call.rs:38:34
    |
 LL |     a.method::<&'static u32>(b,  &c); //~ ERROR
    |     -----------------------------^^-
@@ -10,7 +10,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/method-call.rs:55:29
+  --> $DIR/method-call.rs:45:29
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
@@ -24,7 +24,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/method-call.rs:69:33
+  --> $DIR/method-call.rs:59:33
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here

@@ -1,23 +1,23 @@
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:14:1
+  --> $DIR/used.rs:4:1
    |
 LL | #[used] //~ ERROR attribute must be applied to a `static` variable
    | ^^^^^^^
 
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:17:1
+  --> $DIR/used.rs:7:1
    |
 LL | #[used] //~ ERROR attribute must be applied to a `static` variable
    | ^^^^^^^
 
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:20:1
+  --> $DIR/used.rs:10:1
    |
 LL | #[used] //~ ERROR attribute must be applied to a `static` variable
    | ^^^^^^^
 
 error: attribute must be applied to a `static` variable
-  --> $DIR/used.rs:23:1
+  --> $DIR/used.rs:13:1
    |
 LL | #[used] //~ ERROR attribute must be applied to a `static` variable
    | ^^^^^^^

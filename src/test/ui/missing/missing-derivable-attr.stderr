@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `eq`
-  --> $DIR/missing-derivable-attr.rs:23:1
+  --> $DIR/missing-derivable-attr.rs:13:1
    |
 LL |     fn eq(&self, other: &Self) -> bool;
    |     ----------------------------------- `eq` from trait

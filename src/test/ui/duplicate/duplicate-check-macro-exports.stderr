@@ -1,5 +1,5 @@
 error[E0255]: the name `panic` is defined multiple times
-  --> $DIR/duplicate-check-macro-exports.rs:14:1
+  --> $DIR/duplicate-check-macro-exports.rs:4:1
    |
 LL | pub use std::panic;
    |         ---------- previous import of the macro `panic` here

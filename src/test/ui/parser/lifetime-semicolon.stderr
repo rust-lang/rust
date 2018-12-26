@@ -1,5 +1,5 @@
 error: expected one of `,` or `>`, found `;`
-  --> $DIR/lifetime-semicolon.rs:17:30
+  --> $DIR/lifetime-semicolon.rs:7:30
    |
 LL | fn foo<'a, 'b>(x: &mut Foo<'a; 'b>) {}
    |                              ^ expected one of `,` or `>` here

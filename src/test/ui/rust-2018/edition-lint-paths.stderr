@@ -1,11 +1,11 @@
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:22:9
+  --> $DIR/edition-lint-paths.rs:12:9
    |
 LL |     use ::bar::Bar;
    |         ^^^^^^^^^^ help: use `crate`: `crate::bar::Bar`
    |
 note: lint level defined here
-  --> $DIR/edition-lint-paths.rs:15:9
+  --> $DIR/edition-lint-paths.rs:5:9
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(absolute_paths_not_starting_with_crate)]
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:28:9
+  --> $DIR/edition-lint-paths.rs:18:9
    |
 LL |     use bar;
    |         ^^^ help: use `crate`: `crate::bar`
@@ -22,7 +22,7 @@ LL |     use bar;
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:33:9
+  --> $DIR/edition-lint-paths.rs:23:9
    |
 LL |     use {Bar as SomethingElse, main};
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::{Bar as SomethingElse, main}`
@@ -31,7 +31,7 @@ LL |     use {Bar as SomethingElse, main};
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:45:5
+  --> $DIR/edition-lint-paths.rs:35:5
    |
 LL | use bar::Bar;
    |     ^^^^^^^^ help: use `crate`: `crate::bar::Bar`
@@ -40,7 +40,7 @@ LL | use bar::Bar;
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:57:9
+  --> $DIR/edition-lint-paths.rs:47:9
    |
 LL |     use *;
    |         ^ help: use `crate`: `crate::*`
@@ -49,7 +49,7 @@ LL |     use *;
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:62:6
+  --> $DIR/edition-lint-paths.rs:52:6
    |
 LL | impl ::foo::SomeTrait for u32 { }
    |      ^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::SomeTrait`
@@ -58,7 +58,7 @@ LL | impl ::foo::SomeTrait for u32 { }
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:67:13
+  --> $DIR/edition-lint-paths.rs:57:13
    |
 LL |     let x = ::bar::Bar;
    |             ^^^^^^^^^^ help: use `crate`: `crate::bar::Bar`

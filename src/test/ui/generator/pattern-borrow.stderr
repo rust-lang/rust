@@ -1,5 +1,5 @@
 error[E0626]: borrow may still be in use when generator yields
-  --> $DIR/pattern-borrow.rs:19:24
+  --> $DIR/pattern-borrow.rs:9:24
    |
 LL |         if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when generator yields
    |                        ^^^^^^

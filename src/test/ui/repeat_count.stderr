@@ -1,11 +1,11 @@
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/repeat_count.rs:15:17
+  --> $DIR/repeat_count.rs:5:17
    |
 LL |     let a = [0; n];
    |                 ^ non-constant value
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:17:17
+  --> $DIR/repeat_count.rs:7:17
    |
 LL |     let b = [0; ()];
    |                 ^^ expected usize, found ()
@@ -14,13 +14,13 @@ LL |     let b = [0; ()];
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:22:17
+  --> $DIR/repeat_count.rs:12:17
    |
 LL |     let c = [0; true];
    |                 ^^^^ expected usize, found bool
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:25:17
+  --> $DIR/repeat_count.rs:15:17
    |
 LL |     let d = [0; 0.5];
    |                 ^^^ expected usize, found floating-point variable
@@ -29,7 +29,7 @@ LL |     let d = [0; 0.5];
               found type `{float}`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:30:17
+  --> $DIR/repeat_count.rs:20:17
    |
 LL |     let e = [0; "foo"];
    |                 ^^^^^ expected usize, found reference
@@ -38,19 +38,19 @@ LL |     let e = [0; "foo"];
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:35:17
+  --> $DIR/repeat_count.rs:25:17
    |
 LL |     let f = [0; -4_isize];
    |                 ^^^^^^^^ expected usize, found isize
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:38:23
+  --> $DIR/repeat_count.rs:28:23
    |
 LL |     let f = [0_usize; -1_isize];
    |                       ^^^^^^^^ expected usize, found isize
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:44:17
+  --> $DIR/repeat_count.rs:34:17
    |
 LL |     let g = [0; G { g: () }];
    |                 ^^^^^^^^^^^ expected usize, found struct `main::G`

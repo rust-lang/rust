@@ -1,11 +1,11 @@
 error: unused import: `super::f`
-  --> $DIR/unused.rs:17:24
+  --> $DIR/unused.rs:7:24
    |
 LL |         pub(super) use super::f; //~ ERROR unused
    |                        ^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/unused.rs:11:9
+  --> $DIR/unused.rs:1:9
    |
 LL | #![deny(unused)]
    |         ^^^^^^

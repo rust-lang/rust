@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/wf-in-fn-arg.rs:20:1
+  --> $DIR/wf-in-fn-arg.rs:10:1
    |
 LL | / fn bar<T>(_: &MustBeCopy<T>) //~ ERROR E0277
 LL | | {
@@ -8,7 +8,7 @@ LL | | }
    |
    = help: consider adding a `where T: std::marker::Copy` bound
 note: required by `MustBeCopy`
-  --> $DIR/wf-in-fn-arg.rs:16:1
+  --> $DIR/wf-in-fn-arg.rs:6:1
    |
 LL | struct MustBeCopy<T:Copy> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

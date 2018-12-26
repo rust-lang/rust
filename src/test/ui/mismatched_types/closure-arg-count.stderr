@@ -1,5 +1,5 @@
 error[E0593]: closure is expected to take 2 arguments, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:15:15
+  --> $DIR/closure-arg-count.rs:5:15
    |
 LL |     [1, 2, 3].sort_by(|| panic!());
    |               ^^^^^^^ -- takes 0 arguments
@@ -11,7 +11,7 @@ LL |     [1, 2, 3].sort_by(|_, _| panic!());
    |                       ^^^^^^
 
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
-  --> $DIR/closure-arg-count.rs:17:15
+  --> $DIR/closure-arg-count.rs:7:15
    |
 LL |     [1, 2, 3].sort_by(|tuple| panic!());
    |               ^^^^^^^ ------- takes 1 argument
@@ -19,7 +19,7 @@ LL |     [1, 2, 3].sort_by(|tuple| panic!());
    |               expected closure that takes 2 arguments
 
 error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
-  --> $DIR/closure-arg-count.rs:19:15
+  --> $DIR/closure-arg-count.rs:9:15
    |
 LL |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
    |               ^^^^^^^ ----------------- takes a single 2-tuple as argument
@@ -31,7 +31,7 @@ LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |                       ^^^^^^^^^^^^^^^
 
 error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
-  --> $DIR/closure-arg-count.rs:21:15
+  --> $DIR/closure-arg-count.rs:11:15
    |
 LL |     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
    |               ^^^^^^^ ----------------------------- takes a single 2-tuple as argument
@@ -43,7 +43,7 @@ LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |                       ^^^^^^^^^^^^^^^
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:23:5
+  --> $DIR/closure-arg-count.rs:13:5
    |
 LL |     f(|| panic!());
    |     ^ -- takes 0 arguments
@@ -51,7 +51,7 @@ LL |     f(|| panic!());
    |     expected closure that takes 1 argument
    |
 note: required by `f`
-  --> $DIR/closure-arg-count.rs:13:1
+  --> $DIR/closure-arg-count.rs:3:1
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL |     f(|_| panic!());
    |       ^^^
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:25:5
+  --> $DIR/closure-arg-count.rs:15:5
    |
 LL |     f(  move    || panic!());
    |     ^   ---------- takes 0 arguments
@@ -69,7 +69,7 @@ LL |     f(  move    || panic!());
    |     expected closure that takes 1 argument
    |
 note: required by `f`
-  --> $DIR/closure-arg-count.rs:13:1
+  --> $DIR/closure-arg-count.rs:3:1
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |     f(  move    |_| panic!());
    |                 ^^^
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:28:53
+  --> $DIR/closure-arg-count.rs:18:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
    |                                                     ^^^ ------ takes 2 distinct arguments
@@ -91,7 +91,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
    |                                                         ^^^^^^^^
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:30:53
+  --> $DIR/closure-arg-count.rs:20:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
    |                                                     ^^^ ------------- takes 2 distinct arguments
@@ -103,7 +103,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
    |                                                         ^^^^^^^^
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
-  --> $DIR/closure-arg-count.rs:32:53
+  --> $DIR/closure-arg-count.rs:22:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
    |                                                     ^^^ --------- takes 3 distinct arguments
@@ -111,7 +111,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
    |                                                     expected closure that takes a single 2-tuple as argument
 
 error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:34:53
+  --> $DIR/closure-arg-count.rs:24:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
    |                                                     ^^^ expected function that takes a single 2-tuple as argument
@@ -120,7 +120,7 @@ LL | fn foo() {}
    | -------- takes 0 arguments
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
-  --> $DIR/closure-arg-count.rs:37:53
+  --> $DIR/closure-arg-count.rs:27:53
    |
 LL |     let bar = |i, x, y| i;
    |               --------- takes 3 distinct arguments
@@ -128,7 +128,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
    |                                                     ^^^ expected closure that takes a single 2-tuple as argument
 
 error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:39:53
+  --> $DIR/closure-arg-count.rs:29:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(qux);
    |                                                     ^^^ expected function that takes a single 2-tuple as argument
@@ -137,13 +137,13 @@ LL | fn qux(x: usize, y: usize) {}
    | -------------------------- takes 2 distinct arguments
 
 error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
-  --> $DIR/closure-arg-count.rs:42:41
+  --> $DIR/closure-arg-count.rs:32:41
    |
 LL |     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
    |                                         ^^^ expected function that takes 1 argument
 
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
-  --> $DIR/closure-arg-count.rs:45:5
+  --> $DIR/closure-arg-count.rs:35:5
    |
 LL |     call(Foo);
    |     ^^^^ expected function that takes 0 arguments
@@ -152,7 +152,7 @@ LL | struct Foo(u8);
    | --------------- takes 1 argument
    |
 note: required by `call`
-  --> $DIR/closure-arg-count.rs:52:1
+  --> $DIR/closure-arg-count.rs:42:1
    |
 LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `b` as mutable more than once at a time
-  --> $DIR/mut-cant-alias.rs:19:20
+  --> $DIR/mut-cant-alias.rs:9:20
    |
 LL |     let b1 = &mut *b;
    |                    - first mutable borrow occurs here

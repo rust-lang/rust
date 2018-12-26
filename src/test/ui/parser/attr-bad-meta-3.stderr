@@ -1,5 +1,5 @@
 error: expected `]`, found `token`
-  --> $DIR/attr-bad-meta-3.rs:13:10
+  --> $DIR/attr-bad-meta-3.rs:3:10
    |
 LL | #[path() token] //~ ERROR expected `]`, found `token`
    |          ^^^^^ expected `]`

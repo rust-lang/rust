@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/range-2.rs:17:9
+  --> $DIR/range-2.rs:7:9
    |
 LL |     let r = {
    |         - borrow later stored here
@@ -10,7 +10,7 @@ LL |     };
    |     - `a` dropped here while still borrowed
 
 error[E0597]: `b` does not live long enough
-  --> $DIR/range-2.rs:17:13
+  --> $DIR/range-2.rs:7:13
    |
 LL |     let r = {
    |         - borrow later stored here

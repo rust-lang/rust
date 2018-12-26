@@ -1,7 +1,7 @@
 error: crate `NonSnakeCase` should have a snake case name such as `non_snake_case`
    |
 note: lint level defined here
-  --> $DIR/lint-non-snake-case-crate-2.rs:14:9
+  --> $DIR/lint-non-snake-case-crate-2.rs:4:9
    |
 LL | #![deny(non_snake_case)]
    |         ^^^^^^^^^^^^^^

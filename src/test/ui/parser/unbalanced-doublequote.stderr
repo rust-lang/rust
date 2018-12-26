@@ -1,5 +1,5 @@
 error: unterminated double quote string
-  --> $DIR/unbalanced-doublequote.rs:18:5
+  --> $DIR/unbalanced-doublequote.rs:8:5
    |
 LL | /     "
 LL | | }

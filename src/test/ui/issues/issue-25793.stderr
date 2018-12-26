@@ -1,5 +1,5 @@
 error[E0503]: cannot use `self.width` because it was mutably borrowed
-  --> $DIR/issue-25793.rs:13:9
+  --> $DIR/issue-25793.rs:4:9
    |
 LL |         $this.width.unwrap()
    |         ^^^^^^^^^^^ use of borrowed `*self`

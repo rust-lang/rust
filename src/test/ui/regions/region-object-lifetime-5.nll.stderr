@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local data `*x`
-  --> $DIR/region-object-lifetime-5.rs:21:5
+  --> $DIR/region-object-lifetime-5.rs:11:5
    |
 LL |     x.borrowed() //~ ERROR `*x` does not live long enough
    |     -^^^^^^^^^^^

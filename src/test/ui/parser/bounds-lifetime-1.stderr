@@ -1,5 +1,5 @@
 error: expected one of `,`, `:`, or `>`, found `'b`
-  --> $DIR/bounds-lifetime-1.rs:13:17
+  --> $DIR/bounds-lifetime-1.rs:3:17
    |
 LL | type A = for<'a 'b> fn(); //~ ERROR expected one of `,`, `:`, or `>`, found `'b`
    |                 ^^ expected one of `,`, `:`, or `>` here

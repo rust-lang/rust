@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:45:47
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:35:47
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
@@ -17,7 +17,7 @@ LL | |     });
    = note: late-bound region is '_#3r
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |                                                ---------  - has type `&std::cell::Cell<&'1 u32>`
@@ -28,7 +28,7 @@ LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:44:1
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:34:1
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {

@@ -1,5 +1,5 @@
 error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
-  --> $DIR/move-out-of-array-1.rs:27:5
+  --> $DIR/move-out-of-array-1.rs:17:5
    |
 LL |     a[i] //~ ERROR cannot move out of type `[D; 4]`, a non-copy array
    |     ^^^^ cannot move out of here

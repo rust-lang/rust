@@ -1,10 +1,10 @@
 error: expected expression, found reserved identifier `_`
-  --> $DIR/underscore.rs:18:9
+  --> $DIR/underscore.rs:8:9
    |
 LL |         _
    |         ^ expected expression
    | 
-  ::: $DIR/main.rs:15:5
+  ::: $DIR/main.rs:5:5
    |
 LL |     underscore!();
    |     -------------- in this macro invocation

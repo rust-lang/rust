@@ -1,17 +1,17 @@
 error: attribute should be empty
-  --> $DIR/marker-attribute-with-values.rs:14:1
+  --> $DIR/marker-attribute-with-values.rs:4:1
    |
 LL | #[marker(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error: attribute should be empty
-  --> $DIR/marker-attribute-with-values.rs:18:1
+  --> $DIR/marker-attribute-with-values.rs:8:1
    |
 LL | #[marker("never")]
    | ^^^^^^^^^^^^^^^^^^
 
 error: attribute should be empty
-  --> $DIR/marker-attribute-with-values.rs:22:1
+  --> $DIR/marker-attribute-with-values.rs:12:1
    |
 LL | #[marker(key = value)]
    | ^^^^^^^^^^^^^^^^^^^^^^

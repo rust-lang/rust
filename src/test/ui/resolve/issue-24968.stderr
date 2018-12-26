@@ -1,5 +1,5 @@
 error[E0411]: cannot find type `Self` in this scope
-  --> $DIR/issue-24968.rs:11:11
+  --> $DIR/issue-24968.rs:1:11
    |
 LL | fn foo(_: Self) {
    |           ^^^^ `Self` is only available in impls, traits, and type definitions

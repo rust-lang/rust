@@ -1,5 +1,5 @@
 error[E0710]: an unknown tool name found in scoped lint: `foo::bar`
-  --> $DIR/tool_lints.rs:13:8
+  --> $DIR/tool_lints.rs:1:8
    |
 LL | #[warn(foo::bar)]
    |        ^^^

@@ -1,5 +1,5 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/issue-22370.rs:15:10
+  --> $DIR/issue-22370.rs:5:10
    |
 LL | fn f(a: &A) {}
    |          ^ missing reference to `T`

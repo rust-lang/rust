@@ -1,5 +1,5 @@
 error: expected expression, found keyword `mut`
-  --> $DIR/removed-syntax-uniq-mut-expr.rs:14:21
+  --> $DIR/removed-syntax-uniq-mut-expr.rs:4:21
    |
 LL |     let a_box = box mut 42; //~ ERROR expected expression, found keyword `mut`
    |                     ^^^ expected expression

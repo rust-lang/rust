@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `hello`
-  --> $DIR/not-copy-closure.rs:20:9
+  --> $DIR/not-copy-closure.rs:10:9
    |
 LL |     let b = hello;
    |         - value moved here
@@ -7,7 +7,7 @@ LL |     let c = hello; //~ ERROR use of moved value: `hello` [E0382]
    |         ^ value used here after move
    |
 note: closure cannot be invoked more than once because it moves the variable `a` out of its environment
-  --> $DIR/not-copy-closure.rs:16:9
+  --> $DIR/not-copy-closure.rs:6:9
    |
 LL |         a += 1;
    |         ^

@@ -1,5 +1,5 @@
 error: emplacement syntax is obsolete (for now, anyway)
-  --> $DIR/bad.rs:19:5
+  --> $DIR/bad.rs:9:5
    |
 LL |     x <- y; //[bad]~ ERROR emplacement syntax is obsolete
    |     ^^^^^^
@@ -7,7 +7,7 @@ LL |     x <- y; //[bad]~ ERROR emplacement syntax is obsolete
    = note: for more information, see <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>
 
 error: emplacement syntax is obsolete (for now, anyway)
-  --> $DIR/bad.rs:20:5
+  --> $DIR/bad.rs:10:5
    |
 LL |     in(foo) { bar }; //[bad]~ ERROR emplacement syntax is obsolete
    |     ^^^^^^^^^^^^^^^

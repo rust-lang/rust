@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:31:63
+  --> $DIR/explore-issue-38412.rs:21:63
    |
 LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_un
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:40:5
+  --> $DIR/explore-issue-38412.rs:30:5
    |
 LL |     r.a_unstable_undeclared_pub; //~ ERROR use of unstable library feature
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,25 +15,25 @@ LL |     r.a_unstable_undeclared_pub; //~ ERROR use of unstable library feature
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0616]: field `b_crate` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:41:5
+  --> $DIR/explore-issue-38412.rs:31:5
    |
 LL |     r.b_crate;                   //~ ERROR is private
    |     ^^^^^^^^^
 
 error[E0616]: field `c_mod` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:42:5
+  --> $DIR/explore-issue-38412.rs:32:5
    |
 LL |     r.c_mod;                     //~ ERROR is private
    |     ^^^^^^^
 
 error[E0616]: field `d_priv` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:43:5
+  --> $DIR/explore-issue-38412.rs:33:5
    |
 LL |     r.d_priv;                    //~ ERROR is private
    |     ^^^^^^^^
 
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:47:5
+  --> $DIR/explore-issue-38412.rs:37:5
    |
 LL |     t.2;                         //~ ERROR use of unstable library feature
    |     ^^^
@@ -41,25 +41,25 @@ LL |     t.2;                         //~ ERROR use of unstable library feature
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:48:5
+  --> $DIR/explore-issue-38412.rs:38:5
    |
 LL |     t.3;                         //~ ERROR is private
    |     ^^^
 
 error[E0616]: field `4` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:49:5
+  --> $DIR/explore-issue-38412.rs:39:5
    |
 LL |     t.4;                         //~ ERROR is private
    |     ^^^
 
 error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:50:5
+  --> $DIR/explore-issue-38412.rs:40:5
    |
 LL |     t.5;                         //~ ERROR is private
    |     ^^^
 
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:54:7
+  --> $DIR/explore-issue-38412.rs:44:7
    |
 LL |     r.unstable_undeclared_trait_method(); //~ ERROR use of unstable library feature
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL |     r.unstable_undeclared_trait_method(); //~ ERROR use of unstable library
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:58:7
+  --> $DIR/explore-issue-38412.rs:48:7
    |
 LL |     r.unstable_undeclared();              //~ ERROR use of unstable library feature
    |       ^^^^^^^^^^^^^^^^^^^
@@ -75,25 +75,25 @@ LL |     r.unstable_undeclared();              //~ ERROR use of unstable library
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0624]: method `pub_crate` is private
-  --> $DIR/explore-issue-38412.rs:60:7
+  --> $DIR/explore-issue-38412.rs:50:7
    |
 LL |     r.pub_crate();                        //~ ERROR `pub_crate` is private
    |       ^^^^^^^^^
 
 error[E0624]: method `pub_mod` is private
-  --> $DIR/explore-issue-38412.rs:61:7
+  --> $DIR/explore-issue-38412.rs:51:7
    |
 LL |     r.pub_mod();                          //~ ERROR `pub_mod` is private
    |       ^^^^^^^
 
 error[E0624]: method `private` is private
-  --> $DIR/explore-issue-38412.rs:62:7
+  --> $DIR/explore-issue-38412.rs:52:7
    |
 LL |     r.private();                          //~ ERROR `private` is private
    |       ^^^^^^^
 
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:67:7
+  --> $DIR/explore-issue-38412.rs:57:7
    |
 LL |     t.unstable_undeclared_trait_method(); //~ ERROR use of unstable library feature
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL |     t.unstable_undeclared_trait_method(); //~ ERROR use of unstable library
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared' (see issue #38412)
-  --> $DIR/explore-issue-38412.rs:71:7
+  --> $DIR/explore-issue-38412.rs:61:7
    |
 LL |     t.unstable_undeclared();              //~ ERROR use of unstable library feature
    |       ^^^^^^^^^^^^^^^^^^^
@@ -109,19 +109,19 @@ LL |     t.unstable_undeclared();              //~ ERROR use of unstable library
    = help: add #![feature(unstable_undeclared)] to the crate attributes to enable
 
 error[E0624]: method `pub_crate` is private
-  --> $DIR/explore-issue-38412.rs:73:7
+  --> $DIR/explore-issue-38412.rs:63:7
    |
 LL |     t.pub_crate();                        //~ ERROR `pub_crate` is private
    |       ^^^^^^^^^
 
 error[E0624]: method `pub_mod` is private
-  --> $DIR/explore-issue-38412.rs:74:7
+  --> $DIR/explore-issue-38412.rs:64:7
    |
 LL |     t.pub_mod();                          //~ ERROR `pub_mod` is private
    |       ^^^^^^^
 
 error[E0624]: method `private` is private
-  --> $DIR/explore-issue-38412.rs:75:7
+  --> $DIR/explore-issue-38412.rs:65:7
    |
 LL |     t.private();                          //~ ERROR `private` is private
    |       ^^^^^^^

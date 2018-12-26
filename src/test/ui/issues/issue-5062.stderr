@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-5062.rs:11:29
+  --> $DIR/issue-5062.rs:1:29
    |
 LL | fn main() { format!("{:?}", None); }
    |                             ^^^^ cannot infer type for `T`

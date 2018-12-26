@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `baz::zed`
-  --> $DIR/import2.rs:11:10
+  --> $DIR/import2.rs:1:10
    |
 LL | use baz::zed::bar; //~ ERROR unresolved import `baz::zed` [E0432]
    |          ^^^ could not find `zed` in `baz`

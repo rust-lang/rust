@@ -1,23 +1,23 @@
 error[E0161]: cannot move a value of type str: the size of str cannot be statically determined
-  --> $DIR/dst-index.rs:41:5
+  --> $DIR/dst-index.rs:31:5
    |
 LL |     S[0];
    |     ^^^^
 
 error[E0161]: cannot move a value of type dyn std::fmt::Debug: the size of dyn std::fmt::Debug cannot be statically determined
-  --> $DIR/dst-index.rs:44:5
+  --> $DIR/dst-index.rs:34:5
    |
 LL |     T[0];
    |     ^^^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dst-index.rs:41:5
+  --> $DIR/dst-index.rs:31:5
    |
 LL |     S[0];
    |     ^^^^ cannot move out of borrowed content
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dst-index.rs:44:5
+  --> $DIR/dst-index.rs:34:5
    |
 LL |     T[0];
    |     ^^^^ cannot move out of borrowed content

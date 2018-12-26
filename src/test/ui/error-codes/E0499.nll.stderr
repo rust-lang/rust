@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `i` as mutable more than once at a time
-  --> $DIR/E0499.rs:14:17
+  --> $DIR/E0499.rs:4:17
    |
 LL |     let mut x = &mut i;
    |                 ------ first mutable borrow occurs here

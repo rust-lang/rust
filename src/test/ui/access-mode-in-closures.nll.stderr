@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/access-mode-in-closures.rs:18:15
+  --> $DIR/access-mode-in-closures.rs:8:15
    |
 LL |         match *s { S(v) => v } //~ ERROR cannot move out
    |               ^^     - data moved here
@@ -8,7 +8,7 @@ LL |         match *s { S(v) => v } //~ ERROR cannot move out
    |               help: consider removing the `*`: `s`
    |
 note: move occurs because `v` has type `std::vec::Vec<isize>`, which does not implement the `Copy` trait
-  --> $DIR/access-mode-in-closures.rs:18:22
+  --> $DIR/access-mode-in-closures.rs:8:22
    |
 LL |         match *s { S(v) => v } //~ ERROR cannot move out
    |                      ^

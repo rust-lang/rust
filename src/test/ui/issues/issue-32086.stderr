@@ -1,11 +1,11 @@
 error[E0532]: expected tuple struct/variant, found constant `C`
-  --> $DIR/issue-32086.rs:15:9
+  --> $DIR/issue-32086.rs:5:9
    |
 LL |     let C(a) = S(11); //~ ERROR expected tuple struct/variant, found constant `C`
    |         ^ did you mean `S`?
 
 error[E0532]: expected tuple struct/variant, found constant `C`
-  --> $DIR/issue-32086.rs:16:9
+  --> $DIR/issue-32086.rs:6:9
    |
 LL |     let C(..) = S(11); //~ ERROR expected tuple struct/variant, found constant `C`
    |         ^ did you mean `S`?

@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `u`
-  --> $DIR/borrowck-union-move.rs:36:21
+  --> $DIR/borrowck-union-move.rs:26:21
    |
 LL |             let a = u.n1;
    |                     ---- value moved here
@@ -9,7 +9,7 @@ LL |             let a = u.n1; //~ ERROR use of moved value: `u.n1`
    = note: move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/borrowck-union-move.rs:41:21
+  --> $DIR/borrowck-union-move.rs:31:21
    |
 LL |             let a = u.n1;
    |                     ---- value moved here
@@ -19,7 +19,7 @@ LL |             let a = u; //~ ERROR use of partially moved value: `u`
    = note: move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/borrowck-union-move.rs:46:21
+  --> $DIR/borrowck-union-move.rs:36:21
    |
 LL |             let a = u.n1;
    |                     ---- value moved here
@@ -29,7 +29,7 @@ LL |             let a = u.n2; //~ ERROR use of moved value: `u.n2`
    = note: move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/borrowck-union-move.rs:73:21
+  --> $DIR/borrowck-union-move.rs:63:21
    |
 LL |             let a = u.n;
    |                     --- value moved here
@@ -39,7 +39,7 @@ LL |             let a = u.n; //~ ERROR use of moved value: `u.n`
    = note: move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/borrowck-union-move.rs:78:21
+  --> $DIR/borrowck-union-move.rs:68:21
    |
 LL |             let a = u.n;
    |                     --- value moved here
@@ -49,7 +49,7 @@ LL |             let a = u.c; //~ ERROR use of moved value: `u.c`
    = note: move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/borrowck-union-move.rs:93:21
+  --> $DIR/borrowck-union-move.rs:83:21
    |
 LL |             let a = u.n;
    |                     --- value moved here

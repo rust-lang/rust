@@ -1,23 +1,23 @@
 error: lifetimes cannot use keyword names
-  --> $DIR/lifetime-no-keyword.rs:13:8
+  --> $DIR/lifetime-no-keyword.rs:3:8
    |
 LL | fn baz<'let>(a: &'let isize) { } //~ ERROR lifetimes cannot use keyword names
    |        ^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/lifetime-no-keyword.rs:13:18
+  --> $DIR/lifetime-no-keyword.rs:3:18
    |
 LL | fn baz<'let>(a: &'let isize) { } //~ ERROR lifetimes cannot use keyword names
    |                  ^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/lifetime-no-keyword.rs:15:8
+  --> $DIR/lifetime-no-keyword.rs:5:8
    |
 LL | fn zab<'self>(a: &'self isize) { } //~ ERROR lifetimes cannot use keyword names
    |        ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/lifetime-no-keyword.rs:15:19
+  --> $DIR/lifetime-no-keyword.rs:5:19
    |
 LL | fn zab<'self>(a: &'self isize) { } //~ ERROR lifetimes cannot use keyword names
    |                   ^^^^^

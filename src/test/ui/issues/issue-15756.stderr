@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[T]` cannot be known at compilation time
-  --> $DIR/issue-15756.rs:17:10
+  --> $DIR/issue-15756.rs:7:10
    |
 LL |     &mut something
    |          ^^^^^^^^^ doesn't have a size known at compile-time

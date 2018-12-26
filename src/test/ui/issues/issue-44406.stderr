@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `true`
-  --> $DIR/issue-44406.rs:18:10
+  --> $DIR/issue-44406.rs:8:10
    |
 LL |     foo!(true); //~ ERROR expected type, found keyword
    |          ^^^^ expected identifier, found keyword
 
 error: expected type, found keyword `true`
-  --> $DIR/issue-44406.rs:18:10
+  --> $DIR/issue-44406.rs:8:10
    |
 LL |         bar(baz: $rest)
    |                - help: try using a semicolon: `;`

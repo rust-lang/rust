@@ -1,5 +1,5 @@
 error[E0423]: expected function, found macro `assert`
-  --> $DIR/resolve-hint-macro.rs:12:5
+  --> $DIR/resolve-hint-macro.rs:2:5
    |
 LL |     assert(true);
    |     ^^^^^^ did you mean `assert!(...)`?

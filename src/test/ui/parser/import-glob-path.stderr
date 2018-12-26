@@ -1,5 +1,5 @@
 error: expected `;`, found `::`
-  --> $DIR/import-glob-path.rs:14:11
+  --> $DIR/import-glob-path.rs:4:11
    |
 LL | use foo::*::bar
    |           ^^ expected `;`

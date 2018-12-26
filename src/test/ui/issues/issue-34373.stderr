@@ -1,11 +1,11 @@
 error[E0391]: cycle detected when processing `Foo::T`
-  --> $DIR/issue-34373.rs:17:30
+  --> $DIR/issue-34373.rs:7:30
    |
 LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;  //~ ERROR cycle detected
    |                              ^^^^^^^^^^
    |
 note: ...which requires processing `DefaultFoo`...
-  --> $DIR/issue-34373.rs:18:19
+  --> $DIR/issue-34373.rs:8:19
    |
 LL | type DefaultFoo = Foo;
    |                   ^^^

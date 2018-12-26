@@ -1,17 +1,17 @@
 error[E0004]: non-exhaustive patterns: `(true, false)` not covered
-  --> $DIR/match-argm-statics-2.rs:27:11
+  --> $DIR/match-argm-statics-2.rs:17:11
    |
 LL |     match (true, false) {
    |           ^^^^^^^^^^^^^ pattern `(true, false)` not covered
 
 error[E0004]: non-exhaustive patterns: `Some(Some(West))` not covered
-  --> $DIR/match-argm-statics-2.rs:39:11
+  --> $DIR/match-argm-statics-2.rs:29:11
    |
 LL |     match Some(Some(North)) {
    |           ^^^^^^^^^^^^^^^^^ pattern `Some(Some(West))` not covered
 
 error[E0004]: non-exhaustive patterns: `Foo { bar: Some(North), baz: NewBool(true) }` not covered
-  --> $DIR/match-argm-statics-2.rs:58:11
+  --> $DIR/match-argm-statics-2.rs:48:11
    |
 LL |     match (Foo { bar: Some(North), baz: NewBool(true) }) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { bar: Some(North), baz: NewBool(true) }` not covered

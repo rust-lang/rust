@@ -1,5 +1,5 @@
 error[E0609]: no field `nonexistent_field` on type `MyStruct`
-  --> $DIR/issue-19244-2.rs:15:27
+  --> $DIR/issue-19244-2.rs:5:27
    |
 LL |     let a: [isize; STRUCT.nonexistent_field];
    |                           ^^^^^^^^^^^^^^^^^ unknown field

@@ -1,5 +1,5 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/match-requires-both-partialeq-and-eq.rs:27:9
+  --> $DIR/match-requires-both-partialeq-and-eq.rs:17:9
    |
 LL |         FOO => { }
    |         ^^^

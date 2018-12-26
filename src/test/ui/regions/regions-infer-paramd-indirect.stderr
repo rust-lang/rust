@@ -1,13 +1,13 @@
 error[E0308]: mismatched types
-  --> $DIR/regions-infer-paramd-indirect.rs:33:18
+  --> $DIR/regions-infer-paramd-indirect.rs:22:18
    |
 LL |         self.f = b;
    |                  ^ lifetime mismatch
    |
    = note: expected type `std::boxed::Box<std::boxed::Box<&'a isize>>`
               found type `std::boxed::Box<std::boxed::Box<&isize>>`
-note: the anonymous lifetime #2 defined on the method body at 32:5...
-  --> $DIR/regions-infer-paramd-indirect.rs:32:5
+note: the anonymous lifetime #2 defined on the method body at 21:5...
+  --> $DIR/regions-infer-paramd-indirect.rs:21:5
    |
 LL | /     fn set_f_bad(&mut self, b: Box<B>) {
 LL | |         self.f = b;
@@ -17,8 +17,8 @@ LL | |         //~| found type `std::boxed::Box<std::boxed::Box<&isize>>`
 LL | |         //~| lifetime mismatch
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 27:6
-  --> $DIR/regions-infer-paramd-indirect.rs:27:6
+note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 16:6
+  --> $DIR/regions-infer-paramd-indirect.rs:16:6
    |
 LL | impl<'a> SetF<'a> for C<'a> {
    |      ^^

@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing function parameter
-  --> $DIR/regions-ref-in-fn-arg.rs:15:5
+  --> $DIR/regions-ref-in-fn-arg.rs:5:5
    |
 LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
    |             --------- function parameter borrowed here
@@ -7,7 +7,7 @@ LL |     x //~^ ERROR borrowed value does not live long enough
    |     ^ returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing function parameter
-  --> $DIR/regions-ref-in-fn-arg.rs:21:22
+  --> $DIR/regions-ref-in-fn-arg.rs:11:22
    |
 LL |     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
    |           ---------  ^ returns a value referencing data owned by the current function

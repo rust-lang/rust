@@ -1,5 +1,5 @@
 error: unterminated raw string
-  --> $DIR/raw-byte-string-eof.rs:15:6
+  --> $DIR/raw-byte-string-eof.rs:5:6
    |
 LL |     br##"a"#;  //~ unterminated raw string
    |      ^ unterminated raw string

@@ -1,5 +1,5 @@
 error[E0606]: casting `*mut impl std::fmt::Debug+?Sized` as `*mut impl std::fmt::Debug+?Sized` is invalid
-  --> $DIR/casts-differing-anon.rs:31:13
+  --> $DIR/casts-differing-anon.rs:21:13
    |
 LL |     b_raw = f_raw as *mut _; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^

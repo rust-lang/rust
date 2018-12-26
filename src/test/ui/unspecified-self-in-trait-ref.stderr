@@ -1,29 +1,29 @@
 error[E0599]: no function or associated item named `lol` found for type `dyn Foo<_>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:20:13
+  --> $DIR/unspecified-self-in-trait-ref.rs:10:13
    |
 LL |     let a = Foo::lol();
    |             ^^^^^^^^ function or associated item not found in `dyn Foo<_>`
 
 error[E0599]: no function or associated item named `lol` found for type `dyn Foo<_>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:22:13
+  --> $DIR/unspecified-self-in-trait-ref.rs:12:13
    |
 LL |     let b = Foo::<_>::lol();
    |             ^^^^^^^^^^^^^ function or associated item not found in `dyn Foo<_>`
 
 error[E0599]: no function or associated item named `lol` found for type `dyn Bar<_, _>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:24:13
+  --> $DIR/unspecified-self-in-trait-ref.rs:14:13
    |
 LL |     let c = Bar::lol();
    |             ^^^^^^^^ function or associated item not found in `dyn Bar<_, _>`
 
 error[E0599]: no function or associated item named `lol` found for type `dyn Bar<usize, _>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:26:13
+  --> $DIR/unspecified-self-in-trait-ref.rs:16:13
    |
 LL |     let d = Bar::<usize, _>::lol();
    |             ^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `dyn Bar<usize, _>`
 
 error[E0393]: the type parameter `A` must be explicitly specified
-  --> $DIR/unspecified-self-in-trait-ref.rs:28:13
+  --> $DIR/unspecified-self-in-trait-ref.rs:18:13
    |
 LL |     let e = Bar::<usize>::lol();
    |             ^^^^^^^^^^^^^^^^^ missing reference to `A`

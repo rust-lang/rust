@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-44373.rs:15:42
+  --> $DIR/issue-44373.rs:4:42
    |
 LL |     let _val: &'static [&'static u32] = &[&FOO]; //~ ERROR borrowed value does not live long enough
    |               -----------------------    ^^^^^^ creates a temporary which is freed while still in use

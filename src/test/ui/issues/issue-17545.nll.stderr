@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-17545.rs:17:10
+  --> $DIR/issue-17545.rs:7:10
    |
 LL |   pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
    |              -- lifetime `'a` defined here

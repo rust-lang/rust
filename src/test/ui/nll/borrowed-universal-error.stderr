@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/borrowed-universal-error.rs:20:5
+  --> $DIR/borrowed-universal-error.rs:10:5
    |
 LL |     gimme(&(v,))
    |     ^^^^^^^----^

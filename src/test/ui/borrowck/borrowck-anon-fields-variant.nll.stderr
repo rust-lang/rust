@@ -1,5 +1,5 @@
 warning[E0503]: cannot use `y` because it was mutably borrowed
-  --> $DIR/borrowck-anon-fields-variant.rs:27:7
+  --> $DIR/borrowck-anon-fields-variant.rs:17:7
    |
 LL |       Foo::Y(ref mut a, _) => a,
    |              --------- borrow of `y.0` occurs here
@@ -14,7 +14,7 @@ LL |     *a += 1;
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error[E0503]: cannot use `y` because it was mutably borrowed
-  --> $DIR/borrowck-anon-fields-variant.rs:44:7
+  --> $DIR/borrowck-anon-fields-variant.rs:34:7
    |
 LL |       Foo::Y(ref mut a, _) => a,
    |              --------- borrow of `y.0` occurs here
@@ -26,7 +26,7 @@ LL |     *a += 1;
    |     ------- borrow later used here
 
 error[E0499]: cannot borrow `y.0` as mutable more than once at a time
-  --> $DIR/borrowck-anon-fields-variant.rs:44:14
+  --> $DIR/borrowck-anon-fields-variant.rs:34:14
    |
 LL |       Foo::Y(ref mut a, _) => a,
    |              --------- first mutable borrow occurs here

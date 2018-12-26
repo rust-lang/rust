@@ -1,5 +1,5 @@
 error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
-  --> $DIR/pub-reexport-priv-extern-crate.rs:14:9
+  --> $DIR/pub-reexport-priv-extern-crate.rs:4:9
    |
 LL | pub use core as reexported_core; //~ ERROR `core` is private, and cannot be re-exported
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | pub use core as reexported_core; //~ ERROR `core` is private, and cannot be
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
-  --> $DIR/pub-reexport-priv-extern-crate.rs:22:9
+  --> $DIR/pub-reexport-priv-extern-crate.rs:12:9
    |
 LL |     use foo1::core; //~ ERROR `core` is private, and cannot be re-exported
    |         ^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |     use foo1::core; //~ ERROR `core` is private, and cannot be re-exported
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: extern crate `core` is private, and cannot be re-exported (error E0365), consider declaring with `pub`
-  --> $DIR/pub-reexport-priv-extern-crate.rs:30:13
+  --> $DIR/pub-reexport-priv-extern-crate.rs:20:13
    |
 LL |     pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be re-exported
    |             ^^^^^^^^^^^^^^^

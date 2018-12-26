@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to immutable static item `NUM`
-  --> $DIR/E0594.rs:17:5
+  --> $DIR/E0594.rs:7:5
    |
 LL |     NUM = 20; //[ast]~ ERROR E0594
    |     ^^^^^^^^ cannot assign

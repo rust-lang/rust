@@ -1,5 +1,5 @@
 error: defining existential type use differs from previous
-  --> $DIR/different_defining_uses.rs:23:1
+  --> $DIR/different_defining_uses.rs:12:1
    |
 LL | / fn bar() -> Foo { //~ ERROR defining existential type use differs from previous
 LL | |     42i32
@@ -7,7 +7,7 @@ LL | | }
    | |_^
    |
 note: previous use here
-  --> $DIR/different_defining_uses.rs:19:1
+  --> $DIR/different_defining_uses.rs:8:1
    |
 LL | / fn foo() -> Foo {
 LL | |     ""

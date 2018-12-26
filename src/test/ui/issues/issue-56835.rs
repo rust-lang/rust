@@ -1,4 +1,3 @@
-
 pub struct Foo {}
 
 impl Foo {

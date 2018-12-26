@@ -1,5 +1,5 @@
 error[E0252]: the name `A` is defined multiple times
-  --> $DIR/issue-45829.rs:16:14
+  --> $DIR/issue-45829.rs:6:14
    |
 LL | use foo::{A, B as A};
    |           -  ^^^^^^ `A` reimported here

@@ -1,11 +1,11 @@
 error: unreachable statement
-  --> $DIR/dead-code-ret.rs:17:5
+  --> $DIR/dead-code-ret.rs:7:5
    |
 LL |     println!("Paul is dead");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/dead-code-ret.rs:13:9
+  --> $DIR/dead-code-ret.rs:3:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

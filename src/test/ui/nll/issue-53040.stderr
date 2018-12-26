@@ -1,5 +1,5 @@
 error: captured variable cannot escape `FnMut` closure body
-  --> $DIR/issue-53040.rs:15:8
+  --> $DIR/issue-53040.rs:5:8
    |
 LL |     || &mut v;
    |      - ^^^^^^ returns a reference to a captured variable which escapes the closure body

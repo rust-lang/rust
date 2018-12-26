@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/terr-sorts.rs:21:14
+  --> $DIR/terr-sorts.rs:10:14
    |
 LL |     want_foo(b); //~  ERROR mismatched types
    |              ^ expected struct `Foo`, found struct `std::boxed::Box`

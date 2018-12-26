@@ -1,5 +1,5 @@
 error: expected one of `.`, `;`, `?`, or an operator, found `#`
-  --> $DIR/raw-str-unbalanced.rs:15:9
+  --> $DIR/raw-str-unbalanced.rs:5:9
    |
 LL |       "## //~ ERROR expected one of `.`, `;`, `?`, or an operator, found `#`
    |         ^ expected one of `.`, `;`, `?`, or an operator here

@@ -1,5 +1,5 @@
 error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
-  --> $DIR/utf8_idents.rs:13:5
+  --> $DIR/utf8_idents.rs:4:5
    |
 LL |     'β, //~ ERROR non-ascii idents are not fully supported
    |     ^^
@@ -7,7 +7,7 @@ LL |     'β, //~ ERROR non-ascii idents are not fully supported
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
-  --> $DIR/utf8_idents.rs:14:5
+  --> $DIR/utf8_idents.rs:5:5
    |
 LL |     γ  //~ ERROR non-ascii idents are not fully supported
    |     ^
@@ -15,7 +15,7 @@ LL |     γ  //~ ERROR non-ascii idents are not fully supported
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
-  --> $DIR/utf8_idents.rs:18:5
+  --> $DIR/utf8_idents.rs:9:5
    |
 LL |     δ: usize //~ ERROR non-ascii idents are not fully supported
    |     ^
@@ -23,7 +23,7 @@ LL |     δ: usize //~ ERROR non-ascii idents are not fully supported
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
-  --> $DIR/utf8_idents.rs:22:9
+  --> $DIR/utf8_idents.rs:13:9
    |
 LL |     let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
    |         ^

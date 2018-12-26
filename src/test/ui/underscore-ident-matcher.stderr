@@ -1,5 +1,5 @@
 error: no rules expected the token `_`
-  --> $DIR/underscore-ident-matcher.rs:18:19
+  --> $DIR/underscore-ident-matcher.rs:8:19
    |
 LL | macro_rules! identity {
    | --------------------- when calling this macro

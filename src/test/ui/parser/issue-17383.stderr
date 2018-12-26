@@ -1,5 +1,5 @@
 error: discriminator values can only be used with a field-less enum
-  --> $DIR/issue-17383.rs:15:9
+  --> $DIR/issue-17383.rs:5:9
    |
 LL |         b'a' //~ ERROR discriminator values can only be used with a field-less enum
    |         ^^^^

@@ -1,5 +1,5 @@
 error: unterminated unicode escape (needed a `}`)
-  --> $DIR/new-unicode-escapes-1.rs:14:21
+  --> $DIR/new-unicode-escapes-1.rs:4:21
    |
 LL |     let s = "/u{2603"; //~ ERROR unterminated unicode escape (needed a `}`)
    |                     ^

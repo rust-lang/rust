@@ -1,17 +1,17 @@
 error[E0609]: no field `d` on type `&A`
-  --> $DIR/struct-pat-derived-error.rs:18:31
+  --> $DIR/struct-pat-derived-error.rs:8:31
    |
 LL |         let A { x, y } = self.d; //~ ERROR no field `d` on type `&A`
    |                               ^
 
 error[E0026]: struct `A` does not have fields named `x`, `y`
-  --> $DIR/struct-pat-derived-error.rs:18:17
+  --> $DIR/struct-pat-derived-error.rs:8:17
    |
 LL |         let A { x, y } = self.d; //~ ERROR no field `d` on type `&A`
    |                 ^  ^ struct `A` does not have these fields
 
 error[E0027]: pattern does not mention fields `b`, `c`
-  --> $DIR/struct-pat-derived-error.rs:18:13
+  --> $DIR/struct-pat-derived-error.rs:8:13
    |
 LL |         let A { x, y } = self.d; //~ ERROR no field `d` on type `&A`
    |             ^^^^^^^^^^ missing fields `b`, `c`

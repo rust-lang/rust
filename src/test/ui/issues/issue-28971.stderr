@@ -1,5 +1,5 @@
 error[E0599]: no variant named `Baz` found for type `Foo` in the current scope
-  --> $DIR/issue-28971.rs:19:13
+  --> $DIR/issue-28971.rs:9:13
    |
 LL | enum Foo {
    | -------- variant `Baz` not found here

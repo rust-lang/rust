@@ -1,17 +1,17 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `true`
-  --> $DIR/raw-literal-keywords.rs:14:10
+  --> $DIR/raw-literal-keywords.rs:4:10
    |
 LL |     r#if true { } //~ ERROR found `true`
    |          ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
-  --> $DIR/raw-literal-keywords.rs:18:14
+  --> $DIR/raw-literal-keywords.rs:8:14
    |
 LL |     r#struct Test; //~ ERROR found `Test`
    |              ^^^^ expected one of 8 possible tokens here
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
-  --> $DIR/raw-literal-keywords.rs:22:13
+  --> $DIR/raw-literal-keywords.rs:12:13
    |
 LL |     r#union Test; //~ ERROR found `Test`
    |             ^^^^ expected one of 8 possible tokens here

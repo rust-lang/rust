@@ -1,17 +1,17 @@
 error: this form of character escape may only be used with characters in the range [/x00-/x7f]
-  --> $DIR/ascii-only-character-escape.rs:14:16
+  --> $DIR/ascii-only-character-escape.rs:4:16
    |
 LL |     let x = "/x80"; //~ ERROR may only be used
    |                ^^
 
 error: this form of character escape may only be used with characters in the range [/x00-/x7f]
-  --> $DIR/ascii-only-character-escape.rs:15:16
+  --> $DIR/ascii-only-character-escape.rs:5:16
    |
 LL |     let y = "/xff"; //~ ERROR may only be used
    |                ^^
 
 error: this form of character escape may only be used with characters in the range [/x00-/x7f]
-  --> $DIR/ascii-only-character-escape.rs:16:16
+  --> $DIR/ascii-only-character-escape.rs:6:16
    |
 LL |     let z = "/xe2"; //~ ERROR may only be used
    |                ^^

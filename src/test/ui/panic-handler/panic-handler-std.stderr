@@ -1,5 +1,5 @@
 error[E0152]: duplicate lang item found: `panic_impl`.
-  --> $DIR/panic-handler-std.rs:17:1
+  --> $DIR/panic-handler-std.rs:7:1
    |
 LL | / fn panic(info: PanicInfo) -> ! {
 LL | |     loop {}
@@ -9,7 +9,7 @@ LL | | }
    = note: first defined in crate `std`.
 
 error: argument should be `&PanicInfo`
-  --> $DIR/panic-handler-std.rs:17:16
+  --> $DIR/panic-handler-std.rs:7:16
    |
 LL | fn panic(info: PanicInfo) -> ! {
    |                ^^^^^^^^^

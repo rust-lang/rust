@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `complex_impl_support::External` for type `(Q, complex_impl_support::M<'_, '_, '_, std::boxed::Box<_>, _, _>)`:
-  --> $DIR/complex-impl.rs:19:1
+  --> $DIR/complex-impl.rs:9:1
    |
 LL | impl<R> External for (Q, R) {} //~ ERROR must be used
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | impl<R> External for (Q, R) {} //~ ERROR must be used
              where <U as std::ops::FnOnce<(T,)>>::Output == V, <V as std::iter::Iterator>::Item == T, 'b : 'a, T : 'a, U: std::ops::FnOnce<(T,)>, U : 'static, V: std::iter::Iterator, V: std::clone::Clone, W: std::ops::Add, <W as std::ops::Add>::Output: std::marker::Copy;
 
 error[E0210]: type parameter `R` must be used as the type parameter for some local type (e.g., `MyStruct<R>`)
-  --> $DIR/complex-impl.rs:19:1
+  --> $DIR/complex-impl.rs:9:1
    |
 LL | impl<R> External for (Q, R) {} //~ ERROR must be used
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `R` must be used as the type parameter for some local type

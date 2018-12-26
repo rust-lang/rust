@@ -1,5 +1,5 @@
 error[E0053]: method `call` has an incompatible type for trait
-  --> $DIR/issue-20225.rs:16:3
+  --> $DIR/issue-20225.rs:6:3
    |
 LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected reference, found type parameter
@@ -8,7 +8,7 @@ LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
               found type `extern "rust-call" fn(&Foo, (T,))`
 
 error[E0053]: method `call_mut` has an incompatible type for trait
-  --> $DIR/issue-20225.rs:22:3
+  --> $DIR/issue-20225.rs:12:3
    |
 LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected reference, found type parameter
@@ -17,7 +17,7 @@ LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
               found type `extern "rust-call" fn(&mut Foo, (T,))`
 
 error[E0053]: method `call_once` has an incompatible type for trait
-  --> $DIR/issue-20225.rs:30:3
+  --> $DIR/issue-20225.rs:20:3
    |
 LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected reference, found type parameter

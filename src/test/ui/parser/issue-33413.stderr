@@ -1,5 +1,5 @@
 error: expected argument name, found `*`
-  --> $DIR/issue-33413.rs:14:10
+  --> $DIR/issue-33413.rs:4:10
    |
 LL |     fn f(*, a: u8) -> u8 {}
    |          ^ expected argument name

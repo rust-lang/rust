@@ -1,5 +1,5 @@
 error[E0658]: kind="static-nobundle" is feature gated (see issue #37403)
-  --> $DIR/feature-gate-static-nobundle.rs:11:1
+  --> $DIR/feature-gate-static-nobundle.rs:1:1
    |
 LL | #[link(name="foo", kind="static-nobundle")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

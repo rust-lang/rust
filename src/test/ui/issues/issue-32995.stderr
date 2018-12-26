@@ -1,5 +1,5 @@
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:14:17
+  --> $DIR/issue-32995.rs:4:17
    |
 LL |     let x: usize() = 1;
    |                 ^^
@@ -9,7 +9,7 @@ LL |     let x: usize() = 1;
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:18:24
+  --> $DIR/issue-32995.rs:8:24
    |
 LL |     let b: ::std::boxed()::Box<_> = Box::new(1);
    |                        ^^
@@ -18,7 +18,7 @@ LL |     let b: ::std::boxed()::Box<_> = Box::new(1);
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:22:23
+  --> $DIR/issue-32995.rs:12:23
    |
 LL |     let p = ::std::str::()::from_utf8(b"foo").unwrap();
    |                       ^^^^
@@ -27,7 +27,7 @@ LL |     let p = ::std::str::()::from_utf8(b"foo").unwrap();
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:26:34
+  --> $DIR/issue-32995.rs:16:34
    |
 LL |     let p = ::std::str::from_utf8::()(b"foo").unwrap();
    |                                  ^^^^
@@ -36,7 +36,7 @@ LL |     let p = ::std::str::from_utf8::()(b"foo").unwrap();
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:30:30
+  --> $DIR/issue-32995.rs:20:30
    |
 LL |     let o : Box<::std::marker()::Send> = Box::new(1);
    |                              ^^
@@ -45,7 +45,7 @@ LL |     let o : Box<::std::marker()::Send> = Box::new(1);
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:34:37
+  --> $DIR/issue-32995.rs:24:37
    |
 LL |     let o : Box<Send + ::std::marker()::Sync> = Box::new(1);
    |                                     ^^
@@ -54,7 +54,7 @@ LL |     let o : Box<Send + ::std::marker()::Sync> = Box::new(1);
    = note: for more information, see issue #42238 <https://github.com/rust-lang/rust/issues/42238>
 
 error: parenthesized parameters may only be used with a trait
-  --> $DIR/issue-32995.rs:40:14
+  --> $DIR/issue-32995.rs:30:14
    |
 LL |     let d : X() = Default::default();
    |              ^^

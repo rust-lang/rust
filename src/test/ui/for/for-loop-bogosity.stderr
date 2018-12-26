@@ -1,5 +1,5 @@
 error[E0277]: `MyStruct` is not an iterator
-  --> $DIR/for-loop-bogosity.rs:27:14
+  --> $DIR/for-loop-bogosity.rs:17:14
    |
 LL |     for x in bogus {
    |              ^^^^^ `MyStruct` is not an iterator

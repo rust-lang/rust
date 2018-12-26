@@ -1,5 +1,5 @@
 error: unexpected token: `)`
-  --> $DIR/pat-tuple-5.rs:15:14
+  --> $DIR/pat-tuple-5.rs:5:14
    |
 LL |         (pat ..) => {} //~ ERROR unexpected token: `)`
    |              ^^

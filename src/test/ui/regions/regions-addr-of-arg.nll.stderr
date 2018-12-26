@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/regions-addr-of-arg.rs:15:30
+  --> $DIR/regions-addr-of-arg.rs:5:30
    |
 LL |     let _p: &'static isize = &a; //~ ERROR `a` does not live long enough
    |             --------------   ^^ borrowed value does not live long enough
@@ -9,7 +9,7 @@ LL | }
    |  - `a` dropped here while still borrowed
 
 error[E0515]: cannot return reference to function parameter `a`
-  --> $DIR/regions-addr-of-arg.rs:23:5
+  --> $DIR/regions-addr-of-arg.rs:13:5
    |
 LL |     &a //~ ERROR `a` does not live long enough
    |     ^^ returns a reference to data owned by the current function

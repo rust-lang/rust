@@ -1,5 +1,5 @@
 error: expected `;` or `{`, found `}`
-  --> $DIR/issue-6610.rs:13:20
+  --> $DIR/issue-6610.rs:3:20
    |
 LL | trait Foo { fn a() } //~ ERROR expected `;` or `{`, found `}`
    |                    ^ expected `;` or `{`

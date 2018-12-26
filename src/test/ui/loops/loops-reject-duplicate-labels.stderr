@@ -1,5 +1,5 @@
 warning: label name `'fl` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:21:5
+  --> $DIR/loops-reject-duplicate-labels.rs:11:5
    |
 LL |     'fl: for _ in 0..10 { break; }
    |     --- first declared here
@@ -7,7 +7,7 @@ LL |     'fl: loop { break; }           //~ WARN label name `'fl` shadows a labe
    |     ^^^ lifetime 'fl already in scope
 
 warning: label name `'lf` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:24:5
+  --> $DIR/loops-reject-duplicate-labels.rs:14:5
    |
 LL |     'lf: loop { break; }
    |     --- first declared here
@@ -15,7 +15,7 @@ LL |     'lf: for _ in 0..10 { break; } //~ WARN label name `'lf` shadows a labe
    |     ^^^ lifetime 'lf already in scope
 
 warning: label name `'wl` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:26:5
+  --> $DIR/loops-reject-duplicate-labels.rs:16:5
    |
 LL |     'wl: while 2 > 1 { break; }
    |     --- first declared here
@@ -23,7 +23,7 @@ LL |     'wl: loop { break; }           //~ WARN label name `'wl` shadows a labe
    |     ^^^ lifetime 'wl already in scope
 
 warning: label name `'lw` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:28:5
+  --> $DIR/loops-reject-duplicate-labels.rs:18:5
    |
 LL |     'lw: loop { break; }
    |     --- first declared here
@@ -31,7 +31,7 @@ LL |     'lw: while 2 > 1 { break; }    //~ WARN label name `'lw` shadows a labe
    |     ^^^ lifetime 'lw already in scope
 
 warning: label name `'fw` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:30:5
+  --> $DIR/loops-reject-duplicate-labels.rs:20:5
    |
 LL |     'fw: for _ in 0..10 { break; }
    |     --- first declared here
@@ -39,7 +39,7 @@ LL |     'fw: while 2 > 1 { break; }    //~ WARN label name `'fw` shadows a labe
    |     ^^^ lifetime 'fw already in scope
 
 warning: label name `'wf` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:32:5
+  --> $DIR/loops-reject-duplicate-labels.rs:22:5
    |
 LL |     'wf: while 2 > 1 { break; }
    |     --- first declared here
@@ -47,7 +47,7 @@ LL |     'wf: for _ in 0..10 { break; } //~ WARN label name `'wf` shadows a labe
    |     ^^^ lifetime 'wf already in scope
 
 warning: label name `'tl` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:34:5
+  --> $DIR/loops-reject-duplicate-labels.rs:24:5
    |
 LL |     'tl: while let Some(_) = None::<i32> { break; }
    |     --- first declared here
@@ -55,7 +55,7 @@ LL |     'tl: loop { break; }           //~ WARN label name `'tl` shadows a labe
    |     ^^^ lifetime 'tl already in scope
 
 warning: label name `'lt` shadows a label name that is already in scope
-  --> $DIR/loops-reject-duplicate-labels.rs:36:5
+  --> $DIR/loops-reject-duplicate-labels.rs:26:5
    |
 LL |     'lt: loop { break; }
    |     --- first declared here

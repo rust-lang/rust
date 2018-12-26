@@ -1,5 +1,5 @@
 error[E0718]: `arc` language item must be applied to a struct
-  --> $DIR/E0718.rs:14:1
+  --> $DIR/E0718.rs:4:1
    |
 LL | #[lang = "arc"] //~ ERROR language item must be applied to a struct
    | ^^^^^^^^^^^^^^^ attribute should be applied to a struct, not a static item

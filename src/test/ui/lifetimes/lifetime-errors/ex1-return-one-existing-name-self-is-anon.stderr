@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:18:30
+  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:8:30
    |
 LL |     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
    |                -----                 -------

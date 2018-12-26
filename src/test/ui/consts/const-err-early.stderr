@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:13:1
+  --> $DIR/const-err-early.rs:3:1
    |
 LL | pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^-------------^
@@ -7,13 +7,13 @@ LL | pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
    |                   attempt to negate with overflow
    |
 note: lint level defined here
-  --> $DIR/const-err-early.rs:11:9
+  --> $DIR/const-err-early.rs:1:9
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:14:1
+  --> $DIR/const-err-early.rs:4:1
    |
 LL | pub const B: u8 = 200u8 + 200u8; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^-------------^
@@ -21,7 +21,7 @@ LL | pub const B: u8 = 200u8 + 200u8; //~ ERROR const_err
    |                   attempt to add with overflow
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:15:1
+  --> $DIR/const-err-early.rs:5:1
    |
 LL | pub const C: u8 = 200u8 * 4; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^---------^
@@ -29,7 +29,7 @@ LL | pub const C: u8 = 200u8 * 4; //~ ERROR const_err
    |                   attempt to multiply with overflow
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:16:1
+  --> $DIR/const-err-early.rs:6:1
    |
 LL | pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^-----------------^
@@ -37,7 +37,7 @@ LL | pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR const_err
    |                   attempt to subtract with overflow
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:17:1
+  --> $DIR/const-err-early.rs:7:1
    |
 LL | pub const E: u8 = [5u8][1]; //~ ERROR const_err
    | ^^^^^^^^^^^^^^^^^^--------^

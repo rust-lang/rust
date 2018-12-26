@@ -1,5 +1,5 @@
 error: hexadecimal float literal is not supported
-  --> $DIR/no-hex-float-literal.rs:17:5
+  --> $DIR/no-hex-float-literal.rs:7:5
    |
 LL |     0x567.89;
    |     ^^^^^^^^

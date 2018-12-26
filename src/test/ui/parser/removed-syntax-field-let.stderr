@@ -1,11 +1,11 @@
 error: expected identifier, found keyword `let`
-  --> $DIR/removed-syntax-field-let.rs:14:5
+  --> $DIR/removed-syntax-field-let.rs:4:5
    |
 LL |     let foo: (),
    |     ^^^ expected identifier, found keyword
 
 error: expected `:`, found `foo`
-  --> $DIR/removed-syntax-field-let.rs:14:9
+  --> $DIR/removed-syntax-field-let.rs:4:9
    |
 LL |     let foo: (),
    |         ^^^ expected `:`

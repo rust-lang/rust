@@ -1,11 +1,11 @@
 error: unreachable pattern
-  --> $DIR/E0001.rs:18:9
+  --> $DIR/E0001.rs:8:9
    |
 LL |         _ => {/* ... */} //~ ERROR unreachable pattern
    |         ^
    |
 note: lint level defined here
-  --> $DIR/E0001.rs:11:9
+  --> $DIR/E0001.rs:1:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^

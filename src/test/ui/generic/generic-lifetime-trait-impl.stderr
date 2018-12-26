@@ -1,5 +1,5 @@
 error[E0195]: lifetime parameters or bounds on method `bar` do not match the trait declaration
-  --> $DIR/generic-lifetime-trait-impl.rs:29:11
+  --> $DIR/generic-lifetime-trait-impl.rs:19:11
    |
 LL |     fn bar<'b, T: Bar<'b>>(self) -> &'b str;
    |           ---------------- lifetimes in impl do not match this method in trait

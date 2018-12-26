@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-17954.rs:17:14
+  --> $DIR/issue-17954.rs:7:14
    |
 LL |     let a = &FOO;
    |              ^^^ borrowed value does not live long enough

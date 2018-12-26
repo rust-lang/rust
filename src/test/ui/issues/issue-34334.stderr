@@ -1,5 +1,5 @@
 error: expected one of `,` or `>`, found `=`
-  --> $DIR/issue-34334.rs:12:29
+  --> $DIR/issue-34334.rs:2:29
    |
 LL |     let sr: Vec<(u32, _, _) = vec![]; //~ ERROR expected one of `,` or `>`, found `=`
    |         --                  ^ expected one of `,` or `>` here

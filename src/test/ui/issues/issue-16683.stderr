@@ -1,23 +1,23 @@
 error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
-  --> $DIR/issue-16683.rs:14:14
+  --> $DIR/issue-16683.rs:4:14
    |
 LL |         self.a(); //~ ERROR cannot infer
    |              ^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 13:5...
-  --> $DIR/issue-16683.rs:13:5
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 3:5...
+  --> $DIR/issue-16683.rs:3:5
    |
 LL | /     fn b(&self) {
 LL | |         self.a(); //~ ERROR cannot infer
 LL | |     }
    | |_____^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/issue-16683.rs:14:9
+  --> $DIR/issue-16683.rs:4:9
    |
 LL |         self.a(); //~ ERROR cannot infer
    |         ^^^^
-note: but, the lifetime must be valid for the lifetime 'a as defined on the trait at 11:9...
-  --> $DIR/issue-16683.rs:11:9
+note: but, the lifetime must be valid for the lifetime 'a as defined on the trait at 1:9...
+  --> $DIR/issue-16683.rs:1:9
    |
 LL | trait T<'a> {
    |         ^^

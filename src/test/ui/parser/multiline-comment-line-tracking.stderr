@@ -1,5 +1,5 @@
 error: expected expression, found `%`
-  --> $DIR/multiline-comment-line-tracking.rs:19:3
+  --> $DIR/multiline-comment-line-tracking.rs:9:3
    |
 LL |   %; // parse error on line 19, but is reported on line 6 instead.
    |   ^ expected expression

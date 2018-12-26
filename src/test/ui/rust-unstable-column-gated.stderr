@@ -1,5 +1,5 @@
 error: the __rust_unstable_column macro is unstable
-  --> $DIR/rust-unstable-column-gated.rs:12:20
+  --> $DIR/rust-unstable-column-gated.rs:2:20
    |
 LL |     println!("{}", __rust_unstable_column!());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^

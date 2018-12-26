@@ -1,13 +1,13 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/static-reference-to-fn-2.rs:28:22
+  --> $DIR/static-reference-to-fn-2.rs:18:22
    |
 LL |     self_.statefn = &id(state2 as StateMachineFunc);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
    |                      |
    |                      temporary value does not live long enough
    |
-note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 27:1...
-  --> $DIR/static-reference-to-fn-2.rs:27:1
+note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 17:1...
+  --> $DIR/static-reference-to-fn-2.rs:17:1
    |
 LL | / fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
 LL | |     self_.statefn = &id(state2 as StateMachineFunc);
@@ -18,15 +18,15 @@ LL | | }
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/static-reference-to-fn-2.rs:34:22
+  --> $DIR/static-reference-to-fn-2.rs:24:22
    |
 LL |     self_.statefn = &id(state3 as StateMachineFunc);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
    |                      |
    |                      temporary value does not live long enough
    |
-note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 33:1...
-  --> $DIR/static-reference-to-fn-2.rs:33:1
+note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 23:1...
+  --> $DIR/static-reference-to-fn-2.rs:23:1
    |
 LL | / fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
 LL | |     self_.statefn = &id(state3 as StateMachineFunc);
@@ -37,15 +37,15 @@ LL | | }
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/static-reference-to-fn-2.rs:40:22
+  --> $DIR/static-reference-to-fn-2.rs:30:22
    |
 LL |     self_.statefn = &id(finished as StateMachineFunc);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
    |                      |
    |                      temporary value does not live long enough
    |
-note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 39:1...
-  --> $DIR/static-reference-to-fn-2.rs:39:1
+note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 29:1...
+  --> $DIR/static-reference-to-fn-2.rs:29:1
    |
 LL | / fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
 LL | |     self_.statefn = &id(finished as StateMachineFunc);
@@ -56,7 +56,7 @@ LL | | }
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/static-reference-to-fn-2.rs:51:19
+  --> $DIR/static-reference-to-fn-2.rs:41:19
    |
 LL |         statefn: &id(state1 as StateMachineFunc)
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough

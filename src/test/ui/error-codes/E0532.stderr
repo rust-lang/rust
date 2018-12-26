@@ -1,5 +1,5 @@
 error[E0532]: expected tuple struct/variant, found constant `StructConst1`
-  --> $DIR/E0532.rs:15:9
+  --> $DIR/E0532.rs:5:9
    |
 LL |         StructConst1(_) => { },
    |         ^^^^^^^^^^^^ not a tuple struct/variant

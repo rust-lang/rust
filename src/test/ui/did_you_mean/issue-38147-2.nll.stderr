@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*self.s` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-38147-2.rs:17:9
+  --> $DIR/issue-38147-2.rs:7:9
    |
 LL |     s: &'a String
    |        ---------- help: consider changing this to be mutable: `&'a mut String`

@@ -1,17 +1,17 @@
 error[E0599]: no method named `count_ones` found for type `impl std::marker::Copy` in the current scope
-  --> $DIR/bindings-opaque.rs:20:17
+  --> $DIR/bindings-opaque.rs:10:17
    |
 LL |     let _ = FOO.count_ones();
    |                 ^^^^^^^^^^
 
 error[E0599]: no method named `count_ones` found for type `impl std::marker::Copy` in the current scope
-  --> $DIR/bindings-opaque.rs:22:17
+  --> $DIR/bindings-opaque.rs:12:17
    |
 LL |     let _ = BAR.count_ones();
    |                 ^^^^^^^^^^
 
 error[E0599]: no method named `count_ones` found for type `impl std::marker::Copy` in the current scope
-  --> $DIR/bindings-opaque.rs:24:17
+  --> $DIR/bindings-opaque.rs:14:17
    |
 LL |     let _ = foo.count_ones();
    |                 ^^^^^^^^^^

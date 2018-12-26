@@ -1,5 +1,5 @@
 error: expected one of `=`, lifetime, or type, found `,`
-  --> $DIR/bounds-lifetime-where.rs:20:14
+  --> $DIR/bounds-lifetime-where.rs:10:14
    |
 LL | type A where , = u8; //~ ERROR expected one of `=`, lifetime, or type, found `,`
    |              ^ expected one of `=`, lifetime, or type here

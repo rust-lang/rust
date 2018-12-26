@@ -1,5 +1,5 @@
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-big.rs:81:26
+  --> $DIR/region-borrow-params-issue-29793-big.rs:71:26
    |
 LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
    |                          ^^^^^^^^^        - `x` is borrowed here
@@ -7,7 +7,7 @@ LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate erro
    |                          may outlive borrowed value `x`
    |
 note: closure is returned here
-  --> $DIR/region-borrow-params-issue-29793-big.rs:81:9
+  --> $DIR/region-borrow-params-issue-29793-big.rs:71:9
    |
 LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |         WrapB::new().set(move |t: bool| if t { x } else { y }) // (separate
    |                          ^^^^^^^^^^^^^^
 
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/region-borrow-params-issue-29793-big.rs:81:26
+  --> $DIR/region-borrow-params-issue-29793-big.rs:71:26
    |
 LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
    |                          ^^^^^^^^^                   - `y` is borrowed here
@@ -25,7 +25,7 @@ LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate erro
    |                          may outlive borrowed value `y`
    |
 note: closure is returned here
-  --> $DIR/region-borrow-params-issue-29793-big.rs:81:9
+  --> $DIR/region-borrow-params-issue-29793-big.rs:71:9
    |
 LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

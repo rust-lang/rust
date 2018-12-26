@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `return`
-  --> $DIR/issue-15980.rs:20:13
+  --> $DIR/issue-15980.rs:10:13
    |
 LL |         Err(ref e) if e.kind == io::EndOfFile {
    |                                 ------------- while parsing this struct
@@ -8,7 +8,7 @@ LL |             return
    |             ^^^^^^ expected identifier, found keyword
 
 error: expected one of `.`, `=>`, `?`, or an operator, found `_`
-  --> $DIR/issue-15980.rs:25:9
+  --> $DIR/issue-15980.rs:15:9
    |
 LL |         }
    |          - expected one of `.`, `=>`, `?`, or an operator here

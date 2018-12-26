@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-tuple-enums.rs:39:43
+  --> $DIR/adt-tuple-enums.rs:29:43
    |
 LL |     SomeEnum::SomeVariant::<&'static u32>(&c); //~ ERROR
    |                                           ^^
@@ -10,7 +10,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-tuple-enums.rs:44:38
+  --> $DIR/adt-tuple-enums.rs:34:38
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
@@ -24,7 +24,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-tuple-enums.rs:54:42
+  --> $DIR/adt-tuple-enums.rs:44:42
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here

@@ -1,5 +1,5 @@
 error[E0583]: file not found for module `module_that_doesnt_exist`
-  --> $DIR/E0583.rs:11:5
+  --> $DIR/E0583.rs:1:5
    |
 LL | mod module_that_doesnt_exist; //~ ERROR E0583
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

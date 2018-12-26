@@ -1,5 +1,5 @@
 error: expected `]`, found `not_there`
-  --> $DIR/macro-attribute.rs:13:10
+  --> $DIR/macro-attribute.rs:3:10
    |
 LL | #[doc = $not_there] //~ ERROR expected `]`, found `not_there`
    |          ^^^^^^^^^ expected `]`

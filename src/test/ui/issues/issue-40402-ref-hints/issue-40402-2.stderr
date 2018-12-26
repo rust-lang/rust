@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of indexed content
-  --> $DIR/issue-40402-2.rs:15:18
+  --> $DIR/issue-40402-2.rs:5:18
    |
 LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
    |          -  -    ^^^^ cannot move out of indexed content

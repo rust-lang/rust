@@ -1,11 +1,11 @@
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/seq-args.rs:14:13
+  --> $DIR/seq-args.rs:4:13
    |
 LL | impl<T> Seq<T> for Vec<T> { //~ ERROR wrong number of type arguments
    |             ^ unexpected type argument
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/seq-args.rs:17:10
+  --> $DIR/seq-args.rs:7:10
    |
 LL | impl Seq<bool> for u32 { //~ ERROR wrong number of type arguments
    |          ^^^^ unexpected type argument

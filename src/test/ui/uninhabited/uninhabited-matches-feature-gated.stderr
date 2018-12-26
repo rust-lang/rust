@@ -1,59 +1,59 @@
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:15:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:5:19
    |
 LL |     let _ = match x {   //~ ERROR non-exhaustive
    |                   ^ pattern `Err(_)` not covered
 
 error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:20:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:10:19
    |
 LL |     let _ = match x {}; //~ ERROR non-exhaustive
    |                   ^
    |
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/uninhabited-matches-feature-gated.rs:20:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:10:19
    |
 LL |     let _ = match x {}; //~ ERROR non-exhaustive
    |                   ^
 
 error[E0004]: non-exhaustive patterns: type `(Void,)` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:23:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:13:19
    |
 LL |     let _ = match x {}; //~ ERROR non-exhaustive
    |                   ^
    |
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/uninhabited-matches-feature-gated.rs:23:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:13:19
    |
 LL |     let _ = match x {}; //~ ERROR non-exhaustive
    |                   ^
 
 error[E0004]: non-exhaustive patterns: type `[Void; 1]` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:26:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:16:19
    |
 LL |     let _ = match x {}; //~ ERROR non-exhaustive
    |                   ^
    |
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/uninhabited-matches-feature-gated.rs:26:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:16:19
    |
 LL |     let _ = match x {}; //~ ERROR non-exhaustive
    |                   ^
 
 error[E0004]: non-exhaustive patterns: `&[_]` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:29:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:19:19
    |
 LL |     let _ = match x {   //~ ERROR non-exhaustive
    |                   ^ pattern `&[_]` not covered
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:37:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:27:19
    |
 LL |     let _ = match x {   //~ ERROR non-exhaustive
    |                   ^ pattern `Err(_)` not covered
 
 error[E0005]: refutable pattern in local binding: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:42:9
+  --> $DIR/uninhabited-matches-feature-gated.rs:32:9
    |
 LL |     let Ok(x) = x;
    |         ^^^^^ pattern `Err(_)` not covered

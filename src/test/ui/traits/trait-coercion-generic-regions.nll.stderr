@@ -1,5 +1,5 @@
 error[E0597]: `person` does not live long enough
-  --> $DIR/trait-coercion-generic-regions.rs:27:24
+  --> $DIR/trait-coercion-generic-regions.rs:17:24
    |
 LL |     let person: &str = &person;  //~ ERROR `person` does not live long enough
    |                        ^^^^^^^

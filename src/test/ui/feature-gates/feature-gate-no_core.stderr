@@ -1,5 +1,5 @@
 error[E0658]: no_core is experimental (see issue #29639)
-  --> $DIR/feature-gate-no_core.rs:11:1
+  --> $DIR/feature-gate-no_core.rs:1:1
    |
 LL | #![no_core] //~ ERROR no_core is experimental
    | ^^^^^^^^^^^

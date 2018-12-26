@@ -1,5 +1,5 @@
 error: cannot use unions in constant patterns
-  --> $DIR/union-const-pat.rs:20:9
+  --> $DIR/union-const-pat.rs:10:9
    |
 LL |         C => {} //~ ERROR cannot use unions in constant patterns
    |         ^

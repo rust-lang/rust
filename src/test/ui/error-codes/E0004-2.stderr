@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: type `std::option::Option<i32>` is non-empty
-  --> $DIR/E0004-2.rs:14:11
+  --> $DIR/E0004-2.rs:4:11
    |
 LL |     match x { } //~ ERROR E0004
    |           ^
    |
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/E0004-2.rs:14:11
+  --> $DIR/E0004-2.rs:4:11
    |
 LL |     match x { } //~ ERROR E0004
    |           ^

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-precedence.rs:41:7
+  --> $DIR/type-ascription-precedence.rs:31:7
    |
 LL |     &(S: &S); //~ ERROR mismatched types
    |       ^ expected &S, found struct `S`
@@ -8,7 +8,7 @@ LL |     &(S: &S); //~ ERROR mismatched types
               found type `S`
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-precedence.rs:45:7
+  --> $DIR/type-ascription-precedence.rs:35:7
    |
 LL |     *(S: Z); //~ ERROR mismatched types
    |       ^ expected struct `Z`, found struct `S`
@@ -17,13 +17,13 @@ LL |     *(S: Z); //~ ERROR mismatched types
               found type `S`
 
 error[E0614]: type `Z` cannot be dereferenced
-  --> $DIR/type-ascription-precedence.rs:45:5
+  --> $DIR/type-ascription-precedence.rs:35:5
    |
 LL |     *(S: Z); //~ ERROR mismatched types
    |     ^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-precedence.rs:50:7
+  --> $DIR/type-ascription-precedence.rs:40:7
    |
 LL |     -(S: Z); //~ ERROR mismatched types
    |       ^ expected struct `Z`, found struct `S`
@@ -32,7 +32,7 @@ LL |     -(S: Z); //~ ERROR mismatched types
               found type `S`
 
 error[E0600]: cannot apply unary operator `-` to type `Z`
-  --> $DIR/type-ascription-precedence.rs:50:5
+  --> $DIR/type-ascription-precedence.rs:40:5
    |
 LL |     -(S: Z); //~ ERROR mismatched types
    |     ^^^^^^^ cannot apply unary operator `-`
@@ -40,7 +40,7 @@ LL |     -(S: Z); //~ ERROR mismatched types
    = note: an implementation of `std::ops::Neg` might be missing for `Z`
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-precedence.rs:55:5
+  --> $DIR/type-ascription-precedence.rs:45:5
    |
 LL |     (S + Z): Z; //~ ERROR mismatched types
    |     ^^^^^^^ expected struct `Z`, found struct `S`
@@ -49,7 +49,7 @@ LL |     (S + Z): Z; //~ ERROR mismatched types
               found type `S`
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-precedence.rs:59:5
+  --> $DIR/type-ascription-precedence.rs:49:5
    |
 LL |     (S * Z): Z; //~ ERROR mismatched types
    |     ^^^^^^^ expected struct `Z`, found struct `S`
@@ -58,7 +58,7 @@ LL |     (S * Z): Z; //~ ERROR mismatched types
               found type `S`
 
 error[E0308]: mismatched types
-  --> $DIR/type-ascription-precedence.rs:63:5
+  --> $DIR/type-ascription-precedence.rs:53:5
    |
 LL |     (S .. S): S; //~ ERROR mismatched types
    |     ^^^^^^^^ expected struct `S`, found struct `std::ops::Range`

@@ -1,11 +1,11 @@
 warning: `try` is a keyword in the 2018 edition
-  --> $DIR/try-ident.rs:17:5
+  --> $DIR/try-ident.rs:7:5
    |
 LL |     try();
    |     ^^^ help: you can use a raw identifier to stay compatible: `r#try`
    |
 note: lint level defined here
-  --> $DIR/try-ident.rs:14:9
+  --> $DIR/try-ident.rs:4:9
    |
 LL | #![warn(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![warn(rust_2018_compatibility)]
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 warning: `try` is a keyword in the 2018 edition
-  --> $DIR/try-ident.rs:20:4
+  --> $DIR/try-ident.rs:10:4
    |
 LL | fn try() {
    |    ^^^ help: you can use a raw identifier to stay compatible: `r#try`

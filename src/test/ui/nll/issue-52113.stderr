@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-52113.rs:47:5
+  --> $DIR/issue-52113.rs:38:5
    |
 LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> impl Bazinga + 'b {
    |                --  -- lifetime `'b` defined here

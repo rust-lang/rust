@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:43:9
    |
 LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:
@@ -17,7 +17,7 @@ LL | |         },
    = note: late-bound region is '_#6r
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:56:13
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:46:13
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |          ----------              ---------- has type `std::cell::Cell<&'2 &u32>`
@@ -28,7 +28,7 @@ LL |             demand_y(x, y, p) //~ ERROR
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:48:1
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:38:1
    |
 LL | / fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
 LL | |     establish_relationships(

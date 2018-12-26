@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/orphan-check-diagnostics.rs:20:1
+  --> $DIR/orphan-check-diagnostics.rs:10:1
    |
 LL | impl<T> RemoteTrait for T where T: LocalTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type

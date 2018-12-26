@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `Type`
-  --> $DIR/associated-types-issue-17359.rs:18:1
+  --> $DIR/associated-types-issue-17359.rs:8:1
    |
 LL |     type Type;
    |     ---------- `Type` from trait

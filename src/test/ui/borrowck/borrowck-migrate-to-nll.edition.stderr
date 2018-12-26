@@ -1,5 +1,5 @@
 warning[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-migrate-to-nll.rs:35:17
+  --> $DIR/borrowck-migrate-to-nll.rs:25:17
    |
 LL |                 (|| { let bar = foo; bar.take() })();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content

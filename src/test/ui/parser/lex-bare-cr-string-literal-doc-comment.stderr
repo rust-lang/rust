@@ -1,47 +1,47 @@
 error: bare CR not allowed in doc-comment
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:15:32
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:5:32
    |
 LL | /// doc comment with bare CR: ''
    |                                ^
 
 error: bare CR not allowed in block doc-comment
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:19:38
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:9:38
    |
 LL | /** block doc comment with bare CR: '' */
    |                                      ^
 
 error: bare CR not allowed in doc-comment
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:24:36
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:14:36
    |
 LL |     //! doc comment with bare CR: ''
    |                                    ^
 
 error: bare CR not allowed in block doc-comment
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:27:42
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:17:42
    |
 LL |     /*! block doc comment with bare CR: '' */
    |                                          ^
 
 error: bare CR not allowed in string, use /r instead
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:31:18
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:21:18
    |
 LL |     let _s = "foobar"; //~ ERROR: bare CR not allowed in string
    |                  ^
 
 error: bare CR not allowed in raw string, use /r instead
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:34:14
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:24:14
    |
 LL |     let _s = r"barfoo"; //~ ERROR: bare CR not allowed in raw string
    |              ^^^^^
 
 error: unknown character escape: /r
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:37:19
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:27:19
    |
 LL |     let _s = "foo/bar"; //~ ERROR: unknown character escape: /r
    |                   ^
    |
 help: this is an isolated carriage return; consider checking your editor and version control settings
-  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:37:19
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:27:19
    |
 LL |     let _s = "foo/bar"; //~ ERROR: unknown character escape: /r
    |                   ^

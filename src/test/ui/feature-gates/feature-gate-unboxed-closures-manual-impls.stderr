@@ -1,5 +1,5 @@
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:20:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:10:5
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:25:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:15:5
    |
 LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:20:5
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:25:5
    |
 LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,23 +1,23 @@
 error: expected one of `:` or `@`, found `<`
-  --> $DIR/issue-34264.rs:11:14
+  --> $DIR/issue-34264.rs:1:14
    |
 LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    |              ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `)`
-  --> $DIR/issue-34264.rs:11:27
+  --> $DIR/issue-34264.rs:1:27
    |
 LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    |                           ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `,`
-  --> $DIR/issue-34264.rs:13:9
+  --> $DIR/issue-34264.rs:3:9
    |
 LL | fn bar(x, y: usize) {} //~ ERROR expected one of
    |         ^ expected one of `:` or `@` here
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
-  --> $DIR/issue-34264.rs:17:5
+  --> $DIR/issue-34264.rs:7:5
    |
 LL | fn foo(Option<i32>, String) {} //~ ERROR expected one of
    | --------------------------- defined here
@@ -26,7 +26,7 @@ LL |     foo(Some(42), 2, ""); //~ ERROR this function takes
    |     ^^^^^^^^^^^^^^^^^^^^ expected 2 parameters
 
 error[E0308]: mismatched types
-  --> $DIR/issue-34264.rs:18:13
+  --> $DIR/issue-34264.rs:8:13
    |
 LL |     bar("", ""); //~ ERROR mismatched types
    |             ^^ expected usize, found reference
@@ -35,7 +35,7 @@ LL |     bar("", ""); //~ ERROR mismatched types
               found type `&'static str`
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
-  --> $DIR/issue-34264.rs:20:5
+  --> $DIR/issue-34264.rs:10:5
    |
 LL | fn bar(x, y: usize) {} //~ ERROR expected one of
    | ------------------- defined here

@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
-  --> $DIR/hrtb-debruijn-in-receiver.rs:27:5
+  --> $DIR/hrtb-debruijn-in-receiver.rs:17:5
    |
 LL |     foo.insert();
    |     --- first mutable borrow occurs here

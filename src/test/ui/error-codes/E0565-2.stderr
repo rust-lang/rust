@@ -1,5 +1,5 @@
 error[E0565]: literal in `deprecated` value must be a string
-  --> $DIR/E0565-2.rs:12:22
+  --> $DIR/E0565-2.rs:2:22
    |
 LL | #[deprecated(since = b"1.29", note = "hi")] //~ ERROR E0565
    |                      ^^^^^^^ help: consider removing the prefix: `"1.29"`

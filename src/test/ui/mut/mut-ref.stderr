@@ -1,5 +1,5 @@
 error: the order of `mut` and `ref` is incorrect
-  --> $DIR/mut-ref.rs:14:9
+  --> $DIR/mut-ref.rs:4:9
    |
 LL |     let mut ref x = 10; //~ ERROR the order of `mut` and `ref` is incorrect
    |         ^^^^^^^ help: try switching the order: `ref mut`

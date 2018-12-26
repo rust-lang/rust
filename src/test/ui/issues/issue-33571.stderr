@@ -1,5 +1,5 @@
 error: this unsafe trait should be implemented explicitly
-  --> $DIR/issue-33571.rs:12:10
+  --> $DIR/issue-33571.rs:2:10
    |
 LL |          Sync, //~ ERROR this unsafe trait should be implemented explicitly
    |          ^^^^

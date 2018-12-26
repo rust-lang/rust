@@ -1,5 +1,5 @@
 error: expected type, found `'static`
-  --> $DIR/trait-object-macro-matcher.rs:19:8
+  --> $DIR/trait-object-macro-matcher.rs:9:8
    |
 LL |     m!('static); //~ ERROR expected type, found `'static`
    |        ^^^^^^^

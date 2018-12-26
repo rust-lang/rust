@@ -1,17 +1,17 @@
 error: static variable `foo` should have an upper case name such as `FOO`
-  --> $DIR/lint-non-uppercase-statics.rs:14:1
+  --> $DIR/lint-non-uppercase-statics.rs:4:1
    |
 LL | static foo: isize = 1; //~ ERROR static variable `foo` should have an upper case name such as `FOO`
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/lint-non-uppercase-statics.rs:11:11
+  --> $DIR/lint-non-uppercase-statics.rs:1:11
    |
 LL | #![forbid(non_upper_case_globals)]
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
 error: static variable `bar` should have an upper case name such as `BAR`
-  --> $DIR/lint-non-uppercase-statics.rs:16:1
+  --> $DIR/lint-non-uppercase-statics.rs:6:1
    |
 LL | static mut bar: isize = 1;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

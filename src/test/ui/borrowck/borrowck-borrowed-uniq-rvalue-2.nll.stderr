@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowck-borrowed-uniq-rvalue-2.rs:30:20
+  --> $DIR/borrowck-borrowed-uniq-rvalue-2.rs:20:20
    |
 LL |     let x = defer(&vec!["Goodbye", "world!"]); //~ ERROR borrowed value does not live long enough
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement

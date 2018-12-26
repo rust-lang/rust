@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/moves-based-on-type-match-bindings.rs:26:11
+  --> $DIR/moves-based-on-type-match-bindings.rs:16:11
    |
 LL |         Foo {f} => {}
    |              - value moved here

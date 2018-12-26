@@ -1,5 +1,5 @@
 error[E0658]: declaration of a nonstandard #[main] function may change over time, for now a top-level `fn main()` is required (see issue #29634)
-  --> $DIR/feature-gate-main.rs:12:1
+  --> $DIR/feature-gate-main.rs:2:1
    |
 LL | fn foo() {} //~ ERROR: declaration of a nonstandard #[main] function may change over time
    | ^^^^^^^^^^^

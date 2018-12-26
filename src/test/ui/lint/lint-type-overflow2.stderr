@@ -1,47 +1,47 @@
 warning: literal out of range for i8
-  --> $DIR/lint-type-overflow2.rs:19:20
+  --> $DIR/lint-type-overflow2.rs:9:20
    |
 LL |     let x2: i8 = --128; //~ warn: literal out of range for i8
    |                    ^^^
    |
 note: lint level defined here
-  --> $DIR/lint-type-overflow2.rs:12:9
+  --> $DIR/lint-type-overflow2.rs:2:9
    |
 LL | #![warn(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 warning: literal out of range for f32
-  --> $DIR/lint-type-overflow2.rs:21:14
+  --> $DIR/lint-type-overflow2.rs:11:14
    |
 LL |     let x = -3.40282357e+38_f32; //~ warn: literal out of range for f32
    |              ^^^^^^^^^^^^^^^^^^
 
 warning: literal out of range for f32
-  --> $DIR/lint-type-overflow2.rs:22:14
+  --> $DIR/lint-type-overflow2.rs:12:14
    |
 LL |     let x =  3.40282357e+38_f32; //~ warn: literal out of range for f32
    |              ^^^^^^^^^^^^^^^^^^
 
 warning: literal out of range for f64
-  --> $DIR/lint-type-overflow2.rs:23:14
+  --> $DIR/lint-type-overflow2.rs:13:14
    |
 LL |     let x = -1.7976931348623159e+308_f64; //~ warn: literal out of range for f64
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: literal out of range for f64
-  --> $DIR/lint-type-overflow2.rs:24:14
+  --> $DIR/lint-type-overflow2.rs:14:14
    |
 LL |     let x =  1.7976931348623159e+308_f64; //~ warn: literal out of range for f64
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: this expression will panic at runtime
-  --> $DIR/lint-type-overflow2.rs:19:18
+  --> $DIR/lint-type-overflow2.rs:9:18
    |
 LL |     let x2: i8 = --128; //~ warn: literal out of range for i8
    |                  ^^^^^ attempt to negate with overflow
    |
 note: lint level defined here
-  --> $DIR/lint-type-overflow2.rs:13:9
+  --> $DIR/lint-type-overflow2.rs:3:9
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^

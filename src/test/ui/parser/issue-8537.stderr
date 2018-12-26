@@ -1,5 +1,5 @@
 error[E0703]: invalid ABI: found `invalid-ab_isize`
-  --> $DIR/issue-8537.rs:14:3
+  --> $DIR/issue-8537.rs:4:3
    |
 LL |   "invalid-ab_isize" //~ ERROR invalid ABI
    |   ^^^^^^^^^^^^^^^^^^ invalid ABI

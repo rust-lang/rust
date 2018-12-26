@@ -1,5 +1,5 @@
 error: an inner attribute is not permitted in this context
-  --> $DIR/attr.rs:17:3
+  --> $DIR/attr.rs:7:3
    |
 LL | #![lang(foo)] //~ ERROR an inner attribute is not permitted in this context
    |   ^

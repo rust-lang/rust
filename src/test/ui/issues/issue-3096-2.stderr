@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: type `*const Bottom` is non-empty
-  --> $DIR/issue-3096-2.rs:15:11
+  --> $DIR/issue-3096-2.rs:5:11
    |
 LL |     match x { } //~ ERROR non-exhaustive patterns
    |           ^
    |
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-  --> $DIR/issue-3096-2.rs:15:11
+  --> $DIR/issue-3096-2.rs:5:11
    |
 LL |     match x { } //~ ERROR non-exhaustive patterns
    |           ^

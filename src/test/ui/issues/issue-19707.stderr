@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-19707.rs:13:28
+  --> $DIR/issue-19707.rs:3:28
    |
 LL | type Foo = fn(&u8, &u8) -> &u8; //~ ERROR missing lifetime specifier
    |                            ^ expected lifetime parameter
@@ -7,7 +7,7 @@ LL | type Foo = fn(&u8, &u8) -> &u8; //~ ERROR missing lifetime specifier
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-19707.rs:15:27
+  --> $DIR/issue-19707.rs:5:27
    |
 LL | fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {} //~ ERROR missing lifetime specifier
    |                           ^ expected lifetime parameter

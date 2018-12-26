@@ -1,5 +1,5 @@
 error[E0408]: variable `i` is not bound in all patterns
-  --> $DIR/issue-2849.rs:15:7
+  --> $DIR/issue-2849.rs:5:7
    |
 LL |       Foo::Alpha | Foo::Beta(i) => {}
    |       ^^^^^^^^^^             - variable not in all patterns

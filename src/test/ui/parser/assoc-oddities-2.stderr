@@ -1,5 +1,5 @@
 error: expected one of `.`, `;`, `?`, or `}`, found `[`
-  --> $DIR/assoc-oddities-2.rs:15:29
+  --> $DIR/assoc-oddities-2.rs:5:29
    |
 LL |     x..if c { a } else { b }[n]; //~ ERROR expected one of
    |                             ^ expected one of `.`, `;`, `?`, or `}` here

@@ -1,5 +1,5 @@
 error: an inner attribute is not permitted in this context
-  --> $DIR/issue-45296.rs:14:7
+  --> $DIR/issue-45296.rs:4:7
    |
 LL |     #![allow(unused_variables)] //~ ERROR not permitted in this context
    |       ^

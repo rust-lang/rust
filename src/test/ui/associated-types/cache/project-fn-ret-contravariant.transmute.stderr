@@ -1,22 +1,22 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/project-fn-ret-contravariant.rs:48:8
+  --> $DIR/project-fn-ret-contravariant.rs:38:8
    |
 LL |    bar(foo, x) //[transmute]~ ERROR E0495
    |        ^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 47:8...
-  --> $DIR/project-fn-ret-contravariant.rs:47:8
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 37:8...
+  --> $DIR/project-fn-ret-contravariant.rs:37:8
    |
 LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
    |        ^^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/project-fn-ret-contravariant.rs:48:13
+  --> $DIR/project-fn-ret-contravariant.rs:38:13
    |
 LL |    bar(foo, x) //[transmute]~ ERROR E0495
    |             ^
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/project-fn-ret-contravariant.rs:48:4
+  --> $DIR/project-fn-ret-contravariant.rs:38:4
    |
 LL |    bar(foo, x) //[transmute]~ ERROR E0495
    |    ^^^^^^^^^^^

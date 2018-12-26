@@ -1,5 +1,5 @@
 error[E0308]: match arms have incompatible types
-  --> $DIR/issue-11319.rs:12:5
+  --> $DIR/issue-11319.rs:2:5
    |
 LL | /     match Some(10) {
 LL | |     //~^ ERROR match arms have incompatible types

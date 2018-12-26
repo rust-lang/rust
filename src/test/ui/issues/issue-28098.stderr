@@ -1,5 +1,5 @@
 error[E0277]: `()` is not an iterator
-  --> $DIR/issue-28098.rs:12:13
+  --> $DIR/issue-28098.rs:2:13
    |
 LL |     let _ = Iterator::next(&mut ());
    |             ^^^^^^^^^^^^^^ `()` is not an iterator
@@ -8,7 +8,7 @@ LL |     let _ = Iterator::next(&mut ());
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `bool` is not an iterator
-  --> $DIR/issue-28098.rs:15:14
+  --> $DIR/issue-28098.rs:5:14
    |
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
@@ -17,7 +17,7 @@ LL |     for _ in false {}
    = note: required by `std::iter::IntoIterator::into_iter`
 
 error[E0277]: `()` is not an iterator
-  --> $DIR/issue-28098.rs:18:13
+  --> $DIR/issue-28098.rs:8:13
    |
 LL |     let _ = Iterator::next(&mut ());
    |             ^^^^^^^^^^^^^^ `()` is not an iterator
@@ -26,7 +26,7 @@ LL |     let _ = Iterator::next(&mut ());
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `()` is not an iterator
-  --> $DIR/issue-28098.rs:27:13
+  --> $DIR/issue-28098.rs:17:13
    |
 LL |     let _ = Iterator::next(&mut ());
    |             ^^^^^^^^^^^^^^ `()` is not an iterator
@@ -35,7 +35,7 @@ LL |     let _ = Iterator::next(&mut ());
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `()` is not an iterator
-  --> $DIR/issue-28098.rs:30:13
+  --> $DIR/issue-28098.rs:20:13
    |
 LL |     let _ = Iterator::next(&mut ());
    |             ^^^^^^^^^^^^^^ `()` is not an iterator
@@ -44,7 +44,7 @@ LL |     let _ = Iterator::next(&mut ());
    = note: required by `std::iter::Iterator::next`
 
 error[E0277]: `bool` is not an iterator
-  --> $DIR/issue-28098.rs:33:14
+  --> $DIR/issue-28098.rs:23:14
    |
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator

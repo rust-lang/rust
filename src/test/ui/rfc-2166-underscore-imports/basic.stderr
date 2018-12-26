@@ -1,17 +1,17 @@
 warning: unused import: `m::Tr1 as _`
-  --> $DIR/basic.rs:36:9
+  --> $DIR/basic.rs:26:9
    |
 LL |     use m::Tr1 as _; //~ WARN unused import
    |         ^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/basic.rs:14:9
+  --> $DIR/basic.rs:4:9
    |
 LL | #![warn(unused_imports, unused_extern_crates)]
    |         ^^^^^^^^^^^^^^
 
 warning: unused import: `S as _`
-  --> $DIR/basic.rs:37:9
+  --> $DIR/basic.rs:27:9
    |
 LL |     use S as _; //~ WARN unused import
    |         ^^^^^^

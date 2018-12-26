@@ -1,5 +1,5 @@
 error[E0224]: at least one non-builtin trait is required for an object type
-  --> $DIR/trait-object-vs-lifetime-2.rs:19:5
+  --> $DIR/trait-object-vs-lifetime-2.rs:9:5
    |
 LL |     'static +: 'static + Copy,
    |     ^^^^^^^^^

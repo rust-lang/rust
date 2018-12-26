@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fully-qualified-type-name2.rs:22:12
+  --> $DIR/fully-qualified-type-name2.rs:12:12
    |
 LL |     return x;
    |            ^ expected enum `y::Foo`, found enum `x::Foo`

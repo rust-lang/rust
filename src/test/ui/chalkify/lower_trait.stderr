@@ -1,5 +1,5 @@
 error: program clause dump
-  --> $DIR/lower_trait.rs:15:1
+  --> $DIR/lower_trait.rs:5:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    = note: forall<Self, S, T> { WellFormed(Self: Foo<S, T>) :- Implemented(Self: Foo<S, T>), WellFormed(S: std::marker::Sized), WellFormed(<Self as Foo<S, T>>::Assoc: Bar). }
 
 error: program clause dump
-  --> $DIR/lower_trait.rs:17:5
+  --> $DIR/lower_trait.rs:7:5
    |
 LL |     #[rustc_dump_program_clauses] //~ ERROR program clause dump
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/escape-argument-callee.rs:36:38
+  --> $DIR/escape-argument-callee.rs:26:38
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
            ]
 
 error: unsatisfied lifetime constraints
-  --> $DIR/escape-argument-callee.rs:36:45
+  --> $DIR/escape-argument-callee.rs:26:45
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       -  -  ^^^^^^ assignment requires that `'1` must outlive `'2`
@@ -19,7 +19,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       has type `&mut &'2 i32`
 
 note: No external requirements
-  --> $DIR/escape-argument-callee.rs:30:1
+  --> $DIR/escape-argument-callee.rs:20:1
    |
 LL | / fn test() {
 LL | |     let x = 44;

@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `_x` (Ast)
-  --> $DIR/immutable-arg.rs:14:5
+  --> $DIR/immutable-arg.rs:4:5
    |
 LL | fn foo(_x: u32) {
    |        -- first assignment to `_x`
@@ -7,7 +7,7 @@ LL |     _x = 4;
    |     ^^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign to immutable argument `_x` (Mir)
-  --> $DIR/immutable-arg.rs:14:5
+  --> $DIR/immutable-arg.rs:4:5
    |
 LL | fn foo(_x: u32) {
    |        -- help: make this binding mutable: `mut _x`

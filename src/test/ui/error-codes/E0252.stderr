@@ -1,5 +1,5 @@
 error[E0252]: the name `baz` is defined multiple times
-  --> $DIR/E0252.rs:14:5
+  --> $DIR/E0252.rs:4:5
    |
 LL | use foo::baz;
    |     -------- previous import of the type `baz` here

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `vec` as mutable because it is also borrowed as immutable
-  --> $DIR/two-phase-cannot-nest-mut-self-calls.rs:26:9
+  --> $DIR/two-phase-cannot-nest-mut-self-calls.rs:16:9
    |
 LL |     vec.get({
    |     --- --- immutable borrow later used by call

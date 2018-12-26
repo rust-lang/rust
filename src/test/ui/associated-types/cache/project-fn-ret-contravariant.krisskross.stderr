@@ -1,23 +1,23 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-contravariant.rs:55:5
+  --> $DIR/project-fn-ret-contravariant.rs:45:5
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |                        -------                 ------------------
    |                        |
    |                        this parameter and the return type are declared with different lifetimes...
 ...
-LL |    (a, b) //[krisskross]~ ERROR 55:5: 55:6: lifetime mismatch [E0623]
+LL |    (a, b) //[krisskross]~ ERROR lifetime mismatch [E0623]
    |     ^ ...but data from `y` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-contravariant.rs:55:8
+  --> $DIR/project-fn-ret-contravariant.rs:45:8
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |                                    -------     ------------------
    |                                    |
    |                                    this parameter and the return type are declared with different lifetimes...
 ...
-LL |    (a, b) //[krisskross]~ ERROR 55:5: 55:6: lifetime mismatch [E0623]
+LL |    (a, b) //[krisskross]~ ERROR lifetime mismatch [E0623]
    |        ^ ...but data from `x` is returned here
 
 error: aborting due to 2 previous errors

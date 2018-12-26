@@ -1,5 +1,5 @@
 error[E0252]: the name `baz` is defined multiple times
-  --> $DIR/issue-25396.rs:14:5
+  --> $DIR/issue-25396.rs:4:5
    |
 LL | use foo::baz;
    |     -------- previous import of the module `baz` here
@@ -13,7 +13,7 @@ LL | use bar::baz as other_baz; //~ ERROR the name `baz` is defined multiple tim
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `Quux` is defined multiple times
-  --> $DIR/issue-25396.rs:17:5
+  --> $DIR/issue-25396.rs:7:5
    |
 LL | use foo::Quux;
    |     --------- previous import of the trait `Quux` here
@@ -27,7 +27,7 @@ LL | use bar::Quux as OtherQuux; //~ ERROR the name `Quux` is defined multiple t
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `blah` is defined multiple times
-  --> $DIR/issue-25396.rs:20:5
+  --> $DIR/issue-25396.rs:10:5
    |
 LL | use foo::blah;
    |     --------- previous import of the type `blah` here
@@ -41,7 +41,7 @@ LL | use bar::blah as other_blah; //~ ERROR the name `blah` is defined multiple 
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `WOMP` is defined multiple times
-  --> $DIR/issue-25396.rs:23:5
+  --> $DIR/issue-25396.rs:13:5
    |
 LL | use foo::WOMP;
    |     --------- previous import of the value `WOMP` here

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-closure-require-ret.rs:12:37
+  --> $DIR/liveness-closure-require-ret.rs:2:37
    |
 LL | fn main() { println!("{}", force(|| {})); } //~ ERROR mismatched types
    |                                     ^^ expected isize, found ()

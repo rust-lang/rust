@@ -1,5 +1,5 @@
 error: expected one of `::`, `;`, or `as`, found `{`
-  --> $DIR/import-prefix-macro-1.rs:21:27
+  --> $DIR/import-prefix-macro-1.rs:11:27
    |
 LL |     ($p: path) => (use $p {S, Z}); //~ERROR expected one of `::`, `;`, or `as`, found `{`
    |                           ^ expected one of `::`, `;`, or `as` here

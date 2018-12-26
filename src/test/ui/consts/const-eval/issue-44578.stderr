@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant expression failed
-  --> $DIR/issue-44578.rs:35:20
+  --> $DIR/issue-44578.rs:25:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors

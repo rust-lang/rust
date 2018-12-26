@@ -1,11 +1,11 @@
 error: use of deprecated item 'Foo::foo': text
-  --> $DIR/issue-17337.rs:26:6
+  --> $DIR/issue-17337.rs:16:6
    |
 LL |     .foo(); //~ ERROR use of deprecated item
    |      ^^^
    |
 note: lint level defined here
-  --> $DIR/issue-17337.rs:12:9
+  --> $DIR/issue-17337.rs:2:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^

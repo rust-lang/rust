@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable local variable `x` as mutable
-  --> $DIR/issue-37139.rs:22:23
+  --> $DIR/issue-37139.rs:12:23
    |
 LL |             test(&mut x); //~ ERROR cannot borrow immutable
    |                       ^

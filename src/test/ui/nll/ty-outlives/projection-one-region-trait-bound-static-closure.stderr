@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:46:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:36:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: late-bound region is '_#3r
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:42:1
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:32:1
    |
 LL | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -29,7 +29,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:55:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:45:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:50:1
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:40:1
    |
 LL | / fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -61,7 +61,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:74:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:64:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,7 +75,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:59:1
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:49:1
    |
 LL | / fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -93,7 +93,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:83:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:73:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +107,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:78:1
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:68:1
    |
 LL | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 LL | | where
@@ -125,7 +125,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:95:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:85:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:87:1
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:77:1
    |
 LL | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
 LL | | where

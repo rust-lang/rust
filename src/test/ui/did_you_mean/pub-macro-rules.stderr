@@ -1,5 +1,5 @@
 error: can't qualify macro_rules invocation with `pub`
-  --> $DIR/pub-macro-rules.rs:12:5
+  --> $DIR/pub-macro-rules.rs:2:5
    |
 LL |     pub macro_rules! foo { //~ ERROR can't qualify macro_rules invocation
    |     ^^^ help: try exporting the macro: `#[macro_export]`

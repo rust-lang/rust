@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when computing the supertraits of `T`
-  --> $DIR/issue-20772.rs:11:1
+  --> $DIR/issue-20772.rs:1:1
    |
 LL | / trait T : Iterator<Item=Self::Item>
 LL | | //~^ ERROR cycle detected
@@ -10,7 +10,7 @@ LL | | {}
    = note: ...which again requires computing the supertraits of `T`, completing the cycle
 
 error[E0220]: associated type `Item` not found for `Self`
-  --> $DIR/issue-20772.rs:11:25
+  --> $DIR/issue-20772.rs:1:25
    |
 LL | trait T : Iterator<Item=Self::Item>
    |                         ^^^^^^^^^^ associated type `Item` not found

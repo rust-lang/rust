@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-ref-into-rvalue.rs:14:14
+  --> $DIR/borrowck-ref-into-rvalue.rs:4:14
    |
 LL |         Some(ref m) => {
    |              ^^^^^ borrowed value does not live long enough

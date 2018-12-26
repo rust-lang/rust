@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-wrapping.rs:12:28
+  --> $DIR/const-int-wrapping.rs:2:28
    |
 LL |     let x: &'static i32 = &(5_i32.wrapping_add(3)); //~ ERROR does not live long enough
    |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -10,7 +10,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-wrapping.rs:13:28
+  --> $DIR/const-int-wrapping.rs:3:28
    |
 LL |     let y: &'static i32 = &(5_i32.wrapping_sub(3)); //~ ERROR does not live long enough
    |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -21,7 +21,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-wrapping.rs:14:28
+  --> $DIR/const-int-wrapping.rs:4:28
    |
 LL |     let z: &'static i32 = &(5_i32.wrapping_mul(3)); //~ ERROR does not live long enough
    |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -32,7 +32,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-wrapping.rs:15:28
+  --> $DIR/const-int-wrapping.rs:5:28
    |
 LL |     let a: &'static i32 = &(5_i32.wrapping_shl(3)); //~ ERROR does not live long enough
    |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
@@ -43,7 +43,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/const-int-wrapping.rs:16:28
+  --> $DIR/const-int-wrapping.rs:6:28
    |
 LL |     let b: &'static i32 = &(5_i32.wrapping_shr(3)); //~ ERROR does not live long enough
    |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use

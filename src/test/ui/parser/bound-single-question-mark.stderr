@@ -1,5 +1,5 @@
 error: expected identifier, found `>`
-  --> $DIR/bound-single-question-mark.rs:13:10
+  --> $DIR/bound-single-question-mark.rs:3:10
    |
 LL | fn f<T: ?>() {} //~ ERROR expected identifier, found `>`
    |          ^ expected identifier

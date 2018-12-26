@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `ycrate`
-  --> $DIR/non-existent-3.rs:13:5
+  --> $DIR/non-existent-3.rs:3:5
    |
 LL | use ycrate; //~ ERROR unresolved import `ycrate`
    |     ^^^^^^ no `ycrate` external crate

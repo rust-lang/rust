@@ -1,5 +1,5 @@
 error: expected one of `)` or `,`, found `pat`
-  --> $DIR/pat-tuple-4.rs:15:13
+  --> $DIR/pat-tuple-4.rs:5:13
    |
 LL |         (.. pat) => {} //~ ERROR expected one of `)` or `,`, found `pat`
    |             ^^^ expected one of `)` or `,` here

@@ -1,5 +1,5 @@
 error: `$e:expr` is followed by `+`, which is not allowed for `expr` fragments
-  --> $DIR/unused-macro-with-follow-violation.rs:14:14
+  --> $DIR/unused-macro-with-follow-violation.rs:4:14
    |
 LL |     ($e:expr +) => () //~ ERROR not allowed for `expr` fragments
    |              ^ not allowed after `expr` fragments

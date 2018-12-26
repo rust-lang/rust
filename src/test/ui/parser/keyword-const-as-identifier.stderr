@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `const`
-  --> $DIR/keyword-const-as-identifier.rs:16:9
+  --> $DIR/keyword-const-as-identifier.rs:6:9
    |
 LL |     let const = "foo"; //~ error: expected pattern, found keyword `const`
    |         ^^^^^ expected pattern

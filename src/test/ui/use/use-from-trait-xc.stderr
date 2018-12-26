@@ -1,53 +1,53 @@
 error[E0253]: `foo` is not directly importable
-  --> $DIR/use-from-trait-xc.rs:15:5
+  --> $DIR/use-from-trait-xc.rs:5:5
    |
 LL | use use_from_trait_xc::Trait::foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
 
 error[E0253]: `Assoc` is not directly importable
-  --> $DIR/use-from-trait-xc.rs:18:5
+  --> $DIR/use-from-trait-xc.rs:8:5
    |
 LL | use use_from_trait_xc::Trait::Assoc;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
 
 error[E0253]: `CONST` is not directly importable
-  --> $DIR/use-from-trait-xc.rs:21:5
+  --> $DIR/use-from-trait-xc.rs:11:5
    |
 LL | use use_from_trait_xc::Trait::CONST;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
 
 error[E0432]: unresolved import `use_from_trait_xc::Foo`
-  --> $DIR/use-from-trait-xc.rs:24:24
+  --> $DIR/use-from-trait-xc.rs:14:24
    |
 LL | use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
    |                        ^^^ not a module `Foo`
 
 error[E0432]: unresolved import `use_from_trait_xc::Foo`
-  --> $DIR/use-from-trait-xc.rs:27:24
+  --> $DIR/use-from-trait-xc.rs:17:24
    |
 LL | use use_from_trait_xc::Foo::C; //~ ERROR struct `Foo` is private
    |                        ^^^ not a module `Foo`
 
 error[E0432]: unresolved import `use_from_trait_xc::Bar`
-  --> $DIR/use-from-trait-xc.rs:30:24
+  --> $DIR/use-from-trait-xc.rs:20:24
    |
 LL | use use_from_trait_xc::Bar::new as bnew;
    |                        ^^^ not a module `Bar`
 
 error[E0432]: unresolved import `use_from_trait_xc::Baz::new`
-  --> $DIR/use-from-trait-xc.rs:33:5
+  --> $DIR/use-from-trait-xc.rs:23:5
    |
 LL | use use_from_trait_xc::Baz::new as baznew;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `new` in `Baz`
 
 error[E0603]: struct `Foo` is private
-  --> $DIR/use-from-trait-xc.rs:24:24
+  --> $DIR/use-from-trait-xc.rs:14:24
    |
 LL | use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
    |                        ^^^
 
 error[E0603]: struct `Foo` is private
-  --> $DIR/use-from-trait-xc.rs:27:24
+  --> $DIR/use-from-trait-xc.rs:17:24
    |
 LL | use use_from_trait_xc::Foo::C; //~ ERROR struct `Foo` is private
    |                        ^^^

@@ -1,5 +1,5 @@
 error[E0509]: cannot move out of type `DropStruct`, which implements the `Drop` trait
-  --> $DIR/E0509.rs:26:23
+  --> $DIR/E0509.rs:16:23
    |
 LL |     let fancy_field = drop_struct.fancy; //~ ERROR E0509
    |                       ^^^^^^^^^^^^^^^^^

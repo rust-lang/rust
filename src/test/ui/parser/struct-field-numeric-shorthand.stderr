@@ -1,5 +1,5 @@
 error: expected identifier, found `0`
-  --> $DIR/struct-field-numeric-shorthand.rs:16:19
+  --> $DIR/struct-field-numeric-shorthand.rs:6:19
    |
 LL |     let _ = Rgb { 0, 1, 2 }; //~ ERROR expected identifier, found `0`
    |             ---   ^ expected identifier

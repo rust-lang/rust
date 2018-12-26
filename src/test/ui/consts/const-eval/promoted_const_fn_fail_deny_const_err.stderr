@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:31:27
+  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:21:27
    |
 LL |     let x: &'static u8 = &(bar() + 1);
    |                           ^^^^^^^^^^^ temporary value does not live long enough

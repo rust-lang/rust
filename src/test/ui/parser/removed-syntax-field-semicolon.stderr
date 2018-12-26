@@ -1,5 +1,5 @@
 error: expected `,`, or `}`, found `;`
-  --> $DIR/removed-syntax-field-semicolon.rs:14:12
+  --> $DIR/removed-syntax-field-semicolon.rs:4:12
    |
 LL |     bar: ();
    |            ^

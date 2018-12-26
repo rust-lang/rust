@@ -1,23 +1,23 @@
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/issue-42060.rs:13:23
+  --> $DIR/issue-42060.rs:3:23
    |
 LL |     let other: typeof(thing) = thing; //~ ERROR attempt to use a non-constant value in a constant
    |                       ^^^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/issue-42060.rs:19:13
+  --> $DIR/issue-42060.rs:9:13
    |
 LL |     <typeof(q)>::N //~ ERROR attempt to use a non-constant value in a constant
    |             ^ non-constant value
 
 error[E0516]: `typeof` is a reserved keyword but unimplemented
-  --> $DIR/issue-42060.rs:13:16
+  --> $DIR/issue-42060.rs:3:16
    |
 LL |     let other: typeof(thing) = thing; //~ ERROR attempt to use a non-constant value in a constant
    |                ^^^^^^^^^^^^^ reserved keyword
 
 error[E0516]: `typeof` is a reserved keyword but unimplemented
-  --> $DIR/issue-42060.rs:19:6
+  --> $DIR/issue-42060.rs:9:6
    |
 LL |     <typeof(q)>::N //~ ERROR attempt to use a non-constant value in a constant
    |      ^^^^^^^^^ reserved keyword

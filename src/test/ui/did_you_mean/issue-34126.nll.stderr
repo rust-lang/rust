@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-34126.rs:16:18
+  --> $DIR/issue-34126.rs:6:18
    |
 LL |         self.run(&mut self); //~ ERROR cannot borrow
    |                  ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |         self.run(&mut self); //~ ERROR cannot borrow
    |                  try removing `&mut` here
 
 error[E0502]: cannot borrow `self` as mutable because it is also borrowed as immutable
-  --> $DIR/issue-34126.rs:16:18
+  --> $DIR/issue-34126.rs:6:18
    |
 LL |         self.run(&mut self); //~ ERROR cannot borrow
    |         ---- --- ^^^^^^^^^ mutable borrow occurs here

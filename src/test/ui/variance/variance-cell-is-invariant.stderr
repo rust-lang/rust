@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/variance-cell-is-invariant.rs:24:25
+  --> $DIR/variance-cell-is-invariant.rs:14:25
    |
 LL | fn use_<'short,'long>(c: Foo<'short>,
    |                          ----------- these two types are declared with different lifetimes...

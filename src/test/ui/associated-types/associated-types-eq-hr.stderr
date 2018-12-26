@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
-  --> $DIR/associated-types-eq-hr.rs:92:5
+  --> $DIR/associated-types-eq-hr.rs:82:5
    |
 LL |     foo::<UintStruct>(); //~ ERROR type mismatch
    |     ^^^^^^^^^^^^^^^^^ expected usize, found isize
@@ -7,7 +7,7 @@ LL |     foo::<UintStruct>(); //~ ERROR type mismatch
    = note: expected type `&usize`
               found type `&isize`
 note: required by `foo`
-  --> $DIR/associated-types-eq-hr.rs:54:1
+  --> $DIR/associated-types-eq-hr.rs:44:1
    |
 LL | / fn foo<T>()
 LL | |     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
@@ -17,7 +17,7 @@ LL | | }
    | |_^
 
 error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
-  --> $DIR/associated-types-eq-hr.rs:94:5
+  --> $DIR/associated-types-eq-hr.rs:84:5
    |
 LL |     bar::<IntStruct>(); //~ ERROR type mismatch
    |     ^^^^^^^^^^^^^^^^ expected isize, found usize
@@ -25,7 +25,7 @@ LL |     bar::<IntStruct>(); //~ ERROR type mismatch
    = note: expected type `&isize`
               found type `&usize`
 note: required by `bar`
-  --> $DIR/associated-types-eq-hr.rs:60:1
+  --> $DIR/associated-types-eq-hr.rs:50:1
    |
 LL | / fn bar<T>()
 LL | |     where T : for<'x> TheTrait<&'x isize, A = &'x usize>
@@ -35,7 +35,7 @@ LL | | }
    | |_^
 
 error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
-  --> $DIR/associated-types-eq-hr.rs:97:5
+  --> $DIR/associated-types-eq-hr.rs:87:5
    |
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
@@ -43,7 +43,7 @@ LL |     tuple_one::<Tuple>();
    = help: the following implementations were found:
              <Tuple as TheTrait<(&'a isize, &'a isize)>>
 note: required by `tuple_one`
-  --> $DIR/associated-types-eq-hr.rs:66:1
+  --> $DIR/associated-types-eq-hr.rs:56:1
    |
 LL | / fn tuple_one<T>()
 LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
@@ -53,13 +53,13 @@ LL | | }
    | |_^
 
 error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'x isize`
-  --> $DIR/associated-types-eq-hr.rs:97:5
+  --> $DIR/associated-types-eq-hr.rs:87:5
    |
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
    |
 note: required by `tuple_one`
-  --> $DIR/associated-types-eq-hr.rs:66:1
+  --> $DIR/associated-types-eq-hr.rs:56:1
    |
 LL | / fn tuple_one<T>()
 LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
@@ -69,7 +69,7 @@ LL | | }
    | |_^
 
 error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
-  --> $DIR/associated-types-eq-hr.rs:101:5
+  --> $DIR/associated-types-eq-hr.rs:91:5
    |
 LL |     tuple_two::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
@@ -77,7 +77,7 @@ LL |     tuple_two::<Tuple>();
    = help: the following implementations were found:
              <Tuple as TheTrait<(&'a isize, &'a isize)>>
 note: required by `tuple_two`
-  --> $DIR/associated-types-eq-hr.rs:72:1
+  --> $DIR/associated-types-eq-hr.rs:62:1
    |
 LL | / fn tuple_two<T>()
 LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
@@ -87,13 +87,13 @@ LL | | }
    | |_^
 
 error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'y isize`
-  --> $DIR/associated-types-eq-hr.rs:101:5
+  --> $DIR/associated-types-eq-hr.rs:91:5
    |
 LL |     tuple_two::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
    |
 note: required by `tuple_two`
-  --> $DIR/associated-types-eq-hr.rs:72:1
+  --> $DIR/associated-types-eq-hr.rs:62:1
    |
 LL | / fn tuple_two<T>()
 LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
@@ -103,7 +103,7 @@ LL | | }
    | |_^
 
 error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
-  --> $DIR/associated-types-eq-hr.rs:107:5
+  --> $DIR/associated-types-eq-hr.rs:97:5
    |
 LL |     tuple_four::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
@@ -111,7 +111,7 @@ LL |     tuple_four::<Tuple>();
    = help: the following implementations were found:
              <Tuple as TheTrait<(&'a isize, &'a isize)>>
 note: required by `tuple_four`
-  --> $DIR/associated-types-eq-hr.rs:84:1
+  --> $DIR/associated-types-eq-hr.rs:74:1
    |
 LL | / fn tuple_four<T>()
 LL | |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize)>

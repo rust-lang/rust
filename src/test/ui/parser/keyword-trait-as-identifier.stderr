@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `trait`
-  --> $DIR/keyword-trait-as-identifier.rs:16:9
+  --> $DIR/keyword-trait-as-identifier.rs:6:9
    |
 LL |     let trait = "foo"; //~ error: expected pattern, found keyword `trait`
    |         ^^^^^ expected pattern

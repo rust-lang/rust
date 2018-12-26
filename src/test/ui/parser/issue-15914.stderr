@@ -1,5 +1,5 @@
 error: expected identifier, found `(`
-  --> $DIR/issue-15914.rs:15:9
+  --> $DIR/issue-15914.rs:5:9
    |
 LL |         (); //~ ERROR expected identifier, found `(`
    |         ^ expected identifier

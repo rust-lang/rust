@@ -1,5 +1,5 @@
 error: expected one of `(`, `fn`, `static`, or `type`, found `pub`
-  --> $DIR/duplicate-visibility.rs:15:9
+  --> $DIR/duplicate-visibility.rs:5:9
    |
 LL |     pub pub fn foo();
    |         ^^^ expected one of `(`, `fn`, `static`, or `type` here

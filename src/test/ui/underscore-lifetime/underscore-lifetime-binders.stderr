@@ -1,23 +1,23 @@
 error[E0637]: `'_` cannot be used here
-  --> $DIR/underscore-lifetime-binders.rs:14:8
+  --> $DIR/underscore-lifetime-binders.rs:4:8
    |
 LL | fn foo<'_> //~ ERROR cannot be used here
    |        ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/underscore-lifetime-binders.rs:20:21
+  --> $DIR/underscore-lifetime-binders.rs:10:21
    |
 LL | fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR cannot be used here
    |                     ^^ `'_` is a reserved lifetime name
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/underscore-lifetime-binders.rs:12:17
+  --> $DIR/underscore-lifetime-binders.rs:2:17
    |
 LL | struct Baz<'a>(&'_ &'a u8); //~ ERROR missing lifetime specifier
    |                 ^^ expected lifetime parameter
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/underscore-lifetime-binders.rs:20:29
+  --> $DIR/underscore-lifetime-binders.rs:10:29
    |
 LL | fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR cannot be used here
    |                             ^^ help: consider giving it a 'static lifetime: `'static`
@@ -25,7 +25,7 @@ LL | fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR cannot be used here
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/underscore-lifetime-binders.rs:26:35
+  --> $DIR/underscore-lifetime-binders.rs:16:35
    |
 LL | fn foo2(_: &'_ u8, y: &'_ u8) -> &'_ u8 { y } //~ ERROR missing lifetime specifier
    |                                   ^^ expected lifetime parameter

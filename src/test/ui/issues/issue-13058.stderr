@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `cont`
-  --> $DIR/issue-13058.rs:24:26
+  --> $DIR/issue-13058.rs:14:26
    |
 LL | fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
    |                                                                     -- help: add explicit lifetime `'r` to the type of `cont`: `&'r T`

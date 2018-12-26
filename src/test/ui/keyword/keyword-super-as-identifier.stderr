@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: there are too many initial `super`s.
-  --> $DIR/keyword-super-as-identifier.rs:12:9
+  --> $DIR/keyword-super-as-identifier.rs:2:9
    |
 LL |     let super = 22; //~ ERROR failed to resolve: there are too many initial `super`s
    |         ^^^^^ there are too many initial `super`s.

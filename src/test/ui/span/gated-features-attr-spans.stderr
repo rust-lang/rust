@@ -1,5 +1,5 @@
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
-  --> $DIR/gated-features-attr-spans.rs:11:1
+  --> $DIR/gated-features-attr-spans.rs:1:1
    |
 LL | #[repr(simd)] //~ ERROR are experimental
    | ^^^^^^^^^^^^^

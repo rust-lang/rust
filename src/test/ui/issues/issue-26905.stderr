@@ -1,5 +1,5 @@
 error[E0375]: implementing the trait `CoerceUnsized` requires multiple coercions
-  --> $DIR/issue-26905.rs:26:40
+  --> $DIR/issue-26905.rs:16:40
    |
 LL | impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<MyRc<U>> for MyRc<T>{ } //~ERROR
    |                                        ^^^^^^^^^^^^^^^^^^^^^^ requires multiple coercions

@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/E0597.rs:18:17
+  --> $DIR/E0597.rs:8:17
    |
 LL |     x.x = Some(&y);
    |                 ^ borrowed value does not live long enough

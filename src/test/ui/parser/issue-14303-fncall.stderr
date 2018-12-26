@@ -1,5 +1,5 @@
 error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-fncall.rs:16:31
+  --> $DIR/issue-14303-fncall.rs:6:31
    |
 LL |     .collect::<Vec<'a, usize, 'b>>()
    |                               ^^

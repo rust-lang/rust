@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-6458.rs:19:4
+  --> $DIR/issue-6458.rs:9:4
    |
 LL |    foo(TypeWithState(marker::PhantomData));
    |    ^^^ cannot infer type for `State`

@@ -1,5 +1,5 @@
 error: expected statement after outer attribute
-  --> $DIR/attr-dangling-in-fn.rs:17:1
+  --> $DIR/attr-dangling-in-fn.rs:7:1
    |
 LL | }
    | ^

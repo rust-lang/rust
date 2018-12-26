@@ -1,11 +1,11 @@
 error[E0603]: unit struct `C` is private
-  --> $DIR/issue-13407.rs:16:8
+  --> $DIR/issue-13407.rs:6:8
    |
 LL |     A::C = 1;
    |        ^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-13407.rs:16:12
+  --> $DIR/issue-13407.rs:6:12
    |
 LL |     A::C = 1;
    |            ^ expected struct `A::C`, found integral variable
@@ -14,7 +14,7 @@ LL |     A::C = 1;
               found type `{integer}`
 
 error[E0070]: invalid left-hand side expression
-  --> $DIR/issue-13407.rs:16:5
+  --> $DIR/issue-13407.rs:6:5
    |
 LL |     A::C = 1;
    |     ^^^^^^^^ left-hand of expression not valid

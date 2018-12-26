@@ -1,17 +1,17 @@
 error: unused variable: `x`
-  --> $DIR/issue-17999.rs:15:13
+  --> $DIR/issue-17999.rs:5:13
    |
 LL |         let x = (); //~ ERROR: unused variable: `x`
    |             ^ help: consider using `_x` instead
    |
 note: lint level defined here
-  --> $DIR/issue-17999.rs:11:9
+  --> $DIR/issue-17999.rs:1:9
    |
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unused variable: `a`
-  --> $DIR/issue-17999.rs:17:13
+  --> $DIR/issue-17999.rs:7:13
    |
 LL |             a => {} //~ ERROR: unused variable: `a`
    |             ^ help: consider using `_a` instead

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[isize]` cannot be known at compilation time
-  --> $DIR/dst-bad-deep.rs:23:34
+  --> $DIR/dst-bad-deep.rs:13:34
    |
 LL |     let h: &Fat<Fat<[isize]>> = &Fat { ptr: *g };
    |                                  ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

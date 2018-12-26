@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to field `_iter.node` of immutable binding (Ast)
-  --> $DIR/issue-5500-1.rs:22:5
+  --> $DIR/issue-5500-1.rs:12:5
    |
 LL |       let _iter = TrieMapIterator{node: &a};
    |           ----- help: make this binding mutable: `mut _iter`

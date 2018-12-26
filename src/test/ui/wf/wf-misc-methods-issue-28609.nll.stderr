@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/wf-misc-methods-issue-28609.rs:32:5
+  --> $DIR/wf-misc-methods-issue-28609.rs:22:5
    |
 LL |     s.transmute_inherent(&mut 42) //~ ERROR does not live long enough
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^--^
@@ -8,7 +8,7 @@ LL |     s.transmute_inherent(&mut 42) //~ ERROR does not live long enough
    |     returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing local variable `four`
-  --> $DIR/wf-misc-methods-issue-28609.rs:46:5
+  --> $DIR/wf-misc-methods-issue-28609.rs:36:5
    |
 LL |     s.bomb = Some(&four); //~ ERROR does not live long enough
    |                   ----- `four` is borrowed here
@@ -16,7 +16,7 @@ LL |     &s
    |     ^^ returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing local variable `four`
-  --> $DIR/wf-misc-methods-issue-28609.rs:53:5
+  --> $DIR/wf-misc-methods-issue-28609.rs:43:5
    |
 LL |     s.bomb = Some(&four); //~ ERROR does not live long enough
    |                   ----- `four` is borrowed here
@@ -24,7 +24,7 @@ LL |     &*s
    |     ^^^ returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/wf-misc-methods-issue-28609.rs:63:5
+  --> $DIR/wf-misc-methods-issue-28609.rs:53:5
    |
 LL |     s << &mut 3 //~ ERROR does not live long enough
    |     ^^^^^^^^^^-
@@ -33,7 +33,7 @@ LL |     s << &mut 3 //~ ERROR does not live long enough
    |     returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/wf-misc-methods-issue-28609.rs:68:5
+  --> $DIR/wf-misc-methods-issue-28609.rs:58:5
    |
 LL |     s.shl(&mut 3) //~ ERROR does not live long enough
    |     ^^^^^^^^^^^-^
@@ -42,7 +42,7 @@ LL |     s.shl(&mut 3) //~ ERROR does not live long enough
    |     returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing temporary value
-  --> $DIR/wf-misc-methods-issue-28609.rs:73:5
+  --> $DIR/wf-misc-methods-issue-28609.rs:63:5
    |
 LL |     S2::shl(s, &mut 3) //~ ERROR does not live long enough
    |     ^^^^^^^^^^^^^^^^-^

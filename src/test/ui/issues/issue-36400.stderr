@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow immutable `Box` content `*x` as mutable
-  --> $DIR/issue-36400.rs:15:12
+  --> $DIR/issue-36400.rs:5:12
    |
 LL |     let x = Box::new(3);
    |         - help: make this binding mutable: `mut x`

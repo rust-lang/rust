@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `b`
-  --> $DIR/liveness-assign-imm-local-with-drop.rs:20:5
+  --> $DIR/liveness-assign-imm-local-with-drop.rs:10:5
    |
 LL |     let b = Box::new(1); //[ast]~ NOTE first assignment
    |         -

@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/regions-return-stack-allocated-vec.rs:14:5
+  --> $DIR/regions-return-stack-allocated-vec.rs:4:5
    |
 LL |     &[x] //~ ERROR borrowed value does not live long enough
    |     ^---

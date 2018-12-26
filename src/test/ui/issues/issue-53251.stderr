@@ -1,5 +1,5 @@
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/issue-53251.rs:21:24
+  --> $DIR/issue-53251.rs:11:24
    |
 LL |                 S::f::<i64>();
    |                        ^^^ unexpected type argument

@@ -1,5 +1,5 @@
 error[E0491]: in type `&'x (dyn for<'z> Trait1<<T as Trait2<'y, 'z>>::Foo> + 'x)`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:31:1
+  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:21:1
    |
 LL | / fn callee<'x, 'y, T>(t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
 LL | |     //~^ ERROR reference has a longer lifetime than the data it references
@@ -7,13 +7,13 @@ LL | | {
 LL | | }
    | |_^
    |
-note: the pointer is valid for the lifetime 'x as defined on the function body at 31:11
-  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:31:11
+note: the pointer is valid for the lifetime 'x as defined on the function body at 21:11
+  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:21:11
    |
 LL | fn callee<'x, 'y, T>(t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
    |           ^^
-note: but the referenced data is only valid for the lifetime 'y as defined on the function body at 31:15
-  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:31:15
+note: but the referenced data is only valid for the lifetime 'y as defined on the function body at 21:15
+  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:21:15
    |
 LL | fn callee<'x, 'y, T>(t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
    |               ^^

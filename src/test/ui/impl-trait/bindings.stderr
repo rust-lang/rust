@@ -1,5 +1,5 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/bindings.rs:14:29
+  --> $DIR/bindings.rs:4:29
    |
 LL |     const foo: impl Clone = x;
    |                             ^
@@ -7,7 +7,7 @@ LL |     const foo: impl Clone = x;
    = help: use the `|| { ... }` closure form instead
 
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/bindings.rs:20:33
+  --> $DIR/bindings.rs:10:33
    |
 LL |         const foo: impl Clone = x;
    |                                 ^
@@ -15,7 +15,7 @@ LL |         const foo: impl Clone = x;
    = help: use the `|| { ... }` closure form instead
 
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/bindings.rs:27:33
+  --> $DIR/bindings.rs:17:33
    |
 LL |         const foo: impl Clone = x;
    |                                 ^
@@ -23,7 +23,7 @@ LL |         const foo: impl Clone = x;
    = help: use the `|| { ... }` closure form instead
 
 error[E0434]: can't capture dynamic environment in a fn item
-  --> $DIR/bindings.rs:34:33
+  --> $DIR/bindings.rs:24:33
    |
 LL |         const foo: impl Clone = x;
    |                                 ^

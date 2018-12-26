@@ -1,5 +1,5 @@
 error: format argument must be a string literal
-  --> $DIR/bad_hello.rs:12:14
+  --> $DIR/bad_hello.rs:2:14
    |
 LL |     println!(3 + 4);
    |              ^^^^^
@@ -9,7 +9,7 @@ LL |     println!("{}", 3 + 4);
    |              ^^^^^
 
 error: format argument must be a string literal
-  --> $DIR/bad_hello.rs:14:14
+  --> $DIR/bad_hello.rs:4:14
    |
 LL |     println!(3, 4);
    |              ^

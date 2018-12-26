@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `bar::foo`
-  --> $DIR/privacy2.rs:27:9
+  --> $DIR/privacy2.rs:17:9
    |
 LL |     use bar::foo;
    |         ^^^^^^^^ no `foo` in `bar`
 
 error[E0603]: function `foo` is private
-  --> $DIR/privacy2.rs:33:20
+  --> $DIR/privacy2.rs:23:20
    |
 LL |     use bar::glob::foo;
    |                    ^^^

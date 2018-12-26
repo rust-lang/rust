@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `wrapper.inner`
-  --> $DIR/decl-macro-illegal-copy.rs:32:9
+  --> $DIR/decl-macro-illegal-copy.rs:22:9
    |
 LL |     $wrapper.inner
    |     -------------- value moved here

@@ -1,11 +1,11 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:14:5
+  --> $DIR/regions-reborrow-from-shorter-mut-ref-mut-ref.rs:4:5
    |
 LL | fn copy_borrowed_ptr<'a, 'b, 'c>(p: &'a mut &'b mut &'c mut isize) -> &'b mut isize {
    |                                     -----------------------------     -------------
    |                                     |
    |                                     this parameter and the return type are declared with different lifetimes...
-LL |     &mut ***p //~ ERROR 14:5: 14:14: lifetime mismatch [E0623]
+LL |     &mut ***p //~ ERROR lifetime mismatch [E0623]
    |     ^^^^^^^^^ ...but data from `p` is returned here
 
 error: aborting due to previous error

@@ -1,5 +1,5 @@
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-32501.rs:19:13
+  --> $DIR/issue-32501.rs:9:13
    |
 LL |     let mut _ = 0; //~ ERROR expected identifier, found reserved identifier `_`
    |             ^ expected identifier, found reserved identifier

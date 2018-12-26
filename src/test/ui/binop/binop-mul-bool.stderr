@@ -1,5 +1,5 @@
 error[E0369]: binary operation `*` cannot be applied to type `bool`
-  --> $DIR/binop-mul-bool.rs:13:21
+  --> $DIR/binop-mul-bool.rs:3:21
    |
 LL | fn main() { let x = true * false; }
    |                     ^^^^^^^^^^^^

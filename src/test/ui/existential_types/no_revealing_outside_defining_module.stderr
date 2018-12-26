@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/no_revealing_outside_defining_module.rs:26:19
+  --> $DIR/no_revealing_outside_defining_module.rs:15:19
    |
 LL |     let _: &str = bomp(); //~ ERROR mismatched types
    |                   ^^^^^^ expected &str, found opaque type
@@ -8,7 +8,7 @@ LL |     let _: &str = bomp(); //~ ERROR mismatched types
               found type `Boo`
 
 error[E0308]: mismatched types
-  --> $DIR/no_revealing_outside_defining_module.rs:30:5
+  --> $DIR/no_revealing_outside_defining_module.rs:19:5
    |
 LL | fn bomp() -> boo::Boo {
    |              -------- expected `Boo` because of return type

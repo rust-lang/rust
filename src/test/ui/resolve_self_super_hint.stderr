@@ -1,23 +1,23 @@
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:16:9
+  --> $DIR/resolve_self_super_hint.rs:6:9
    |
 LL |     use alloc::HashMap;
    |         ^^^^^ did you mean `self::alloc`?
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:20:13
+  --> $DIR/resolve_self_super_hint.rs:10:13
    |
 LL |         use alloc::HashMap;
    |             ^^^^^ did you mean `super::alloc`?
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:24:17
+  --> $DIR/resolve_self_super_hint.rs:14:17
    |
 LL |             use alloc::HashMap;
    |                 ^^^^^ did you mean `a::alloc`?
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:28:21
+  --> $DIR/resolve_self_super_hint.rs:18:21
    |
 LL |                 use alloc::HashMap;
    |                     ^^^^^ did you mean `a::alloc`?

@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/coherence-bigint-param.rs:18:1
+  --> $DIR/coherence-bigint-param.rs:8:1
    |
 LL | impl<T> Remote1<BigInt> for T { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type

@@ -1,5 +1,5 @@
 error: expected `:`, found `[`
-  --> $DIR/regions-out-of-scope-slice.rs:21:19
+  --> $DIR/regions-out-of-scope-slice.rs:11:19
    |
 LL |         x = &'blk [1,2,3]; //~ ERROR expected `:`, found `[`
    |                   ^ expected `:`

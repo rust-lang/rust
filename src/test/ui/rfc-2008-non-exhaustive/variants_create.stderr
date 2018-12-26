@@ -1,17 +1,17 @@
 error: #[non_exhaustive] is not yet supported on variants
-  --> $DIR/variants_create.rs:19:23
+  --> $DIR/variants_create.rs:9:23
    |
 LL |     #[non_exhaustive] Unit,
    |                       ^^^^
 
 error: #[non_exhaustive] is not yet supported on variants
-  --> $DIR/variants_create.rs:21:23
+  --> $DIR/variants_create.rs:11:23
    |
 LL |     #[non_exhaustive] Tuple(u32),
    |                       ^^^^^^^^^^
 
 error: #[non_exhaustive] is not yet supported on variants
-  --> $DIR/variants_create.rs:23:23
+  --> $DIR/variants_create.rs:13:23
    |
 LL |     #[non_exhaustive] Struct { field: u32 }
    |                       ^^^^^^^^^^^^^^^^^^^^^

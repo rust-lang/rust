@@ -1,17 +1,17 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/generic-extern-lifetime.rs:16:24
+  --> $DIR/generic-extern-lifetime.rs:6:24
    |
 LL |    pub fn life2<'b>(x:&'a i32, y:&'b i32); //~ ERROR use of undeclared lifetime name `'a`
    |                        ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/generic-extern-lifetime.rs:18:36
+  --> $DIR/generic-extern-lifetime.rs:8:36
    |
 LL |    pub fn life4<'b>(x: for<'c> fn(&'a i32)); //~ ERROR use of undeclared lifetime name `'a`
    |                                    ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/generic-extern-lifetime.rs:21:38
+  --> $DIR/generic-extern-lifetime.rs:11:38
    |
 LL |    pub fn life7<'b>() -> for<'c> fn(&'a i32); //~ ERROR use of undeclared lifetime name `'a`
    |                                      ^^ undeclared lifetime

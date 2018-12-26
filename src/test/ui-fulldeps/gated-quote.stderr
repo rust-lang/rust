@@ -1,77 +1,77 @@
 error: cannot find macro `quote_path!` in this scope
-  --> $DIR/gated-quote.rs:65:13
+  --> $DIR/gated-quote.rs:55:13
    |
 LL |     let x = quote_path!(ecx, 3);
    |             ^^^^^^^^^^
 
 error: cannot find macro `quote_meta_item!` in this scope
-  --> $DIR/gated-quote.rs:63:13
+  --> $DIR/gated-quote.rs:53:13
    |
 LL |     let x = quote_meta_item!(ecx, 3);
    |             ^^^^^^^^^^^^^^^
 
 error: cannot find macro `quote_block!` in this scope
-  --> $DIR/gated-quote.rs:61:13
+  --> $DIR/gated-quote.rs:51:13
    |
 LL |     let x = quote_block!(ecx, 3);
    |             ^^^^^^^^^^^
 
 error: cannot find macro `quote_arg!` in this scope
-  --> $DIR/gated-quote.rs:59:13
+  --> $DIR/gated-quote.rs:49:13
    |
 LL |     let x = quote_arg!(ecx, 3);
    |             ^^^^^^^^^
 
 error: cannot find macro `quote_attr!` in this scope
-  --> $DIR/gated-quote.rs:57:13
+  --> $DIR/gated-quote.rs:47:13
    |
 LL |     let x = quote_attr!(ecx, 3);
    |             ^^^^^^^^^^
 
 error: cannot find macro `quote_stmt!` in this scope
-  --> $DIR/gated-quote.rs:55:13
+  --> $DIR/gated-quote.rs:45:13
    |
 LL |     let x = quote_stmt!(ecx, 3);
    |             ^^^^^^^^^^
 
 error: cannot find macro `quote_arm!` in this scope
-  --> $DIR/gated-quote.rs:53:13
+  --> $DIR/gated-quote.rs:43:13
    |
 LL |     let x = quote_arm!(ecx, 3);
    |             ^^^^^^^^^
 
 error: cannot find macro `quote_pat!` in this scope
-  --> $DIR/gated-quote.rs:51:13
+  --> $DIR/gated-quote.rs:41:13
    |
 LL |     let x = quote_pat!(ecx, 3);
    |             ^^^^^^^^^
 
 error: cannot find macro `quote_item!` in this scope
-  --> $DIR/gated-quote.rs:49:13
+  --> $DIR/gated-quote.rs:39:13
    |
 LL |     let x = quote_item!(ecx, 3);
    |             ^^^^^^^^^^
 
 error: cannot find macro `quote_method!` in this scope
-  --> $DIR/gated-quote.rs:47:13
+  --> $DIR/gated-quote.rs:37:13
    |
 LL |     let x = quote_method!(ecx, 3);
    |             ^^^^^^^^^^^^
 
 error: cannot find macro `quote_ty!` in this scope
-  --> $DIR/gated-quote.rs:45:13
+  --> $DIR/gated-quote.rs:35:13
    |
 LL |     let x = quote_ty!(ecx, 3);
    |             ^^^^^^^^
 
 error: cannot find macro `quote_expr!` in this scope
-  --> $DIR/gated-quote.rs:43:13
+  --> $DIR/gated-quote.rs:33:13
    |
 LL |     let x = quote_expr!(ecx, 3);
    |             ^^^^^^^^^^
 
 error: cannot find macro `quote_tokens!` in this scope
-  --> $DIR/gated-quote.rs:41:13
+  --> $DIR/gated-quote.rs:31:13
    |
 LL |     let x = quote_tokens!(ecx, 3);
    |             ^^^^^^^^^^^^

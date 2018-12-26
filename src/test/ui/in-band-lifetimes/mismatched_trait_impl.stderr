@@ -1,18 +1,18 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter 'a in generic type due to conflicting requirements
-  --> $DIR/mismatched_trait_impl.rs:19:5
+  --> $DIR/mismatched_trait_impl.rs:9:5
    |
 LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 19:5...
-  --> $DIR/mismatched_trait_impl.rs:19:5
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 9:5...
+  --> $DIR/mismatched_trait_impl.rs:9:5
    |
 LL | /     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
 LL | |         x
 LL | |     }
    | |_____^
-note: ...but the lifetime must also be valid for the lifetime 'a as defined on the method body at 19:32...
-  --> $DIR/mismatched_trait_impl.rs:19:32
+note: ...but the lifetime must also be valid for the lifetime 'a as defined on the method body at 9:32...
+  --> $DIR/mismatched_trait_impl.rs:9:32
    |
 LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
    |                                ^^

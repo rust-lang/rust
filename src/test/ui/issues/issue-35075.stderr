@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Foo` in this scope
-  --> $DIR/issue-35075.rs:12:12
+  --> $DIR/issue-35075.rs:2:12
    |
 LL |     inner: Foo<T> //~ ERROR cannot find type `Foo` in this scope
    |            ^^^ not found in this scope
@@ -9,7 +9,7 @@ LL |     inner: Baz //~ ERROR cannot find type `Foo` in this scope
    |            ^^^
 
 error[E0412]: cannot find type `Foo` in this scope
-  --> $DIR/issue-35075.rs:16:9
+  --> $DIR/issue-35075.rs:6:9
    |
 LL |     Foo(Foo<T>) //~ ERROR cannot find type `Foo` in this scope
    |         ^^^ not found in this scope

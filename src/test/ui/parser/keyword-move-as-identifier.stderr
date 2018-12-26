@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `move`
-  --> $DIR/keyword-move-as-identifier.rs:16:9
+  --> $DIR/keyword-move-as-identifier.rs:6:9
    |
 LL |     let move = "foo"; //~ error: expected pattern, found keyword `move`
    |         ^^^^ expected pattern

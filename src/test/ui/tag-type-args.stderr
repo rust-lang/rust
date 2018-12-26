@@ -1,5 +1,5 @@
 error[E0107]: wrong number of type arguments: expected 1, found 0
-  --> $DIR/tag-type-args.rs:13:11
+  --> $DIR/tag-type-args.rs:3:11
    |
 LL | fn foo(c: Quux) { assert!((false)); } //~ ERROR wrong number of type arguments
    |           ^^^^ expected 1 type argument

@@ -1,5 +1,5 @@
 error: expected one of `async`, `const`, `existential`, `extern`, `fn`, `type`, or `unsafe`, found `pub`
-  --> $DIR/default.rs:32:13
+  --> $DIR/default.rs:22:13
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() } //~ ERROR expected one of
    |             ^^^ expected one of 7 possible tokens here

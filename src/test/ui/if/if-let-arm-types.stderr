@@ -1,5 +1,5 @@
 error[E0308]: `if let` arms have incompatible types
-  --> $DIR/if-let-arm-types.rs:12:5
+  --> $DIR/if-let-arm-types.rs:2:5
    |
 LL | /     if let Some(b) = None { //~ ERROR: `if let` arms have incompatible types
 LL | |         //~^ expected (), found integral variable
@@ -13,7 +13,7 @@ LL | |     };
    = note: expected type `()`
               found type `{integer}`
 note: `if let` arm with an incompatible type
-  --> $DIR/if-let-arm-types.rs:17:12
+  --> $DIR/if-let-arm-types.rs:7:12
    |
 LL |       } else {
    |  ____________^

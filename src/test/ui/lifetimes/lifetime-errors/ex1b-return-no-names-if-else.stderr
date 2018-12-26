@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/ex1b-return-no-names-if-else.rs:11:29
+  --> $DIR/ex1b-return-no-names-if-else.rs:1:29
    |
 LL | fn foo(x: &i32, y: &i32) -> &i32 { //~ ERROR missing lifetime
    |                             ^ expected lifetime parameter

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[isize]` cannot be known at compilation time
-  --> $DIR/dst-bad-deep-2.rs:21:30
+  --> $DIR/dst-bad-deep-2.rs:11:30
    |
 LL |     let h: &(([isize],),) = &(*g,);
    |                              ^^^^^ doesn't have a size known at compile-time

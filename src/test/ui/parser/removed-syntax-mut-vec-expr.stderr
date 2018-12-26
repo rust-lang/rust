@@ -1,5 +1,5 @@
 error: expected expression, found keyword `mut`
-  --> $DIR/removed-syntax-mut-vec-expr.rs:14:14
+  --> $DIR/removed-syntax-mut-vec-expr.rs:4:14
    |
 LL |     let v = [mut 1, 2, 3, 4]; //~ ERROR expected expression, found keyword `mut`
    |              ^^^ expected expression

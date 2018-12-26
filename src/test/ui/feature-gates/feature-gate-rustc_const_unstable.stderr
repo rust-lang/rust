@@ -1,5 +1,5 @@
 error[E0658]: the `#[rustc_const_unstable]` attribute is an internal feature
-  --> $DIR/feature-gate-rustc_const_unstable.rs:18:1
+  --> $DIR/feature-gate-rustc_const_unstable.rs:8:1
    |
 LL | #[rustc_const_unstable(feature="fzzzzzt")] //~ERROR internal feature
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

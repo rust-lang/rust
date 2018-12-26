@@ -1,5 +1,5 @@
 error[E0054]: cannot cast as `bool`
-  --> $DIR/cast-as-bool.rs:12:13
+  --> $DIR/cast-as-bool.rs:2:13
    |
 LL |     let u = 5 as bool;
    |             ^^^^^^^^^ unsupported cast

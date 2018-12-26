@@ -1,5 +1,5 @@
 error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/associated-const-in-trait.rs:19:6
+  --> $DIR/associated-const-in-trait.rs:9:6
    |
 LL | impl Trait {
    |      ^^^^^ the trait `Trait` cannot be made into an object

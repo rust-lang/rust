@@ -1,5 +1,5 @@
 error[E0503]: cannot use `f.x` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:53:9
+  --> $DIR/borrowck-describe-lvalue.rs:43:9
    |
 LL |         let x = f.x();
    |                 - borrow of `f` occurs here
@@ -7,7 +7,7 @@ LL |         f.x; //[ast]~ ERROR cannot use `f.x` because it was mutably borrowe
    |         ^^^ use of borrowed `f`
 
 error[E0503]: cannot use `g.0` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:61:9
+  --> $DIR/borrowck-describe-lvalue.rs:51:9
    |
 LL |         let x = g.x();
    |                 - borrow of `g` occurs here
@@ -15,7 +15,7 @@ LL |         g.0; //[ast]~ ERROR cannot use `g.0` because it was mutably borrowe
    |         ^^^ use of borrowed `g`
 
 error[E0503]: cannot use `h.0` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:69:9
+  --> $DIR/borrowck-describe-lvalue.rs:59:9
    |
 LL |         let x = &mut h.0;
    |                      --- borrow of `h.0` occurs here
@@ -23,7 +23,7 @@ LL |         h.0; //[ast]~ ERROR cannot use `h.0` because it was mutably borrowe
    |         ^^^ use of borrowed `h.0`
 
 error[E0503]: cannot use `e.0` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:78:20
+  --> $DIR/borrowck-describe-lvalue.rs:68:20
    |
 LL |         let x = e.x();
    |                 - borrow of `e` occurs here
@@ -32,7 +32,7 @@ LL |             Baz::X(value) => value
    |                    ^^^^^ use of borrowed `e`
 
 error[E0503]: cannot use `u.a` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:88:9
+  --> $DIR/borrowck-describe-lvalue.rs:78:9
    |
 LL |         let x = &mut u.a;
    |                      --- borrow of `u.a` occurs here
@@ -40,7 +40,7 @@ LL |         u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowe
    |         ^^^ use of borrowed `u.a`
 
 error[E0503]: cannot use `f.x` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:96:9
+  --> $DIR/borrowck-describe-lvalue.rs:86:9
    |
 LL |         let x = f.x();
    |                 - borrow of `*f` occurs here
@@ -48,7 +48,7 @@ LL |         f.x; //[ast]~ ERROR cannot use `f.x` because it was mutably borrowe
    |         ^^^ use of borrowed `*f`
 
 error[E0503]: cannot use `g.0` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:104:9
+  --> $DIR/borrowck-describe-lvalue.rs:94:9
    |
 LL |         let x = g.x();
    |                 - borrow of `*g` occurs here
@@ -56,7 +56,7 @@ LL |         g.0; //[ast]~ ERROR cannot use `g.0` because it was mutably borrowe
    |         ^^^ use of borrowed `*g`
 
 error[E0503]: cannot use `h.0` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:112:9
+  --> $DIR/borrowck-describe-lvalue.rs:102:9
    |
 LL |         let x = &mut h.0;
    |                      --- borrow of `h.0` occurs here
@@ -64,7 +64,7 @@ LL |         h.0; //[ast]~ ERROR cannot use `h.0` because it was mutably borrowe
    |         ^^^ use of borrowed `h.0`
 
 error[E0503]: cannot use `e.0` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:121:20
+  --> $DIR/borrowck-describe-lvalue.rs:111:20
    |
 LL |         let x = e.x();
    |                 - borrow of `*e` occurs here
@@ -73,7 +73,7 @@ LL |             Baz::X(value) => value
    |                    ^^^^^ use of borrowed `*e`
 
 error[E0503]: cannot use `u.a` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:131:9
+  --> $DIR/borrowck-describe-lvalue.rs:121:9
    |
 LL |         let x = &mut u.a;
    |                      --- borrow of `u.a` occurs here
@@ -81,7 +81,7 @@ LL |         u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowe
    |         ^^^ use of borrowed `u.a`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:140:15
+  --> $DIR/borrowck-describe-lvalue.rs:130:15
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -90,7 +90,7 @@ LL |             &[x, _, .., _, _] => println!("{}", x),
    |               ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:146:18
+  --> $DIR/borrowck-describe-lvalue.rs:136:18
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -99,7 +99,7 @@ LL |             &[_, x, .., _, _] => println!("{}", x),
    |                  ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:152:25
+  --> $DIR/borrowck-describe-lvalue.rs:142:25
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -108,7 +108,7 @@ LL |             &[_, _, .., x, _] => println!("{}", x),
    |                         ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:158:28
+  --> $DIR/borrowck-describe-lvalue.rs:148:28
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -117,7 +117,7 @@ LL |             &[_, _, .., _, x] => println!("{}", x),
    |                            ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:170:15
+  --> $DIR/borrowck-describe-lvalue.rs:160:15
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -126,7 +126,7 @@ LL |             &[x..] => println!("{:?}", x),
    |               ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:176:18
+  --> $DIR/borrowck-describe-lvalue.rs:166:18
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -135,7 +135,7 @@ LL |             &[_, x..] => println!("{:?}", x),
    |                  ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:182:15
+  --> $DIR/borrowck-describe-lvalue.rs:172:15
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -144,7 +144,7 @@ LL |             &[x.., _] => println!("{:?}", x),
    |               ^ use of borrowed `v`
 
 error[E0503]: cannot use `v[..]` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:188:18
+  --> $DIR/borrowck-describe-lvalue.rs:178:18
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -153,7 +153,7 @@ LL |             &[_, x.., _] => println!("{:?}", x),
    |                  ^ use of borrowed `v`
 
 error[E0502]: cannot borrow `e.0` as immutable because `e` is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:202:18
+  --> $DIR/borrowck-describe-lvalue.rs:192:18
    |
 LL |         let x = &mut e;
    |                      - mutable borrow occurs here
@@ -165,7 +165,7 @@ LL |     }
    |     - mutable borrow ends here
 
 error[E0502]: cannot borrow `e.x` as immutable because `e` is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:207:23
+  --> $DIR/borrowck-describe-lvalue.rs:197:23
    |
 LL |         let x = &mut e;
    |                      - mutable borrow occurs here
@@ -177,7 +177,7 @@ LL |     }
    |     - mutable borrow ends here
 
 error[E0502]: cannot borrow `s.y.0` as immutable because `s` is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:221:22
+  --> $DIR/borrowck-describe-lvalue.rs:211:22
    |
 LL |         let x = &mut s;
    |                      - mutable borrow occurs here
@@ -189,7 +189,7 @@ LL |     }
    |     - mutable borrow ends here
 
 error[E0502]: cannot borrow `s.x.y` as immutable because `s` is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:228:28
+  --> $DIR/borrowck-describe-lvalue.rs:218:28
    |
 LL |         let x = &mut s;
    |                      - mutable borrow occurs here
@@ -201,7 +201,7 @@ LL |     }
    |     - mutable borrow ends here
 
 error[E0503]: cannot use `v[..].y` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:271:9
+  --> $DIR/borrowck-describe-lvalue.rs:261:9
    |
 LL |         let x = &mut v;
    |                      - borrow of `v` occurs here
@@ -209,7 +209,7 @@ LL |         v[0].y;
    |         ^^^^^^ use of borrowed `v`
 
 error[E0499]: cannot borrow `**x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:295:18
+  --> $DIR/borrowck-describe-lvalue.rs:285:18
    |
 LL |             let y = &mut x;
    |                          - first mutable borrow occurs here
@@ -220,7 +220,7 @@ LL |         };
    |         - first borrow ends here
 
 error[E0499]: cannot borrow `**x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:306:25
+  --> $DIR/borrowck-describe-lvalue.rs:296:25
    |
 LL |                    let y = &mut x;
    |                                 - first mutable borrow occurs here
@@ -231,7 +231,7 @@ LL |                 }
    |                 - first borrow ends here
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-describe-lvalue.rs:317:22
+  --> $DIR/borrowck-describe-lvalue.rs:307:22
    |
 LL |                 drop(x);
    |                      - value moved here

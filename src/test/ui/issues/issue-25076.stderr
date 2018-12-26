@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `(): InOut<_>` is not satisfied
-  --> $DIR/issue-25076.rs:20:5
+  --> $DIR/issue-25076.rs:10:5
    |
 LL |     do_fold(bot(), ()); //~ ERROR `(): InOut<_>` is not satisfied
    |     ^^^^^^^ the trait `InOut<_>` is not implemented for `()`
    |
 note: required by `do_fold`
-  --> $DIR/issue-25076.rs:15:1
+  --> $DIR/issue-25076.rs:5:1
    |
 LL | fn do_fold<B, F: InOut<B, Out=B>>(init: B, f: F) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

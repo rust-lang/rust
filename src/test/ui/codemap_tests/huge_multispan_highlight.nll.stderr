@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/huge_multispan_highlight.rs:100:13
+  --> $DIR/huge_multispan_highlight.rs:90:13
    |
 LL |     let x = "foo";
    |         - help: consider changing this to be mutable: `mut x`

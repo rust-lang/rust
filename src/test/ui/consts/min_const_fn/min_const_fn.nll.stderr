@@ -1,197 +1,197 @@
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:47:25
+  --> $DIR/min_const_fn.rs:37:25
    |
 LL |     const fn into_inner(self) -> T { self.0 } //~ destructors cannot be evaluated
    |                         ^^^^ constant functions cannot evaluate destructors
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:49:36
+  --> $DIR/min_const_fn.rs:39:36
    |
 LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    |                                    ^^^^^^
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:54:28
+  --> $DIR/min_const_fn.rs:44:28
    |
 LL |     const fn into_inner_lt(self) -> T { self.0 } //~ destructors cannot be evaluated
    |                            ^^^^ constant functions cannot evaluate destructors
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:56:42
+  --> $DIR/min_const_fn.rs:46:42
    |
 LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    |                                          ^^^^^^
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:61:27
+  --> $DIR/min_const_fn.rs:51:27
    |
 LL |     const fn into_inner_s(self) -> T { self.0 } //~ ERROR destructors
    |                           ^^^^ constant functions cannot evaluate destructors
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:63:38
+  --> $DIR/min_const_fn.rs:53:38
    |
 LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
    |                                      ^^^^^^
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:68:39
+  --> $DIR/min_const_fn.rs:58:39
    |
 LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    |                                       ^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:86:16
+  --> $DIR/min_const_fn.rs:76:16
    |
 LL | const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
    |                ^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:88:18
+  --> $DIR/min_const_fn.rs:78:18
    |
 LL | const fn foo11_2<T: Send>(t: T) -> T { t }
    |                  ^
 
 error: only int, `bool` and `char` operations are stable in const fn
-  --> $DIR/min_const_fn.rs:90:33
+  --> $DIR/min_const_fn.rs:80:33
    |
 LL | const fn foo19(f: f32) -> f32 { f * 2.0 }
    |                                 ^^^^^^^
 
 error: only int, `bool` and `char` operations are stable in const fn
-  --> $DIR/min_const_fn.rs:92:35
+  --> $DIR/min_const_fn.rs:82:35
    |
 LL | const fn foo19_2(f: f32) -> f32 { 2.0 - f }
    |                                   ^^^^^^^
 
 error: only int and `bool` operations are stable in const fn
-  --> $DIR/min_const_fn.rs:94:35
+  --> $DIR/min_const_fn.rs:84:35
    |
 LL | const fn foo19_3(f: f32) -> f32 { -f }
    |                                   ^^
 
 error: only int, `bool` and `char` operations are stable in const fn
-  --> $DIR/min_const_fn.rs:96:43
+  --> $DIR/min_const_fn.rs:86:43
    |
 LL | const fn foo19_4(f: f32, g: f32) -> f32 { f / g }
    |                                           ^^^^^
 
 error: cannot access `static` items in const fn
-  --> $DIR/min_const_fn.rs:100:27
+  --> $DIR/min_const_fn.rs:90:27
    |
 LL | const fn foo25() -> u32 { BAR } //~ ERROR cannot access `static` items in const fn
    |                           ^^^
 
 error: cannot access `static` items in const fn
-  --> $DIR/min_const_fn.rs:101:36
+  --> $DIR/min_const_fn.rs:91:36
    |
 LL | const fn foo26() -> &'static u32 { &BAR } //~ ERROR cannot access `static` items
    |                                    ^^^^
 
 error: casting pointers to ints is unstable in const fn
-  --> $DIR/min_const_fn.rs:102:42
+  --> $DIR/min_const_fn.rs:92:42
    |
 LL | const fn foo30(x: *const u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
 
 error: casting pointers to ints is unstable in const fn
-  --> $DIR/min_const_fn.rs:104:42
+  --> $DIR/min_const_fn.rs:94:42
    |
 LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
 
 error: `if`, `match`, `&&` and `||` are not stable in const fn
-  --> $DIR/min_const_fn.rs:106:38
+  --> $DIR/min_const_fn.rs:96:38
    |
 LL | const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
    |                                      ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `if`, `match`, `&&` and `||` are not stable in const fn
-  --> $DIR/min_const_fn.rs:108:29
+  --> $DIR/min_const_fn.rs:98:29
    |
 LL | const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
    |                             ^^^^^^^^^^^
 
 error: local variables in const fn are unstable
-  --> $DIR/min_const_fn.rs:109:34
+  --> $DIR/min_const_fn.rs:99:34
    |
 LL | const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn
    |                                  ^
 
 error: `if`, `match`, `&&` and `||` are not stable in const fn
-  --> $DIR/min_const_fn.rs:110:44
+  --> $DIR/min_const_fn.rs:100:44
    |
 LL | const fn foo36(a: bool, b: bool) -> bool { a && b }
    |                                            ^^^^^^
 
 error: `if`, `match`, `&&` and `||` are not stable in const fn
-  --> $DIR/min_const_fn.rs:112:44
+  --> $DIR/min_const_fn.rs:102:44
    |
 LL | const fn foo37(a: bool, b: bool) -> bool { a || b }
    |                                            ^^^^^^
 
 error: mutable references in const fn are unstable
-  --> $DIR/min_const_fn.rs:114:14
+  --> $DIR/min_const_fn.rs:104:14
    |
 LL | const fn inc(x: &mut i32) { *x += 1 }
    |              ^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:119:6
+  --> $DIR/min_const_fn.rs:109:6
    |
 LL | impl<T: std::fmt::Debug> Foo<T> {
    |      ^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:124:6
+  --> $DIR/min_const_fn.rs:114:6
    |
 LL | impl<T: std::fmt::Debug + Sized> Foo<T> {
    |      ^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:129:6
+  --> $DIR/min_const_fn.rs:119:6
    |
 LL | impl<T: Sync + Sized> Foo<T> {
    |      ^
 
 error: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:135:24
+  --> $DIR/min_const_fn.rs:125:24
    |
 LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:137:34
+  --> $DIR/min_const_fn.rs:127:34
    |
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:139:22
+  --> $DIR/min_const_fn.rs:129:22
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
    |                      ^^^^^^^^^^^^^^^^^^^^
 
 error: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn.rs:140:23
+  --> $DIR/min_const_fn.rs:130:23
    |
 LL | const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in const fn is unstable
    |                       ^^^^^^^^^^^^^^^^^^^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:141:23
+  --> $DIR/min_const_fn.rs:131:23
    |
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
    |                       ^^
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:142:32
+  --> $DIR/min_const_fn.rs:132:32
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning[E0515]: cannot return reference to temporary value
-  --> $DIR/min_const_fn.rs:142:63
+  --> $DIR/min_const_fn.rs:132:63
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                                               ^--
@@ -203,19 +203,19 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:147:41
+  --> $DIR/min_const_fn.rs:137:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &std::fmt::Debug, ()).1 }
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:150:21
+  --> $DIR/min_const_fn.rs:140:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
 
 error: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:152:27
+  --> $DIR/min_const_fn.rs:142:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^

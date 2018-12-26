@@ -1,11 +1,11 @@
 error[E0381]: use of possibly uninitialized variable: `x` (Ast)
-  --> $DIR/borrowck-storage-dead.rs:28:17
+  --> $DIR/borrowck-storage-dead.rs:18:17
    |
 LL |         let _ = x + 1; //~ERROR (Ast) [E0381]
    |                 ^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x` (Mir)
-  --> $DIR/borrowck-storage-dead.rs:28:17
+  --> $DIR/borrowck-storage-dead.rs:18:17
    |
 LL |         let _ = x + 1; //~ERROR (Ast) [E0381]
    |                 ^ use of possibly uninitialized `x`

@@ -1,5 +1,5 @@
 error[E0626]: borrow may still be in use when generator yields
-  --> $DIR/yield-while-iterating.rs:22:18
+  --> $DIR/yield-while-iterating.rs:12:18
    |
 LL |         for p in &x { //~ ERROR
    |                  ^^
@@ -7,7 +7,7 @@ LL |             yield();
    |             ------- possible yield occurs here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/yield-while-iterating.rs:67:20
+  --> $DIR/yield-while-iterating.rs:57:20
    |
 LL |     let mut b = || {
    |                 -- mutable borrow occurs here

@@ -1,11 +1,11 @@
 error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
-  --> $DIR/deriving-with-repr-packed.rs:18:16
+  --> $DIR/deriving-with-repr-packed.rs:8:16
    |
 LL | #[derive(Copy, Clone, PartialEq, Eq)]
    |                ^^^^^
    |
 note: lint level defined here
-  --> $DIR/deriving-with-repr-packed.rs:11:9
+  --> $DIR/deriving-with-repr-packed.rs:1:9
    |
 LL | #![deny(safe_packed_borrows)]
    |         ^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(safe_packed_borrows)]
    = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
 
 error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
-  --> $DIR/deriving-with-repr-packed.rs:18:23
+  --> $DIR/deriving-with-repr-packed.rs:8:23
    |
 LL | #[derive(Copy, Clone, PartialEq, Eq)]
    |                       ^^^^^^^^^
@@ -22,7 +22,7 @@ LL | #[derive(Copy, Clone, PartialEq, Eq)]
    = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
 
 error: #[derive] can't be used on a #[repr(packed)] struct that does not derive Copy (error E0133)
-  --> $DIR/deriving-with-repr-packed.rs:26:10
+  --> $DIR/deriving-with-repr-packed.rs:16:10
    |
 LL | #[derive(PartialEq, Eq)]
    |          ^^^^^^^^^
@@ -31,7 +31,7 @@ LL | #[derive(PartialEq, Eq)]
    = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
 
 error: #[derive] can't be used on a #[repr(packed)] struct that does not derive Copy (error E0133)
-  --> $DIR/deriving-with-repr-packed.rs:35:10
+  --> $DIR/deriving-with-repr-packed.rs:25:10
    |
 LL | #[derive(PartialEq)]
    |          ^^^^^^^^^

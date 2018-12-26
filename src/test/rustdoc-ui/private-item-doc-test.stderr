@@ -1,5 +1,5 @@
 error: Documentation test in private item
-  --> $DIR/private-item-doc-test.rs:14:5
+  --> $DIR/private-item-doc-test.rs:4:5
    |
 LL | /     /// private doc test
 LL | |     ///
@@ -9,7 +9,7 @@ LL | |     /// ```
    | |___________^
    |
 note: lint level defined here
-  --> $DIR/private-item-doc-test.rs:11:9
+  --> $DIR/private-item-doc-test.rs:1:9
    |
 LL | #![deny(private_doc_tests)]
    |         ^^^^^^^^^^^^^^^^^

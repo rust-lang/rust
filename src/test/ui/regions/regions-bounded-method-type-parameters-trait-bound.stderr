@@ -1,10 +1,10 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:30:7
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:7
    |
 LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
    |                                -------     ------- these two types are declared with different lifetimes...
 LL |     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
-LL |     f.method(b); //~ ERROR 30:7: 30:13: lifetime mismatch [E0623]
+LL |     f.method(b); //~ ERROR lifetime mismatch [E0623]
    |       ^^^^^^ ...but data from `b` flows into `a` here
 
 error: aborting due to previous error

@@ -1,5 +1,5 @@
 error: expected `(`, found `~`
-  --> $DIR/removed-syntax-fn-sigil.rs:14:14
+  --> $DIR/removed-syntax-fn-sigil.rs:4:14
    |
 LL |     let x: fn~() = || (); //~ ERROR expected `(`, found `~`
    |         -    ^ expected `(`

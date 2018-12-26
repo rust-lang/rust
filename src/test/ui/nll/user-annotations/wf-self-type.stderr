@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/wf-self-type.rs:22:5
+  --> $DIR/wf-self-type.rs:12:5
    |
 LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
    |            --  -- lifetime `'b` defined here

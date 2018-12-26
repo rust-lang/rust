@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `issue_36881_aux`
-  --> $DIR/issue-36881.rs:16:9
+  --> $DIR/issue-36881.rs:6:9
    |
 LL |     use issue_36881_aux::Foo; //~ ERROR unresolved import
    |         ^^^^^^^^^^^^^^^ maybe a missing `extern crate issue_36881_aux;`?

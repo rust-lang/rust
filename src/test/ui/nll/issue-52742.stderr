@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-52742.rs:25:9
+  --> $DIR/issue-52742.rs:15:9
    |
 LL |     fn take_bar(&mut self, b: Bar<'_>) {
    |                 ---------         -- let's call this `'1`

@@ -1,5 +1,5 @@
 error: defining existential type use differs from previous
-  --> $DIR/different_defining_uses_never_type.rs:23:1
+  --> $DIR/different_defining_uses_never_type.rs:12:1
    |
 LL | / fn bar() -> Foo { //~ ERROR defining existential type use differs from previous
 LL | |     panic!()
@@ -7,7 +7,7 @@ LL | | }
    | |_^
    |
 note: previous use here
-  --> $DIR/different_defining_uses_never_type.rs:19:1
+  --> $DIR/different_defining_uses_never_type.rs:8:1
    |
 LL | / fn foo() -> Foo {
 LL | |     ""
@@ -15,7 +15,7 @@ LL | | }
    | |_^
 
 error: defining existential type use differs from previous
-  --> $DIR/different_defining_uses_never_type.rs:27:1
+  --> $DIR/different_defining_uses_never_type.rs:16:1
    |
 LL | / fn boo() -> Foo { //~ ERROR defining existential type use differs from previous
 LL | |     loop {}
@@ -23,7 +23,7 @@ LL | | }
    | |_^
    |
 note: previous use here
-  --> $DIR/different_defining_uses_never_type.rs:19:1
+  --> $DIR/different_defining_uses_never_type.rs:8:1
    |
 LL | / fn foo() -> Foo {
 LL | |     ""

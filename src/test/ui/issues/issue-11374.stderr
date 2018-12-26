@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-11374.rs:36:15
+  --> $DIR/issue-11374.rs:26:15
    |
 LL |     c.read_to(v); //~ ERROR E0308
    |               ^

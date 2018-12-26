@@ -1,11 +1,11 @@
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:25:5
+  --> $DIR/private-in-public-warn.rs:15:5
    |
 LL |     pub type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/private-in-public-warn.rs:15:9
+  --> $DIR/private-in-public-warn.rs:5:9
    |
 LL | #![deny(private_in_public)]
    |         ^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![deny(private_in_public)]
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:28:12
+  --> $DIR/private-in-public-warn.rs:18:12
    |
 LL |         V1(Priv), //~ ERROR private type `types::Priv` in public interface
    |            ^^^^
@@ -22,7 +22,7 @@ LL |         V1(Priv), //~ ERROR private type `types::Priv` in public interface
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:30:14
+  --> $DIR/private-in-public-warn.rs:20:14
    |
 LL |         V2 { field: Priv }, //~ ERROR private type `types::Priv` in public interface
    |              ^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |         V2 { field: Priv }, //~ ERROR private type `types::Priv` in public 
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:34:9
+  --> $DIR/private-in-public-warn.rs:24:9
    |
 LL |         const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |         const C: Priv = Priv; //~ ERROR private type `types::Priv` in publi
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public-warn.rs:36:9
+  --> $DIR/private-in-public-warn.rs:26:9
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -49,7 +49,7 @@ LL |         type Alias = Priv; //~ ERROR private type `types::Priv` in public i
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:37:9
+  --> $DIR/private-in-public-warn.rs:27:9
    |
 LL |         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL |         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public 
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:39:9
+  --> $DIR/private-in-public-warn.rs:29:9
    |
 LL |         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL |         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` i
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:43:9
+  --> $DIR/private-in-public-warn.rs:33:9
    |
 LL |         pub static ES: Priv; //~ ERROR private type `types::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL |         pub static ES: Priv; //~ ERROR private type `types::Priv` in public
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:45:9
+  --> $DIR/private-in-public-warn.rs:35:9
    |
 LL |         pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL |         pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in publ
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `types::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:47:9
+  --> $DIR/private-in-public-warn.rs:37:9
    |
 LL |         pub fn ef2() -> Priv; //~ ERROR private type `types::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -94,7 +94,7 @@ LL |         pub fn ef2() -> Priv; //~ ERROR private type `types::Priv` in publi
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public-warn.rs:51:9
+  --> $DIR/private-in-public-warn.rs:41:9
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -103,7 +103,7 @@ LL |         type Alias = Priv; //~ ERROR private type `types::Priv` in public i
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:60:5
+  --> $DIR/private-in-public-warn.rs:50:5
    |
 LL |     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +112,7 @@ LL |     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr`
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:62:5
+  --> $DIR/private-in-public-warn.rs:52:5
    |
 LL |     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in pu
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:64:5
+  --> $DIR/private-in-public-warn.rs:54:5
    |
 LL |     pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -130,7 +130,7 @@ LL |     pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:66:5
+  --> $DIR/private-in-public-warn.rs:56:5
    |
 LL | /     pub trait Tr3 {
 LL | |         //~^ ERROR private trait `traits::PrivTr` in public interface
@@ -145,7 +145,7 @@ LL | |     }
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:70:9
+  --> $DIR/private-in-public-warn.rs:60:9
    |
 LL |         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,7 +154,7 @@ LL |         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr`
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:73:5
+  --> $DIR/private-in-public-warn.rs:63:5
    |
 LL |     impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,7 +163,7 @@ LL |     impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in p
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:75:5
+  --> $DIR/private-in-public-warn.rs:65:5
    |
 LL |     impl<T: PrivTr> PubTr for Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -172,7 +172,7 @@ LL |     impl<T: PrivTr> PubTr for Pub<T> {} //~ ERROR private trait `traits::Pr
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:84:5
+  --> $DIR/private-in-public-warn.rs:74:5
    |
 LL |     pub type Alias<T> where T: PrivTr = T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ LL |     pub type Alias<T> where T: PrivTr = T;
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:87:5
+  --> $DIR/private-in-public-warn.rs:77:5
    |
 LL |     pub trait Tr2<T> where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -190,7 +190,7 @@ LL |     pub trait Tr2<T> where T: PrivTr {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:91:9
+  --> $DIR/private-in-public-warn.rs:81:9
    |
 LL |         fn f<T>(arg: T) where T: PrivTr {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -199,7 +199,7 @@ LL |         fn f<T>(arg: T) where T: PrivTr {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:95:5
+  --> $DIR/private-in-public-warn.rs:85:5
    |
 LL |     impl<T> Pub<T> where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -208,7 +208,7 @@ LL |     impl<T> Pub<T> where T: PrivTr {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits_where::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:98:5
+  --> $DIR/private-in-public-warn.rs:88:5
    |
 LL |     impl<T> PubTr for Pub<T> where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -217,7 +217,7 @@ LL |     impl<T> PubTr for Pub<T> where T: PrivTr {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `generics::PrivTr<generics::Pub>` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:109:5
+  --> $DIR/private-in-public-warn.rs:99:5
    |
 LL |     pub trait Tr1: PrivTr<Pub> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -226,7 +226,7 @@ LL |     pub trait Tr1: PrivTr<Pub> {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `generics::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:112:5
+  --> $DIR/private-in-public-warn.rs:102:5
    |
 LL |     pub trait Tr2: PubTr<Priv> {} //~ ERROR private type `generics::Priv` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -235,7 +235,7 @@ LL |     pub trait Tr2: PubTr<Priv> {} //~ ERROR private type `generics::Priv` i
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `generics::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:114:5
+  --> $DIR/private-in-public-warn.rs:104:5
    |
 LL |     pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR private type `generics::Priv` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,7 +244,7 @@ LL |     pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR private type `generics::Pr
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `generics::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:116:5
+  --> $DIR/private-in-public-warn.rs:106:5
    |
 LL |     pub trait Tr4: PubTr<Pub<Priv>> {} //~ ERROR private type `generics::Priv` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -253,7 +253,7 @@ LL |     pub trait Tr4: PubTr<Pub<Priv>> {} //~ ERROR private type `generics::Pr
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error[E0446]: private type `impls::Priv` in public interface
-  --> $DIR/private-in-public-warn.rs:143:9
+  --> $DIR/private-in-public-warn.rs:133:9
    |
 LL |     struct Priv;
    |     - `impls::Priv` declared as private
@@ -262,7 +262,7 @@ LL |         type Alias = Priv; //~ ERROR private type `impls::Priv` in public i
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private type `aliases_pub::Priv` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:214:9
+  --> $DIR/private-in-public-warn.rs:204:9
    |
 LL |         pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -271,7 +271,7 @@ LL |         pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` i
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
-  --> $DIR/private-in-public-warn.rs:218:9
+  --> $DIR/private-in-public-warn.rs:208:9
    |
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
@@ -280,7 +280,7 @@ LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in pu
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
-  --> $DIR/private-in-public-warn.rs:221:9
+  --> $DIR/private-in-public-warn.rs:211:9
    |
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
@@ -289,7 +289,7 @@ LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in pu
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
-  --> $DIR/private-in-public-warn.rs:224:9
+  --> $DIR/private-in-public-warn.rs:214:9
    |
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
@@ -298,7 +298,7 @@ LL |         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in pu
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error: private trait `aliases_priv::PrivTr1` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:248:5
+  --> $DIR/private-in-public-warn.rs:238:5
    |
 LL |     pub trait Tr1: PrivUseAliasTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -307,7 +307,7 @@ LL |     pub trait Tr1: PrivUseAliasTr {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private type `aliases_priv::Priv2` in public interface (error E0446)
-  --> $DIR/private-in-public-warn.rs:251:5
+  --> $DIR/private-in-public-warn.rs:241:5
    |
 LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -316,7 +316,7 @@ LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `aliases_priv::PrivTr1<aliases_priv::Priv2>` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:251:5
+  --> $DIR/private-in-public-warn.rs:241:5
    |
 LL |     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

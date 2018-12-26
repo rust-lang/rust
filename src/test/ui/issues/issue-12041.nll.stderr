@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `tx`
-  --> $DIR/issue-12041.rs:18:22
+  --> $DIR/issue-12041.rs:8:22
    |
 LL |             let tx = tx;
    |                      ^^ value moved here, in previous iteration of loop

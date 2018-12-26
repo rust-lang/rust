@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local data `*p`
-  --> $DIR/regions-infer-borrow-scope-too-big.rs:23:12
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:13:12
    |
 LL |     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
    |                      --- `*p` is borrowed here

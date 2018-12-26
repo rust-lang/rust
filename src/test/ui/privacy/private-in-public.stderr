@@ -1,5 +1,5 @@
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:23:5
+  --> $DIR/private-in-public.rs:13:5
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -8,7 +8,7 @@ LL |     pub const C: Priv = Priv; //~ ERROR private type `types::Priv` in publi
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:24:5
+  --> $DIR/private-in-public.rs:14:5
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -17,7 +17,7 @@ LL |     pub static S: Priv = Priv; //~ ERROR private type `types::Priv` in publ
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:25:5
+  --> $DIR/private-in-public.rs:15:5
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -26,7 +26,7 @@ LL |     pub fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public 
    |     ^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:26:5
+  --> $DIR/private-in-public.rs:16:5
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -35,7 +35,7 @@ LL |     pub fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` i
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:27:19
+  --> $DIR/private-in-public.rs:17:19
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -44,7 +44,7 @@ LL |     pub struct S1(pub Priv); //~ ERROR private type `types::Priv` in public
    |                   ^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:28:21
+  --> $DIR/private-in-public.rs:18:21
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -53,7 +53,7 @@ LL |     pub struct S2 { pub field: Priv } //~ ERROR private type `types::Priv` 
    |                     ^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:30:9
+  --> $DIR/private-in-public.rs:20:9
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -62,7 +62,7 @@ LL |         pub const C: Priv = Priv; //~ ERROR private type `types::Priv` in p
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:31:9
+  --> $DIR/private-in-public.rs:21:9
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -71,7 +71,7 @@ LL |         pub fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in pub
    |         ^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `types::Priv` in public interface
-  --> $DIR/private-in-public.rs:32:9
+  --> $DIR/private-in-public.rs:22:9
    |
 LL |     struct Priv;
    |     - `types::Priv` declared as private
@@ -80,25 +80,25 @@ LL |         pub fn f2() -> Priv { panic!() } //~ ERROR private type `types::Pri
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0445]: private trait `traits::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:41:5
+  --> $DIR/private-in-public.rs:31:5
    |
 LL |     pub enum E<T: PrivTr> { V(T) } //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:42:5
+  --> $DIR/private-in-public.rs:32:5
    |
 LL |     pub fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:43:5
+  --> $DIR/private-in-public.rs:33:5
    |
 LL |     pub struct S1<T: PrivTr>(T); //~ ERROR private trait `traits::PrivTr` in public interface
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:44:5
+  --> $DIR/private-in-public.rs:34:5
    |
 LL | /     impl<T: PrivTr> Pub<T> { //~ ERROR private trait `traits::PrivTr` in public interface
 LL | |         pub fn f<U: PrivTr>(arg: U) {} //~ ERROR private trait `traits::PrivTr` in public interface
@@ -106,31 +106,31 @@ LL | |     }
    | |_____^ can't leak private trait
 
 error[E0445]: private trait `traits::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:45:9
+  --> $DIR/private-in-public.rs:35:9
    |
 LL |         pub fn f<U: PrivTr>(arg: U) {} //~ ERROR private trait `traits::PrivTr` in public interface
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits_where::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:54:5
+  --> $DIR/private-in-public.rs:44:5
    |
 LL |     pub enum E<T> where T: PrivTr { V(T) }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits_where::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:56:5
+  --> $DIR/private-in-public.rs:46:5
    |
 LL |     pub fn f<T>(arg: T) where T: PrivTr {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits_where::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:58:5
+  --> $DIR/private-in-public.rs:48:5
    |
 LL |     pub struct S1<T>(T) where T: PrivTr;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0445]: private trait `traits_where::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:60:5
+  --> $DIR/private-in-public.rs:50:5
    |
 LL | /     impl<T> Pub<T> where T: PrivTr {
 LL | |     //~^ ERROR private trait `traits_where::PrivTr` in public interface
@@ -140,13 +140,13 @@ LL | |     }
    | |_____^ can't leak private trait
 
 error[E0445]: private trait `traits_where::PrivTr` in public interface
-  --> $DIR/private-in-public.rs:62:9
+  --> $DIR/private-in-public.rs:52:9
    |
 LL |         pub fn f<U>(arg: U) where U: PrivTr {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error[E0446]: private type `generics::Priv` in public interface
-  --> $DIR/private-in-public.rs:73:5
+  --> $DIR/private-in-public.rs:63:5
    |
 LL |     struct Priv<T = u8>(T);
    |     - `generics::Priv` declared as private
@@ -155,7 +155,7 @@ LL |     pub fn f1(arg: [Priv; 1]) {} //~ ERROR private type `generics::Priv` in
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `generics::Priv` in public interface
-  --> $DIR/private-in-public.rs:74:5
+  --> $DIR/private-in-public.rs:64:5
    |
 LL |     struct Priv<T = u8>(T);
    |     - `generics::Priv` declared as private
@@ -164,7 +164,7 @@ LL |     pub fn f2(arg: Pub<Priv>) {} //~ ERROR private type `generics::Priv` in
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `generics::Priv<generics::Pub>` in public interface
-  --> $DIR/private-in-public.rs:75:5
+  --> $DIR/private-in-public.rs:65:5
    |
 LL |     struct Priv<T = u8>(T);
    |     - `generics::Priv<generics::Pub>` declared as private
@@ -173,7 +173,7 @@ LL |     pub fn f3(arg: Priv<Pub>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `impls::Priv` in public interface
-  --> $DIR/private-in-public.rs:90:9
+  --> $DIR/private-in-public.rs:80:9
    |
 LL |     struct Priv;
    |     - `impls::Priv` declared as private
@@ -182,7 +182,7 @@ LL |         pub fn f(arg: Priv) {} //~ ERROR private type `impls::Priv` in publ
    |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `<aliases_pub::Priv as aliases_pub::PrivTr>::Assoc` in public interface
-  --> $DIR/private-in-public.rs:114:5
+  --> $DIR/private-in-public.rs:104:5
    |
 LL |     trait PrivTr {
    |     - `<aliases_pub::Priv as aliases_pub::PrivTr>::Assoc` declared as private
@@ -191,7 +191,7 @@ LL |     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
-  --> $DIR/private-in-public.rs:114:5
+  --> $DIR/private-in-public.rs:104:5
    |
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
@@ -200,7 +200,7 @@ LL |     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
-  --> $DIR/private-in-public.rs:119:9
+  --> $DIR/private-in-public.rs:109:9
    |
 LL |     struct Priv;
    |     - `aliases_pub::Priv` declared as private
@@ -209,7 +209,7 @@ LL |         pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` i
    |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_priv::Priv1` in public interface
-  --> $DIR/private-in-public.rs:141:5
+  --> $DIR/private-in-public.rs:131:5
    |
 LL |     struct Priv1;
    |     - `aliases_priv::Priv1` declared as private
@@ -218,7 +218,7 @@ LL |     pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `aliases_priv::P
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_priv::Priv2` in public interface
-  --> $DIR/private-in-public.rs:142:5
+  --> $DIR/private-in-public.rs:132:5
    |
 LL |     struct Priv2;
    |     - `aliases_priv::Priv2` declared as private
@@ -227,7 +227,7 @@ LL |     pub fn f2(arg: PrivAlias) {} //~ ERROR private type `aliases_priv::Priv
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `<aliases_priv::Priv as aliases_priv::PrivTr>::Assoc` in public interface
-  --> $DIR/private-in-public.rs:143:5
+  --> $DIR/private-in-public.rs:133:5
    |
 LL |     trait PrivTr {
    |     - `<aliases_priv::Priv as aliases_priv::PrivTr>::Assoc` declared as private
@@ -236,7 +236,7 @@ LL |     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_priv::Priv` in public interface
-  --> $DIR/private-in-public.rs:143:5
+  --> $DIR/private-in-public.rs:133:5
    |
 LL |     struct Priv;
    |     - `aliases_priv::Priv` declared as private
@@ -245,7 +245,7 @@ LL |     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_params::Priv` in public interface
-  --> $DIR/private-in-public.rs:153:5
+  --> $DIR/private-in-public.rs:143:5
    |
 LL |     struct Priv;
    |     - `aliases_params::Priv` declared as private
@@ -254,7 +254,7 @@ LL |     pub fn f2(arg: PrivAliasGeneric) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `aliases_params::Priv` in public interface
-  --> $DIR/private-in-public.rs:155:5
+  --> $DIR/private-in-public.rs:145:5
    |
 LL |     struct Priv;
    |     - `aliases_params::Priv` declared as private

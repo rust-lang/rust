@@ -1,47 +1,47 @@
 error: attribute must be of form: #[proc_macro_derive(TraitName)]
-  --> $DIR/attribute.rs:18:1
+  --> $DIR/attribute.rs:8:1
    |
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: attribute must be of form: #[proc_macro_derive(TraitName)]
-  --> $DIR/attribute.rs:24:1
+  --> $DIR/attribute.rs:14:1
    |
 LL | #[proc_macro_derive = "foo"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:31:5
+  --> $DIR/attribute.rs:21:5
    |
 LL |     a = "b"
    |     ^^^^^^^
 
 error: attribute must have either one or two arguments
-  --> $DIR/attribute.rs:38:1
+  --> $DIR/attribute.rs:28:1
    |
 LL | #[proc_macro_derive(b, c, d)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:44:21
+  --> $DIR/attribute.rs:34:21
    |
 LL | #[proc_macro_derive(d(e))]
    |                     ^^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:50:35
+  --> $DIR/attribute.rs:40:35
    |
 LL | #[proc_macro_derive(f, attributes(g = "h"))]
    |                                   ^^^^^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:56:35
+  --> $DIR/attribute.rs:46:35
    |
 LL | #[proc_macro_derive(i, attributes(j(k)))]
    |                                   ^^^^
 
 error: attribute must have either one or two arguments
-  --> $DIR/attribute.rs:62:1
+  --> $DIR/attribute.rs:52:1
    |
 LL | #[proc_macro_derive(l, attributes(m), n)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

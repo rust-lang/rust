@@ -1,47 +1,47 @@
 error[E0433]: failed to resolve: use of undeclared type or module `dyn`
-  --> $DIR/dyn-trait-compatibility.rs:13:11
+  --> $DIR/dyn-trait-compatibility.rs:3:11
    |
 LL | type A1 = dyn::dyn;
    |           ^^^ use of undeclared type or module `dyn`
 
 error[E0433]: failed to resolve: use of undeclared type or module `dyn`
-  --> $DIR/dyn-trait-compatibility.rs:19:23
+  --> $DIR/dyn-trait-compatibility.rs:9:23
    |
 LL | type A3 = dyn<<dyn as dyn>::dyn>;
    |                       ^^^ use of undeclared type or module `dyn`
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/dyn-trait-compatibility.rs:11:11
+  --> $DIR/dyn-trait-compatibility.rs:1:11
    |
 LL | type A0 = dyn;
    |           ^^^ not found in this scope
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/dyn-trait-compatibility.rs:15:11
+  --> $DIR/dyn-trait-compatibility.rs:5:11
    |
 LL | type A2 = dyn<dyn, dyn>;
    |           ^^^ not found in this scope
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/dyn-trait-compatibility.rs:15:15
+  --> $DIR/dyn-trait-compatibility.rs:5:15
    |
 LL | type A2 = dyn<dyn, dyn>;
    |               ^^^ not found in this scope
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/dyn-trait-compatibility.rs:15:20
+  --> $DIR/dyn-trait-compatibility.rs:5:20
    |
 LL | type A2 = dyn<dyn, dyn>;
    |                    ^^^ not found in this scope
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/dyn-trait-compatibility.rs:19:11
+  --> $DIR/dyn-trait-compatibility.rs:9:11
    |
 LL | type A3 = dyn<<dyn as dyn>::dyn>;
    |           ^^^ not found in this scope
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/dyn-trait-compatibility.rs:19:16
+  --> $DIR/dyn-trait-compatibility.rs:9:16
    |
 LL | type A3 = dyn<<dyn as dyn>::dyn>;
    |                ^^^ not found in this scope

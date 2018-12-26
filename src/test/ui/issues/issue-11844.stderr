@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-11844.rs:16:9
+  --> $DIR/issue-11844.rs:6:9
    |
 LL |         Ok(a) => //~ ERROR: mismatched types
    |         ^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`

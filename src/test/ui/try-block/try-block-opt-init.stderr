@@ -1,5 +1,5 @@
 error[E0381]: borrow of possibly uninitialized variable: `cfg_res`
-  --> $DIR/try-block-opt-init.rs:25:5
+  --> $DIR/try-block-opt-init.rs:15:5
    |
 LL |     assert_eq!(cfg_res, 5); //~ ERROR borrow of possibly uninitialized variable: `cfg_res`
    |     ^^^^^^^^^^^^^^^^^^^^^^^ use of possibly uninitialized `cfg_res`

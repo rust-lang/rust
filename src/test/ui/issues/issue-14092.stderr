@@ -1,5 +1,5 @@
 error[E0107]: wrong number of type arguments: expected 1, found 0
-  --> $DIR/issue-14092.rs:11:11
+  --> $DIR/issue-14092.rs:1:11
    |
 LL | fn fn1(0: Box) {}
    |           ^^^ expected 1 type argument

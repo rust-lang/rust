@@ -1,5 +1,5 @@
 error: expected pattern, found keyword `return`
-  --> $DIR/keyword-return-as-identifier.rs:16:9
+  --> $DIR/keyword-return-as-identifier.rs:6:9
    |
 LL |     let return = "foo"; //~ error: expected pattern, found keyword `return`
    |         ^^^^^^ expected pattern

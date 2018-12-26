@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:18:28
+  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:8:28
    |
 LL |     let _: &'static u32 = &foo(); //~ ERROR does not live long enough
    |                            ^^^^^ temporary value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:19:29
+  --> $DIR/dont_promote_unstable_const_fn_cross_crate.rs:9:29
    |
 LL |     let _x: &'static u32 = &foo(); //~ ERROR does not live long enough
    |                             ^^^^^ temporary value does not live long enough

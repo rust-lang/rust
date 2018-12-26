@@ -1,11 +1,11 @@
 error[E0603]: module `bar` is private
-  --> $DIR/shadowed-use-visibility.rs:19:14
+  --> $DIR/shadowed-use-visibility.rs:9:14
    |
 LL |     use foo::bar::f as g; //~ ERROR module `bar` is private
    |              ^^^
 
 error[E0603]: module `f` is private
-  --> $DIR/shadowed-use-visibility.rs:25:10
+  --> $DIR/shadowed-use-visibility.rs:15:10
    |
 LL | use bar::f::f; //~ ERROR module `f` is private
    |          ^

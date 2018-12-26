@@ -1,5 +1,5 @@
 error[E0308]: if and else have incompatible types
-  --> $DIR/str-array-assignment.rs:13:11
+  --> $DIR/str-array-assignment.rs:3:11
    |
 LL |   let t = if true { s[..2] } else { s };
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected str, found &str
@@ -8,7 +8,7 @@ LL |   let t = if true { s[..2] } else { s };
               found type `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/str-array-assignment.rs:15:27
+  --> $DIR/str-array-assignment.rs:5:27
    |
 LL |   let u: &str = if true { s[..2] } else { s };
    |                           ^^^^^^
@@ -20,7 +20,7 @@ LL |   let u: &str = if true { s[..2] } else { s };
               found type `str`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/str-array-assignment.rs:17:7
+  --> $DIR/str-array-assignment.rs:7:7
    |
 LL |   let v = s[..2];
    |       ^   ------ help: consider borrowing here: `&s[..2]`
@@ -33,7 +33,7 @@ LL |   let v = s[..2];
    = help: unsized locals are gated as an unstable feature
 
 error[E0308]: mismatched types
-  --> $DIR/str-array-assignment.rs:19:17
+  --> $DIR/str-array-assignment.rs:9:17
    |
 LL |   let w: &str = s[..2];
    |                 ^^^^^^

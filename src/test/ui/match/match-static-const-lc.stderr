@@ -1,23 +1,23 @@
 error: constant in pattern `a` should have an upper case name such as `A`
-  --> $DIR/match-static-const-lc.rs:21:13
+  --> $DIR/match-static-const-lc.rs:11:13
    |
 LL |         (0, a) => 0,
    |             ^
    |
 note: lint level defined here
-  --> $DIR/match-static-const-lc.rs:14:9
+  --> $DIR/match-static-const-lc.rs:4:9
    |
 LL | #![deny(non_upper_case_globals)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant in pattern `aha` should have an upper case name such as `AHA`
-  --> $DIR/match-static-const-lc.rs:36:13
+  --> $DIR/match-static-const-lc.rs:26:13
    |
 LL |         (0, aha) => 0,
    |             ^^^
 
 error: constant in pattern `not_okay` should have an upper case name such as `NOT_OKAY`
-  --> $DIR/match-static-const-lc.rs:50:13
+  --> $DIR/match-static-const-lc.rs:40:13
    |
 LL |         (0, not_okay) => 0,
    |             ^^^^^^^^

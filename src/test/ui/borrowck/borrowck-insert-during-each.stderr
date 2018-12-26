@@ -1,5 +1,5 @@
 error[E0500]: closure requires unique access to `f` but `*f` is already borrowed
-  --> $DIR/borrowck-insert-during-each.rs:27:9
+  --> $DIR/borrowck-insert-during-each.rs:17:9
    |
 LL |   f.foo(
    |   - borrow occurs here

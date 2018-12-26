@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to field `nyan.how_hungry` of immutable binding
-  --> $DIR/mutable-class-fields.rs:28:3
+  --> $DIR/mutable-class-fields.rs:18:3
    |
 LL |   let nyan : Cat = cat(52, 99);
    |       ---- help: make this binding mutable: `mut nyan`

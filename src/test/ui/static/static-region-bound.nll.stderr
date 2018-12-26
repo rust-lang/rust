@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/static-region-bound.rs:20:14
+  --> $DIR/static-region-bound.rs:10:14
    |
 LL |     let x = &id(3); //~ ERROR borrowed value does not live long enough
    |              ^^^^^ creates a temporary which is freed while still in use

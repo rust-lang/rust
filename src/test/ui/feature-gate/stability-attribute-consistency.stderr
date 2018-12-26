@@ -1,11 +1,11 @@
 error[E0711]: feature `foo` is declared stable since 1.29.0, but was previously declared stable since 1.0.0
-  --> $DIR/stability-attribute-consistency.rs:18:1
+  --> $DIR/stability-attribute-consistency.rs:8:1
    |
 LL | #[stable(feature = "foo", since = "1.29.0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0711]: feature `foo` is declared unstable, but was previously declared stable
-  --> $DIR/stability-attribute-consistency.rs:22:1
+  --> $DIR/stability-attribute-consistency.rs:12:1
    |
 LL | #[unstable(feature = "foo", issue = "0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

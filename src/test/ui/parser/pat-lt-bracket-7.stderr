@@ -1,5 +1,5 @@
 error: expected one of `)`, `,`, or `@`, found `[`
-  --> $DIR/pat-lt-bracket-7.rs:14:16
+  --> $DIR/pat-lt-bracket-7.rs:4:16
    |
 LL |     for thing(x[]) in foo {} //~ ERROR: expected one of `)`, `,`, or `@`, found `[`
    |                ^ expected one of `)`, `,`, or `@` here

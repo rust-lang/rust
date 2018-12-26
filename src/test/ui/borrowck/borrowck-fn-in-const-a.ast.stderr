@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-fn-in-const-a.rs:19:16
+  --> $DIR/borrowck-fn-in-const-a.rs:9:16
    |
 LL |         return *x //[ast]~ ERROR cannot move out of borrowed content [E0507]
    |                ^^ cannot move out of borrowed content

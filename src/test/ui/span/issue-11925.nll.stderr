@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to local data `x`
-  --> $DIR/issue-11925.rs:18:35
+  --> $DIR/issue-11925.rs:8:35
    |
 LL |         let f = to_fn_once(move|| &x); //~ ERROR does not live long enough
    |                                   ^^ returns a reference to data owned by the current function

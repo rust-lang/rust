@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/asm-out-assign-imm.rs:34:34
+  --> $DIR/asm-out-assign-imm.rs:24:34
    |
 LL |     x = 1;
    |     ----- first assignment to `x`

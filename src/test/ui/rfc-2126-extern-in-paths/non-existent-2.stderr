@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: could not find `xcrate` in `extern`
-  --> $DIR/non-existent-2.rs:14:21
+  --> $DIR/non-existent-2.rs:4:21
    |
 LL |     let s = extern::xcrate::S;
    |                     ^^^^^^ could not find `xcrate` in `extern`

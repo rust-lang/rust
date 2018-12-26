@@ -1,5 +1,5 @@
 error[E0615]: attempted to take value of method `speak` on type `Cat`
-  --> $DIR/assign-to-method.rs:30:8
+  --> $DIR/assign-to-method.rs:20:8
    |
 LL |   nyan.speak = || println!("meow"); //~ ERROR attempted to take value of method
    |        ^^^^^

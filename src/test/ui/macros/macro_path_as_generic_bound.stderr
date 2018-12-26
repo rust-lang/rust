@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type or module `m`
-  --> $DIR/macro_path_as_generic_bound.rs:17:6
+  --> $DIR/macro_path_as_generic_bound.rs:7:6
    |
 LL | foo!(m::m2::A); //~ ERROR failed to resolve
    |      ^ use of undeclared type or module `m`

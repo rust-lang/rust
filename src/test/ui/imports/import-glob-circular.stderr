@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `f1066` in this scope
-  --> $DIR/import-glob-circular.rs:26:17
+  --> $DIR/import-glob-circular.rs:16:17
    |
 LL |     fn test() { f1066(); } //~ ERROR cannot find function `f1066` in this scope
    |                 ^^^^^ not found in this scope

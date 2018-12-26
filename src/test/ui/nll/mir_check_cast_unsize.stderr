@@ -1,5 +1,5 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/mir_check_cast_unsize.rs:18:5
+  --> $DIR/mir_check_cast_unsize.rs:8:5
    |
 LL | fn bar<'a>(x: &'a u32) -> &'static dyn Debug {
    |        -- lifetime `'a` defined here

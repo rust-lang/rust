@@ -1,17 +1,17 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-mod-4.rs:11:5
+  --> $DIR/use-mod-4.rs:1:5
    |
 LL | use foo::self; //~ ERROR unresolved import `foo`
    |     ^^^^^^^^^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-mod-4.rs:14:5
+  --> $DIR/use-mod-4.rs:4:5
    |
 LL | use std::mem::self;
    |     ^^^^^^^^^^^^^^
 
 error[E0432]: unresolved import `foo`
-  --> $DIR/use-mod-4.rs:11:5
+  --> $DIR/use-mod-4.rs:1:5
    |
 LL | use foo::self; //~ ERROR unresolved import `foo`
    |     ^^^ maybe a missing `extern crate foo;`?

@@ -1,5 +1,5 @@
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/inference_unstable.rs:26:20
+  --> $DIR/inference_unstable.rs:16:20
    |
 LL |     assert_eq!('x'.ipu_flatten(), 1);
    |                    ^^^^^^^^^^^

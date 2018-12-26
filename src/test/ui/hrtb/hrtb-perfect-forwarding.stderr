@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `for<'a> T: Bar<&'a isize>` is not satisfied
-  --> $DIR/hrtb-perfect-forwarding.rs:56:5
+  --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
 LL |     foo_hrtb_bar_not(&mut t); //~ ERROR `for<'a> T: Bar<&'a isize>` is not satisfied
    |     ^^^^^^^^^^^^^^^^ the trait `for<'a> Bar<&'a isize>` is not implemented for `T`
@@ -7,7 +7,7 @@ LL |     foo_hrtb_bar_not(&mut t); //~ ERROR `for<'a> T: Bar<&'a isize>` is not 
    = help: consider adding a `where for<'a> T: Bar<&'a isize>` bound
    = note: required because of the requirements on the impl of `for<'a> Foo<&'a isize>` for `&mut T`
 note: required by `foo_hrtb_bar_not`
-  --> $DIR/hrtb-perfect-forwarding.rs:49:1
+  --> $DIR/hrtb-perfect-forwarding.rs:39:1
    |
 LL | / fn foo_hrtb_bar_not<'b,T>(mut t: T)
 LL | |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>

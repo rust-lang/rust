@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `()`
-  --> $DIR/issue-40610.rs:14:5
+  --> $DIR/issue-40610.rs:4:5
    |
 LL |     () + f(&[1.0]);
    |     ^^^^^^^^^^^^^^

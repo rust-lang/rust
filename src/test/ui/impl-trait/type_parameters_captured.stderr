@@ -1,5 +1,5 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/type_parameters_captured.rs:17:20
+  --> $DIR/type_parameters_captured.rs:7:20
    |
 LL | fn foo<T>(x: T) -> impl Any + 'static {
    |        -           ^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | fn foo<T>(x: T) -> impl Any + 'static {
    |        help: consider adding an explicit lifetime bound `T: 'static`...
    |
 note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/type_parameters_captured.rs:17:20
+  --> $DIR/type_parameters_captured.rs:7:20
    |
 LL | fn foo<T>(x: T) -> impl Any + 'static {
    |                    ^^^^^^^^^^^^^^^^^^

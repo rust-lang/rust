@@ -1,5 +1,5 @@
 warning: captured variable cannot escape `FnMut` closure body
-  --> $DIR/issue-40510-1.rs:18:9
+  --> $DIR/issue-40510-1.rs:8:9
    |
 LL |     || {
    |      - inferred to be a `FnMut` closure

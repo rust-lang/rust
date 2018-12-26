@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `&str`
-  --> $DIR/issue-22468.rs:13:13
+  --> $DIR/issue-22468.rs:3:13
    |
 LL |     let foo = "bar";
    |         --- `&str` defined here

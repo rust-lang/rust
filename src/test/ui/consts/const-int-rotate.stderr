@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/const-int-rotate.rs:12:28
+  --> $DIR/const-int-rotate.rs:2:28
    |
 LL |     let x: &'static i32 = &(5_i32.rotate_left(3)); //~ ERROR does not live long enough
    |                            ^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/const-int-rotate.rs:13:28
+  --> $DIR/const-int-rotate.rs:3:28
    |
 LL |     let y: &'static i32 = &(5_i32.rotate_right(3)); //~ ERROR does not live long enough
    |                            ^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough

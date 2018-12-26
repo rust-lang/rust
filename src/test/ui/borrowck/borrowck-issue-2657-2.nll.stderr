@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-issue-2657-2.rs:17:18
+  --> $DIR/borrowck-issue-2657-2.rs:7:18
    |
 LL |         let _b = *y; //~ ERROR cannot move out
    |                  ^^

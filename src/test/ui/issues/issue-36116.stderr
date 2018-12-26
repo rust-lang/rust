@@ -1,11 +1,11 @@
 warning: unnecessary path disambiguator
-  --> $DIR/issue-36116.rs:30:50
+  --> $DIR/issue-36116.rs:20:50
    |
 LL |     let f = Some(Foo { _a: 42 }).map(|a| a as Foo::<i32>); //~ WARN unnecessary path disambiguator
    |                                                  ^^ try removing `::`
 
 warning: unnecessary path disambiguator
-  --> $DIR/issue-36116.rs:31:15
+  --> $DIR/issue-36116.rs:21:15
    |
 LL |     let g: Foo::<i32> = Foo { _a: 42 }; //~ WARN unnecessary path disambiguator
    |               ^^ try removing `::`

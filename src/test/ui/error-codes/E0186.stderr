@@ -1,5 +1,5 @@
 error[E0186]: method `foo` has a `&self` declaration in the trait, but not in the impl
-  --> $DIR/E0186.rs:18:5
+  --> $DIR/E0186.rs:8:5
    |
 LL |     fn foo(&self); //~ `&self` used in trait
    |     -------------- `&self` used in trait

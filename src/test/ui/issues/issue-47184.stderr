@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-47184.rs:14:44
+  --> $DIR/issue-47184.rs:4:44
    |
 LL |     let _vec: Vec<&'static String> = vec![&String::new()];
    |               --------------------         ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement

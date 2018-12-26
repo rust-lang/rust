@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-23073.rs:16:17
+  --> $DIR/issue-23073.rs:6:17
    |
 LL |     type FooT = <<Self as Bar>::Foo>::T; //~ ERROR ambiguous associated type
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<Self as Bar>::Foo as Trait>::T`

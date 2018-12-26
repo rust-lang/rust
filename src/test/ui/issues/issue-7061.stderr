@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-7061.rs:14:46
+  --> $DIR/issue-7061.rs:4:46
    |
 LL |     fn foo(&'a mut self) -> Box<BarStruct> { self }
    |                             --------------   ^^^^ expected struct `std::boxed::Box`, found mutable reference

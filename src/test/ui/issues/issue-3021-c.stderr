@@ -1,5 +1,5 @@
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/issue-3021-c.rs:14:24
+  --> $DIR/issue-3021-c.rs:4:24
    |
 LL | fn siphash<T>() {
    |            - type variable from outer function
@@ -10,7 +10,7 @@ LL |         fn g(&self, x: T) -> T;  //~ ERROR can't use type parameters from o
    |            help: try using a local type parameter instead: `g<T>`
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/issue-3021-c.rs:14:30
+  --> $DIR/issue-3021-c.rs:4:30
    |
 LL | fn siphash<T>() {
    |            - type variable from outer function

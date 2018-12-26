@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/issue-30438-b.rs:23:9
+  --> $DIR/issue-30438-b.rs:13:9
    |
 LL |         &Test { s: &self.s}
    |         ^------------------

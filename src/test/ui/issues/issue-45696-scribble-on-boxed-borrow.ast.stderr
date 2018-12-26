@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:92:1
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:1
    |
 LL | / fn main() { //[ast]~ ERROR compilation successful
 LL | |      //[migrate]~^ ERROR compilation successful

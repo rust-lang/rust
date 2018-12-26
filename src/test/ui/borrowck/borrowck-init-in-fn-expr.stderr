@@ -1,5 +1,5 @@
 error[E0381]: use of possibly uninitialized variable: `i`
-  --> $DIR/borrowck-init-in-fn-expr.rs:14:9
+  --> $DIR/borrowck-init-in-fn-expr.rs:4:9
    |
 LL |         i //~ ERROR use of possibly uninitialized variable: `i`
    |         ^ use of possibly uninitialized `i`

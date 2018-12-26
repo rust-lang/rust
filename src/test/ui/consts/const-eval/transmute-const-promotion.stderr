@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/transmute-const-promotion.rs:16:37
+  --> $DIR/transmute-const-promotion.rs:6:37
    |
 LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
    |                                     ^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough

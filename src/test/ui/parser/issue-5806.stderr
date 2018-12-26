@@ -1,5 +1,5 @@
 error: couldn't read $DIR/../parser: $ACCESS_DENIED_MSG (os error $ACCESS_DENIED_CODE)
-  --> $DIR/issue-5806.rs:16:5
+  --> $DIR/issue-5806.rs:6:5
    |
 LL | mod foo; //~ ERROR couldn't read
    |     ^^^

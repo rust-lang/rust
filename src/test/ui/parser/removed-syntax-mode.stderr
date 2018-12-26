@@ -1,5 +1,5 @@
 error: expected argument name, found `+`
-  --> $DIR/removed-syntax-mode.rs:13:6
+  --> $DIR/removed-syntax-mode.rs:3:6
    |
 LL | fn f(+x: isize) {}
    |      ^ expected argument name

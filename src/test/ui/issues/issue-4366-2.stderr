@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Bar` in this scope
-  --> $DIR/issue-4366-2.rs:25:21
+  --> $DIR/issue-4366-2.rs:15:21
    |
 LL |         fn sub() -> Bar { 1 }
    |                     ^^^ not found in this scope
@@ -9,7 +9,7 @@ LL |         use a::b::Bar;
    |
 
 error[E0423]: expected function, found module `foo`
-  --> $DIR/issue-4366-2.rs:35:5
+  --> $DIR/issue-4366-2.rs:25:5
    |
 LL |     foo(); //~ ERROR expected function, found module `foo`
    |     ^^^ not a function

@@ -1,11 +1,11 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const_let.rs:25:55
+  --> $DIR/const_let.rs:15:55
    |
 LL | const Y: FakeNeedsDrop = { let mut x = FakeNeedsDrop; x = FakeNeedsDrop; x };
    |                                                       ^
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const_let.rs:29:35
+  --> $DIR/const_let.rs:19:35
    |
 LL | const Z: () = { let mut x = None; x = Some(FakeNeedsDrop); };
    |                                   ^

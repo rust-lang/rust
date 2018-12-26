@@ -1,5 +1,5 @@
 error[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue28498-reject-ex1.rs:44:29
+  --> $DIR/issue28498-reject-ex1.rs:34:29
    |
 LL |     foo.data[0].1.set(Some(&foo.data[1]));
    |                             ^^^^^^^^

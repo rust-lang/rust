@@ -1,5 +1,5 @@
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe.rs:60:77
+  --> $DIR/min_const_fn_unsafe.rs:50:77
    |
 LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
    |                                                                             ^^^
@@ -7,7 +7,7 @@ LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe {
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe.rs:63:70
+  --> $DIR/min_const_fn_unsafe.rs:53:70
    |
 LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    |                                                                      ^^
@@ -15,7 +15,7 @@ LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable (see issue #51911)
-  --> $DIR/min_const_fn_unsafe.rs:66:83
+  --> $DIR/min_const_fn_unsafe.rs:56:83
    |
 LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static usize { &*x }
    |                                                                                   ^^^
@@ -23,7 +23,7 @@ LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static u
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error[E0658]: unions in const fn are unstable (see issue #51909)
-  --> $DIR/min_const_fn_unsafe.rs:73:5
+  --> $DIR/min_const_fn_unsafe.rs:63:5
    |
 LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     Foo { x: () }.y
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
 
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
-  --> $DIR/min_const_fn_unsafe.rs:60:77
+  --> $DIR/min_const_fn_unsafe.rs:50:77
    |
 LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ is unsafe
    |                                                                             ^^^ dereference of raw pointer

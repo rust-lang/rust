@@ -1,5 +1,5 @@
 error[E0516]: `typeof` is a reserved keyword but unimplemented
-  --> $DIR/issue-29184.rs:12:12
+  --> $DIR/issue-29184.rs:2:12
    |
 LL |     let x: typeof(92) = 92; //~ ERROR `typeof` is a reserved keyword
    |            ^^^^^^^^^^ reserved keyword

@@ -1,71 +1,71 @@
 error: no path from `TypeAlias` to `TypeOfItem`
-  --> $DIR/dep-graph-type-alias.rs:28:1
+  --> $DIR/dep-graph-type-alias.rs:17:1
    |
 LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:30:5
+  --> $DIR/dep-graph-type-alias.rs:19:5
    |
 LL |     #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR OK
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `TypeAlias` to `TypeOfItem`
-  --> $DIR/dep-graph-type-alias.rs:35:1
+  --> $DIR/dep-graph-type-alias.rs:24:1
    |
 LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:38:9
+  --> $DIR/dep-graph-type-alias.rs:27:9
    |
 LL |         #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR OK
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `TypeAlias` to `TypeOfItem`
-  --> $DIR/dep-graph-type-alias.rs:44:1
+  --> $DIR/dep-graph-type-alias.rs:33:1
    |
 LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `TypeAlias` to `TypeOfItem`
-  --> $DIR/dep-graph-type-alias.rs:52:1
+  --> $DIR/dep-graph-type-alias.rs:41:1
    |
 LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR no path
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:59:1
+  --> $DIR/dep-graph-type-alias.rs:48:1
    |
 LL | #[rustc_then_this_would_need(TypeOfItem)] //~ ERROR OK
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:62:1
+  --> $DIR/dep-graph-type-alias.rs:51:1
    |
 LL | #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:63:1
+  --> $DIR/dep-graph-type-alias.rs:52:1
    |
 LL | #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:46:5
+  --> $DIR/dep-graph-type-alias.rs:35:5
    |
 LL |     #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:54:5
+  --> $DIR/dep-graph-type-alias.rs:43:5
    |
 LL |     #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
-  --> $DIR/dep-graph-type-alias.rs:55:5
+  --> $DIR/dep-graph-type-alias.rs:44:5
    |
 LL |     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

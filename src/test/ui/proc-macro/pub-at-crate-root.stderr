@@ -1,5 +1,5 @@
 error: `proc-macro` crate types cannot export any items other than functions tagged with `#[proc_macro_derive]` currently
-  --> $DIR/pub-at-crate-root.rs:18:1
+  --> $DIR/pub-at-crate-root.rs:8:1
    |
 LL | / pub mod a { //~ `proc-macro` crate types cannot export any items
 LL | |     use proc_macro::TokenStream;
@@ -11,7 +11,7 @@ LL | | }
    | |_^
 
 error: functions tagged with `#[proc_macro_derive]` must currently reside in the root of the crate
-  --> $DIR/pub-at-crate-root.rs:22:5
+  --> $DIR/pub-at-crate-root.rs:12:5
    |
 LL | /     pub fn bar(a: TokenStream) -> TokenStream {
 LL | |     //~^ ERROR: must currently reside in the root of the crate
@@ -20,7 +20,7 @@ LL | |     }
    | |_____^
 
 error: functions tagged with `#[proc_macro_derive]` must be `pub`
-  --> $DIR/pub-at-crate-root.rs:29:1
+  --> $DIR/pub-at-crate-root.rs:19:1
    |
 LL | / fn bar(a: proc_macro::TokenStream) -> proc_macro::TokenStream {
 LL | | //~^ ERROR: functions tagged with `#[proc_macro_derive]` must be `pub`

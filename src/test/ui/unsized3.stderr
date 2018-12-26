@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:17:5
+  --> $DIR/unsized3.rs:7:5
    |
 LL |     f2::<X>(x);
    |     ^^^^^^^ doesn't have a size known at compile-time
@@ -8,13 +8,13 @@ LL |     f2::<X>(x);
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where X: std::marker::Sized` bound
 note: required by `f2`
-  --> $DIR/unsized3.rs:20:1
+  --> $DIR/unsized3.rs:10:1
    |
 LL | fn f2<X>(x: &X) {
    | ^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:28:5
+  --> $DIR/unsized3.rs:18:5
    |
 LL |     f4::<X>(x);
    |     ^^^^^^^ doesn't have a size known at compile-time
@@ -23,13 +23,13 @@ LL |     f4::<X>(x);
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where X: std::marker::Sized` bound
 note: required by `f4`
-  --> $DIR/unsized3.rs:31:1
+  --> $DIR/unsized3.rs:21:1
    |
 LL | fn f4<X: T>(x: &X) {
    | ^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:43:5
+  --> $DIR/unsized3.rs:33:5
    |
 LL |     f5(x1);
    |     ^^ doesn't have a size known at compile-time
@@ -39,13 +39,13 @@ LL |     f5(x1);
    = help: consider adding a `where X: std::marker::Sized` bound
    = note: required because it appears within the type `S<X>`
 note: required by `f5`
-  --> $DIR/unsized3.rs:34:1
+  --> $DIR/unsized3.rs:24:1
    |
 LL | fn f5<Y>(x: &Y) {}
    | ^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:50:5
+  --> $DIR/unsized3.rs:40:5
    |
 LL |     f5(&(*x1, 34));
    |     ^^ doesn't have a size known at compile-time
@@ -57,7 +57,7 @@ LL |     f5(&(*x1, 34));
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:55:9
+  --> $DIR/unsized3.rs:45:9
    |
 LL |     f5(&(32, *x1));
    |         ^^^^^^^^^ doesn't have a size known at compile-time
@@ -70,7 +70,7 @@ LL |     f5(&(32, *x1));
    = note: tuples must have a statically known size to be initialized
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:55:5
+  --> $DIR/unsized3.rs:45:5
    |
 LL |     f5(&(32, *x1));
    |     ^^ doesn't have a size known at compile-time
@@ -81,7 +81,7 @@ LL |     f5(&(32, *x1));
    = note: required because it appears within the type `S<X>`
    = note: required because it appears within the type `({integer}, S<X>)`
 note: required by `f5`
-  --> $DIR/unsized3.rs:34:1
+  --> $DIR/unsized3.rs:24:1
    |
 LL | fn f5<Y>(x: &Y) {}
    | ^^^^^^^^^^^^^^^

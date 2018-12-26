@@ -1,5 +1,5 @@
 error: expected one of `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, or `unsafe`, found `}`
-  --> $DIR/issue-20711.rs:18:1
+  --> $DIR/issue-20711.rs:8:1
    |
 LL |     #[stable(feature = "rust1", since = "1.0.0")]
    |                                                  - expected one of 10 possible tokens here

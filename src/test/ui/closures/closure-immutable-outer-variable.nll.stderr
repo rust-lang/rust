@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `y`, as it is not declared as mutable
-  --> $DIR/closure-immutable-outer-variable.rs:21:26
+  --> $DIR/closure-immutable-outer-variable.rs:11:26
    |
 LL |     let y = true;
    |         - help: consider changing this to be mutable: `mut y`

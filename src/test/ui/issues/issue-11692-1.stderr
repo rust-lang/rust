@@ -1,5 +1,5 @@
 error: format argument must be a string literal
-  --> $DIR/issue-11692-1.rs:12:12
+  --> $DIR/issue-11692-1.rs:2:12
    |
 LL |     print!(testo!());
    |            ^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `test::TestDescAndFn: example_runner::Testable` is not satisfied
-  --> $DIR/mismatch.rs:19:1
+  --> $DIR/mismatch.rs:9:1
    |
 LL | fn wrong_kind(){}
    | ^^^^^^^^^^^^^^^^^ the trait `example_runner::Testable` is not implemented for `test::TestDescAndFn`

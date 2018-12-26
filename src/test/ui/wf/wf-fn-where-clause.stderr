@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
-  --> $DIR/wf-fn-where-clause.rs:18:1
+  --> $DIR/wf-fn-where-clause.rs:8:1
    |
 LL | / fn foo<T,U>() where T: ExtraCopy<U> //~ ERROR E0277
 LL | | {
@@ -8,13 +8,13 @@ LL | | }
    |
    = help: consider adding a `where U: std::marker::Copy` bound
 note: required by `ExtraCopy`
-  --> $DIR/wf-fn-where-clause.rs:16:1
+  --> $DIR/wf-fn-where-clause.rs:6:1
    |
 LL | trait ExtraCopy<T:Copy> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `(dyn std::marker::Copy + 'static)` cannot be known at compilation time
-  --> $DIR/wf-fn-where-clause.rs:22:1
+  --> $DIR/wf-fn-where-clause.rs:12:1
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -24,7 +24,7 @@ LL | fn bar() where Vec<dyn Copy>:, {}
    = note: required by `std::vec::Vec`
 
 error[E0038]: the trait `std::marker::Copy` cannot be made into an object
-  --> $DIR/wf-fn-where-clause.rs:22:1
+  --> $DIR/wf-fn-where-clause.rs:12:1
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object

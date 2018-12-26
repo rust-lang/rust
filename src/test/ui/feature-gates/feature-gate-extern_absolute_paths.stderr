@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `core`
-  --> $DIR/feature-gate-extern_absolute_paths.rs:11:5
+  --> $DIR/feature-gate-extern_absolute_paths.rs:1:5
    |
 LL | use core::default; //~ ERROR unresolved import `core`
    |     ^^^^ maybe a missing `extern crate core;`?
 
 error[E0433]: failed to resolve: maybe a missing `extern crate core;`?
-  --> $DIR/feature-gate-extern_absolute_paths.rs:14:19
+  --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
    |
 LL |     let _: u8 = ::core::default::Default(); //~ ERROR failed to resolve
    |                   ^^^^ maybe a missing `extern crate core;`?

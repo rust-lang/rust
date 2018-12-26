@@ -1,5 +1,5 @@
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `enum`
-  --> $DIR/can-begin-expr-check.rs:29:12
+  --> $DIR/can-begin-expr-check.rs:19:12
    |
 LL |     return enum; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `enum`
    |            ^^^^ expected one of `.`, `;`, `?`, `}`, or an operator here

@@ -1,5 +1,5 @@
 error: expected `where`, `{`, `(`, or `;` after struct name, found keyword `for`
-  --> $DIR/unsized.rs:15:11
+  --> $DIR/unsized.rs:5:11
    |
 LL | struct S1 for type;
    |           ^^^ expected `where`, `{`, `(`, or `;` after struct name

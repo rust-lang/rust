@@ -1,17 +1,17 @@
 error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:16:11
+  --> $DIR/require-parens-for-chained-comparison.rs:6:11
    |
 LL |     false == false == false;
    |           ^^^^^^^^^^^^^^^^^
 
 error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:19:11
+  --> $DIR/require-parens-for-chained-comparison.rs:9:11
    |
 LL |     false == 0 < 2;
    |           ^^^^^^^^
 
 error: chained comparison operators require parentheses
-  --> $DIR/require-parens-for-chained-comparison.rs:22:6
+  --> $DIR/require-parens-for-chained-comparison.rs:12:6
    |
 LL |     f<X>();
    |      ^^^^

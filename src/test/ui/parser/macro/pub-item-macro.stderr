@@ -1,5 +1,5 @@
 error: can't qualify macro invocation with `pub`
-  --> $DIR/pub-item-macro.rs:18:5
+  --> $DIR/pub-item-macro.rs:8:5
    |
 LL |     pub priv_x!(); //~ ERROR can't qualify macro invocation with `pub`
    |     ^^^
