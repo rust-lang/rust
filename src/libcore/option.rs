@@ -899,7 +899,7 @@ impl<'a, T: Copy> Option<&'a T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
-    #[unstable(feature = "copied", issue = "0")]
+    #[unstable(feature = "copied", issue = "57126")]
     pub fn copied(self) -> Option<T> {
         self.map(|&t| t)
     }
@@ -920,7 +920,7 @@ impl<'a, T: Copy> Option<&'a mut T> {
     /// let copied = opt_x.copied();
     /// assert_eq!(copied, Some(12));
     /// ```
-    #[unstable(feature = "copied", issue = "0")]
+    #[unstable(feature = "copied", issue = "57126")]
     pub fn copied(self) -> Option<T> {
         self.map(|&mut t| t)
     }
