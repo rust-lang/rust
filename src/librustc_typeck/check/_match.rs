@@ -275,7 +275,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Tuple(ref elements, ddpos) => {
                 let mut expected_len = elements.len();
                 if ddpos.is_some() {
-                    // Require known type only when `..` is present
+                    // Require known type only when `..` is present.
                     if let ty::Tuple(ref tys) =
                             self.structurally_resolved_type(pat.span, expected).sty {
                         expected_len = tys.len();
@@ -284,8 +284,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let max_len = cmp::max(expected_len, elements.len());
 
                 let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(
-                    // FIXME: MiscVariable for now, obtaining the span and name information
-                    //        from all tuple elements isn't trivial.
+                    // FIXME: `MiscVariable` for now -- obtaining the span and name information
+                    // from all tuple elements isn't trivial.
                     TypeVariableOrigin::TypeInference(pat.span)));
                 let element_tys = tcx.mk_type_list(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
