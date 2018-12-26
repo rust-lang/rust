@@ -164,9 +164,12 @@ function loadContent(content) {
     var Module = module.constructor;
     var m = new Module();
     m._compile(content, "tmp.js");
-    m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1;
-    m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1;
-    m.exports.should_fail = content.indexOf("\n// should-fail\n") !== -1;
+    m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1 ||
+        content.startsWith("// ignore-order\n");
+    m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1 ||
+        content.startsWith("// exact-check\n");
+    m.exports.should_fail = content.indexOf("\n// should-fail\n") !== -1 ||
+        content.startsWith("// should-fail\n");
     return m.exports;
 }
 
