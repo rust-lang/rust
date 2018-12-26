@@ -303,10 +303,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         if let Scalar::Ptr(ptr) = ptr {
             // Both old and new pointer must be in-bounds of a *live* allocation.
             // (Of the same allocation, but that part is trivial with our representation.)
-            let alloc = self.memory().get(ptr.alloc_id)?;
-            alloc.check_bounds_ptr(ptr)?;
+            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live)?;
             let ptr = ptr.signed_offset(offset, self)?;
-            alloc.check_bounds_ptr(ptr)?;
+            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live)?;
             Ok(Scalar::Ptr(ptr))
         } else {
             // An integer pointer. They can only be offset by 0, and we pretend there
