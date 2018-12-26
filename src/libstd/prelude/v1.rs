@@ -9,7 +9,7 @@
 // Re-exported core operators
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
-pub use marker::{Copy, Send, Sized, Sync};
+pub use marker::{Copy, Send, Sized, Sync, Unpin};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use ops::{Drop, Fn, FnMut, FnOnce};
