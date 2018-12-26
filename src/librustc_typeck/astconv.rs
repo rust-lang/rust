@@ -1292,28 +1292,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         self.prohibit_generics(slice::from_ref(item_segment));
 
-        // Check if we have an enum variant here.
-        match ty.sty {
-            ty::Adt(adt_def, _) if adt_def.is_enum() => {
-                let variant_def = adt_def.variants.iter().find(|vd| {
-                    tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
-                });
-                if let Some(variant_def) = variant_def {
-                    check_type_alias_enum_variants_enabled(tcx, span);
-
-                    let def = Def::Variant(variant_def.did);
-                    tcx.check_stability(def.def_id(), Some(ref_id), span);
-                    return (ty, def);
-                }
-            },
-            _ => (),
-        }
-
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
             (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
-                // `Self` in an impl of a trait -- we have a concrete `self` type and a
+                // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
                     Some(trait_ref) => trait_ref,
@@ -1365,6 +1348,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 return (tcx.types.err, Def::Err);
             }
             _ => {
+                // Check if we have an enum variant.
+                match ty.sty {
+                    ty::Adt(adt_def, _) if adt_def.is_enum() => {
+                        let variant_def = adt_def.variants.iter().find(|vd| {
+                            tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
+                        });
+                        if let Some(variant_def) = variant_def {
+                            check_type_alias_enum_variants_enabled(tcx, span);
+
+                            let def = Def::Variant(variant_def.did);
+                            tcx.check_stability(def.def_id(), Some(ref_id), span);
+                            return (ty, def);
+                        }
+                    },
+                    _ => (),
+                }
+
                 // Don't print `TyErr` to the user.
                 if !ty.references_error() {
                     self.report_ambiguous_associated_type(span,
