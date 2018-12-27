@@ -957,13 +957,18 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         let mut diag = {
             if errs_len == 1 {
                 let (sp, msg) = errs.into_iter().next().unwrap();
-                cx.ecx.struct_span_err(sp, msg)
+                let mut diag = cx.ecx.struct_span_err(sp, msg);
+                diag.span_label(sp, msg);
+                diag
             } else {
                 let mut diag = cx.ecx.struct_span_err(
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                     "multiple unused formatting arguments",
                 );
                 diag.span_label(cx.fmtsp, "multiple missing formatting specifiers");
+                for (sp, msg) in errs {
+                    diag.span_label(sp, msg);
+                }
                 diag
             }
         };
