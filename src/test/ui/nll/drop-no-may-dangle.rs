@@ -17,10 +17,10 @@ fn main() {
         use_x(*p.value);
     } else {
         use_x(22);
-        v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
+        v[0] += 1; //~ ERROR cannot assign to `v[_]` because it is borrowed
     }
 
-    v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
+    v[0] += 1; //~ ERROR cannot assign to `v[_]` because it is borrowed
 }
 
 struct WrapMayNotDangle<T> {

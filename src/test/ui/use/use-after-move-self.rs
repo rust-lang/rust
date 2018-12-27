@@ -7,7 +7,7 @@ struct S {
 impl S {
     pub fn foo(self) -> isize {
         self.bar();
-        return *self.x;  //~ ERROR use of moved value: `*self.x`
+        return *self.x;  //~ ERROR use of moved value: `self`
     }
 
     pub fn bar(self) {}
