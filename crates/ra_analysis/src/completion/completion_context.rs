@@ -22,7 +22,8 @@ pub(super) struct CompletionContext<'a> {
     pub(super) offset: TextUnit,
     pub(super) leaf: SyntaxNodeRef<'a>,
     pub(super) module: Option<hir::Module>,
-    pub(super) enclosing_fn: Option<ast::FnDef<'a>>,
+    pub(super) function: Option<hir::Function>,
+    pub(super) function_syntax: Option<ast::FnDef<'a>>,
     pub(super) is_param: bool,
     /// A single-indent path, like `foo`.
     pub(super) is_trivial_path: bool,
@@ -52,7 +53,8 @@ impl<'a> CompletionContext<'a> {
             leaf,
             offset: position.offset,
             module,
-            enclosing_fn: None,
+            function: None,
+            function_syntax: None,
             is_param: false,
             is_trivial_path: false,
             path_prefix: None,
@@ -112,11 +114,18 @@ impl<'a> CompletionContext<'a> {
             _ => (),
         }
 
-        self.enclosing_fn = self
+        self.function_syntax = self
             .leaf
             .ancestors()
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::FnDef::cast);
+        match (&self.module, self.function_syntax) {
+            (Some(module), Some(fn_def)) => {
+                let function = source_binder::function_from_module(self.db, module, fn_def);
+                self.function = Some(function);
+            }
+            _ => (),
+        }
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,

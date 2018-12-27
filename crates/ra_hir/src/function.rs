@@ -18,6 +18,7 @@ pub use self::scope::FnScopes;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FnId(pub(crate) DefId);
 
+#[derive(Debug)]
 pub struct Function {
     pub(crate) fn_id: FnId,
 }

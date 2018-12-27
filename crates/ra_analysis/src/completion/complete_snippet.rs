@@ -7,7 +7,7 @@ fn snippet(label: &str, snippet: &str) -> Builder {
 }
 
 pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !(ctx.is_trivial_path && ctx.enclosing_fn.is_some()) {
+    if !(ctx.is_trivial_path && ctx.function_syntax.is_some()) {
         return;
     }
     snippet("pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);

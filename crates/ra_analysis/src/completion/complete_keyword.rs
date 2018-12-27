@@ -18,7 +18,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if !ctx.is_trivial_path {
         return;
     }
-    let fn_def = match ctx.enclosing_fn {
+    let fn_def = match ctx.function_syntax {
         Some(it) => it,
         None => return,
     };

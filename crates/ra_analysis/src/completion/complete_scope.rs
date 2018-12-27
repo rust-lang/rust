@@ -14,8 +14,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
         Some(it) => it,
         None => return Ok(()),
     };
-    if let Some(fn_def) = ctx.enclosing_fn {
-        let function = hir::source_binder::function_from_module(ctx.db, module, fn_def);
+    if let Some(function) = &ctx.function {
         let scopes = function.scopes(ctx.db);
         complete_fn(acc, &scopes, ctx.offset);
     }
