@@ -7,10 +7,7 @@ use rayon::prelude::*;
 use salsa::{Database, ParallelDatabase};
 
 use hir::{
-    self,
-    FnSignatureInfo,
-    Problem,
-    source_binder,
+    self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, FileSymbol, find_node_at_offset, LineIndex, LocalEdit, Severity};
@@ -328,16 +325,6 @@ impl AnalysisImpl {
             ));
             Ok(Some((binding, descr)))
         }
-    }
-
-    pub fn doc_comment_for(
-        &self,
-        file_id: FileId,
-        symbol: FileSymbol,
-    ) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(file_id);
-
-        Ok(symbol.docs(&file))
     }
     pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
         let file = self.db.source_file(file_id);
