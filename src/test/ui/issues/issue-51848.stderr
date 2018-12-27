@@ -2,7 +2,9 @@ error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/issue-51848.rs:6:20
    |
 LL |         println!("{"); //~ ERROR invalid
-   |                    ^ expected `'}'` in format string
+   |                   -^ expected `'}'` in format string
+   |                   |
+   |                   because of this opening brace
 ...
 LL |     macro_with_error!();
    |     -------------------- in this macro invocation

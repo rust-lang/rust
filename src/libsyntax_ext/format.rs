@@ -765,18 +765,74 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         }
     };
 
-    let is_literal = match ecx.source_map().span_to_snippet(fmt_sp) {
-        Ok(ref s) if s.starts_with("\"") || s.starts_with("r#") => true,
-        _ => false,
+    let (is_literal, fmt_snippet) = match ecx.source_map().span_to_snippet(fmt_sp) {
+        Ok(s) => (s.starts_with("\"") || s.starts_with("r#"), Some(s)),
+        _ => (false, None),
     };
 
-    let fmt_str = &*fmt.node.0.as_str();
     let str_style = match fmt.node.1 {
         ast::StrStyle::Cooked => None,
-        ast::StrStyle::Raw(raw) => Some(raw as usize),
+        ast::StrStyle::Raw(raw) => {
+            Some(raw as usize)
+        },
     };
 
-    let mut parser = parse::Parser::new(fmt_str, str_style);
+    /// Find the indices of all characters that have been processed and differ between the actual
+    /// written code (code snippet) and the `InternedString` that get's processed in the `Parser`
+    /// in order to properly synthethise the intra-string `Span`s for error diagnostics.
+    fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
+        let mut eat_ws = false;
+        let mut s = snippet.chars().enumerate().peekable();
+        let mut skips = vec![];
+        while let Some((pos, c)) = s.next() {
+            match (c, s.peek()) {
+                // skip whitespace and empty lines ending in '\\'
+                ('\\', Some((next_pos, '\n'))) if !is_raw => {
+                    eat_ws = true;
+                    skips.push(pos);
+                    skips.push(*next_pos);
+                    let _ = s.next();
+                }
+                ('\\', Some((next_pos, '\n'))) |
+                ('\\', Some((next_pos, 'n'))) |
+                ('\\', Some((next_pos, 't'))) if eat_ws => {
+                    skips.push(pos);
+                    skips.push(*next_pos);
+                    let _ = s.next();
+                }
+                (' ', _) |
+                ('\n', _) |
+                ('\t', _) if eat_ws => {
+                    skips.push(pos);
+                }
+                ('\\', Some((next_pos, 'n'))) |
+                ('\\', Some((next_pos, 't'))) |
+                ('\\', Some((next_pos, '\\'))) |
+                ('\\', Some((next_pos, '\''))) |
+                ('\\', Some((next_pos, '\"'))) => {
+                    skips.push(*next_pos);
+                    let _ = s.next();
+                }
+                _ if eat_ws => {  // `take_while(|c| c.is_whitespace())`
+                    eat_ws = false;
+                }
+                _ => {}
+            }
+        }
+        skips
+    }
+
+    let skips = if let (true, Some(ref snippet)) = (is_literal, fmt_snippet.as_ref()) {
+        let r_start = str_style.map(|r| r + 1).unwrap_or(0);
+        let r_end = str_style.map(|r| r).unwrap_or(0);
+        let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
+        find_skips(s, str_style.is_some())
+    } else {
+        vec![]
+    };
+
+    let fmt_str = &*fmt.node.0.as_str();  // for the suggestions below
+    let mut parser = parse::Parser::new(fmt_str, str_style, skips.clone(), append_newline);
 
     let mut unverified_pieces = Vec::new();
     while let Some(piece) = parser.next() {
@@ -789,11 +845,16 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
 
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
-        let sp = fmt.span.from_inner_byte_pos(err.start, err.end);
-        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
+        let sp = fmt.span.from_inner_byte_pos(err.start.unwrap(), err.end.unwrap());
+        let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}",
+                                                     err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
             e.note(&note);
+        }
+        if let Some((label, start, end)) = err.secondary_label {
+            let sp = fmt.span.from_inner_byte_pos(start.unwrap(), end.unwrap());
+            e.span_label(sp, label);
         }
         e.emit();
         return DummyResult::raw_expr(sp);
