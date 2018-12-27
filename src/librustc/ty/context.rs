@@ -1730,7 +1730,12 @@ impl<'a, 'tcx> Lift<'tcx> for Region<'a> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
-        Some(tcx.intern_const_alloc(mir::interpret::Allocation::clone(self)))
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
     }
 }
 
@@ -1740,12 +1745,7 @@ impl<'a, 'tcx> Lift<'tcx> for Goal<'a> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
+        Some(tcx.intern_const_alloc(mir::interpret::Allocation::clone(self)))
     }
 }
 
