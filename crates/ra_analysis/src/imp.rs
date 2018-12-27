@@ -429,6 +429,7 @@ impl AnalysisImpl {
             ra_editor::flip_comma(&file, offset).map(|f| f()),
             ra_editor::add_derive(&file, offset).map(|f| f()),
             ra_editor::add_impl(&file, offset).map(|f| f()),
+            ra_editor::make_pub_crate(&file, offset).map(|f| f()),
             ra_editor::introduce_variable(&file, range).map(|f| f()),
         ];
         actions
