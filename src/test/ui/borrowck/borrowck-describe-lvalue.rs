@@ -260,7 +260,7 @@ fn main() {
         let x = &mut v;
         v[0].y;
         //[ast]~^ ERROR cannot use `v[..].y` because it was mutably borrowed
-        //[mir]~^^ ERROR cannot use `v[..].y` because it was mutably borrowed
+        //[mir]~^^ ERROR cannot use `v[_].y` because it was mutably borrowed
         //[mir]~| ERROR cannot use `*v` because it was mutably borrowed
         drop(x);
     }
