@@ -1,4 +1,4 @@
-error[E0658]: is feature gated (see issue #37406)
+error[E0658]: #[link(cfg(...))] is feature gated (see issue #37406)
   --> $DIR/feature-gate-link_cfg.rs:1:1
    |
 LL | #[link(name = "foo", cfg(foo))]

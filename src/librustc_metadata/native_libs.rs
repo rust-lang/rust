@@ -187,7 +187,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                                            "link_cfg",
                                            span.unwrap(),
                                            GateIssue::Language,
-                                           "is feature gated");
+                                           "#[link(cfg(...))] is feature gated");
         }
         if lib.kind == cstore::NativeStaticNobundle &&
            !self.tcx.features().static_nobundle {
@@ -195,7 +195,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                                            "static_nobundle",
                                            span.unwrap(),
                                            GateIssue::Language,
-                                           "kind=\"static-nobundle\" is feature gated");
+                                           "#[link(kind=\"static-nobundle\")] is feature gated");
         }
         self.libs.push(lib);
     }
