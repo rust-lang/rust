@@ -2,13 +2,13 @@
 
 register_long_diagnostics! {
 E0454: r##"
-A link name was given with an empty name. Erroneous code example:
+An empty `link` name was provided. Erroneous code example:
 
 ```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
 ```
 
-The rust compiler cannot link to an external library if you don't give it its
+The Rust compiler cannot link to an external library if you don't give it its
 name. Example:
 
 ```no_run
@@ -17,7 +17,7 @@ name. Example:
 "##,
 
 E0455: r##"
-Linking with `kind=framework` is only supported when targeting macOS,
+Linking with `kind = "framework"` is only supported when targeting macOS,
 as frameworks are specific to that operating system.
 
 Erroneous code example:
@@ -39,31 +39,31 @@ https://doc.rust-lang.org/book/first-edition/conditional-compilation.html
 "##,
 
 E0458: r##"
-An unknown "kind" was specified for a link attribute. Erroneous code example:
+An unknown `kind` was specified for a `link` attribute. Erroneous code example:
 
 ```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(kind = "wonderful_unicorn")] extern {}
 // error: unknown kind: `wonderful_unicorn`
 ```
 
-Please specify a valid "kind" value, from one of the following:
-
-* static
-* dylib
-* framework
+The follow values are valid `kind`s:
+* `"static"`
+* `"static-nobundle"`
+* `"dylib"`
+* `"framework"` (on macOS only)
 
 "##,
 
 E0459: r##"
-A link was used without a name parameter. Erroneous code example:
+`link` was specified without a name parameter. Erroneous code example:
 
 ```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(kind = "dylib")] extern {}
 // error: #[link(...)] specified without `name = "foo"`
 ```
 
-Please add the name parameter to allow the rust compiler to find the library
-you want. Example:
+The Rust compiler cannot link to an external library if you don't give it its
+name. Example:
 
 ```no_run
 #[link(kind = "dylib", name = "some_lib")] extern {} // ok!
