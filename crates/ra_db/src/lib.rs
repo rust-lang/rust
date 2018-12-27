@@ -1,27 +1,17 @@
 //! ra_db defines basic database traits. Concrete DB is defined by ra_analysis.
+mod cancelation;
 mod syntax_ptr;
 mod input;
 mod loc2id;
 pub mod mock;
 
 use std::sync::Arc;
+
 use ra_editor::LineIndex;
 use ra_syntax::{TextUnit, SourceFileNode};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Canceled;
-
-pub type Cancelable<T> = Result<T, Canceled>;
-
-impl std::fmt::Display for Canceled {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.write_str("canceled")
-    }
-}
-
-impl std::error::Error for Canceled {}
-
 pub use crate::{
+    cancelation::{Canceled, Cancelable},
     syntax_ptr::LocalSyntaxPtr,
     input::{
         FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph,
@@ -48,7 +38,7 @@ macro_rules! impl_numeric_id {
 pub trait BaseDatabase: salsa::Database {
     fn check_canceled(&self) -> Cancelable<()> {
         if self.salsa_runtime().is_current_revision_canceled() {
-            Err(Canceled)
+            Err(Canceled::new())
         } else {
             Ok(())
         }

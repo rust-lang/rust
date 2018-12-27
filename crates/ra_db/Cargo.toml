@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+backtrace = "0.3.1"
 relative-path = "0.4.0"
 salsa = "0.8.0"
 rustc-hash = "1.0"
