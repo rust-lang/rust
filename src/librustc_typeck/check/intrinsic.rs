@@ -133,6 +133,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                  ], tcx.types.usize)
             }
             "rustc_peek" => (1, vec![param(0)], param(0)),
+            "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),
             "init" => (1, Vec::new(), param(0)),
             "uninit" => (1, Vec::new(), param(0)),
             "forget" => (1, vec![param(0)], tcx.mk_unit()),

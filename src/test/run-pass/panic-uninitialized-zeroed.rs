@@ -2,7 +2,7 @@
 // This test checks that instantiating an uninhabited type via `mem::{uninitialized,zeroed}` results
 // in a runtime panic.
 
-#![feature(never_type)]
+#![feature(never_type, maybe_uninit)]
 
 use std::{mem, panic};
 
@@ -20,7 +20,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<!>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type ! using mem::uninitialized"
+                s == "Attempted to instantiate uninhabited type !"
             })),
             Some(true)
         );
@@ -29,7 +29,16 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<!>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type ! using mem::zeroed"
+                s == "Attempted to instantiate uninhabited type !"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::MaybeUninit::<!>::uninitialized().into_inner()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type !"
             })),
             Some(true)
         );
@@ -38,7 +47,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo using mem::uninitialized"
+                s == "Attempted to instantiate uninhabited type Foo"
             })),
             Some(true)
         );
@@ -47,7 +56,16 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<Foo>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Foo using mem::zeroed"
+                s == "Attempted to instantiate uninhabited type Foo"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::MaybeUninit::<Foo>::uninitialized().into_inner()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Foo"
             })),
             Some(true)
         );
@@ -56,7 +74,7 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::uninitialized::<Bar>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar using mem::uninitialized"
+                s == "Attempted to instantiate uninhabited type Bar"
             })),
             Some(true)
         );
@@ -65,7 +83,16 @@ fn main() {
             panic::catch_unwind(|| {
                 mem::zeroed::<Bar>()
             }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
-                s == "Attempted to instantiate uninhabited type Bar using mem::zeroed"
+                s == "Attempted to instantiate uninhabited type Bar"
+            })),
+            Some(true)
+        );
+
+        assert_eq!(
+            panic::catch_unwind(|| {
+                mem::MaybeUninit::<Bar>::uninitialized().into_inner()
+            }).err().and_then(|a| a.downcast_ref::<String>().map(|s| {
+                s == "Attempted to instantiate uninhabited type Bar"
             })),
             Some(true)
         );
