@@ -118,5 +118,13 @@ help: format of unicode escape sequences is `/u{…}`
 LL |     let _ = "/xf /u";
    |                  ^^
 
-error: aborting due to 17 previous errors
+error: incorrect unicode escape sequence
+  --> $DIR/issue-23620-invalid-escapes.rs:39:14
+   |
+LL |     let _ = "/u8f";
+   |              ^^--
+   |              |
+   |              help: format of unicode escape sequences uses braces: `/u{8f}`
+
+error: aborting due to 18 previous errors
 
