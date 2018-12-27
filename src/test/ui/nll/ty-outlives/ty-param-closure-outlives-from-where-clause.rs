@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test that we can propagate `T: 'a` obligations to our caller.  See
 // `correct_region` for an explanation of how this test is setup; it's
 // somewhat intricate.
@@ -42,7 +32,6 @@ fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
         // function, there is no where clause *anywhere*, and hence we
         // get an error (but reported by the closure creator).
         require(&x, &y)
-        //~^ WARNING not reporting region error due to nll
     })
 }
 
@@ -76,7 +65,6 @@ where
         //~^ ERROR the parameter type `T` may not live long enough
         // See `correct_region`
         require(&x, &y)
-        //~^ WARNING not reporting region error due to nll
     })
 }
 

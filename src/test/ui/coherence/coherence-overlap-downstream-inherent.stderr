@@ -1,5 +1,5 @@
 error[E0592]: duplicate definitions with name `dummy`
-  --> $DIR/coherence-overlap-downstream-inherent.rs:17:26
+  --> $DIR/coherence-overlap-downstream-inherent.rs:7:26
    |
 LL | impl<T:Sugar> Sweet<T> { fn dummy(&self) { } }
    |                          ^^^^^^^^^^^^^^^^^^^ duplicate definitions for `dummy`
@@ -8,7 +8,7 @@ LL | impl<T:Fruit> Sweet<T> { fn dummy(&self) { } }
    |                          ------------------- other definition for `dummy`
 
 error[E0592]: duplicate definitions with name `f`
-  --> $DIR/coherence-overlap-downstream-inherent.rs:23:38
+  --> $DIR/coherence-overlap-downstream-inherent.rs:13:38
    |
 LL | impl<X, T> A<T, X> where T: Bar<X> { fn f(&self) {} }
    |                                      ^^^^^^^^^^^^^^ duplicate definitions for `f`

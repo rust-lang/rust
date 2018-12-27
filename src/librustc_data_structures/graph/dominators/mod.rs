@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Algorithm citation:
 //! A Simple, Fast Dominance Algorithm.
 //! Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
@@ -38,13 +28,13 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(
 
     // compute the post order index (rank) for each node
     let mut post_order_rank: IndexVec<G::Node, usize> =
-        IndexVec::from_elem_n(usize::default(), graph.num_nodes());
+        (0..graph.num_nodes()).map(|_| 0).collect();
     for (index, node) in rpo.iter().rev().cloned().enumerate() {
         post_order_rank[node] = index;
     }
 
     let mut immediate_dominators: IndexVec<G::Node, Option<G::Node>> =
-        IndexVec::from_elem_n(Option::default(), graph.num_nodes());
+        (0..graph.num_nodes()).map(|_| None).collect();
     immediate_dominators[start_node] = Some(start_node);
 
     let mut changed = true;

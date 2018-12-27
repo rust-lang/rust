@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -46,21 +36,28 @@
 // lldb-command:run
 
 // lldb-command:print no_padding1
-// lldb-check:[...]$0 = ((0, 1), 2, 3)
+// lldbg-check:[...]$0 = ((0, 1), 2, 3)
+// lldbr-check:(((u32, u32), u32, u32)) no_padding1 = { = { = 0 = 1 } = 2 = 3 }
 // lldb-command:print no_padding2
-// lldb-check:[...]$1 = (4, (5, 6), 7)
+// lldbg-check:[...]$1 = (4, (5, 6), 7)
+// lldbr-check:((u32, (u32, u32), u32)) no_padding2 = { = 4 = { = 5 = 6 } = 7 }
 // lldb-command:print no_padding3
-// lldb-check:[...]$2 = (8, 9, (10, 11))
+// lldbg-check:[...]$2 = (8, 9, (10, 11))
+// lldbr-check:((u32, u32, (u32, u32))) no_padding3 = { = 8 = 9 = { = 10 = 11 } }
 
 // lldb-command:print internal_padding1
-// lldb-check:[...]$3 = (12, (13, 14))
+// lldbg-check:[...]$3 = (12, (13, 14))
+// lldbr-check:((i16, (i32, i32))) internal_padding1 = { = 12 = { = 13 = 14 } }
 // lldb-command:print internal_padding2
-// lldb-check:[...]$4 = (15, (16, 17))
+// lldbg-check:[...]$4 = (15, (16, 17))
+// lldbr-check:((i16, (i16, i32))) internal_padding2 = { = 15 = { = 16 = 17 } }
 
 // lldb-command:print padding_at_end1
-// lldb-check:[...]$5 = (18, (19, 20))
+// lldbg-check:[...]$5 = (18, (19, 20))
+// lldbr-check:((i32, (i32, i16))) padding_at_end1 = { = 18 = { = 19 = 20 } }
 // lldb-command:print padding_at_end2
-// lldb-check:[...]$6 = ((21, 22), 23)
+// lldbg-check:[...]$6 = ((21, 22), 23)
+// lldbr-check:(((i32, i16), i32)) padding_at_end2 = { = { = 21 = 22 } = 23 }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

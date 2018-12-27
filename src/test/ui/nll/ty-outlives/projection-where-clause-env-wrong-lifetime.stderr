@@ -1,0 +1,16 @@
+error[E0309]: the associated type `<T as MyTrait<'a>>::Output` may not live long enough
+  --> $DIR/projection-where-clause-env-wrong-lifetime.rs:14:5
+   |
+LL |     bar::<<T as MyTrait<'a>>::Output>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as MyTrait<'a>>::Output: 'a`...
+note: ...so that the type `<T as MyTrait<'a>>::Output` will meet its required lifetime bounds
+  --> $DIR/projection-where-clause-env-wrong-lifetime.rs:14:5
+   |
+LL |     bar::<<T as MyTrait<'a>>::Output>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.

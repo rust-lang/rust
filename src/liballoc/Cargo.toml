@@ -11,10 +11,11 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../libcore" }
-compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
+compiler_builtins = { version = "0.1.0", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
-rand = "0.4"
+rand = "0.6"
+rand_xorshift = "0.1"
 
 [[test]]
 name = "collectionstests"
@@ -23,3 +24,11 @@ path = "../liballoc/tests/lib.rs"
 [[bench]]
 name = "collectionsbenches"
 path = "../liballoc/benches/lib.rs"
+
+[[bench]]
+name = "vec_deque_append_bench"
+path = "../liballoc/benches/vec_deque_append.rs"
+harness = false
+
+[features]
+compiler-builtins-mem = ['compiler_builtins/mem']

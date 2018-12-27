@@ -1,18 +1,9 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Validity checking for weak lang items
 
 use session::config;
 use middle::lang_items;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -22,8 +13,6 @@ use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::intravisit;
 use hir;
 use ty::TyCtxt;
-
-use std::collections::HashSet;
 
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
@@ -50,7 +39,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     {
         let mut cx = Context { tcx, items };
-        tcx.hir.krate().visit_all_item_likes(&mut cx.as_deep_visitor());
+        tcx.hir().krate().visit_all_item_likes(&mut cx.as_deep_visitor());
     }
     verify(tcx, items);
 }
@@ -71,7 +60,7 @@ pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
 /// Not all lang items are always required for each compilation, particularly in
 /// the case of panic=abort. In these situations some lang items are injected by
 /// crates and don't actually need to be defined in libstd.
-pub fn whitelisted(tcx: TyCtxt, lang_item: lang_items::LangItem) -> bool {
+pub fn whitelisted(tcx: TyCtxt<'_, '_, '_>, lang_item: lang_items::LangItem) -> bool {
     // If we're not compiling with unwinding, we won't actually need these
     // symbols. Other panic runtimes ensure that the relevant symbols are
     // available to link things together, but they're never exercised.
@@ -101,7 +90,7 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return
     }
 
-    let mut missing = HashSet::new();
+    let mut missing = FxHashSet::default();
     for &cnum in tcx.crates().iter() {
         for &item in tcx.missing_lang_items(cnum).iter() {
             missing.insert(item);
@@ -113,14 +102,14 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            !whitelisted(tcx, lang_items::$item) &&
            items.$name().is_none() {
             if lang_items::$item == lang_items::PanicImplLangItem {
-                tcx.sess.err(&format!("`#[panic_implementation]` function required, \
-                                        but not found"));
+                tcx.sess.err(&format!("`#[panic_handler]` function required, \
+                                       but not found"));
             } else if lang_items::$item == lang_items::OomLangItem {
                 tcx.sess.err(&format!("`#[alloc_error_handler]` function required, \
-                                        but not found"));
+                                       but not found"));
             } else {
                 tcx.sess.err(&format!("language item required, but not found: `{}`",
-                                        stringify!($name)));
+                                      stringify!($name)));
             }
         }
     )*

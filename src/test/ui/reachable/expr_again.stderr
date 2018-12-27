@@ -1,11 +1,11 @@
 error: unreachable statement
-  --> $DIR/expr_again.rs:18:9
+  --> $DIR/expr_again.rs:8:9
    |
 LL |         println!("hi");
    |         ^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/expr_again.rs:13:9
+  --> $DIR/expr_again.rs:3:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

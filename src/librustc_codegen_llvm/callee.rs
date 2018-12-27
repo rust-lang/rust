@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Handles codegen of callees as well as other call-related
 //! things.  Callees are a superset of normal rust values and sometimes
 //! have different representations.  In particular, top-level fn items
@@ -15,18 +5,14 @@
 //! closure.
 
 use attributes;
-use common::{self, CodegenCx};
-use consts;
-use declare;
 use llvm;
 use monomorphize::Instance;
-use type_of::LayoutLlvmExt;
+use context::CodegenCx;
 use value::Value;
+use rustc_codegen_ssa::traits::*;
 
-use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TypeFoldable};
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::subst::Substs;
+use rustc::ty::TypeFoldable;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -39,27 +25,27 @@ pub fn get_fn(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
 ) -> &'ll Value {
-    let tcx = cx.tcx;
+    let tcx = cx.tcx();
 
     debug!("get_fn(instance={:?})", instance);
 
     assert!(!instance.substs.needs_infer());
-    assert!(!instance.substs.has_escaping_regions());
+    assert!(!instance.substs.has_escaping_bound_vars());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = instance.ty(cx.tcx);
-    if let Some(&llfn) = cx.instances.borrow().get(&instance) {
+    let sig = instance.fn_sig(cx.tcx());
+    if let Some(&llfn) = cx.instances().borrow().get(&instance) {
         return llfn;
     }
 
     let sym = tcx.symbol_name(instance).as_str();
-    debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
+    debug!("get_fn({:?}: {:?}) => {}", instance, sig, sym);
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(cx, fn_ty));
-    let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
+    let fn_ptr_ty = tcx.mk_fn_ptr(sig);
+    let llptrty = cx.backend_type(cx.layout_of(fn_ptr_ty));
 
-    let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {
+    let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
         // functions.  If you have two crates that both bind the same C
@@ -83,22 +69,22 @@ pub fn get_fn(
         // This can occur on either a crate-local or crate-external
         // reference. It also occurs when testing libcore and in some
         // other weird situations. Annoying.
-        if common::val_ty(llfn) != llptrty {
+        if cx.val_ty(llfn) != llptrty {
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
-            consts::ptrcast(llfn, llptrty)
+            cx.const_ptrcast(llfn, llptrty)
         } else {
             debug!("get_fn: not casting pointer!");
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(cx, &sym, fn_ty);
-        assert_eq!(common::val_ty(llfn), llptrty);
+        let llfn = cx.declare_fn(&sym, sig);
+        assert_eq!(cx.val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
         if instance.def.is_inline(tcx) {
-            attributes::inline(llfn, attributes::InlineAttr::Hint);
+            attributes::inline(cx, llfn, attributes::InlineAttr::Hint);
         }
-        attributes::from_fn_attrs(cx, llfn, instance.def.def_id());
+        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()), sig);
 
         let instance_def_id = instance.def_id();
 
@@ -203,20 +189,4 @@ pub fn get_fn(
     cx.instances.borrow_mut().insert(instance, llfn);
 
     llfn
-}
-
-pub fn resolve_and_get_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
-    def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
-) -> &'ll Value {
-    get_fn(
-        cx,
-        ty::Instance::resolve(
-            cx.tcx,
-            ty::ParamEnv::reveal_all(),
-            def_id,
-            substs
-        ).unwrap()
-    )
 }

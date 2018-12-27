@@ -1,13 +1,13 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-30438-a.rs:22:17
+  --> $DIR/issue-30438-a.rs:12:17
    |
 LL |         return &Test { s: &self.s};
    |                 ^^^^^^^^^^^^^^^^^^- temporary value only lives until here
    |                 |
    |                 temporary value does not live long enough
    |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the method body at 21:5...
-  --> $DIR/issue-30438-a.rs:21:5
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the method body at 11:5...
+  --> $DIR/issue-30438-a.rs:11:5
    |
 LL | /     fn index(&self, _: usize) -> &Self::Output {
 LL | |         return &Test { s: &self.s};

@@ -1,5 +1,5 @@
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/nested-ty-params.rs:13:16
+  --> $DIR/nested-ty-params.rs:3:16
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type variable from outer function
@@ -9,7 +9,7 @@ LL |     fn hd1(w: [U]) -> U { return w[0]; }
    |        help: try using a local type parameter instead: `hd1<U>`
 
 error[E0401]: can't use type parameters from outer function
-  --> $DIR/nested-ty-params.rs:13:23
+  --> $DIR/nested-ty-params.rs:3:23
    |
 LL | fn hd<U>(v: Vec<U> ) -> U {
    |       - type variable from outer function
@@ -18,11 +18,6 @@ LL |     fn hd1(w: [U]) -> U { return w[0]; }
    |        |
    |        help: try using a local type parameter instead: `hd1<U>`
 
-error[E0601]: `main` function not found in crate `nested_ty_params`
-   |
-   = note: consider adding a `main` function to `$DIR/nested-ty-params.rs`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0401, E0601.
-For more information about an error, try `rustc --explain E0401`.
+For more information about this error, try `rustc --explain E0401`.

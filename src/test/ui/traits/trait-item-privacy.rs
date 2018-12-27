@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![feature(associated_type_defaults)]
 
 struct S;
@@ -110,9 +100,7 @@ fn check_assoc_const() {
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
     C::A; //~ ERROR associated constant `A` is private
           //~^ ERROR the trait `assoc_const::C` cannot be made into an object
-          //~| ERROR the trait bound `dyn assoc_const::C: assoc_const::A` is not satisfied
     C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
-          //~^ ERROR the trait bound `dyn assoc_const::C: assoc_const::B` is not satisfied
     C::C; // OK
 }
 

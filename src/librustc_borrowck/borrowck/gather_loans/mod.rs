@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ----------------------------------------------------------------------
 // Gathering loans
 //
@@ -38,12 +28,15 @@ mod move_error;
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     body: hir::BodyId)
                                     -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
-    let def_id = bccx.tcx.hir.body_owner_def_id(body);
+    let def_id = bccx.tcx.hir().body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
         bccx,
         all_loans: Vec::new(),
-        item_ub: region::Scope::Node(bccx.tcx.hir.body(body).value.hir_id.local_id),
+        item_ub: region::Scope {
+            id: bccx.tcx.hir().body(body).value.hir_id.local_id,
+            data: region::ScopeData::Node
+        },
         move_data: MoveData::default(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
@@ -85,7 +78,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
                     self.bccx, &self.move_data, &mut self.move_error_collector,
-                    self.bccx.tcx.hir.node_to_hir_id(consume_id).local_id, cmt, move_reason);
+                    self.bccx.tcx.hir().node_to_hir_id(consume_id).local_id, cmt, move_reason);
             }
             euv::Copy => { }
         }
@@ -132,7 +125,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-        let hir_id = self.bccx.tcx.hir.node_to_hir_id(borrow_id);
+        let hir_id = self.bccx.tcx.hir().node_to_hir_id(borrow_id);
         self.guarantee_valid(hir_id.local_id,
                              borrow_span,
                              cmt,
@@ -155,7 +148,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
         let ty = self.bccx
                      .tables
-                     .node_id_to_type(self.bccx.tcx.hir.node_to_hir_id(id));
+                     .node_id_to_type(self.bccx.tcx.hir().node_to_hir_id(id));
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }
@@ -277,13 +270,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     self.mark_loan_path_as_mutated(&lp);
                 }
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
-                                                self.bccx.tcx.hir.node_to_hir_id(assignment_id)
+                                                self.bccx.tcx.hir().node_to_hir_id(assignment_id)
                                                     .local_id,
                                                 assignment_span,
                                                 lp);
             }
             None => {
-                // This can occur with e.g. `*foo() = 5`.  In such
+                // This can occur with e.g., `*foo() = 5`.  In such
                 // cases, there is no need to check for conflicts
                 // with moves etc, just ignore.
             }
@@ -360,12 +353,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
                     ty::ReStatic => self.item_ub,
 
-                    ty::ReCanonical(_) |
                     ty::ReEmpty |
                     ty::ReClosureBound(..) |
                     ty::ReLateBound(..) |
                     ty::ReVar(..) |
-                    ty::ReSkolemized(..) |
+                    ty::RePlaceholder(..) |
                     ty::ReErased => {
                         span_bug!(
                             cmt.span,
@@ -375,7 +367,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = region::Scope::Node(borrow_id);
+                let borrow_scope = region::Scope {
+                    id: borrow_id,
+                    data: region::ScopeData::Node
+                };
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
@@ -443,13 +438,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             wrapped_path = match current_path.kind {
                 LpVar(local_id) => {
                     if !through_borrow {
-                        let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
+                        let hir_id = self.bccx.tcx.hir().node_to_hir_id(local_id);
                         self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                     }
                     None
                 }
-                LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                    self.bccx.used_mut_nodes.borrow_mut().insert(var_id);
+                LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath { hir_id }, closure_expr_id: _ }) => {
+                    self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                     None
                 }
                 LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |

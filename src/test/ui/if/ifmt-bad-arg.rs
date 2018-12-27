@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 fn main() {
     // bad arguments to the format! call
 
@@ -71,4 +61,18 @@ fn main() {
 
     "##);
     //~^^^ ERROR: there is no argument named `foo`
+
+    // bad syntax in format string with multiple newlines, #53836
+    format!("first number: {}
+second number: {}
+third number: {}
+fourth number: {}
+fifth number: {}
+sixth number: {}
+seventh number: {}
+eighth number: {}
+ninth number: {
+tenth number: {}",
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    //~^^ ERROR: invalid format string
 }

@@ -1,5 +1,5 @@
 error[E0392]: parameter `'a` is never used
-  --> $DIR/variance-regions-unused-direct.rs:15:18
+  --> $DIR/variance-regions-unused-direct.rs:5:18
    |
 LL | struct Bivariant<'a>; //~ ERROR parameter `'a` is never used
    |                  ^^ unused type parameter
@@ -7,7 +7,7 @@ LL | struct Bivariant<'a>; //~ ERROR parameter `'a` is never used
    = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`
 
 error[E0392]: parameter `'d` is never used
-  --> $DIR/variance-regions-unused-direct.rs:17:19
+  --> $DIR/variance-regions-unused-direct.rs:7:19
    |
 LL | struct Struct<'a, 'd> { //~ ERROR parameter `'d` is never used
    |                   ^^ unused type parameter

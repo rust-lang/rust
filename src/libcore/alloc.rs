@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Memory allocation APIs
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
@@ -69,7 +59,7 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow (i.e. the rounded value must be less than
+    ///    must not overflow (i.e., the rounded value must be less than
     ///    `usize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
@@ -164,22 +154,20 @@ impl Layout {
     /// alignment. In other words, if `K` has size 16, `K.align_to(32)`
     /// will *still* have size 16.
     ///
-    /// # Panics
-    ///
-    /// Panics if the combination of `self.size()` and the given `align`
-    /// violates the conditions listed in
+    /// Returns an error if the combination of `self.size()` and the given
+    /// `align` violates the conditions listed in
     /// [`Layout::from_size_align`](#method.from_size_align).
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
-    pub fn align_to(&self, align: usize) -> Self {
-        Layout::from_size_align(self.size(), cmp::max(self.align(), align)).unwrap()
+    pub fn align_to(&self, align: usize) -> Result<Self, LayoutErr> {
+        Layout::from_size_align(self.size(), cmp::max(self.align(), align))
     }
 
     /// Returns the amount of padding we must insert after `self`
     /// to ensure that the following address will satisfy `align`
     /// (measured in bytes).
     ///
-    /// E.g. if `self.size()` is 9, then `self.padding_needed_for(4)`
+    /// e.g., if `self.size()` is 9, then `self.padding_needed_for(4)`
     /// returns 3, because that is the minimum number of bytes of
     /// padding required to get a 4-aligned address (assuming that the
     /// corresponding memory block starts at a 4-aligned address).
@@ -191,7 +179,7 @@ impl Layout {
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `align <= self.align()`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn padding_needed_for(&self, align: usize) -> usize {
         let len = self.size();
@@ -220,6 +208,23 @@ impl Layout {
         len_rounded_up.wrapping_sub(len)
     }
 
+    /// Creates a layout by rounding the size of this layout up to a multiple
+    /// of the layout's alignment.
+    ///
+    /// Returns `Err` if the padded size would overflow.
+    ///
+    /// This is equivalent to adding the result of `padding_needed_for`
+    /// to the layout's current size.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[inline]
+    pub fn pad_to_align(&self) -> Result<Layout, LayoutErr> {
+        let pad = self.padding_needed_for(self.align());
+        let new_size = self.size().checked_add(pad)
+            .ok_or(LayoutErr { private: () })?;
+
+        Layout::from_size_align(new_size, self.align())
+    }
+
     /// Creates a layout describing the record for `n` instances of
     /// `self`, with a suitable amount of padding between each to
     /// ensure that each instance is given its requested size and
@@ -228,7 +233,7 @@ impl Layout {
     /// of each element in the array.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
         let padded_size = self.size().checked_add(self.padding_needed_for(self.align()))
@@ -248,13 +253,16 @@ impl Layout {
     /// will be properly aligned. Note that the result layout will
     /// satisfy the alignment properties of both `self` and `next`.
     ///
+    /// The resulting layout will be the same as that of a C struct containing
+    /// two fields with the layouts of `self` and `next`, in that order.
+    ///
     /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align(), next.align());
@@ -281,7 +289,7 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
         let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
@@ -293,29 +301,20 @@ impl Layout {
     /// padding is inserted, the alignment of `next` is irrelevant,
     /// and is not incorporated *at all* into the resulting layout.
     ///
-    /// Returns `(k, offset)`, where `k` is layout of the concatenated
-    /// record and `offset` is the relative location, in bytes, of the
-    /// start of the `next` embedded within the concatenated record
-    /// (assuming that the record itself starts at offset 0).
-    ///
-    /// (The `offset` is always the same as `self.size()`; we use this
-    ///  signature out of convenience in matching the signature of
-    ///  `extend`.)
-    ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
-    pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
+    pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutErr> {
         let new_size = self.size().checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
         let layout = Layout::from_size_align(new_size, self.align())?;
-        Ok((layout, self.size()))
+        Ok(layout)
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
         Layout::new::<T>()
@@ -446,7 +445,7 @@ pub unsafe trait GlobalAlloc {
     /// if the caller does not ensure that `layout` has non-zero size.
     ///
     /// (Extension subtraits might provide more specific bounds on
-    /// behavior, e.g. guarantee a sentinel address or a null pointer
+    /// behavior, e.g., guarantee a sentinel address or a null pointer
     /// in response to a zero-size allocation request.)
     ///
     /// The allocated block of memory may or may not be initialized.
@@ -514,11 +513,11 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
-    /// Shink or grow a block of memory to the given `new_size`.
+    /// Shrink or grow a block of memory to the given `new_size`.
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
-    /// referenced by `ptr` has been transferred to this alloctor.
+    /// referenced by `ptr` has been transferred to this allocator.
     /// The memory may or may not have been deallocated,
     /// and should be considered unusable (unless of course it was
     /// transferred back to the caller again via the return value of
@@ -541,10 +540,10 @@ pub unsafe trait GlobalAlloc {
     /// * `new_size` must be greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow (i.e. the rounded value must be less than `usize::MAX`).
+    ///   must not overflow (i.e., the rounded value must be less than `usize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on
-    /// behavior, e.g. guarantee a sentinel address or a null pointer
+    /// behavior, e.g., guarantee a sentinel address or a null pointer
     /// in response to a zero-size allocation request.)
     ///
     /// # Errors
@@ -607,7 +606,7 @@ pub unsafe trait GlobalAlloc {
 ///   whether to return `Err`, or to return `Ok` with some pointer.
 ///
 /// * If an `Alloc` implementation chooses to return `Ok` in this
-///   case (i.e. the pointer denotes a zero-sized inaccessible block)
+///   case (i.e., the pointer denotes a zero-sized inaccessible block)
 ///   then that returned pointer must be considered "currently
 ///   allocated". On such an allocator, *all* methods that take
 ///   currently-allocated pointers as inputs must accept these
@@ -642,7 +641,7 @@ pub unsafe trait GlobalAlloc {
 ///
 ///  * if a layout `k` fits a memory block (denoted by `ptr`)
 ///    currently allocated via an allocator `a`, then it is legal to
-///    use that layout to deallocate it, i.e. `a.dealloc(ptr, k);`.
+///    use that layout to deallocate it, i.e., `a.dealloc(ptr, k);`.
 ///
 /// # Unsafety
 ///
@@ -664,7 +663,7 @@ pub unsafe trait Alloc {
 
     // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
-    // e.g. in C, `malloc` of 0 will either return a null pointer or a
+    // e.g., in C, `malloc` of 0 will either return a null pointer or a
     // unique pointer, but will not have arbitrary undefined
     // behavior.
     // However in jemalloc for example,
@@ -679,7 +678,7 @@ pub unsafe trait Alloc {
     ///
     /// The returned block of storage may or may not have its contents
     /// initialized. (Extension subtraits might restrict this
-    /// behavior, e.g. to ensure initialization to particular sets of
+    /// behavior, e.g., to ensure initialization to particular sets of
     /// bit patterns.)
     ///
     /// # Safety
@@ -688,7 +687,7 @@ pub unsafe trait Alloc {
     /// if the caller does not ensure that `layout` has non-zero size.
     ///
     /// (Extension subtraits might provide more specific bounds on
-    /// behavior, e.g. guarantee a sentinel address or a null pointer
+    /// behavior, e.g., guarantee a sentinel address or a null pointer
     /// in response to a zero-size allocation request.)
     ///
     /// # Errors
@@ -765,7 +764,7 @@ pub unsafe trait Alloc {
     // realloc. alloc_excess, realloc_excess
 
     /// Returns a pointer suitable for holding data described by
-    /// a new layout with `layout`’s alginment and a size given
+    /// a new layout with `layout`’s alignment and a size given
     /// by `new_size`. To
     /// accomplish this, this may extend or shrink the allocation
     /// referenced by `ptr` to fit the new layout.
@@ -794,10 +793,10 @@ pub unsafe trait Alloc {
     /// * `new_size` must be greater than zero.
     ///
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow (i.e. the rounded value must be less than `usize::MAX`).
+    ///   must not overflow (i.e., the rounded value must be less than `usize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on
-    /// behavior, e.g. guarantee a sentinel address or a null pointer
+    /// behavior, e.g., guarantee a sentinel address or a null pointer
     /// in response to a zero-size allocation request.)
     ///
     /// # Errors

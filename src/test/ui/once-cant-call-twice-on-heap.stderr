@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `blk`
-  --> $DIR/once-cant-call-twice-on-heap.rs:19:5
+  --> $DIR/once-cant-call-twice-on-heap.rs:9:5
    |
 LL |     blk();
    |     --- value moved here

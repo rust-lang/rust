@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // force-host
 
 #![crate_type="dylib"]
@@ -43,11 +33,11 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
                                     &[],
                                     Edition::Edition2015,
                                     // not used...
-                                    NodeId::new(0));
+                                    NodeId::from_u32(0));
     let map = match TokenTree::parse(cx, &mbe_matcher, args.iter().cloned().collect()) {
         Success(map) => map,
-        Failure(_, tok) => {
-            panic!("expected Success, but got Failure: {}", parse_failure_msg(tok));
+        Failure(_, tok, msg) => {
+            panic!("expected Success, but got Failure: {} - {}", parse_failure_msg(tok), msg);
         }
         Error(_, s) => {
             panic!("expected Success, but got Error: {}", s);
@@ -70,7 +60,8 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
                     _ => unreachable!(),
                 }
             }).collect();
-            let arm = cx.arm(seq_sp, pats, cx.expr_bool(seq_sp, true));
+            let span = seq_sp.entire();
+            let arm = cx.arm(span, pats, cx.expr_bool(span, true));
 
             quote_expr!(cx,
                 match $matched_expr {

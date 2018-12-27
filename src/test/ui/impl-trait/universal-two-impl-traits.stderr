@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/universal-two-impl-traits.rs:15:9
+  --> $DIR/universal-two-impl-traits.rs:5:9
    |
 LL |     a = y; //~ ERROR mismatched
    |         ^ expected type parameter, found a different type parameter

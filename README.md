@@ -10,7 +10,7 @@ standard library, and documentation.
 
 Read ["Installation"] from [The Book].
 
-["Installation"]: https://doc.rust-lang.org/book/second-edition/ch01-01-installation.html
+["Installation"]: https://doc.rust-lang.org/book/ch01-01-installation.html
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Building from Source
@@ -125,9 +125,9 @@ you have a more recent version installed the build system doesn't understand
 then you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
 
-```
-CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
-python x.py build
+```batch
+> CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+> python x.py build
 ```
 
 #### Specifying an ABI
@@ -233,7 +233,7 @@ Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
 [#rust]: irc://irc.mozilla.org/rust
 [#rust-beginners]: irc://irc.mozilla.org/rust-beginners
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 
 ## License

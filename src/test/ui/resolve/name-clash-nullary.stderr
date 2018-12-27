@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/name-clash-nullary.rs:12:7
+  --> $DIR/name-clash-nullary.rs:2:7
    |
 LL |   let None: isize = 42; //~ ERROR mismatched types
    |       ^^^^ expected isize, found enum `std::option::Option`

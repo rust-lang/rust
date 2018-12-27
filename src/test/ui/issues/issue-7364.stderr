@@ -1,11 +1,11 @@
 error[E0010]: allocations are not allowed in statics
-  --> $DIR/issue-7364.rs:16:37
+  --> $DIR/issue-7364.rs:6:37
    |
 LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
    |                                     ^^^^^^^^^^^^^^^^^^^ allocation not allowed in statics
 
 error[E0277]: `std::cell::RefCell<isize>` cannot be shared between threads safely
-  --> $DIR/issue-7364.rs:16:1
+  --> $DIR/issue-7364.rs:6:1
    |
 LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::cell::RefCell<isize>` cannot be shared between threads safely

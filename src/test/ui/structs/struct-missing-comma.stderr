@@ -1,5 +1,5 @@
 error: expected `,`, or `}`, found `bar`
-  --> $DIR/struct-missing-comma.rs:16:13
+  --> $DIR/struct-missing-comma.rs:6:13
    |
 LL |     foo: u32 //~ expected `,`, or `}`, found `bar`
    |             ^ help: try adding a comma: `,`

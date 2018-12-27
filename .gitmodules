@@ -2,15 +2,9 @@
 	path = src/llvm
 	url = https://github.com/rust-lang/llvm.git
 	branch = master
-[submodule "src/jemalloc"]
-	path = src/jemalloc
-	url = https://github.com/rust-lang/jemalloc.git
 [submodule "src/rust-installer"]
 	path = src/tools/rust-installer
 	url = https://github.com/rust-lang/rust-installer.git
-[submodule "src/liblibc"]
-	path = src/liblibc
-	url = https://github.com/rust-lang/libc.git
 [submodule "src/doc/nomicon"]
 	path = src/doc/nomicon
 	url = https://github.com/rust-lang-nursery/nomicon.git
@@ -26,9 +20,6 @@
 [submodule "src/tools/rls"]
 	path = src/tools/rls
 	url = https://github.com/rust-lang-nursery/rls.git
-[submodule "src/libcompiler_builtins"]
-	path = src/libcompiler_builtins
-	url = https://github.com/rust-lang-nursery/compiler-builtins
 [submodule "src/tools/clippy"]
 	path = src/tools/clippy
 	url = https://github.com/rust-lang-nursery/rust-clippy.git
@@ -38,29 +29,29 @@
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/solson/miri.git
-[submodule "src/dlmalloc"]
-	path = src/dlmalloc
-	url = https://github.com/alexcrichton/dlmalloc-rs.git
 [submodule "src/doc/rust-by-example"]
 	path = src/doc/rust-by-example
-	url = https://github.com/rust-lang/rust-by-example
+	url = https://github.com/rust-lang/rust-by-example.git
 [submodule "src/llvm-emscripten"]
 	path = src/llvm-emscripten
-	url = https://github.com/rust-lang/llvm
+	url = https://github.com/rust-lang/llvm.git
 [submodule "src/stdsimd"]
 	path = src/stdsimd
-	url = https://github.com/rust-lang-nursery/stdsimd
+	url = https://github.com/rust-lang-nursery/stdsimd.git
 [submodule "src/tools/lld"]
 	path = src/tools/lld
 	url = https://github.com/rust-lang/lld.git
-[submodule "src/libbacktrace"]
-	path = src/libbacktrace
-	url = https://github.com/rust-lang-nursery/libbacktrace
 [submodule "src/tools/lldb"]
 	path = src/tools/lldb
-	url = https://github.com/rust-lang-nursery/lldb/
-	branch = rust-release-70
+	url = https://github.com/rust-lang-nursery/lldb.git
+	branch = rust-release-80-v2
 [submodule "src/tools/clang"]
 	path = src/tools/clang
-	url = https://github.com/rust-lang-nursery/clang/
-	branch = release_70
+	url = https://github.com/rust-lang-nursery/clang.git
+	branch = rust-release-80-v2
+[submodule "src/doc/rustc-guide"]
+	path = src/doc/rustc-guide
+	url = https://github.com/rust-lang/rustc-guide.git
+[submodule "src/doc/edition-guide"]
+	path = src/doc/edition-guide
+	url = https://github.com/rust-lang-nursery/edition-guide

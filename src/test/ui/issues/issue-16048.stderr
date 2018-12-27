@@ -1,5 +1,5 @@
 error[E0195]: lifetime parameters or bounds on method `get` do not match the trait declaration
-  --> $DIR/issue-16048.rs:31:11
+  --> $DIR/issue-16048.rs:21:11
    |
 LL |     fn get<'p, T : Test<'p>>(&self) -> T;
    |           ------------------ lifetimes in impl do not match this method in trait

@@ -1,11 +1,11 @@
 error: unreachable pattern
-  --> $DIR/issue-13727.rs:17:5
+  --> $DIR/issue-13727.rs:7:5
    |
 LL |     512 => print!("0b1111/n"),
    |     ^^^
    |
 note: lint level defined here
-  --> $DIR/issue-13727.rs:12:9
+  --> $DIR/issue-13727.rs:2:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^

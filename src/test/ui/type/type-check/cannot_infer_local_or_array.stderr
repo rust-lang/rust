@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/cannot_infer_local_or_array.rs:12:13
+  --> $DIR/cannot_infer_local_or_array.rs:2:13
    |
 LL |     let x = []; //~ ERROR type annotations needed
    |         -   ^^ cannot infer type

@@ -1,0 +1,28 @@
+warning: hidden lifetime parameters in types are deprecated
+  --> $DIR/reasons.rs:21:29
+   |
+LL |     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+   |                             ^^^^^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
+   |
+   = note: explicit anonymous lifetimes aid reasoning about ownership
+note: lint level defined here
+  --> $DIR/reasons.rs:5:9
+   |
+LL | #![warn(elided_lifetimes_in_paths,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable `Social_exchange_psychology` should have a snake case name such as `social_exchange_psychology`
+  --> $DIR/reasons.rs:30:9
+   |
+LL |     let Social_exchange_psychology = CheaterDetectionMechanism {};
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: people shouldn't have to change their usual style habits
+           to contribute to our project
+note: lint level defined here
+  --> $DIR/reasons.rs:9:5
+   |
+LL |     nonstandard_style,
+   |     ^^^^^^^^^^^^^^^^^
+   = note: #[warn(non_snake_case)] implied by #[warn(nonstandard_style)]
+

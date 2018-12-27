@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // rsbegin.o and rsend.o are the so called "compiler runtime startup objects".
 // They contain code needed to correctly initialize the compiler runtime.
 //
@@ -96,7 +86,7 @@ pub mod eh_frames {
     pub mod ms_init {
         // .CRT$X?? sections are roughly analogous to ELF's .init_array and .fini_array,
         // except that they exploit the fact that linker will sort them alphabitically,
-        // so e.g. sections with names between .CRT$XIA and .CRT$XIZ are guaranteed to be
+        // so e.g., sections with names between .CRT$XIA and .CRT$XIZ are guaranteed to be
         // placed between those two, without requiring any ordering of objects on the linker
         // command line.
         // Note that ordering of same-named sections from different objects is not guaranteed.

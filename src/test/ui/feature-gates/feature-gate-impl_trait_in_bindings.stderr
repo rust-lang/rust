@@ -1,0 +1,25 @@
+error: expected expression, found keyword `impl`
+  --> $DIR/feature-gate-impl_trait_in_bindings.rs:8:15
+   |
+LL |     let foo = impl Copy = 42;
+   |               ^^^^ expected expression
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-impl_trait_in_bindings.rs:1:12
+   |
+LL | const FOO: impl Copy = 42;
+   |            ^^^^^^^^^
+   |
+   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-impl_trait_in_bindings.rs:4:13
+   |
+LL | static BAR: impl Copy = 42;
+   |             ^^^^^^^^^
+   |
+   = help: add #![feature(impl_trait_in_bindings)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

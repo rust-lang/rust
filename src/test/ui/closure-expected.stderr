@@ -1,0 +1,12 @@
+error[E0277]: expected a `std::ops::FnOnce<()>` closure, found `{integer}`
+  --> $DIR/closure-expected.rs:3:15
+   |
+LL |     let y = x.or_else(4);
+   |               ^^^^^^^ expected an `FnOnce<()>` closure, found `{integer}`
+   |
+   = help: the trait `std::ops::FnOnce<()>` is not implemented for `{integer}`
+   = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

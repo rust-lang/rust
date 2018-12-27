@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `node`
-  --> $DIR/moves-based-on-type-cyclic-types-issue-4821.rs:23:13
+  --> $DIR/moves-based-on-type-cyclic-types-issue-4821.rs:13:13
    |
 LL |         Some(right) => consume(right),
    |              ----- value moved here

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module provides constants which are specific to the implementation
 //! of the `f32` floating point data type.
 //!
@@ -445,7 +435,7 @@ impl f32 {
     /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
     ///
     /// Rather than trying to preserve signaling-ness cross-platform, this
-    /// implementation favours preserving the exact bits. This means that
+    /// implementation favors preserving the exact bits. This means that
     /// any payloads encoded in NaNs will be preserved even if the result of
     /// this method is sent over the network from an x86 machine to a MIPS one.
     ///

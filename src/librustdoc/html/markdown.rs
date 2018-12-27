@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Markdown formatting for rustdoc
 //!
 //! This module implements markdown formatting through the pulldown-cmark
@@ -29,13 +19,15 @@
 
 #![allow(non_camel_case_types)]
 
+use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::{self, Write};
 use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
+use syntax::edition::Edition;
 
 use html::toc::TocBuilder;
 use html::highlight;
@@ -169,6 +161,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
         let event = self.inner.next();
         let compile_fail;
         let ignore;
+        let edition;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
             let parse_result = LangString::parse(&lang, self.check_error_codes);
             if !parse_result.rust {
@@ -176,6 +169,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
             }
             compile_fail = parse_result.compile_fail;
             ignore = parse_result.ignore;
+            edition = parse_result.edition;
         } else {
             return event;
         }
@@ -211,6 +205,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 } else {
                     ""
                 };
+
+                let edition_string = if let Some(e @ Edition::Edition2018) = edition {
+                    format!("&amp;edition={}{}", e,
+                            if channel == "&amp;version=nightly" { "" }
+                            else { "&amp;version=nightly" })
+                } else if let Some(e) = edition {
+                    format!("&amp;edition={}", e)
+                } else {
+                    "".to_owned()
+                };
+
                 // These characters don't need to be escaped in a URI.
                 // FIXME: use a library function for percent encoding.
                 fn dont_escape(c: u8) -> bool {
@@ -230,26 +235,44 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     }
                 }
                 Some(format!(
-                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
-                    url, test_escaped, channel
+                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
+                    url, test_escaped, channel, edition_string
                 ))
             });
+
             let tooltip = if ignore {
-                Some(("This example is not tested", "ignore"))
+                Some(("This example is not tested".to_owned(), "ignore"))
             } else if compile_fail {
-                Some(("This example deliberately fails to compile", "compile_fail"))
+                Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+            } else if let Some(e) = edition {
+                Some((format!("This code runs with edition {}", e), "edition"))
             } else {
                 None
             };
-            s.push_str(&highlight::render_with_highlighting(
-                        &text,
-                        Some(&format!("rust-example-rendered{}",
-                                      if ignore { " ignore" }
-                                      else if compile_fail { " compile_fail" }
-                                      else { "" })),
-                        playground_button.as_ref().map(String::as_str),
-                        tooltip));
-            Some(Event::Html(s.into()))
+
+            if let Some((s1, s2)) = tooltip {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    Some((s1.as_str(), s2))));
+                Some(Event::Html(s.into()))
+            } else {
+                s.push_str(&highlight::render_with_highlighting(
+                    &text,
+                    Some(&format!("rust-example-rendered{}",
+                                  if ignore { " ignore" }
+                                  else if compile_fail { " compile_fail" }
+                                  else if edition.is_some() { " edition " }
+                                  else { "" })),
+                    playground_button.as_ref().map(String::as_str),
+                    None));
+                Some(Event::Html(s.into()))
+            }
         })
     }
 }
@@ -366,7 +389,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
 fn check_if_allowed_tag(t: &Tag) -> bool {
     match *t {
         Tag::Paragraph
-        | Tag::CodeBlock(_)
         | Tag::Item
         | Tag::Emphasis
         | Tag::Strong
@@ -387,29 +409,36 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
         if !self.started {
             self.started = true;
         }
-        let event = self.inner.next();
-        let mut is_start = true;
-        let is_allowed_tag = match event {
-            Some(Event::Start(ref c)) => {
-                self.depth += 1;
-                check_if_allowed_tag(c)
-            }
-            Some(Event::End(ref c)) => {
-                self.depth -= 1;
-                is_start = false;
-                check_if_allowed_tag(c)
-            }
-            _ => true,
-        };
-        if is_allowed_tag == false {
-            if is_start {
-                Some(Event::Start(Tag::Paragraph))
+        while let Some(event) = self.inner.next() {
+            let mut is_start = true;
+            let is_allowed_tag = match event {
+                Event::Start(Tag::CodeBlock(_)) | Event::End(Tag::CodeBlock(_)) => {
+                    return None;
+                }
+                Event::Start(ref c) => {
+                    self.depth += 1;
+                    check_if_allowed_tag(c)
+                }
+                Event::End(ref c) => {
+                    self.depth -= 1;
+                    is_start = false;
+                    check_if_allowed_tag(c)
+                }
+                _ => {
+                    true
+                }
+            };
+            return if is_allowed_tag == false {
+                if is_start {
+                    Some(Event::Start(Tag::Paragraph))
+                } else {
+                    Some(Event::End(Tag::Paragraph))
+                }
             } else {
-                Some(Event::End(Tag::Paragraph))
-            }
-        } else {
-            event
+                Some(event)
+            };
         }
+        None
     }
 }
 
@@ -417,14 +446,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 /// references.
 struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    footnotes: HashMap<String, (Vec<Event<'a>>, u16)>,
+    footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
         Footnotes {
             inner: iter,
-            footnotes: HashMap::new(),
+            footnotes: FxHashMap::default(),
         }
     }
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
@@ -499,8 +528,10 @@ impl fmt::Display for TestableCodeError {
     }
 }
 
-pub fn find_testable_code(
-    doc: &str, tests: &mut test::Collector, error_codes: ErrorCodes,
+pub fn find_testable_code<T: test::Tester>(
+    doc: &str,
+    tests: &mut T,
+    error_codes: ErrorCodes,
 ) -> Result<(), TestableCodeError> {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
@@ -576,6 +607,7 @@ pub struct LangString {
     pub compile_fail: bool,
     pub error_codes: Vec<String>,
     pub allow_fail: bool,
+    pub edition: Option<Edition>
 }
 
 impl LangString {
@@ -590,6 +622,7 @@ impl LangString {
             compile_fail: false,
             error_codes: Vec::new(),
             allow_fail: false,
+            edition: None,
         }
     }
 
@@ -623,6 +656,11 @@ impl LangString {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
+                }
+                x if allow_error_code_check && x.starts_with("edition") => {
+                    // allow_error_code_check is true if we're on nightly, which
+                    // is needed for edition support
+                    data.edition = x[7..].parse::<Edition>().ok();
                 }
                 x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
                     if x[1..].parse::<u32>().is_ok() {
@@ -758,6 +796,10 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
 }
 
 pub fn plain_summary_line(md: &str) -> String {
+    plain_summary_line_full(md, false)
+}
+
+pub fn plain_summary_line_full(md: &str, limit_length: bool) -> String {
     struct ParserWrapper<'a> {
         inner: Parser<'a>,
         is_in: isize,
@@ -804,7 +846,21 @@ pub fn plain_summary_line(md: &str) -> String {
             s.push_str(&t);
         }
     }
-    s
+    if limit_length && s.chars().count() > 60 {
+        let mut len = 0;
+        let mut ret = s.split_whitespace()
+                       .take_while(|p| {
+                           // + 1 for the added character after the word.
+                           len += p.chars().count() + 1;
+                           len < 60
+                       })
+                       .collect::<Vec<_>>()
+                       .join(" ");
+        ret.push('…');
+        ret
+    } else {
+        s
+    }
 }
 
 pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
@@ -863,9 +919,9 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     links
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, Debug)]
 pub struct IdMap {
-    map: HashMap<String, usize>,
+    map: FxHashMap<String, usize>,
 }
 
 impl IdMap {
@@ -880,7 +936,7 @@ impl IdMap {
     }
 
     pub fn reset(&mut self) {
-        self.map = HashMap::new();
+        self.map = FxHashMap::default();
     }
 
     pub fn derive(&mut self, candidate: String) -> String {
@@ -924,12 +980,14 @@ mod tests {
     use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
     use super::plain_summary_line;
     use std::cell::RefCell;
+    use syntax::edition::Edition;
 
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
-            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
+            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>,
+             edition: Option<Edition>) {
             assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
                 should_panic,
                 no_run,
@@ -940,6 +998,7 @@ mod tests {
                 error_codes,
                 original: s.to_owned(),
                 allow_fail,
+                edition,
             })
         }
 
@@ -947,23 +1006,26 @@ mod tests {
             Vec::new()
         }
 
-        // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
-        //                       | allow_fail | error_codes
-        t("",                      false,        false,  false,  true,  false, false, false, v());
-        t("rust",                  false,        false,  false,  true,  false, false, false, v());
-        t("sh",                    false,        false,  false,  false, false, false, false, v());
-        t("ignore",                false,        false,  true,   true,  false, false, false, v());
-        t("should_panic",          true,         false,  false,  true,  false, false, false, v());
-        t("no_run",                false,        true,   false,  true,  false, false, false, v());
-        t("test_harness",          false,        false,  false,  true,  true,  false, false, v());
-        t("compile_fail",          false,        true,   false,  true,  false, true,  false, v());
-        t("allow_fail",            false,        false,  false,  true,  false, false, true,  v());
-        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, v());
-        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, v());
-        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, v());
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, v());
-        t("text, no_run",          false,        true,   false,  false, false, false, false, v());
-        t("text,no_run",           false,        true,   false,  false, false, false, false, v());
+        // ignore-tidy-linelength
+        // marker                | should_panic | no_run | ignore | rust | test_harness
+        //                       | compile_fail | allow_fail | error_codes | edition
+        t("",                      false,         false,   false,   true,  false, false, false, v(), None);
+        t("rust",                  false,         false,   false,   true,  false, false, false, v(), None);
+        t("sh",                    false,         false,   false,   false, false, false, false, v(), None);
+        t("ignore",                false,         false,   true,    true,  false, false, false, v(), None);
+        t("should_panic",          true,          false,   false,   true,  false, false, false, v(), None);
+        t("no_run",                false,         true,    false,   true,  false, false, false, v(), None);
+        t("test_harness",          false,         false,   false,   true,  true,  false, false, v(), None);
+        t("compile_fail",          false,         true,    false,   true,  false, true,  false, v(), None);
+        t("allow_fail",            false,         false,   false,   true,  false, false, true,  v(), None);
+        t("{.no_run .example}",    false,         true,    false,   true,  false, false, false, v(), None);
+        t("{.sh .should_panic}",   true,          false,   false,   false, false, false, false, v(), None);
+        t("{.example .rust}",      false,         false,   false,   true,  false, false, false, v(), None);
+        t("{.test_harness .rust}", false,         false,   false,   true,  true,  false, false, v(), None);
+        t("text, no_run",          false,         true,    false,   false, false, false, false, v(), None);
+        t("text,no_run",           false,         true,    false,   false, false, false, false, v(), None);
+        t("edition2015",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2015));
+        t("edition2018",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2018));
     }
 
     #[test]

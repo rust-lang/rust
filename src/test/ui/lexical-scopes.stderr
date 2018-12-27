@@ -1,5 +1,5 @@
 error[E0574]: expected struct, variant or union type, found type parameter `T`
-  --> $DIR/lexical-scopes.rs:13:13
+  --> $DIR/lexical-scopes.rs:3:13
    |
 LL |     let t = T { i: 0 }; //~ ERROR expected struct, variant or union type, found type parameter `T`
    |             ^ not a struct, variant or union type
@@ -9,7 +9,7 @@ LL | use T;
    |
 
 error[E0599]: no function or associated item named `f` found for type `Foo` in the current scope
-  --> $DIR/lexical-scopes.rs:20:5
+  --> $DIR/lexical-scopes.rs:10:5
    |
 LL |     Foo::f(); //~ ERROR no function or associated item named `f`
    |     ^^^^^^ function or associated item not found in `Foo`

@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `y.0` as mutable more than once at a time
-  --> $DIR/borrowck-anon-fields-variant.rs:44:14
+  --> $DIR/borrowck-anon-fields-variant.rs:34:14
    |
 LL |       Foo::Y(ref mut a, _) => a,
    |              --------- first mutable borrow occurs here

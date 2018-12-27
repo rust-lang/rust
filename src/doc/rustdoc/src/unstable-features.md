@@ -1,6 +1,6 @@
 # Unstable features
 
-Rustdoc is under active developement, and like the Rust compiler, some features are only available
+Rustdoc is under active development, and like the Rust compiler, some features are only available
 on the nightly releases. Some of these are new and need some more testing before they're able to get
 released to the world at large, and some of them are tied to features in the Rust compiler that are
 themselves unstable. Several features here require a matching `#![feature(...)]` attribute to
@@ -106,27 +106,25 @@ The `#[doc(cfg(...))]` attribute has another effect: When Rustdoc renders docume
 item, it will be accompanied by a banner explaining that the item is only available on certain
 platforms.
 
-As mentioned earlier, getting the items to Rustdoc requires some extra preparation. The standard
-library adds a `--cfg dox` flag to every Rustdoc command, but the same thing can be accomplished by
-adding a feature to your Cargo.toml and adding `--feature dox` (or whatever you choose to name the
-feature) to your `cargo doc` calls.
+For Rustdoc to document an item, it needs to see it, regardless of what platform it's currently
+running on. To aid this, Rustdoc sets the flag `#[cfg(rustdoc)]` when running on your crate.
+Combining this with the target platform of a given item allows it to appear when building your crate
+normally on that platform, as well as when building documentation anywhere.
 
-Either way, once you create an environment for the documentation, you can start to augment your
-`#[cfg]` attributes to allow both the target platform *and* the documentation configuration to leave
-the item in. For example, `#[cfg(any(windows, feature = "dox"))]` will preserve the item either on
-Windows or during the documentation process. Then, adding a new attribute `#[doc(cfg(windows))]`
-will tell Rustdoc that the item is supposed to be used on Windows. For example:
+For example, `#[cfg(any(windows, rustdoc))]` will preserve the item either on Windows or during the
+documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
+the item is supposed to be used on Windows. For example:
 
 ```rust
 #![feature(doc_cfg)]
 
 /// Token struct that can only be used on Windows.
-#[cfg(any(windows, feature = "dox"))]
+#[cfg(any(windows, rustdoc))]
 #[doc(cfg(windows))]
 pub struct WindowsToken;
 
 /// Token struct that can only be used on Unix.
-#[cfg(any(unix, feature = "dox"))]
+#[cfg(any(unix, rustdoc))]
 #[doc(cfg(unix))]
 pub struct UnixToken;
 ```
@@ -198,6 +196,22 @@ issue][issue-include].
 
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
+
+### Add aliases for an item in documentation search
+
+This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
+`doc(alias)` attribute. Example:
+
+```rust,no_run
+#![feature(doc_alias)]
+
+#[doc(alias = "x")]
+#[doc(alias = "big")]
+pub struct BigX;
+```
+
+Then, when looking for it through the `rustdoc` search, if you enter "x" or
+"big", search will show the `BigX` struct first.
 
 ## Unstable command-line arguments
 
@@ -348,18 +362,20 @@ details.
 
 [issue-display-warnings]: https://github.com/rust-lang/rust/issues/41574
 
-### `--edition`: control the edition of docs and doctests
+### `--extern-html-root-url`: control how rustdoc links to non-local crates
 
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs -Z unstable-options --edition 2018
-$ rustdoc --test src/lib.rs -Z unstable-options --edition 2018
+$ rustdoc src/lib.rs -Z unstable-options --extern-html-root-url some-crate=https://example.com/some-crate/1.0.1
 ```
 
-This flag allows rustdoc to treat your rust code as the given edition. It will compile doctests with
-the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
-(the first edition).
+Ordinarily, when rustdoc wants to link to a type from a different crate, it looks in two places:
+docs that already exist in the output directory, or the `#![doc(doc_html_root)]` set in the other
+crate. However, if you want to link to docs that exist in neither of those places, you can use these
+flags to control that behavior. When the `--extern-html-root-url` flag is given with a name matching
+one of your dependencies, rustdoc use that URL for those docs. Keep in mind that if those docs exist
+in the output directory, those local docs will still override this flag.
 
 ### `-Z force-unstable-if-unmarked`
 
@@ -374,18 +390,30 @@ This is an internal flag intended for the standard library and compiler that app
 allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
 library, as an equivalent command-line argument is provided to `rustc` when building those crates.
 
-### `doc_alias` feature
+### `--index-page`: provide a top-level landing page for docs
 
-This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
-`doc(alias)` attribute. Example:
+This feature allows you to generate an index-page with a given markdown file. A good example of it
+is the [rust documentation index](https://doc.rust-lang.org/index.html).
 
-```rust,no_run
-#![feature(doc_alias)]
+With this, you'll have a page which you can custom as much as you want at the top of your crates.
 
-#[doc(alias = "x")]
-#[doc(alias = "big")]
-pub struct BigX;
+Using `index-page` option enables `enable-index-page` option as well.
+
+### `--enable-index-page`: generate a default index page for docs
+
+This feature allows the generation of a default index-page which lists the generated crates.
+
+### `--static-root-path`: control how static files are loaded in HTML output
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --static-root-path '/cache/'
 ```
 
-Then, when looking for it through the `rustdoc` search, if you enter "x" or
-"big", search will show the `BigX` struct first.
+This flag controls how rustdoc links to its static files on HTML pages. If you're hosting a lot of
+crates' docs generated by the same version of rustdoc, you can use this flag to cache rustdoc's CSS,
+JavaScript, and font files in a single location, rather than duplicating it once per "doc root"
+(grouping of crate docs generated into the same output directory, like with `cargo doc`). Per-crate
+files like the search index will still load from the documentation root, but anything that gets
+renamed with `--resource-suffix` will load from the given path.

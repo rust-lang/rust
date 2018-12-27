@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // A simpler variant of `outlives-from-argument` where cells are
 // passed by value.
 //
@@ -44,10 +34,10 @@ fn demand_y<'x, 'y>(_outlives1: Cell<&&'x u32>, _outlives2: Cell<&'y &u32>, _y: 
 #[rustc_regions]
 fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
-        //~^ ERROR unsatisfied lifetime constraints
 
         // Only works if 'x: 'y:
-        demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to nll
+        demand_y(outlives1, outlives2, x.get())
+        //~^ ERROR unsatisfied lifetime constraints
     });
 }
 

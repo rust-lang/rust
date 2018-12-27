@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{
     Direction, INCOMING, Graph, NodeIndex, OUTGOING
@@ -25,7 +15,7 @@ impl DepGraphQuery {
                edges: &[(DepNode, DepNode)])
                -> DepGraphQuery {
         let mut graph = Graph::with_capacity(nodes.len(), edges.len());
-        let mut indices = FxHashMap();
+        let mut indices = FxHashMap::default();
         for node in nodes {
             indices.insert(node.clone(), graph.add_node(node.clone()));
         }

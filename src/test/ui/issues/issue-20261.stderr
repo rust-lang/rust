@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-20261.rs:14:11
+  --> $DIR/issue-20261.rs:4:11
    |
 LL |     for (ref i,) in [].iter() {
    |                     --------- the element type for this iterator is not specified

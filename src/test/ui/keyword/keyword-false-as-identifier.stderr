@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/keyword-false-as-identifier.rs:12:9
+  --> $DIR/keyword-false-as-identifier.rs:2:9
    |
 LL |     let false = 22; //~ error: mismatched types
    |         ^^^^^ expected integral variable, found bool

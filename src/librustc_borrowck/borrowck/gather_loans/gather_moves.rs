@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Computes moves.
 
 use borrowck::*;
@@ -24,7 +14,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::*;
-use rustc::hir::map::Node::*;
+use rustc::hir::Node;
 
 struct GatherMoveInfo<'c, 'tcx: 'c> {
     id: hir::ItemLocalId,
@@ -57,10 +47,10 @@ pub enum PatternSource<'tcx> {
 /// with a reference to the let
 fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> PatternSource<'tcx> {
 
-    let parent = tcx.hir.get_parent_node(pat.id);
+    let parent = tcx.hir().get_parent_node(pat.id);
 
-    match tcx.hir.get(parent) {
-        NodeExpr(ref e) => {
+    match tcx.hir().get(parent) {
+        Node::Expr(ref e) => {
             // the enclosing expression must be a `match` or something else
             assert!(match e.node {
                         ExprKind::Match(..) => true,
@@ -68,7 +58,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
                     });
             PatternSource::MatchExpr(e)
         }
-        NodeLocal(local) => PatternSource::LetDecl(local),
+        Node::Local(local) => PatternSource::LetDecl(local),
         _ => return PatternSource::Other,
 
     }
@@ -79,7 +69,7 @@ pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              var_id: ast::NodeId,
                              var_ty: Ty<'tcx>) {
     let loan_path = Rc::new(LoanPath::new(LpVar(var_id), var_ty));
-    let hir_id = bccx.tcx.hir.node_to_hir_id(var_id);
+    let hir_id = bccx.tcx.hir().node_to_hir_id(var_id);
     move_data.add_move(bccx.tcx, loan_path, hir_id.local_id, Declared);
 }
 
@@ -177,6 +167,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     match cmt.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
+        Categorization::ThreadLocal(..) |
         Categorization::StaticItem => {
             Some(cmt.clone())
         }
@@ -191,14 +182,14 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Interior(ref b, mc::InteriorField(_)) |
         Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern)) => {
             match b.ty.sty {
-                ty::TyAdt(def, _) => {
+                ty::Adt(def, _) => {
                     if def.has_dtor(bccx.tcx) {
                         Some(cmt.clone())
                     } else {
                         check_and_get_illegal_move_origin(bccx, b)
                     }
                 }
-                ty::TySlice(..) => Some(cmt.clone()),
+                ty::Slice(..) => Some(cmt.clone()),
                 _ => {
                     check_and_get_illegal_move_origin(bccx, b)
                 }

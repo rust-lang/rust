@@ -1,0 +1,12 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-30438-b.rs:13:9
+   |
+LL |         &Test { s: &self.s}
+   |         ^------------------
+   |         ||
+   |         |temporary value created here
+   |         returns a reference to data owned by the current function
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0515`.

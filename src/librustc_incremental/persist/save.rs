@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
@@ -162,7 +152,7 @@ fn encode_dep_graph(tcx: TyCtxt,
         let (total_edge_reads, total_duplicate_edge_reads) =
             tcx.dep_graph.edge_deduplication_data();
 
-        let mut counts: FxHashMap<_, Stat> = FxHashMap();
+        let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
 
         for (i, &node) in serialized_graph.nodes.iter_enumerated() {
             let stat = counts.entry(node.kind).or_insert(Stat {

@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-vec-local.rs:21:1
+  --> $DIR/coherence-vec-local.rs:11:1
    |
 LL | impl Remote for Vec<Local> { } //~ ERROR E0117
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate

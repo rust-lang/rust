@@ -1,0 +1,11 @@
+error[E0382]: use of moved value
+  --> $DIR/issue-53807.rs:4:21
+   |
+LL |         if let Some(thing) = maybe {
+   |                     ^^^^^ value moved here, in previous iteration of loop
+   |
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

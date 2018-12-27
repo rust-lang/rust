@@ -1,17 +1,6 @@
-// Copyright 2012-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use std::collections::HashSet;
-use std::fs::File;
+use rustc_data_structures::fx::FxHashSet;
+use std::fs;
 use std::hash::{Hash, Hasher};
-use std::io::Read;
 use std::path::Path;
 
 use errors::Handler;
@@ -31,7 +20,7 @@ macro_rules! try_something {
 #[derive(Debug, Clone, Eq)]
 pub struct CssPath {
     pub name: String,
-    pub children: HashSet<CssPath>,
+    pub children: FxHashSet<CssPath>,
 }
 
 // This PartialEq implementation IS NOT COMMUTATIVE!!!
@@ -66,7 +55,7 @@ impl CssPath {
     fn new(name: String) -> CssPath {
         CssPath {
             name,
-            children: HashSet::new(),
+            children: FxHashSet::default(),
         }
     }
 }
@@ -205,13 +194,13 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
              .replace("\t", " ")
              .replace("{", "")
              .replace("}", "")
-             .split(" ")
+             .split(' ')
              .filter(|s| s.len() > 0)
              .collect::<Vec<&str>>()
              .join(" ")
 }
 
-fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> HashSet<CssPath> {
+fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
     let mut paths = Vec::with_capacity(50);
 
     while *pos < events.len() {
@@ -278,12 +267,9 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
 pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath, diag: &Handler)
     -> (bool, Vec<String>)
 {
-    let mut file = try_something!(File::open(f), diag, (false, Vec::new()));
-    let mut data = Vec::with_capacity(1000);
-
-    try_something!(file.read_to_end(&mut data), diag, (false, Vec::new()));
+    let data = try_something!(fs::read(f), diag, (false, vec![]));
     let paths = load_css_paths(&data);
-    let mut ret = Vec::new();
+    let mut ret = vec![];
     get_differences(against, &paths, &mut ret);
     (true, ret)
 }

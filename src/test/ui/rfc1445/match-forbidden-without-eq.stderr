@@ -1,11 +1,11 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/match-forbidden-without-eq.rs:23:9
+  --> $DIR/match-forbidden-without-eq.rs:13:9
    |
 LL |         FOO => { }
    |         ^^^
 
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-forbidden-without-eq.rs:30:9
+  --> $DIR/match-forbidden-without-eq.rs:20:9
    |
 LL |         f32::INFINITY => { }
    |         ^^^^^^^^^^^^^

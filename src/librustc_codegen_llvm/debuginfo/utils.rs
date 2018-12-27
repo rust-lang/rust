@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Utility Functions.
 
 use super::{CrateDebugContext};
@@ -19,13 +9,14 @@ use rustc::ty::DefIdTree;
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilder, DIDescriptor, DIArray};
 use common::{CodegenCx};
+use rustc_codegen_ssa::traits::*;
 
 use syntax_pos::{self, Span};
 
 pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
 {
     // The is_local_to_unit flag indicates whether a function is local to the
-    // current compilation unit (i.e. if it is *static* in the C-sense). The
+    // current compilation unit (i.e., if it is *static* in the C-sense). The
     // *reachable* set should provide a good approximation of this, as it
     // contains everything that might leak out of the current crate (by being
     // externally visible or by being inlined into something externally
@@ -47,7 +38,7 @@ pub fn create_DIArray(
 
 /// Return syntax_pos::Loc corresponding to the beginning of the span
 pub fn span_start(cx: &CodegenCx, span: Span) -> syntax_pos::Loc {
-    cx.sess().codemap().lookup_char_pos(span.lo())
+    cx.sess().source_map().lookup_char_pos(span.lo())
 }
 
 #[inline]

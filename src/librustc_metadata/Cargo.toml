@@ -11,13 +11,13 @@ crate-type = ["dylib"]
 [dependencies]
 flate2 = "1.0"
 log = "0.4"
-proc_macro = { path = "../libproc_macro" }
+memmap = "0.6"
 rustc = { path = "../librustc" }
-rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
+rustc_target = { path = "../librustc_target" }
 serialize = { path = "../libserialize" }
+stable_deref_trait = "1.0.0"
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
-rustc_metadata_utils = { path = "../librustc_metadata_utils" }

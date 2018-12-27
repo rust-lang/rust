@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![allow(non_snake_case)]
 
 register_long_diagnostics! {
@@ -606,7 +596,7 @@ static X: i32 = 1;
 const C: i32 = 2;
 
 // these three are not allowed:
-const CR: &'static mut i32 = &mut C;
+const CR: &mut i32 = &mut C;
 static STATIC_REF: &'static mut i32 = &mut X;
 static CONST_REF: &'static mut i32 = &mut C;
 ```
@@ -663,24 +653,6 @@ fn main() {
     let x = FOO.func(); // or even here!
 }
 ```
-"##,
-
-E0022: r##"
-Constant functions are not allowed to mutate anything. Thus, binding to an
-argument with a mutable pattern is not allowed. For example,
-
-```compile_fail
-const fn foo(mut x: u8) {
-    // do stuff
-}
-```
-
-Is incorrect because the function body may not mutate `x`.
-
-Remove any mutable bindings from the argument list to fix this error. In case
-you need to mutate the argument, try lazily initializing a global variable
-instead of using a `const fn`, or refactoring the code to a functional style to
-avoid mutation if possible.
 "##,
 
 E0133: r##"
@@ -1181,7 +1153,7 @@ You can also have this error while using a cell type:
 use std::cell::Cell;
 
 const A: Cell<usize> = Cell::new(1);
-const B: &'static Cell<usize> = &A;
+const B: &Cell<usize> = &A;
 // error: cannot borrow a constant which may contain interior mutability,
 //        create a static instead
 
@@ -1189,10 +1161,10 @@ const B: &'static Cell<usize> = &A;
 struct C { a: Cell<usize> }
 
 const D: C = C { a: Cell::new(1) };
-const E: &'static Cell<usize> = &D.a; // error
+const E: &Cell<usize> = &D.a; // error
 
 // or:
-const F: &'static C = &D; // error
+const F: &C = &D; // error
 ```
 
 This is because cell types do operations that are not thread-safe. Due to this,
@@ -1991,6 +1963,26 @@ fn main() {
 ```
 "##,
 
+E0510: r##"
+Cannot mutate place in this match guard.
+
+When matching on a variable it cannot be mutated in the match guards, as this
+could cause the match to be non-exhaustive:
+
+```compile_fail,E0510
+#![feature(nll, bind_by_move_pattern_guards)]
+let mut x = Some(0);
+match x {
+    None => (),
+    Some(v) if { x = None; false } => (),
+    Some(_) => (), // No longer matches
+}
+```
+
+Here executing `x = None` would modify the value being matched and require us
+to go "back in time" to the `None` arm.
+"##,
+
 E0579: r##"
 When matching against an exclusive range, the compiler verifies that the range
 is non-empty. Exclusive range patterns include the start point but not the end
@@ -2005,6 +1997,46 @@ match 5u32 {
     1 .. 2 => {}
     // This range is empty, and the compiler can tell.
     5 .. 5 => {}
+}
+```
+"##,
+
+E0515: r##"
+Cannot return value that references local variable
+
+Local variables, function parameters and temporaries are all dropped before the
+end of the function body. So a reference to them cannot be returned.
+
+```compile_fail,E0515
+#![feature(nll)]
+fn get_dangling_reference() -> &'static i32 {
+    let x = 0;
+    &x
+}
+```
+
+```compile_fail,E0515
+#![feature(nll)]
+use std::slice::Iter;
+fn get_dangling_iterator<'a>() -> Iter<'a, i32> {
+    let v = vec![1, 2, 3];
+    v.iter()
+}
+```
+
+Consider returning an owned value instead:
+
+```
+use std::vec::IntoIter;
+
+fn get_integer() -> i32 {
+    let x = 0;
+    x
+}
+
+fn get_owned_iterator() -> IntoIter<i32> {
+    let v = vec![1, 2, 3];
+    v.into_iter()
 }
 ```
 "##,
@@ -2187,6 +2219,148 @@ fn main() {
 ```
 "##,
 
+E0713: r##"
+This error occurs when an attempt is made to borrow state past the end of the
+lifetime of a type that implements the `Drop` trait.
+
+Example of erroneous code:
+
+```compile_fail,E0713
+#![feature(nll)]
+
+pub struct S<'a> { data: &'a mut String }
+
+impl<'a> Drop for S<'a> {
+    fn drop(&mut self) { self.data.push_str("being dropped"); }
+}
+
+fn demo<'a>(s: S<'a>) -> &'a mut String { let p = &mut *s.data; p }
+```
+
+Here, `demo` tries to borrow the string data held within its
+argument `s` and then return that borrow. However, `S` is
+declared as implementing `Drop`.
+
+Structs implementing the `Drop` trait have an implicit destructor that
+gets called when they go out of scope. This destructor gets exclusive
+access to the fields of the struct when it runs.
+
+This means that when `s` reaches the end of `demo`, its destructor
+gets exclusive access to its `&mut`-borrowed string data.  allowing
+another borrow of that string data (`p`), to exist across the drop of
+`s` would be a violation of the principle that `&mut`-borrows have
+exclusive, unaliased access to their referenced data.
+
+This error can be fixed by changing `demo` so that the destructor does
+not run while the string-data is borrowed; for example by taking `S`
+by reference:
+
+```
+#![feature(nll)]
+
+pub struct S<'a> { data: &'a mut String }
+
+impl<'a> Drop for S<'a> {
+    fn drop(&mut self) { self.data.push_str("being dropped"); }
+}
+
+fn demo<'a>(s: &'a mut S<'a>) -> &'a mut String { let p = &mut *(*s).data; p }
+```
+
+Note that this approach needs a reference to S with lifetime `'a`.
+Nothing shorter than `'a` will suffice: a shorter lifetime would imply
+that after `demo` finishes executing, something else (such as the
+destructor!) could access `s.data` after the end of that shorter
+lifetime, which would again violate the `&mut`-borrow's exclusive
+access.
+"##,
+
+E0716: r##"
+This error indicates that a temporary value is being dropped
+while a borrow is still in active use.
+
+Erroneous code example:
+
+```compile_fail,E0716
+# #![feature(nll)]
+fn foo() -> i32 { 22 }
+fn bar(x: &i32) -> &i32 { x }
+let p = bar(&foo());
+         // ------ creates a temporary
+let q = *p;
+```
+
+Here, the expression `&foo()` is borrowing the expression
+`foo()`. As `foo()` is call to a function, and not the name of
+a variable, this creates a **temporary** -- that temporary stores
+the return value from `foo()` so that it can be borrowed.
+So you might imagine that `let p = bar(&foo())` is equivalent
+to this:
+
+```compile_fail,E0597
+# fn foo() -> i32 { 22 }
+# fn bar(x: &i32) -> &i32 { x }
+let p = {
+  let tmp = foo(); // the temporary
+  bar(&tmp)
+}; // <-- tmp is freed as we exit this block
+let q = p;
+```
+
+Whenever a temporary is created, it is automatically dropped (freed)
+according to fixed rules. Ordinarily, the temporary is dropped
+at the end of the enclosing statement -- in this case, after the `let`.
+This is illustrated in the example above by showing that `tmp` would
+be freed as we exit the block.
+
+To fix this problem, you need to create a local variable
+to store the value in rather than relying on a temporary.
+For example, you might change the original program to
+the following:
+
+```
+fn foo() -> i32 { 22 }
+fn bar(x: &i32) -> &i32 { x }
+let value = foo(); // dropped at the end of the enclosing block
+let p = bar(&value);
+let q = *p;
+```
+
+By introducing the explicit `let value`, we allocate storage
+that will last until the end of the enclosing block (when `value`
+goes out of scope). When we borrow `&value`, we are borrowing a
+local variable that already exists, and hence no temporary is created.
+
+Temporaries are not always dropped at the end of the enclosing
+statement. In simple cases where the `&` expression is immediately
+stored into a variable, the compiler will automatically extend
+the lifetime of the temporary until the end of the enclosinb
+block. Therefore, an alternative way to fix the original
+program is to write `let tmp = &foo()` and not `let tmp = foo()`:
+
+```
+fn foo() -> i32 { 22 }
+fn bar(x: &i32) -> &i32 { x }
+let value = &foo();
+let p = bar(value);
+let q = *p;
+```
+
+Here, we are still borrowing `foo()`, but as the borrow is assigned
+directly into a variable, the temporary will not be dropped until
+the end of the enclosing block. Similar rules apply when temporaries
+are stored into aggregate structures like a tuple or struct:
+
+```
+// Here, two temporaries are created, but
+// as they are stored directly into `value`,
+// they are not dropped until the end of the
+// enclosing block.
+fn foo() -> i32 { 22 }
+let value = (&foo(), &foo());
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -2195,6 +2369,7 @@ register_diagnostics! {
 //  E0471, // constant evaluation error (in pattern)
 //    E0385, // {} in an aliasable location
     E0493, // destructors cannot be evaluated at compile-time
+    E0521,  // borrowed data escapes outside of closure
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}

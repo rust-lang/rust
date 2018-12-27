@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
@@ -302,7 +292,7 @@ fn test_range() {
     for i in 0..size {
         for j in i..size {
             let mut kvs = map.range((Included(&i), Included(&j))).map(|(&k, &v)| (k, v));
-            let mut pairs = (i..j + 1).map(|i| (i, i));
+            let mut pairs = (i..=j).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
                 assert_eq!(kv, pair);
@@ -321,7 +311,7 @@ fn test_range_mut() {
     for i in 0..size {
         for j in i..size {
             let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
-            let mut pairs = (i..j + 1).map(|i| (i, i));
+            let mut pairs = (i..=j).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
                 assert_eq!(kv, pair);

@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when computing the supertraits of `Processor`
-  --> $DIR/issue-20825.rs:15:1
+  --> $DIR/issue-20825.rs:5:1
    |
 LL | pub trait Processor: Subscriber<Input = Self::Input> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

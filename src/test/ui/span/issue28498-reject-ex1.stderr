@@ -1,5 +1,5 @@
 error[E0597]: `foo.data` does not live long enough
-  --> $DIR/issue28498-reject-ex1.rs:44:29
+  --> $DIR/issue28498-reject-ex1.rs:34:29
    |
 LL |     foo.data[0].1.set(Some(&foo.data[1]));
    |                             ^^^^^^^^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `foo.data` does not live long enough
-  --> $DIR/issue28498-reject-ex1.rs:46:29
+  --> $DIR/issue28498-reject-ex1.rs:36:29
    |
 LL |     foo.data[1].1.set(Some(&foo.data[0]));
    |                             ^^^^^^^^ borrowed value does not live long enough

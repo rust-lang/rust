@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-5216.rs:13:21
+  --> $DIR/issue-5216.rs:3:21
    |
 LL | pub static C: S = S(f); //~ ERROR mismatched types
    |                     ^ expected struct `std::boxed::Box`, found fn item
@@ -8,7 +8,7 @@ LL | pub static C: S = S(f); //~ ERROR mismatched types
               found type `fn() {f}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5216.rs:18:19
+  --> $DIR/issue-5216.rs:8:19
    |
 LL | pub static D: T = g; //~ ERROR mismatched types
    |                   ^ expected struct `std::boxed::Box`, found fn item

@@ -1,5 +1,5 @@
 error[E0072]: recursive type `Bar` has infinite size
-  --> $DIR/issue-3008-1.rs:15:1
+  --> $DIR/issue-3008-1.rs:5:1
    |
 LL | enum Bar {
    | ^^^^^^^^ recursive type has infinite size

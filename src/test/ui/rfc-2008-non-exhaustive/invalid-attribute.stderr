@@ -1,5 +1,5 @@
 error[E0702]: attribute should be empty
-  --> $DIR/invalid-attribute.rs:13:1
+  --> $DIR/invalid-attribute.rs:3:1
    |
 LL | #[non_exhaustive(anything)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | struct Foo;
    | ----------- not empty
 
 error[E0701]: attribute can only be applied to a struct or enum
-  --> $DIR/invalid-attribute.rs:17:1
+  --> $DIR/invalid-attribute.rs:7:1
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | trait Bar { }
    | ------------- not a struct or enum
 
 error[E0701]: attribute can only be applied to a struct or enum
-  --> $DIR/invalid-attribute.rs:21:1
+  --> $DIR/invalid-attribute.rs:11:1
    |
 LL |   #[non_exhaustive]
    |   ^^^^^^^^^^^^^^^^^

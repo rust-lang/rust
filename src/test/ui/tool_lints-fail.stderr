@@ -1,11 +1,11 @@
 error: unknown lint: `clippy`
-  --> $DIR/tool_lints-fail.rs:16:9
+  --> $DIR/tool_lints-fail.rs:6:9
    |
 LL | #![deny(clippy)] //~ ERROR: unknown lint: `clippy`
    |         ^^^^^^
    |
 note: lint level defined here
-  --> $DIR/tool_lints-fail.rs:14:9
+  --> $DIR/tool_lints-fail.rs:4:9
    |
 LL | #![deny(unknown_lints)]
    |         ^^^^^^^^^^^^^

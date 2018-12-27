@@ -1,12 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// run-pass
 
 #![feature(core_intrinsics)]
 #![feature(untagged_unions)]
@@ -55,15 +47,13 @@ impl<T> Drop for ActuallyDrop<T> {
 }
 
 fn main() {
-    unsafe {
-        // NoDrop should not make needs_drop true
-        assert!(!needs_drop::<Foo>());
-        assert!(!needs_drop::<NoDrop<u8>>());
-        assert!(!needs_drop::<NoDrop<Box<u8>>>());
-        // presence of other drop types should still work
-        assert!(needs_drop::<Baz>());
-        // drop impl on union itself should work
-        assert!(needs_drop::<ActuallyDrop<u8>>());
-        assert!(needs_drop::<ActuallyDrop<Box<u8>>>());
-    }
+    // NoDrop should not make needs_drop true
+    assert!(!needs_drop::<Foo>());
+    assert!(!needs_drop::<NoDrop<u8>>());
+    assert!(!needs_drop::<NoDrop<Box<u8>>>());
+    // presence of other drop types should still work
+    assert!(needs_drop::<Baz>());
+    // drop impl on union itself should work
+    assert!(needs_drop::<ActuallyDrop<u8>>());
+    assert!(needs_drop::<ActuallyDrop<Box<u8>>>());
 }

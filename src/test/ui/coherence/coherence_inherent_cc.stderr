@@ -1,5 +1,5 @@
 error[E0599]: no method named `the_fn` found for type `&coherence_inherent_cc_lib::TheStruct` in the current scope
-  --> $DIR/coherence_inherent_cc.rs:33:11
+  --> $DIR/coherence_inherent_cc.rs:23:11
    |
 LL |         s.the_fn(); //~ ERROR no method named `the_fn` found
    |           ^^^^^^

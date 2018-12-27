@@ -1,5 +1,5 @@
 error[E0599]: no function or associated item named `new_undirected` found for type `issue_30123_aux::Graph<i32, i32>` in the current scope
-  --> $DIR/issue-30123.rs:17:14
+  --> $DIR/issue-30123.rs:7:14
    |
 LL |     let ug = Graph::<i32, i32>::new_undirected();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `issue_30123_aux::Graph<i32, i32>`

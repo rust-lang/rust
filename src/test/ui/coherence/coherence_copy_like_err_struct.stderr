@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `MyTrait` for type `lib::MyStruct<MyType>`:
-  --> $DIR/coherence_copy_like_err_struct.rs:29:1
+  --> $DIR/coherence_copy_like_err_struct.rs:19:1
    |
 LL | impl<T: lib::MyCopy> MyTrait for T { }
    | ---------------------------------- first implementation here

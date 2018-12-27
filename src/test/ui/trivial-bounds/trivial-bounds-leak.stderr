@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/trivial-bounds-leak.rs:22:25
+  --> $DIR/trivial-bounds-leak.rs:12:25
    |
 LL | fn cant_return_str() -> str { //~ ERROR
    |                         ^^^ doesn't have a size known at compile-time
@@ -9,7 +9,7 @@ LL | fn cant_return_str() -> str { //~ ERROR
    = note: the return type of a function must have a statically known size
 
 error[E0599]: no method named `test` found for type `i32` in the current scope
-  --> $DIR/trivial-bounds-leak.rs:34:10
+  --> $DIR/trivial-bounds-leak.rs:24:10
    |
 LL |     3i32.test(); //~ ERROR
    |          ^^^^
@@ -19,25 +19,25 @@ LL |     3i32.test(); //~ ERROR
            candidate #1: `Foo`
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/trivial-bounds-leak.rs:35:5
+  --> $DIR/trivial-bounds-leak.rs:25:5
    |
 LL |     Foo::test(&4i32); //~ ERROR
    |     ^^^^^^^^^ the trait `Foo` is not implemented for `i32`
    |
 note: required by `Foo::test`
-  --> $DIR/trivial-bounds-leak.rs:15:5
+  --> $DIR/trivial-bounds-leak.rs:5:5
    |
 LL |     fn test(&self);
    |     ^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/trivial-bounds-leak.rs:36:5
+  --> $DIR/trivial-bounds-leak.rs:26:5
    |
 LL |     generic_function(5i32); //~ ERROR
    |     ^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
    |
 note: required by `generic_function`
-  --> $DIR/trivial-bounds-leak.rs:39:1
+  --> $DIR/trivial-bounds-leak.rs:29:1
    |
 LL | fn generic_function<T: Foo>(t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

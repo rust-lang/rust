@@ -16,6 +16,7 @@ RUN . /scripts/android-ndk.sh && \
 # env
 ENV TARGETS=arm-linux-androideabi
 ENV TARGETS=$TARGETS,armv7-linux-androideabi
+ENV TARGETS=$TARGETS,thumbv7neon-linux-androideabi
 ENV TARGETS=$TARGETS,i686-linux-android
 ENV TARGETS=$TARGETS,aarch64-linux-android
 ENV TARGETS=$TARGETS,x86_64-linux-android
@@ -24,6 +25,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --arm-linux-androideabi-ndk=/android/ndk/arm-14 \
       --armv7-linux-androideabi-ndk=/android/ndk/arm-14 \
+      --thumbv7neon-linux-androideabi-ndk=/android/ndk/arm-14 \
       --i686-linux-android-ndk=/android/ndk/x86-14 \
       --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
       --x86_64-linux-android-ndk=/android/ndk/x86_64-21 \

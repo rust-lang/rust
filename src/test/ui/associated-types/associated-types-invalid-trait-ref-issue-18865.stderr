@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Foo<usize>` is not satisfied
-  --> $DIR/associated-types-invalid-trait-ref-issue-18865.rs:20:12
+  --> $DIR/associated-types-invalid-trait-ref-issue-18865.rs:10:12
    |
 LL |     let u: <T as Foo<usize>>::Bar = t.get_bar();
    |            ^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo<usize>` is not implemented for `T`

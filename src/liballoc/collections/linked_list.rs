@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A doubly-linked list with owned nodes.
 //!
 //! The `LinkedList` allows pushing and popping elements at either end
@@ -627,7 +617,9 @@ impl<T> LinkedList<T> {
         self.pop_front_node().map(Node::into_element)
     }
 
-    /// Appends an element to the back of a list
+    /// Appends an element to the back of a list.
+    ///
+    /// This operation should compute in O(1) time.
     ///
     /// # Examples
     ///
@@ -646,6 +638,8 @@ impl<T> LinkedList<T> {
 
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
+    ///
+    /// This operation should compute in O(1) time.
     ///
     /// # Examples
     ///
@@ -1222,7 +1216,7 @@ mod tests {
     use std::thread;
     use std::vec::Vec;
 
-    use rand::{thread_rng, Rng};
+    use rand::{thread_rng, RngCore};
 
     use super::{LinkedList, Node};
 

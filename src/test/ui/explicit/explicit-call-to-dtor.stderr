@@ -1,5 +1,5 @@
 error[E0040]: explicit use of destructor method
-  --> $DIR/explicit-call-to-dtor.rs:23:7
+  --> $DIR/explicit-call-to-dtor.rs:13:7
    |
 LL |     x.drop();   //~ ERROR explicit use of destructor method
    |       ^^^^ explicit destructor calls not allowed

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Command-line interface of the rustbuild build system.
 //!
 //! This module implements the command-line parsing of the build system which
@@ -19,12 +9,12 @@ use std::process;
 
 use getopts::Options;
 
-use builder::Builder;
-use config::Config;
-use metadata;
-use {Build, DocTests};
+use crate::builder::Builder;
+use crate::config::Config;
+use crate::metadata;
+use crate::{Build, DocTests};
 
-use cache::{Interned, INTERNER};
+use crate::cache::{Interned, INTERNER};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
@@ -93,8 +83,7 @@ impl Default for Subcommand {
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
         let mut extra_help = String::new();
-        let mut subcommand_help = format!(
-            "\
+        let mut subcommand_help = String::from("\
 Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
@@ -122,10 +111,11 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optflag("", "dry-run", "dry run; don't build anything");
         opts.optopt("", "stage",
-            "stage to build (indicates compiler to use/test, e.g. stage 0 uses the \
+            "stage to build (indicates compiler to use/test, e.g., stage 0 uses the \
              bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)",
             "N");
-        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling", "N");
+        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling \
+            (pass multiple times to keep e.g., both stages 0 and 1)", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
@@ -364,8 +354,8 @@ Arguments:
         }
 
         let cmd = match subcommand.as_str() {
-            "build" => Subcommand::Build { paths: paths },
-            "check" => Subcommand::Check { paths: paths },
+            "build" => Subcommand::Build { paths },
+            "check" => Subcommand::Check { paths },
             "test" => Subcommand::Test {
                 paths,
                 bless: matches.opt_present("bless"),
@@ -385,9 +375,9 @@ Arguments:
                 paths,
                 test_args: matches.opt_strs("test-args"),
             },
-            "doc" => Subcommand::Doc { paths: paths },
+            "doc" => Subcommand::Doc { paths },
             "clean" => {
-                if paths.len() > 0 {
+                if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
                     usage(1, &opts, &subcommand_help, &extra_help);
                 }
@@ -412,11 +402,11 @@ Arguments:
             keep_stage: matches.opt_strs("keep-stage")
                 .into_iter().map(|j| j.parse().unwrap())
                 .collect(),
-            host: split(matches.opt_strs("host"))
+            host: split(&matches.opt_strs("host"))
                 .into_iter()
                 .map(|x| INTERNER.intern_string(x))
                 .collect::<Vec<_>>(),
-            target: split(matches.opt_strs("target"))
+            target: split(&matches.opt_strs("target"))
                 .into_iter()
                 .map(|x| INTERNER.intern_string(x))
                 .collect::<Vec<_>>(),
@@ -424,7 +414,7 @@ Arguments:
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd,
             incremental: matches.opt_present("incremental"),
-            exclude: split(matches.opt_strs("exclude"))
+            exclude: split(&matches.opt_strs("exclude"))
                 .into_iter()
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
@@ -487,7 +477,7 @@ impl Subcommand {
     }
 }
 
-fn split(s: Vec<String>) -> Vec<String> {
+fn split(s: &[String]) -> Vec<String> {
     s.iter()
         .flat_map(|s| s.split(','))
         .map(|s| s.to_string())

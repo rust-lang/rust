@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
-  --> $DIR/issue-46023.rs:18:9
+  --> $DIR/issue-46023.rs:8:9
    |
 LL |     let x = 0;
    |         - help: consider making `x` mutable: `mut x`

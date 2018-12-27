@@ -1,18 +1,8 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Windows SEH
 //!
 //! On Windows (currently only on MSVC), the default exception handling
 //! mechanism is Structured Exception Handling (SEH). This is quite different
-//! than Dwarf-based exception handling (e.g. what other unix platforms use) in
+//! than Dwarf-based exception handling (e.g., what other unix platforms use) in
 //! terms of compiler internals, so LLVM is required to have a good deal of
 //! extra support for SEH.
 //!
@@ -54,7 +44,7 @@
 //! [win64]: http://msdn.microsoft.com/en-us/library/1eyas8tf.aspx
 //! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
-#![allow(bad_style)]
+#![allow(nonstandard_style)]
 #![allow(private_no_mangle_fns)]
 
 use alloc::boxed::Box;
@@ -119,7 +109,7 @@ mod imp {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
 #[macro_use]
 mod imp {
     pub type ptr_t = u32;
@@ -142,7 +132,7 @@ mod imp {
 
 #[repr(C)]
 pub struct _ThrowInfo {
-    pub attribues: c_uint,
+    pub attributes: c_uint,
     pub pnfnUnwind: imp::ptr_t,
     pub pForwardCompat: imp::ptr_t,
     pub pCatchableTypeArray: imp::ptr_t,
@@ -178,7 +168,7 @@ pub struct _TypeDescriptor {
 }
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
-    attribues: 0,
+    attributes: 0,
     pnfnUnwind: ptr!(0),
     pForwardCompat: ptr!(0),
     pCatchableTypeArray: ptr!(0),
@@ -304,7 +294,7 @@ pub unsafe fn cleanup(payload: [u64; 2]) -> Box<dyn Any + Send> {
     })
 }
 
-// This is required by the compiler to exist (e.g. it's a lang item), but
+// This is required by the compiler to exist (e.g., it's a lang item), but
 // it's never actually called by the compiler because __C_specific_handler
 // or _except_handler3 is the personality function that is always used.
 // Hence this is just an aborting stub.

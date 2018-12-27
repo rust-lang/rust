@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-assign-comp-idx.rs:22:5
+  --> $DIR/borrowck-assign-comp-idx.rs:12:5
    |
 LL |     let q: &isize = &p[0];
    |                      - immutable borrow occurs here
@@ -11,7 +11,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-assign-comp-idx.rs:37:9
+  --> $DIR/borrowck-assign-comp-idx.rs:27:9
    |
 LL |         &p,
    |          - immutable borrow occurs here

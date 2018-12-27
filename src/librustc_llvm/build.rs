@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 extern crate cc;
 extern crate build_helper;
 
@@ -81,7 +71,7 @@ fn main() {
     let is_crossed = target != host;
 
     let mut optional_components =
-        vec!["x86", "arm", "aarch64", "mips", "powerpc",
+        vec!["x86", "arm", "aarch64", "amdgpu", "mips", "powerpc",
              "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
 
     let mut version_cmd = Command::new(&llvm_config);
@@ -192,11 +182,11 @@ fn main() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
             let name = Path::new(lib).file_name().unwrap().to_str().unwrap();
-            name.trim_right_matches(".lib")
+            name.trim_end_matches(".lib")
         } else if lib.ends_with(".lib") {
             // Some MSVC libraries just come up with `.lib` tacked on, so chop
             // that off
-            lib.trim_right_matches(".lib")
+            lib.trim_end_matches(".lib")
         } else {
             continue;
         };

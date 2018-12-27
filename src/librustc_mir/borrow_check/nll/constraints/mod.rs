@@ -1,13 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
+use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -39,7 +30,7 @@ impl ConstraintSet {
     /// Constructs a "normal" graph from the constraint set; the graph makes it
     /// easy to find the constraints affecting a particular region.
     ///
-    /// NB: This graph contains a "frozen" view of the current
+    /// N.B., this graph contains a "frozen" view of the current
     /// constraints.  any new constraints added to the `ConstraintSet`
     /// after the graph is built will not be present in the graph.
     crate fn graph(&self, num_region_vars: usize) -> graph::NormalConstraintGraph {
@@ -58,8 +49,9 @@ impl ConstraintSet {
     crate fn compute_sccs(
         &self,
         constraint_graph: &graph::NormalConstraintGraph,
+        static_region: RegionVid,
     ) -> Sccs<RegionVid, ConstraintSccIndex> {
-        let region_graph = &constraint_graph.region_graph(self);
+        let region_graph = &constraint_graph.region_graph(self, static_region);
         Sccs::new(region_graph)
     }
 }
@@ -86,6 +78,9 @@ pub struct OutlivesConstraint {
 
     /// Where did this constraint arise?
     pub locations: Locations,
+
+    /// What caused this constraint?
+    pub category: ConstraintCategory,
 }
 
 impl fmt::Debug for OutlivesConstraint {
@@ -98,6 +93,14 @@ impl fmt::Debug for OutlivesConstraint {
     }
 }
 
-newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
+newtype_index! {
+    pub struct ConstraintIndex {
+        DEBUG_FORMAT = "ConstraintIndex({})"
+    }
+}
 
-newtype_index!(ConstraintSccIndex { DEBUG_FORMAT = "ConstraintSccIndex({})" });
+newtype_index! {
+    pub struct ConstraintSccIndex {
+        DEBUG_FORMAT = "ConstraintSccIndex({})"
+    }
+}

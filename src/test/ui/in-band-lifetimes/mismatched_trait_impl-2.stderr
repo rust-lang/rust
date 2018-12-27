@@ -1,11 +1,11 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter in generic type due to conflicting requirements
-  --> $DIR/mismatched_trait_impl-2.rs:18:5
+  --> $DIR/mismatched_trait_impl-2.rs:8:5
    |
 LL |     fn deref(&self) -> &Trait {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 18:5...
-  --> $DIR/mismatched_trait_impl-2.rs:18:5
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 8:5...
+  --> $DIR/mismatched_trait_impl-2.rs:8:5
    |
 LL | /     fn deref(&self) -> &Trait {
 LL | |         unimplemented!();

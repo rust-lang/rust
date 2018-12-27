@@ -1,5 +1,5 @@
 error: use of extern static is unsafe and requires unsafe function or block (error E0133)
-  --> $DIR/safe-extern-statics.rs:23:13
+  --> $DIR/safe-extern-statics.rs:13:13
    |
 LL |     let a = A; //~ ERROR use of extern static is unsafe
    |             ^
@@ -10,7 +10,7 @@ LL |     let a = A; //~ ERROR use of extern static is unsafe
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
 error: use of extern static is unsafe and requires unsafe function or block (error E0133)
-  --> $DIR/safe-extern-statics.rs:25:14
+  --> $DIR/safe-extern-statics.rs:15:14
    |
 LL |     let ra = &A; //~ ERROR use of extern static is unsafe
    |              ^^
@@ -20,7 +20,7 @@ LL |     let ra = &A; //~ ERROR use of extern static is unsafe
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
 error: use of extern static is unsafe and requires unsafe function or block (error E0133)
-  --> $DIR/safe-extern-statics.rs:27:14
+  --> $DIR/safe-extern-statics.rs:17:14
    |
 LL |     let xa = XA; //~ ERROR use of extern static is unsafe
    |              ^^
@@ -30,7 +30,7 @@ LL |     let xa = XA; //~ ERROR use of extern static is unsafe
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
 error: use of extern static is unsafe and requires unsafe function or block (error E0133)
-  --> $DIR/safe-extern-statics.rs:29:15
+  --> $DIR/safe-extern-statics.rs:19:15
    |
 LL |     let xra = &XA; //~ ERROR use of extern static is unsafe
    |               ^^^

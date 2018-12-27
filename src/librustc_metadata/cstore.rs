@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
@@ -41,19 +31,24 @@ pub use rustc_data_structures::sync::MetadataRef;
 
 pub struct MetadataBlob(pub MetadataRef);
 
-/// Holds information about a syntax_pos::FileMap imported from another crate.
-/// See `imported_filemaps()` for more information.
-pub struct ImportedFileMap {
-    /// This FileMap's byte-offset within the codemap of its original crate
+/// Holds information about a syntax_pos::SourceFile imported from another crate.
+/// See `imported_source_files()` for more information.
+pub struct ImportedSourceFile {
+    /// This SourceFile's byte-offset within the source_map of its original crate
     pub original_start_pos: syntax_pos::BytePos,
-    /// The end of this FileMap within the codemap of its original crate
+    /// The end of this SourceFile within the source_map of its original crate
     pub original_end_pos: syntax_pos::BytePos,
-    /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Lrc<syntax_pos::FileMap>,
+    /// The imported SourceFile's representation within the local source_map
+    pub translated_source_file: Lrc<syntax_pos::SourceFile>,
 }
 
 pub struct CrateMetadata {
+    /// Original name of the crate.
     pub name: Symbol,
+
+    /// Name of the crate as imported.  I.e., if imported with
+    /// `extern crate foo as bar;` this will be `bar`.
+    pub imported_name: Symbol,
 
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
@@ -64,7 +59,7 @@ pub struct CrateMetadata {
     pub cnum_map: CrateNumMap,
     pub cnum: CrateNum,
     pub dependencies: Lock<Vec<CrateNum>>,
-    pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
+    pub source_map_import_info: RwLock<Vec<ImportedSourceFile>>,
 
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     pub alloc_decoding_state: AllocDecodingState,
@@ -106,7 +101,7 @@ impl CStore {
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
             metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
-            extern_mod_crate_map: Lock::new(FxHashMap()),
+            extern_mod_crate_map: Default::default(),
             metadata_loader,
         }
     }

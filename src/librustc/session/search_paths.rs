@@ -1,25 +1,12 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use std::slice;
 use std::path::{Path, PathBuf};
 use session::{early_error, config};
+use session::filesearch::make_target_lib_path;
 
 #[derive(Clone, Debug)]
-pub struct SearchPaths {
-    paths: Vec<(PathKind, PathBuf)>,
-}
-
-pub struct Iter<'a> {
-    kind: PathKind,
-    iter: slice::Iter<'a, (PathKind, PathBuf)>,
+pub struct SearchPath {
+    pub kind: PathKind,
+    pub dir: PathBuf,
+    pub files: Vec<PathBuf>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash)]
@@ -32,12 +19,17 @@ pub enum PathKind {
     All,
 }
 
-impl SearchPaths {
-    pub fn new() -> SearchPaths {
-        SearchPaths { paths: Vec::new() }
+impl PathKind {
+    pub fn matches(&self, kind: PathKind) -> bool {
+        match (self, kind) {
+            (PathKind::All, _) | (_, PathKind::All) => true,
+            _ => *self == kind,
+        }
     }
+}
 
-    pub fn add_path(&mut self, path: &str, output: config::ErrorOutputType) {
+impl SearchPath {
+    pub fn from_cli_opt(path: &str, output: config::ErrorOutputType) -> Self {
         let (kind, path) = if path.starts_with("native=") {
             (PathKind::Native, &path["native=".len()..])
         } else if path.starts_with("crate=") {
@@ -54,35 +46,28 @@ impl SearchPaths {
         if path.is_empty() {
             early_error(output, "empty search path given via `-L`");
         }
-        self.paths.push((kind, PathBuf::from(path)));
+
+        let dir = PathBuf::from(path);
+        Self::new(kind, dir)
     }
 
-    pub fn iter(&self, kind: PathKind) -> Iter {
-        Iter { kind: kind, iter: self.paths.iter() }
+    pub fn from_sysroot_and_triple(sysroot: &Path, triple: &str) -> Self {
+        Self::new(PathKind::All, make_target_lib_path(sysroot, triple))
     }
-}
 
-impl<'a> Iterator for Iter<'a> {
-    type Item = (&'a Path, PathKind);
-
-    fn next(&mut self) -> Option<(&'a Path, PathKind)> {
-        loop {
-            match self.iter.next() {
-                Some(&(kind, ref p)) if self.kind == PathKind::All ||
-                                        kind == PathKind::All ||
-                                        kind == self.kind => {
-                    return Some((p, kind))
-                }
-                Some(..) => {}
-                None => return None,
+    fn new(kind: PathKind, dir: PathBuf) -> Self {
+        // Get the files within the directory.
+        let files = match std::fs::read_dir(&dir) {
+            Ok(files) => {
+                files.filter_map(|p| {
+                    p.ok().map(|s| s.path())
+                })
+                .collect::<Vec<_>>()
             }
-        }
-    }
+            Err(..) => vec![],
+        };
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        // This iterator will never return more elements than the base iterator;
-        // but it can ignore all the remaining elements.
-        let (_, upper) = self.iter.size_hint();
-        (0, upper)
+        SearchPath { kind, dir, files }
     }
 }
+

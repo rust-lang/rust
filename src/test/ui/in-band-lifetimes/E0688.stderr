@@ -1,5 +1,5 @@
 error[E0688]: cannot mix in-band and explicit lifetime definitions
-  --> $DIR/E0688.rs:14:28
+  --> $DIR/E0688.rs:4:28
    |
 LL | fn foo<'a>(x: &'a u32, y: &'b u32) {} //~ ERROR cannot mix
    |        --                  ^^ in-band lifetime definition here
@@ -7,7 +7,7 @@ LL | fn foo<'a>(x: &'a u32, y: &'b u32) {} //~ ERROR cannot mix
    |        explicit lifetime definition here
 
 error[E0688]: cannot mix in-band and explicit lifetime definitions
-  --> $DIR/E0688.rs:19:44
+  --> $DIR/E0688.rs:9:44
    |
 LL |     fn bar<'b>(x: &'a u32, y: &'b u32, z: &'c u32) {} //~ ERROR cannot mix
    |            --                              ^^ in-band lifetime definition here
@@ -15,7 +15,7 @@ LL |     fn bar<'b>(x: &'a u32, y: &'b u32, z: &'c u32) {} //~ ERROR cannot mix
    |            explicit lifetime definition here
 
 error[E0688]: cannot mix in-band and explicit lifetime definitions
-  --> $DIR/E0688.rs:22:14
+  --> $DIR/E0688.rs:12:14
    |
 LL | impl<'b> Foo<'a> { //~ ERROR cannot mix
    |      --      ^^ in-band lifetime definition here

@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Some stuff used by rustc that doesn't have many dependencies
 //!
 //! Originally extracted from rustc::back, which was nominally the
@@ -22,9 +12,10 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
-#![feature(const_fn)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
+#![feature(rustc_attrs)]
 #![feature(slice_patterns)]
+#![feature(step_trait)]
 
 #[macro_use]
 extern crate bitflags;
@@ -36,6 +27,9 @@ extern crate serialize as rustc_serialize; // used by deriving
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
 extern crate rustc_cratesio_shim;
+
+#[macro_use]
+extern crate rustc_data_structures;
 
 pub mod abi;
 pub mod spec;

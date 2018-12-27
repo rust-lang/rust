@@ -1,41 +1,41 @@
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:11:23
+  --> $DIR/maybe-bounds-where.rs:1:23
    |
 LL | struct S1<T>(T) where (T): ?Sized;
    |                       ^^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:14:23
+  --> $DIR/maybe-bounds-where.rs:4:23
    |
 LL | struct S2<T>(T) where u8: ?Sized;
    |                       ^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:17:23
+  --> $DIR/maybe-bounds-where.rs:7:23
    |
 LL | struct S3<T>(T) where &'static T: ?Sized;
    |                       ^^^^^^^^^^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:22:31
+  --> $DIR/maybe-bounds-where.rs:12:31
    |
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    |                               ^
 
 error: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/maybe-bounds-where.rs:30:18
+  --> $DIR/maybe-bounds-where.rs:20:18
    |
 LL |     fn f() where T: ?Sized {}
    |                  ^
 
 error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/maybe-bounds-where.rs:25:11
+  --> $DIR/maybe-bounds-where.rs:15:11
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |           ^
 
 warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default. Only `?Sized` is supported
-  --> $DIR/maybe-bounds-where.rs:25:11
+  --> $DIR/maybe-bounds-where.rs:15:11
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |           ^

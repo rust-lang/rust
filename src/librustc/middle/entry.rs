@@ -1,14 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 use hir::map as hir_map;
 use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
@@ -57,7 +46,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
 }
 
 pub fn find_entry_point(session: &Session,
-                        hir_map: &hir_map::Map,
+                        hir_map: &hir_map::Map<'_>,
                         crate_name: &str) {
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateType::Executable
@@ -88,7 +77,7 @@ pub fn find_entry_point(session: &Session,
     configure_main(&mut ctxt, crate_name);
 }
 
-// Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
+// Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
 // them in sync.
 fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
     match item.node {
@@ -99,7 +88,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 EntryPointType::MainAttr
             } else if item.name == "main" {
                 if at_root {
-                    // This is a top-level function so can be 'main'
+                    // This is a top-level function so can be 'main'.
                     EntryPointType::MainNamed
                 } else {
                     EntryPointType::OtherMain
@@ -113,7 +102,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
 }
 
 
-fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
+fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     match entry_point_type(item, at_root) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
@@ -131,7 +120,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
                 ctxt.attr_main_fn = Some((item.id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0137,
-                          "multiple functions with a #[main] attribute")
+                                 "multiple functions with a #[main] attribute")
                 .span_label(item.span, "additional #[main] function")
                 .span_label(ctxt.attr_main_fn.unwrap().1, "first #[main] function")
                 .emit();
@@ -141,11 +130,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((item.id, item.span));
             } else {
-                struct_span_err!(
-                    ctxt.session, item.span, E0138,
-                    "multiple 'start' functions")
-                    .span_label(ctxt.start_fn.unwrap().1,
-                                "previous `start` function here")
+                struct_span_err!(ctxt.session, item.span, E0138, "multiple 'start' functions")
+                    .span_label(ctxt.start_fn.unwrap().1, "previous `start` function here")
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
             }
@@ -154,7 +140,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
     }
 }
 
-fn configure_main(this: &mut EntryContext, crate_name: &str) {
+fn configure_main(this: &mut EntryContext<'_, '_>, crate_name: &str) {
     if let Some((node_id, span)) = this.start_fn {
         this.session.entry_fn.set(Some((node_id, span, EntryFnType::Start)));
     } else if let Some((node_id, span)) = this.attr_main_fn {

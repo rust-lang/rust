@@ -1,9 +1,9 @@
 error[E0621]: explicit lifetime required in the type of `s`
-  --> $DIR/regions-glb-free-free.rs:25:13
+  --> $DIR/regions-glb-free-free.rs:15:13
    |
 LL |           pub fn set_desc(self, s: &str) -> Flag<'a> {
    |                                    ---- help: add explicit lifetime `'a` to the type of `s`: `&'a str`
-LL | /             Flag { //~ ERROR 25:13: 30:14: explicit lifetime required in the type of `s` [E0621]
+LL | /             Flag { //~ ERROR explicit lifetime required in the type of `s` [E0621]
 LL | |                 name: self.name,
 LL | |                 desc: s,
 LL | |                 max_count: self.max_count,

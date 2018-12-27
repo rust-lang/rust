@@ -1,21 +1,10 @@
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_target::spec::abi::{Abi};
 use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::indexed_set::IdxSetBuf;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::bit_set::BitSet;
 use transform::{MirPass, MirSource};
 
 use dataflow::{do_dataflow, DebugFormatted};
@@ -35,7 +24,7 @@ impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
-        let id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let id = tcx.hir().as_local_node_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
             return;
@@ -47,7 +36,7 @@ impl MirPass for SanityCheck {
         let param_env = tcx.param_env(def_id);
         let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
-        let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+        let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
         let flow_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                         MaybeInitializedPlaces::new(tcx, mir, &mdpe),
@@ -96,8 +85,8 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 mir: &Mir<'tcx>,
                                                 id: ast::NodeId,
                                                 _attributes: &[ast::Attribute],
-                                                results: &DataflowResults<O>)
-    where O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
+                                                results: &DataflowResults<'tcx, O>)
+    where O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -111,9 +100,9 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
-                           results: &DataflowResults<O>,
+                           results: &DataflowResults<'tcx, O>,
                            bb: mir::BasicBlock) where
-    O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
+    O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     let move_data = results.0.operator.move_data();
     let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];
@@ -138,9 +127,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    let mut entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
-    let mut gen = results.0.sets.gen_set_for(bb.index()).to_owned();
-    let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
+    let mut on_entry = results.0.sets.on_entry_set_for(bb.index()).to_owned();
+    let mut gen_set = results.0.sets.gen_set_for(bb.index()).clone();
+    let mut kill_set = results.0.sets.kill_set_for(bb.index()).clone();
 
     // Emulate effect of all statements in the block up to (but not
     // including) the borrow within `peek_arg_place`. Do *not* include
@@ -148,9 +137,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).
 
-    let mut sets = dataflow::BlockSets { on_entry: &mut entry,
-                                      gen_set: &mut gen,
-                                      kill_set: &mut kill };
+    let mut sets = dataflow::BlockSets { on_entry: &mut on_entry,
+                                         gen_set: &mut gen_set,
+                                         kill_set: &mut kill_set };
 
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
@@ -158,13 +147,12 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             mir::StatementKind::Assign(ref place, ref rvalue) => {
                 (place, rvalue)
             }
-            mir::StatementKind::ReadForMatch(_) |
+            mir::StatementKind::FakeRead(..) |
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
-            mir::StatementKind::EndRegion(_) |
-            mir::StatementKind::Validate(..) |
-            mir::StatementKind::UserAssertTy(..) |
+            mir::StatementKind::Retag { .. } |
+            mir::StatementKind::AscribeUserType(..) |
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
@@ -172,11 +160,11 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         if place == peek_arg_place {
-            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
+            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = **rvalue {
                 // Okay, our search is over.
                 match move_data.rev_lookup.find(peeking_at_place) {
                     LookupResult::Exact(peek_mpi) => {
-                        let bit_state = sets.on_entry.contains(&peek_mpi);
+                        let bit_state = sets.on_entry.contains(peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
                                place, peeking_at_place, bit_state);
                         if !bit_state {
@@ -203,8 +191,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
                place, lhs_mpi, stmt);
         // reset GEN and KILL sets before emulating their effect.
-        for e in sets.gen_set.words_mut() { *e = 0; }
-        for e in sets.kill_set.words_mut() { *e = 0; }
+        sets.gen_set.clear();
+        sets.kill_set.clear();
         results.0.operator.before_statement_effect(
             &mut sets, Location { block: bb, statement_index: j });
         results.0.operator.statement_effect(
@@ -229,7 +217,7 @@ fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
         if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
             if let mir::Operand::Constant(ref func) = *oper {
-                if let ty::TyFnDef(def_id, _) = func.ty.sty {
+                if let ty::FnDef(def_id, _) = func.ty.sty {
                     let abi = tcx.fn_sig(def_id).abi();
                     let name = tcx.item_name(def_id);
                     if abi == Abi::RustIntrinsic &&  name == "rustc_peek" {

@@ -1,23 +1,15 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The data that we will serialize and deserialize.
 
 use dep_graph::DepNode;
 use ich::Fingerprint;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-newtype_index!(SerializedDepNodeIndex);
+newtype_index! {
+    pub struct SerializedDepNodeIndex { .. }
+}
 
 /// Data for use when recompiling the **current crate**.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable, Default)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
     pub nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
@@ -34,16 +26,6 @@ pub struct SerializedDepGraph {
 }
 
 impl SerializedDepGraph {
-
-    pub fn new() -> SerializedDepGraph {
-        SerializedDepGraph {
-            nodes: IndexVec::new(),
-            fingerprints: IndexVec::new(),
-            edge_list_indices: IndexVec::new(),
-            edge_list_data: Vec::new(),
-        }
-    }
-
     #[inline]
     pub fn edge_targets_from(&self,
                              source: SerializedDepNodeIndex)

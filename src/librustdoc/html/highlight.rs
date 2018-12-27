@@ -1,13 +1,3 @@
-// Copyright 2014-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Basic syntax highlighting functionality.
 //!
 //! This module uses libsyntax's lexer to provide token-based highlighting for
@@ -21,19 +11,23 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::codemap::{CodeMap, FilePathMapping};
+use syntax::source_map::{SourceMap, FilePathMapping};
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;
 use syntax_pos::{Span, FileName};
 
 /// Highlights `src`, returning the HTML output.
-pub fn render_with_highlighting(src: &str, class: Option<&str>,
-                                extension: Option<&str>,
-                                tooltip: Option<(&str, &str)>) -> String {
+pub fn render_with_highlighting(
+    src: &str,
+    class: Option<&str>,
+    extension: Option<&str>,
+    tooltip: Option<(&str, &str)>,
+) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_filemap(FileName::Custom("stdin".to_string()), src.to_string());
+    let fm = sess.source_map().new_source_file(FileName::Custom("stdin".to_string()),
+                                               src.to_string());
 
     let mut out = Vec::new();
     if let Some((tooltip, class)) = tooltip {
@@ -43,8 +37,21 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
     }
     write_header(class, &mut out).unwrap();
 
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.codemap());
+    let lexer = match lexer::StringReader::new_without_err(&sess, fm, None, "Output from rustc:") {
+        Ok(l) => l,
+        Err(_) => {
+            let first_line = src.lines().next().unwrap_or_else(|| "");
+            let mut err = sess.span_diagnostic
+                              .struct_warn(&format!("Invalid doc comment starting with: `{}`\n\
+                                                     (Ignoring this codeblock)",
+                                                    first_line));
+            err.emit();
+            return String::new();
+        }
+    };
+    let mut classifier = Classifier::new(lexer, sess.source_map());
     if classifier.write_source(&mut out).is_err() {
+        classifier.lexer.emit_fatal_errors();
         return format!("<pre>{}</pre>", src);
     }
 
@@ -60,7 +67,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
 /// each span of text in sequence.
 struct Classifier<'a> {
     lexer: lexer::StringReader<'a>,
-    codemap: &'a CodeMap,
+    source_map: &'a SourceMap,
 
     // State of the classifier.
     in_attribute: bool,
@@ -145,10 +152,10 @@ impl<U: Write> Writer for U {
 }
 
 impl<'a> Classifier<'a> {
-    fn new(lexer: lexer::StringReader<'a>, codemap: &'a CodeMap) -> Classifier<'a> {
+    fn new(lexer: lexer::StringReader<'a>, source_map: &'a SourceMap) -> Classifier<'a> {
         Classifier {
             lexer,
-            codemap,
+            source_map,
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,
@@ -160,11 +167,10 @@ impl<'a> Classifier<'a> {
         match self.lexer.try_next_token() {
             Ok(tas) => Ok(tas),
             Err(_) => {
-                self.lexer.emit_fatal_errors();
-                self.lexer.sess.span_diagnostic
-                    .struct_warn("Backing out of syntax highlighting")
-                    .note("You probably did not intend to render this as a rust code-block")
-                    .emit();
+                let mut err = self.lexer.sess.span_diagnostic
+                                  .struct_warn("Backing out of syntax highlighting");
+                err.note("You probably did not intend to render this as a rust code-block");
+                err.emit();
                 Err(io::Error::new(io::ErrorKind::Other, ""))
             }
         }
@@ -330,7 +336,7 @@ impl<'a> Classifier<'a> {
             token::Lifetime(..) => Class::Lifetime,
 
             token::Eof | token::Interpolated(..) |
-            token::Tilde | token::At | token::DotEq | token::SingleQuote => Class::None,
+            token::Tilde | token::At| token::SingleQuote => Class::None,
         };
 
         // Anything that didn't return above is the simple case where we the
@@ -338,9 +344,9 @@ impl<'a> Classifier<'a> {
         out.string(Escape(&self.snip(tas.sp)), klass)
     }
 
-    // Helper function to get a snippet from the codemap.
+    // Helper function to get a snippet from the source_map.
     fn snip(&self, sp: Span) -> String {
-        self.codemap.span_to_snippet(sp).unwrap()
+        self.source_map.span_to_snippet(sp).unwrap()
     }
 }
 
@@ -371,9 +377,9 @@ impl Class {
 }
 
 fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "<pre class=\"rust {}\">\n", class.unwrap_or(""))
+    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
 fn write_footer(out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "</pre>\n")
+    write!(out, "</pre></div>\n")
 }

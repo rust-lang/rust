@@ -1,5 +1,5 @@
 error[E0580]: main function has wrong type
-  --> $DIR/extern-main-fn.rs:11:1
+  --> $DIR/extern-main-fn.rs:1:1
    |
 LL | extern fn main() {} //~ ERROR: main function has wrong type [E0580]
    | ^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn

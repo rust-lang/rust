@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains the code to convert from the wacky tcx data
 //! structures into the hair. The `builder` is generally ignorant of
 //! the tcx etc, and instead goes through the `Cx` for most of its
@@ -15,21 +5,23 @@
 //!
 
 use hair::*;
+use hair::util::UserAnnotatedTyHelpers;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::map::blocks::FnLikeNode;
+use rustc::hir::Node;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
-use syntax::ast::{self, LitKind};
+use rustc::ty::layout::VariantIdx;
+use syntax::ast;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use hair::pattern::parse_float;
+use hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -54,25 +46,25 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
+
+    /// See field with the same name on `Mir`
+    control_flow_destroyed: Vec<(Span, String)>,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                src_id: ast::NodeId) -> Cx<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
-        let src_def_id = tcx.hir.local_def_id(src_id);
-        let body_owner_kind = tcx.hir.body_owner_kind(src_id);
+        let src_def_id = tcx.hir().local_def_id(src_id);
+        let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
             hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
-            hir::BodyOwnerKind::Fn => {
-                let fn_like = FnLikeNode::from_node(infcx.tcx.hir.get(src_id));
-                fn_like.map_or(hir::Constness::NotConst, |f| f.constness())
-            }
+            hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
-        let attrs = tcx.hir.attrs(src_id);
+        let attrs = tcx.hir().attrs(src_id);
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
@@ -82,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Respect -C overflow-checks.
         check_overflow |= tcx.sess.overflow_checks();
 
-        // Constants and const fn's always need overflow checks.
+        // Constants always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
         let lint_level = lint_level_for_hir_id(tcx, src_id);
@@ -97,9 +89,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             constness,
             body_owner_kind,
             check_overflow,
+            control_flow_destroyed: Vec::new(),
         }
     }
 
+    pub fn control_flow_destroyed(self) -> Vec<(Span, String)> {
+        self.control_flow_destroyed
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -121,7 +117,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn unit_ty(&mut self) -> Ty<'tcx> {
-        self.tcx.mk_nil()
+        self.tcx.mk_unit()
     }
 
     pub fn true_literal(&mut self) -> &'tcx ty::Const<'tcx> {
@@ -132,7 +128,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty::Const::from_bool(self.tcx, false)
     }
 
-    // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
     pub fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
@@ -142,68 +137,25 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     ) -> &'tcx ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
-        let parse_float = |num, fty| -> ConstValue<'tcx> {
-            parse_float(num, fty, neg).unwrap_or_else(|_| {
+        match lit_to_const(lit, self.tcx, ty, neg) {
+            Ok(c) => c,
+            Err(LitToConstError::UnparseableFloat) => {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
-                self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
-            })
-        };
-
-        let trunc = |n| {
-            let param_ty = self.param_env.and(self.tcx.lift_to_global(&ty).unwrap());
-            let width = self.tcx.layout_of(param_ty).unwrap().size;
-            trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
-            let shift = 128 - width.bits();
-            let result = (n << shift) >> shift;
-            trace!("trunc result: {}", result);
-            ConstValue::Scalar(Scalar::Bits {
-                bits: result,
-                size: width.bytes() as u8,
-            })
-        };
-
-        use rustc::mir::interpret::*;
-        let lit = match *lit {
-            LitKind::Str(ref s, _) => {
-                let s = s.as_str();
-                let id = self.tcx.allocate_bytes(s.as_bytes());
-                let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, self.tcx);
-                ConstValue::from_byval_value(value).unwrap()
+                self.tcx.sess.span_err(sp, "could not evaluate float literal (see issue #31407)");
+                // create a dummy value and continue compiling
+                Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             },
-            LitKind::ByteStr(ref data) => {
-                let id = self.tcx.allocate_bytes(data);
-                ConstValue::Scalar(Scalar::Ptr(id.into()))
-            },
-            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
-                bits: n as u128,
-                size: 1,
-            }),
-            LitKind::Int(n, _) if neg => {
-                let n = n as i128;
-                let n = n.overflowing_neg().0;
-                trunc(n as u128)
-            },
-            LitKind::Int(n, _) => trunc(n),
-            LitKind::Float(n, fty) => {
-                parse_float(n, fty)
+            Err(LitToConstError::Reported) => {
+                // create a dummy value and continue compiling
+                Const::from_bits(self.tcx, 0, self.param_env.and(ty))
             }
-            LitKind::FloatUnsuffixed(n) => {
-                let fty = match ty.sty {
-                    ty::TyFloat(fty) => fty,
-                    _ => bug!()
-                };
-                parse_float(n, fty)
-            }
-            LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
-            LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
-        };
-        ty::Const::from_const_value(self.tcx, lit, ty)
+        }
     }
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
         let tcx = self.tcx.global_tcx();
-        let p = match tcx.hir.get(p.id) {
-            hir::map::NodePat(p) | hir::map::NodeBinding(p) => p,
+        let p = match tcx.hir().get(p.id) {
+            Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };
         Pattern::from_hir(tcx,
@@ -231,7 +183,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
-    pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: usize) -> Vec<Field> {
+    pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: VariantIdx) -> Vec<Field> {
         (0..adt_def.variants[variant_index].fields.len())
             .map(Field::new)
             .collect()
@@ -247,7 +199,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     fn lint_level_of(&self, node_id: ast::NodeId) -> LintLevel {
-        let hir_id = self.tcx.hir.definitions().node_to_hir_id(node_id);
+        let hir_id = self.tcx.hir().definitions().node_to_hir_id(node_id);
         let has_lint_level = self.tcx.dep_graph.with_ignore(|| {
             self.tcx.lint_levels(LOCAL_CRATE).lint_level_set(hir_id).is_some()
         });
@@ -276,6 +228,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 }
 
+impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+        self.tcx()
+    }
+
+    fn tables(&self) -> &ty::TypeckTables<'tcx> {
+        self.tables()
+    }
+}
+
 fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
     // Right now we insert a `with_ignore` node in the dep graph here to
     // ignore the fact that `lint_levels` below depends on the entire crate.
@@ -288,11 +250,11 @@ fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
     tcx.dep_graph.with_ignore(|| {
         let sets = tcx.lint_levels(LOCAL_CRATE);
         loop {
-            let hir_id = tcx.hir.definitions().node_to_hir_id(id);
+            let hir_id = tcx.hir().definitions().node_to_hir_id(id);
             if sets.lint_level_set(hir_id).is_some() {
                 return id
             }
-            let next = tcx.hir.get_parent_node(id);
+            let next = tcx.hir().get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! System Mutexes
 //!
 //! The Windows implementation of mutexes is a little odd and it may not be
@@ -30,7 +20,7 @@
 //! detect recursive locks.
 
 use cell::UnsafeCell;
-use mem;
+use mem::{self, MaybeUninit};
 use sync::atomic::{AtomicUsize, Ordering};
 use sys::c;
 use sys::compat;
@@ -58,6 +48,8 @@ pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
 impl Mutex {
     pub const fn new() -> Mutex {
         Mutex {
+            // This works because SRWLOCK_INIT is 0 (wrapped in a struct), so we are also properly
+            // initializing an SRWLOCK here.
             lock: AtomicUsize::new(0),
             held: UnsafeCell::new(false),
         }
@@ -155,34 +147,34 @@ fn kind() -> Kind {
     return ret;
 }
 
-pub struct ReentrantMutex { inner: UnsafeCell<c::CRITICAL_SECTION> }
+pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
-        mem::uninitialized()
+    pub fn uninitialized() -> ReentrantMutex {
+        ReentrantMutex { inner: UnsafeCell::new(MaybeUninit::uninitialized()) }
     }
 
     pub unsafe fn init(&mut self) {
-        c::InitializeCriticalSection(self.inner.get());
+        c::InitializeCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(self.inner.get());
+        c::EnterCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(self.inner.get()) != 0
+        c::TryEnterCriticalSection((&mut *self.inner.get()).as_mut_ptr()) != 0
     }
 
     pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(self.inner.get());
+        c::LeaveCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(self.inner.get());
+        c::DeleteCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 }

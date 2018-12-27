@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // aux-build:pub_restricted.rs
 
 #![allow(warnings)]
@@ -57,6 +47,6 @@ fn main() {
 }
 
 mod pathological {
-    pub(in bad::path) mod m1 {} //~ ERROR failed to resolve. Maybe a missing `extern crate bad;`?
+    pub(in bad::path) mod m1 {} //~ ERROR failed to resolve: maybe a missing `extern crate bad;`?
     pub(in foo) mod m2 {} //~ ERROR visibilities can only be restricted to ancestor modules
 }

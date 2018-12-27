@@ -1,5 +1,5 @@
 error: recursion limit reached while expanding the macro `recurse`
-  --> $DIR/recursion_limit_macro.rs:20:31
+  --> $DIR/recursion_limit_macro.rs:10:31
    |
 LL |     ($t:tt $($tail:tt)*) => { recurse!($($tail)*) }; //~ ERROR recursion limit
    |                               ^^^^^^^^^^^^^^^^^^^

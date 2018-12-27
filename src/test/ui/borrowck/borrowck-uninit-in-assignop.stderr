@@ -1,59 +1,59 @@
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:16:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:6:5
    |
 LL |     x += 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:19:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:9:5
    |
 LL |     x -= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:22:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:12:5
    |
 LL |     x *= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:25:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:15:5
    |
 LL |     x /= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:28:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:18:5
    |
 LL |     x %= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:31:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:21:5
    |
 LL |     x ^= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:34:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:24:5
    |
 LL |     x &= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:37:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:27:5
    |
 LL |     x |= 1; //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:40:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:30:5
    |
 LL |     x <<= 1;    //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^^ use of possibly uninitialized `x`
 
 error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/borrowck-uninit-in-assignop.rs:43:5
+  --> $DIR/borrowck-uninit-in-assignop.rs:33:5
    |
 LL |     x >>= 1;    //~ ERROR use of possibly uninitialized variable: `x`
    |     ^^^^^^^ use of possibly uninitialized `x`

@@ -1,11 +1,11 @@
 warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
-  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:20:10
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:10:10
    |
 LL |     ($(a)?*) => {} //~WARN using `?` as a separator
    |          ^
    |
 note: lint level defined here
-  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:17:9
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:7:9
    |
 LL | #![warn(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![warn(rust_2018_compatibility)]
    = note: for more information, see issue #48075 <https://github.com/rust-lang/rust/issues/48075>
 
 warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
-  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:25:10
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:15:10
    |
 LL |     ($(a)?+) => {} //~WARN using `?` as a separator
    |          ^

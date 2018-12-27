@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Library used by tidy and other tools
 //!
 //! This library contains the tidy lints and exposes it
@@ -56,17 +46,11 @@ pub mod libcoretest;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
-        "src/dlmalloc",
-        "src/jemalloc",
         "src/llvm",
         "src/llvm-emscripten",
         "src/libbacktrace",
-        "src/libcompiler_builtins",
         "src/librustc_data_structures/owning_ref",
-        "src/compiler-rt",
-        "src/liblibc",
         "src/vendor",
-        "src/rt/hoedown",
         "src/tools/cargo",
         "src/tools/clang",
         "src/tools/rls",
@@ -76,10 +60,11 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/miri",
         "src/tools/lld",
         "src/tools/lldb",
-        "src/librustc/mir/interpret",
-        "src/librustc_mir/interpret",
         "src/target",
         "src/stdsimd",
+        "src/rust-sgx",
+        "target",
+        "vendor",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

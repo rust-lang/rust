@@ -1,5 +1,5 @@
 error: path statement with no effect
-  --> $DIR/warn-path-statement.rs:15:5
+  --> $DIR/warn-path-statement.rs:5:5
    |
 LL |     x; //~ ERROR path statement with no effect
    |     ^^

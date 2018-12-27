@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Selection over an array of receivers
 //!
 //! This module contains the implementation machinery necessary for selecting
@@ -51,11 +41,10 @@
 #![unstable(feature = "mpsc_select",
             reason = "This implementation, while likely sufficient, is unsafe and \
                       likely to be error prone. At some point in the future this \
-                      module will likely be replaced, and it is currently \
-                      unknown how much API breakage that will cause. The ability \
-                      to select over a number of channels will remain forever, \
-                      but no guarantees beyond this are being made",
+                      module will be removed.",
             issue = "27800")]
+#![rustc_deprecated(since = "1.32.0",
+                    reason = "channel selection will be removed in a future release")]
 
 
 use fmt;

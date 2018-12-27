@@ -1,5 +1,5 @@
 error[E0080]: runtime values cannot be referenced in patterns
-  --> $DIR/non-constant-in-const-path.rs:14:15
+  --> $DIR/non-constant-in-const-path.rs:4:15
    |
 LL |         0 ..= x => {}
    |               ^

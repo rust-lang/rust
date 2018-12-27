@@ -8,14 +8,14 @@ system.
 
 The rustbuild build system has a primary entry point, a top level `x.py` script:
 
-```
-python ./x.py build
+```sh
+$ python ./x.py build
 ```
 
 Note that if you're on Unix you should be able to execute the script directly:
 
-```
-./x.py build
+```sh
+$ ./x.py build
 ```
 
 The script accepts commands, flags, and arguments to determine what to do:
@@ -129,18 +129,18 @@ To follow this course of action, first thing you will want to do is to
 install a nightly, presumably using `rustup`. You will then want to
 configure your directory to use this build, like so:
 
-```
+```sh
 # configure to use local rust instead of downloading a beta.
 # `--local-rust-root` is optional here. If elided, we will
 # use whatever rustc we find on your PATH.
-> ./configure --local-rust-root=~/.cargo/ --enable-local-rebuild
+$ ./configure --local-rust-root=~/.cargo/ --enable-local-rebuild
 ```
 
 After that, you can use the `--incremental` flag to actually do
 incremental builds:
 
-```
-> ./x.py build --incremental
+```sh
+$ ./x.py build --incremental
 ```
 
 The `--incremental` flag will store incremental compilation artifacts
@@ -159,7 +159,7 @@ will still be using the local nightly as your bootstrap).
 This build system houses all output under the `build` directory, which looks
 like this:
 
-```
+```sh
 # Root folder of all output. Everything is scoped underneath here
 build/
 

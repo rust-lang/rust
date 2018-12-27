@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A module for working with processes.
 //!
 //! This module is mostly concerned with spawning and interacting with child
@@ -626,6 +616,14 @@ impl Command {
 
     /// Sets the working directory for the child process.
     ///
+    /// # Platform-specific behavior
+    ///
+    /// If the program path is relative (e.g., `"./script.sh"`), it's ambiguous
+    /// whether it should be interpreted relative to the parent's working
+    /// directory or relative to `current_dir`. The behavior in this case is
+    /// platform specific and unstable, and it's recommended to use
+    /// [`canonicalize`] to get an absolute program path instead.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -638,6 +636,8 @@ impl Command {
     ///         .spawn()
     ///         .expect("ls command failed to start");
     /// ```
+    ///
+    /// [`canonicalize`]: ../fs/fn.canonicalize.html
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
@@ -754,14 +754,15 @@ impl Command {
     ///
     /// ```should_panic
     /// use std::process::Command;
+    /// use std::io::{self, Write};
     /// let output = Command::new("/bin/cat")
     ///                      .arg("file.txt")
     ///                      .output()
     ///                      .expect("failed to execute process");
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    /// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    /// io::stdout().write_all(&output.stdout).unwrap();
+    /// io::stderr().write_all(&output.stderr).unwrap();
     ///
     /// assert!(output.status.success());
     /// ```
@@ -941,6 +942,7 @@ impl Stdio {
     ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
+    /// use std::io::{self, Write};
     ///
     /// let output = Command::new("rev")
     ///     .stdin(Stdio::inherit())
@@ -948,7 +950,8 @@ impl Stdio {
     ///     .output()
     ///     .expect("Failed to execute command");
     ///
-    /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
+    /// print!("You piped in the reverse of: ");
+    /// io::stdout().write_all(&output.stdout).unwrap();
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
@@ -1006,6 +1009,28 @@ impl fmt::Debug for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdin> for Stdio {
+    /// Converts a `ChildStdin` into a `Stdio`
+    ///
+    /// # Examples
+    ///
+    /// `ChildStdin` will be converted to `Stdio` using `Stdio::from` under the hood.
+    ///
+    /// ```rust
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let reverse = Command::new("rev")
+    ///     .stdin(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("failed reverse command");
+    ///
+    /// let _echo = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(reverse.stdin.unwrap()) // Converted into a Stdio here
+    ///     .output()
+    ///     .expect("failed echo command");
+    ///
+    /// // "!dlrow ,olleH" echoed to console
+    /// ```
     fn from(child: ChildStdin) -> Stdio {
         Stdio::from_inner(child.into_inner().into())
     }
@@ -1013,6 +1038,28 @@ impl From<ChildStdin> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdout> for Stdio {
+    /// Converts a `ChildStdout` into a `Stdio`
+    ///
+    /// # Examples
+    ///
+    /// `ChildStdout` will be converted to `Stdio` using `Stdio::from` under the hood.
+    ///
+    /// ```rust
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let hello = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("failed echo command");
+    ///
+    /// let reverse = Command::new("rev")
+    ///     .stdin(hello.stdout.unwrap())  // Converted into a Stdio here
+    ///     .output()
+    ///     .expect("failed reverse command");
+    ///
+    /// assert_eq!(reverse.stdout, b"!dlrow ,olleH\n");
+    /// ```
     fn from(child: ChildStdout) -> Stdio {
         Stdio::from_inner(child.into_inner().into())
     }
@@ -1020,6 +1067,30 @@ impl From<ChildStdout> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStderr> for Stdio {
+    /// Converts a `ChildStderr` into a `Stdio`
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let reverse = Command::new("rev")
+    ///     .arg("non_existing_file.txt")
+    ///     .stderr(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("failed reverse command");
+    ///
+    /// let cat = Command::new("cat")
+    ///     .arg("-")
+    ///     .stdin(reverse.stderr.unwrap()) // Converted into a Stdio here
+    ///     .output()
+    ///     .expect("failed echo command");
+    ///
+    /// assert_eq!(
+    ///     String::from_utf8_lossy(&cat.stdout),
+    ///     "rev: cannot open non_existing_file.txt: No such file or directory\n"
+    /// );
+    /// ```
     fn from(child: ChildStderr) -> Stdio {
         Stdio::from_inner(child.into_inner().into())
     }
@@ -1027,6 +1098,26 @@ impl From<ChildStderr> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<fs::File> for Stdio {
+    /// Converts a `File` into a `Stdio`
+    ///
+    /// # Examples
+    ///
+    /// `File` will be converted to `Stdio` using `Stdio::from` under the hood.
+    ///
+    /// ```rust,no_run
+    /// use std::fs::File;
+    /// use std::process::Command;
+    ///
+    /// // With the `foo.txt` file containing `Hello, world!"
+    /// let file = File::open("foo.txt").unwrap();
+    ///
+    /// let reverse = Command::new("rev")
+    ///     .stdin(file)  // Implicit File conversion into a Stdio
+    ///     .output()
+    ///     .expect("failed reverse command");
+    ///
+    /// assert_eq!(reverse.stdout, b"!dlrow ,olleH");
+    /// ```
     fn from(file: fs::File) -> Stdio {
         Stdio::from_inner(file.into_inner().into())
     }
@@ -1239,7 +1330,7 @@ impl Child {
     /// Attempts to collect the exit status of the child if it has already
     /// exited.
     ///
-    /// This function will not block the calling thread and will only advisorily
+    /// This function will not block the calling thread and will only
     /// check to see if the child process has exited or not. If the child has
     /// exited then on Unix the process id is reaped. This function is
     /// guaranteed to repeatedly return a successful exit status so long as the
@@ -1786,42 +1877,6 @@ mod tests {
         let mut cmd = Command::new("cmd");
         cmd.arg("/c").arg("set");
         cmd
-    }
-
-    #[test]
-    fn test_inherit_env() {
-        use env;
-
-        let result = env_cmd().output().unwrap();
-        let output = String::from_utf8(result.stdout).unwrap();
-
-        for (ref k, ref v) in env::vars() {
-            // Don't check android RANDOM variable which seems to change
-            // whenever the shell runs, and our `env_cmd` is indeed running a
-            // shell which means it'll get a different RANDOM than we probably
-            // have.
-            //
-            // Also skip env vars with `-` in the name on android because, well,
-            // I'm not sure. It appears though that the `set` command above does
-            // not print env vars with `-` in the name, so we just skip them
-            // here as we won't find them in the output. Note that most env vars
-            // use `_` instead of `-`, but our build system sets a few env vars
-            // with `-` in the name.
-            if cfg!(target_os = "android") &&
-               (*k == "RANDOM" || k.contains("-")) {
-                continue
-            }
-
-            // Windows has hidden environment variables whose names start with
-            // equals signs (`=`). Those do not show up in the output of the
-            // `set` command.
-            assert!((cfg!(windows) && k.starts_with("=")) ||
-                    k.starts_with("DYLD") ||
-                    output.contains(&format!("{}={}", *k, *v)) ||
-                    output.contains(&format!("{}='{}'", *k, *v)),
-                    "output doesn't contain `{}={}`\n{}",
-                    k, v, output);
-        }
     }
 
     #[test]

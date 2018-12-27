@@ -1,17 +1,7 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ty::{self, Lift, TyCtxt, Region};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct FreeRegionMap<'tcx> {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     //
@@ -21,10 +11,6 @@ pub struct FreeRegionMap<'tcx> {
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
-    pub fn new() -> Self {
-        FreeRegionMap { relation: TransitiveRelation::new() }
-    }
-
     pub fn is_empty(&self) -> bool {
         self.relation.is_empty()
     }
@@ -84,14 +70,14 @@ impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
     }
 }
 
-fn is_free(r: Region) -> bool {
+fn is_free(r: Region<'_>) -> bool {
     match *r {
         ty::ReEarlyBound(_) | ty::ReFree(_) => true,
         _ => false
     }
 }
 
-fn is_free_or_static(r: Region) -> bool {
+fn is_free_or_static(r: Region<'_>) -> bool {
     match *r {
         ty::ReStatic => true,
         _ => is_free(r),

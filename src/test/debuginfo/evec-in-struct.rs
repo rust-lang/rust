@@ -1,12 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// ignore-tidy-linelength
 
 // min-lldb-version: 310
 
@@ -41,18 +33,23 @@
 // lldb-command:run
 
 // lldb-command:print no_padding1
-// lldb-check:[...]$0 = NoPadding1 { x: [0, 1, 2], y: -3, z: [4.5, 5.5] }
+// lldbg-check:[...]$0 = NoPadding1 { x: [0, 1, 2], y: -3, z: [4.5, 5.5] }
+// lldbr-check:(evec_in_struct::NoPadding1) no_padding1 = NoPadding1 { x: [0, 1, 2], y: -3, z: [4.5, 5.5] }
 // lldb-command:print no_padding2
-// lldb-check:[...]$1 = NoPadding2 { x: [6, 7, 8], y: [[9, 10], [11, 12]] }
+// lldbg-check:[...]$1 = NoPadding2 { x: [6, 7, 8], y: [[9, 10], [11, 12]] }
+// lldbr-check:(evec_in_struct::NoPadding2) no_padding2 = NoPadding2 { x: [6, 7, 8], y: [[9, 10], [11, 12]] }
 
 // lldb-command:print struct_internal_padding
-// lldb-check:[...]$2 = StructInternalPadding { x: [13, 14], y: [15, 16] }
+// lldbg-check:[...]$2 = StructInternalPadding { x: [13, 14], y: [15, 16] }
+// lldbr-check:(evec_in_struct::StructInternalPadding) struct_internal_padding = StructInternalPadding { x: [13, 14], y: [15, 16] }
 
 // lldb-command:print single_vec
-// lldb-check:[...]$3 = SingleVec { x: [17, 18, 19, 20, 21] }
+// lldbg-check:[...]$3 = SingleVec { x: [17, 18, 19, 20, 21] }
+// lldbr-check:(evec_in_struct::SingleVec) single_vec = SingleVec { x: [17, 18, 19, 20, 21] }
 
 // lldb-command:print struct_padded_at_end
-// lldb-check:[...]$4 = StructPaddedAtEnd { x: [22, 23], y: [24, 25] }
+// lldbg-check:[...]$4 = StructPaddedAtEnd { x: [22, 23], y: [24, 25] }
+// lldbr-check:(evec_in_struct::StructPaddedAtEnd) struct_padded_at_end = StructPaddedAtEnd { x: [22, 23], y: [24, 25] }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

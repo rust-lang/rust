@@ -1,5 +1,5 @@
 error: expected item, found `;`
-  --> $DIR/issue-49040.rs:11:28
+  --> $DIR/issue-49040.rs:1:28
    |
 LL | #![allow(unused_variables)]; //~ ERROR expected item, found `;`
    |                            ^ help: consider removing this semicolon

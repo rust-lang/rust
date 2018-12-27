@@ -1,20 +1,10 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::cmp;
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, seq::SliceRandom};
 
 #[test]
 fn test_iterator() {
@@ -318,11 +308,11 @@ fn panic_safe() {
     const NTEST: usize = 10;
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
-    let data = (1..DATASZ + 1).collect::<Vec<_>>();
+    let data = (1..=DATASZ).collect::<Vec<_>>();
 
     // since it's a fuzzy test, run several tries.
     for _ in 0..NTEST {
-        for i in 1..DATASZ + 1 {
+        for i in 1..=DATASZ {
             DROP_COUNTER.store(0, Ordering::SeqCst);
 
             let mut panic_ords: Vec<_> = data.iter()
@@ -332,7 +322,7 @@ fn panic_safe() {
             let panic_item = PanicOrd(i, true);
 
             // heapify the sane items
-            rng.shuffle(&mut panic_ords);
+            panic_ords.shuffle(&mut rng);
             let mut heap = BinaryHeap::from(panic_ords);
             let inner_data;
 

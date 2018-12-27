@@ -1,5 +1,5 @@
 error[E0712]: thread-local variable borrowed past end of function
-  --> $DIR/borrowck-thread-local-static-borrow-outlives-fn.rs:21:20
+  --> $DIR/borrowck-thread-local-static-borrow-outlives-fn.rs:11:20
    |
 LL |      assert_static(&FOO); //[ast]~ ERROR [E0597]
    |                    ^^^^ thread-local variables cannot be borrowed beyond the end of the function

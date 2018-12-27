@@ -1,11 +1,11 @@
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
-  --> $DIR/issue-24363.rs:12:7
+  --> $DIR/issue-24363.rs:2:7
    |
 LL |     1.create_a_type_error[ //~ `{integer}` is a primitive type and therefore doesn't have fields
    |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: binary operation `+` cannot be applied to type `()`
-  --> $DIR/issue-24363.rs:13:9
+  --> $DIR/issue-24363.rs:3:9
    |
 LL |         ()+() //~ ERROR binary operation `+` cannot be applied
    |         ^^^^^

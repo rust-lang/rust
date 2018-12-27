@@ -1,5 +1,5 @@
 error[E0560]: struct `Point` has no field named `nonexistent`
-  --> $DIR/issue-50618.rs:24:13
+  --> $DIR/issue-50618.rs:14:13
    |
 LL |             nonexistent: 0,
    |             ^^^^^^^^^^^ `Point` does not have this field

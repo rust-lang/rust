@@ -1,18 +1,9 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use build::Builder;
 use build::matches::MatchPair;
 use hair::*;
 use rustc::mir::*;
 use std::u32;
+use std::convert::TryInto;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,
@@ -35,8 +26,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      opt_slice: Option<&'pat Pattern<'tcx>>,
                                      suffix: &'pat [Pattern<'tcx>]) {
         let min_length = prefix.len() + suffix.len();
-        assert!(min_length < u32::MAX as usize);
-        let min_length = min_length as u32;
+        let min_length = min_length.try_into().unwrap();
 
         match_pairs.extend(
             prefix.iter()

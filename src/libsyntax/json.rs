@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A JSON emitter for errors.
 //!
 //! This works by converting errors to a simplified structural format (see the
@@ -19,10 +9,10 @@
 
 // FIXME spec the JSON output properly.
 
-use codemap::{CodeMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
+use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, SourceMapper};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 
@@ -36,19 +26,19 @@ use rustc_serialize::json::{as_json, as_pretty_json};
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
-    cm: Lrc<dyn CodeMapper + sync::Send + sync::Sync>,
+    sm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
     pretty: bool,
     ui_testing: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
-                  code_map: Lrc<CodeMap>,
+                  source_map: Lrc<SourceMap>,
                   pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
-            cm: code_map,
+            sm: source_map,
             pretty,
             ui_testing: false,
         }
@@ -56,18 +46,18 @@ impl JsonEmitter {
 
     pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Lrc::new(CodeMap::new(file_path_mapping)),
+        JsonEmitter::stderr(None, Lrc::new(SourceMap::new(file_path_mapping)),
                             pretty)
     }
 
     pub fn new(dst: Box<dyn Write + Send>,
                registry: Option<Registry>,
-               code_map: Lrc<CodeMap>,
+               source_map: Lrc<SourceMap>,
                pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
-            cm: code_map,
+            sm: source_map,
             pretty,
             ui_testing: false,
         }
@@ -199,7 +189,7 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false, false)
+        EmitterWriter::new(Box::new(buf), Some(je.sm.clone()), false, false)
             .ui_testing(je.ui_testing).emit(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
@@ -269,8 +259,8 @@ impl DiagnosticSpan {
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
-        let start = je.cm.lookup_char_pos(span.lo());
-        let end = je.cm.lookup_char_pos(span.hi());
+        let start = je.sm.lookup_char_pos(span.lo());
+        let end = je.sm.lookup_char_pos(span.hi());
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site =
                 Self::from_span_full(bt.call_site,
@@ -340,7 +330,7 @@ impl DiagnosticSpan {
 }
 
 impl DiagnosticSpanLine {
-    fn line_from_filemap(fm: &syntax_pos::FileMap,
+    fn line_from_source_file(fm: &syntax_pos::SourceFile,
                          index: usize,
                          h_start: usize,
                          h_end: usize)
@@ -356,13 +346,13 @@ impl DiagnosticSpanLine {
     /// of `span` gets a DiagnosticSpanLine, with the highlight indicating the
     /// `span` within the line.
     fn from_span(span: Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
-        je.cm.span_to_lines(span)
+        je.sm.span_to_lines(span)
              .map(|lines| {
                  let fm = &*lines.file;
                  lines.lines
                       .iter()
                       .map(|line| {
-                          DiagnosticSpanLine::line_from_filemap(fm,
+                          DiagnosticSpanLine::line_from_source_file(fm,
                                                                 line.line_index,
                                                                 line.start_col.0 + 1,
                                                                 line.end_col.0 + 1)

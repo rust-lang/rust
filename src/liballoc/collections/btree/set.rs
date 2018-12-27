@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
@@ -258,7 +248,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the difference,
-    /// i.e. the values that are in `self` but not in `other`,
+    /// i.e., the values that are in `self` but not in `other`,
     /// in ascending order.
     ///
     /// # Examples
@@ -286,7 +276,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the symmetric difference,
-    /// i.e. the values that are in `self` or in `other` but not in both,
+    /// i.e., the values that are in `self` or in `other` but not in both,
     /// in ascending order.
     ///
     /// # Examples
@@ -316,7 +306,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the intersection,
-    /// i.e. the values that are both in `self` and `other`,
+    /// i.e., the values that are both in `self` and `other`,
     /// in ascending order.
     ///
     /// # Examples
@@ -344,7 +334,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Visits the values representing the union,
-    /// i.e. all the values in `self` or `other`, without duplicates,
+    /// i.e., all the values in `self` or `other`, without duplicates,
     /// in ascending order.
     ///
     /// # Examples
@@ -455,7 +445,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Returns `true` if the set is a subset of another,
-    /// i.e. `other` contains at least all the values in `self`.
+    /// i.e., `other` contains at least all the values in `self`.
     ///
     /// # Examples
     ///
@@ -498,7 +488,7 @@ impl<T: Ord> BTreeSet<T> {
     }
 
     /// Returns `true` if the set is a superset of another,
-    /// i.e. `self` contains at least all the values in `other`.
+    /// i.e., `self` contains at least all the values in `other`.
     ///
     /// # Examples
     ///

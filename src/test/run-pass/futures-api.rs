@@ -1,29 +1,15 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-#![feature(arbitrary_self_types, futures_api, pin)]
+#![feature(arbitrary_self_types, futures_api)]
 #![allow(unused)]
 
-use std::boxed::PinBox;
 use std::future::Future;
-use std::mem::PinMut;
+use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::{
     Arc,
     atomic::{self, AtomicUsize},
 };
-use std::future::FutureObj;
 use std::task::{
-    Context, Poll,
-    Wake, Waker, LocalWaker,
-    Spawn, SpawnObjError,
+    Poll, Wake, Waker, LocalWaker,
     local_waker, local_waker_from_nonlocal,
 };
 
@@ -42,24 +28,17 @@ impl Wake for Counter {
     }
 }
 
-struct NoopSpawner;
-
-impl Spawn for NoopSpawner {
-    fn spawn_obj(&mut self, _: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
-        Ok(())
-    }
-}
-
 struct MyFuture;
 
 impl Future for MyFuture {
     type Output = ();
-    fn poll(self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
-        // Ensure all the methods work appropriately
-        cx.waker().wake();
-        cx.waker().wake();
-        cx.local_waker().wake();
-        cx.spawner().spawn_obj(PinBox::new(MyFuture).into()).unwrap();
+    fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
+        // Wake once locally
+        lw.wake();
+        // Wake twice non-locally
+        let waker = lw.clone().into_waker();
+        waker.wake();
+        waker.wake();
         Poll::Ready(())
     }
 }
@@ -70,9 +49,7 @@ fn test_local_waker() {
         nonlocal_wakes: AtomicUsize::new(0),
     });
     let waker = unsafe { local_waker(counter.clone()) };
-    let spawner = &mut NoopSpawner;
-    let cx = &mut Context::new(&waker, spawner);
-    assert_eq!(Poll::Ready(()), PinMut::new(&mut MyFuture).poll(cx));
+    assert_eq!(Poll::Ready(()), Pin::new(&mut MyFuture).poll(&waker));
     assert_eq!(1, counter.local_wakes.load(atomic::Ordering::SeqCst));
     assert_eq!(2, counter.nonlocal_wakes.load(atomic::Ordering::SeqCst));
 }
@@ -83,9 +60,7 @@ fn test_local_as_nonlocal_waker() {
         nonlocal_wakes: AtomicUsize::new(0),
     });
     let waker: LocalWaker = local_waker_from_nonlocal(counter.clone());
-    let spawner = &mut NoopSpawner;
-    let cx = &mut Context::new(&waker, spawner);
-    assert_eq!(Poll::Ready(()), PinMut::new(&mut MyFuture).poll(cx));
+    assert_eq!(Poll::Ready(()), Pin::new(&mut MyFuture).poll(&waker));
     assert_eq!(0, counter.local_wakes.load(atomic::Ordering::SeqCst));
     assert_eq!(3, counter.nonlocal_wakes.load(atomic::Ordering::SeqCst));
 }

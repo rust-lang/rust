@@ -1,5 +1,5 @@
 error[E0426]: use of undeclared label `'x`
-  --> $DIR/hygienic-label-4.rs:16:16
+  --> $DIR/hygienic-label-4.rs:6:16
    |
 LL |     foo!(break 'x); //~ ERROR use of undeclared label `'x`
    |                ^^ did you mean `'x`?

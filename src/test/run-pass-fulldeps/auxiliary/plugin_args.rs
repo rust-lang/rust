@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // force-host
 
 #![feature(plugin_registrar)]
@@ -38,7 +28,8 @@ impl TTMacroExpander for Expander {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
-                   _: TokenStream) -> Box<MacResult+'cx> {
+                   _: TokenStream,
+                   _: Option<Span>) -> Box<MacResult+'cx> {
         let args = self.args.iter().map(|i| pprust::meta_list_item_to_string(i))
             .collect::<Vec<_>>().join(", ");
         MacEager::expr(ecx.expr_str(sp, Symbol::intern(&args)))

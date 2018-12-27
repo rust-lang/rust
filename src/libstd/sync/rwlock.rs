@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cell::UnsafeCell;
 use fmt;
 use mem;
@@ -461,8 +451,6 @@ impl<T: Default> Default for RwLock<T> {
 impl<T> From<T> for RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     /// This is equivalent to [`RwLock::new`].
-    ///
-    /// [`RwLock::new`]: #method.new
     fn from(t: T) -> Self {
         RwLock::new(t)
     }
@@ -597,7 +585,7 @@ mod tests {
             thread::spawn(move || {
                 let mut rng = rand::thread_rng();
                 for _ in 0..M {
-                    if rng.gen_weighted_bool(N) {
+                    if rng.gen_bool(1.0 / (N as f64)) {
                         drop(r.write().unwrap());
                     } else {
                         drop(r.read().unwrap());

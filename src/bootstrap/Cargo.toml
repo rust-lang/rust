@@ -2,6 +2,7 @@
 authors = ["The Rust Project Developers"]
 name = "bootstrap"
 version = "0.0.0"
+edition = "2018"
 
 [lib]
 name = "bootstrap"
@@ -47,7 +48,7 @@ serde_json = "1.0.2"
 toml = "0.4"
 lazy_static = "0.2"
 time = "0.1"
-petgraph = "0.4.12"
+petgraph = "0.4.13"
 
 [dev-dependencies]
 pretty_assertions = "0.5"

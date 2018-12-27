@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, OutlivesPredicate, TyCtxt};
 use util::nodemap::FxHashMap;
@@ -33,14 +23,14 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
     ) -> &RequiredPredicates<'tcx> {
         self.map.entry(def_id).or_insert_with(|| {
             let predicates = if def_id.is_local() {
-                tcx.explicit_predicates_of(def_id).predicates
+                tcx.explicit_predicates_of(def_id)
             } else {
-                tcx.predicates_of(def_id).predicates
+                tcx.predicates_of(def_id)
             };
             let mut required_predicates = RequiredPredicates::default();
 
             // process predicates and convert to `RequiredPredicates` entry, see below
-            for pred in predicates.into_iter() {
+            for (pred, _) in predicates.predicates.iter() {
                 match pred {
                     ty::Predicate::TypeOutlives(predicate) => {
                         let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();

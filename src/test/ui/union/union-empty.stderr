@@ -1,5 +1,5 @@
 error: unions cannot have zero fields
-  --> $DIR/union-empty.rs:11:1
+  --> $DIR/union-empty.rs:1:1
    |
 LL | union U {} //~ ERROR unions cannot have zero fields
    | ^^^^^^^^^^

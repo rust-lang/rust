@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Wrapper` in this scope
+  --> $DIR/issue-53300.rs:7:18
+   |
+LL | fn addition() -> Wrapper<impl A> {}
+   |                  ^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

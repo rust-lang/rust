@@ -1,11 +1,11 @@
 error[E0597]: `line` does not live long enough
-  --> $DIR/issue-52126-assign-op-invariance.rs:44:28
+  --> $DIR/issue-52126-assign-op-invariance.rs:34:28
    |
 LL |         let v: Vec<&str> = line.split_whitespace().collect();
    |                            ^^^^ borrowed value does not live long enough
-LL |         //~^ ERROR `line` does not live long enough
-LL |         println!("accumulator before add_assign {:?}", acc.map);
-   |                                                        ------- borrow used here in later iteration of loop
+...
+LL |         acc += cnt2;
+   |         --- borrow used here, in later iteration of loop
 ...
 LL |     }
    |     - `line` dropped here while still borrowed

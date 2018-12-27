@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::util::nodemap::DefIdSet;
 
 use clean;
@@ -22,10 +12,10 @@ pub const STRIP_PRIVATE: Pass =
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(mut krate: clean::Crate, _: &DocContext) -> clean::Crate {
+pub fn strip_private(mut krate: clean::Crate, cx: &DocContext) -> clean::Crate {
     // This stripper collects all *retained* nodes.
-    let mut retained = DefIdSet();
-    let access_levels = krate.access_levels.clone();
+    let mut retained = DefIdSet::default();
+    let access_levels = cx.renderinfo.borrow().access_levels.clone();
 
     // strip all private items
     {

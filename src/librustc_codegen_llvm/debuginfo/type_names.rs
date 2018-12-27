@@ -1,26 +1,17 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Type Names for Debug Info.
 
 use common::CodegenCx;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
+use rustc_codegen_ssa::traits::*;
 
 use rustc::hir;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
-// any caching, i.e. calling the function twice with the same type will also do
+// any caching, i.e., calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
-// type name, further levels (i.e. type parameters) are always fully qualified.
+// type name, further levels (i.e., type parameters) are always fully qualified.
 pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                              t: Ty<'tcx>,
                                              qualified: bool)
@@ -41,19 +32,19 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let cpp_like_names = cx.sess().target.target.options.is_like_msvc;
 
     match t.sty {
-        ty::TyBool => output.push_str("bool"),
-        ty::TyChar => output.push_str("char"),
-        ty::TyStr => output.push_str("str"),
-        ty::TyNever => output.push_str("!"),
-        ty::TyInt(int_ty) => output.push_str(int_ty.ty_to_string()),
-        ty::TyUint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
-        ty::TyFloat(float_ty) => output.push_str(float_ty.ty_to_string()),
-        ty::TyForeign(def_id) => push_item_name(cx, def_id, qualified, output),
-        ty::TyAdt(def, substs) => {
+        ty::Bool => output.push_str("bool"),
+        ty::Char => output.push_str("char"),
+        ty::Str => output.push_str("str"),
+        ty::Never => output.push_str("!"),
+        ty::Int(int_ty) => output.push_str(int_ty.ty_to_string()),
+        ty::Uint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
+        ty::Float(float_ty) => output.push_str(float_ty.ty_to_string()),
+        ty::Foreign(def_id) => push_item_name(cx, def_id, qualified, output),
+        ty::Adt(def, substs) => {
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);
         },
-        ty::TyTuple(component_types) => {
+        ty::Tuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
@@ -65,7 +56,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
             output.push(')');
         },
-        ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
+        ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
             if !cpp_like_names {
                 output.push('*');
             }
@@ -80,7 +71,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push('*');
             }
         },
-        ty::TyRef(_, inner_type, mutbl) => {
+        ty::Ref(_, inner_type, mutbl) => {
             if !cpp_like_names {
                 output.push('&');
             }
@@ -94,13 +85,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push('*');
             }
         },
-        ty::TyArray(inner_type, len) => {
+        ty::Array(inner_type, len) => {
             output.push('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
             output.push_str(&format!("; {}", len.unwrap_usize(cx.tcx)));
             output.push(']');
         },
-        ty::TySlice(inner_type) => {
+        ty::Slice(inner_type) => {
             if cpp_like_names {
                 output.push_str("slice<");
             } else {
@@ -115,17 +106,15 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push(']');
             }
         },
-        ty::TyDynamic(ref trait_data, ..) => {
-            if let Some(principal) = trait_data.principal() {
-                let principal = cx.tcx.normalize_erasing_late_bound_regions(
-                    ty::ParamEnv::reveal_all(),
-                    &principal,
-                );
-                push_item_name(cx, principal.def_id, false, output);
-                push_type_params(cx, principal.substs, output);
-            }
+        ty::Dynamic(ref trait_data, ..) => {
+            let principal = cx.tcx.normalize_erasing_late_bound_regions(
+                ty::ParamEnv::reveal_all(),
+                &trait_data.principal(),
+            );
+            push_item_name(cx, principal.def_id, false, output);
+            push_type_params(cx, principal.substs, output);
         },
-        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(_) => {
             let sig = t.fn_sig(cx.tcx);
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
@@ -160,25 +149,28 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             output.push(')');
 
-            if !sig.output().is_nil() {
+            if !sig.output().is_unit() {
                 output.push_str(" -> ");
                 push_debuginfo_type_name(cx, sig.output(), true, output);
             }
         },
-        ty::TyClosure(..) => {
+        ty::Closure(..) => {
             output.push_str("closure");
         }
-        ty::TyGenerator(..) => {
+        ty::Generator(..) => {
             output.push_str("generator");
         }
-        ty::TyError |
-        ty::TyInfer(_) |
-        ty::TyProjection(..) |
-        ty::TyAnon(..) |
-        ty::TyGeneratorWitness(..) |
-        ty::TyParam(_) => {
+        ty::Error |
+        ty::Infer(_) |
+        ty::Placeholder(..) |
+        ty::UnnormalizedProjection(..) |
+        ty::Projection(..) |
+        ty::Bound(..) |
+        ty::Opaque(..) |
+        ty::GeneratorWitness(..) |
+        ty::Param(_) => {
             bug!("debuginfo: Trying to create type name for \
-                unexpected type: {:?}", t);
+                  unexpected type: {:?}", t);
         }
     }
 

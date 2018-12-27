@@ -1,0 +1,14 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:21:27
+   |
+LL |     let x: &'static u8 = &(bar() + 1);
+   |            -----------    ^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.

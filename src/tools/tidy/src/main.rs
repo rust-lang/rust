@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Tidy checks source code in this repository
 //!
 //! This program runs all of the various tidy checks for style, cleanliness,
@@ -24,11 +14,8 @@ use std::path::PathBuf;
 use std::env;
 
 fn main() {
-    let path = env::args_os().skip(1).next().expect("need path to src");
-    let path = PathBuf::from(path);
-
-    let cargo = env::args_os().skip(2).next().expect("need path to cargo");
-    let cargo = PathBuf::from(cargo);
+    let path: PathBuf = env::args_os().nth(1).expect("need path to src").into();
+    let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
 
     let args: Vec<String> = env::args().skip(1).collect();
 

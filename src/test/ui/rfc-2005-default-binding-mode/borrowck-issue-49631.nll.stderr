@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-issue-49631.rs:30:9
+  --> $DIR/borrowck-issue-49631.rs:20:9
    |
 LL |     while let Some(Ok(string)) = foo.get() {
    |                                  --- immutable borrow occurs here
@@ -7,7 +7,7 @@ LL |         foo.mutate();
    |         ^^^^^^^^^^^^ mutable borrow occurs here
 LL |         //~^ ERROR cannot borrow `foo` as mutable
 LL |         println!("foo={:?}", *string);
-   |                              ------- borrow used here in later iteration of loop
+   |                              ------- immutable borrow used here, in later iteration of loop
 
 error: aborting due to previous error
 

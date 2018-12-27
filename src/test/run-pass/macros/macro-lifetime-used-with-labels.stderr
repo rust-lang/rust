@@ -1,0 +1,11 @@
+warning: label name `'b` shadows a label name that is already in scope
+  --> $DIR/macro-lifetime-used-with-labels.rs:21:9
+   |
+LL |         'b: loop {
+   |         ^^ lifetime 'b already in scope
+...
+LL |     'b: loop {
+   |     -- first declared here
+LL |         br2!('b);
+   |         --------- in this macro invocation
+

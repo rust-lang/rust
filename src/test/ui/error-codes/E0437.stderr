@@ -1,5 +1,5 @@
 error[E0437]: type `Bar` is not a member of trait `Foo`
-  --> $DIR/E0437.rs:14:5
+  --> $DIR/E0437.rs:4:5
    |
 LL |     type Bar = bool; //~ ERROR E0437
    |     ^^^^^^^^^^^^^^^^ not a member of trait `Foo`

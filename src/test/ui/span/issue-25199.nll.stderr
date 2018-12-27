@@ -1,5 +1,5 @@
 error[E0597]: `container` does not live long enough
-  --> $DIR/issue-25199.rs:80:27
+  --> $DIR/issue-25199.rs:70:27
    |
 LL |     let test = Test{test: &container};
    |                           ^^^^^^^^^^ borrowed value does not live long enough
@@ -8,7 +8,7 @@ LL | }
    | -
    | |
    | `container` dropped here while still borrowed
-   | borrow later used here, when `container` is dropped
+   | borrow might be used here, when `container` is dropped and runs the destructor for type `Container<'_>`
 
 error: aborting due to previous error
 

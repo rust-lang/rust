@@ -1,11 +1,11 @@
 error[E0624]: method `meth_struct` is private
-  --> $DIR/xc-private-method2.rs:16:52
+  --> $DIR/xc-private-method2.rs:6:52
    |
 LL |     let _ = xc_private_method_lib::Struct{ x: 10 }.meth_struct();
    |                                                    ^^^^^^^^^^^
 
 error[E0624]: method `meth_enum` is private
-  --> $DIR/xc-private-method2.rs:19:55
+  --> $DIR/xc-private-method2.rs:9:55
    |
 LL |     let _ = xc_private_method_lib::Enum::Variant1(20).meth_enum();
    |                                                       ^^^^^^^^^

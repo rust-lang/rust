@@ -1,19 +1,8 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::fmt;
 use std::str::FromStr;
 
 /// The edition of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable)]
-#[non_exhaustive]
+#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable, Eq)]
 pub enum Edition {
     // editions must be kept in order, oldest to newest
 
@@ -33,7 +22,7 @@ pub enum Edition {
 // must be in order from oldest to newest
 pub const ALL_EDITIONS: &[Edition] = &[Edition::Edition2015, Edition::Edition2018];
 
-pub const EDITION_NAME_LIST: &'static str = "2015|2018";
+pub const EDITION_NAME_LIST: &str = "2015|2018";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
@@ -65,7 +54,7 @@ impl Edition {
     pub fn is_stable(&self) -> bool {
         match *self {
             Edition::Edition2015 => true,
-            Edition::Edition2018 => false,
+            Edition::Edition2018 => true,
         }
     }
 }

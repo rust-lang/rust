@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Generic hashing support.
 //!
 //! This module provides a generic way to compute the hash of a value. The
@@ -361,7 +351,7 @@ pub trait Hasher {
 }
 
 #[stable(feature = "indirect_hasher_impl", since = "1.22.0")]
-impl<'a, H: Hasher + ?Sized> Hasher for &'a mut H {
+impl<H: Hasher + ?Sized> Hasher for &mut H {
     fn finish(&self) -> u64 {
         (**self).finish()
     }
@@ -408,7 +398,7 @@ impl<'a, H: Hasher + ?Sized> Hasher for &'a mut H {
 
 /// A trait for creating instances of [`Hasher`].
 ///
-/// A `BuildHasher` is typically used (e.g. by [`HashMap`]) to create
+/// A `BuildHasher` is typically used (e.g., by [`HashMap`]) to create
 /// [`Hasher`]s for each key such that they are hashed independently of one
 /// another, since [`Hasher`]s contain state.
 ///
@@ -669,14 +659,14 @@ mod impls {
 
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized + Hash> Hash for &'a T {
+    impl<T: ?Sized + Hash> Hash for &T {
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized + Hash> Hash for &'a mut T {
+    impl<T: ?Sized + Hash> Hash for &mut T {
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }

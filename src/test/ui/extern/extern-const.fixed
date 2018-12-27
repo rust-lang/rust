@@ -1,18 +1,18 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
+// Check extern items cannot be const + `rustfix` suggests using
+// extern static.
 //
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// #54388: an unused reference to an undefined static may or may not
+// compile. To sidestep this by using one that *is* defined.
 
 // run-rustfix
-// compile-flags: -Z continue-parse-after-error
+// ignore-wasm32 no external library to link to.
+// compile-flags: -g -Z continue-parse-after-error
+#![feature(rustc_private)]
+extern crate libc;
 
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
-    static C: u8; //~ ERROR extern items cannot be `const`
+    static rust_dbg_static_mut: libc::c_int; //~ ERROR extern items cannot be `const`
 }
 
 fn main() {
@@ -20,6 +20,6 @@ fn main() {
     // but this also requires `unsafe` (a deny-by-default lint at comment time,
     // future error; Issue #36247)
     unsafe {
-        let _x = C;
+        let _x = rust_dbg_static_mut;
     }
 }

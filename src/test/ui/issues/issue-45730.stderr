@@ -1,5 +1,5 @@
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/issue-45730.rs:13:23
+  --> $DIR/issue-45730.rs:3:23
    |
 LL |     let x: *const _ = 0 as _; //~ ERROR cannot cast
    |                       ^^^^^-
@@ -9,7 +9,7 @@ LL |     let x: *const _ = 0 as _; //~ ERROR cannot cast
    = note: The type information given here is insufficient to check whether the pointer cast is valid
 
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/issue-45730.rs:15:23
+  --> $DIR/issue-45730.rs:5:23
    |
 LL |     let x: *const _ = 0 as *const _; //~ ERROR cannot cast
    |                       ^^^^^--------
@@ -19,7 +19,7 @@ LL |     let x: *const _ = 0 as *const _; //~ ERROR cannot cast
    = note: The type information given here is insufficient to check whether the pointer cast is valid
 
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/issue-45730.rs:18:13
+  --> $DIR/issue-45730.rs:8:13
    |
 LL |     let x = 0 as *const i32 as *const _ as *mut _; //~ ERROR cannot cast
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------

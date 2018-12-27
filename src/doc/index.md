@@ -4,6 +4,26 @@
 nav {
     display: none;
 }
+#search-input {
+    width: calc(100% - 58px);
+}
+#search-but {
+    cursor: pointer;
+}
+#search-but, #search-input {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    outline: none;
+    font-size: 0.7em;
+    background-color: #fff;
+}
+#search-but:hover, #search-input:focus {
+    border-color: #55a9ff;
+}
+h2 {
+    font-size: 18px;
+}
 </style>
 
 Welcome to an overview of the documentation provided by the Rust project.
@@ -34,7 +54,7 @@ minimum. It also includes exercises!
 
 # Use Rust
 
-Once you've gotten familliar with the language, these resources can help you
+Once you've gotten familiar with the language, these resources can help you
 when you're actually using it day-to-day.
 
 ## The Standard Library
@@ -42,6 +62,14 @@ when you're actually using it day-to-day.
 Rust's standard library has [extensive API documentation](std/index.html),
 with explanations of how to use various things, as well as example code for
 accomplishing various tasks.
+
+<div>
+  <form action="std/index.html" method="get">
+    <input id="search-input" type="search" name="search"
+           placeholder="Search through the standard library"/>
+    <button id="search-but">Search</button>
+  </form>
+</div>
 
 ## The Rustc Book
 

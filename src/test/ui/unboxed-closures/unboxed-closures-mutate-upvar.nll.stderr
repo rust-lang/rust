@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
-  --> $DIR/unboxed-closures-mutate-upvar.rs:25:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:15:9
    |
 LL |     let n = 0;
    |         - help: consider changing this to be mutable: `mut n`
@@ -8,7 +8,7 @@ LL |         n += 1;
    |         ^^^^^^ cannot assign
 
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
-  --> $DIR/unboxed-closures-mutate-upvar.rs:42:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:32:9
    |
 LL |     let n = 0;
    |         - help: consider changing this to be mutable: `mut n`
@@ -17,7 +17,7 @@ LL |         n += 1; //~ ERROR cannot assign
    |         ^^^^^^ cannot assign
 
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
-  --> $DIR/unboxed-closures-mutate-upvar.rs:56:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:46:9
    |
 LL |     let n = 0;
    |         - help: consider changing this to be mutable: `mut n`
@@ -26,13 +26,13 @@ LL |         n += 1; //~ ERROR cannot assign
    |         ^^^^^^ cannot assign
 
 error[E0594]: cannot assign to `n`, as it is a captured variable in a `Fn` closure
-  --> $DIR/unboxed-closures-mutate-upvar.rs:63:9
+  --> $DIR/unboxed-closures-mutate-upvar.rs:53:9
    |
 LL |         n += 1; //~ ERROR cannot assign
    |         ^^^^^^ cannot assign
    |
 help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/unboxed-closures-mutate-upvar.rs:62:23
+  --> $DIR/unboxed-closures-mutate-upvar.rs:52:23
    |
 LL |       let mut f = to_fn(move || {
    |  _______________________^

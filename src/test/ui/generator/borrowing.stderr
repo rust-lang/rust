@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/borrowing.rs:18:29
+  --> $DIR/borrowing.rs:8:29
    |
 LL |         unsafe { (|| yield &a).resume() }
    |                   --        ^ borrowed value does not live long enough
@@ -13,7 +13,7 @@ LL | }
    | - borrowed value needs to live until here
 
 error[E0597]: `a` does not live long enough
-  --> $DIR/borrowing.rs:25:20
+  --> $DIR/borrowing.rs:15:20
    |
 LL |         || {
    |         -- capture occurs here

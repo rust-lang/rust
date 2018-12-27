@@ -1,19 +1,9 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // This file tests repr(transparent)-related errors reported during typeck. Other errors
 // that are reported earlier and therefore preempt these are tested in:
 // - repr-transparent-other-reprs.rs
 // - repr-transparent-other-items.rs
 
-#![feature(repr_align, attr_literals)]
+#![feature(repr_align)]
 
 use std::marker::PhantomData;
 
@@ -48,3 +38,5 @@ struct ZstAlign32<T>(PhantomData<T>);
 
 #[repr(transparent)]
 struct GenericAlign<T>(ZstAlign32<T>, u32); //~ ERROR alignment larger than 1
+
+fn main() {}

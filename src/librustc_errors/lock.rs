@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Bindings to acquire a global named lock.
 //!
 //! This is intended to be used to synchronize multiple compiler processes to
@@ -22,7 +12,7 @@
 use std::any::Any;
 
 #[cfg(windows)]
-#[allow(bad_style)]
+#[allow(nonstandard_style)]
 pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use std::ffi::CString;
     use std::io;
@@ -109,7 +99,7 @@ pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     }
 }
 
-#[cfg(unix)]
+#[cfg(not(windows))]
 pub fn acquire_global_lock(_name: &str) -> Box<dyn Any> {
     Box::new(())
 }

@@ -1,5 +1,5 @@
 error[E0428]: the name `a` is defined multiple times
-  --> $DIR/issue-3099.rs:15:1
+  --> $DIR/issue-3099.rs:5:1
    |
 LL | fn a(x: String) -> String {
    | ------------------------- previous definition of the value `a` here

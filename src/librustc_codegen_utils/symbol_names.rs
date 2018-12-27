@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The Rust Linkage Model and Symbol Names
 //! =======================================
 //!
@@ -71,7 +61,7 @@
 //! order to also avoid inter-crate conflicts two more measures are taken:
 //!
 //! - The name of the crate containing the symbol is prepended to the symbol
-//!   name, i.e. symbols are "crate qualified". For example, a function `foo` in
+//!   name, i.e., symbols are "crate qualified". For example, a function `foo` in
 //!   module `bar` in crate `baz` would get a symbol name like
 //!   `baz::bar::foo::{hash}` instead of just `bar::foo::{hash}`. This avoids
 //!   simple conflicts between functions from different crates.
@@ -79,7 +69,7 @@
 //! - In order to be able to also use symbols from two versions of the same
 //!   crate (which naturally also have the same name), a stronger measure is
 //!   required: The compiler accepts an arbitrary "disambiguator" value via the
-//!   `-C metadata` commandline argument. This disambiguator is then fed into
+//!   `-C metadata` command-line argument. This disambiguator is then fed into
 //!   the symbol hash of every exported item. Consequently, the symbols in two
 //!   identical crates but with different disambiguators are not in conflict
 //!   with each other. This facility is mainly intended to be used by build
@@ -98,10 +88,10 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::map as hir_map;
+use rustc::hir::Node;
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::middle::weak_lang_items;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
@@ -111,10 +101,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
 use rustc_mir::monomorphize::Instance;
 
-use syntax::attr;
 use syntax_pos::symbol::Symbol;
 
 use std::fmt::Write;
+use std::mem::discriminant;
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -171,7 +161,7 @@ fn get_symbol_hash<'a, 'tcx>(
         // If this is a function, we hash the signature as well.
         // This is not *strictly* needed, but it may help in some
         // situations, see the `run-make/a-b-a-linker-guard` test.
-        if let ty::TyFnDef(..) = item_type.sty {
+        if let ty::FnDef(..) = item_type.sty {
             item_type.fn_sig(tcx).hash_stable(&mut hcx, &mut hasher);
         }
 
@@ -220,6 +210,10 @@ fn get_symbol_hash<'a, 'tcx>(
                 .hash_stable(&mut hcx, &mut hasher);
             (&tcx.crate_disambiguator(instantiating_crate)).hash_stable(&mut hcx, &mut hasher);
         }
+
+        // We want to avoid accidental collision between different types of instances.
+        // Especially, VtableShim may overlap with its original instance without this.
+        discriminant(&instance.def).hash_stable(&mut hcx, &mut hasher);
     });
 
     // 64 bits should be enough to avoid collisions.
@@ -229,7 +223,7 @@ fn get_symbol_hash<'a, 'tcx>(
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     let mut buffer = SymbolPathBuffer::new();
     item_path::with_forced_absolute_paths(|| {
-        tcx.push_item_path(&mut buffer, def_id);
+        tcx.push_item_path(&mut buffer, def_id, false);
     });
     buffer.into_interned()
 }
@@ -246,48 +240,44 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    let node_id = tcx.hir.as_local_node_id(def_id);
+    let node_id = tcx.hir().as_local_node_id(def_id);
 
     if let Some(id) = node_id {
         if *tcx.sess.plugin_registrar_fn.get() == Some(id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if *tcx.sess.derive_registrar_fn.get() == Some(id) {
+        if *tcx.sess.proc_macro_decls_static.get() == Some(id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_derive_registrar_symbol(disambiguator);
+            return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let attrs = tcx.get_attrs(def_id);
     let is_foreign = if let Some(id) = node_id {
-        match tcx.hir.get(id) {
-            hir_map::NodeForeignItem(_) => true,
+        match tcx.hir().get(id) {
+            Node::ForeignItem(_) => true,
             _ => false,
         }
     } else {
         tcx.is_foreign_item(def_id)
     };
 
-    if let Some(name) = weak_lang_items::link_name(&attrs) {
-        return name.to_string();
-    }
-
+    let attrs = tcx.codegen_fn_attrs(def_id);
     if is_foreign {
-        if let Some(name) = attr::first_attr_value_str_by_name(&attrs, "link_name") {
+        if let Some(name) = attrs.link_name {
             return name.to_string();
         }
         // Don't mangle foreign items.
         return tcx.item_name(def_id).to_string();
     }
 
-    if let Some(name) = tcx.codegen_fn_attrs(def_id).export_name {
+    if let Some(name) = &attrs.export_name {
         // Use provided name
         return name.to_string();
     }
 
-    if attr::contains_name(&attrs, "no_mangle") {
+    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
         return tcx.item_name(def_id).to_string();
     }
@@ -327,7 +317,13 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, def_id, instance, instance_ty, substs);
 
-    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(hash)
+    let mut buf = SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id));
+
+    if instance.is_vtable_shim() {
+        buf.push("{{vtable-shim}}");
+    }
+
+    buf.finish(hash)
 }
 
 // Follow C++ namespace-mangling style, see
@@ -343,6 +339,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 //
 // To be able to work on all platforms and get *some* reasonable output, we
 // use C++ name-mangling.
+#[derive(Debug)]
 struct SymbolPathBuffer {
     result: String,
     temp_buf: String,
@@ -382,7 +379,7 @@ impl SymbolPathBuffer {
 
 impl ItemPathBuffer for SymbolPathBuffer {
     fn root_mode(&self) -> &RootMode {
-        const ABSOLUTE: &'static RootMode = &RootMode::Absolute;
+        const ABSOLUTE: &RootMode = &RootMode::Absolute;
         ABSOLUTE
     }
 

@@ -1,5 +1,5 @@
 error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
-  --> $DIR/lint-forbid-attr.rs:13:9
+  --> $DIR/lint-forbid-attr.rs:3:9
    |
 LL | #![forbid(deprecated)]
    |           ---------- `forbid` level set here

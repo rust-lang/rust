@@ -1,0 +1,7 @@
+#main > h2 + div, #main > h2 + h3, #main > h3 + div {
+	display: block;
+}
+
+.loading-content {
+	display: none;
+}

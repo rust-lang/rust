@@ -1,5 +1,5 @@
 error[E0369]: binary operation `%` cannot be applied to type `&&{integer}`
-  --> $DIR/binary-op-on-double-ref.rs:14:9
+  --> $DIR/binary-op-on-double-ref.rs:4:9
    |
 LL |         x % 2 == 0
    |         ^^^^^

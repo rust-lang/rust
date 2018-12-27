@@ -1,5 +1,5 @@
 error: expected a literal
-  --> $DIR/bad-concat.rs:15:21
+  --> $DIR/bad-concat.rs:5:21
    |
 LL |     let _ = concat!(x, y, z, "bar");
    |                     ^  ^  ^

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The various algorithms from the paper.
 
 use cmp::min;
@@ -61,9 +51,9 @@ mod fpu_precision {
     ///
     /// The only field which is relevant for the following code is PC, Precision Control. This
     /// field determines the precision of the operations performed by the  FPU. It can be set to:
-    ///  - 0b00, single precision i.e. 32-bits
-    ///  - 0b10, double precision i.e. 64-bits
-    ///  - 0b11, double extended precision i.e. 80-bits (default state)
+    ///  - 0b00, single precision i.e., 32-bits
+    ///  - 0b10, double precision i.e., 64-bits
+    ///  - 0b11, double extended precision i.e., 80-bits (default state)
     /// The 0b01 value is reserved and should not be used.
     pub struct FPUControlWord(u16);
 

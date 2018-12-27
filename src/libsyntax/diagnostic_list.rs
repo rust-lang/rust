@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![allow(non_snake_case)]
 
 // Error messages for EXXXX errors.
@@ -213,19 +203,18 @@ Delete the offending feature attribute.
 "##,
 
 E0565: r##"
-A literal was used in an attribute that doesn't support literals.
+A literal was used in a built-in attribute that doesn't support literals.
 
 Erroneous code example:
 
 ```ignore (compile_fail not working here; see Issue #43707)
-#![feature(attr_literals)]
-
 #[inline("always")] // error: unsupported literal
 pub fn something() {}
 ```
 
-Literals in attributes are new and largely unsupported. Work to support literals
-where appropriate is ongoing. Try using an unquoted name instead:
+Literals in attributes are new and largely unsupported in built-in attributes.
+Work to support literals where appropriate is ongoing. Try using an unquoted
+name instead:
 
 ```
 #[inline(always)]
@@ -376,14 +365,15 @@ and likely to change in the future.
 
 E0705: r##"
 A `#![feature]` attribute was declared for a feature that is stable in
-the current edition.
+the current edition, but not in all editions.
 
 Erroneous code example:
 
 ```ignore (limited to a warning during 2018 edition development)
 #![feature(rust_2018_preview)]
-#![feature(raw_identifiers)] // error: the feature `raw_identifiers` is
-                             // included in the Rust 2018 edition
+#![feature(test_2018_feature)] // error: the feature
+                               // `test_2018_feature` is
+                               // included in the Rust 2018 edition
 ```
 
 "##,
@@ -413,4 +403,5 @@ register_diagnostics! {
     E0694, // an unknown tool name found in scoped attributes
     E0703, // invalid ABI
     E0704, // incorrect visibility restriction
+    E0717, // rustc_promotable without stability attribute
 }

@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -34,13 +24,16 @@
 // lldb-command:run
 
 // lldb-command:print *stack_val_ref
-// lldb-check:[...]$0 = (-14, -19)
+// lldbg-check:[...]$0 = (-14, -19)
+// lldbr-check:((i16, f32)) *stack_val_ref = { = -14 = -19 }
 
 // lldb-command:print *ref_to_unnamed
-// lldb-check:[...]$1 = (-15, -20)
+// lldbg-check:[...]$1 = (-15, -20)
+// lldbr-check:((i16, f32)) *ref_to_unnamed = { = -15 = -20 }
 
 // lldb-command:print *unique_val_ref
-// lldb-check:[...]$2 = (-17, -22)
+// lldbg-check:[...]$2 = (-17, -22)
+// lldbr-check:((i16, f32)) *unique_val_ref = { = -17 = -22 }
 
 
 #![allow(unused_variables)]

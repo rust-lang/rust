@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of captured outer variable in an `Fn` closure
-  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:21:9
+  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:11:9
    |
 LL |     let y = vec![format!("World")];
    |         - captured outer variable

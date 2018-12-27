@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Build configuration for Rust's release channels.
 //!
 //! Implements the stable/beta/nightly channel distinctions by setting various
@@ -20,11 +10,11 @@ use std::process::Command;
 
 use build_helper::output;
 
-use Build;
-use config::Config;
+use crate::Build;
+use crate::config::Config;
 
 // The version number
-pub const CFG_RELEASE_NUM: &str = "1.30.0";
+pub const CFG_RELEASE_NUM: &str = "1.33.0";
 
 pub struct GitInfo {
     inner: Option<Info>,

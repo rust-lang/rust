@@ -1,13 +1,3 @@
-// Copyright 2014-2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use error::Error;
 use ffi::CStr;
 use intrinsics;
@@ -64,6 +54,10 @@ extern "C" fn trace_fn(
     arg: *mut libc::c_void,
 ) -> uw::_Unwind_Reason_Code {
     let cx = unsafe { &mut *(arg as *mut Context) };
+    if cx.idx >= cx.frames.len() {
+        return uw::_URC_NORMAL_STOP;
+    }
+
     let mut ip_before_insn = 0;
     let mut ip = unsafe { uw::_Unwind_GetIPInfo(ctx, &mut ip_before_insn) as *mut libc::c_void };
     if !ip.is_null() && ip_before_insn == 0 {
@@ -73,14 +67,12 @@ extern "C" fn trace_fn(
     }
 
     let symaddr = unsafe { uw::_Unwind_FindEnclosingFunction(ip) };
-    if cx.idx < cx.frames.len() {
-        cx.frames[cx.idx] = Frame {
-            symbol_addr: symaddr as *mut u8,
-            exact_position: ip as *mut u8,
-            inline_context: 0,
-        };
-        cx.idx += 1;
-    }
+    cx.frames[cx.idx] = Frame {
+        symbol_addr: symaddr as *mut u8,
+        exact_position: ip as *mut u8,
+        inline_context: 0,
+    };
+    cx.idx += 1;
 
     uw::_URC_NO_REASON
 }

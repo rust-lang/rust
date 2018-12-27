@@ -1,18 +1,8 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Characters and their corresponding confusables were collected from
 // http://www.unicode.org/Public/security/10.0.0/confusables.txt
 
 use syntax_pos::{Span, NO_EXPANSION};
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 use super::StringReader;
 
 const UNICODE_ARRAY: &[(char, &str, char)] = &[
@@ -306,7 +296,7 @@ const UNICODE_ARRAY: &[(char, &str, char)] = &[
     ('＞', "Fullwidth Greater-Than Sign", '>'), ];
 
 
-const ASCII_ARRAY: &'static [(char, &'static str)] = &[
+const ASCII_ARRAY: &[(char, &str)] = &[
     (' ', "Space"),
     ('_', "Underscore"),
     ('-', "Minus/Hyphen"),
@@ -346,7 +336,11 @@ crate fn check_for_substitution<'a>(reader: &StringReader<'a>,
                 let msg =
                     format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
                             ch, u_name, ascii_char, ascii_name);
-                err.span_suggestion(span, &msg, ascii_char.to_string());
+                err.span_suggestion_with_applicability(
+                    span,
+                    &msg,
+                    ascii_char.to_string(),
+                    Applicability::MaybeIncorrect);
                 true
             },
             None => {

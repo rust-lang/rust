@@ -1,11 +1,11 @@
 error: the trait `X` cannot be made into an object
-  --> $DIR/issue-50781.rs:16:5
+  --> $DIR/issue-50781.rs:6:5
    |
 LL |     fn foo(&self) where Self: Trait; //~ ERROR the trait `X` cannot be made into an object
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-50781.rs:11:9
+  --> $DIR/issue-50781.rs:1:9
    |
 LL | #![deny(where_clauses_object_safety)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^

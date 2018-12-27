@@ -1,0 +1,10 @@
+error: expected `{`, found doc comment `/*!*/`
+  --> $DIR/doc-comment-in-if-statement.rs:2:13
+   |
+LL |     if true /*!*/ {}
+   |     --      ^^^^^ expected `{`
+   |     |
+   |     this `if` statement has a condition, but no block
+
+error: aborting due to previous error
+

@@ -1,0 +1,150 @@
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:46:14
+   |
+LL |     let x = |mut y: isize| 10; //~ ERROR: variable does not need to be mutable
+   |              ----^
+   |              |
+   |              help: remove this `mut`
+   |
+note: lint level defined here
+  --> $DIR/lint-unused-mut-variables.rs:6:9
+   |
+LL | #![deny(unused_mut)]
+   |         ^^^^^^^^^^
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:11:9
+   |
+LL |     let mut a = 3; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:13:9
+   |
+LL |     let mut a = 2; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:15:9
+   |
+LL |     let mut b = 3; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:17:9
+   |
+LL |     let mut a = vec![3]; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:19:10
+   |
+LL |     let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
+   |          ----^
+   |          |
+   |          help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:21:9
+   |
+LL |     let mut a; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:25:9
+   |
+LL |     let mut b; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:34:9
+   |
+LL |         mut x => {} //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:38:8
+   |
+LL |       (mut x, 1) | //~ ERROR: variable does not need to be mutable
+   |        ----^
+   |        |
+   |        help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:51:9
+   |
+LL |     let mut a = &mut 5; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:56:9
+   |
+LL |     let mut b = (&mut a,); //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:59:9
+   |
+LL |     let mut x = &mut 1; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:71:9
+   |
+LL |     let mut v : &mut Vec<()> = &mut vec![]; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:48:13
+   |
+LL |     fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
+   |             ----^^^
+   |             |
+   |             help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:66:20
+   |
+LL |     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
+   |                    ----^^^
+   |                    |
+   |                    help: remove this `mut`
+
+error: variable does not need to be mutable
+  --> $DIR/lint-unused-mut-variables.rs:130:9
+   |
+LL |     let mut b = vec![2]; //~ ERROR: variable does not need to be mutable
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+   |
+note: lint level defined here
+  --> $DIR/lint-unused-mut-variables.rs:126:8
+   |
+LL | #[deny(unused_mut)]
+   |        ^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+

@@ -1,18 +1,8 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use session::config::Options;
 
 use std::fs;
-use std::io::{self, StdoutLock, Write};
-use std::time::Instant;
+use std::io::{self, StderrLock, Write};
+use std::time::{Duration, Instant};
 
 macro_rules! define_categories {
     ($($name:ident,)*) => {
@@ -21,7 +11,7 @@ macro_rules! define_categories {
             $($name),*
         }
 
-        #[allow(bad_style)]
+        #[allow(nonstandard_style)]
         struct Categories<T> {
             $($name: T),*
         }
@@ -61,11 +51,15 @@ macro_rules! define_categories {
                 }
             }
 
-            fn print(&self, lock: &mut StdoutLock) {
-                writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
+            fn print(&self, lock: &mut StderrLock<'_>) {
+                writeln!(lock, "| Phase            | Time (ms)      \
+                                | Time (%) | Queries        | Hits (%)")
                     .unwrap();
-                writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")
+                writeln!(lock, "| ---------------- | -------------- \
+                                | -------- | -------------- | --------")
                     .unwrap();
+
+                let total_time = ($(self.times.$name + )* 0) as f32;
 
                 $(
                     let (hits, total) = self.query_counts.$name;
@@ -73,16 +67,17 @@ macro_rules! define_categories {
                         (format!("{:.2}",
                         (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
                     } else {
-                        ("".into(), "".into())
+                        (String::new(), String::new())
                     };
 
                     writeln!(
                         lock,
-                        "| {0: <16} | {1: <14} | {2: <14} | {3: <8} |",
+                        "| {0: <16} | {1: <14} | {2: <8.2} | {3: <14} | {4: <8}",
                         stringify!($name),
                         self.times.$name / 1_000_000,
+                        ((self.times.$name as f32) / total_time) * 100.0,
                         total,
-                        hits
+                        hits,
                     ).unwrap();
                 )*
             }
@@ -93,15 +88,26 @@ macro_rules! define_categories {
                 $(
                     let (hits, total) = self.query_counts.$name;
 
+                    //normalize hits to 0%
+                    let hit_percent =
+                        if total > 0 {
+                            ((hits as f32) / (total as f32)) * 100.0
+                        } else {
+                            0.0
+                        };
+
                     json.push_str(&format!(
-                        "{{ \"category\": {}, \"time_ms\": {},
-                            \"query_count\": {}, \"query_hits\": {} }}",
+                        "{{ \"category\": \"{}\", \"time_ms\": {},\
+                            \"query_count\": {}, \"query_hits\": {} }},",
                         stringify!($name),
                         self.times.$name / 1_000_000,
                         total,
-                        format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0))
+                        format!("{:.2}", hit_percent)
                     ));
                 )*
+
+                //remove the trailing ',' character
+                json.pop();
 
                 json.push(']');
 
@@ -197,7 +203,20 @@ impl SelfProfiler {
     }
 
     fn stop_timer(&mut self) -> u64 {
-        let elapsed = self.current_timer.elapsed();
+        let elapsed = if cfg!(windows) {
+            // On Windows, timers don't always appear to be monotonic (see #51648)
+            // which can lead to panics when calculating elapsed time.
+            // Work around this by testing to see if the current time is less than
+            // our recorded time, and if it is, just returning 0.
+            let now = Instant::now();
+            if self.current_timer >= now {
+                Duration::new(0, 0)
+            } else {
+                self.current_timer.elapsed()
+            }
+        } else {
+            self.current_timer.elapsed()
+        };
 
         self.current_timer = Instant::now();
 
@@ -211,7 +230,7 @@ impl SelfProfiler {
             self.timer_stack.is_empty(),
             "there were timers running when print_results() was called");
 
-        let out = io::stdout();
+        let out = io::stderr();
         let mut lock = out.lock();
 
         let crate_name =

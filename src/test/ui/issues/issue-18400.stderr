@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `_: std::marker::Sized`
-  --> $DIR/issue-18400.rs:34:7
+  --> $DIR/issue-18400.rs:24:7
    |
 LL |     0.contains(bits);
    |       ^^^^^^^^

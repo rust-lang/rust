@@ -1,5 +1,5 @@
 error[E0162]: irrefutable if-let pattern
-  --> $DIR/E0162.rs:15:12
+  --> $DIR/E0162.rs:5:12
    |
 LL |     if let Irrefutable(x) = irr { //~ ERROR E0162
    |            ^^^^^^^^^^^^^^ irrefutable pattern

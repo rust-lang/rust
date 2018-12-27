@@ -1,5 +1,5 @@
 error[E0195]: lifetime parameters or bounds on method `bar` do not match the trait declaration
-  --> $DIR/E0195.rs:19:11
+  --> $DIR/E0195.rs:9:11
    |
 LL |     fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
    |           ---------- lifetimes in impl do not match this method in trait

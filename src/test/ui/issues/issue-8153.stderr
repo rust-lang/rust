@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `bar`:
-  --> $DIR/issue-8153.rs:21:5
+  --> $DIR/issue-8153.rs:11:5
    |
 LL |     fn bar(&self) -> isize {1}
    |     -------------------------- previous definition of `bar` here

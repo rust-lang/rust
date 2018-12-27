@@ -1,5 +1,5 @@
 error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
-  --> $DIR/associated-types-project-from-hrtb-in-fn.rs:21:8
+  --> $DIR/associated-types-project-from-hrtb-in-fn.rs:11:8
    |
 LL |     x: I::A)
    |        ^^^^

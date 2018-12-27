@@ -1,5 +1,5 @@
 error[E0365]: `foo` is private, and cannot be re-exported
-  --> $DIR/E0365.rs:15:9
+  --> $DIR/E0365.rs:5:9
    |
 LL | pub use foo as foo2;
    |         ^^^^^^^^^^^ re-export of private `foo`

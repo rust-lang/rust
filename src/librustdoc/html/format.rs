@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! HTML formatting module
 //!
 //! This module contains a large number of `fmt::Display` implementations for
@@ -553,6 +543,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             f.write_str(name)
         }
         clean::ResolvedPath{ did, ref typarams, ref path, is_generic } => {
+            if typarams.is_some() {
+                f.write_str("dyn ")?;
+            }
             // Paths like T::Output and Self::Output should be rendered with all segments
             resolved_path(f, did, path, is_generic, use_absolute)?;
             tybounds(f, typarams)
@@ -620,7 +613,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
         clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
             let lt = match *l {
                 Some(ref l) => format!("{} ", *l),
-                _ => "".to_string(),
+                _ => String::new(),
             };
             let m = MutableSpace(mutability);
             let amp = if f.alternate() {

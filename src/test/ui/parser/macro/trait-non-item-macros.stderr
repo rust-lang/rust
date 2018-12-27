@@ -1,0 +1,11 @@
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`, found `2`
+  --> $DIR/trait-non-item-macros.rs:2:19
+   |
+LL |     ($a:expr) => ($a)
+   |                   ^^ unexpected token
+...
+LL |     bah!(2);
+   |     -------- in this macro invocation
+
+error: aborting due to previous error
+

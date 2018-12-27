@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to immutable borrowed content `*my_ref`
-  --> $DIR/issue-51244.rs:13:5
+  --> $DIR/issue-51244.rs:3:5
    |
 LL |     let ref my_ref @ _ = 0;
    |         -------------- help: use a mutable reference instead: `ref mut my_ref @ _`

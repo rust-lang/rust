@@ -3,13 +3,13 @@ warning: lint `bare_trait_object` has been renamed to `bare_trait_objects`
    = note: requested on the command line with `-D bare_trait_object`
 
 error: unused variable: `unused`
-  --> $DIR/lint-renamed-cmdline.rs:18:17
+  --> $DIR/lint-renamed-cmdline.rs:8:17
    |
 LL | fn main() { let unused = (); }
    |                 ^^^^^^ help: consider using `_unused` instead
    |
 note: lint level defined here
-  --> $DIR/lint-renamed-cmdline.rs:17:8
+  --> $DIR/lint-renamed-cmdline.rs:7:8
    |
 LL | #[deny(unused)]
    |        ^^^^^^

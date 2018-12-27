@@ -1,5 +1,5 @@
 error[E0498]: malformed plugin attribute
-  --> $DIR/malformed-plugin-2.rs:12:1
+  --> $DIR/malformed-plugin-2.rs:2:1
    |
 LL | #![plugin="bleh"] //~ ERROR malformed plugin attribute
    | ^^^^^^^^^^^^^^^^^

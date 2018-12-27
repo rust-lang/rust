@@ -1,5 +1,5 @@
 error[E0574]: expected struct, variant or union type, found enum `Foo`
-  --> $DIR/issue-17405.rs:17:9
+  --> $DIR/issue-17405.rs:7:9
    |
 LL |         Foo { i } => () //~ ERROR expected struct, variant or union type, found enum `Foo`
    |         ^^^ not a struct, variant or union type

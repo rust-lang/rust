@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:43:25
+  --> $DIR/internal-unstable.rs:33:25
    |
 LL |     pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of unstable
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of un
    = help: add #![feature(function)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:45:27
+  --> $DIR/internal-unstable.rs:35:27
    |
 LL |     pass_through_noallow!(internal_unstable::unstable()); //~ ERROR use of unstable
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     pass_through_noallow!(internal_unstable::unstable()); //~ ERROR use of 
    = help: add #![feature(function)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:49:22
+  --> $DIR/internal-unstable.rs:39:22
    |
 LL |     println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unstable
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unsta
    = help: add #![feature(function)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:51:10
+  --> $DIR/internal-unstable.rs:41:10
    |
 LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
    = help: add #![feature(function)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:22:9
+  --> $DIR/internal-unstable.rs:12:9
    |
 LL |         internal_unstable::unstable(); //~ ERROR use of unstable
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^

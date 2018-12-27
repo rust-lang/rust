@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! System bindings for the wasm/web platform
 //!
 //! This module contains the facade (aka platform-specific) implementations of
@@ -32,27 +22,42 @@ use sys_common::{AsInner, FromInner};
 use ffi::{OsString, OsStr};
 use time::Duration;
 
+pub mod alloc;
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fs;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rwlock;
 pub mod stack_overflow;
 pub mod thread;
-pub mod thread_local;
 pub mod time;
 pub mod stdio;
+
+cfg_if! {
+    if #[cfg(target_feature = "atomics")] {
+        #[path = "condvar_atomics.rs"]
+        pub mod condvar;
+        #[path = "mutex_atomics.rs"]
+        pub mod mutex;
+        #[path = "rwlock_atomics.rs"]
+        pub mod rwlock;
+        #[path = "thread_local_atomics.rs"]
+        pub mod thread_local;
+    } else {
+        pub mod condvar;
+        pub mod mutex;
+        pub mod rwlock;
+        pub mod thread_local;
+    }
+}
 
 #[cfg(not(test))]
 pub fn init() {

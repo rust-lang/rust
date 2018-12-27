@@ -1,17 +1,17 @@
 error: unreachable expression
-  --> $DIR/expr_block.rs:20:9
+  --> $DIR/expr_block.rs:10:9
    |
 LL |         22 //~ ERROR unreachable
    |         ^^
    |
 note: lint level defined here
-  --> $DIR/expr_block.rs:14:9
+  --> $DIR/expr_block.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable statement
-  --> $DIR/expr_block.rs:35:9
+  --> $DIR/expr_block.rs:25:9
    |
 LL |         println!("foo");
    |         ^^^^^^^^^^^^^^^^

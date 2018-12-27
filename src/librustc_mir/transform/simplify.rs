@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A number of passes which remove various redundancies in the CFG.
 //!
 //! The `SimplifyCfg` pass gets rid of unnecessary blocks in the CFG, whereas the `SimplifyLocals`
@@ -37,7 +27,7 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use rustc_data_structures::bitvec::BitArray;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
@@ -108,10 +98,14 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     pub fn simplify(mut self) {
         self.strip_nops();
 
+        let mut start = START_BLOCK;
+
         loop {
             let mut changed = false;
 
-            for bb in (0..self.basic_blocks.len()).map(BasicBlock::new) {
+            self.collapse_goto_chain(&mut start, &mut changed);
+
+            for bb in self.basic_blocks.indices() {
                 if self.pred_count[bb] == 0 {
                     continue
                 }
@@ -141,6 +135,27 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
             }
 
             if !changed { break }
+        }
+
+        if start != START_BLOCK {
+            debug_assert!(self.pred_count[START_BLOCK] == 0);
+            self.basic_blocks.swap(START_BLOCK, start);
+            self.pred_count.swap(START_BLOCK, start);
+
+            // pred_count == 1 if the start block has no predecessor _blocks_.
+            if self.pred_count[START_BLOCK] > 1 {
+                for (bb, data) in self.basic_blocks.iter_enumerated_mut() {
+                    if self.pred_count[bb] == 0 {
+                        continue;
+                    }
+
+                    for target in data.terminator_mut().successors_mut() {
+                        if *target == start {
+                            *target = START_BLOCK;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -249,7 +264,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 }
 
 pub fn remove_dead_blocks(mir: &mut Mir) {
-    let mut seen = BitArray::new(mir.basic_blocks().len());
+    let mut seen = BitSet::new_empty(mir.basic_blocks().len());
     for (bb, _) in traversal::preorder(mir) {
         seen.insert(bb.index());
     }
@@ -285,7 +300,7 @@ impl MirPass for SimplifyLocals {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let mut marker = DeclMarker { locals: BitArray::new(mir.local_decls.len()) };
+        let mut marker = DeclMarker { locals: BitSet::new_empty(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live
         marker.locals.insert(RETURN_PLACE);
@@ -302,7 +317,7 @@ impl MirPass for SimplifyLocals {
 
         let map = make_local_map(&mut mir.local_decls, marker.locals);
         // Update references to all vars and tmps now
-        LocalUpdater { map: map }.visit_mir(mir);
+        LocalUpdater { map }.visit_mir(mir);
         mir.local_decls.shrink_to_fit();
     }
 }
@@ -310,7 +325,7 @@ impl MirPass for SimplifyLocals {
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<'tcx, V>(
     vec: &mut IndexVec<Local, V>,
-    mask: BitArray<Local>,
+    mask: BitSet<Local>,
 ) -> IndexVec<Local, Option<Local>> {
     let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*vec);
     let mut used = Local::new(0);
@@ -326,13 +341,15 @@ fn make_local_map<'tcx, V>(
 }
 
 struct DeclMarker {
-    pub locals: BitArray<Local>,
+    pub locals: BitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
-        // ignore these altogether, they get removed along with their otherwise unused decls.
-        if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
+        // Ignore storage markers altogether, they get removed along with their otherwise unused
+        // decls.
+        // FIXME: Extend this to all non-uses.
+        if !ctx.is_storage_marker() {
             self.locals.insert(*local);
         }
     }

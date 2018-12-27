@@ -1,5 +1,5 @@
 error[E0214]: parenthesized parameters may only be used with a trait
-  --> $DIR/unboxed-closure-sugar-used-on-struct-3.rs:24:16
+  --> $DIR/unboxed-closure-sugar-used-on-struct-3.rs:14:16
    |
 LL |     let b = Bar::(isize, usize)::new(); // OK too (for the parser)
    |                ^^^^^^^^^^^^^^^^ only traits may use parentheses

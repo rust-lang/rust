@@ -1,14 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //! This module defines the `DepNode` type which the compiler uses to represent
 //! nodes in the dependency graph. A `DepNode` consists of a `DepKind` (which
 //! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
@@ -17,7 +6,7 @@
 //! fully identify a dependency node, even across multiple compilation sessions.
 //! In other words, the value of the fingerprint does not depend on anything
 //! that is specific to a given compilation session, like an unpredictable
-//! interning key (e.g. NodeId, DefId, Symbol) or the numeric value of a
+//! interning key (e.g., NodeId, DefId, Symbol) or the numeric value of a
 //! pointer. The concept behind this could be compared to how git commit hashes
 //! uniquely identify a given commit and has a few advantages:
 //!
@@ -28,7 +17,7 @@
 //! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
 //!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
 //! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
-//!   memory without any post-processing (e.g. "abomination-style" pointer
+//!   memory without any post-processing (e.g., "abomination-style" pointer
 //!   reconstruction).
 //! * Because a `DepNode` is self-contained, we can instantiate `DepNodes` that
 //!   refer to things that do not exist anymore. In previous implementations
@@ -63,23 +52,25 @@
 use mir::interpret::GlobalId;
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
-use hir::{HirId, ItemLocalId};
+use hir::HirId;
 
 use ich::{Fingerprint, StableHashingContext};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
+use traits;
 use traits::query::{
-    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
-    CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalPredicateGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
 };
 use ty::{TyCtxt, FnSig, Instance, InstanceDef,
-         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty, self};
+         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty};
 use ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
-// is repeated (i.e. which sub-expression of the macro we are in) but don't need
+// is repeated (i.e., which sub-expression of the macro we are in) but don't need
 // to actually use any of the arguments.
 macro_rules! erase {
     ($x:tt) => ({})
@@ -160,7 +151,9 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline]
+            // FIXME: Make `is_anon`, `is_input`, `is_eval_always` and `has_params` properties
+            // of queries
+            #[inline(always)]
             pub fn is_anon(&self) -> bool {
                 match *self {
                     $(
@@ -169,7 +162,7 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn is_input(&self) -> bool {
                 match *self {
                     $(
@@ -178,7 +171,7 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn is_eval_always(&self) -> bool {
                 match *self {
                     $(
@@ -188,7 +181,7 @@ macro_rules! define_dep_nodes {
             }
 
             #[allow(unreachable_code)]
-            #[inline]
+            #[inline(always)]
             pub fn has_params(&self) -> bool {
                 match *self {
                     $(
@@ -228,6 +221,7 @@ macro_rules! define_dep_nodes {
 
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
+            #[inline(always)]
             pub fn new<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        dep: DepConstructor<'gcx>)
                                        -> DepNode
@@ -297,11 +291,11 @@ macro_rules! define_dep_nodes {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
-            #[inline]
+            #[inline(always)]
             pub fn from_def_path_hash(kind: DepKind,
                                       def_path_hash: DefPathHash)
                                       -> DepNode {
-                assert!(kind.can_reconstruct_query_key() && kind.has_params());
+                debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
                     kind,
                     hash: def_path_hash.0,
@@ -311,9 +305,9 @@ macro_rules! define_dep_nodes {
             /// Create a new, parameterless DepNode. This method will assert
             /// that the DepNode corresponding to the given DepKind actually
             /// does not require any parameters.
-            #[inline]
+            #[inline(always)]
             pub fn new_no_params(kind: DepKind) -> DepNode {
-                assert!(!kind.has_params());
+                debug_assert!(!kind.has_params());
                 DepNode {
                     kind,
                     hash: Fingerprint::ZERO,
@@ -331,7 +325,7 @@ macro_rules! define_dep_nodes {
             /// refers to something from the previous compilation session that
             /// has been removed.
             #[inline]
-            pub fn extract_def_id(&self, tcx: TyCtxt) -> Option<DefId> {
+            pub fn extract_def_id(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
                     let def_path_hash = DefPathHash(self.hash);
                     tcx.def_path_hash_to_def_id.as_ref()?
@@ -379,14 +373,14 @@ macro_rules! define_dep_nodes {
         #[allow(dead_code, non_upper_case_globals)]
         pub mod label_strs {
            $(
-                pub const $variant: &'static str = stringify!($variant);
+                pub const $variant: &str = stringify!($variant);
             )*
         }
     );
 }
 
 impl fmt::Debug for DepNode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.kind)?;
 
         if !self.kind.has_params() && !self.kind.is_anon() {
@@ -416,15 +410,15 @@ impl fmt::Debug for DepNode {
 
 
 impl DefPathHash {
-    #[inline]
+    #[inline(always)]
     pub fn to_dep_node(self, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, self)
     }
 }
 
 impl DefId {
-    #[inline]
-    pub fn to_dep_node(self, tcx: TyCtxt, kind: DepKind) -> DepNode {
+    #[inline(always)]
+    pub fn to_dep_node(self, tcx: TyCtxt<'_, '_, '_>, kind: DepKind) -> DepNode {
         DepNode::from_def_path_hash(kind, tcx.def_path_hash(self))
     }
 }
@@ -447,10 +441,10 @@ define_dep_nodes!( <'tcx>
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
-    // `tcx.hir.krate()`), we will have to assume that any change
+    // `tcx.hir().krate()`), we will have to assume that any change
     // means that you need to be recompiled. This is because the
     // `Krate` value gives you access to all other items. To avoid
-    // this fate, do not call `tcx.hir.krate()`; instead, prefer
+    // this fate, do not call `tcx.hir().krate()`; instead, prefer
     // wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
     // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
     // access to the krate, but you must remember to add suitable
@@ -515,6 +509,7 @@ define_dep_nodes!( <'tcx>
     [] ItemVarianceConstraints(DefId),
     [] ItemVariances(DefId),
     [] IsConstFn(DefId),
+    [] IsPromotableConstFn(DefId),
     [] IsForeignItem(DefId),
     [] TypeParamPredicates { item_id: DefId, param_id: DefId },
     [] SizedConstraint(DefId),
@@ -527,6 +522,7 @@ define_dep_nodes!( <'tcx>
     [] UsedTraitImports(DefId),
     [] HasTypeckTables(DefId),
     [] ConstEval { param_env: ParamEnvAnd<'tcx, GlobalId<'tcx>> },
+    [] ConstEvalRaw { param_env: ParamEnvAnd<'tcx, GlobalId<'tcx>> },
     [] CheckMatch(DefId),
     [] SymbolName(DefId),
     [] InstanceSymbolName { instance: Instance<'tcx> },
@@ -549,6 +545,7 @@ define_dep_nodes!( <'tcx>
     [anon] TraitSelect,
 
     [] ParamEnv(DefId),
+    [] Environment(DefId),
     [] DescribeDef(DefId),
 
     // FIXME(mw): DefSpans are not really inputs since they are derived from
@@ -574,6 +571,7 @@ define_dep_nodes!( <'tcx>
     [] IsPanicRuntime(CrateNum),
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
+    [] HasPanicHandler(CrateNum),
     [input] ExternCrate(DefId),
     [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
@@ -590,7 +588,7 @@ define_dep_nodes!( <'tcx>
     [] ReachableNonGenerics(CrateNum),
     [] NativeLibraries(CrateNum),
     [] PluginRegistrarFn(CrateNum),
-    [] DeriveRegistrarFn(CrateNum),
+    [] ProcMacroDeclsStatic(CrateNum),
     [input] CrateDisambiguator(CrateNum),
     [input] CrateHash(CrateNum),
     [input] OriginalCrateName(CrateNum),
@@ -632,7 +630,6 @@ define_dep_nodes!( <'tcx>
     // queries). Making them anonymous avoids hashing the result, which
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
-    [anon] ConstValueToAllocation { val: &'tcx ty::Const<'tcx> },
 
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),
@@ -651,6 +648,7 @@ define_dep_nodes!( <'tcx>
     [] ImpliedOutlivesBounds(CanonicalTyGoal<'tcx>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
+    [] TypeOpAscribeUserType(CanonicalTypeOpAscribeUserTypeGoal<'tcx>),
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
     [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),
     [] TypeOpProvePredicate(CanonicalTypeOpProvePredicateGoal<'tcx>),
@@ -660,6 +658,7 @@ define_dep_nodes!( <'tcx>
     [] TypeOpNormalizeFnSig(CanonicalTypeOpNormalizeGoal<'tcx, FnSig<'tcx>>),
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
+    [] MethodAutoderefSteps(CanonicalTyGoal<'tcx>),
 
     [input] TargetFeaturesWhitelist,
 
@@ -668,7 +667,7 @@ define_dep_nodes!( <'tcx>
     [input] Features,
 
     [] ProgramClausesFor(DefId),
-    [] ProgramClausesForEnv(ParamEnv<'tcx>),
+    [] ProgramClausesForEnv(traits::Environment<'tcx>),
     [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
 
@@ -714,7 +713,7 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for DefId {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
-    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+    fn to_fingerprint(&self, tcx: TyCtxt<'_, '_, '_>) -> Fingerprint {
         tcx.def_path_hash(*self).0
     }
 
@@ -726,8 +725,8 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for DefId {
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for DefIndex {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
-    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
-        tcx.hir.definitions().def_path_hash(*self).0
+    fn to_fingerprint(&self, tcx: TyCtxt<'_, '_, '_>) -> Fingerprint {
+        tcx.hir().definitions().def_path_hash(*self).0
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
@@ -738,7 +737,7 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for DefIndex {
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for CrateNum {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
-    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+    fn to_fingerprint(&self, tcx: TyCtxt<'_, '_, '_>) -> Fingerprint {
         let def_id = DefId {
             krate: *self,
             index: CRATE_DEF_INDEX,
@@ -757,7 +756,7 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
     // hashing context and stable-hashing state.
-    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+    fn to_fingerprint(&self, tcx: TyCtxt<'_, '_, '_>) -> Fingerprint {
         let (def_id_0, def_id_1) = *self;
 
         let def_path_hash_0 = tcx.def_path_hash(def_id_0);
@@ -781,14 +780,14 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for HirId {
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
     // hashing context and stable-hashing state.
-    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+    fn to_fingerprint(&self, tcx: TyCtxt<'_, '_, '_>) -> Fingerprint {
         let HirId {
             owner,
-            local_id: ItemLocalId(local_id),
+            local_id,
         } = *self;
 
         let def_path_hash = tcx.def_path_hash(DefId::local(owner));
-        let local_id = Fingerprint::from_smaller_hash(local_id as u64);
+        let local_id = Fingerprint::from_smaller_hash(local_id.as_u32().into());
 
         def_path_hash.0.combine(local_id)
     }

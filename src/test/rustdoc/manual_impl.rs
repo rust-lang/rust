@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // @has manual_impl/trait.T.html
 // @has  - '//*[@class="docblock"]' 'Docs associated with the trait definition.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
@@ -34,7 +24,6 @@ pub trait T {
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S1 trait implementation.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S1 trait a_method implementation.'
 // @!has - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
-// @has - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
 // @has - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
 // @has - '//*[@class="docblock"]' 'Docs associated with the trait c_method definition.'
 // @!has - '//*[@class="docblock"]' 'There is another line'
@@ -74,7 +63,7 @@ impl T for S2 {
 // @has manual_impl/struct.S3.html '//*[@class="trait"]' 'T'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S3 trait implementation.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S3 trait b_method implementation.'
-// @has - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
+// @has - '//*[@class="docblock hidden"]' 'Docs associated with the trait a_method definition.'
 pub struct S3(usize);
 
 /// Docs associated with the S3 trait implementation.

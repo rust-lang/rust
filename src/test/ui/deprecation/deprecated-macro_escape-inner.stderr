@@ -1,5 +1,5 @@
 warning: macro_escape is a deprecated synonym for macro_use
-  --> $DIR/deprecated-macro_escape-inner.rs:14:5
+  --> $DIR/deprecated-macro_escape-inner.rs:4:5
    |
 LL |     #![macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
    |     ^^^^^^^^^^^^^^^^

@@ -1,15 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// ignore-compare-mode-nll
-
 // Note: the borrowck analysis is currently flow-insensitive.
 // Therefore, some of these errors are marked as spurious and could be
 // corrected by a simple change to the analysis.  The others are
@@ -34,6 +22,7 @@ fn pre_freeze() {
     let mut v: Box<_> = box 3;
     let _w = &v;
     borrow_mut(&mut *v); //~ ERROR cannot borrow
+    _w.use_ref();
 }
 
 fn post_freeze() {
@@ -45,3 +34,6 @@ fn post_freeze() {
 }
 
 fn main() {}
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 %{
 #define YYERROR_VERBOSE
 #define YYSTYPE struct node *
@@ -741,14 +731,14 @@ fn_anon_params
 ;
 
 fn_params_with_self
-: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_params ')'              { $$ = mk_node("SelfValue", 3, $2, $4, $5); }
+: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_params ')'              { $$ = mk_node("SelfLower", 3, $2, $4, $5); }
 | '(' '&' maybe_mut SELF maybe_ty_ascription maybe_comma_params ')'          { $$ = mk_node("SelfRegion", 3, $3, $5, $6); }
 | '(' '&' lifetime maybe_mut SELF maybe_ty_ascription maybe_comma_params ')' { $$ = mk_node("SelfRegion", 4, $3, $4, $6, $7); }
 | '(' maybe_params ')'                                                       { $$ = mk_node("SelfStatic", 1, $2); }
 ;
 
 fn_anon_params_with_self
-: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')'              { $$ = mk_node("SelfValue", 3, $2, $4, $5); }
+: '(' maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')'              { $$ = mk_node("SelfLower", 3, $2, $4, $5); }
 | '(' '&' maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')'          { $$ = mk_node("SelfRegion", 3, $3, $5, $6); }
 | '(' '&' lifetime maybe_mut SELF maybe_ty_ascription maybe_comma_anon_params ')' { $$ = mk_node("SelfRegion", 4, $3, $4, $6, $7); }
 | '(' maybe_anon_params ')'                                                       { $$ = mk_node("SelfStatic", 1, $2); }

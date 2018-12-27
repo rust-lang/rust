@@ -1,5 +1,5 @@
 error[E0560]: struct `S` has no field named `0b1`
-  --> $DIR/numeric-fields.rs:14:15
+  --> $DIR/numeric-fields.rs:4:15
    |
 LL |     let s = S{0b1: 10, 0: 11};
    |               ^^^ `S` does not have this field
@@ -7,7 +7,7 @@ LL |     let s = S{0b1: 10, 0: 11};
    = note: available fields are: `0`, `1`
 
 error[E0026]: struct `S` does not have a field named `0x1`
-  --> $DIR/numeric-fields.rs:17:17
+  --> $DIR/numeric-fields.rs:7:17
    |
 LL |         S{0: a, 0x1: b, ..} => {}
    |                 ^^^^^^ struct `S` does not have this field

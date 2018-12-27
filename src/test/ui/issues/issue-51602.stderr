@@ -1,0 +1,10 @@
+error: expected `{`, found keyword `in`
+  --> $DIR/issue-51602.rs:2:10
+   |
+LL |     if i in 1..10 {
+   |     --   ^^ expected `{`
+   |     |
+   |     this `if` statement has a condition, but no block
+
+error: aborting due to previous error
+

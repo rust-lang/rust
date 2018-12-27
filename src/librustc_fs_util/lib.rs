@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::path::{Path, PathBuf};
 use std::ffi::CString;
 use std::fs;
@@ -116,13 +106,13 @@ pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(p: P,
 }
 
 #[cfg(unix)]
-pub fn path2cstr(p: &Path) -> CString {
-    use std::os::unix::prelude::*;
+pub fn path_to_c_string(p: &Path) -> CString {
+    use std::os::unix::ffi::OsStrExt;
     use std::ffi::OsStr;
     let p: &OsStr = p.as_ref();
     CString::new(p.as_bytes()).unwrap()
 }
 #[cfg(windows)]
-pub fn path2cstr(p: &Path) -> CString {
+pub fn path_to_c_string(p: &Path) -> CString {
     CString::new(p.to_str().unwrap()).unwrap()
 }

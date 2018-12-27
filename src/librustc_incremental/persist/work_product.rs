@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module contains files for saving intermediate work-products.
 
 use persist::fs::*;
@@ -29,7 +19,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
         return None
     }
 
-    let saved_files: Option<Vec<_>> =
+    let saved_files =
         files.iter()
              .map(|&(kind, ref path)| {
                  let extension = match kind {
@@ -51,11 +41,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
                      }
                  }
              })
-             .collect();
-    let saved_files = match saved_files {
-        None => return None,
-        Some(v) => v,
-    };
+             .collect::<Option<Vec<_>>>()?;
 
     let work_product = WorkProduct {
         cgu_name: cgu_name.to_string(),

@@ -1,11 +1,11 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/regions-nested-fns.rs:15:18
+  --> $DIR/regions-nested-fns.rs:5:18
    |
 LL |     let mut ay = &y; //~ ERROR E0495
    |                  ^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 17:54...
-  --> $DIR/regions-nested-fns.rs:17:54
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 7:54...
+  --> $DIR/regions-nested-fns.rs:7:54
    |
 LL |       ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
    |  ______________________________________________________^
@@ -15,12 +15,12 @@ LL | |         ay = z;
 LL | |     }));
    | |_____^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-nested-fns.rs:20:14
+  --> $DIR/regions-nested-fns.rs:10:14
    |
 LL |         ay = z;
    |              ^
-note: but, the lifetime must be valid for the anonymous lifetime #2 defined on the body at 23:68...
-  --> $DIR/regions-nested-fns.rs:23:68
+note: but, the lifetime must be valid for the anonymous lifetime #2 defined on the body at 13:68...
+  --> $DIR/regions-nested-fns.rs:13:68
    |
 LL |       ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
    |  ____________________________________________________________________^
@@ -34,13 +34,13 @@ LL | |     }));
               found &isize
 
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
-  --> $DIR/regions-nested-fns.rs:24:27
+  --> $DIR/regions-nested-fns.rs:14:27
    |
 LL |         if false { return x; } //~ ERROR E0312
    |                           ^
    |
-note: ...the reference is valid for the anonymous lifetime #2 defined on the body at 23:68...
-  --> $DIR/regions-nested-fns.rs:23:68
+note: ...the reference is valid for the anonymous lifetime #2 defined on the body at 13:68...
+  --> $DIR/regions-nested-fns.rs:13:68
    |
 LL |       ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
    |  ____________________________________________________________________^
@@ -49,8 +49,8 @@ LL | |         if false { return ay; }
 LL | |         return z;
 LL | |     }));
    | |_____^
-note: ...but the borrowed content is only valid for the lifetime 'x as defined on the function body at 13:11
-  --> $DIR/regions-nested-fns.rs:13:11
+note: ...but the borrowed content is only valid for the lifetime 'x as defined on the function body at 3:11
+  --> $DIR/regions-nested-fns.rs:3:11
    |
 LL | fn nested<'x>(x: &'x isize) {
    |           ^^

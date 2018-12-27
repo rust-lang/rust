@@ -1,0 +1,12 @@
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/issue-53251.rs:11:24
+   |
+LL |                 S::f::<i64>();
+   |                        ^^^ unexpected type argument
+...
+LL | impl_add!(a b);
+   | --------------- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

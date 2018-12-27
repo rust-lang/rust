@@ -1,5 +1,5 @@
 error[E0658]: parenthetical notation is only stable when used with `Fn`-family traits (see issue #29625)
-  --> $DIR/unboxed-closure-feature-gate.rs:23:16
+  --> $DIR/unboxed-closure-feature-gate.rs:13:16
    |
 LL |     let x: Box<Foo(isize)>;
    |                ^^^^^^^^^^

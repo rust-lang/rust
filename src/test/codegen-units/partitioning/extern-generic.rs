@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // We specify -Z incremental here because we want to test the partitioning for
 // incremental compilation
@@ -58,5 +48,5 @@ mod mod3 {
 
 // Make sure the two generic functions from the extern crate get instantiated
 // once for the current crate
-//~ MONO_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function.volatile[External]
-//~ MONO_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function.volatile[External]
+//~ MONO_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function-in-extern_generic.volatile[External]
+//~ MONO_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function-in-extern_generic.volatile[External]

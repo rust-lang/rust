@@ -1,14 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //! A module for propagating forward dataflow information. The analysis
 //! assumes that the items to be propagated can be represented as bits
 //! and thus uses bitvectors. Your job is simply to specify the so-called
@@ -71,7 +60,7 @@ pub struct DataFlowContext<'a, 'tcx: 'a, O> {
     scope_kills: Vec<usize>,
 
     /// bits killed as we exit the cfg node directly; if it is jumped
-    /// over, e.g. via `break`, the kills are not reflected in the
+    /// over, e.g., via `break`, the kills are not reflected in the
     /// jump's effects. Updated by `add_kill(KillFrom::Execution)`.
     action_kills: Vec<usize>,
 
@@ -111,18 +100,18 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
 impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
     fn nested(&self, state: &mut pprust::State, nested: pprust::Nested) -> io::Result<()> {
-        pprust::PpAnn::nested(&self.tcx.hir, state, nested)
+        pprust::PpAnn::nested(self.tcx.hir(), state, nested)
     }
     fn pre(&self,
            ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
         let id = match node {
-            pprust::NodeName(_) => return Ok(()),
-            pprust::NodeExpr(expr) => expr.hir_id.local_id,
-            pprust::NodeBlock(blk) => blk.hir_id.local_id,
-            pprust::NodeItem(_) |
-            pprust::NodeSubItem(_) => return Ok(()),
-            pprust::NodePat(pat) => pat.hir_id.local_id
+            pprust::AnnNode::Name(_) => return Ok(()),
+            pprust::AnnNode::Expr(expr) => expr.hir_id.local_id,
+            pprust::AnnNode::Block(blk) => blk.hir_id.local_id,
+            pprust::AnnNode::Item(_) |
+            pprust::AnnNode::SubItem(_) => return Ok(()),
+            pprust::AnnNode::Pat(pat) => pat.hir_id.local_id
         };
 
         if !self.has_bitset_for_local_id(id) {
@@ -140,21 +129,21 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
             let gens_str = if gens.iter().any(|&u| u != 0) {
                 format!(" gen: {}", bits_to_string(gens))
             } else {
-                "".to_string()
+                String::new()
             };
 
             let action_kills = &self.action_kills[start .. end];
             let action_kills_str = if action_kills.iter().any(|&u| u != 0) {
                 format!(" action_kill: {}", bits_to_string(action_kills))
             } else {
-                "".to_string()
+                String::new()
             };
 
             let scope_kills = &self.scope_kills[start .. end];
             let scope_kills_str = if scope_kills.iter().any(|&u| u != 0) {
                 format!(" scope_kill: {}", bits_to_string(scope_kills))
             } else {
-                "".to_string()
+                String::new()
             };
 
             ps.synth_comment(
@@ -169,10 +158,10 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
 fn build_local_id_to_index(body: Option<&hir::Body>,
                            cfg: &cfg::CFG)
                            -> FxHashMap<hir::ItemLocalId, Vec<CFGIndex>> {
-    let mut index = FxHashMap();
+    let mut index = FxHashMap::default();
 
     // FIXME(#15020) Would it be better to fold formals from decl
-    // into cfg itself?  i.e. introduce a fn-based flow-graph in
+    // into cfg itself?  i.e., introduce a fn-based flow-graph in
     // addition to the current block-based flow-graph, rather than
     // have to put traversals like this here?
     if let Some(body) = body {
@@ -181,7 +170,7 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
 
     cfg.graph.each_node(|node_idx, node| {
         if let cfg::CFGNodeData::AST(id) = node.data {
-            index.entry(id).or_insert(vec![]).push(node_idx);
+            index.entry(id).or_default().push(node_idx);
         }
         true
     });
@@ -209,7 +198,7 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
             }
 
             fn visit_pat(&mut self, p: &hir::Pat) {
-                self.index.entry(p.hir_id.local_id).or_insert(vec![]).push(self.entry);
+                self.index.entry(p.hir_id.local_id).or_default().push(self.entry);
                 intravisit::walk_pat(self, p)
             }
         }
@@ -430,7 +419,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 for offset in 0..usize_bits {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
-                        // NB: we round up the total number of bits
+                        // N.B., we round up the total number of bits
                         // that we store in any given bit set so that
                         // it is an even multiple of usize::BITS.  This
                         // means that there may be some stray bits at

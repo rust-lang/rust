@@ -1,15 +1,5 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use syntax::ast::*;
-use syntax::codemap::Spanned;
+use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
@@ -24,6 +14,14 @@ pub fn expand_assert<'cx>(
     tts: &[TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
     let mut parser = cx.new_parser_from_tts(tts);
+
+    if parser.token == token::Eof {
+        cx.struct_span_err(sp, "macro requires a boolean expression as an argument")
+            .span_label(sp, "boolean expression required")
+            .emit();
+        return DummyResult::expr(sp);
+    }
+
     let cond_expr = panictry!(parser.parse_expr());
     let custom_msg_args = if parser.eat(&token::Comma) {
         let ts = parser.parse_tokens();

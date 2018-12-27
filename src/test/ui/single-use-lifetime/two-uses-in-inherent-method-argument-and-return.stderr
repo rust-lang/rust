@@ -1,5 +1,5 @@
 error: lifetime parameter `'f` only used once
-  --> $DIR/two-uses-in-inherent-method-argument-and-return.rs:22:6
+  --> $DIR/two-uses-in-inherent-method-argument-and-return.rs:12:6
    |
 LL | impl<'f> Foo<'f> { //~ ERROR `'f` only used once
    |      ^^      -- ...is used only here
@@ -7,7 +7,7 @@ LL | impl<'f> Foo<'f> { //~ ERROR `'f` only used once
    |      this lifetime...
    |
 note: lint level defined here
-  --> $DIR/two-uses-in-inherent-method-argument-and-return.rs:14:9
+  --> $DIR/two-uses-in-inherent-method-argument-and-return.rs:4:9
    |
 LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test that move restrictions are enforced on overloaded binary operations
 
 use std::ops::Add;
@@ -31,8 +21,8 @@ fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {
     x  //~ ERROR: cannot move out of `x` because it is borrowed
     +
     y;  //~ ERROR: cannot move out of `y` because it is borrowed
+    use_mut(n); use_imm(m);
 }
-
 fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
@@ -40,8 +30,8 @@ fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
     *m  //~ ERROR: cannot move out of borrowed content
     +
     *n;  //~ ERROR: cannot move out of borrowed content
+    use_imm(n); use_mut(m);
 }
-
 struct Foo;
 
 impl<'a, 'b> Add<&'b Foo> for &'a mut Foo {
@@ -73,3 +63,6 @@ fn immut_plus_mut() {
 }
 
 fn main() {}
+
+fn use_mut<T>(_: &mut T) { }
+fn use_imm<T>(_: &T) { }

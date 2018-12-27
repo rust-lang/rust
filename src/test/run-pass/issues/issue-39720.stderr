@@ -1,0 +1,16 @@
+warning[E0566]: conflicting representation hints
+  --> $DIR/issue-39720.rs:8:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL | #[repr(simd)]
+   |        ^^^^
+
+warning[E0566]: conflicting representation hints
+  --> $DIR/issue-39720.rs:13:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL | #[repr(simd)]
+   |        ^^^^
+

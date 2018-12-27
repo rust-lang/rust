@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/ExecutionEngine.h"
@@ -57,12 +47,8 @@
 
 #include "llvm/IR/LegacyPassManager.h"
 
-#if LLVM_VERSION_GE(4, 0)
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#else
-#include "llvm/Bitcode/ReaderWriter.h"
-#endif
 
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfo.h"
@@ -97,6 +83,7 @@ enum LLVMRustAttribute {
   SanitizeThread = 20,
   SanitizeAddress = 21,
   SanitizeMemory = 22,
+  NonLazyBind = 23,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

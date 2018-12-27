@@ -1,18 +1,9 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use ty;
 use util::common::ErrorReported;
+use errors::Applicability;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -33,23 +24,23 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.//scope_def_id
         let (named, anon, anon_arg_info, region_info) = if self.is_named_region(sub)
-            && self.is_suitable_region(sup).is_some()
+            && self.tcx.is_suitable_region(sup).is_some()
             && self.find_arg_with_region(sup, sub).is_some()
         {
             (
                 sub,
                 sup,
                 self.find_arg_with_region(sup, sub).unwrap(),
-                self.is_suitable_region(sup).unwrap(),
+                self.tcx.is_suitable_region(sup).unwrap(),
             )
-        } else if self.is_named_region(sup) && self.is_suitable_region(sub).is_some()
+        } else if self.is_named_region(sup) && self.tcx.is_suitable_region(sub).is_some()
             && self.find_arg_with_region(sub, sup).is_some()
         {
             (
                 sup,
                 sub,
                 self.find_arg_with_region(sub, sup).unwrap(),
-                self.is_suitable_region(sub).unwrap(),
+                self.tcx.is_suitable_region(sub).unwrap(),
             )
         } else {
             return None; // inapplicable
@@ -111,13 +102,14 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             E0621,
             "explicit lifetime required in {}",
             error_var
-        ).span_suggestion(
+        ).span_suggestion_with_applicability(
             new_ty_span,
             &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty.to_string()
+            new_ty.to_string(),
+            Applicability::Unspecified,
         )
-            .span_label(span, format!("lifetime `{}` required", named))
-            .emit();
+        .span_label(span, format!("lifetime `{}` required", named))
+        .emit();
         return Some(ErrorReported);
     }
 

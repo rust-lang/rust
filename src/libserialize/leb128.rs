@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #[inline]
 pub fn write_to_vec(vec: &mut Vec<u8>, byte: u8) {
     vec.push(byte);
@@ -118,6 +108,7 @@ pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W)
     }
 }
 
+#[inline]
 pub fn write_signed_leb128(out: &mut Vec<u8>, value: i128) {
     write_signed_leb128_to(value, |v| write_to_vec(out, v))
 }

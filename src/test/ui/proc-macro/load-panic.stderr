@@ -1,0 +1,10 @@
+error: proc-macro derive panicked
+  --> $DIR/load-panic.rs:7:10
+   |
+LL | #[derive(A)]
+   |          ^
+   |
+   = help: message: nope!
+
+error: aborting due to previous error
+

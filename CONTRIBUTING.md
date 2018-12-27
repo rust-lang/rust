@@ -39,7 +39,7 @@ don't know about, so please report liberally. If you're not sure if something
 is a bug or not, feel free to file a bug anyway.
 
 **If you believe reporting your bug publicly represents a security risk to Rust users,
-please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/security.html)**.
+please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/policies/security)**.
 
 If you have the chance, before reporting a bug, please [search existing
 issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
@@ -368,8 +368,7 @@ will run all the tests on every platform we support. If it all works out,
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
-it can be found
-[here](https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md).
+it can be found [here][rctd].
 
 ### External Dependencies
 [external-dependencies]: #external-dependencies
@@ -405,7 +404,8 @@ before the PR is merged.
 [breaking-tools-built-with-the-compiler]: #breaking-tools-built-with-the-compiler
 
 Rust's build system builds a number of tools that make use of the
-internals of the compiler. This includes clippy,
+internals of the compiler. This includes 
+[Clippy](https://github.com/rust-lang-nursery/rust-clippy),
 [RLS](https://github.com/rust-lang-nursery/rls) and
 [rustfmt](https://github.com/rust-lang-nursery/rustfmt). If these tools
 break because of your changes, you may run into a sort of "chicken and egg"
@@ -494,16 +494,11 @@ the version in `Cargo.lock`, so the build can no longer continue.
 To resolve this, we need to update `Cargo.lock`. Luckily, cargo provides a
 command to do this easily.
 
-First, go into the `src/` directory since that is where `Cargo.toml` is in
-the rust repository. Then run, `cargo update -p rustfmt-nightly` to solve
-the problem.
-
 ```
-$ cd src
 $ cargo update -p rustfmt-nightly
 ```
 
-This should change the version listed in `src/Cargo.lock` to the new version you updated
+This should change the version listed in `Cargo.lock` to the new version you updated
 the submodule to. Running `./x.py build` should work now.
 
 ## Writing Documentation
@@ -566,7 +561,7 @@ labels to triage issues:
   to fix the issue.
 
 * The dark blue **final-comment-period** label marks bugs that are using the
-  RFC signoff functionality of [rfcbot][rfcbot] and are currenty in the final
+  RFC signoff functionality of [rfcbot][rfcbot] and are currently in the final
   comment period.
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
@@ -645,13 +640,13 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
-[gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
+[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
+[gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: ./src/test/COMPILER_TESTS.md
+[rctd]: https://rust-lang.github.io/rustc-guide/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/

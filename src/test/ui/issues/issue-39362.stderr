@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
-  --> $DIR/issue-39362.rs:20:11
+  --> $DIR/issue-39362.rs:10:11
    |
 LL |     match f {
    |           ^ patterns `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered

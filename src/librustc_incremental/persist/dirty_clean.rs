@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Debugging code to test fingerprints computed for query results.
 //! For each node marked with `#[rustc_clean]` or `#[rustc_dirty]`,
 //! we will compare the fingerprint from the current and from the previous
@@ -24,13 +14,12 @@
 //! the required condition is not met.
 //!
 
-use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::vec::Vec;
 use rustc::dep_graph::{DepNode, label_strs};
 use rustc::hir;
 use rustc::hir::{ItemKind as HirItem, ImplItemKind, TraitItemKind};
-use rustc::hir::map::Node as HirNode;
+use rustc::hir::Node as HirNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
@@ -79,7 +68,7 @@ const BASE_IMPL: &[&str] = &[
 ];
 
 /// DepNodes for MirValidated/Optimized, which is relevant in "executable"
-/// code, i.e. functions+methods
+/// code, i.e., functions+methods
 const BASE_MIR: &[&str] = &[
     label_strs::MirOptimized,
     label_strs::MirValidated,
@@ -161,7 +150,7 @@ const LABELS_FN_IN_TRAIT: &[&[&str]] = &[
     EXTRA_TRAIT,
 ];
 
-/// For generic cases like inline-assemply/mod/etc
+/// For generic cases like inline-assembly/mod/etc
 const LABELS_HIR_ONLY: &[&[&str]] = &[
     BASE_HIR,
 ];
@@ -193,7 +182,7 @@ const LABELS_TRAIT: &[&[&str]] = &[
 //
 //     TypeOfItem for these.
 
-type Labels = HashSet<String>;
+type Labels = FxHashSet<String>;
 
 /// Represents the requested configuration by rustc_clean/dirty
 struct Assertion {
@@ -205,13 +194,13 @@ impl Assertion {
     fn from_clean_labels(labels: Labels) -> Assertion {
         Assertion {
             clean: labels,
-            dirty: Labels::new(),
+            dirty: Labels::default(),
         }
     }
 
     fn from_dirty_labels(labels: Labels) -> Assertion {
         Assertion {
-            clean: Labels::new(),
+            clean: Labels::default(),
             dirty: labels,
         }
     }
@@ -224,10 +213,10 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let krate = tcx.hir.krate();
+        let krate = tcx.hir().krate();
         let mut dirty_clean_visitor = DirtyCleanVisitor {
             tcx,
-            checked_attrs: FxHashSet(),
+            checked_attrs: Default::default(),
         };
         krate.visit_all_item_likes(&mut dirty_clean_visitor);
 
@@ -328,15 +317,15 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             }
         }
         // if no `label` or `except` is given, only the node's group are asserted
-        Labels::new()
+        Labels::default()
     }
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
     fn auto_labels(&mut self, item_id: ast::NodeId, attr: &Attribute) -> (&'static str, Labels) {
-        let node = self.tcx.hir.get(item_id);
+        let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
-            HirNode::NodeItem(item) => {
+            HirNode::Item(item) => {
                 match item.node {
                     // note: these are in the same order as hir::Item_;
                     // FIXME(michaelwoerister): do commented out ones
@@ -365,16 +354,16 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // Module-level inline assembly (from global_asm!)
                     HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
-                    // A type alias, e.g. `type Foo = Bar<u8>`
+                    // A type alias, e.g., `type Foo = Bar<u8>`
                     HirItem::Ty(..) => ("ItemTy", LABELS_HIR_ONLY),
 
-                    // An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
+                    // An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`
                     HirItem::Enum(..) => ("ItemEnum", LABELS_ADT),
 
-                    // A struct definition, e.g. `struct Foo<A> {x: A}`
+                    // A struct definition, e.g., `struct Foo<A> {x: A}`
                     HirItem::Struct(..) => ("ItemStruct", LABELS_ADT),
 
-                    // A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
+                    // A union definition, e.g., `union Foo<A, B> {x: A, y: B}`
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
@@ -399,22 +388,23 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     _ => self.tcx.sess.span_fatal(
                         attr.span,
                         &format!(
-                            "clean/dirty auto-assertions not yet defined for NodeItem.node={:?}",
+                            "clean/dirty auto-assertions not yet defined \
+                             for Node::Item.node={:?}",
                             item.node
                         )
                     ),
                 }
             },
-            HirNode::NodeTraitItem(item) => {
+            HirNode::TraitItem(item) => {
                 match item.node {
-                    TraitItemKind::Method(..) => ("NodeTraitItem", LABELS_FN_IN_TRAIT),
+                    TraitItemKind::Method(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
                     TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
                     TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
                 }
             },
-            HirNode::NodeImplItem(item) => {
+            HirNode::ImplItem(item) => {
                 match item.node {
-                    ImplItemKind::Method(..) => ("NodeImplItem", LABELS_FN_IN_IMPL),
+                    ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                     ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                     ImplItemKind::Existential(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
@@ -435,7 +425,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     }
 
     fn resolve_labels(&self, item: &NestedMetaItem, value: &str) -> Labels {
-        let mut out: Labels = HashSet::new();
+        let mut out = Labels::default();
         for label in value.split(',') {
             let label = label.trim();
             if DepNode::has_label_string(label) {
@@ -511,7 +501,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     }
 
     fn check_item(&mut self, item_id: ast::NodeId, item_span: Span) {
-        let def_id = self.tcx.hir.local_def_id(item_id);
+        let def_id = self.tcx.hir().local_def_id(item_id);
         for attr in self.tcx.get_attrs(def_id).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
@@ -630,7 +620,7 @@ impl<'a, 'tcx> FindAllAttrs<'a, 'tcx> {
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir)
+        intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

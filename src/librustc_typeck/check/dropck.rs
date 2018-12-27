@@ -1,22 +1,12 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
-use rustc::infer::{self, InferOk};
 use rustc::infer::outlives::env::OutlivesEnvironment;
+use rustc::infer::{self, InferOk, SuppressRegionErrors};
 use rustc::middle::region;
+use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use util::common::ErrorReported;
 
 use syntax::ast;
@@ -32,30 +22,35 @@ use syntax_pos::Span;
 ///    coherence),
 ///
 /// 2. The generic region/type parameters of the impl's self-type must
-///    all be parameters of the Drop impl itself (i.e. no
+///    all be parameters of the Drop impl itself (i.e., no
 ///    specialization like `impl Drop for Foo<i32>`), and,
 ///
 /// 3. Any bounds on the generic parameters must be reflected in the
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 drop_impl_did: DefId)
-                                 -> Result<(), ErrorReported> {
+pub fn check_drop_impl<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    drop_impl_did: DefId,
+) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.sty {
-        ty::TyAdt(adt_def, self_to_impl_substs) => {
-            ensure_drop_params_and_item_params_correspond(tcx,
-                                                          drop_impl_did,
-                                                          dtor_self_type,
-                                                          adt_def.did)?;
+        ty::Adt(adt_def, self_to_impl_substs) => {
+            ensure_drop_params_and_item_params_correspond(
+                tcx,
+                drop_impl_did,
+                dtor_self_type,
+                adt_def.did,
+            )?;
 
-            ensure_drop_predicates_are_implied_by_item_defn(tcx,
-                                                            drop_impl_did,
-                                                            &dtor_predicates,
-                                                            adt_def.did,
-                                                            self_to_impl_substs)
+            ensure_drop_predicates_are_implied_by_item_defn(
+                tcx,
+                drop_impl_did,
+                &dtor_predicates,
+                adt_def.did,
+                self_to_impl_substs,
+            )
         }
         _ => {
             // Destructors only work on nominal types.  This was
@@ -63,8 +58,7 @@ pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
             tcx.sess.delay_span_bug(span,
-                            &format!("should have been rejected by coherence check: {}",
-                            dtor_self_type));
+                &format!("should have been rejected by coherence check: {}", dtor_self_type));
             Err(ErrorReported)
         }
     }
@@ -74,10 +68,9 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
-    self_type_did: DefId)
-    -> Result<(), ErrorReported>
-{
-    let drop_impl_node_id = tcx.hir.as_local_node_id(drop_impl_did).unwrap();
+    self_type_did: DefId,
+) -> Result<(), ErrorReported> {
+    let drop_impl_node_id = tcx.hir().as_local_node_id(drop_impl_did).unwrap();
 
     // check that the impl type can be made to match the trait type.
 
@@ -89,22 +82,29 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let named_type = tcx.type_of(self_type_did);
 
         let drop_impl_span = tcx.def_span(drop_impl_did);
-        let fresh_impl_substs =
-            infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
+        let fresh_impl_substs = infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);
-        match infcx.at(cause, impl_param_env).eq(named_type, fresh_impl_self_ty) {
+        match infcx
+            .at(cause, impl_param_env)
+            .eq(named_type, fresh_impl_self_ty)
+        {
             Ok(InferOk { obligations, .. }) => {
                 fulfillment_cx.register_predicate_obligations(infcx, obligations);
             }
             Err(_) => {
                 let item_span = tcx.def_span(self_type_did);
-                struct_span_err!(tcx.sess, drop_impl_span, E0366,
-                                 "Implementations of Drop cannot be specialized")
-                    .span_note(item_span,
-                               "Use same sequence of generic type and region \
-                                parameters that is on the struct/enum definition")
+                struct_span_err!(
+                    tcx.sess,
+                    drop_impl_span,
+                    E0366,
+                    "Implementations of Drop cannot be specialized"
+                ).span_note(
+                    item_span,
+                    "Use same sequence of generic type and region \
+                     parameters that is on the struct/enum definition",
+                )
                     .emit();
                 return Err(ErrorReported);
             }
@@ -128,7 +128,12 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         // conservative. -nmatsakis
         let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
 
-        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &outlives_env);
+        infcx.resolve_regions_and_report_errors(
+            drop_impl_did,
+            &region_scope_tree,
+            &outlives_env,
+            SuppressRegionErrors::default(),
+        );
         Ok(())
     })
 }
@@ -140,9 +145,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
-    self_to_impl_substs: &Substs<'tcx>)
-    -> Result<(), ErrorReported>
-{
+    self_to_impl_substs: &Substs<'tcx>,
+) -> Result<(), ErrorReported> {
     let mut result = Ok(());
 
     // Here is an example, analogous to that from
@@ -166,7 +170,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     //
     //     self_to_impl_substs = {'c => 'z, 'b => 'y, 'a => 'x}
     //
-    // Applying this to the predicates (i.e. assumptions) provided by the item
+    // Applying this to the predicates (i.e., assumptions) provided by the item
     // definition yields the instantiated assumptions:
     //
     //     ['y : 'z]
@@ -180,7 +184,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    let self_type_node_id = tcx.hir.as_local_node_id(self_type_did).unwrap();
+    let self_type_node_id = tcx.hir().as_local_node_id(self_type_did).unwrap();
 
     let drop_impl_span = tcx.def_span(drop_impl_did);
 
@@ -198,7 +202,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // just to look for all the predicates directly.
 
     assert_eq!(dtor_predicates.parent, None);
-    for predicate in &dtor_predicates.predicates {
+    for (predicate, _) in &dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of
@@ -212,12 +216,18 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.hir.span(self_type_node_id);
-            struct_span_err!(tcx.sess, drop_impl_span, E0367,
-                             "The requirement `{}` is added only by the Drop impl.", predicate)
-                .span_note(item_span,
-                           "The same requirement must be part of \
-                            the struct/enum definition")
+            let item_span = tcx.hir().span(self_type_node_id);
+            struct_span_err!(
+                tcx.sess,
+                drop_impl_span,
+                E0367,
+                "The requirement `{}` is added only by the Drop impl.",
+                predicate
+            ).span_note(
+                item_span,
+                "The same requirement must be part of \
+                 the struct/enum definition",
+            )
                 .emit();
             result = Err(ErrorReported);
         }
@@ -283,18 +293,16 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     ty: Ty<'tcx>,
     span: Span,
     body_id: ast::NodeId,
-    scope: region::Scope)
-    -> Result<(), ErrorReported>
-{
+    scope: region::Scope,
+) -> Result<(), ErrorReported> {
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            ty, scope);
-
 
     let parent_scope = match rcx.region_scope_tree.opt_encl_scope(scope) {
         Some(parent_scope) => parent_scope,
         // If no enclosing scope, then it must be the root scope
         // which cannot be outlived.
-        None => return Ok(())
+        None => return Ok(()),
     };
     let parent_scope = rcx.tcx.mk_region(ty::ReScope(parent_scope));
     let origin = || infer::SubregionOrigin::SafeDestructor(span);

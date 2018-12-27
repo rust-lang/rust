@@ -1,5 +1,5 @@
 error[E0195]: lifetime parameters or bounds on method `no_bound` do not match the trait declaration
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:29:16
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:19:16
    |
 LL |     fn no_bound<'b>(self, b: Inv<'b>);
    |                ---- lifetimes in impl do not match this method in trait
@@ -8,7 +8,7 @@ LL |     fn no_bound<'b:'a>(self, b: Inv<'b>) {
    |                ^^^^^^^ lifetimes do not match method in trait
 
 error[E0195]: lifetime parameters or bounds on method `has_bound` do not match the trait declaration
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:33:17
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:23:17
    |
 LL |     fn has_bound<'b:'a>(self, b: Inv<'b>);
    |                 ------- lifetimes in impl do not match this method in trait
@@ -17,26 +17,26 @@ LL |     fn has_bound<'b>(self, b: Inv<'b>) {
    |                 ^^^^ lifetimes do not match method in trait
 
 error[E0308]: method not compatible with trait
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:37:5
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:5
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'d>)`
               found type `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'d>)`
-note: the lifetime 'c as defined on the method body at 37:24...
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:37:24
+note: the lifetime 'c as defined on the method body at 27:24...
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |                        ^^
-note: ...does not necessarily outlive the lifetime 'c as defined on the method body at 37:24
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:37:24
+note: ...does not necessarily outlive the lifetime 'c as defined on the method body at 27:24
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |                        ^^
 
 error[E0195]: lifetime parameters or bounds on method `wrong_bound2` do not match the trait declaration
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:51:5
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:41:5
    |
 LL |     fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
    |                    ---------------- lifetimes in impl do not match this method in trait
@@ -45,7 +45,7 @@ LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:58:5
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:48:5
    |
 LL |     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
    |     ------------------------------------------------------- definition of `another_bound` from trait

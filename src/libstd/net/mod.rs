@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Networking primitives for TCP/UDP communication.
 //!
 //! This module provides networking functionality for the Transmission Control and User
@@ -112,11 +102,15 @@ fn hton<I: NetInt>(i: I) -> I { i.to_be() }
 fn ntoh<I: NetInt>(i: I) -> I { I::from_be(i) }
 
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
-    where F: FnMut(&SocketAddr) -> io::Result<T>
+    where F: FnMut(io::Result<&SocketAddr>) -> io::Result<T>
 {
+    let addrs = match addr.to_socket_addrs() {
+        Ok(addrs) => addrs,
+        Err(e) => return f(Err(e))
+    };
     let mut last_err = None;
-    for addr in addr.to_socket_addrs()? {
-        match f(&addr) {
+    for addr in addrs {
+        match f(Ok(&addr)) {
             Ok(l) => return Ok(l),
             Err(e) => last_err = Some(e),
         }

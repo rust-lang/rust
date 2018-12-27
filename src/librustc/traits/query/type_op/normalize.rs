@@ -1,14 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use std::fmt;
 use traits::query::Fallible;
 use ty::fold::TypeFoldable;
@@ -32,7 +22,7 @@ impl<'gcx: 'tcx, 'tcx, T> super::QueryTypeOp<'gcx, 'tcx> for Normalize<T>
 where
     T: Normalizable<'gcx, 'tcx>,
 {
-    type QueryResult = T;
+    type QueryResponse = T;
 
     fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
         if !key.value.value.has_projections() {
@@ -45,13 +35,13 @@ where
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
         T::type_op_method(tcx, canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, T>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, T>> {
+        v: &'a CanonicalizedQueryResponse<'gcx, T>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, T>> {
         T::shrink_to_tcx_lifetime(v)
     }
 }
@@ -60,13 +50,13 @@ pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>>;
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>>;
 
     /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
     /// form of `Self`.
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>>;
+        v: &'a CanonicalizedQueryResponse<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>>;
 }
 
 impl Normalizable<'gcx, 'tcx> for Ty<'tcx>
@@ -76,13 +66,13 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_ty(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v: &'a CanonicalizedQueryResponse<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
         v
     }
 }
@@ -94,13 +84,13 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_predicate(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v: &'a CanonicalizedQueryResponse<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
         v
     }
 }
@@ -112,13 +102,13 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_poly_fn_sig(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v: &'a CanonicalizedQueryResponse<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
         v
     }
 }
@@ -130,13 +120,13 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_fn_sig(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResult<'gcx, Self>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v: &'a CanonicalizedQueryResponse<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self>> {
         v
     }
 }

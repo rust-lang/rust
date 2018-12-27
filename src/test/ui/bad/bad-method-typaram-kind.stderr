@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be sent between threads safely
-  --> $DIR/bad-method-typaram-kind.rs:12:7
+  --> $DIR/bad-method-typaram-kind.rs:2:7
    |
 LL |     1.bar::<T>(); //~ ERROR `T` cannot be sent between threads safely
    |       ^^^ `T` cannot be sent between threads safely

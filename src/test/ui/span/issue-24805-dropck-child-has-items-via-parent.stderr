@@ -1,5 +1,5 @@
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24805-dropck-child-has-items-via-parent.rs:38:19
+  --> $DIR/issue-24805-dropck-child-has-items-via-parent.rs:28:19
    |
 LL |     _d = D_Child(&d1);
    |                   ^^ borrowed value does not live long enough

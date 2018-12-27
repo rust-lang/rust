@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cmp;
 use io::{self, Error, ErrorKind, Result};
 use mem;
@@ -24,8 +14,8 @@ use super::{path_to_peer_addr, path_to_local_addr};
 pub struct TcpStream(File);
 
 impl TcpStream {
-    pub fn connect(addr: &SocketAddr) -> Result<TcpStream> {
-        let path = format!("tcp:{}", addr);
+    pub fn connect(addr: Result<&SocketAddr>) -> Result<TcpStream> {
+        let path = format!("tcp:{}", addr?);
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
@@ -180,8 +170,8 @@ impl IntoInner<File> for TcpStream {
 pub struct TcpListener(File);
 
 impl TcpListener {
-    pub fn bind(addr: &SocketAddr) -> Result<TcpListener> {
-        let path = format!("tcp:/{}", addr);
+    pub fn bind(addr: Result<&SocketAddr>) -> Result<TcpListener> {
+        let path = format!("tcp:/{}", addr?);
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);

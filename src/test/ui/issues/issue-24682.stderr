@@ -1,18 +1,18 @@
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/issue-24682.rs:15:11
+  --> $DIR/issue-24682.rs:5:11
    |
 LL | /           N= //~ ERROR associated type bindings are not allowed here
 LL | |           Self::N> {
    | |_________________^ associated type not allowed here
 
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/issue-24682.rs:21:13
+  --> $DIR/issue-24682.rs:11:13
    |
 LL |            <N=()> //~ ERROR associated type bindings are not allowed here
    |             ^^^^ associated type not allowed here
 
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/issue-24682.rs:25:13
+  --> $DIR/issue-24682.rs:15:13
    |
 LL |         u32<N=()> //~ ERROR associated type bindings are not allowed here
    |             ^^^^ associated type not allowed here

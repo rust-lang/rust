@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Port of LLVM's APFloat software floating-point implementation from the
 //! following C++ sources (please update commit hash when backporting):
 //! <https://github.com/llvm-mirror/llvm/tree/23efab2bbd424ed13495a420ad8641cb2c6c28f9>
@@ -26,8 +16,8 @@
 //! Comments have been preserved where possible, only slightly adapted.
 //!
 //! Instead of keeping a pointer to a configuration struct and inspecting it
-//! dynamically on every operation, types (e.g. `ieee::Double`), traits
-//! (e.g. `ieee::Semantics`) and associated constants are employed for
+//! dynamically on every operation, types (e.g., `ieee::Double`), traits
+//! (e.g., `ieee::Semantics`) and associated constants are employed for
 //! increased type safety and performance.
 //!
 //! On-heap bigints are replaced everywhere (except in decimal conversion),
@@ -45,7 +35,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![forbid(unsafe_code)]
 
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(try_from)]
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
@@ -53,6 +43,7 @@ extern crate rustc_cratesio_shim;
 
 #[macro_use]
 extern crate bitflags;
+extern crate smallvec;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -178,7 +169,7 @@ pub struct ParseError(pub &'static str);
 /// implemented operations. Currently implemented operations are add, subtract,
 /// multiply, divide, fused-multiply-add, conversion-to-float,
 /// conversion-to-integer and conversion-from-integer. New rounding modes
-/// (e.g. away from zero) can be added with three or four lines of code.
+/// (e.g., away from zero) can be added with three or four lines of code.
 ///
 /// Four formats are built-in: IEEE single precision, double precision,
 /// quadruple precision, and x87 80-bit extended double (when operating with
@@ -588,7 +579,7 @@ pub trait Float
 pub trait FloatConvert<T: Float>: Float {
     /// Convert a value of one floating point type to another.
     /// The return value corresponds to the IEEE754 exceptions. *loses_info
-    /// records whether the transformation lost information, i.e. whether
+    /// records whether the transformation lost information, i.e., whether
     /// converting the result back to the original type will produce the
     /// original value (this is almost the same as return value==Status::OK,
     /// but there are edge cases where this is not so).

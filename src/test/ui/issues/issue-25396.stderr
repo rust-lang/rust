@@ -1,5 +1,5 @@
 error[E0252]: the name `baz` is defined multiple times
-  --> $DIR/issue-25396.rs:12:5
+  --> $DIR/issue-25396.rs:4:5
    |
 LL | use foo::baz;
    |     -------- previous import of the module `baz` here
@@ -7,13 +7,13 @@ LL | use bar::baz; //~ ERROR the name `baz` is defined multiple times
    |     ^^^^^^^^ `baz` reimported here
    |
    = note: `baz` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::baz as other_baz; //~ ERROR the name `baz` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `Quux` is defined multiple times
-  --> $DIR/issue-25396.rs:15:5
+  --> $DIR/issue-25396.rs:7:5
    |
 LL | use foo::Quux;
    |     --------- previous import of the trait `Quux` here
@@ -21,13 +21,13 @@ LL | use bar::Quux; //~ ERROR the name `Quux` is defined multiple times
    |     ^^^^^^^^^ `Quux` reimported here
    |
    = note: `Quux` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::Quux as OtherQuux; //~ ERROR the name `Quux` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `blah` is defined multiple times
-  --> $DIR/issue-25396.rs:18:5
+  --> $DIR/issue-25396.rs:10:5
    |
 LL | use foo::blah;
    |     --------- previous import of the type `blah` here
@@ -35,13 +35,13 @@ LL | use bar::blah; //~ ERROR the name `blah` is defined multiple times
    |     ^^^^^^^^^ `blah` reimported here
    |
    = note: `blah` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::blah as other_blah; //~ ERROR the name `blah` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0252]: the name `WOMP` is defined multiple times
-  --> $DIR/issue-25396.rs:21:5
+  --> $DIR/issue-25396.rs:13:5
    |
 LL | use foo::WOMP;
    |     --------- previous import of the value `WOMP` here
@@ -49,7 +49,7 @@ LL | use bar::WOMP; //~ ERROR the name `WOMP` is defined multiple times
    |     ^^^^^^^^^ `WOMP` reimported here
    |
    = note: `WOMP` must be defined only once in the value namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use bar::WOMP as OtherWOMP; //~ ERROR the name `WOMP` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^

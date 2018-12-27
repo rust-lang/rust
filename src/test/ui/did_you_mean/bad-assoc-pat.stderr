@@ -1,47 +1,47 @@
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-pat.rs:13:9
+  --> $DIR/bad-assoc-pat.rs:3:9
    |
 LL |         [u8]::AssocItem => {}
    |         ^^^^^^^^^^^^^^^ help: try: `<[u8]>::AssocItem`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-pat.rs:16:9
+  --> $DIR/bad-assoc-pat.rs:6:9
    |
 LL |         (u8, u8)::AssocItem => {}
    |         ^^^^^^^^^^^^^^^^^^^ help: try: `<(u8, u8)>::AssocItem`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-pat.rs:19:9
+  --> $DIR/bad-assoc-pat.rs:9:9
    |
 LL |         _::AssocItem => {}
    |         ^^^^^^^^^^^^ help: try: `<_>::AssocItem`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-pat.rs:24:10
+  --> $DIR/bad-assoc-pat.rs:14:10
    |
 LL |         &(u8,)::AssocItem => {}
    |          ^^^^^^^^^^^^^^^^ help: try: `<(u8,)>::AssocItem`
 
 error[E0599]: no associated item named `AssocItem` found for type `[u8]` in the current scope
-  --> $DIR/bad-assoc-pat.rs:13:9
+  --> $DIR/bad-assoc-pat.rs:3:9
    |
 LL |         [u8]::AssocItem => {}
    |         ^^^^^^^^^^^^^^^ associated item not found in `[u8]`
 
 error[E0599]: no associated item named `AssocItem` found for type `(u8, u8)` in the current scope
-  --> $DIR/bad-assoc-pat.rs:16:9
+  --> $DIR/bad-assoc-pat.rs:6:9
    |
 LL |         (u8, u8)::AssocItem => {}
    |         ^^^^^^^^^^^^^^^^^^^ associated item not found in `(u8, u8)`
 
 error[E0599]: no associated item named `AssocItem` found for type `_` in the current scope
-  --> $DIR/bad-assoc-pat.rs:19:9
+  --> $DIR/bad-assoc-pat.rs:9:9
    |
 LL |         _::AssocItem => {}
    |         ^^^^^^^^^^^^ associated item not found in `_`
 
 error[E0599]: no associated item named `AssocItem` found for type `(u8,)` in the current scope
-  --> $DIR/bad-assoc-pat.rs:24:10
+  --> $DIR/bad-assoc-pat.rs:14:10
    |
 LL |         &(u8,)::AssocItem => {}
    |          ^^^^^^^^^^^^^^^^ associated item not found in `(u8,)`

@@ -1,18 +1,9 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use abi::{self, Abi, Align, FieldPlacement, Size};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use spec::HasTargetSpec;
 
 mod aarch64;
+mod amdgpu;
 mod arm;
 mod asmjs;
 mod hexagon;
@@ -44,7 +35,9 @@ pub enum PassMode {
     /// a single uniform or a pair of registers.
     Cast(CastTarget),
     /// Pass the argument indirectly via a hidden pointer.
-    Indirect(ArgAttributes),
+    /// The second value, if any, is for the extra data (vtable or length)
+    /// which indicates that it refers to an unsized rvalue.
+    Indirect(ArgAttributes, Option<ArgAttributes>),
 }
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
@@ -134,34 +127,34 @@ impl Reg {
 }
 
 impl Reg {
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         let dl = cx.data_layout();
         match self.kind {
             RegKind::Integer => {
                 match self.size.bits() {
-                    1 => dl.i1_align,
-                    2..=8 => dl.i8_align,
-                    9..=16 => dl.i16_align,
-                    17..=32 => dl.i32_align,
-                    33..=64 => dl.i64_align,
-                    65..=128 => dl.i128_align,
+                    1 => dl.i1_align.abi,
+                    2..=8 => dl.i8_align.abi,
+                    9..=16 => dl.i16_align.abi,
+                    17..=32 => dl.i32_align.abi,
+                    33..=64 => dl.i64_align.abi,
+                    65..=128 => dl.i128_align.abi,
                     _ => panic!("unsupported integer: {:?}", self)
                 }
             }
             RegKind::Float => {
                 match self.size.bits() {
-                    32 => dl.f32_align,
-                    64 => dl.f64_align,
+                    32 => dl.f32_align.abi,
+                    64 => dl.f64_align.abi,
                     _ => panic!("unsupported float: {:?}", self)
                 }
             }
-            RegKind::Vector => dl.vector_align(self.size)
+            RegKind::Vector => dl.vector_align(self.size).abi,
         }
     }
 }
 
 /// An argument passed entirely registers with the
-/// same kind (e.g. HFA / HVA on PPC64 and AArch64).
+/// same kind (e.g., HFA / HVA on PPC64 and AArch64).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Uniform {
     pub unit: Reg,
@@ -170,7 +163,7 @@ pub struct Uniform {
     /// * equal to `unit.size` (one scalar/vector)
     /// * a multiple of `unit.size` (an array of scalar/vectors)
     /// * if `unit.kind` is `Integer`, the last element
-    ///   can be shorter, i.e. `{ i64, i64, i32 }` for
+    ///   can be shorter, i.e., `{ i64, i64, i32 }` for
     ///   64-bit integers with a total size of 20 bytes
     pub total: Size,
 }
@@ -185,7 +178,7 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.unit.align(cx)
     }
 }
@@ -222,15 +215,15 @@ impl CastTarget {
         }
     }
 
-    pub fn size<C: HasDataLayout>(&self, cx: C) -> Size {
+    pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
         (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
-             .abi_align(self.rest.align(cx)) + self.rest.total
+             .align_to(self.rest.align(cx)) + self.rest.total
     }
 
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix.iter()
             .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
-            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),
+            .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)),
                 |acc, align| acc.max(align))
     }
 }
@@ -246,8 +239,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         }
     }
 
-    fn homogeneous_aggregate<C>(&self, cx: C) -> Option<Reg>
-        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self> + Copy
+    fn homogeneous_aggregate<C>(&self, cx: &C) -> Option<Reg>
+        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self>
     {
         match self.abi {
             Abi::Uninhabited => None,
@@ -366,15 +359,21 @@ impl<'a, Ty> ArgType<'a, Ty> {
         attrs.pointee_size = self.layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(self.layout.align);
+        // attrs.pointee_align = Some(self.layout.align.abi);
 
-        self.mode = PassMode::Indirect(attrs);
+        let extra_attrs = if self.layout.is_unsized() {
+            Some(ArgAttributes::new())
+        } else {
+            None
+        };
+
+        self.mode = PassMode::Indirect(attrs, extra_attrs);
     }
 
     pub fn make_indirect_byval(&mut self) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect(ref mut attrs) => {
+            PassMode::Indirect(ref mut attrs, _) => {
                 attrs.set(ArgAttribute::ByVal);
             }
             _ => unreachable!()
@@ -409,7 +408,21 @@ impl<'a, Ty> ArgType<'a, Ty> {
 
     pub fn is_indirect(&self) -> bool {
         match self.mode {
-            PassMode::Indirect(_) => true,
+            PassMode::Indirect(..) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_sized_indirect(&self) -> bool {
+        match self.mode {
+            PassMode::Indirect(_, None) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_unsized_indirect(&self) -> bool {
+        match self.mode {
+            PassMode::Indirect(_, Some(_)) => true,
             _ => false
         }
     }
@@ -460,7 +473,7 @@ pub struct FnType<'a, Ty> {
 }
 
 impl<'a, Ty> FnType<'a, Ty> {
-    pub fn adjust_for_cabi<C>(&mut self, cx: C, abi: ::spec::abi::Abi) -> Result<(), String>
+    pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: ::spec::abi::Abi) -> Result<(), String>
         where Ty: TyLayoutMethods<'a, C> + Copy,
               C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
     {
@@ -481,6 +494,7 @@ impl<'a, Ty> FnType<'a, Ty> {
                 x86_64::compute_abi_info(cx, self);
             },
             "aarch64" => aarch64::compute_abi_info(cx, self),
+            "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),
@@ -506,7 +520,7 @@ impl<'a, Ty> FnType<'a, Ty> {
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a))
         }
 
-        if let PassMode::Indirect(ref mut attrs) = self.ret.mode {
+        if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
             attrs.set(ArgAttribute::StructRet);
         }
 

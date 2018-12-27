@@ -1,13 +1,3 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-gdb
 // compile-flags:-g
 // min-lldb-version: 310
@@ -16,14 +6,18 @@
 
 // lldb-command:run
 // lldb-command:p struct1
-// lldb-check:(struct_namespace::Struct1) $0 = [...]
+// lldbg-check:(struct_namespace::Struct1) $0 = [...]
+// lldbr-check:(struct_namespace::Struct1) struct1 = Struct1 { a: 0, b: 1 }
 // lldb-command:p struct2
-// lldb-check:(struct_namespace::Struct2) $1 = [...]
+// lldbg-check:(struct_namespace::Struct2) $1 = [...]
+// lldbr-check:(struct_namespace::Struct2) struct2 = { = 2 }
 
 // lldb-command:p mod1_struct1
-// lldb-check:(struct_namespace::mod1::Struct1) $2 = [...]
+// lldbg-check:(struct_namespace::mod1::Struct1) $2 = [...]
+// lldbr-check:(struct_namespace::mod1::Struct1) mod1_struct1 = Struct1 { a: 3, b: 4 }
 // lldb-command:p mod1_struct2
-// lldb-check:(struct_namespace::mod1::Struct2) $3 = [...]
+// lldbg-check:(struct_namespace::mod1::Struct2) $3 = [...]
+// lldbr-check:(struct_namespace::mod1::Struct2) mod1_struct2 = { = 5 }
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

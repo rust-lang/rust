@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // rust-lang/rust#45696: This test is checking that we *cannot* return
 // mutable borrows that would be scribbled over by destructors before
 // the return occurs.
@@ -60,9 +50,10 @@ fn boxed_boxed_borrowed_scribble<'a>(s: Box<Box<&'a mut Scribble>>) -> &'a mut u
 // this should be an error. (Which is perhaps the essence of why
 // rust-lang/rust#45696 arose in the first place.)
 fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
-    &mut *s.0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-    //[migrate]~^ WARNING `*s.0` does not live long enough [E0597]
-    //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
+    &mut *s.0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+    //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
+    //[migrate]~| WARNING this error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
 // This, by analogy to previous case, is *also* not okay.
@@ -70,9 +61,10 @@ fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
 // (But again, AST-borrowck was not smart enogh to know that this
 // should be an error.)
 fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
-    &mut *(*s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-    //[migrate]~^ WARNING `*s.0` does not live long enough [E0597]
-    //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
+    &mut *(*s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+    //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
+    //[migrate]~| WARNING this error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
 // This, by analogy to previous case, is *also* not okay.
@@ -80,9 +72,10 @@ fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
 // (But again, AST-borrowck was not smart enogh to know that this
 // should be an error.)
 fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
-    &mut *(**s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
-    //[migrate]~^ WARNING `*s.0` does not live long enough [E0597]
-    //[migrate]~| WARNING This error has been downgraded to a warning for backwards compatibility
+    &mut *(**s).0 //[nll]~ ERROR borrow may still be in use when destructor runs [E0713]
+    //[migrate]~^ WARNING borrow may still be in use when destructor runs [E0713]
+    //[migrate]~| WARNING this error has been downgraded to a warning for backwards compatibility
+    //[migrate]~| WARNING this represents potential undefined behavior in your code
 }
 
 #[rustc_error]

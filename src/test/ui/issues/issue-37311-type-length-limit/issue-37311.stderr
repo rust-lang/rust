@@ -1,5 +1,5 @@
 error: reached the type-length limit while instantiating `<T as Foo><(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(), &()), &(&()...`
-  --> $DIR/issue-37311.rs:23:5
+  --> $DIR/issue-37311.rs:13:5
    |
 LL | /     fn recurse(&self) { //~ ERROR reached the type-length limit
 LL | |         (self, self).recurse();

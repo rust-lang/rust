@@ -1,5 +1,5 @@
 error[E0616]: field `len` of struct `sub::S` is private
-  --> $DIR/issue-26472.rs:21:13
+  --> $DIR/issue-26472.rs:11:13
    |
 LL |     let v = s.len;
    |             ^^^^^

@@ -1,13 +1,3 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The Rust compiler.
 //!
 //! # Note
@@ -22,13 +12,12 @@
 #![feature(box_syntax)]
 
 use std::any::Any;
-use std::io::{self, Write};
-use std::fs::File;
+use std::io::Write;
+use std::fs;
 use std::path::Path;
 use std::sync::{mpsc, Arc};
 
 use rustc_data_structures::owning_ref::OwningRef;
-use rustc_data_structures::sync::Lrc;
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
 
@@ -42,9 +31,8 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::monomorphize::collector;
-use link::{build_link_meta, out_filename};
+use link::out_filename;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
@@ -83,13 +71,9 @@ pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoader for NoLlvmMetadataLoader {
     fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
-        let mut file = File::open(filename)
-            .map_err(|e| format!("metadata file open err: {:?}", e))?;
-
-        let mut buf = Vec::new();
-        io::copy(&mut file, &mut buf).unwrap();
-        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-        return Ok(rustc_erase_owner!(buf.map_owner_box()));
+        let buf = fs::read(filename).map_err(|e| format!("metadata file open err: {:?}", e))?;
+        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
+        Ok(rustc_erase_owner!(buf.map_owner_box()))
     }
 
     fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String> {
@@ -105,7 +89,7 @@ pub struct OngoingCodegen {
 }
 
 impl MetadataOnlyCodegenBackend {
-    pub fn new() -> Box<dyn CodegenBackend> {
+    pub fn boxed() -> Box<dyn CodegenBackend> {
         box MetadataOnlyCodegenBackend(())
     }
 }
@@ -132,7 +116,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         ::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            Lrc::new(FxHashMap()) // Just a dummy
+            Default::default() // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
@@ -167,24 +151,20 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
                 tcx,
                 collector::MonoItemCollectionMode::Eager
             ).0 {
-            match mono_item {
-                MonoItem::Fn(inst) => {
-                    let def_id = inst.def_id();
-                    if def_id.is_local()  {
-                        let _ = inst.def.is_inline(tcx);
-                        let _ = tcx.codegen_fn_attrs(def_id);
-                    }
+            if let MonoItem::Fn(inst) = mono_item {
+                let def_id = inst.def_id();
+                if def_id.is_local()  {
+                    let _ = inst.def.is_inline(tcx);
+                    let _ = tcx.codegen_fn_attrs(def_id);
                 }
-                _ => {}
             }
         }
         tcx.sess.abort_if_errors();
 
-        let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
-        let metadata = tcx.encode_metadata(&link_meta);
+        let metadata = tcx.encode_metadata();
 
         box OngoingCodegen {
-            metadata: metadata,
+            metadata,
             metadata_version: tcx.metadata_encoding_version().to_vec(),
             crate_name: tcx.crate_name(LOCAL_CRATE),
         }
@@ -215,8 +195,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
             } else {
                 &ongoing_codegen.metadata.raw_data
             };
-            let mut file = File::create(&output_name).unwrap();
-            file.write_all(metadata).unwrap();
+            fs::write(&output_name, metadata).unwrap();
         }
 
         sess.abort_if_errors();

@@ -22,6 +22,13 @@ This flag lets you append a single extra argument to the linker invocation.
 This flag lets you append multiple extra arguments to the linker invocation. The
 options should be separated by spaces.
 
+## linker-flavor
+
+This flag lets you control the linker flavor used by `rustc`. If a linker is given with the
+`-C linker` flag described above then the linker flavor is inferred from the value provided. If no
+linker is given then the linker flavor is used to determine the linker to use. Every `rustc` target
+defaults to some linker flavor.
+
 ## link-dead-code
 
 Normally, the linker will remove dead code. This flag disables this behavior.
@@ -153,7 +160,7 @@ This option allows you to put extra data in each output filename.
 This flag lets you control how many threads are used when doing
 code generation.
 
-Increasing paralellism may speed up compile times, but may also
+Increasing parallelism may speed up compile times, but may also
 produce slower code.
 
 ## remark

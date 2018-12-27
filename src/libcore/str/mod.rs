@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! String manipulation
 //!
 //! For more details, see std::str
@@ -59,7 +49,7 @@ pub mod lossy;
 ///
 ///     fn from_str(s: &str) -> Result<Self, Self::Err> {
 ///         let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
-///                                  .split(",")
+///                                  .split(',')
 ///                                  .collect();
 ///
 ///         let x_fromstr = coords[0].parse::<i32>()?;
@@ -482,7 +472,7 @@ fn utf8_first_byte(byte: u8, width: u32) -> u32 { (byte & (0x7F >> width)) as u3
 #[inline]
 fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { (ch << 6) | (byte & CONT_MASK) as u32 }
 
-/// Checks whether the byte is a UTF-8 continuation byte (i.e. starts with the
+/// Checks whether the byte is a UTF-8 continuation byte (i.e., starts with the
 /// bits `10`).
 #[inline]
 fn utf8_is_cont_byte(byte: u8) -> bool { (byte & !CONT_MASK) == TAG_CONT_U8 }
@@ -536,10 +526,9 @@ fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
     where I: DoubleEndedIterator<Item = &'a u8>,
 {
     // Decode UTF-8
-    let w = match bytes.next_back() {
-        None => return None,
-        Some(&next_byte) if next_byte < 128 => return Some(next_byte as u32),
-        Some(&back_byte) => back_byte,
+    let w = match *bytes.next_back()? {
+        next_byte if next_byte < 128 => return Some(next_byte as u32),
+        back_byte => back_byte,
     };
 
     // Multibyte case follows
@@ -617,7 +606,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Chars<'a> {}
+impl FusedIterator for Chars<'_> {}
 
 impl<'a> Chars<'a> {
     /// View the underlying data as a subslice of the original data.
@@ -707,7 +696,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for CharIndices<'a> {}
+impl FusedIterator for CharIndices<'_> {}
 
 impl<'a> CharIndices<'a> {
     /// View the underlying data as a subslice of the original data.
@@ -733,7 +722,7 @@ impl<'a> CharIndices<'a> {
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for Bytes<'a> {
+impl Iterator for Bytes<'_> {
     type Item = u8;
 
     #[inline]
@@ -794,7 +783,7 @@ impl<'a> Iterator for Bytes<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> DoubleEndedIterator for Bytes<'a> {
+impl DoubleEndedIterator for Bytes<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<u8> {
         self.0.next_back()
@@ -809,7 +798,7 @@ impl<'a> DoubleEndedIterator for Bytes<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> ExactSizeIterator for Bytes<'a> {
+impl ExactSizeIterator for Bytes<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.0.len()
@@ -822,10 +811,10 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Bytes<'a> {}
+impl FusedIterator for Bytes<'_> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a> TrustedLen for Bytes<'a> {}
+unsafe impl TrustedLen for Bytes<'_> {}
 
 #[doc(hidden)]
 unsafe impl<'a> TrustedRandomAccess for Bytes<'a> {
@@ -1342,7 +1331,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for Lines<'a> {}
+impl FusedIterator for Lines<'_> {}
 
 /// Created with the method [`lines_any`].
 ///
@@ -1409,7 +1398,7 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 #[allow(deprecated)]
-impl<'a> FusedIterator for LinesAny<'a> {}
+impl FusedIterator for LinesAny<'_> {}
 
 /*
 Section: UTF-8 validation
@@ -1424,10 +1413,8 @@ fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
-/// Walks through `iter` checking that it's a valid UTF-8 sequence,
-/// returning `true` in that case, or, if it is invalid, `false` with
-/// `iter` reset such that it is pointing at the first byte in the
-/// invalid sequence.
+/// Walks through `v` checking that it's a valid UTF-8 sequence,
+/// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline]
 fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
@@ -1518,12 +1505,12 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             let ptr = v.as_ptr();
             let align = unsafe {
                 // the offset is safe, because `index` is guaranteed inbounds
-                ptr.offset(index as isize).align_offset(usize_bytes)
+                ptr.add(index).align_offset(usize_bytes)
             };
             if align == 0 {
                 while index < blocks_end {
                     unsafe {
-                        let block = ptr.offset(index as isize) as *const usize;
+                        let block = ptr.add(index) as *const usize;
                         // break if there is a nonascii byte
                         let zu = contains_nonascii(*block);
                         let zv = contains_nonascii(*block.offset(1));
@@ -1878,13 +1865,13 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr().offset(self.start as isize);
+            let ptr = slice.as_ptr().add(self.start);
             let len = self.end - self.start;
             super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_ptr().offset(self.start as isize);
+            let ptr = slice.as_ptr().add(self.start);
             let len = self.end - self.start;
             super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
         }
@@ -1896,7 +1883,7 @@ mod traits {
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
             // is_char_boundary checks that the index is in [0, .len()]
-            // canot reuse `get` as above, because of NLL trouble
+            // cannot reuse `get` as above, because of NLL trouble
             if self.start <= self.end &&
                slice.is_char_boundary(self.start) &&
                slice.is_char_boundary(self.end) {
@@ -1973,13 +1960,13 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr().offset(self.start as isize);
+            let ptr = slice.as_ptr().add(self.start);
             let len = slice.len() - self.start;
             super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_ptr().offset(self.start as isize);
+            let ptr = slice.as_ptr().add(self.start);
             let len = slice.len() - self.start;
             super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
         }
@@ -2277,7 +2264,6 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_str_as_ptr")]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }
@@ -2573,7 +2559,7 @@ impl str {
             unsafe {
                 (from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, mid)),
                  from_utf8_unchecked_mut(slice::from_raw_parts_mut(
-                    ptr.offset(mid as isize),
+                    ptr.add(mid),
                     len - mid
                  )))
             }
@@ -3570,6 +3556,76 @@ impl str {
     ///
     /// # Text directionality
     ///
+    /// A string is a sequence of bytes. `start` in this context means the first
+    /// position of that byte string; for a left-to-right language like English or
+    /// Russian, this will be left side; and for right-to-left languages like
+    /// like Arabic or Hebrew, this will be the right side.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = " Hello\tworld\t";
+    /// assert_eq!("Hello\tworld\t", s.trim_start());
+    /// ```
+    ///
+    /// Directionality:
+    ///
+    /// ```
+    /// let s = "  English  ";
+    /// assert!(Some('E') == s.trim_start().chars().next());
+    ///
+    /// let s = "  עברית  ";
+    /// assert!(Some('ע') == s.trim_start().chars().next());
+    /// ```
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_start(&self) -> &str {
+        self.trim_start_matches(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a string slice with trailing whitespace removed.
+    ///
+    /// 'Whitespace' is defined according to the terms of the Unicode Derived
+    /// Core Property `White_Space`.
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. `end` in this context means the last
+    /// position of that byte string; for a left-to-right language like English or
+    /// Russian, this will be right side; and for right-to-left languages like
+    /// like Arabic or Hebrew, this will be the left side.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = " Hello\tworld\t";
+    /// assert_eq!(" Hello\tworld", s.trim_end());
+    /// ```
+    ///
+    /// Directionality:
+    ///
+    /// ```
+    /// let s = "  English  ";
+    /// assert!(Some('h') == s.trim_end().chars().rev().next());
+    ///
+    /// let s = "  עברית  ";
+    /// assert!(Some('ת') == s.trim_end().chars().rev().next());
+    /// ```
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_end(&self) -> &str {
+        self.trim_end_matches(|c: char| c.is_whitespace())
+    }
+
+    /// Returns a string slice with leading whitespace removed.
+    ///
+    /// 'Whitespace' is defined according to the terms of the Unicode Derived
+    /// Core Property `White_Space`.
+    ///
+    /// # Text directionality
+    ///
     /// A string is a sequence of bytes. 'Left' in this context means the first
     /// position of that byte string; for a language like Arabic or Hebrew
     /// which are 'right to left' rather than 'left to right', this will be
@@ -3595,8 +3651,9 @@ impl str {
     /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_start`", since = "1.33.0")]
     pub fn trim_left(&self) -> &str {
-        self.trim_left_matches(|c: char| c.is_whitespace())
+        self.trim_start()
     }
 
     /// Returns a string slice with trailing whitespace removed.
@@ -3631,8 +3688,9 @@ impl str {
     /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_end`", since = "1.33.0")]
     pub fn trim_right(&self) -> &str {
-        self.trim_right_matches(|c: char| c.is_whitespace())
+        self.trim_end()
     }
 
     /// Returns a string slice with all prefixes and suffixes that match a
@@ -3697,14 +3755,14 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
-    /// assert_eq!("123foo1bar123".trim_left_matches(char::is_numeric), "foo1bar123");
+    /// assert_eq!("11foo1bar11".trim_start_matches('1'), "foo1bar11");
+    /// assert_eq!("123foo1bar123".trim_start_matches(char::is_numeric), "foo1bar123");
     ///
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// assert_eq!("12foo1bar12".trim_start_matches(x), "foo1bar12");
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_start_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
         let mut i = self.len();
         let mut matcher = pat.into_searcher(self);
         if let Some((a, _)) = matcher.next_reject() {
@@ -3734,6 +3792,85 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
+    /// assert_eq!("11foo1bar11".trim_end_matches('1'), "11foo1bar");
+    /// assert_eq!("123foo1bar123".trim_end_matches(char::is_numeric), "123foo1bar");
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_end_matches(x), "12foo1bar");
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// assert_eq!("1fooX".trim_end_matches(|c| c == '1' || c == 'X'), "1foo");
+    /// ```
+    #[stable(feature = "trim_direction", since = "1.30.0")]
+    pub fn trim_end_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        let mut j = 0;
+        let mut matcher = pat.into_searcher(self);
+        if let Some((_, b)) = matcher.next_reject_back() {
+            j = b;
+        }
+        unsafe {
+            // Searcher is known to return valid indices
+            self.get_unchecked(0..j)
+        }
+    }
+
+    /// Returns a string slice with all prefixes that match a pattern
+    /// repeatedly removed.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that determines if
+    /// a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
+    /// assert_eq!("123foo1bar123".trim_left_matches(char::is_numeric), "foo1bar123");
+    ///
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_start_matches`", since = "1.33.0")]
+    pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+        self.trim_start_matches(pat)
+    }
+
+    /// Returns a string slice with all suffixes that match a pattern
+    /// repeatedly removed.
+    ///
+    /// The pattern can be a `&str`, [`char`], or a closure that
+    /// determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
     /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
     /// assert_eq!("123foo1bar123".trim_right_matches(char::is_numeric), "123foo1bar");
     ///
@@ -3747,18 +3884,11 @@ impl str {
     /// assert_eq!("1fooX".trim_right_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(reason = "superseded by `trim_end_matches`", since = "1.33.0")]
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>
     {
-        let mut j = 0;
-        let mut matcher = pat.into_searcher(self);
-        if let Some((_, b)) = matcher.next_reject_back() {
-            j = b;
-        }
-        unsafe {
-            // Searcher is known to return valid indices
-            self.get_unchecked(0..j)
-        }
+        self.trim_end_matches(pat)
     }
 
     /// Parses this string slice into another type.
@@ -3889,15 +4019,15 @@ impl AsRef<[u8]> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Default for &'a str {
+impl Default for &str {
     /// Creates an empty str
-    fn default() -> &'a str { "" }
+    fn default() -> Self { "" }
 }
 
 #[stable(feature = "default_mut_str", since = "1.28.0")]
-impl<'a> Default for &'a mut str {
+impl Default for &mut str {
     /// Creates an empty mutable str
-    fn default() -> &'a mut str { unsafe { from_utf8_unchecked_mut(&mut []) } }
+    fn default() -> Self { unsafe { from_utf8_unchecked_mut(&mut []) } }
 }
 
 /// An iterator over the non-whitespace substrings of a string,
@@ -4045,7 +4175,7 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for SplitWhitespace<'a> {}
+impl FusedIterator for SplitWhitespace<'_> {}
 
 #[unstable(feature = "split_ascii_whitespace", issue = "48656")]
 impl<'a> Iterator for SplitAsciiWhitespace<'a> {
@@ -4071,7 +4201,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 }
 
 #[unstable(feature = "split_ascii_whitespace", issue = "48656")]
-impl<'a> FusedIterator for SplitAsciiWhitespace<'a> {}
+impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
@@ -4090,7 +4220,7 @@ pub struct EncodeUtf16<'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a> fmt::Debug for EncodeUtf16<'a> {
+impl fmt::Debug for EncodeUtf16<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("EncodeUtf16 { .. }")
     }
@@ -4129,4 +4259,4 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<'a> FusedIterator for EncodeUtf16<'a> {}
+impl FusedIterator for EncodeUtf16<'_> {}

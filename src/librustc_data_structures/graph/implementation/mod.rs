@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A graph module for use in dataflow, region resolution, and elsewhere.
 //!
 //! # Interface details
@@ -30,7 +20,7 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use bitvec::BitArray;
+use bit_set::BitSet;
 use std::fmt::Debug;
 use std::usize;
 use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
@@ -266,7 +256,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         direction: Direction,
         entry_node: NodeIndex,
     ) -> Vec<NodeIndex> {
-        let mut visited = BitArray::new(self.len_nodes());
+        let mut visited = BitSet::new_empty(self.len_nodes());
         let mut stack = vec![];
         let mut result = Vec::with_capacity(self.len_nodes());
         let mut push_node = |stack: &mut Vec<_>, node: NodeIndex| {
@@ -348,7 +338,7 @@ where
 {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
-    visited: BitArray<usize>,
+    visited: BitSet<usize>,
     direction: Direction,
 }
 
@@ -358,7 +348,7 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
         start_node: NodeIndex,
         direction: Direction,
     ) -> Self {
-        let mut visited = BitArray::new(graph.len_nodes());
+        let mut visited = BitSet::new_empty(graph.len_nodes());
         visited.insert(start_node.node_id());
         DepthFirstTraversal {
             graph,

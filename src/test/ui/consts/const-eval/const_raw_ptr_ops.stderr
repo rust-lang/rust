@@ -1,33 +1,33 @@
-error: this constant cannot be used
-  --> $DIR/const_raw_ptr_ops.rs:16:1
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops.rs:6:1
    |
-LL | const X: bool = &1 as *const i32 == &2 as *const i32; //~ ERROR cannot be used
+LL | const X: bool = &1 as *const i32 == &2 as *const i32; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^------------------------------------^
    |                 |
    |                 "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
    |
    = note: #[deny(const_err)] on by default
 
-error: this constant cannot be used
-  --> $DIR/const_raw_ptr_ops.rs:22:1
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops.rs:12:1
    |
-LL | const Y2: usize = &1 as *const i32 as usize + 1; //~ ERROR cannot be used
+LL | const Y2: usize = &1 as *const i32 as usize + 1; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^^^-----------------------------^
    |                   |
    |                   "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 
-error: this constant cannot be used
-  --> $DIR/const_raw_ptr_ops.rs:26:1
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops.rs:16:1
    |
-LL | const Z2: i32 = unsafe { *(42 as *const i32) }; //~ ERROR cannot be used
+LL | const Z2: i32 = unsafe { *(42 as *const i32) }; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^^^^^^^^^^-------------------^^^
    |                          |
-   |                          tried to access memory with alignment 2, but alignment 4 is required
+   |                          a memory access tried to interpret some bytes as a pointer
 
-error: this constant cannot be used
-  --> $DIR/const_raw_ptr_ops.rs:27:1
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops.rs:17:1
    |
-LL | const Z3: i32 = unsafe { *(44 as *const i32) }; //~ ERROR cannot be used
+LL | const Z3: i32 = unsafe { *(44 as *const i32) }; //~ ERROR any use of this value will cause
    | ^^^^^^^^^^^^^^^^^^^^^^^^^-------------------^^^
    |                          |
    |                          a memory access tried to interpret some bytes as a pointer

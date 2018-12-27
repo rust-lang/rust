@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-invariant.rs:63:21
+  --> $DIR/project-fn-ret-invariant.rs:53:21
    |
 LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |                                     --------     --------------------
@@ -9,7 +9,7 @@ LL |    let a = bar(foo, y); //[krisskross]~ ERROR E0623
    |                     ^ ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-invariant.rs:65:8
+  --> $DIR/project-fn-ret-invariant.rs:55:8
    |
 LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |                                     --------     --------------------

@@ -1,5 +1,5 @@
 error[E0072]: recursive type `E2` has infinite size
-  --> $DIR/issue-3008-3.rs:14:1
+  --> $DIR/issue-3008-3.rs:4:1
    |
 LL | enum E2<T> { V2(E2<E1>, marker::PhantomData<T>), }
    | ^^^^^^^^^^      ------ recursive without indirection

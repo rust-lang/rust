@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/index_out_of_bounds.rs:11:19
+  --> $DIR/index_out_of_bounds.rs:1:19
    |
 LL | static FOO: i32 = [][0];
    |                   ^^^^^ index out of bounds: the len is 0 but the index is 0

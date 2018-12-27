@@ -1,0 +1,14 @@
+error[E0510]: cannot mutably borrow `x` in match guard
+  --> $DIR/issue-27282-mutate-before-diverging-arm-3.rs:20:14
+   |
+LL |     match **x {
+   |           --- value is immutable in match guard
+...
+LL |             (|| { *x = &None; drop(force_fn_once); })();
+   |              ^^    - borrow occurs due to use of `x` in closure
+   |              |
+   |              cannot mutably borrow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0510`.

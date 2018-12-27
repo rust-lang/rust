@@ -1,6 +1,6 @@
 -include ../tools.mk
 
-# Test that hir-tree output doens't crash and includes
+# Test that hir-tree output doesn't crash and includes
 # the string constant we would expect to see.
 
 all:

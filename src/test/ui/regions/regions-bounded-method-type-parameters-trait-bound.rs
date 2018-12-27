@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Check that explicit region bounds are allowed on the various
 // nominal types (but not on other types) and that they are type
 // checked.
@@ -27,7 +17,7 @@ fn caller1<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
 
 fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
-    f.method(b); //~ ERROR 30:7: 30:13: lifetime mismatch [E0623]
+    f.method(b); //~ ERROR lifetime mismatch [E0623]
 }
 
 fn caller3<'a,'b:'a,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {

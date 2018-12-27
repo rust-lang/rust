@@ -1,0 +1,8 @@
+error: functions tagged with `#[proc_macro]` must currently reside in the root of the crate
+  --> $DIR/non-root.rs:11:5
+   |
+LL |     pub fn foo(arg: TokenStream) -> TokenStream { arg }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

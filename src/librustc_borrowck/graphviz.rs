@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module provides linkage between rustc::middle::graph and
 //! libgraphviz traits, specialized to attaching borrowck analysis
 //! data to rendered labels.
@@ -23,7 +13,6 @@ use dot;
 use rustc::cfg::CFGIndex;
 use dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use std::rc::Rc;
-use dot::IntoCow;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Variant {
@@ -53,7 +42,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn dataflow_for(&self, e: EntryOrExit, n: &Node<'a>) -> String {
         let id = n.1.data.id();
         debug!("dataflow_for({:?}, id={:?}) {:?}", e, id, self.variants);
-        let mut sets = "".to_string();
+        let mut sets = String::new();
         let mut seen_one = false;
         for &variant in &self.variants {
             if seen_one { sets.push_str(" "); } else { seen_one = true; }
@@ -139,8 +128,8 @@ impl<'a, 'tcx> dot::Labeller<'a> for DataflowLabeller<'a, 'tcx> {
         let suffix = self.dataflow_for(EntryOrExit::Exit, n);
         let inner_label = self.inner.node_label(n);
         inner_label
-            .prefix_line(dot::LabelText::LabelStr(prefix.into_cow()))
-            .suffix_line(dot::LabelText::LabelStr(suffix.into_cow()))
+            .prefix_line(dot::LabelText::LabelStr(prefix.into()))
+            .suffix_line(dot::LabelText::LabelStr(suffix.into()))
     }
     fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
 }

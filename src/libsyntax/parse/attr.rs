@@ -1,16 +1,6 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use attr;
 use ast;
-use codemap::respan;
+use source_map::respan;
 use parse::{SeqSep, PResult};
 use parse::token::{self, Nonterminal, DelimToken};
 use parse::parser::{Parser, TokenType, PathStyle};
@@ -22,8 +12,8 @@ enum InnerAttributeParsePolicy<'a> {
     NotPermitted { reason: &'a str },
 }
 
-const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &'static str = "an inner attribute is not \
-                                                             permitted in this context";
+const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
+                                                     permitted in this context";
 
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
@@ -170,7 +160,7 @@ impl<'a> Parser<'a> {
                     token::CloseDelim(_) | token::Eof => self.unexpected()?,
                     _ => self.parse_token_tree(),
                 };
-                TokenStream::concat(vec![eq.into(), tree.into()])
+                TokenStream::new(vec![eq.into(), tree.into()])
             } else {
                 TokenStream::empty()
             };

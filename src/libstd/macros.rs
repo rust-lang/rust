@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Standard library macros
 //!
 //! This modules contains a set of macros which are exported from the standard
@@ -16,7 +6,7 @@
 
 /// The entry point for panic of Rust threads.
 ///
-/// This allows a program to to terminate immediately and provide feedback
+/// This allows a program to terminate immediately and provide feedback
 /// to the caller of the program. `panic!` should be used when a program reaches
 /// an unrecoverable problem.
 ///
@@ -32,7 +22,7 @@
 ///
 /// [`Result`] enum is often a better solution for recovering from errors than
 /// using the `panic!` macro.  This macro should be used to avoid proceeding using
-/// incorrect values, such as from external sources.  Detailed information about
+/// incorrect values, such as from external sources. Detailed information about
 /// error handling is found in the [book].
 ///
 /// The multi-argument form of this macro panics with a string and has the
@@ -45,7 +35,7 @@
 /// [`Result`]: ../std/result/enum.Result.html
 /// [`format!`]: ../std/macro.format.html
 /// [`compile_error!`]: ../std/macro.compile_error.html
-/// [book]: ../book/second-edition/ch09-01-unrecoverable-errors-with-panic.html
+/// [book]: ../book/ch09-00-error-handling.html
 ///
 /// # Current implementation
 ///
@@ -139,7 +129,7 @@ macro_rules! print {
 ///
 /// [`format!`]: ../std/macro.format.html
 /// [`std::fmt`]: ../std/fmt/index.html
-/// [`eprintln!`]: ../std/macro.eprint.html
+/// [`eprintln!`]: ../std/macro.eprintln.html
 /// # Panics
 ///
 /// Panics if writing to `io::stdout` fails.
@@ -220,6 +210,118 @@ macro_rules! eprintln {
     })
 }
 
+/// A macro for quick and dirty debugging with which you can inspect
+/// the value of a given expression. An example:
+///
+/// ```rust
+/// let a = 2;
+/// let b = dbg!(a * 2) + 1;
+/// //      ^-- prints: [src/main.rs:2] a * 2 = 4
+/// assert_eq!(b, 5);
+/// ```
+///
+/// The macro works by using the `Debug` implementation of the type of
+/// the given expression to print the value to [stderr] along with the
+/// source location of the macro invocation as well as the source code
+/// of the expression.
+///
+/// Invoking the macro on an expression moves and takes ownership of it
+/// before returning the evaluated expression unchanged. If the type
+/// of the expression does not implement `Copy` and you don't want
+/// to give up ownership, you can instead borrow with `dbg!(&expr)`
+/// for some expression `expr`.
+///
+/// Note that the macro is intended as a debugging tool and therefore you
+/// should avoid having uses of it in version control for longer periods.
+/// Use cases involving debug output that should be added to version control
+/// may be better served by macros such as `debug!` from the `log` crate.
+///
+/// # Stability
+///
+/// The exact output printed by this macro should not be relied upon
+/// and is subject to future changes.
+///
+/// # Panics
+///
+/// Panics if writing to `io::stderr` fails.
+///
+/// # Further examples
+///
+/// With a method call:
+///
+/// ```rust
+/// fn foo(n: usize) {
+///     if let Some(_) = dbg!(n.checked_sub(4)) {
+///         // ...
+///     }
+/// }
+///
+/// foo(3)
+/// ```
+///
+/// This prints to [stderr]:
+///
+/// ```text,ignore
+/// [src/main.rs:4] n.checked_sub(4) = None
+/// ```
+///
+/// Naive factorial implementation:
+///
+/// ```rust
+/// fn factorial(n: u32) -> u32 {
+///     if dbg!(n <= 1) {
+///         dbg!(1)
+///     } else {
+///         dbg!(n * factorial(n - 1))
+///     }
+/// }
+///
+/// dbg!(factorial(4));
+/// ```
+///
+/// This prints to [stderr]:
+///
+/// ```text,ignore
+/// [src/main.rs:3] n <= 1 = false
+/// [src/main.rs:3] n <= 1 = false
+/// [src/main.rs:3] n <= 1 = false
+/// [src/main.rs:3] n <= 1 = true
+/// [src/main.rs:4] 1 = 1
+/// [src/main.rs:5] n * factorial(n - 1) = 2
+/// [src/main.rs:5] n * factorial(n - 1) = 6
+/// [src/main.rs:5] n * factorial(n - 1) = 24
+/// [src/main.rs:11] factorial(4) = 24
+/// ```
+///
+/// The `dbg!(..)` macro moves the input:
+///
+/// ```compile_fail
+/// /// A wrapper around `usize` which importantly is not Copyable.
+/// #[derive(Debug)]
+/// struct NoCopy(usize);
+///
+/// let a = NoCopy(42);
+/// let _ = dbg!(a); // <-- `a` is moved here.
+/// let _ = dbg!(a); // <-- `a` is moved again; error!
+/// ```
+///
+/// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
+#[macro_export]
+#[stable(feature = "dbg_macro", since = "1.32.0")]
+macro_rules! dbg {
+    ($val:expr) => {
+        // Use of `match` here is intentional because it affects the lifetimes
+        // of temporaries - https://stackoverflow.com/a/48732525/1063961
+        match $val {
+            tmp => {
+                eprintln!("[{}:{}] {} = {:#?}",
+                    file!(), line!(), stringify!($val), &tmp);
+                tmp
+            }
+        }
+    }
+}
+
 #[macro_export]
 #[unstable(feature = "await_macro", issue = "50547")]
 #[allow_internal_unstable]
@@ -229,8 +331,8 @@ macro_rules! await {
         let mut pinned = $e;
         loop {
             if let $crate::task::Poll::Ready(x) =
-                $crate::future::poll_in_task_cx(unsafe {
-                    $crate::mem::PinMut::new_unchecked(&mut pinned)
+                $crate::future::poll_with_tls_waker(unsafe {
+                    $crate::pin::Pin::new_unchecked(&mut pinned)
                 })
             {
                 break x;
@@ -279,6 +381,8 @@ macro_rules! await {
 /// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
 #[unstable(feature = "mpsc_select", issue = "27800")]
+#[rustc_deprecated(since = "1.32.0",
+                   reason = "channel selection will be removed in a future release")]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
@@ -309,7 +413,7 @@ macro_rules! assert_approx_eq {
 /// These macros do not have any corresponding definition with a `macro_rules!`
 /// macro, but are documented here. Their implementations can be found hardcoded
 /// into libsyntax itself.
-#[cfg(dox)]
+#[cfg(rustdoc)]
 mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.
@@ -717,8 +821,8 @@ mod builtin {
     /// boolean expression evaluation of configuration flags. This frequently
     /// leads to less duplicated code.
     ///
-    /// The syntax given to this macro is the same syntax as [the `cfg`
-    /// attribute](../book/first-edition/conditional-compilation.html).
+    /// The syntax given to this macro is the same syntax as the `cfg`
+    /// attribute.
     ///
     /// # Examples
     ///
@@ -793,7 +897,7 @@ mod builtin {
     /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
     /// violated could lead to unsafety.
     ///
-    /// Other use-cases of `assert!` include [testing] and enforcing run-time
+    /// Other use-cases of `assert!` include testing and enforcing run-time
     /// invariants in safe code (whose violation cannot result in unsafety).
     ///
     /// # Custom Messages
@@ -804,7 +908,6 @@ mod builtin {
     ///
     /// [`panic!`]: macro.panic.html
     /// [`debug_assert!`]: macro.debug_assert.html
-    /// [testing]: ../book/second-edition/ch11-01-writing-tests.html#checking-results-with-the-assert-macro
     /// [`std::fmt`]: ../std/fmt/index.html
     ///
     /// # Examples

@@ -1,0 +1,10 @@
+error: compilation successful
+  --> $DIR/feature-gate.rs:42:1
+   |
+LL | / fn main() {
+LL | |     foo(107)
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

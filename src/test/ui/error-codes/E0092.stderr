@@ -1,5 +1,5 @@
 error[E0092]: unrecognized atomic operation function: `foo`
-  --> $DIR/E0092.rs:13:5
+  --> $DIR/E0092.rs:3:5
    |
 LL |     fn atomic_foo(); //~ ERROR E0092
    |     ^^^^^^^^^^^^^^^^ unrecognized atomic operation

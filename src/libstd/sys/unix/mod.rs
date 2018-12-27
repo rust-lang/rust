@@ -1,34 +1,24 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-#![allow(missing_docs, bad_style)]
+#![allow(missing_docs, nonstandard_style)]
 
 use io::{self, ErrorKind};
 use libc;
 
-#[cfg(any(dox, target_os = "linux"))] pub use os::linux as platform;
+#[cfg(any(rustdoc, target_os = "linux"))] pub use os::linux as platform;
 
-#[cfg(all(not(dox), target_os = "android"))]   pub use os::android as platform;
-#[cfg(all(not(dox), target_os = "bitrig"))]    pub use os::bitrig as platform;
-#[cfg(all(not(dox), target_os = "dragonfly"))] pub use os::dragonfly as platform;
-#[cfg(all(not(dox), target_os = "freebsd"))]   pub use os::freebsd as platform;
-#[cfg(all(not(dox), target_os = "haiku"))]     pub use os::haiku as platform;
-#[cfg(all(not(dox), target_os = "ios"))]       pub use os::ios as platform;
-#[cfg(all(not(dox), target_os = "macos"))]     pub use os::macos as platform;
-#[cfg(all(not(dox), target_os = "netbsd"))]    pub use os::netbsd as platform;
-#[cfg(all(not(dox), target_os = "openbsd"))]   pub use os::openbsd as platform;
-#[cfg(all(not(dox), target_os = "solaris"))]   pub use os::solaris as platform;
-#[cfg(all(not(dox), target_os = "emscripten"))] pub use os::emscripten as platform;
-#[cfg(all(not(dox), target_os = "fuchsia"))]   pub use os::fuchsia as platform;
-#[cfg(all(not(dox), target_os = "l4re"))]      pub use os::linux as platform;
-#[cfg(all(not(dox), target_os = "hermit"))]    pub use os::hermit as platform;
+#[cfg(all(not(rustdoc), target_os = "android"))]   pub use os::android as platform;
+#[cfg(all(not(rustdoc), target_os = "bitrig"))]    pub use os::bitrig as platform;
+#[cfg(all(not(rustdoc), target_os = "dragonfly"))] pub use os::dragonfly as platform;
+#[cfg(all(not(rustdoc), target_os = "freebsd"))]   pub use os::freebsd as platform;
+#[cfg(all(not(rustdoc), target_os = "haiku"))]     pub use os::haiku as platform;
+#[cfg(all(not(rustdoc), target_os = "ios"))]       pub use os::ios as platform;
+#[cfg(all(not(rustdoc), target_os = "macos"))]     pub use os::macos as platform;
+#[cfg(all(not(rustdoc), target_os = "netbsd"))]    pub use os::netbsd as platform;
+#[cfg(all(not(rustdoc), target_os = "openbsd"))]   pub use os::openbsd as platform;
+#[cfg(all(not(rustdoc), target_os = "solaris"))]   pub use os::solaris as platform;
+#[cfg(all(not(rustdoc), target_os = "emscripten"))] pub use os::emscripten as platform;
+#[cfg(all(not(rustdoc), target_os = "fuchsia"))]   pub use os::fuchsia as platform;
+#[cfg(all(not(rustdoc), target_os = "l4re"))]      pub use os::linux as platform;
+#[cfg(all(not(rustdoc), target_os = "hermit"))]    pub use os::hermit as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
@@ -36,6 +26,7 @@ pub use libc::strlen;
 #[macro_use]
 pub mod weak;
 
+pub mod alloc;
 pub mod args;
 pub mod android;
 #[cfg(feature = "backtrace")]

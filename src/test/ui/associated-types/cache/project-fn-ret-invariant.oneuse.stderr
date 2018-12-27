@@ -1,12 +1,12 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-invariant.rs:49:19
+  --> $DIR/project-fn-ret-invariant.rs:39:19
    |
 LL | fn baz<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |                               --------     --------------------
    |                               |
    |                               this parameter and the return type are declared with different lifetimes...
 ...
-LL |    let b = bar(f, y); //[oneuse]~ ERROR 49:19: 49:20: lifetime mismatch [E0623]
+LL |    let b = bar(f, y); //[oneuse]~ ERROR lifetime mismatch [E0623]
    |                   ^ ...but data from `x` is returned here
 
 error: aborting due to previous error

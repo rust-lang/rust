@@ -1,14 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use codemap::{CodeMap, FilePathMapping};
+use source_map::{SourceMap, FilePathMapping};
 use errors::Handler;
 use errors::emitter::EmitterWriter;
 use std::io;
@@ -50,8 +40,8 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     with_globals(|| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
-        let code_map = Lrc::new(CodeMap::new(FilePathMapping::empty()));
-        code_map.new_filemap(Path::new("test.rs").to_owned().into(), file_text.to_owned());
+        let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
         let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
         let mut msp = MultiSpan::from_span(primary_span);
@@ -59,11 +49,11 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             let span = make_span(&file_text, &span_label.start, &span_label.end);
             msp.push_span_label(span, span_label.label.to_string());
             println!("span: {:?} label: {:?}", span, span_label.label);
-            println!("text: {:?}", code_map.span_to_snippet(span));
+            println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
         let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }),
-                                        Some(code_map.clone()),
+                                        Some(source_map.clone()),
                                         false,
                                         false);
         let handler = Handler::with_emitter(true, false, Box::new(emitter));

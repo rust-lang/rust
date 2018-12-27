@@ -1,0 +1,14 @@
+error: expected `:`, found `}`
+  --> $DIR/derive-bad.rs:7:5
+   |
+LL |     A
+   |     ^ expected `:`
+
+error: proc-macro derive produced unparseable tokens
+  --> $DIR/derive-bad.rs:7:5
+   |
+LL |     A
+   |     ^
+
+error: aborting due to 2 previous errors
+

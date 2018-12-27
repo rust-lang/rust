@@ -1,0 +1,17 @@
+error[E0252]: the name `core` is defined multiple times
+  --> $DIR/rename.rs:2:5
+   |
+LL | use core;
+   |     ---- previous import of the module `core` here
+LL | use std as core;
+   |     ^^^^^^^^^^^ `core` reimported here
+   |
+   = note: `core` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use std as other_core;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0252`.

@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Provider for the `implied_outlives_bounds` query.
 //! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
 
@@ -20,8 +10,9 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
+use smallvec::{SmallVec, smallvec};
 use syntax::ast::DUMMY_NODE_ID;
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 use rustc::traits::FulfillmentContext;
 
 use rustc_data_structures::sync::Lrc;
@@ -37,7 +28,7 @@ fn implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<
-        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, Vec<OutlivesBound<'tcx>>>>>,
+        Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
         NoSolution,
 > {
     tcx.infer_ctxt()
@@ -76,7 +67,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         let obligations =
             wf::obligations(infcx, param_env, DUMMY_NODE_ID, ty, DUMMY_SP).unwrap_or(vec![]);
 
-        // NB: All of these predicates *ought* to be easily proven
+        // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by
         // other parts of the program. However, in #42552, we had
         // an annoying scenario where:
@@ -108,7 +99,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // From the full set of obligations, just filter down to the
         // region relationships.
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
-            assert!(!obligation.has_escaping_regions());
+            assert!(!obligation.has_escaping_bound_vars());
             match obligation.predicate {
                 ty::Predicate::Trait(..) |
                 ty::Predicate::Subtype(..) |
@@ -122,18 +113,19 @@ fn compute_implied_outlives_bounds<'tcx>(
                     vec![]
                 }
 
-                ty::Predicate::RegionOutlives(ref data) => match data.no_late_bound_regions() {
+                ty::Predicate::RegionOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(r_a, r_b)) => {
                         vec![OutlivesBound::RegionSubRegion(r_b, r_a)]
                     }
                 },
 
-                ty::Predicate::TypeOutlives(ref data) => match data.no_late_bound_regions() {
+                ty::Predicate::TypeOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                         let ty_a = infcx.resolve_type_vars_if_possible(&ty_a);
-                        let components = tcx.outlives_components(ty_a);
+                        let mut components = smallvec![];
+                        tcx.push_outlives_components(ty_a, &mut components);
                         implied_bounds_from_components(r_b, components)
                     }
                 },
@@ -155,18 +147,18 @@ fn compute_implied_outlives_bounds<'tcx>(
 /// those relationships.
 fn implied_bounds_from_components(
     sub_region: ty::Region<'tcx>,
-    sup_components: Vec<Component<'tcx>>,
+    sup_components: SmallVec<[Component<'tcx>; 4]>,
 ) -> Vec<OutlivesBound<'tcx>> {
     sup_components
         .into_iter()
-        .flat_map(|component| {
+        .filter_map(|component| {
             match component {
                 Component::Region(r) =>
-                    vec![OutlivesBound::RegionSubRegion(sub_region, r)],
+                    Some(OutlivesBound::RegionSubRegion(sub_region, r)),
                 Component::Param(p) =>
-                    vec![OutlivesBound::RegionSubParam(sub_region, p)],
+                    Some(OutlivesBound::RegionSubParam(sub_region, p)),
                 Component::Projection(p) =>
-                    vec![OutlivesBound::RegionSubProjection(sub_region, p)],
+                    Some(OutlivesBound::RegionSubProjection(sub_region, p)),
                 Component::EscapingProjection(_) =>
                 // If the projection has escaping regions, don't
                 // try to infer any implied bounds even for its
@@ -176,9 +168,9 @@ fn implied_bounds_from_components(
                 // idea is that the WAY that the caller proves
                 // that may change in the future and we want to
                 // give ourselves room to get smarter here.
-                    vec![],
+                    None,
                 Component::UnresolvedInferenceVariable(..) =>
-                    vec![],
+                    None,
             }
         })
         .collect()

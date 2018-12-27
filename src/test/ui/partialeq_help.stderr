@@ -1,5 +1,5 @@
 error[E0277]: can't compare `&T` with `T`
-  --> $DIR/partialeq_help.rs:12:7
+  --> $DIR/partialeq_help.rs:2:7
    |
 LL |     a == b; //~ ERROR E0277
    |       ^^ no implementation for `&T == T`

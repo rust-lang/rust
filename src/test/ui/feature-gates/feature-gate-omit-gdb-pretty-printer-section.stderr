@@ -1,5 +1,5 @@
 error[E0658]: the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite
-  --> $DIR/feature-gate-omit-gdb-pretty-printer-section.rs:11:1
+  --> $DIR/feature-gate-omit-gdb-pretty-printer-section.rs:1:1
    |
 LL | #[omit_gdb_pretty_printer_section] //~ ERROR the `#[omit_gdb_pretty_printer_section]` attribute is
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

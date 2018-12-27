@@ -1,15 +1,5 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cmp;
-use mem;
+use mem::{self, MaybeUninit};
 use ptr;
 
 /// Rotation is much faster if it has access to a little bit of memory. This
@@ -26,12 +16,6 @@ union RawArray<T> {
 }
 
 impl<T> RawArray<T> {
-    fn new() -> Self {
-        unsafe { mem::uninitialized() }
-    }
-    fn ptr(&self) -> *mut T {
-        unsafe { &self.typed as *const T as *mut T }
-    }
     fn cap() -> usize {
         if mem::size_of::<T>() == 0 {
             usize::max_value()
@@ -77,8 +61,8 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
 
         ptr::swap_nonoverlapping(
-            mid.offset(-(left as isize)),
-            mid.offset((right-delta) as isize),
+            mid.sub(left),
+            mid.add(right - delta),
             delta);
 
         if left <= right {
@@ -88,18 +72,18 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
     }
 
-    let rawarray = RawArray::new();
-    let buf = rawarray.ptr();
+    let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
+    let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
 
-    let dim = mid.offset(-(left as isize)).offset(right as isize);
+    let dim = mid.sub(left).add(right);
     if left <= right {
-        ptr::copy_nonoverlapping(mid.offset(-(left as isize)), buf, left);
-        ptr::copy(mid, mid.offset(-(left as isize)), right);
+        ptr::copy_nonoverlapping(mid.sub(left), buf, left);
+        ptr::copy(mid, mid.sub(left), right);
         ptr::copy_nonoverlapping(buf, dim, left);
     }
     else {
         ptr::copy_nonoverlapping(mid, buf, right);
-        ptr::copy(mid.offset(-(left as isize)), dim, left);
-        ptr::copy_nonoverlapping(buf, mid.offset(-(left as isize)), right);
+        ptr::copy(mid.sub(left), dim, left);
+        ptr::copy_nonoverlapping(buf, mid.sub(left), right);
     }
 }

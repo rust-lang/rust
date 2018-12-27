@@ -1,5 +1,5 @@
 error[E0038]: the trait `Map` cannot be made into an object
-  --> $DIR/issue-26056.rs:30:13
+  --> $DIR/issue-26056.rs:20:13
    |
 LL |         as &Map<Key=u32,MapValue=u32>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Map` cannot be made into an object

@@ -1,14 +1,10 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// ignore-tidy-linelength
 
 // min-lldb-version: 310
+
+// This fails on lldb 6.0.1 on x86-64 Fedora 28; so mark it macOS-only
+// for now.
+// only-macos
 
 // compile-flags:-g
 
@@ -91,66 +87,90 @@
 
 // DESTRUCTURED STRUCT
 // lldb-command:print x
-// lldb-check:[...]$0 = 400
+// lldbg-check:[...]$0 = 400
+// lldbr-check:(i16) x = 400
 // lldb-command:print y
-// lldb-check:[...]$1 = 401.5
+// lldbg-check:[...]$1 = 401.5
+// lldbr-check:(f32) y = 401.5
 // lldb-command:print z
-// lldb-check:[...]$2 = true
+// lldbg-check:[...]$2 = true
+// lldbr-check:(bool) z = true
 // lldb-command:continue
 
 // DESTRUCTURED TUPLE
 // lldb-command:print _i8
-// lldb-check:[...]$3 = 0x6f
+// lldbg-check:[...]$3 = 0x6f
+// lldbr-check:(i8) _i8 = 111
 // lldb-command:print _u8
-// lldb-check:[...]$4 = 0x70
+// lldbg-check:[...]$4 = 0x70
+// lldbr-check:(u8) _u8 = 112
 // lldb-command:print _i16
-// lldb-check:[...]$5 = -113
+// lldbg-check:[...]$5 = -113
+// lldbr-check:(i16) _i16 = -113
 // lldb-command:print _u16
-// lldb-check:[...]$6 = 114
+// lldbg-check:[...]$6 = 114
+// lldbr-check:(u16) _u16 = 114
 // lldb-command:print _i32
-// lldb-check:[...]$7 = -115
+// lldbg-check:[...]$7 = -115
+// lldbr-check:(i32) _i32 = -115
 // lldb-command:print _u32
-// lldb-check:[...]$8 = 116
+// lldbg-check:[...]$8 = 116
+// lldbr-check:(u32) _u32 = 116
 // lldb-command:print _i64
-// lldb-check:[...]$9 = -117
+// lldbg-check:[...]$9 = -117
+// lldbr-check:(i64) _i64 = -117
 // lldb-command:print _u64
-// lldb-check:[...]$10 = 118
+// lldbg-check:[...]$10 = 118
+// lldbr-check:(u64) _u64 = 118
 // lldb-command:print _f32
-// lldb-check:[...]$11 = 119.5
+// lldbg-check:[...]$11 = 119.5
+// lldbr-check:(f32) _f32 = 119.5
 // lldb-command:print _f64
-// lldb-check:[...]$12 = 120.5
+// lldbg-check:[...]$12 = 120.5
+// lldbr-check:(f64) _f64 = 120.5
 // lldb-command:continue
 
 // MORE COMPLEX CASE
 // lldb-command:print v1
-// lldb-check:[...]$13 = 80000
+// lldbg-check:[...]$13 = 80000
+// lldbr-check:(i32) v1 = 80000
 // lldb-command:print x1
-// lldb-check:[...]$14 = 8000
+// lldbg-check:[...]$14 = 8000
+// lldbr-check:(i16) x1 = 8000
 // lldb-command:print *y1
-// lldb-check:[...]$15 = 80001.5
+// lldbg-check:[...]$15 = 80001.5
+// lldbr-check:(f32) *y1 = 80001.5
 // lldb-command:print z1
-// lldb-check:[...]$16 = false
+// lldbg-check:[...]$16 = false
+// lldbr-check:(bool) z1 = false
 // lldb-command:print *x2
-// lldb-check:[...]$17 = -30000
+// lldbg-check:[...]$17 = -30000
+// lldbr-check:(i16) *x2 = -30000
 // lldb-command:print y2
-// lldb-check:[...]$18 = -300001.5
+// lldbg-check:[...]$18 = -300001.5
+// lldbr-check:(f32) y2 = -300001.5
 // lldb-command:print *z2
-// lldb-check:[...]$19 = true
+// lldbg-check:[...]$19 = true
+// lldbr-check:(bool) *z2 = true
 // lldb-command:print v2
-// lldb-check:[...]$20 = 854237.5
+// lldbg-check:[...]$20 = 854237.5
+// lldbr-check:(f64) v2 = 854237.5
 // lldb-command:continue
 
 // SIMPLE IDENTIFIER
 // lldb-command:print i
-// lldb-check:[...]$21 = 1234
+// lldbg-check:[...]$21 = 1234
+// lldbr-check:(i32) i = 1234
 // lldb-command:continue
 
 // lldb-command:print simple_struct_ident
-// lldb-check:[...]$22 = Struct { x: 3537, y: 35437.5, z: true }
+// lldbg-check:[...]$22 = Struct { x: 3537, y: 35437.5, z: true }
+// lldbr-check:(destructured_for_loop_variable::Struct) simple_struct_ident = Struct { x: 3537, y: 35437.5, z: true }
 // lldb-command:continue
 
 // lldb-command:print simple_tuple_ident
-// lldb-check:[...]$23 = (34903493, 232323)
+// lldbg-check:[...]$23 = (34903493, 232323)
+// lldbr-check:((u32, i64)) simple_tuple_ident = { = 34903493 = 232323 }
 // lldb-command:continue
 
 #![allow(unused_variables)]

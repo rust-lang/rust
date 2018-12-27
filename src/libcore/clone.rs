@@ -1,19 +1,9 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The `Clone` trait for types that cannot be 'implicitly copied'.
 //!
 //! In Rust, some simple types are "implicitly copyable" and when you
 //! assign them or pass them as arguments, the receiver will get a copy,
 //! leaving the original value in place. These types do not require
-//! allocation to copy and do not have finalizers (i.e. they do not
+//! allocation to copy and do not have finalizers (i.e., they do not
 //! contain owned boxes or implement [`Drop`]), so the compiler considers
 //! them cheap and safe to copy. For other types copies must be made
 //! explicitly, by convention implementing the [`Clone`] trait and calling
@@ -93,10 +83,10 @@
 /// In addition to the [implementors listed below][impls],
 /// the following types also implement `Clone`:
 ///
-/// * Function item types (i.e. the distinct types defined for each function)
-/// * Function pointer types (e.g. `fn() -> i32`)
-/// * Array types, for all sizes, if the item type also implements `Clone` (e.g. `[i32; 123456]`)
-/// * Tuple types, if each component also implements `Clone` (e.g. `()`, `(i32, bool)`)
+/// * Function item types (i.e., the distinct types defined for each function)
+/// * Function pointer types (e.g., `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Clone` (e.g., `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Clone` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Clone` themselves.
 ///   Note that variables captured by shared reference always implement `Clone`
@@ -204,7 +194,7 @@ mod impls {
 
     // Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized> Clone for &'a T {
+    impl<T: ?Sized> Clone for &T {
         #[inline]
         fn clone(&self) -> Self {
             *self

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:12:1
+  --> $DIR/not-an-allocator.rs:2:1
    |
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
@@ -7,7 +7,7 @@ LL | static A: usize = 0;
    = note: required by `std::alloc::GlobalAlloc::alloc`
 
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:12:1
+  --> $DIR/not-an-allocator.rs:2:1
    |
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
@@ -15,7 +15,7 @@ LL | static A: usize = 0;
    = note: required by `std::alloc::GlobalAlloc::dealloc`
 
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:12:1
+  --> $DIR/not-an-allocator.rs:2:1
    |
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`
@@ -23,7 +23,7 @@ LL | static A: usize = 0;
    = note: required by `std::alloc::GlobalAlloc::realloc`
 
 error[E0277]: the trait bound `usize: std::alloc::GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:12:1
+  --> $DIR/not-an-allocator.rs:2:1
    |
 LL | static A: usize = 0;
    | ^^^^^^^^^^^^^^^^^^^^ the trait `std::alloc::GlobalAlloc` is not implemented for `usize`

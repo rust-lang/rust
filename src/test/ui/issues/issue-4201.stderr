@@ -1,5 +1,5 @@
 error[E0317]: if may be missing an else clause
-  --> $DIR/issue-4201.rs:14:12
+  --> $DIR/issue-4201.rs:4:12
    |
 LL |       } else if false {
    |  ____________^

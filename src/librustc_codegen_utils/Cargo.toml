@@ -18,6 +18,6 @@ syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_incremental = { path = "../librustc_incremental" }
-rustc_metadata_utils = { path = "../librustc_metadata_utils" }

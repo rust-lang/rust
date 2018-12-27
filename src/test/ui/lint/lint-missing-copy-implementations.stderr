@@ -1,5 +1,5 @@
 error: type could implement `Copy`; consider adding `impl Copy`
-  --> $DIR/lint-missing-copy-implementations.rs:16:5
+  --> $DIR/lint-missing-copy-implementations.rs:6:5
    |
 LL | /     pub struct Foo { //~ ERROR type could implement `Copy`; consider adding `impl Copy`
 LL | |         pub field: i32
@@ -7,7 +7,7 @@ LL | |     }
    | |_____^
    |
 note: lint level defined here
-  --> $DIR/lint-missing-copy-implementations.rs:13:9
+  --> $DIR/lint-missing-copy-implementations.rs:3:9
    |
 LL | #![deny(missing_copy_implementations)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

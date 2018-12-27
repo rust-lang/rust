@@ -1,0 +1,17 @@
+error[E0259]: the name `issue_45829_a` is defined multiple times
+  --> $DIR/rename-extern.rs:5:1
+   |
+LL | extern crate issue_45829_a;
+   | --------------------------- previous import of the extern crate `issue_45829_a` here
+LL | extern crate issue_45829_b as issue_45829_a;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `issue_45829_a` reimported here
+   |
+   = note: `issue_45829_a` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | extern crate issue_45829_b as other_issue_45829_a;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0259`.

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Issue 8142: Test that Drop impls cannot be specialized beyond the
 // predicates attached to the struct/enum definition itself.
 
@@ -41,16 +31,16 @@ impl                    Drop for N<'static>     { fn drop(&mut self) { } } // RE
 //~| expected type `N<'n>`
 //~|    found type `N<'static>`
 
-impl<Cok_nobound> Drop for O<Cok_nobound> { fn drop(&mut self) { } } // ACCEPT
+impl<COkNoBound> Drop for O<COkNoBound> { fn drop(&mut self) { } } // ACCEPT
 
 impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJECT
 //~^ ERROR Implementations of Drop cannot be specialized
 
-impl<Adds_bnd:Bound> Drop for Q<Adds_bnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR The requirement `Adds_bnd: Bound` is added only by the Drop impl.
+impl<AddsBnd:Bound> Drop for Q<AddsBnd> { fn drop(&mut self) { } } // REJECT
+//~^ ERROR The requirement `AddsBnd: Bound` is added only by the Drop impl.
 
-impl<'rbnd,Adds_rbnd:'rbnd> Drop for R<Adds_rbnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR The requirement `Adds_rbnd : 'rbnd` is added only by the Drop impl.
+impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
+//~^ ERROR The requirement `AddsRBnd : 'rbnd` is added only by the Drop impl.
 
 impl<Bs:Bound>    Drop for S<Bs>          { fn drop(&mut self) { } } // ACCEPT
 

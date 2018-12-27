@@ -1,13 +1,3 @@
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use index;
 
 use rustc::hir;
@@ -40,7 +30,7 @@ pub fn rustc_version() -> String {
 }
 
 /// Metadata encoding version.
-/// NB: increment this if you change the format of metadata such that
+/// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
 pub const METADATA_VERSION: u8 = 4;
 
@@ -52,7 +42,7 @@ pub const METADATA_VERSION: u8 = 4;
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
 /// and further followed by the rustc version string.
-pub const METADATA_HEADER: &'static [u8; 12] =
+pub const METADATA_HEADER: &[u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// A value of type T referred to by its absolute position
@@ -193,9 +183,10 @@ pub struct CrateRoot {
     pub panic_strategy: PanicStrategy,
     pub edition: Edition,
     pub has_global_allocator: bool,
+    pub has_panic_handler: bool,
     pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,
-    pub macro_derive_registrar: Option<DefIndex>,
+    pub proc_macro_decls_static: Option<DefIndex>,
 
     pub crate_deps: LazySeq<CrateDep>,
     pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
@@ -204,7 +195,7 @@ pub struct CrateRoot {
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
     pub native_libraries: LazySeq<NativeLibrary>,
     pub foreign_modules: LazySeq<ForeignModule>,
-    pub codemap: LazySeq<syntax_pos::FileMap>,
+    pub source_map: LazySeq<syntax_pos::SourceFile>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: EncodedExportedSymbols,
@@ -471,6 +462,7 @@ pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
+    pub is_marker: bool,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
@@ -478,6 +470,7 @@ impl_stable_hash_for!(struct TraitData<'tcx> {
     unsafety,
     paren_sugar,
     has_auto_impl,
+    is_marker,
     super_predicates
 });
 

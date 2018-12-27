@@ -1,13 +1,3 @@
-// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use char;
 use str as core_str;
 use fmt;
@@ -62,18 +52,15 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
         }
 
         const TAG_CONT_U8: u8 = 128;
-        fn unsafe_get(xs: &[u8], i: usize) -> u8 {
-            unsafe { *xs.get_unchecked(i) }
-        }
         fn safe_get(xs: &[u8], i: usize) -> u8 {
-            if i >= xs.len() { 0 } else { unsafe_get(xs, i) }
+            *xs.get(i).unwrap_or(&0)
         }
 
         let mut i = 0;
         while i < self.source.len() {
             let i_ = i;
 
-            let byte = unsafe_get(self.source, i);
+            let byte = unsafe { *self.source.get_unchecked(i) };
             i += 1;
 
             if byte < 128 {

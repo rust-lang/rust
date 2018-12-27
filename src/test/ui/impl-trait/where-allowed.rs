@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A simple test for testing many permutations of allowedness of
 //! impl Trait
 use std::fmt::Debug;
@@ -125,7 +115,7 @@ trait InTraitDefnReturn {
 // Allowed and disallowed in trait impls
 trait DummyTrait {
     type Out;
-    fn in_trait_impl_parameter(impl Debug);
+    fn in_trait_impl_parameter(_: impl Debug);
     fn in_trait_impl_return() -> Self::Out;
 }
 impl DummyTrait for () {
@@ -232,4 +222,3 @@ fn main() {
     let _in_return_in_local_variable = || -> impl Fn() { || {} };
     //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 }
-

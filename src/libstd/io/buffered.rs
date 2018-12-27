@@ -1,13 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Buffering wrappers for I/O traits
 
 use io::prelude::*;
@@ -294,9 +284,9 @@ impl<R: Seek> Seek for BufReader<R> {
     /// `.into_inner()` immediately after a seek yields the underlying reader
     /// at the same position.
     ///
-    /// To seek without discarding the internal buffer, use [`seek_relative`].
+    /// To seek without discarding the internal buffer, use [`BufReader::seek_relative`].
     ///
-    /// See `std::io::Seek` for more details.
+    /// See [`std::io::Seek`] for more details.
     ///
     /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
     /// where `n` minus the internal buffer length overflows an `i64`, two
@@ -304,7 +294,8 @@ impl<R: Seek> Seek for BufReader<R> {
     /// `Err`, the underlying reader will be left at the same position it would
     /// have if you called `seek` with `SeekFrom::Current(0)`.
     ///
-    /// [`seek_relative`]: #method.seek_relative
+    /// [`BufReader::seek_relative`]: struct.BufReader.html#method.seek_relative
+    /// [`std::io::Seek`]: trait.Seek.html
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
@@ -526,6 +517,25 @@ impl<W: Write> BufWriter<W> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
+
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(bufreader_buffer)]
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // See how many bytes are currently buffered
+    /// let bytes_buffered = buf_writer.buffer().len();
+    /// ```
+    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    pub fn buffer(&self) -> &[u8] {
+        &self.buf
+    }
 
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
@@ -889,7 +899,7 @@ impl<W: Write> Write for LineWriter<W> {
 
         // Find the last newline character in the buffer provided. If found then
         // we're going to write all the data up to that point and then flush,
-        // otherewise we just write the whole block to the underlying writer.
+        // otherwise we just write the whole block to the underlying writer.
         let i = match memchr::memrchr(b'\n', buf) {
             Some(i) => i,
             None => return self.inner.write(buf),
@@ -901,7 +911,7 @@ impl<W: Write> Write for LineWriter<W> {
         // some data then we *must* report that we wrote that data, so future
         // errors are ignored. We set our internal `need_flush` flag, though, in
         // case flushing fails and we need to try it first next time.
-        let n = self.inner.write(&buf[..i + 1])?;
+        let n = self.inner.write(&buf[..=i])?;
         self.need_flush = true;
         if self.flush().is_err() || n != i + 1 {
             return Ok(n)
@@ -967,31 +977,31 @@ mod tests {
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 3);
-        let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [5, 6, 7]);
+        assert_eq!(reader.buffer(), []);
 
         let mut buf = [0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 2);
-        let b: &[_] = &[0, 1];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [0, 1]);
+        assert_eq!(reader.buffer(), []);
 
         let mut buf = [0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 1);
-        let b: &[_] = &[2];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [2]);
+        assert_eq!(reader.buffer(), [3]);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 1);
-        let b: &[_] = &[3, 0, 0];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [3, 0, 0]);
+        assert_eq!(reader.buffer(), []);
 
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 1);
-        let b: &[_] = &[4, 0, 0];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [4, 0, 0]);
+        assert_eq!(reader.buffer(), []);
 
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
     }
@@ -1080,31 +1090,40 @@ mod tests {
         let mut writer = BufWriter::with_capacity(2, inner);
 
         writer.write(&[0, 1]).unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1]);
 
         writer.write(&[2]).unwrap();
+        assert_eq!(writer.buffer(), [2]);
         assert_eq!(*writer.get_ref(), [0, 1]);
 
         writer.write(&[3]).unwrap();
+        assert_eq!(writer.buffer(), [2, 3]);
         assert_eq!(*writer.get_ref(), [0, 1]);
 
         writer.flush().unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
         writer.write(&[4]).unwrap();
         writer.write(&[5]).unwrap();
+        assert_eq!(writer.buffer(), [4, 5]);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
         writer.write(&[6]).unwrap();
+        assert_eq!(writer.buffer(), [6]);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5]);
 
         writer.write(&[7, 8]).unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8]);
 
         writer.write(&[9, 10, 11]).unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
         writer.flush().unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     }
 

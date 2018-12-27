@@ -1,5 +1,5 @@
 error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
-  --> $DIR/send-sync.rs:18:5
+  --> $DIR/send-sync.rs:8:5
    |
 LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
    |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
@@ -13,13 +13,13 @@ LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
    = note: required because of the requirements on the impl of `std::marker::Send` for `&[std::fmt::ArgumentV1<'_>]`
    = note: required because it appears within the type `std::fmt::Arguments<'_>`
 note: required by `send`
-  --> $DIR/send-sync.rs:11:1
+  --> $DIR/send-sync.rs:1:1
    |
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
-  --> $DIR/send-sync.rs:19:5
+  --> $DIR/send-sync.rs:9:5
    |
 LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
    |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
@@ -33,7 +33,7 @@ LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
    = note: required because it appears within the type `&[std::fmt::ArgumentV1<'_>]`
    = note: required because it appears within the type `std::fmt::Arguments<'_>`
 note: required by `sync`
-  --> $DIR/send-sync.rs:12:1
+  --> $DIR/send-sync.rs:2:1
    |
 LL | fn sync<T: Sync>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^

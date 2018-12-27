@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `a` because it is borrowed
-  --> $DIR/borrowck-bad-nested-calls-move.rs:35:9
+  --> $DIR/borrowck-bad-nested-calls-move.rs:25:9
    |
 LL |         &*a,
    |          -- borrow of `*a` occurs here
@@ -7,7 +7,7 @@ LL |         a); //~ ERROR cannot move
    |         ^ move out of `a` occurs here
 
 error[E0505]: cannot move out of `a` because it is borrowed
-  --> $DIR/borrowck-bad-nested-calls-move.rs:42:9
+  --> $DIR/borrowck-bad-nested-calls-move.rs:32:9
    |
 LL |         &*a,
    |          -- borrow of `*a` occurs here

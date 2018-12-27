@@ -1,0 +1,20 @@
+error[E0597]: `_thing1` does not live long enough
+  --> $DIR/issue-54382-use-span-of-tail-of-block.rs:7:29
+   |
+LL |             D("other").next(&_thing1)
+   |             ----------------^^^^^^^^-
+   |             |               |
+   |             |               borrowed value does not live long enough
+   |             a temporary with access to the borrow is created here ...
+...
+LL |     }
+   |     - `_thing1` dropped here while still borrowed
+LL | 
+LL |     ;
+   |     - ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |
+   = note: The temporary is part of an expression at the end of a block. Consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

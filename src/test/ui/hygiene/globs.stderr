@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:32:9
+  --> $DIR/globs.rs:22:9
    |
 LL |         f(); //~ ERROR cannot find function `f` in this scope
    |         ^ not found in this scope
@@ -13,7 +13,7 @@ LL | use foo::f;
    |
 
 error[E0425]: cannot find function `g` in this scope
-  --> $DIR/globs.rs:25:5
+  --> $DIR/globs.rs:15:5
    |
 LL |       g(); //~ ERROR cannot find function `g` in this scope
    |       ^ not found in this scope
@@ -37,7 +37,7 @@ LL | use foo::test::g;
 and 2 other candidates
 
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:71:12
+  --> $DIR/globs.rs:61:12
    |
 LL | n!(f);
    | ------ in this macro invocation
@@ -46,7 +46,7 @@ LL |         n!(f); //~ ERROR cannot find function `f` in this scope
    |            ^ not found in this scope
 
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:75:17
+  --> $DIR/globs.rs:65:17
    |
 LL | n!(f);
    | ------ in this macro invocation

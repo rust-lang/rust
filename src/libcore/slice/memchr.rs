@@ -1,12 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 //
 // Original implementation taken from rust-memchr
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
@@ -72,8 +63,8 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     if len >= 2 * usize_bytes {
         while offset <= len - 2 * usize_bytes {
             unsafe {
-                let u = *(ptr.offset(offset as isize) as *const usize);
-                let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
+                let u = *(ptr.add(offset) as *const usize);
+                let v = *(ptr.add(offset + usize_bytes) as *const usize);
 
                 // break if there is a matching byte
                 let zu = contains_zero_byte(u ^ repeated_x);

@@ -1,15 +1,5 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::{RwLock, ReadGuard};
+use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use ich::StableHashingContext;
@@ -55,7 +45,10 @@ impl Cache {
         *self.predecessors.borrow_mut() = None;
     }
 
-    pub fn predecessors(&self, mir: &Mir) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(
+        &self,
+        mir: &Mir<'_>
+    ) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
         }
@@ -64,7 +57,7 @@ impl Cache {
     }
 }
 
-fn calculate_predecessors(mir: &Mir) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
+fn calculate_predecessors(mir: &Mir<'_>) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
         if let Some(ref term) = data.terminator {

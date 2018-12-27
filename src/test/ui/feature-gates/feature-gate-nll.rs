@@ -1,16 +1,16 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-#![feature(rustc_attrs)]
+// This is a test checking that if you do not opt into NLL then you
+// should not get the effects of NLL applied to the test.
+
+// Don't use 2018 edition, since that turns on NLL (migration mode).
+// edition:2015
+
+// Don't use compare-mode=nll, since that turns on NLL.
+// ignore-compare-mode-nll
+
+
 #![allow(dead_code)]
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let mut x = 33;
 
     let p = &x;

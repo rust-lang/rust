@@ -1,5 +1,5 @@
 error[E0091]: type parameter `Unused` is unused
-  --> $DIR/issue-30236.rs:12:5
+  --> $DIR/issue-30236.rs:2:5
    |
 LL |     Unused //~ ERROR type parameter `Unused` is unused
    |     ^^^^^^ unused type parameter

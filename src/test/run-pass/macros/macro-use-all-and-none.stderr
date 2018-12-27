@@ -1,0 +1,8 @@
+warning: unused attribute
+  --> $DIR/macro-use-all-and-none.rs:5:1
+   |
+LL | #[macro_use()]
+   | ^^^^^^^^^^^^^^
+   |
+   = note: #[warn(unused_attributes)] on by default
+

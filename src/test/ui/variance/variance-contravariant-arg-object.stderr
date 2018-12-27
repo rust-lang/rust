@@ -1,37 +1,37 @@
 error[E0308]: mismatched types
-  --> $DIR/variance-contravariant-arg-object.rs:24:5
+  --> $DIR/variance-contravariant-arg-object.rs:14:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `dyn Get<&'min i32>`
               found type `dyn Get<&'max i32>`
-note: the lifetime 'min as defined on the function body at 20:21...
-  --> $DIR/variance-contravariant-arg-object.rs:20:21
+note: the lifetime 'min as defined on the function body at 10:21...
+  --> $DIR/variance-contravariant-arg-object.rs:10:21
    |
 LL | fn get_min_from_max<'min, 'max>(v: Box<Get<&'max i32>>)
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 20:27
-  --> $DIR/variance-contravariant-arg-object.rs:20:27
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 10:27
+  --> $DIR/variance-contravariant-arg-object.rs:10:27
    |
 LL | fn get_min_from_max<'min, 'max>(v: Box<Get<&'max i32>>)
    |                           ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/variance-contravariant-arg-object.rs:32:5
+  --> $DIR/variance-contravariant-arg-object.rs:22:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `dyn Get<&'max i32>`
               found type `dyn Get<&'min i32>`
-note: the lifetime 'min as defined on the function body at 27:21...
-  --> $DIR/variance-contravariant-arg-object.rs:27:21
+note: the lifetime 'min as defined on the function body at 17:21...
+  --> $DIR/variance-contravariant-arg-object.rs:17:21
    |
 LL | fn get_max_from_min<'min, 'max, G>(v: Box<Get<&'min i32>>)
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 27:27
-  --> $DIR/variance-contravariant-arg-object.rs:27:27
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 17:27
+  --> $DIR/variance-contravariant-arg-object.rs:17:27
    |
 LL | fn get_max_from_min<'min, 'max, G>(v: Box<Get<&'min i32>>)
    |                           ^^^^

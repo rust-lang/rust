@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Compiles the profiler part of the `compiler-rt` library.
 //!
 //! See the build.rs for libcompiler_builtins crate for details.
@@ -56,9 +46,15 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
     }
 
+    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
+    // load our env var set by cargo to find the source code.
+    let root = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
+    let root = Path::new(&root);
+
     for src in profile_sources {
-        cfg.file(Path::new("../libcompiler_builtins/compiler-rt/lib/profile").join(src));
+        cfg.file(root.join("lib").join("profile").join(src));
     }
 
+    cfg.warnings(false);
     cfg.compile("profiler-rt");
 }

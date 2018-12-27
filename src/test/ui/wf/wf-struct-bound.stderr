@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
-  --> $DIR/wf-struct-bound.rs:19:1
+  --> $DIR/wf-struct-bound.rs:9:1
    |
 LL | / struct SomeStruct<T,U> //~ ERROR E0277
 LL | |     where T: ExtraCopy<U>
@@ -10,7 +10,7 @@ LL | | }
    |
    = help: consider adding a `where U: std::marker::Copy` bound
 note: required by `ExtraCopy`
-  --> $DIR/wf-struct-bound.rs:17:1
+  --> $DIR/wf-struct-bound.rs:7:1
    |
 LL | trait ExtraCopy<T:Copy> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^

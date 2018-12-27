@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Test that the simd_select intrinsic produces ok-ish error
 // messages when misused.
 
@@ -33,6 +23,7 @@ struct b8x8(pub i8, pub i8, pub i8, pub i8,
 
 extern "platform-intrinsic" {
     fn simd_select<T, U>(x: T, a: U, b: U) -> U;
+    fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
 }
 
 fn main() {
@@ -52,5 +43,20 @@ fn main() {
 
         simd_select(z, z, z);
         //~^ ERROR mask element type is `f32`, expected `i_`
+
+        simd_select(m4, 0u32, 1u32);
+        //~^ ERROR found non-SIMD `u32`
+
+        simd_select_bitmask(0u8, x, x);
+        //~^ ERROR mask length `8` != other vector length `4`
+        //
+        simd_select_bitmask(0u8, 1u32, 2u32);
+        //~^ ERROR found non-SIMD `u32`
+
+        simd_select_bitmask(0.0f32, x, x);
+        //~^ ERROR `f32` is not an integral type
+
+        simd_select_bitmask("x", x, x);
+        //~^ ERROR `&str` is not an integral type
     }
 }

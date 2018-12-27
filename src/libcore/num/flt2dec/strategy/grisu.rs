@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Rust adaptation of the Grisu3 algorithm described in "Printing Floating-Point Numbers Quickly
 //! and Accurately with Integers"[^1]. It uses about 1KB of precomputed table, and in turn, it's
 //! very quick for most inputs.
@@ -242,7 +232,7 @@ pub fn format_shortest_opt(d: &Decoded,
     //
     // find the digit length `kappa` between `(minus1, plus1)` as per Theorem 6.2.
     // Theorem 6.2 can be adopted to exclude `x` by requiring `y mod 10^k < y - x` instead.
-    // (e.g. `x` = 32000, `y` = 32777; `kappa` = 2 since `y mod 10^3 = 777 < y - x = 777`.)
+    // (e.g., `x` = 32000, `y` = 32777; `kappa` = 2 since `y mod 10^3 = 777 < y - x = 777`.)
     // the algorithm relies on the later verification phase to exclude `y`.
     let delta1 = plus1 - minus1;
 //  let delta1int = (delta1 >> e) as usize; // only for explanation
@@ -362,19 +352,19 @@ pub fn format_shortest_opt(d: &Decoded,
             // proceed, but we then have at least one valid representation known to be closest to
             // `v + 1 ulp` anyway. we will denote them as TC1 through TC3 for brevity.
             //
-            // TC1: `w(n) <= v + 1 ulp`, i.e. this is the last repr that can be the closest one.
+            // TC1: `w(n) <= v + 1 ulp`, i.e., this is the last repr that can be the closest one.
             // this is equivalent to `plus1 - w(n) = plus1w(n) >= plus1 - (v + 1 ulp) = plus1v_up`.
             // combined with TC2 (which checks if `w(n+1)` is valid), this prevents the possible
             // overflow on the calculation of `plus1w(n)`.
             //
-            // TC2: `w(n+1) < minus1`, i.e. the next repr definitely does not round to `v`.
+            // TC2: `w(n+1) < minus1`, i.e., the next repr definitely does not round to `v`.
             // this is equivalent to `plus1 - w(n) + 10^kappa = plus1w(n) + 10^kappa >
             // plus1 - minus1 = threshold`. the left hand side can overflow, but we know
             // `threshold > plus1v`, so if TC1 is false, `threshold - plus1w(n) >
             // threshold - (plus1v - 1 ulp) > 1 ulp` and we can safely test if
             // `threshold - plus1w(n) < 10^kappa` instead.
             //
-            // TC3: `abs(w(n) - (v + 1 ulp)) <= abs(w(n+1) - (v + 1 ulp))`, i.e. the next repr is
+            // TC3: `abs(w(n) - (v + 1 ulp)) <= abs(w(n+1) - (v + 1 ulp))`, i.e., the next repr is
             // no closer to `v + 1 ulp` than the current repr. given `z(n) = plus1v_up - plus1w(n)`,
             // this becomes `abs(z(n)) <= abs(z(n+1))`. again assuming that TC1 is false, we have
             // `z(n) > 0`. we have two cases to consider:
@@ -384,7 +374,7 @@ pub fn format_shortest_opt(d: &Decoded,
             // - when `z(n+1) < 0`:
             //   - TC3a: the precondition is `plus1v_up < plus1w(n) + 10^kappa`. assuming TC2 is
             //     false, `threshold >= plus1w(n) + 10^kappa` so it cannot overflow.
-            //   - TC3b: TC3 becomes `z(n) <= -z(n+1)`, i.e. `plus1v_up - plus1w(n) >=
+            //   - TC3b: TC3 becomes `z(n) <= -z(n+1)`, i.e., `plus1v_up - plus1w(n) >=
             //     plus1w(n+1) - plus1v_up = plus1w(n) + 10^kappa - plus1v_up`. the negated TC1
             //     gives `plus1v_up > plus1w(n)`, so it cannot overflow or underflow when
             //     combined with TC3a.
@@ -414,7 +404,7 @@ pub fn format_shortest_opt(d: &Decoded,
 
         // now we have the closest representation to `v` between `plus1` and `minus1`.
         // this is too liberal, though, so we reject any `w(n)` not between `plus0` and `minus0`,
-        // i.e. `plus1 - plus1w(n) <= minus0` or `plus1 - plus1w(n) >= plus0`. we utilize the facts
+        // i.e., `plus1 - plus1w(n) <= minus0` or `plus1 - plus1w(n) >= plus0`. we utilize the facts
         // that `threshold = plus1 - minus1` and `plus1 - plus0 = minus0 - minus1 = 2 ulp`.
         if 2 * ulp <= plus1w && plus1w <= threshold - 4 * ulp {
             Some((buf.len(), exp))
@@ -675,7 +665,7 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
             return Some((len, exp));
         }
 
-        // otherwise we are doomed (i.e. some values between `v - 1 ulp` and `v + 1 ulp` are
+        // otherwise we are doomed (i.e., some values between `v - 1 ulp` and `v + 1 ulp` are
         // rounding down and others are rounding up) and give up.
         None
     }

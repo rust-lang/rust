@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/test-cfg.rs:17:5
+  --> $DIR/test-cfg.rs:7:5
    |
 LL |     foo(); //~ ERROR cannot find function `foo` in this scope
    |     ^^^ not found in this scope

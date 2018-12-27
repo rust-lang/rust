@@ -1,23 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! the rustc crate store interface. This also includes types that
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
@@ -42,11 +22,6 @@ pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
 
-#[derive(Clone, Debug, Copy)]
-pub struct LinkMeta {
-    pub crate_hash: Svh,
-}
-
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
 #[derive(PartialEq, Clone, Debug)]
@@ -64,7 +39,7 @@ pub enum DepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
-    /// doesn't need to be linked to an rlib, e.g. the injected allocator.
+    /// doesn't need to be linked to an rlib, e.g., the injected allocator.
     Implicit,
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
@@ -233,8 +208,7 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta)
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
@@ -250,7 +224,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt, prefer: LinkagePreference)
+pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
     -> Vec<(CrateNum, LibSource)>
 {
     let mut libs = tcx.crates()

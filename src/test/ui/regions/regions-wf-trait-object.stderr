@@ -1,16 +1,16 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/regions-wf-trait-object.rs:17:5
+  --> $DIR/regions-wf-trait-object.rs:7:5
    |
 LL |     x: Box<TheTrait<'a>+'b> //~ ERROR E0478
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime 'b as defined on the struct at 16:15
-  --> $DIR/regions-wf-trait-object.rs:16:15
+note: lifetime parameter instantiated with the lifetime 'b as defined on the struct at 6:15
+  --> $DIR/regions-wf-trait-object.rs:6:15
    |
 LL | struct Foo<'a,'b> {
    |               ^^
-note: but lifetime parameter must outlive the lifetime 'a as defined on the struct at 16:12
-  --> $DIR/regions-wf-trait-object.rs:16:12
+note: but lifetime parameter must outlive the lifetime 'a as defined on the struct at 6:12
+  --> $DIR/regions-wf-trait-object.rs:6:12
    |
 LL | struct Foo<'a,'b> {
    |            ^^

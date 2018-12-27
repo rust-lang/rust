@@ -1,5 +1,5 @@
 error[E0658]: arguments of constant functions can only be immutable by-value bindings (see issue #48821)
-  --> $DIR/const-fn-destructuring-arg.rs:17:13
+  --> $DIR/const-fn-destructuring-arg.rs:7:13
    |
 LL |             a,
    |             ^
@@ -7,7 +7,7 @@ LL |             a,
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: arguments of constant functions can only be immutable by-value bindings (see issue #48821)
-  --> $DIR/const-fn-destructuring-arg.rs:19:13
+  --> $DIR/const-fn-destructuring-arg.rs:9:13
    |
 LL |             b
    |             ^
@@ -15,7 +15,7 @@ LL |             b
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-destructuring-arg.rs:22:5
+  --> $DIR/const-fn-destructuring-arg.rs:12:5
    |
 LL |     a + b
    |     ^
@@ -23,7 +23,7 @@ LL |     a + b
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constant functions are unstable (see issue #48821)
-  --> $DIR/const-fn-destructuring-arg.rs:22:9
+  --> $DIR/const-fn-destructuring-arg.rs:12:9
    |
 LL |     a + b
    |         ^

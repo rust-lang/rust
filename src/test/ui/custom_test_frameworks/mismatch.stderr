@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `test::TestDescAndFn: example_runner::Testable` is not satisfied
+  --> $DIR/mismatch.rs:9:1
+   |
+LL | fn wrong_kind(){}
+   | ^^^^^^^^^^^^^^^^^ the trait `example_runner::Testable` is not implemented for `test::TestDescAndFn`
+   |
+   = note: required for the cast to the object type `dyn example_runner::Testable`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

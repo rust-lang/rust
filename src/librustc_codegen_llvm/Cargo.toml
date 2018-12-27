@@ -14,6 +14,7 @@ cc = "1.0.1"
 num_cpus = "1.0"
 rustc-demangle = "0.1.4"
 rustc_llvm = { path = "../librustc_llvm" }
+memmap = "0.6"
 
 [features]
 # This is used to convince Cargo to separately cache builds of `rustc_codegen_llvm`

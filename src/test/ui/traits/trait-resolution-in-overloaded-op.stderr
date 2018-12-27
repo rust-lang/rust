@@ -1,5 +1,5 @@
 error[E0369]: binary operation `*` cannot be applied to type `&T`
-  --> $DIR/trait-resolution-in-overloaded-op.rs:18:5
+  --> $DIR/trait-resolution-in-overloaded-op.rs:8:5
    |
 LL |     a * b //~ ERROR binary operation `*` cannot be applied to type `&T`
    |     ^^^^^

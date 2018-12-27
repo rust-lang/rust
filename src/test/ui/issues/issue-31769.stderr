@@ -1,11 +1,11 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-31769.rs:12:5
+  --> $DIR/issue-31769.rs:2:5
    |
 LL |     #[inline] struct Foo;  //~ ERROR attribute should be applied to function or closure
    |     ^^^^^^^^^ ----------- not a function or closure
 
 error[E0517]: attribute should be applied to struct, enum or union
-  --> $DIR/issue-31769.rs:13:12
+  --> $DIR/issue-31769.rs:3:12
    |
 LL |     #[repr(C)] fn foo() {} //~ ERROR attribute should be applied to struct, enum or union
    |            ^   ----------- not a struct, enum or union

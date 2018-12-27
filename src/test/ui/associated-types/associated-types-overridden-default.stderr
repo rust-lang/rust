@@ -1,5 +1,5 @@
 error[E0399]: the following trait items need to be reimplemented as `Assoc` was overridden: `Assoc2`, `C`, `foo`
-  --> $DIR/associated-types-overridden-default.rs:21:5
+  --> $DIR/associated-types-overridden-default.rs:11:5
    |
 LL |     type Assoc = ();
    |     ^^^^^^^^^^^^^^^^

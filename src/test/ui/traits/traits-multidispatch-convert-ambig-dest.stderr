@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/traits-multidispatch-convert-ambig-dest.rs:36:5
+  --> $DIR/traits-multidispatch-convert-ambig-dest.rs:26:5
    |
 LL |     test(22, std::default::Default::default());
    |     ^^^^ cannot infer type for `U`

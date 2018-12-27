@@ -1,16 +1,6 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Generate files suitable for use with [Graphviz](http://www.graphviz.org/)
 //!
-//! The `render` function generates output (e.g. an `output.dot` file) for
+//! The `render` function generates output (e.g., an `output.dot` file) for
 //! use with [Graphviz](http://www.graphviz.org/) by walking a labeled
 //! graph. (Graphviz can then automatically lay out the nodes and edges
 //! of the graph, and also optionally render the graph as an image or
@@ -25,7 +15,7 @@
 //! expressiveness of the [DOT language](
 //! http://www.graphviz.org/doc/info/lang.html). For example, there are
 //! many [attributes](http://www.graphviz.org/content/attrs) related to
-//! providing layout hints (e.g. left-to-right versus top-down, which
+//! providing layout hints (e.g., left-to-right versus top-down, which
 //! algorithm to use, etc). The current intention of this library is to
 //! emit a human-readable .dot file with very regular structure suitable
 //! for easy post-processing.
@@ -49,7 +39,6 @@
 //! ```rust
 //! #![feature(rustc_private)]
 //!
-//! use graphviz::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
@@ -84,12 +73,12 @@
 //!         }
 //!         nodes.sort();
 //!         nodes.dedup();
-//!         nodes.into_cow()
+//!         nodes.into()
 //!     }
 //!
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed> {
 //!         let &Edges(ref edges) = self;
-//!         (&edges[..]).into_cow()
+//!         (&edges[..]).into()
 //!     }
 //!
 //!     fn source(&self, e: &Ed) -> Nd { let &(s,_) = e; s }
@@ -144,9 +133,8 @@
 //! Since both the set of nodes and the set of edges are always
 //! constructed from scratch via iterators, we use the `collect()` method
 //! from the `Iterator` trait to collect the nodes and edges into freshly
-//! constructed growable `Vec` values (rather use the `into_cow`
-//! from the `IntoCow` trait as was used in the first example
-//! above).
+//! constructed growable `Vec` values (rather than using `Cow` as in the
+//! first example above).
 //!
 //! The output from this example renders four nodes that make up the
 //! Hasse-diagram for the subsets of the set `{x, y}`. Each edge is
@@ -288,12 +276,12 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(str_escape)]
 
 use self::LabelText::*;
 
-use std::borrow::{Cow, ToOwned};
+use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 
@@ -375,7 +363,7 @@ impl Style {
 // implement a Labelling service) that I have encountered is that it
 // makes it impossible to use types outside of the current crate
 // directly as Nodes/Edges; you need to wrap them in newtype'd
-// structs. See e.g. the `No` and `Ed` structs in the examples. (In
+// structs. See e.g., the `No` and `Ed` structs in the examples. (In
 // practice clients using a graph in some other crate would need to
 // provide some sort of adapter shim over the graph anyway to
 // interface with this library).
@@ -402,7 +390,7 @@ impl<'a> Id<'a> {
     /// The caller must ensure that the input conforms to an
     /// identifier format: it must be a non-empty string made up of
     /// alphanumeric or underscore characters, not beginning with a
-    /// digit (i.e. the regular expression `[a-zA-Z_][a-zA-Z_0-9]*`).
+    /// digit (i.e., the regular expression `[a-zA-Z_][a-zA-Z_0-9]*`).
     ///
     /// (Note: this format is a strict subset of the `ID` format
     /// defined by the DOT language.  This function may change in the
@@ -411,8 +399,8 @@ impl<'a> Id<'a> {
     ///
     /// Passing an invalid string (containing spaces, brackets,
     /// quotes, ...) will return an empty `Err` value.
-    pub fn new<Name: IntoCow<'a, str>>(name: Name) -> Result<Id<'a>, ()> {
-        let name = name.into_cow();
+    pub fn new<Name: Into<Cow<'a, str>>>(name: Name) -> Result<Id<'a>, ()> {
+        let name = name.into();
         match name.chars().next() {
             Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
             _ => return Err(()),
@@ -473,7 +461,7 @@ pub trait Labeller<'a> {
     /// The label need not be unique, and may be the empty string; the
     /// default is in fact the empty string.
     fn edge_label(&'a self, _e: &Self::Edge) -> LabelText<'a> {
-        LabelStr("".into_cow())
+        LabelStr("".into())
     }
 
     /// Maps `n` to a style that will be used in the rendered output.
@@ -497,16 +485,16 @@ pub fn escape_html(s: &str) -> String {
 }
 
 impl<'a> LabelText<'a> {
-    pub fn label<S: IntoCow<'a, str>>(s: S) -> LabelText<'a> {
-        LabelStr(s.into_cow())
+    pub fn label<S: Into<Cow<'a, str>>>(s: S) -> LabelText<'a> {
+        LabelStr(s.into())
     }
 
-    pub fn escaped<S: IntoCow<'a, str>>(s: S) -> LabelText<'a> {
-        EscStr(s.into_cow())
+    pub fn escaped<S: Into<Cow<'a, str>>>(s: S) -> LabelText<'a> {
+        EscStr(s.into())
     }
 
-    pub fn html<S: IntoCow<'a, str>>(s: S) -> LabelText<'a> {
-        HtmlStr(s.into_cow())
+    pub fn html<S: Into<Cow<'a, str>>>(s: S) -> LabelText<'a> {
+        HtmlStr(s.into())
     }
 
     fn escape_char<F>(c: char, mut f: F)
@@ -550,7 +538,7 @@ impl<'a> LabelText<'a> {
             EscStr(s) => s,
             LabelStr(s) => {
                 if s.contains('\\') {
-                    (&*s).escape_default().into_cow()
+                    (&*s).escape_default().into()
                 } else {
                     s
                 }
@@ -570,7 +558,7 @@ impl<'a> LabelText<'a> {
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
         prefix.push_str(&suffix);
-        EscStr(prefix.into_cow())
+        EscStr(prefix.into())
     }
 }
 
@@ -696,40 +684,6 @@ pub fn render_opts<'a, N, E, G, W>(g: &'a G,
     writeln!(w, "}}")
 }
 
-pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
-    fn into_cow(self) -> Cow<'a, B>;
-}
-
-impl<'a> IntoCow<'a, str> for String {
-    fn into_cow(self) -> Cow<'a, str> {
-        Cow::Owned(self)
-    }
-}
-
-impl<'a> IntoCow<'a, str> for &'a str {
-    fn into_cow(self) -> Cow<'a, str> {
-        Cow::Borrowed(self)
-    }
-}
-
-impl<'a> IntoCow<'a, str> for Cow<'a, str> {
-    fn into_cow(self) -> Cow<'a, str> {
-        self
-    }
-}
-
-impl<'a, T: Clone> IntoCow<'a, [T]> for Vec<T> {
-    fn into_cow(self) -> Cow<'a, [T]> {
-        Cow::Owned(self)
-    }
-}
-
-impl<'a, T: Clone> IntoCow<'a, [T]> for &'a [T] {
-    fn into_cow(self) -> Cow<'a, [T]> {
-        Cow::Borrowed(self)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use self::NodeLabels::*;
@@ -737,7 +691,6 @@ mod tests {
     use super::LabelText::{self, LabelStr, EscStr, HtmlStr};
     use std::io;
     use std::io::prelude::*;
-    use IntoCow;
 
     /// each node is an index in a vector in the graph.
     type Node = usize;
@@ -852,12 +805,12 @@ mod tests {
         }
         fn node_label(&'a self, n: &Node) -> LabelText<'a> {
             match self.node_labels[*n] {
-                Some(ref l) => LabelStr(l.into_cow()),
+                Some(l) => LabelStr(l.into()),
                 None => LabelStr(id_name(n).name()),
             }
         }
         fn edge_label(&'a self, e: &&'a Edge) -> LabelText<'a> {
-            LabelStr(e.label.into_cow())
+            LabelStr(e.label.into())
         }
         fn node_style(&'a self, n: &Node) -> Style {
             self.node_styles[*n]

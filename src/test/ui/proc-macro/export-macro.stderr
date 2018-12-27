@@ -1,0 +1,10 @@
+error: cannot export macro_rules! macros from a `proc-macro` crate type currently
+  --> $DIR/export-macro.rs:9:1
+   |
+LL | / macro_rules! foo {
+LL | |     ($e:expr) => ($e)
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

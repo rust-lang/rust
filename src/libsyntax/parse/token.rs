@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub use self::BinOpToken::*;
 pub use self::Nonterminal::*;
 pub use self::DelimToken::*;
@@ -23,8 +13,7 @@ use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
 use syntax_pos::{self, Span, FileName};
 use syntax_pos::symbol::{self, Symbol};
-use tokenstream::{TokenStream, TokenTree};
-use tokenstream;
+use tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
 use std::{cmp, fmt};
 use std::mem;
@@ -80,14 +69,14 @@ pub enum Lit {
 }
 
 impl Lit {
-    crate fn short_name(&self) -> &'static str {
+    crate fn literal_name(&self) -> &'static str {
         match *self {
-            Byte(_) => "byte",
-            Char(_) => "char",
-            Integer(_) => "integer",
-            Float(_) => "float",
-            Str_(_) | StrRaw(..) => "string",
-            ByteStr(_) | ByteStrRaw(..) => "byte string"
+            Byte(_) => "byte literal",
+            Char(_) => "char literal",
+            Integer(_) => "integer literal",
+            Float(_) => "float literal",
+            Str_(_) | StrRaw(..) => "string literal",
+            ByteStr(_) | ByteStrRaw(..) => "byte string literal"
         }
     }
 
@@ -137,6 +126,7 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
         keywords::Unsafe.name(),
         keywords::Extern.name(),
         keywords::Typeof.name(),
+        keywords::Dyn.name(),
     ].contains(&ident.name)
 }
 
@@ -163,7 +153,6 @@ pub enum Token {
     DotDot,
     DotDotDot,
     DotDotEq,
-    DotEq, // HACK(durka42) never produced by the parser, only used for libproc_macro
     Comma,
     Semi,
     Colon,
@@ -207,6 +196,10 @@ pub enum Token {
 
     Eof,
 }
+
+// `Token` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Token>() == 16);
 
 impl Token {
     pub fn interpolated(nt: Nonterminal) -> Token {
@@ -454,7 +447,6 @@ impl Token {
             Dot => match joint {
                 Dot => DotDot,
                 DotDot => DotDotDot,
-                DotEq => DotDotEq,
                 _ => return None,
             },
             DotDot => match joint {
@@ -477,7 +469,7 @@ impl Token {
                 _ => return None,
             },
 
-            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | DotEq |
+            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot |
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
             Question | OpenDelim(..) | CloseDelim(..) => return None,
 
@@ -547,11 +539,12 @@ impl Token {
         let tokens_for_real = nt.1.force(|| {
             // FIXME(#43081): Avoid this pretty-print + reparse hack
             let source = pprust::token_to_string(self);
-            parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
+            let filename = FileName::macro_expansion_source_code(&source);
+            parse_stream_from_source_str(filename, source, sess, Some(span))
         });
 
         // During early phases of the compiler the AST could get modified
-        // directly (e.g. attributes added or removed) and the internal cache
+        // directly (e.g., attributes added or removed) and the internal cache
         // of tokens my not be invalidated or updated. Consequently if the
         // "lossless" token stream disagrees with our actual stringification
         // (which has historically been much more battle-tested) then we go
@@ -570,8 +563,9 @@ impl Token {
         //
         // Instead the "probably equal" check here is "does each token
         // recursively have the same discriminant?" We basically don't look at
-        // the token values here and assume that such fine grained modifications
-        // of token streams doesn't happen.
+        // the token values here and assume that such fine grained token stream
+        // modifications, including adding/removing typically non-semantic
+        // tokens such as extra braces and commas, don't happen.
         if let Some(tokens) = tokens {
             if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
                 return tokens
@@ -605,7 +599,6 @@ impl Token {
             (&DotDot, &DotDot) |
             (&DotDotDot, &DotDotDot) |
             (&DotDotEq, &DotDotEq) |
-            (&DotEq, &DotEq) |
             (&Comma, &Comma) |
             (&Semi, &Semi) |
             (&Colon, &Colon) |
@@ -630,7 +623,9 @@ impl Token {
             (&Shebang(a), &Shebang(b)) => a == b,
 
             (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
-            (&Ident(a, b), &Ident(c, d)) => a.name == c.name && b == d,
+            (&Ident(a, b), &Ident(c, d)) => b == d && (a.name == c.name ||
+                                                       a.name == keywords::DollarCrate.name() ||
+                                                       c.name == keywords::DollarCrate.name()),
 
             (&Literal(ref a, b), &Literal(ref c, d)) => {
                 b == d && a.probably_equal_for_proc_macro(c)
@@ -783,10 +778,12 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
 
+        let source = pprust::attr_to_string(attr);
+        let macro_filename = FileName::macro_expansion_source_code(&source);
         if attr.is_sugared_doc {
             let stream = parse_stream_from_source_str(
-                FileName::MacroExpansion,
-                pprust::attr_to_string(attr),
+                macro_filename,
+                source,
                 sess,
                 Some(span),
             );
@@ -807,8 +804,8 @@ fn prepend_attrs(sess: &ParseSess,
         // should eventually be removed.
         } else {
             let stream = parse_stream_from_source_str(
-                FileName::MacroExpansion,
-                pprust::path_to_string(&attr.path),
+                macro_filename,
+                source,
                 sess,
                 Some(span),
             );
@@ -817,15 +814,13 @@ fn prepend_attrs(sess: &ParseSess,
 
         brackets.push(attr.tokens.clone());
 
-        let tokens = tokenstream::Delimited {
-            delim: DelimToken::Bracket,
-            tts: brackets.build().into(),
-        };
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good
         // enough" for now at least.
         builder.push(tokenstream::TokenTree::Token(attr.span, Pound));
-        builder.push(tokenstream::TokenTree::Delimited(attr.span, tokens));
+        let delim_span = DelimSpan::from_single(attr.span);
+        builder.push(tokenstream::TokenTree::Delimited(
+            delim_span, DelimToken::Bracket, brackets.build().into()));
     }
     builder.push(tokens.clone());
     Some(builder.build())

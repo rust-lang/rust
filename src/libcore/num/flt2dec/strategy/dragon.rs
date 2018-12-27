@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Almost direct (but slightly optimized) Rust translation of Figure 3 of "Printing
 //! Floating-Point Numbers Quickly and Accurately"[^1].
 //!
@@ -81,11 +71,11 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
     // - followed by `(mant + 2 * plus) * 2^exp` in the original type.
     //
     // obviously, `minus` and `plus` cannot be zero. (for infinities, we use out-of-range values.)
-    // also we assume that at least one digit is generated, i.e. `mant` cannot be zero too.
+    // also we assume that at least one digit is generated, i.e., `mant` cannot be zero too.
     //
     // this also means that any number between `low = (mant - minus) * 2^exp` and
     // `high = (mant + plus) * 2^exp` will map to this exact floating point number,
-    // with bounds included when the original mantissa was even (i.e. `!mant_was_odd`).
+    // with bounds included when the original mantissa was even (i.e., `!mant_was_odd`).
 
     assert!(d.mant > 0);
     assert!(d.minus > 0);
@@ -172,7 +162,7 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
         // - `high - v = plus / scale * 10^(k-n)`
         //
         // assume that `d[0..n-1]` is the shortest representation between `low` and `high`,
-        // i.e. `d[0..n-1]` satisfies both of the following but `d[0..n-2]` doesn't:
+        // i.e., `d[0..n-1]` satisfies both of the following but `d[0..n-2]` doesn't:
         // - `low < d[0..n-1] * 10^(k-n) < high` (bijectivity: digits round to `v`); and
         // - `abs(v / 10^(k-n) - d[0..n-1]) <= 1/2` (the last digit is correct).
         //
@@ -304,7 +294,7 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
 
     // rounding up if we stop in the middle of digits
     // if the following digits are exactly 5000..., check the prior digit and try to
-    // round to even (i.e. avoid rounding up when the prior digit is even).
+    // round to even (i.e., avoid rounding up when the prior digit is even).
     let order = mant.cmp(scale.mul_small(5));
     if order == Ordering::Greater || (order == Ordering::Equal &&
                                       (len == 0 || buf[len-1] & 1 == 1)) {

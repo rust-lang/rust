@@ -1,11 +1,11 @@
 error[E0636]: the feature `if_let` has already been declared
-  --> $DIR/duplicate-features.rs:17:12
+  --> $DIR/duplicate-features.rs:7:12
    |
 LL | #![feature(if_let)] //~ ERROR the feature `if_let` has already been declared
    |            ^^^^^^
 
 error[E0636]: the feature `rust1` has already been declared
-  --> $DIR/duplicate-features.rs:14:12
+  --> $DIR/duplicate-features.rs:4:12
    |
 LL | #![feature(rust1)] //~ ERROR the feature `rust1` has already been declared
    |            ^^^^^

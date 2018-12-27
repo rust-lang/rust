@@ -50,7 +50,7 @@ fn main() {
 And a `foo.rs` that had this:
 
 ```rust,ignore
-fn hello() {
+pub fn hello() {
     println!("Hello, world!");
 }
 ```

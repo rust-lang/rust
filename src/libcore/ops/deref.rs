@@ -1,13 +1,3 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 /// Used for immutable dereferencing operations, like `*v`.
 ///
 /// In addition to being used for explicit dereferencing operations with the
@@ -83,14 +73,14 @@ pub trait Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Deref for &'a T {
+impl<T: ?Sized> Deref for &T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Deref for &'a mut T {
+impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
@@ -174,6 +164,22 @@ pub trait DerefMut: Deref {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> DerefMut for &'a mut T {
+impl<T: ?Sized> DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
+
+/// Indicates that a struct can be used as a method receiver, without the
+/// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
+/// `Rc<T>`, `&T`, and `Pin<P>`.
+#[cfg_attr(not(stage0), lang = "receiver")]
+#[unstable(feature = "receiver_trait", issue = "0")]
+#[doc(hidden)]
+pub trait Receiver {
+    // Empty.
+}
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for &T {}
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for &mut T {}

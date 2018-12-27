@@ -1,20 +1,10 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Support for serializing the dep-graph and reloading it.
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(specialization)]
 
 #![recursion_limit="256"]
@@ -43,6 +33,7 @@ pub use persist::copy_cgu_workproducts_to_incr_comp_cache_dir;
 pub use persist::save_dep_graph;
 pub use persist::save_work_product_index;
 pub use persist::in_incr_comp_dir;
+pub use persist::in_incr_comp_dir_sess;
 pub use persist::prepare_session_directory;
 pub use persist::finalize_session_directory;
 pub use persist::delete_workproduct_files;

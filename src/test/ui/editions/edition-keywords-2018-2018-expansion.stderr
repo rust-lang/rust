@@ -1,5 +1,5 @@
 error: expected identifier, found reserved keyword `async`
-  --> $DIR/edition-keywords-2018-2018-expansion.rs:18:5
+  --> $DIR/edition-keywords-2018-2018-expansion.rs:8:5
    |
 LL |     produces_async! {} //~ ERROR expected identifier, found reserved keyword `async`
    |     ^^^^^^^^^^^^^^^^^^ expected identifier, found reserved keyword

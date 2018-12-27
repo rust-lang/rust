@@ -1,0 +1,8 @@
+warning: the feature `crate_in_paths` has been stable since 1.30.0 and no longer requires an attribute to enable
+  --> $DIR/dollar-crate-modern.rs:6:24
+   |
+LL | #![feature(decl_macro, crate_in_paths)]
+   |                        ^^^^^^^^^^^^^^
+   |
+   = note: #[warn(stable_features)] on by default
+

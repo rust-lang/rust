@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::ToRegionVid;
@@ -17,10 +7,11 @@ use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
-use rustc::mir::{Local, Statement, Terminator};
+use rustc::mir::{Statement, Terminator};
+use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, RegionVid};
+use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid};
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
@@ -140,6 +131,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         if let Some(all_facts) = self.all_facts {
             if let Place::Local(temp) = place {
                 if let Some(borrow_indices) = self.borrow_set.local_map.get(temp) {
+                    all_facts.killed.reserve(borrow_indices.len());
                     for &borrow_index in borrow_indices {
                         let location_index = self.location_table.mid_index(location);
                         all_facts.killed.push((borrow_index, location_index));
@@ -163,7 +155,9 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
                 self.location_table.mid_index(location),
             ));
 
-            for successor_block in terminator.successors() {
+            let successor_blocks = terminator.successors();
+            all_facts.cfg_edge.reserve(successor_blocks.size_hint().0);
+            for successor_block in successor_blocks {
                 all_facts.cfg_edge.push((
                     self.location_table.mid_index(location),
                     self.location_table
@@ -175,10 +169,11 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         self.super_terminator(block, terminator, location);
     }
 
-    fn visit_user_assert_ty(
+    fn visit_ascribe_user_ty(
         &mut self,
-        _c_ty: &CanonicalTy<'tcx>,
-        _local: &Local,
+        _place: &Place<'tcx>,
+        _variance: &ty::Variance,
+        _user_ty: &UserTypeProjection<'tcx>,
         _location: Location,
     ) {
     }

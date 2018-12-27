@@ -1,13 +1,3 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-tidy-linelength
 // ignore-lldb
 // ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
@@ -280,7 +270,7 @@ extern {
 }
 
 // In many of the cases below, the type that is actually under test is wrapped
-// in a tuple, e.g. Box<T>, references, raw pointers, fixed-size vectors, ...
+// in a tuple, e.g., Box<T>, references, raw pointers, fixed-size vectors, ...
 // This is because GDB will not print the type name from DWARF debuginfo for
 // some kinds of types (pointers, arrays, functions, ...)
 // Since tuples are structs as far as GDB is concerned, their name will be

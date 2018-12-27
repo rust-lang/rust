@@ -1,18 +1,8 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![unstable(feature = "futures_api",
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use {fmt, mem};
+use fmt;
 use marker::Unpin;
 use ptr::NonNull;
 
@@ -63,6 +53,20 @@ impl Waker {
     pub fn will_wake(&self, other: &Waker) -> bool {
         self.inner == other.inner
     }
+
+    /// Returns whether or not this `Waker` and `other` `LocalWaker` awaken
+    /// the same task.
+    ///
+    /// This function works on a best-effort basis, and may return false even
+    /// when the `Waker`s would awaken the same task. However, if this function
+    /// returns true, it is guaranteed that the `Waker`s will awaken the same
+    /// task.
+    ///
+    /// This function is primarily used for optimization purposes.
+    #[inline]
+    pub fn will_wake_local(&self, other: &LocalWaker) -> bool {
+        self.will_wake(&other.0)
+    }
 }
 
 impl Clone for Waker {
@@ -94,12 +98,11 @@ impl Drop for Waker {
 /// is ready to be run.
 ///
 /// This is similar to the `Waker` type, but cannot be sent across threads.
-/// Task executors can use this type to implement more optimized singlethreaded wakeup
+/// Task executors can use this type to implement more optimized single-threaded wakeup
 /// behavior.
 #[repr(transparent)]
-pub struct LocalWaker {
-    inner: NonNull<dyn UnsafeWake>,
-}
+#[derive(Clone)]
+pub struct LocalWaker(Waker);
 
 impl Unpin for LocalWaker {}
 impl !Send for LocalWaker {}
@@ -120,13 +123,31 @@ impl LocalWaker {
     /// on the current thread.
     #[inline]
     pub unsafe fn new(inner: NonNull<dyn UnsafeWake>) -> Self {
-        LocalWaker { inner }
+        LocalWaker(Waker::new(inner))
+    }
+
+    /// Borrows this `LocalWaker` as a `Waker`.
+    ///
+    /// `Waker` is nearly identical to `LocalWaker`, but is threadsafe
+    /// (implements `Send` and `Sync`).
+    #[inline]
+    pub fn as_waker(&self) -> &Waker {
+        &self.0
+    }
+
+    /// Converts this `LocalWaker` into a `Waker`.
+    ///
+    /// `Waker` is nearly identical to `LocalWaker`, but is threadsafe
+    /// (implements `Send` and `Sync`).
+    #[inline]
+    pub fn into_waker(self) -> Waker {
+        self.0
     }
 
     /// Wake up the task associated with this `LocalWaker`.
     #[inline]
     pub fn wake(&self) {
-        unsafe { self.inner.as_ref().wake_local() }
+        unsafe { self.0.inner.as_ref().wake_local() }
     }
 
     /// Returns whether or not this `LocalWaker` and `other` `LocalWaker` awaken the same task.
@@ -139,7 +160,7 @@ impl LocalWaker {
     /// This function is primarily used for optimization purposes.
     #[inline]
     pub fn will_wake(&self, other: &LocalWaker) -> bool {
-        self.inner == other.inner
+        self.0.will_wake(&other.0)
     }
 
     /// Returns whether or not this `LocalWaker` and `other` `Waker` awaken the same task.
@@ -152,42 +173,26 @@ impl LocalWaker {
     /// This function is primarily used for optimization purposes.
     #[inline]
     pub fn will_wake_nonlocal(&self, other: &Waker) -> bool {
-        self.inner == other.inner
+        self.0.will_wake(other)
     }
 }
 
 impl From<LocalWaker> for Waker {
+    /// Converts a `LocalWaker` into a `Waker`.
+    ///
+    /// This conversion turns a `!Sync` `LocalWaker` into a `Sync` `Waker`, allowing a wakeup
+    /// object to be sent to another thread, but giving up its ability to do specialized
+    /// thread-local wakeup behavior.
     #[inline]
     fn from(local_waker: LocalWaker) -> Self {
-        let inner = local_waker.inner;
-        mem::forget(local_waker);
-        Waker { inner }
-    }
-}
-
-impl Clone for LocalWaker {
-    #[inline]
-    fn clone(&self) -> Self {
-        let waker = unsafe { self.inner.as_ref().clone_raw() };
-        let inner = waker.inner;
-        mem::forget(waker);
-        LocalWaker { inner }
+        local_waker.0
     }
 }
 
 impl fmt::Debug for LocalWaker {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Waker")
+        f.debug_struct("LocalWaker")
             .finish()
-    }
-}
-
-impl Drop for LocalWaker {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            self.inner.as_ref().drop_raw()
-        }
     }
 }
 
@@ -212,7 +217,7 @@ pub unsafe trait UnsafeWake: Send + Sync {
     /// # Unsafety
     ///
     /// This function is unsafe to call because it's asserting the `UnsafeWake`
-    /// value is in a consistent state, i.e. hasn't been dropped.
+    /// value is in a consistent state, i.e., hasn't been dropped.
     unsafe fn clone_raw(&self) -> Waker;
 
     /// Drops this instance of `UnsafeWake`, deallocating resources
@@ -234,7 +239,7 @@ pub unsafe trait UnsafeWake: Send + Sync {
     /// # Unsafety
     ///
     /// This function is unsafe to call because it's asserting the `UnsafeWake`
-    /// value is in a consistent state, i.e. hasn't been dropped.
+    /// value is in a consistent state, i.e., hasn't been dropped.
     unsafe fn drop_raw(&self);
 
     /// Indicates that the associated task is ready to make progress and should
@@ -251,7 +256,7 @@ pub unsafe trait UnsafeWake: Send + Sync {
     /// # Unsafety
     ///
     /// This function is unsafe to call because it's asserting the `UnsafeWake`
-    /// value is in a consistent state, i.e. hasn't been dropped.
+    /// value is in a consistent state, i.e., hasn't been dropped.
     unsafe fn wake(&self);
 
     /// Indicates that the associated task is ready to make progress and should
@@ -271,7 +276,7 @@ pub unsafe trait UnsafeWake: Send + Sync {
     /// # Unsafety
     ///
     /// This function is unsafe to call because it's asserting the `UnsafeWake`
-    /// value is in a consistent state, i.e. hasn't been dropped, and that the
+    /// value is in a consistent state, i.e., hasn't been dropped, and that the
     /// `UnsafeWake` hasn't moved from the thread on which it was created.
     unsafe fn wake_local(&self) {
         self.wake()

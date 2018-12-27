@@ -1,5 +1,5 @@
 error: expected pattern, found `}`
-  --> $DIR/issue-31804.rs:16:1
+  --> $DIR/issue-31804.rs:6:1
    |
 LL | } //~ ERROR expected pattern, found `}`
    | ^ expected pattern

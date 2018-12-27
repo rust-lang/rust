@@ -1,5 +1,5 @@
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/E0110.rs:11:14
+  --> $DIR/E0110.rs:1:14
    |
 LL | type X = u32<'static>; //~ ERROR E0110
    |              ^^^^^^^ lifetime parameter not allowed

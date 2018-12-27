@@ -1,14 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use traits::query::dropck_outlives::trivial_dropck_outlives;
 use traits::query::dropck_outlives::DropckOutlivesResult;
 use traits::query::Fallible;
@@ -29,12 +19,12 @@ impl super::QueryTypeOp<'gcx, 'tcx> for DropckOutlives<'tcx>
 where
     'gcx: 'tcx,
 {
-    type QueryResult = DropckOutlivesResult<'tcx>;
+    type QueryResponse = DropckOutlivesResult<'tcx>;
 
     fn try_fast_path(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
-    ) -> Option<Self::QueryResult> {
+    ) -> Option<Self::QueryResponse> {
         if trivial_dropck_outlives(tcx, key.value.dropped_ty) {
             Some(DropckOutlivesResult::default())
         } else {
@@ -45,7 +35,7 @@ where
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>> {
+    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
         // Subtle: note that we are not invoking
         // `infcx.at(...).dropck_outlives(...)` here, but rather the
         // underlying `dropck_outlives` query. This same underlying
@@ -59,25 +49,17 @@ where
         // FIXME convert to the type expected by the `dropck_outlives`
         // query. This should eventually be fixed by changing the
         // *underlying query*.
-        let Canonical {
-            variables,
-            value:
-                ParamEnvAnd {
-                    param_env,
-                    value: DropckOutlives { dropped_ty },
-                },
-        } = canonicalized;
-        let canonicalized = Canonical {
-            variables,
-            value: param_env.and(dropped_ty),
-        };
+        let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {
+            let DropckOutlives { dropped_ty } = value;
+            param_env.and(dropped_ty)
+        });
 
         tcx.dropck_outlives(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        lifted_query_result: &'a CanonicalizedQueryResult<'gcx, Self::QueryResult>,
-    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self::QueryResult>> {
+        lifted_query_result: &'a CanonicalizedQueryResponse<'gcx, Self::QueryResponse>,
+    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>> {
         lifted_query_result
     }
 }

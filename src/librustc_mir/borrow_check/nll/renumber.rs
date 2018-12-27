@@ -1,16 +1,6 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
+use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
+use rustc::mir::{Location, Mir, UserTypeAnnotation};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -65,6 +55,14 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_ty: ty={:?}", ty);
     }
 
+    fn visit_user_type_annotation(&mut self, _ty: &mut UserTypeAnnotation<'tcx>) {
+        // User type annotations represent the types that the user
+        // wrote in the progarm. We don't want to erase the regions
+        // from these types: rather, we want to add them as
+        // constraints at type-check time.
+        debug!("visit_user_type_annotation: skipping renumber");
+    }
+
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
         debug!("visit_substs(substs={:?}, location={:?})", substs, location);
 
@@ -110,25 +108,5 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         *substs = self.renumber_regions(substs);
 
         debug!("visit_closure_substs: substs={:?}", substs);
-    }
-
-    fn visit_user_assert_ty(&mut self, _c_ty: &mut CanonicalTy<'tcx>, _local: &mut Local,
-                            _location: Location) {
-        // User-assert-ty statements represent types that the user added explicitly.
-        // We don't want to erase the regions from these types: rather, we want to
-        // add them as constraints at type-check time.
-        debug!("visit_user_assert_ty: skipping renumber");
-    }
-
-    fn visit_statement(
-        &mut self,
-        block: BasicBlock,
-        statement: &mut Statement<'tcx>,
-        location: Location,
-    ) {
-        if let StatementKind::EndRegion(_) = statement.kind {
-            statement.kind = StatementKind::Nop;
-        }
-        self.super_statement(block, statement, location);
     }
 }

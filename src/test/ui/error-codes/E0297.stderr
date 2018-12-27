@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in `for` loop binding: `None` not covered
-  --> $DIR/E0297.rs:14:9
+  --> $DIR/E0297.rs:4:9
    |
 LL |     for Some(x) in xs {}
    |         ^^^^^^^ pattern `None` not covered

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:17:1
+  --> $DIR/generic_underconstrained.rs:6:1
    |
 LL | existential type Underconstrained<T: Trait>: 'static; //~ ERROR the trait bound `T: Trait`
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`

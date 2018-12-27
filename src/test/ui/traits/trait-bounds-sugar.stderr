@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/trait-bounds-sugar.rs:22:7
+  --> $DIR/trait-bounds-sugar.rs:12:7
    |
 LL |     a(x); //~ ERROR mismatched types
    |       ^ expected trait `Foo + std::marker::Send`, found trait `Foo + std::marker::Sync`

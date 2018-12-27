@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/issue-30438-c.rs:19:6
+  --> $DIR/issue-30438-c.rs:9:6
    |
 LL |     &x
    |      ^ borrowed value does not live long enough
@@ -7,8 +7,8 @@ LL |     //~^ ERROR: `x` does not live long enough
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'y as defined on the function body at 17:10...
-  --> $DIR/issue-30438-c.rs:17:10
+note: borrowed value must be valid for the lifetime 'y as defined on the function body at 7:10...
+  --> $DIR/issue-30438-c.rs:7:10
    |
 LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
    |          ^^

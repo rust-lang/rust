@@ -1,67 +1,65 @@
-error[E0080]: could not evaluate constant expression
-  --> $DIR/infinite-recursion-const-fn.rs:16:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/infinite-recursion-const-fn.rs:3:25
    |
-LL | const fn a() -> usize { b() }
-   |                         ---
+LL | const fn a() -> usize { b() } //~ ERROR evaluation of constant value failed
+   |                         ^^^
    |                         |
    |                         reached the configured maximum number of stack frames
-   |                         inside call to `b`
+   |                         inside call to `b` at $DIR/infinite-recursion-const-fn.rs:3:25
 LL | const fn b() -> usize { a() }
    |                         ---
    |                         |
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-   |                         inside call to `a`
-LL | const ARR: [i32; a()] = [5; 6]; //~ ERROR could not evaluate constant expression
-   | ^^^^^^^^^^^^^^^^^---^^^^^^^^^^^
-   |                  |
-   |                  inside call to `a`
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+   |                         inside call to `a` at $DIR/infinite-recursion-const-fn.rs:4:25
+LL | const ARR: [i32; a()] = [5; 6];
+   |                  --- inside call to `a` at $DIR/infinite-recursion-const-fn.rs:5:18
 
 error: aborting due to previous error
 

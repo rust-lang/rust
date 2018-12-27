@@ -1,5 +1,5 @@
 error[E0277]: cannot add `std::vec::Vec<B>` to `()`
-  --> $DIR/issue-2149.rs:18:33
+  --> $DIR/issue-2149.rs:8:33
    |
 LL |         for elt in self { r = r + f(*elt); }
    |                                 ^ no implementation for `() + std::vec::Vec<B>`
@@ -7,14 +7,14 @@ LL |         for elt in self { r = r + f(*elt); }
    = help: the trait `std::ops::Add<std::vec::Vec<B>>` is not implemented for `()`
 
 error[E0599]: no method named `bind` found for type `[&str; 1]` in the current scope
-  --> $DIR/issue-2149.rs:23:12
+  --> $DIR/issue-2149.rs:13:12
    |
 LL |     ["hi"].bind(|x| [x] );
    |            ^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `bind`, perhaps you need to implement it:
-           candidate #1: `vec_monad`
+           candidate #1: `VecMonad`
 
 error: aborting due to 2 previous errors
 

@@ -1,5 +1,5 @@
 error[E0201]: duplicate definitions with name `Bar`:
-  --> $DIR/associated-item-duplicate-names-3.rs:23:5
+  --> $DIR/associated-item-duplicate-names-3.rs:14:5
    |
 LL |     type Bar = i16;
    |     --------------- previous definition of `Bar` here

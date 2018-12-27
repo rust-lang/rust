@@ -1,19 +1,10 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use hir::def::Def;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
-use ty::layout::{LayoutError, Pointer, SizeSkeleton};
+use ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 
 use rustc_target::spec::abi::Abi::RustIntrinsic;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;
@@ -22,7 +13,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = ItemVisitor {
         tcx,
     };
-    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
 struct ItemVisitor<'a, 'tcx: 'a> {
@@ -41,17 +32,20 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 ty: Ty<'tcx>)
                                 -> Ty<'tcx> {
     let (def, substs) = match ty.sty {
-        ty::TyAdt(def, substs) => (def, substs),
+        ty::Adt(def, substs) => (def, substs),
         _ => return ty
     };
 
     if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
         let data_idx;
 
-        if def.variants[0].fields.is_empty() {
-            data_idx = 1;
-        } else if def.variants[1].fields.is_empty() {
-            data_idx = 0;
+        let one = VariantIdx::new(1);
+        let zero = VariantIdx::new(0);
+
+        if def.variants[zero].fields.is_empty() {
+            data_idx = one;
+        } else if def.variants[one].fields.is_empty() {
+            data_idx = zero;
         } else {
             return ty;
         }
@@ -83,8 +77,8 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
             // Special-case transmutting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx.global_tcx(), from);
-            if let (&ty::TyFnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
-                if size_to == Pointer.size(self.tcx) {
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
+                if size_to == Pointer.size(&self.tcx) {
                     struct_span_err!(self.tcx.sess, span, E0591,
                                      "can't transmute zero-sized type")
                         .note(&format!("source type: {}", from))
@@ -107,7 +101,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
                 }
                 Err(LayoutError::Unknown(bad)) => {
                     if bad == ty {
-                        "this type's size can vary".to_string()
+                        "this type's size can vary".to_owned()
                     } else {
                         format!("size can vary because of {}", bad)
                     }
@@ -117,7 +111,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
         };
 
         struct_span_err!(self.tcx.sess, span, E0512,
-            "transmute called with types of different sizes")
+                         "transmute called with types of different sizes")
             .note(&format!("source type: {} ({})", from, skeleton_string(from, sk_from)))
             .note(&format!("target type: {} ({})", to, skeleton_string(to, sk_to)))
             .emit();
@@ -130,8 +124,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        let owner_def_id = self.tcx.hir.body_owner_def_id(body_id);
-        let body = self.tcx.hir.body(body_id);
+        let owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
+        let body = self.tcx.hir().body(body_id);
         let param_env = self.tcx.param_env(owner_def_id);
         let tables = self.tcx.typeck_tables_of(owner_def_id);
         ExprVisitor { tcx: self.tcx, param_env, tables }.visit_body(body);

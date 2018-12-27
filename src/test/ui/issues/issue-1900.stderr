@@ -1,5 +1,5 @@
 error[E0131]: `main` function is not allowed to have generic parameters
-  --> $DIR/issue-1900.rs:11:8
+  --> $DIR/issue-1900.rs:1:8
    |
 LL | fn main<T>() { }
    |        ^^^ `main` cannot have generic parameters

@@ -1,5 +1,5 @@
 error[E0658]: `concat_idents` is not stable enough for use and is subject to change (see issue #29599)
-  --> $DIR/feature-gate-concat_idents.rs:15:13
+  --> $DIR/feature-gate-concat_idents.rs:5:13
    |
 LL |     let a = concat_idents!(X, Y_1); //~ ERROR `concat_idents` is not stable
    |             ^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let a = concat_idents!(X, Y_1); //~ ERROR `concat_idents` is not stable
    = help: add #![feature(concat_idents)] to the crate attributes to enable
 
 error[E0658]: `concat_idents` is not stable enough for use and is subject to change (see issue #29599)
-  --> $DIR/feature-gate-concat_idents.rs:16:13
+  --> $DIR/feature-gate-concat_idents.rs:6:13
    |
 LL |     let b = concat_idents!(X, Y_2); //~ ERROR `concat_idents` is not stable
    |             ^^^^^^^^^^^^^^^^^^^^^^

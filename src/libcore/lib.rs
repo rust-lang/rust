@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # The Rust Core Library
 //!
 //! The Rust Core Library is the dependency-free[^free] foundation of [The
@@ -71,13 +61,13 @@
 
 #![no_core]
 #![deny(missing_docs)]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
 #![feature(associated_type_defaults)]
-#![feature(attr_literals)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
@@ -92,9 +82,9 @@
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
+#![feature(bind_by_move_pattern_guards)]
 #![feature(exhaustive_patterns)]
-#![feature(macro_at_most_once_rep)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
@@ -107,6 +97,7 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(unboxed_closures)]
+#![feature(unsized_locals)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(doc_alias)]
@@ -117,9 +108,19 @@
 #![feature(powerpc_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(aarch64_target_feature)]
+#![feature(wasm_target_feature)]
+#![feature(avx512_target_feature)]
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
+#![feature(const_int_rotate)]
+#![feature(const_int_wrapping)]
+#![feature(const_int_sign)]
+#![feature(const_int_conversion)]
+#![feature(const_transmute)]
+#![feature(reverse_bits)]
+#![feature(non_exhaustive)]
+#![feature(structural_match)]
 
 #[prelude_import]
 #[allow(unused)]
@@ -190,10 +191,12 @@ pub mod cell;
 pub mod char;
 pub mod panic;
 pub mod panicking;
+pub mod pin;
 pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod result;
+pub mod ffi;
 
 pub mod slice;
 pub mod str;
@@ -213,11 +216,10 @@ pub mod alloc;
 
 // note: does not need to be public
 mod iter_private;
-mod nonzero;
 mod tuple;
 mod unit;
 
-// Pull in the the `coresimd` crate directly into libcore. This is where all the
+// Pull in the `coresimd` crate directly into libcore. This is where all the
 // architecture-specific (and vendor-specific) intrinsics are defined. AKA
 // things like SIMD and such. Note that the actual source for all this lies in a
 // different repository, rust-lang-nursery/stdsimd. That's why the setup here is
@@ -239,9 +241,7 @@ macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*)
 #[path = "../stdsimd/coresimd/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(not(stage0))] // allow changes to how stdsimd works in stage0
 mod coresimd;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[cfg(not(stage0))]
 pub use coresimd::arch;

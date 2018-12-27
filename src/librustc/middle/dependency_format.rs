@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Resolution of mixing rlibs and dylibs
 //!
 //! When producing a final artifact, such as a dynamic library, the compiler has
@@ -63,7 +53,6 @@
 
 use hir::def_id::CrateNum;
 
-use session;
 use session::config;
 use ty::TyCtxt;
 use middle::cstore::{self, DepKind};
@@ -94,12 +83,11 @@ pub enum Linkage {
 
 pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let sess = &tcx.sess;
-    let mut fmts = FxHashMap();
-    for &ty in sess.crate_types.borrow().iter() {
+    let fmts = sess.crate_types.borrow().iter().map(|&ty| {
         let linkage = calculate_type(tcx, ty);
         verify_ok(tcx, &linkage);
-        fmts.insert(ty, linkage);
-    }
+        (ty, linkage)
+    }).collect::<FxHashMap<_, _>>();
     sess.abort_if_errors();
     sess.dependency_formats.set(fmts);
 }
@@ -129,9 +117,8 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             sess.crt_static() => Linkage::Static,
         config::CrateType::Executable => Linkage::Dynamic,
 
-        // proc-macro crates are required to be dylibs, and they're currently
-        // required to link to libsyntax as well.
-        config::CrateType::ProcMacro => Linkage::Dynamic,
+        // proc-macro crates are mostly cdylibs, but we also need metadata.
+        config::CrateType::ProcMacro => Linkage::Static,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
@@ -163,14 +150,14 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let src = tcx.used_crate_source(cnum);
                 if src.rlib.is_some() { continue }
                 sess.err(&format!("crate `{}` required to be available in rlib format, \
-                                  but was not found in this form",
+                                   but was not found in this form",
                                   tcx.crate_name(cnum)));
             }
             return Vec::new();
         }
     }
 
-    let mut formats = FxHashMap();
+    let mut formats = FxHashMap::default();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
@@ -204,7 +191,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // static libraries.
     //
     // If the crate hasn't been included yet and it's not actually required
-    // (e.g. it's an allocator) then we skip it here as well.
+    // (e.g., it's an allocator) then we skip it here as well.
     for &cnum in tcx.crates().iter() {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none() &&
@@ -225,7 +212,6 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // quite yet, so do so here.
     activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
-    activate_injected_allocator(sess, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -247,16 +233,16 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     _ => "dylib",
                 };
                 sess.err(&format!("crate `{}` required to be available in {} format, \
-                                  but was not found in this form",
+                                   but was not found in this form",
                                   tcx.crate_name(cnum), kind));
             }
         }
     }
 
-    return ret;
+    ret
 }
 
-fn add_library(tcx: TyCtxt,
+fn add_library(tcx: TyCtxt<'_, '_, '_>,
                cnum: CrateNum,
                link: LinkagePreference,
                m: &mut FxHashMap<CrateNum, LinkagePreference>) {
@@ -304,14 +290,13 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // that here and activate them.
     activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
-    activate_injected_allocator(sess, &mut ret);
 
     Some(ret)
 }
 
 // Given a list of how to link upstream dependencies so far, ensure that an
 // injected dependency is activated. This will not do anything if one was
-// transitively included already (e.g. via a dylib or explicitly so).
+// transitively included already (e.g., via a dylib or explicitly so).
 //
 // If an injected dependency was not found then we're guaranteed the
 // metadata::creader module has injected that dependency (not listed as
@@ -333,18 +318,6 @@ fn activate_injected_dep(injected: Option<CrateNum>,
     if let Some(injected) = injected {
         let idx = injected.as_usize() - 1;
         assert_eq!(list[idx], Linkage::NotLinked);
-        list[idx] = Linkage::Static;
-    }
-}
-
-fn activate_injected_allocator(sess: &session::Session,
-                               list: &mut DependencyList) {
-    let cnum = match sess.injected_allocator.get() {
-        Some(cnum) => cnum,
-        None => return,
-    };
-    let idx = cnum.as_usize() - 1;
-    if list[idx] == Linkage::NotLinked {
         list[idx] = Linkage::Static;
     }
 }

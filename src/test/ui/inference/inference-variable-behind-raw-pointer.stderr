@@ -1,5 +1,5 @@
 warning: type annotations needed
-  --> $DIR/inference-variable-behind-raw-pointer.rs:18:13
+  --> $DIR/inference-variable-behind-raw-pointer.rs:8:13
    |
 LL |     if data.is_null() {}
    |             ^^^^^^^

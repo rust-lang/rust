@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::cmp;
 use std::string::String;
 use std::usize;
@@ -95,7 +85,7 @@ fn unindent(s: &str) -> String {
     });
 
     if !lines.is_empty() {
-        let mut unindented = vec![ lines[0].trim_left().to_string() ];
+        let mut unindented = vec![ lines[0].trim_start().to_string() ];
         unindented.extend_from_slice(&lines[1..].iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()

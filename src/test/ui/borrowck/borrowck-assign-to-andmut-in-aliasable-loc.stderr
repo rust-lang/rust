@@ -1,5 +1,5 @@
 error[E0389]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:19:5
+  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:9:5
    |
 LL | fn a(s: &S) {
    |         -- use `&mut S` here to make mutable
@@ -7,7 +7,7 @@ LL |     *s.pointer += 1; //~ ERROR cannot assign
    |     ^^^^^^^^^^^^^^^ assignment into an immutable reference
 
 error[E0389]: cannot assign to data in a `&` reference
-  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:27:5
+  --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:17:5
    |
 LL | fn c(s: & &mut S) {
    |         -------- use `&mut &mut S` here to make mutable

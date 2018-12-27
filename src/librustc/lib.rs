@@ -1,13 +1,3 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The "main crate" of the Rust compiler. This crate contains common
 //! type definitions that are used by the other crates in the rustc
 //! "family". Some prominent examples (note that each of these modules
@@ -30,7 +20,7 @@
 //!
 //! For more information about how rustc works, see the [rustc guide].
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/
 //!
 //! # Note
 //!
@@ -42,40 +32,39 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(iterator_find_map)]
 #![cfg_attr(windows, feature(libc))]
-#![feature(macro_vis_matcher)]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(optin_builtin_traits)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(rustc_attrs)]
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
+#![feature(thread_local)]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(vec_remove_item)]
-#![feature(catch_expr)]
 #![feature(step_trait)]
+#![feature(stmt_expr_attributes)]
 #![feature(integer_atomics)]
 #![feature(test)]
-#![cfg_attr(not(stage0), feature(impl_header_lifetime_elision))]
 #![feature(in_band_lifetimes)]
-#![feature(macro_at_most_once_rep)]
-#![feature(crate_in_paths)]
 #![feature(crate_visibility_modifier)]
+#![feature(transpose_result)]
 
 #![recursion_limit="512"]
+
+#![warn(elided_lifetimes_in_paths)]
 
 extern crate arena;
 #[macro_use] extern crate bitflags;
@@ -109,6 +98,9 @@ extern crate rustc_apfloat;
 extern crate byteorder;
 extern crate backtrace;
 
+#[macro_use]
+extern crate smallvec;
+
 // Note that librustc doesn't actually depend on these crates, see the note in
 // `Cargo.toml` for this crate about why these are here.
 #[allow(unused_extern_crates)]
@@ -119,7 +111,7 @@ extern crate test;
 #[macro_use]
 mod macros;
 
-// NB: This module needs to be declared first so diagnostics are
+// N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
 pub mod diagnostics;
 

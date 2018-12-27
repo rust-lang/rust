@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use Diagnostic;
 use DiagnosticId;
 use DiagnosticStyledString;
@@ -21,6 +11,10 @@ use std::thread::panicking;
 use syntax_pos::{MultiSpan, Span};
 
 /// Used for emitting structured error messages and other diagnostic information.
+///
+/// If there is some state in a downstream crate you would like to
+/// access in the methods of `DiagnosticBuilder` here, consider
+/// extending `HandlerFlags`, accessed via `self.handler.flags`.
 #[must_use]
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
@@ -39,16 +33,18 @@ pub struct DiagnosticBuilder<'a> {
 /// it easy to declare such methods on the builder.
 macro_rules! forward {
     // Forward pattern for &self -> &Self
-    (pub fn $n:ident(&self, $($name:ident: $ty:ty),*) -> &Self) => {
+    (pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)*) -> &Self) => {
         pub fn $n(&self, $($name: $ty),*) -> &Self {
+            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
     };
 
     // Forward pattern for &mut self -> &mut Self
-    (pub fn $n:ident(&mut self, $($name:ident: $ty:ty),*) -> &mut Self) => {
+    (pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)*) -> &mut Self) => {
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
+            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -56,8 +52,12 @@ macro_rules! forward {
 
     // Forward pattern for &mut self -> &mut Self, with S: Into<MultiSpan>
     // type parameter. No obvious way to make this more generic.
-    (pub fn $n:ident<S: Into<MultiSpan>>(&mut self, $($name:ident: $ty:ty),*) -> &mut Self) => {
+    (pub fn $n:ident<S: Into<MultiSpan>>(
+                    &mut self,
+                    $($name:ident: $ty:ty),*
+                    $(,)*) -> &mut Self) => {
         pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
+            #[allow(deprecated)]
             self.diagnostic.$n($($name),*);
             self
         }
@@ -89,8 +89,14 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
-    /// Buffers the diagnostic for later emission.
-    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+    /// Buffers the diagnostic for later emission, unless handler
+    /// has disabled such buffering.
+    pub fn buffer(mut self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+        if self.handler.flags.dont_buffer_diagnostics || self.handler.flags.treat_err_as_bug {
+            self.emit();
+            return;
+        }
+
         // We need to use `ptr::read` because `DiagnosticBuilder`
         // implements `Drop`.
         let diagnostic;
@@ -98,6 +104,9 @@ impl<'a> DiagnosticBuilder<'a> {
             diagnostic = ::std::ptr::read(&self.diagnostic);
             ::std::mem::forget(self);
         };
+        // Logging here is useful to help track down where in logs an error was
+        // actually emitted.
+        debug!("buffer: diagnostic={:?}", diagnostic);
         buffered_diagnostics.push(diagnostic);
     }
 
@@ -109,7 +118,7 @@ impl<'a> DiagnosticBuilder<'a> {
         message: &str,
         span: Option<S>,
     ) -> &mut Self {
-        let span = span.map(|s| s.into()).unwrap_or(MultiSpan::new());
+        let span = span.map(|s| s.into()).unwrap_or_else(|| MultiSpan::new());
         self.diagnostic.sub(level, message, span, None);
         self
     }
@@ -144,49 +153,75 @@ impl<'a> DiagnosticBuilder<'a> {
     forward!(pub fn note_expected_found(&mut self,
                                         label: &dyn fmt::Display,
                                         expected: DiagnosticStyledString,
-                                        found: DiagnosticStyledString)
-                                        -> &mut Self);
+                                        found: DiagnosticStyledString,
+                                        ) -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
                                               label: &dyn fmt::Display,
                                               expected: DiagnosticStyledString,
                                               found: DiagnosticStyledString,
                                               expected_extra: &dyn fmt::Display,
-                                              found_extra: &dyn fmt::Display)
-                                              -> &mut Self);
+                                              found_extra: &dyn fmt::Display,
+                                              ) -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_note<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
-                                                  msg: &str)
-                                                  -> &mut Self);
+                                                  msg: &str,
+                                                  ) -> &mut Self);
     forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
     forward!(pub fn help(&mut self , msg: &str) -> &mut Self);
     forward!(pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
-                                                  msg: &str)
-                                                  -> &mut Self);
-    forward!(pub fn span_suggestion_short(&mut self,
-                                          sp: Span,
-                                          msg: &str,
-                                          suggestion: String)
-                                          -> &mut Self);
+                                                  msg: &str,
+                                                  ) -> &mut Self);
+
+    #[deprecated(note = "Use `span_suggestion_short_with_applicability`")]
+    forward!(pub fn span_suggestion_short(
+                                      &mut self,
+                                      sp: Span,
+                                      msg: &str,
+                                      suggestion: String,
+                                      ) -> &mut Self);
+
+    #[deprecated(note = "Use `multipart_suggestion_with_applicability`")]
     forward!(pub fn multipart_suggestion(
         &mut self,
         msg: &str,
-        suggestion: Vec<(Span, String)>
+        suggestion: Vec<(Span, String)>,
     ) -> &mut Self);
+
+    #[deprecated(note = "Use `span_suggestion_with_applicability`")]
     forward!(pub fn span_suggestion(&mut self,
                                     sp: Span,
                                     msg: &str,
-                                    suggestion: String)
-                                    -> &mut Self);
+                                    suggestion: String,
+                                    ) -> &mut Self);
+
+    #[deprecated(note = "Use `span_suggestions_with_applicability`")]
     forward!(pub fn span_suggestions(&mut self,
                                      sp: Span,
                                      msg: &str,
-                                     suggestions: Vec<String>)
-                                     -> &mut Self);
+                                     suggestions: Vec<String>,
+                                     ) -> &mut Self);
+
+    pub fn multipart_suggestion_with_applicability(&mut self,
+                                              msg: &str,
+                                              suggestion: Vec<(Span, String)>,
+                                              applicability: Applicability,
+                                              ) -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.multipart_suggestion_with_applicability(
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
     pub fn span_suggestion_with_applicability(&mut self,
                                               sp: Span,
                                               msg: &str,
@@ -208,7 +243,7 @@ impl<'a> DiagnosticBuilder<'a> {
     pub fn span_suggestions_with_applicability(&mut self,
                                                sp: Span,
                                                msg: &str,
-                                               suggestions: Vec<String>,
+                                               suggestions: impl Iterator<Item = String>,
                                                applicability: Applicability)
                                                -> &mut Self {
         if !self.allow_suggestions {

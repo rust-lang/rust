@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ffi::CStr;
 use io;
 use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
@@ -26,7 +16,7 @@ pub extern crate libc as netc;
 pub type wrlen_t = size_t;
 
 // See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
-// Linux currently (e.g. support doesn't exist on other platforms). In order to
+// Linux currently (e.g., support doesn't exist on other platforms). In order to
 // get name resolution to work and things to compile we just define a dummy
 // SOCK_CLOEXEC here for other platforms. Note that the dummy constant isn't
 // actually ever used (the blocks below are wrapped in `if cfg!` as well.
@@ -35,7 +25,7 @@ use libc::SOCK_CLOEXEC;
 #[cfg(not(target_os = "linux"))]
 const SOCK_CLOEXEC: c_int = 0;
 
-// Another conditional contant for name resolution: Macos et iOS use
+// Another conditional constant for name resolution: Macos et iOS use
 // SO_NOSIGPIPE as a setsockopt flag to disable SIGPIPE emission on socket.
 // Other platforms do otherwise.
 #[cfg(target_vendor = "apple")]
@@ -203,18 +193,21 @@ impl Socket {
         // Linux. This was added in 2.6.28, however, and because we support
         // 2.6.18 we must detect this support dynamically.
         if cfg!(target_os = "linux") {
-            weak! {
-                fn accept4(c_int, *mut sockaddr, *mut socklen_t, c_int) -> c_int
+            syscall! {
+                fn accept4(
+                    fd: c_int,
+                    addr: *mut sockaddr,
+                    addr_len: *mut socklen_t,
+                    flags: c_int
+                ) -> c_int
             }
-            if let Some(accept) = accept4.get() {
-                let res = cvt_r(|| unsafe {
-                    accept(self.0.raw(), storage, len, SOCK_CLOEXEC)
-                });
-                match res {
-                    Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
-                    Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
-                    Err(e) => return Err(e),
-                }
+            let res = cvt_r(|| unsafe {
+                accept4(self.0.raw(), storage, len, SOCK_CLOEXEC)
+            });
+            match res {
+                Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
+                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
+                Err(e) => return Err(e),
             }
         }
 
@@ -395,30 +388,3 @@ fn on_resolver_failure() {
 
 #[cfg(not(target_env = "gnu"))]
 fn on_resolver_failure() {}
-
-#[cfg(all(test, taget_env = "gnu"))]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_res_init() {
-        // This mostly just tests that the weak linkage doesn't panic wildly...
-        res_init_if_glibc_before_2_26().unwrap();
-    }
-
-    #[test]
-    fn test_parse_glibc_version() {
-        let cases = [
-            ("0.0", Some((0, 0))),
-            ("01.+2", Some((1, 2))),
-            ("3.4.5.six", Some((3, 4))),
-            ("1", None),
-            ("1.-2", None),
-            ("1.foo", None),
-            ("foo.1", None),
-        ];
-        for &(version_str, parsed) in cases.iter() {
-            assert_eq!(parsed, parse_glibc_version(version_str));
-        }
-    }
-}

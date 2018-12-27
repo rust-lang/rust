@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt};
 use rustc_data_structures::unify::{NoError, EqUnifyValue, UnifyKey, UnifyValue};
 
@@ -43,14 +33,14 @@ impl UnifyValue for RegionVidKey {
             value2.min_vid
         };
 
-        Ok(RegionVidKey { min_vid: min_vid })
+        Ok(RegionVidKey { min_vid })
     }
 }
 
 impl UnifyKey for ty::RegionVid {
     type Value = RegionVidKey;
-    fn index(&self) -> u32 { self.0 }
-    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid(i) }
+    fn index(&self) -> u32 { u32::from(*self) }
+    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid::from(i) }
     fn tag() -> &'static str { "RegionVid" }
 }
 

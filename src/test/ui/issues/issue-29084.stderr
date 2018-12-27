@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-29084.rs:14:13
+  --> $DIR/issue-29084.rs:4:13
    |
 LL |         bar(&mut $d);
    |             ^^^^^^^ expected u8, found &mut u8

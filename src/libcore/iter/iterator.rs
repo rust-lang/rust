@@ -1,18 +1,8 @@
-// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use cmp::Ordering;
 use ops::Try;
 
 use super::LoopState;
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
 use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
@@ -31,12 +21,74 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
+        _Self="[std::ops::Range<Idx>; 1]",
+        label="if you meant to iterate between two values, remove the square brackets",
+        note="`[start..end]` is an array of one `Range`; you might have meant to have a `Range` \
+              without the brackets: `start..end`"
+    ),
+    on(
+        _Self="[std::ops::RangeFrom<Idx>; 1]",
+        label="if you meant to iterate from a value onwards, remove the square brackets",
+        note="`[start..]` is an array of one `RangeFrom`; you might have meant to have a \
+              `RangeFrom` without the brackets: `start..`, keeping in mind that iterating over an \
+              unbounded iterator will run forever unless you `break` or `return` from within the \
+              loop"
+    ),
+    on(
+        _Self="[std::ops::RangeTo<Idx>; 1]",
+        label="if you meant to iterate until a value, remove the square brackets and add a \
+               starting value",
+        note="`[..end]` is an array of one `RangeTo`; you might have meant to have a bounded \
+              `Range` without the brackets: `0..end`"
+    ),
+    on(
+        _Self="[std::ops::RangeInclusive<Idx>; 1]",
+        label="if you meant to iterate between two values, remove the square brackets",
+        note="`[start..=end]` is an array of one `RangeInclusive`; you might have meant to have a \
+              `RangeInclusive` without the brackets: `start..=end`"
+    ),
+    on(
+        _Self="[std::ops::RangeToInclusive<Idx>; 1]",
+        label="if you meant to iterate until a value (including it), remove the square brackets \
+               and add a starting value",
+        note="`[..=end]` is an array of one `RangeToInclusive`; you might have meant to have a \
+              bounded `RangeInclusive` without the brackets: `0..=end`"
+    ),
+    on(
+        _Self="std::ops::RangeTo<Idx>",
+        label="if you meant to iterate until a value, add a starting value",
+        note="`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
+              bounded `Range`: `0..end`"
+    ),
+    on(
+        _Self="std::ops::RangeToInclusive<Idx>",
+        label="if you meant to iterate until a value (including it), add a starting value",
+        note="`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
+              to have a bounded `RangeInclusive`: `0..=end`"
+    ),
+    on(
         _Self="&str",
         label="`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
-    label="`{Self}` is not an iterator; maybe try calling `.iter()` or a similar method"
+    on(
+        _Self="std::string::String",
+        label="`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
+    ),
+    on(
+        _Self="[]",
+        label="borrow the array with `&` or call `.iter()` on it to iterate over it",
+        note="arrays are not iterators, but slices like the following are: `&[1, 2, 3]`"
+    ),
+    on(
+        _Self="{integral}",
+        note="if you want to iterate between `start` until a value `end`, use the exclusive range \
+              syntax `start..end` or the inclusive range syntax `start..=end`"
+    ),
+    label="`{Self}` is not an iterator",
+    message="`{Self}` is not an iterator"
 )]
 #[doc(spotlight)]
+#[must_use]
 pub trait Iterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -93,14 +145,14 @@ pub trait Iterator {
     ///
     /// `size_hint()` is primarily intended to be used for optimizations such as
     /// reserving space for the elements of the iterator, but must not be
-    /// trusted to e.g. omit bounds checks in unsafe code. An incorrect
+    /// trusted to e.g., omit bounds checks in unsafe code. An incorrect
     /// implementation of `size_hint()` should not lead to memory safety
     /// violations.
     ///
     /// That said, the implementation should provide a correct estimation,
     /// because otherwise it would be a violation of the trait's protocol.
     ///
-    /// The default implementation returns `(0, None)` which is correct for any
+    /// The default implementation returns `(0, `[`None`]`)` which is correct for any
     /// iterator.
     ///
     /// [`usize`]: ../../std/primitive.usize.html
@@ -458,7 +510,7 @@ pub trait Iterator {
     /// element.
     ///
     /// `map()` transforms one iterator into another, by means of its argument:
-    /// something that implements `FnMut`. It produces a new iterator which
+    /// something that implements [`FnMut`]. It produces a new iterator which
     /// calls this closure on each element of the original iterator.
     ///
     /// If you are good at thinking in types, you can think of `map()` like this:
@@ -471,7 +523,8 @@ pub trait Iterator {
     /// If you're doing some sort of looping for a side effect, it's considered
     /// more idiomatic to use [`for`] than `map()`.
     ///
-    /// [`for`]: ../../book/first-edition/loops.html#for
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+    /// [`FnMut`]: ../../std/ops/trait.FnMut.html
     ///
     /// # Examples
     ///
@@ -519,7 +572,7 @@ pub trait Iterator {
     /// cases `for_each` may also be faster than a loop, because it will use
     /// internal iteration on adaptors like `Chain`.
     ///
-    /// [`for`]: ../../book/first-edition/loops.html#for
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
     /// # Examples
     ///
@@ -1608,7 +1661,7 @@ pub trait Iterator {
     /// use a `for` loop with a list of things to build up a result. Those
     /// can be turned into `fold()`s:
     ///
-    /// [`for`]: ../../book/first-edition/loops.html#for
+    /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
     /// ```
     /// let numbers = [1, 2, 3, 4, 5];
@@ -1794,17 +1847,14 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iterator_find_map)]
     /// let a = ["lol", "NaN", "2", "5"];
     ///
-    /// let mut first_number = a.iter().find_map(|s| s.parse().ok());
+    /// let first_number = a.iter().find_map(|s| s.parse().ok());
     ///
     /// assert_eq!(first_number, Some(2));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_find_map",
-               reason = "unstable new API",
-               issue = "49602")]
+    #[stable(feature = "iterator_find_map", since = "1.30.0")]
     fn find_map<B, F>(&mut self, mut f: F) -> Option<B> where
         Self: Sized,
         F: FnMut(Self::Item) -> Option<B>,
@@ -2173,6 +2223,35 @@ pub trait Iterator {
         });
 
         (ts, us)
+    }
+
+    /// Creates an iterator which copies all of its elements.
+    ///
+    /// This is useful when you have an iterator over `&T`, but you need an
+    /// iterator over `T`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_copied)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let v_cloned: Vec<_> = a.iter().copied().collect();
+    ///
+    /// // copied is the same as .map(|&x| x)
+    /// let v_map: Vec<_> = a.iter().map(|&x| x).collect();
+    ///
+    /// assert_eq!(v_cloned, vec![1, 2, 3]);
+    /// assert_eq!(v_map, vec![1, 2, 3]);
+    /// ```
+    #[unstable(feature = "iter_copied", issue = "57127")]
+    fn copied<'a, T: 'a>(self) -> Copied<Self>
+        where Self: Sized + Iterator<Item=&'a T>, T: Copy
+    {
+        Copied { it: self }
     }
 
     /// Creates an iterator which [`clone`]s all of its elements.
@@ -2560,7 +2639,7 @@ fn select_fold1<I, B, FProj, FCmp>(mut it: I,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
+impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }

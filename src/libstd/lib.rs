@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! # The Rust Standard Library
 //!
 //! The Rust Standard Library is the foundation of portable Rust software, a
@@ -185,7 +175,7 @@
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
 //! [`collections`]: collections/index.html
-//! [`for`]: ../book/first-edition/loops.html#for
+//! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 //! [`format!`]: macro.format.html
 //! [`fs`]: fs/index.html
 //! [`io`]: io/index.html
@@ -200,14 +190,14 @@
 //! [`sync`]: sync/index.html
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
-//! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
-//! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
+//! [`use`]: ../book/ch07-02-modules-and-use-to-control-scope-and-privacy.html#the-use-keyword-to-bring-paths-into-a-scope
+//! [crate root]: ../book/ch07-01-packages-and-crates-for-making-libraries-and-executables.html
 //! [crates.io]: https://crates.io
-//! [deref-coercions]: ../book/second-edition/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
+//! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
-//! [primitive types]: ../book/first-edition/primitive-types.html
+//! [primitive types]: ../book/ch03-02-data-types.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -222,6 +212,7 @@
 #![no_std]
 
 #![deny(missing_docs)]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_debug_implementations)]
 
 // Tell the compiler to link to either panic_abort or panic_unwind
@@ -235,7 +226,6 @@
 #![cfg_attr(test, feature(test, update_panic_count))]
 #![feature(alloc)]
 #![feature(alloc_error_handler)]
-#![feature(alloc_system)]
 #![feature(allocator_api)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -244,18 +234,21 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
-#![feature(attr_literals)]
 #![feature(box_syntax)]
+#![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_target_vendor)]
 #![feature(char_error_internals)]
 #![feature(compiler_builtins_lib)]
-#![feature(const_fn)]
+#![feature(concat_idents)]
 #![feature(const_int_ops)]
 #![feature(const_ip)]
+#![feature(const_raw_ptr_deref)]
+#![feature(const_cstr_unchecked)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
+#![cfg_attr(stage0, feature(duration_as_u128))]
 #![feature(exact_size_is_empty)]
 #![feature(external_doc)]
 #![feature(fixed_size_array)]
@@ -270,19 +263,18 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
-#![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
-#![feature(pin)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
+#![feature(hash_raw_entry)]
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
 #![feature(std_internals)]
@@ -302,28 +294,20 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-#![feature(use_extern_macros)]
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]
-#![cfg_attr(windows, feature(used))]
 #![feature(doc_alias)]
 #![feature(doc_keyword)]
 #![feature(panic_info_message)]
-#![feature(panic_implementation)]
+#![feature(non_exhaustive)]
+#![feature(alloc_layout_extra)]
+#![feature(maybe_uninit)]
+#![cfg_attr(target_env = "sgx", feature(global_asm, range_contains, slice_index_methods,
+                                        decl_macro, coerce_unsized, sgx_platform,
+                                        min_const_unsafe_fn))]
 
 #![default_lib_allocator]
-
-// Always use alloc_system during stage0 since we don't know if the alloc_*
-// crate the stage0 compiler will pick by default is enabled (e.g.
-// if the user has disabled jemalloc in `./configure`).
-// `force_alloc_system` is *only* intended as a workaround for local rebuilds
-// with a rustc without jemalloc.
-// FIXME(#44236) shouldn't need MSVC logic
-#[cfg(all(not(target_env = "msvc"),
-          any(all(stage0, not(test)), feature = "force_alloc_system")))]
-#[global_allocator]
-static ALLOC: alloc_system::System = alloc_system::System;
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
@@ -344,14 +328,17 @@ pub use core::{unreachable, unimplemented, write, writeln, try};
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
-extern crate alloc_system;
 #[doc(masked)]
 extern crate libc;
+extern crate rustc_demangle;
 
 // We always need an unwinder currently for backtraces
 #[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
+
+#[cfg(feature = "backtrace")]
+extern crate backtrace_sys;
 
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
@@ -360,6 +347,12 @@ extern crate unwind;
 // _not_ the globals used by "real" std. So this import, defined only during
 // testing gives test-std access to real-std lang items and globals. See #2912
 #[cfg(test)] extern crate std as realstd;
+
+#[cfg(target_env = "sgx")]
+#[macro_use]
+#[allow(unused_imports)] // FIXME: without `#[macro_use]`, get error: “cannot
+                         // determine resolution for the macro `usercalls_asm`”
+extern crate fortanix_sgx_abi;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
@@ -433,6 +426,8 @@ pub use alloc_crate::borrow;
 pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::format;
+#[stable(feature = "pin", since = "1.33.0")]
+pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -500,7 +495,7 @@ mod memchr;
 // compiler
 pub mod rt;
 
-// Pull in the the `stdsimd` crate directly into libstd. This is the same as
+// Pull in the `stdsimd` crate directly into libstd. This is the same as
 // libcore's arch/simd modules where the source of truth here is in a different
 // repository, but we pull things in here manually to get it into libstd.
 //
@@ -511,18 +506,17 @@ pub mod rt;
 #[path = "../stdsimd/stdsimd/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 mod stdsimd;
 
 // A "fake" module needed by the `stdsimd` module to compile, not actually
 // exported though.
-#[cfg(not(stage0))]
 mod coresimd {
     pub use core::arch;
 }
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 pub use stdsimd::arch;
 
 // Include a number of private modules that exist solely to provide

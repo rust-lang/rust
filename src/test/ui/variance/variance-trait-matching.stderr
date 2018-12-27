@@ -1,10 +1,10 @@
 error[E0621]: explicit lifetime required in the type of `get`
-  --> $DIR/variance-trait-matching.rs:34:5
+  --> $DIR/variance-trait-matching.rs:24:5
    |
 LL | fn get<'a, G>(get: &G) -> i32
    |                    -- help: add explicit lifetime `'a` to the type of `get`: `&'a G`
 ...
-LL |     pick(get, &22) //~ ERROR 34:5: 34:9: explicit lifetime required in the type of `get` [E0621]
+LL |     pick(get, &22) //~ ERROR explicit lifetime required in the type of `get` [E0621]
    |     ^^^^ lifetime `'a` required
 
 error: aborting due to previous error

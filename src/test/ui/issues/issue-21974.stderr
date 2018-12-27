@@ -1,5 +1,5 @@
 error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
-  --> $DIR/issue-21974.rs:20:1
+  --> $DIR/issue-21974.rs:10:1
    |
 LL | / fn foo<'a,'b,T>(x: &'a T, y: &'b T) //~ ERROR type annotations required
 LL | |     where &'a T : Foo,
@@ -11,7 +11,7 @@ LL | | }
    | |_^
    |
 note: required by `Foo`
-  --> $DIR/issue-21974.rs:16:1
+  --> $DIR/issue-21974.rs:6:1
    |
 LL | trait Foo {
    | ^^^^^^^^^

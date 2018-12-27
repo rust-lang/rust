@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: `&_` not covered
-  --> $DIR/issue-30240.rs:12:11
+  --> $DIR/issue-30240.rs:2:11
    |
 LL |     match "world" { //~ ERROR non-exhaustive patterns: `&_`
    |           ^^^^^^^ pattern `&_` not covered
 
 error[E0004]: non-exhaustive patterns: `&_` not covered
-  --> $DIR/issue-30240.rs:16:11
+  --> $DIR/issue-30240.rs:6:11
    |
 LL |     match "world" { //~ ERROR non-exhaustive patterns: `&_`
    |           ^^^^^^^ pattern `&_` not covered

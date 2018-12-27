@@ -1,14 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// These 4 `thumbv*` targets cover the ARM Cortex-M family of processors which are widely used in
+// These `thumbv*` targets cover the ARM Cortex-M family of processors which are widely used in
 // microcontrollers. Namely, all these processors:
 //
 // - Cortex-M0
@@ -17,8 +7,10 @@
 // - Cortex-M3
 // - Cortex-M4(F)
 // - Cortex-M7(F)
+// - Cortex-M23
+// - Cortex-M33
 //
-// We have opted for 4 targets instead of one target per processor (e.g. `cortex-m0`, `cortex-m3`,
+// We have opted for these instead of one target per processor (e.g., `cortex-m0`, `cortex-m3`,
 // etc) because the differences between some processors like the cortex-m0 and cortex-m1 are almost
 // non-existent from the POV of codegen so it doesn't make sense to have separate targets for them.
 // And if differences exist between two processors under the same target, rustc flags can be used to
@@ -42,9 +34,8 @@ pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
         executables: true,
-        // In 99%+ of cases, we want to use the `arm-none-eabi-gcc` compiler (there aren't many
-        // options around)
-        linker: Some("arm-none-eabi-gcc".to_string()),
+        // In most cases, LLD is good enough
+        linker: Some("rust-lld".to_string()),
         // Because these devices have very little resources having an unwinder is too onerous so we
         // default to "abort" because the "unwind" strategy is very rare.
         panic_strategy: PanicStrategy::Abort,

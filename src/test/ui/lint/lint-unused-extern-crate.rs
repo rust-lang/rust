@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // aux-build:lint_unused_extern_crate.rs
 // aux-build:lint_unused_extern_crate2.rs
 // aux-build:lint_unused_extern_crate3.rs
@@ -35,7 +25,7 @@ use lint_unused_extern_crate2::foo as bar;
 use other::*;
 
 mod foo {
-    // Test that this is unused even though an earler `extern crate` is used.
+    // Test that this is unused even though an earlier `extern crate` is used.
     extern crate lint_unused_extern_crate2; //~ ERROR unused extern crate
 }
 

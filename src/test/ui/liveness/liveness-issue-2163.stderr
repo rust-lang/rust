@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-issue-2163.rs:15:30
+  --> $DIR/liveness-issue-2163.rs:5:30
    |
 LL |       a.iter().all(|_| -> bool {
    |  ______________________________^

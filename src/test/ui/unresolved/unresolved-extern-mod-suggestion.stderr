@@ -1,5 +1,5 @@
 error[E0254]: the name `core` is defined multiple times
-  --> $DIR/unresolved-extern-mod-suggestion.rs:12:5
+  --> $DIR/unresolved-extern-mod-suggestion.rs:2:5
    |
 LL | extern crate core;
    | ------------------ previous import of the extern crate `core` here
@@ -7,7 +7,7 @@ LL | use core;
    |     ^^^^ `core` reimported here
    |
    = note: `core` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use core as other_core;
    |     ^^^^^^^^^^^^^^^^^^

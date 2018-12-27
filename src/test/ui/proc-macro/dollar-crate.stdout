@@ -1,0 +1,240 @@
+PROC MACRO INPUT (PRETTY-PRINTED): struct M ( $crate :: S ) ;
+PROC MACRO INPUT: TokenStream [
+    Ident {
+        ident: "struct",
+        span: #2 bytes(LO..HI)
+    },
+    Ident {
+        ident: "M",
+        span: #2 bytes(LO..HI)
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: #2 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #2 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #2 bytes(LO..HI)
+            },
+            Ident {
+                ident: "S",
+                span: #2 bytes(LO..HI)
+            }
+        ],
+        span: #2 bytes(LO..HI)
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #2 bytes(LO..HI)
+    }
+]
+ATTRIBUTE INPUT (PRETTY-PRINTED): struct A(crate::S);
+ATTRIBUTE INPUT: TokenStream [
+    Ident {
+        ident: "struct",
+        span: #2 bytes(LO..HI)
+    },
+    Ident {
+        ident: "A",
+        span: #2 bytes(LO..HI)
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: #2 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #2 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #2 bytes(LO..HI)
+            },
+            Ident {
+                ident: "S",
+                span: #2 bytes(LO..HI)
+            }
+        ],
+        span: #2 bytes(LO..HI)
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #2 bytes(LO..HI)
+    }
+]
+DERIVE INPUT (PRETTY-PRINTED): struct D(crate::S);
+DERIVE INPUT: TokenStream [
+    Ident {
+        ident: "struct",
+        span: #2 bytes(LO..HI)
+    },
+    Ident {
+        ident: "D",
+        span: #2 bytes(LO..HI)
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: #2 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #2 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #2 bytes(LO..HI)
+            },
+            Ident {
+                ident: "S",
+                span: #2 bytes(LO..HI)
+            }
+        ],
+        span: #2 bytes(LO..HI)
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #2 bytes(LO..HI)
+    }
+]
+PROC MACRO INPUT (PRETTY-PRINTED): struct M ( $crate :: S ) ;
+PROC MACRO INPUT: TokenStream [
+    Ident {
+        ident: "struct",
+        span: #10 bytes(LO..HI)
+    },
+    Ident {
+        ident: "M",
+        span: #10 bytes(LO..HI)
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: #10 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #10 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #10 bytes(LO..HI)
+            },
+            Ident {
+                ident: "S",
+                span: #10 bytes(LO..HI)
+            }
+        ],
+        span: #10 bytes(LO..HI)
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #10 bytes(LO..HI)
+    }
+]
+ATTRIBUTE INPUT (PRETTY-PRINTED): struct A(::dollar_crate_external::S);
+ATTRIBUTE INPUT: TokenStream [
+    Ident {
+        ident: "struct",
+        span: #10 bytes(LO..HI)
+    },
+    Ident {
+        ident: "A",
+        span: #10 bytes(LO..HI)
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: #10 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #10 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #10 bytes(LO..HI)
+            },
+            Ident {
+                ident: "S",
+                span: #10 bytes(LO..HI)
+            }
+        ],
+        span: #10 bytes(LO..HI)
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #10 bytes(LO..HI)
+    }
+]
+DERIVE INPUT (PRETTY-PRINTED): struct D(::dollar_crate_external::S);
+DERIVE INPUT: TokenStream [
+    Ident {
+        ident: "struct",
+        span: #10 bytes(LO..HI)
+    },
+    Ident {
+        ident: "D",
+        span: #10 bytes(LO..HI)
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: #10 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #10 bytes(LO..HI)
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #10 bytes(LO..HI)
+            },
+            Ident {
+                ident: "S",
+                span: #10 bytes(LO..HI)
+            }
+        ],
+        span: #10 bytes(LO..HI)
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #10 bytes(LO..HI)
+    }
+]

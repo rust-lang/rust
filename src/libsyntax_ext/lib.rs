@@ -1,25 +1,20 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Syntax extensions in the Rust compiler.
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(in_band_lifetimes)]
+#![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
 #![feature(decl_macro)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(str_escape)]
-
+#![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+
+#![recursion_limit="256"]
 
 extern crate fmt_macros;
 #[macro_use]
@@ -29,12 +24,12 @@ extern crate proc_macro;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_target;
+#[macro_use]
+extern crate smallvec;
+#[macro_use]
+extern crate log;
 
 mod diagnostics;
-
-#[macro_use]
-// for custom_derive
-pub mod deriving;
 
 mod asm;
 mod assert;
@@ -47,16 +42,18 @@ mod format;
 mod format_foreign;
 mod global_asm;
 mod log_syntax;
+mod proc_macro_server;
+mod test;
+mod test_case;
 mod trace_macros;
 
-pub mod proc_macro_registrar;
-
-
+pub mod deriving;
+pub mod proc_macro_decls;
 pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
+use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
 use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
@@ -126,6 +123,10 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         compile_error: compile_error::expand_compile_error,
         assert: assert::expand_assert,
     }
+
+    register(Symbol::intern("test_case"), MultiModifier(Box::new(test_case::expand)));
+    register(Symbol::intern("test"), MultiModifier(Box::new(test::expand_test)));
+    register(Symbol::intern("bench"), MultiModifier(Box::new(test::expand_bench)));
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),

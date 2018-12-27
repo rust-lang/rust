@@ -1,5 +1,5 @@
 error[E0658]: `concat_idents` is not stable enough for use and is subject to change (see issue #29599)
-  --> $DIR/feature-gate-concat_idents2.rs:14:5
+  --> $DIR/feature-gate-concat_idents2.rs:4:5
    |
 LL |     concat_idents!(a, b); //~ ERROR `concat_idents` is not stable enough
    |     ^^^^^^^^^^^^^^^^^^^^^

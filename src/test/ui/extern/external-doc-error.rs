@@ -1,19 +1,32 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// normalize-stderr-test: "The system cannot find the file specified\." -> "No such file or directory"
-// ignore-tidy-linelength
+// normalize-stderr-test: "not-a-file.md:.*\(" -> "not-a-file.md: $$FILE_NOT_FOUND_MSG ("
 
 #![feature(external_doc)]
 
-#[doc(include = "not-a-file.md")] //~ ERROR: couldn't read
-pub struct SomeStruct;
+#[doc(include = "not-a-file.md")]
+pub struct SomeStruct; //~^ ERROR couldn't read
+                       //~| HELP external doc paths are relative to the crate root
+
+#[doc(include = "auxiliary/invalid-utf8.txt")]
+pub struct InvalidUtf8; //~^ ERROR wasn't a utf-8 file
+
+#[doc(include)]
+pub struct MissingPath; //~^ ERROR expected path
+                        //~| HELP provide a file path with `=`
+                        //~| SUGGESTION include = "<path>"
+
+#[doc(include("../README.md"))]
+pub struct InvalidPathSyntax; //~^ ERROR expected path
+                              //~| HELP provide a file path with `=`
+                              //~| SUGGESTION include = "../README.md"
+
+#[doc(include = 123)]
+pub struct InvalidPathType; //~^ ERROR expected path
+                            //~| HELP provide a file path with `=`
+                            //~| SUGGESTION include = "<path>"
+
+#[doc(include(123))]
+pub struct InvalidPathSyntaxAndType; //~^ ERROR expected path
+                                     //~| HELP provide a file path with `=`
+                                     //~| SUGGESTION include = "<path>"
 
 fn main() {}

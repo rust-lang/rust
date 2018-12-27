@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `std::boxed::Box<dyn Map<isize, isize>>: Map<usize, isize>` is not satisfied
-  --> $DIR/map-types.rs:27:37
+  --> $DIR/map-types.rs:17:37
    |
 LL |     let y: Box<Map<usize, isize>> = Box::new(x);
    |                                     ^^^^^^^^^^^ the trait `Map<usize, isize>` is not implemented for `std::boxed::Box<dyn Map<isize, isize>>`

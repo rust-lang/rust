@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Similarly to escape-argument-callee, a test case where the closure
 // requires a relationship between 2 unrelated higher-ranked regions,
 // with no helpful relations between the HRRs and free regions.
@@ -45,8 +35,7 @@ fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
         // Only works if 'x: 'y:
         demand_y(x, y, x.get())
-        //~^ WARN not reporting region error due to nll
-        //~| ERROR
+        //~^ ERROR
     });
 }
 

@@ -1,29 +1,75 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-// FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
-
-//! Raw, unsafe pointers, `*const T`, and `*mut T`.
+//! Manually manage memory through raw pointers.
 //!
 //! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
+//!
+//! # Safety
+//!
+//! Many functions in this module take raw pointers as arguments and read from
+//! or write to them. For this to be safe, these pointers must be *valid*.
+//! Whether a pointer is valid depends on the operation it is used for
+//! (read or write), and the extent of the memory that is accessed (i.e.,
+//! how many bytes are read/written). Most functions use `*mut T` and `*const T`
+//! to access only a single value, in which case the documentation omits the size
+//! and implicitly assumes it to be `size_of::<T>()` bytes.
+//!
+//! The precise rules for validity are not determined yet.  The guarantees that are
+//! provided at this point are very minimal:
+//!
+//! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
+//! * All pointers (except for the null pointer) are valid for all operations of
+//!   [size zero][zst].
+//! * All accesses performed by functions in this module are *non-atomic* in the sense
+//!   of [atomic operations] used to synchronize between threads. This means it is
+//!   undefined behavior to perform two concurrent accesses to the same location from different
+//!   threads unless both accesses only read from memory. Notice that this explicitly
+//!   includes [`read_volatile`] and [`write_volatile`]: Volatile accesses cannot
+//!   be used for inter-thread synchronization.
+//! * The result of casting a reference to a pointer is valid for as long as the
+//!   underlying object is live and no reference (just raw pointers) is used to
+//!   access the same memory.
+//!
+//! These axioms, along with careful use of [`offset`] for pointer arithmetic,
+//! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
+//! will be provided eventually, as the [aliasing] rules are being determined. For more
+//! information, see the [book] as well as the section in the reference devoted
+//! to [undefined behavior][ub].
+//!
+//! ## Alignment
+//!
+//! Valid raw pointers as defined above are not necessarily properly aligned (where
+//! "proper" alignment is defined by the pointee type, i.e., `*const T` must be
+//! aligned to `mem::align_of::<T>()`). However, most functions require their
+//! arguments to be properly aligned, and will explicitly state
+//! this requirement in their documentation. Notable exceptions to this are
+//! [`read_unaligned`] and [`write_unaligned`].
+//!
+//! When a function requires proper alignment, it does so even if the access
+//! has size 0, i.e., even if memory is not actually touched. Consider using
+//! [`NonNull::dangling`] in such cases.
+//!
+//! [aliasing]: ../../nomicon/aliasing.html
+//! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
+//! [ub]: ../../reference/behavior-considered-undefined.html
+//! [null]: ./fn.null.html
+//! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
+//! [atomic operations]: ../../std/sync/atomic/index.html
+//! [`copy`]: ../../std/ptr/fn.copy.html
+//! [`offset`]: ../../std/primitive.pointer.html#method.offset
+//! [`read_unaligned`]: ./fn.read_unaligned.html
+//! [`write_unaligned`]: ./fn.write_unaligned.html
+//! [`read_volatile`]: ./fn.read_volatile.html
+//! [`write_volatile`]: ./fn.write_volatile.html
+//! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use convert::From;
 use intrinsics;
-use ops::CoerceUnsized;
+use ops::{CoerceUnsized, DispatchFromDyn};
 use fmt;
 use hash;
 use marker::{PhantomData, Unsize};
-use mem;
-use nonzero::NonZero;
+use mem::{self, MaybeUninit};
 
 use cmp::Ordering::{self, Less, Equal, Greater};
 
@@ -38,28 +84,116 @@ pub use intrinsics::write_bytes;
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
-/// This has two use cases:
+/// This is semantically equivalent to calling [`ptr::read`] and discarding
+/// the result, but has the following advantages:
 ///
 /// * It is *required* to use `drop_in_place` to drop unsized types like
 ///   trait objects, because they can't be read out onto the stack and
 ///   dropped normally.
 ///
-/// * It is friendlier to the optimizer to do this over `ptr::read` when
-///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
+/// * It is friendlier to the optimizer to do this over [`ptr::read`] when
+///   dropping manually allocated memory (e.g., when writing Box/Rc/Vec),
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
+/// [`ptr::read`]: ../ptr/fn.read.html
+///
 /// # Safety
 ///
-/// This has all the same safety problems as `ptr::read` with respect to
-/// invalid pointers, types, and double drops.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `to_drop` must be [valid] for reads.
+///
+/// * `to_drop` must be properly aligned.  See the example below for how to drop
+///   an unaligned pointer.
+///
+/// Additionally, if `T` is not [`Copy`], using the pointed-to value after
+/// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
+/// foo` counts as a use because it will cause the value to be dropped
+/// again. [`write`] can be used to overwrite data without causing it to be
+/// dropped.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`write`]: ../ptr/fn.write.html
+///
+/// # Examples
+///
+/// Manually remove the last item from a vector:
+///
+/// ```
+/// use std::ptr;
+/// use std::rc::Rc;
+///
+/// let last = Rc::new(1);
+/// let weak = Rc::downgrade(&last);
+///
+/// let mut v = vec![Rc::new(0), last];
+///
+/// unsafe {
+///     // Get a raw pointer to the last element in `v`.
+///     let ptr = &mut v[1] as *mut _;
+///     // Shorten `v` to prevent the last item from being dropped.  We do that first,
+///     // to prevent issues if the `drop_in_place` below panics.
+///     v.set_len(1);
+///     // Without a call `drop_in_place`, the last item would never be dropped,
+///     // and the memory it manages would be leaked.
+///     ptr::drop_in_place(ptr);
+/// }
+///
+/// assert_eq!(v, &[0.into()]);
+///
+/// // Ensure that the last item was dropped.
+/// assert!(weak.upgrade().is_none());
+/// ```
+///
+/// Unaligned values cannot be dropped in place, they must be copied to an aligned
+/// location first:
+/// ```
+/// use std::ptr;
+/// use std::mem;
+///
+/// unsafe fn drop_after_copy<T>(to_drop: *mut T) {
+///     let mut copy: T = mem::uninitialized();
+///     ptr::copy(to_drop, &mut copy, 1);
+///     drop(copy);
+/// }
+///
+/// #[repr(packed, C)]
+/// struct Packed {
+///     _padding: u8,
+///     unaligned: Vec<i32>,
+/// }
+///
+/// let mut p = Packed { _padding: 0, unaligned: vec![42] };
+/// unsafe {
+///     drop_after_copy(&mut p.unaligned as *mut _);
+///     mem::forget(p);
+/// }
+/// ```
+///
+/// Notice that the compiler performs this copy automatically when dropping packed structs,
+/// i.e., you do not usually have to worry about such issues unless you call `drop_in_place`
+/// manually.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
+#[inline(always)]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    real_drop_in_place(&mut *to_drop)
+}
+
+// The real `drop_in_place` -- the one that gets called implicitly when variables go
+// out of scope -- should have a safe reference and not a raw pointer as argument
+// type.  When we drop a local variable, we access it with a pointer that behaves
+// like a safe reference; transmuting that to a raw pointer does not mean we can
+// actually access it with raw pointers.
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+unsafe fn real_drop_in_place<T: ?Sized>(to_drop: &mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    drop_in_place(to_drop);
+    real_drop_in_place(to_drop)
 }
 
 /// Creates a null raw pointer.
@@ -74,6 +208,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
 pub const fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
@@ -88,22 +223,35 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///
-/// The values pointed at by `x` and `y` may overlap, unlike `mem::swap` which
-/// is otherwise equivalent. If the values do overlap, then the overlapping
-/// region of memory from `x` will be used. This is demonstrated in the
-/// examples section below.
+/// But for the following two exceptions, this function is semantically
+/// equivalent to [`mem::swap`]:
+///
+/// * It operates on raw pointers instead of references. When references are
+///   available, [`mem::swap`] should be preferred.
+///
+/// * The two pointed-to values may overlap. If the values do overlap, then the
+///   overlapping region of memory from `x` will be used. This is demonstrated
+///   in the second example below.
+///
+/// [`mem::swap`]: ../mem/fn.swap.html
 ///
 /// # Safety
 ///
-/// This function copies the memory through the raw pointers passed to it
-/// as arguments.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// Ensure that these pointers are valid before calling `swap`.
+/// * Both `x` and `y` must be [valid] for reads and writes.
+///
+/// * Both `x` and `y` must be properly aligned.
+///
+/// Note that even if `T` has size `0`, the pointers must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
 ///
@@ -114,8 +262,8 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 2];
-/// let y = array[2..].as_mut_ptr() as *mut [u32; 2];
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 2]; // this is `array[0..2]`
+/// let y = array[2..].as_mut_ptr() as *mut [u32; 2]; // this is `array[2..4]`
 ///
 /// unsafe {
 ///     ptr::swap(x, y);
@@ -130,36 +278,52 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 3];
-/// let y = array[1..].as_mut_ptr() as *mut [u32; 3];
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 3]; // this is `array[0..3]`
+/// let y = array[1..].as_mut_ptr() as *mut [u32; 3]; // this is `array[1..4]`
 ///
 /// unsafe {
 ///     ptr::swap(x, y);
+///     // The indices `1..3` of the slice overlap between `x` and `y`.
+///     // Reasonable results would be for to them be `[2, 3]`, so that indices `0..3` are
+///     // `[1, 2, 3]` (matching `y` before the `swap`); or for them to be `[0, 1]`
+///     // so that indices `1..4` are `[0, 1, 2]` (matching `x` before the `swap`).
+///     // This implementation is defined to make the latter choice.
 ///     assert_eq!([1, 0, 1, 2], array);
 /// }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
-    // Give ourselves some scratch space to work with
-    let mut tmp: T = mem::uninitialized();
+    // Give ourselves some scratch space to work with.
+    // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
+    let mut tmp = MaybeUninit::<T>::uninitialized();
 
     // Perform the swap
-    copy_nonoverlapping(x, &mut tmp, 1);
+    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
     copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(&tmp, y, 1);
-
-    // y and t now point to the same thing, but we need to completely forget `tmp`
-    // because it's no longer relevant.
-    mem::forget(tmp);
+    copy_nonoverlapping(tmp.get_ref(), y, 1);
 }
 
-/// Swaps a sequence of values at two mutable locations of the same type.
+/// Swaps `count * size_of::<T>()` bytes between the two regions of memory
+/// beginning at `x` and `y`. The two regions must *not* overlap.
 ///
 /// # Safety
 ///
-/// The two arguments must each point to the beginning of `count` locations
-/// of valid memory, and the two memory ranges must not overlap.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * Both `x` and `y` must be [valid] for reads and writes of `count *
+///   size_of::<T>()` bytes.
+///
+/// * Both `x` and `y` must be properly aligned.
+///
+/// * The region of memory beginning at `x` with a size of `count *
+///   size_of::<T>()` bytes must *not* overlap with the region of memory
+///   beginning at `y` with the same size.
+///
+/// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
+/// the pointers must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
 ///
@@ -203,7 +367,7 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
 #[inline]
 unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
-    // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
+    // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
     // Haswell E processors. LLVM is more able to optimize if we give a struct a
     // #[repr(simd)], even if we don't actually use this struct directly.
     //
@@ -224,10 +388,10 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     while i + block_size <= len {
         // Create some uninitialized memory as scratch space
         // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t: Block = mem::uninitialized();
-        let t = &mut t as *mut _ as *mut u8;
-        let x = x.offset(i as isize);
-        let y = y.offset(i as isize);
+        let mut t = mem::MaybeUninit::<Block>::uninitialized();
+        let t = t.as_mut_ptr() as *mut u8;
+        let x = x.add(i);
+        let y = y.add(i);
 
         // Swap a block of bytes of x & y, using t as a temporary buffer
         // This should be optimized into efficient SIMD operations where available
@@ -239,12 +403,12 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 
     if i < len {
         // Swap any remaining bytes
-        let mut t: UnalignedBlock = mem::uninitialized();
+        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninitialized();
         let rem = len - i;
 
-        let t = &mut t as *mut _ as *mut u8;
-        let x = x.offset(i as isize);
-        let y = y.offset(i as isize);
+        let t = t.as_mut_ptr() as *mut u8;
+        let x = x.add(i);
+        let y = y.add(i);
 
         copy_nonoverlapping(x, t, rem);
         copy_nonoverlapping(y, x, rem);
@@ -252,18 +416,48 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     }
 }
 
-/// Moves `src` into the pointed `dest`, returning the previous `dest` value.
+/// Moves `src` into the pointed `dst`, returning the previous `dst` value.
 ///
 /// Neither value is dropped.
 ///
+/// This function is semantically equivalent to [`mem::replace`] except that it
+/// operates on raw pointers instead of references. When references are
+/// available, [`mem::replace`] should be preferred.
+///
+/// [`mem::replace`]: ../mem/fn.replace.html
+///
 /// # Safety
 ///
-/// This is only unsafe because it accepts a raw pointer.
-/// Otherwise, this operation is identical to `mem::replace`.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must be [valid] for writes.
+///
+/// * `dst` must be properly aligned.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut rust = vec!['b', 'u', 's', 't'];
+///
+/// // `mem::replace` would have the same effect without requiring the unsafe
+/// // block.
+/// let b = unsafe {
+///     ptr::replace(&mut rust[0], 'r')
+/// };
+///
+/// assert_eq!(b, 'b');
+/// assert_eq!(rust, &['r', 'u', 's', 't']);
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
-    mem::swap(&mut *dest, &mut src); // cannot overlap
+pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+    mem::swap(&mut *dst, &mut src); // cannot overlap
     src
 }
 
@@ -272,14 +466,14 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this is unsafe because it semantically
-/// moves the value out of `src` without preventing further usage of `src`.
-/// If `T` is not `Copy`, then care must be taken to ensure that the value at
-/// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
-/// because it will attempt to drop the value previously at `*src`.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// The pointer must be aligned; use `read_unaligned` if that is not the case.
+/// * `src` must be [valid] for reads.
+///
+/// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
+///   case.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
 ///
 /// # Examples
 ///
@@ -293,68 +487,192 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
+///
+/// Manually implement [`mem::swap`]:
+///
+/// ```
+/// use std::ptr;
+///
+/// fn swap<T>(a: &mut T, b: &mut T) {
+///     unsafe {
+///         // Create a bitwise copy of the value at `a` in `tmp`.
+///         let tmp = ptr::read(a);
+///
+///         // Exiting at this point (either by explicitly returning or by
+///         // calling a function which panics) would cause the value in `tmp` to
+///         // be dropped while the same value is still referenced by `a`. This
+///         // could trigger undefined behavior if `T` is not `Copy`.
+///
+///         // Create a bitwise copy of the value at `b` in `a`.
+///         // This is safe because mutable references cannot alias.
+///         ptr::copy_nonoverlapping(b, a, 1);
+///
+///         // As above, exiting here could trigger undefined behavior because
+///         // the same value is referenced by `a` and `b`.
+///
+///         // Move `tmp` into `b`.
+///         ptr::write(b, tmp);
+///
+///         // `tmp` has been moved (`write` takes ownership of its second argument),
+///         // so nothing is dropped implicitly here.
+///     }
+/// }
+///
+/// let mut foo = "foo".to_owned();
+/// let mut bar = "bar".to_owned();
+///
+/// swap(&mut foo, &mut bar);
+///
+/// assert_eq!(foo, "bar");
+/// assert_eq!(bar, "foo");
+/// ```
+///
+/// ## Ownership of the Returned Value
+///
+/// `read` creates a bitwise copy of `T`, regardless of whether `T` is [`Copy`].
+/// If `T` is not [`Copy`], using both the returned value and the value at
+/// `*src` can violate memory safety.  Note that assigning to `*src` counts as a
+/// use because it will attempt to drop the value at `*src`.
+///
+/// [`write`] can be used to overwrite data without causing it to be dropped.
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut s = String::from("foo");
+/// unsafe {
+///     // `s2` now points to the same underlying memory as `s`.
+///     let mut s2: String = ptr::read(&s);
+///
+///     assert_eq!(s2, "foo");
+///
+///     // Assigning to `s2` causes its original value to be dropped. Beyond
+///     // this point, `s` must no longer be used, as the underlying memory has
+///     // been freed.
+///     s2 = String::default();
+///     assert_eq!(s2, "");
+///
+///     // Assigning to `s` would cause the old value to be dropped again,
+///     // resulting in undefined behavior.
+///     // s = String::from("bar"); // ERROR
+///
+///     // `ptr::write` can be used to overwrite a value without dropping it.
+///     ptr::write(&mut s, String::from("bar"));
+/// }
+///
+/// assert_eq!(s, "bar");
+/// ```
+///
+/// [`mem::swap`]: ../mem/fn.swap.html
+/// [valid]: ../ptr/index.html#safety
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read_unaligned`]: ./fn.read_unaligned.html
+/// [`write`]: ./fn.write.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
-    let mut tmp: T = mem::uninitialized();
-    copy_nonoverlapping(src, &mut tmp, 1);
-    tmp
+    let mut tmp = MaybeUninit::<T>::uninitialized();
+    copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+    tmp.into_inner()
 }
 
 /// Reads the value from `src` without moving it. This leaves the
 /// memory in `src` unchanged.
 ///
-/// Unlike `read`, the pointer may be unaligned.
+/// Unlike [`read`], `read_unaligned` works with unaligned pointers.
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this is unsafe because it semantically
-/// moves the value out of `src` without preventing further usage of `src`.
-/// If `T` is not `Copy`, then care must be taken to ensure that the value at
-/// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
-/// because it will attempt to drop the value previously at `*src`.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must be [valid] for reads.
+///
+/// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
+/// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the returned
+/// value and the value at `*src` can [violate memory safety][read-ownership].
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read`]: ./fn.read.html
+/// [`write_unaligned`]: ./fn.write_unaligned.html
+/// [read-ownership]: ./fn.read.html#ownership-of-the-returned-value
+/// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
 ///
-/// Basic usage:
+/// Access members of a packed struct by reference:
 ///
 /// ```
-/// let x = 12;
-/// let y = &x as *const i32;
+/// use std::ptr;
 ///
-/// unsafe {
-///     assert_eq!(std::ptr::read_unaligned(y), 12);
+/// #[repr(packed, C)]
+/// struct Packed {
+///     _padding: u8,
+///     unaligned: u32,
 /// }
+///
+/// let x = Packed {
+///     _padding: 0x00,
+///     unaligned: 0x01020304,
+/// };
+///
+/// let v = unsafe {
+///     // Take the address of a 32-bit integer which is not aligned.
+///     // This must be done as a raw pointer; unaligned references are invalid.
+///     let unaligned = &x.unaligned as *const u32;
+///
+///     // Dereferencing normally will emit an aligned load instruction,
+///     // causing undefined behavior.
+///     // let v = *unaligned; // ERROR
+///
+///     // Instead, use `read_unaligned` to read improperly aligned values.
+///     let v = ptr::read_unaligned(unaligned);
+///
+///     v
+/// };
+///
+/// // Accessing unaligned values directly is safe.
+/// assert!(x.unaligned == v);
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp: T = mem::uninitialized();
+    let mut tmp = MaybeUninit::<T>::uninitialized();
     copy_nonoverlapping(src as *const u8,
-                        &mut tmp as *mut T as *mut u8,
+                        tmp.as_mut_ptr() as *mut u8,
                         mem::size_of::<T>());
-    tmp
+    tmp.into_inner()
 }
 
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///
-/// # Safety
-///
-/// This operation is marked unsafe because it accepts a raw pointer.
-///
-/// It does not drop the contents of `dst`. This is safe, but it could leak
-/// allocations or resources, so care must be taken not to overwrite an object
+/// `write` does not drop the contents of `dst`. This is safe, but it could leak
+/// allocations or resources, so care should be taken not to overwrite an object
 /// that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
 /// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been `read` from.
+/// memory that has previously been [`read`] from.
 ///
-/// The pointer must be aligned; use `write_unaligned` if that is not the case.
+/// [`read`]: ./fn.read.html
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must be [valid] for writes.
+///
+/// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
+///   case.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+/// [`write_unaligned`]: ./fn.write_unaligned.html
 ///
 /// # Examples
 ///
@@ -370,6 +688,47 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
+///
+/// Manually implement [`mem::swap`]:
+///
+/// ```
+/// use std::ptr;
+///
+/// fn swap<T>(a: &mut T, b: &mut T) {
+///     unsafe {
+///         // Create a bitwise copy of the value at `a` in `tmp`.
+///         let tmp = ptr::read(a);
+///
+///         // Exiting at this point (either by explicitly returning or by
+///         // calling a function which panics) would cause the value in `tmp` to
+///         // be dropped while the same value is still referenced by `a`. This
+///         // could trigger undefined behavior if `T` is not `Copy`.
+///
+///         // Create a bitwise copy of the value at `b` in `a`.
+///         // This is safe because mutable references cannot alias.
+///         ptr::copy_nonoverlapping(b, a, 1);
+///
+///         // As above, exiting here could trigger undefined behavior because
+///         // the same value is referenced by `a` and `b`.
+///
+///         // Move `tmp` into `b`.
+///         ptr::write(b, tmp);
+///
+///         // `tmp` has been moved (`write` takes ownership of its second argument),
+///         // so nothing is dropped implicitly here.
+///     }
+/// }
+///
+/// let mut foo = "foo".to_owned();
+/// let mut bar = "bar".to_owned();
+///
+/// swap(&mut foo, &mut bar);
+///
+/// assert_eq!(foo, "bar");
+/// assert_eq!(bar, "foo");
+/// ```
+///
+/// [`mem::swap`]: ../mem/fn.swap.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
@@ -379,35 +738,62 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///
-/// Unlike `write`, the pointer may be unaligned.
+/// Unlike [`write`], the pointer may be unaligned.
 ///
-/// # Safety
-///
-/// This operation is marked unsafe because it accepts a raw pointer.
-///
-/// It does not drop the contents of `dst`. This is safe, but it could leak
-/// allocations or resources, so care must be taken not to overwrite an object
-/// that should be dropped.
+/// `write_unaligned` does not drop the contents of `dst`. This is safe, but it
+/// could leak allocations or resources, so care should be taken not to overwrite
+/// an object that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
 /// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been `read` from.
+/// memory that has previously been read with [`read_unaligned`].
+///
+/// [`write`]: ./fn.write.html
+/// [`read_unaligned`]: ./fn.read_unaligned.html
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must be [valid] for writes.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
 ///
-/// Basic usage:
+/// Access fields in a packed struct:
 ///
 /// ```
-/// let mut x = 0;
-/// let y = &mut x as *mut i32;
-/// let z = 12;
+/// use std::{mem, ptr};
+///
+/// #[repr(packed, C)]
+/// #[derive(Default)]
+/// struct Packed {
+///     _padding: u8,
+///     unaligned: u32,
+/// }
+///
+/// let v = 0x01020304;
+/// let mut x: Packed = unsafe { mem::zeroed() };
 ///
 /// unsafe {
-///     std::ptr::write_unaligned(y, z);
-///     assert_eq!(std::ptr::read_unaligned(y), 12);
+///     // Take a reference to a 32-bit integer which is not aligned.
+///     let unaligned = &mut x.unaligned as *mut u32;
+///
+///     // Dereferencing normally will emit an aligned store instruction,
+///     // causing undefined behavior because the pointer is not aligned.
+///     // *unaligned = v; // ERROR
+///
+///     // Instead, use `write_unaligned` to write improperly aligned values.
+///     ptr::write_unaligned(unaligned, v);
 /// }
+///
+/// // Accessing unaligned values directly is safe.
+/// assert!(x.unaligned == v);
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
@@ -425,6 +811,11 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
+/// Memory accessed with `read_volatile` or [`write_volatile`] should not be
+/// accessed with non-volatile operations.
+///
+/// [`write_volatile`]: ./fn.write_volatile.html
+///
 /// # Notes
 ///
 /// Rust does not currently have a rigorously and formally defined memory model,
@@ -434,19 +825,30 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
+/// (e.g., if a zero-sized type is passed to `read_volatile`) are no-ops
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this is unsafe because it semantically
-/// moves the value out of `src` without preventing further usage of `src`.
-/// If `T` is not `Copy`, then care must be taken to ensure that the value at
-/// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
-/// because it will attempt to drop the value previously at `*src`.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must be [valid] for reads.
+///
+/// * `src` must be properly aligned.
+///
+/// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
+/// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the returned
+/// value and the value at `*src` can [violate memory safety][read-ownership].
+/// However, storing non-[`Copy`] types in volatile memory is almost certainly
+/// incorrect.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read`]: ./fn.read.html
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile
@@ -479,6 +881,18 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
+/// Memory accessed with [`read_volatile`] or `write_volatile` should not be
+/// accessed with non-volatile operations.
+///
+/// `write_volatile` does not drop the contents of `dst`. This is safe, but it
+/// could leak allocations or resources, so care should be taken not to overwrite
+/// an object that should be dropped.
+///
+/// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+/// location pointed to by `dst`.
+///
+/// [`read_volatile`]: ./fn.read_volatile.html
+///
 /// # Notes
 ///
 /// Rust does not currently have a rigorously and formally defined memory model,
@@ -488,21 +902,22 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g. if a zero-sized type is passed to `write_volatile`) are no-ops
+/// (e.g., if a zero-sized type is passed to `write_volatile`) are no-ops
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 ///
 /// # Safety
 ///
-/// This operation is marked unsafe because it accepts a raw pointer.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// It does not drop the contents of `dst`. This is safe, but it could leak
-/// allocations or resources, so care must be taken not to overwrite an object
-/// that should be dropped.
+/// * `dst` must be [valid] for writes.
 ///
-/// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been `read` from.
+/// * `dst` must be properly aligned.
+///
+/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+///
+/// [valid]: ../ptr/index.html#safety
 ///
 /// Just like in C, whether an operation is volatile has no bearing whatsoever
 /// on questions involving concurrent access from multiple threads. Volatile
@@ -582,6 +997,21 @@ impl<T: ?Sized> *const T {
     ///     }
     /// }
     /// ```
+    ///
+    /// # Null-unchecked version
+    ///
+    /// If you are sure the pointer can never be null and are looking for some kind of
+    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>`, know that you can
+    /// dereference the pointer directly.
+    ///
+    /// ```
+    /// let ptr: *const u8 = &10u8 as *const u8;
+    ///
+    /// unsafe {
+    ///     let val_back = &*ptr;
+    ///     println!("We got back the value: {}!", val_back);
+    /// }
+    /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
@@ -594,7 +1024,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer.
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -603,7 +1033,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of *the same* allocated object.
+    ///   byte past the end of the same allocated object.
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -613,7 +1043,7 @@ impl<T: ?Sized> *const T {
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
     /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().offset(vec.len() as isize)` is always safe.
+    /// `vec.as_ptr().add(vec.len())` is always safe.
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
@@ -648,7 +1078,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -812,7 +1242,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -821,7 +1251,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of an allocated object.
+    ///   byte past the end of the same allocated object.
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -869,7 +1299,7 @@ impl<T: ?Sized> *const T {
     /// Calculates the offset from a pointer (convenience for
     /// `.offset((count as isize).wrapping_neg())`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -878,7 +1308,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of an allocated object.
+    ///   byte past the end of the same allocated object.
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
@@ -926,7 +1356,7 @@ impl<T: ?Sized> *const T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset(count as isize)`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -967,7 +1397,7 @@ impl<T: ?Sized> *const T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1008,29 +1438,9 @@ impl<T: ?Sized> *const T {
     /// Reads the value from `self` without moving it. This leaves the
     /// memory in `self` unchanged.
     ///
-    /// # Safety
+    /// See [`ptr::read`] for safety concerns and examples.
     ///
-    /// Beyond accepting a raw pointer, this is unsafe because it semantically
-    /// moves the value out of `self` without preventing further usage of `self`.
-    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
-    /// because it will attempt to drop the value previously at `*self`.
-    ///
-    /// The pointer must be aligned; use `read_unaligned` if that is not the case.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x = 12;
-    /// let y = &x as *const i32;
-    ///
-    /// unsafe {
-    ///     assert_eq!(y.read(), 12);
-    /// }
-    /// ```
+    /// [`ptr::read`]: ./ptr/fn.read.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read(self) -> T
@@ -1046,47 +1456,9 @@ impl<T: ?Sized> *const T {
     /// to not be elided or reordered by the compiler across other volatile
     /// operations.
     ///
-    /// # Notes
+    /// See [`ptr::read_volatile`] for safety concerns and examples.
     ///
-    /// Rust does not currently have a rigorously and formally defined memory model,
-    /// so the precise semantics of what "volatile" means here is subject to change
-    /// over time. That being said, the semantics will almost always end up pretty
-    /// similar to [C11's definition of volatile][c11].
-    ///
-    /// The compiler shouldn't change the relative order or number of volatile
-    /// memory operations. However, volatile memory operations on zero-sized types
-    /// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
-    /// and may be ignored.
-    ///
-    /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
-    ///
-    /// # Safety
-    ///
-    /// Beyond accepting a raw pointer, this is unsafe because it semantically
-    /// moves the value out of `self` without preventing further usage of `self`.
-    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
-    /// because it will attempt to drop the value previously at `*self`.
-    ///
-    /// Just like in C, whether an operation is volatile has no bearing whatsoever
-    /// on questions involving concurrent access from multiple threads. Volatile
-    /// accesses behave exactly like non-atomic accesses in that regard. In particular,
-    /// a race between a `read_volatile` and any write operation to the same location
-    /// is undefined behavior.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x = 12;
-    /// let y = &x as *const i32;
-    ///
-    /// unsafe {
-    ///     assert_eq!(y.read_volatile(), 12);
-    /// }
-    /// ```
+    /// [`ptr::read_volatile`]: ./ptr/fn.read_volatile.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
@@ -1100,27 +1472,9 @@ impl<T: ?Sized> *const T {
     ///
     /// Unlike `read`, the pointer may be unaligned.
     ///
-    /// # Safety
+    /// See [`ptr::read_unaligned`] for safety concerns and examples.
     ///
-    /// Beyond accepting a raw pointer, this is unsafe because it semantically
-    /// moves the value out of `self` without preventing further usage of `self`.
-    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
-    /// because it will attempt to drop the value previously at `*self`.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x = 12;
-    /// let y = &x as *const i32;
-    ///
-    /// unsafe {
-    ///     assert_eq!(y.read_unaligned(), 12);
-    /// }
-    /// ```
+    /// [`ptr::read_unaligned`]: ./ptr/fn.read_unaligned.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
@@ -1132,30 +1486,11 @@ impl<T: ?Sized> *const T {
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
     /// and destination may overlap.
     ///
-    /// NOTE: this has the *same* argument order as `ptr::copy`.
+    /// NOTE: this has the *same* argument order as [`ptr::copy`].
     ///
-    /// This is semantically equivalent to C's `memmove`.
+    /// See [`ptr::copy`] for safety concerns and examples.
     ///
-    /// # Safety
-    ///
-    /// Care must be taken with the ownership of `self` and `dest`.
-    /// This method semantically moves the values of `self` into `dest`.
-    /// However it does not drop the contents of `dest`, or prevent the contents
-    /// of `self` from being dropped or used.
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     ptr.copy_to(dst.as_mut_ptr(), elts);
-    ///     dst
-    /// }
-    /// ```
+    /// [`ptr::copy`]: ./ptr/fn.copy.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
@@ -1167,32 +1502,11 @@ impl<T: ?Sized> *const T {
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
     /// and destination may *not* overlap.
     ///
-    /// NOTE: this has the *same* argument order as `ptr::copy_nonoverlapping`.
+    /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
     ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
-    /// # Safety
-    ///
-    /// Beyond requiring that the program must be allowed to access both regions
-    /// of memory, it is Undefined Behavior for source and destination to
-    /// overlap. Care must also be taken with the ownership of `self` and
-    /// `self`. This method semantically moves the values of `self` into `dest`.
-    /// However it does not drop the contents of `dest`, or prevent the contents
-    /// of `self` from being dropped or used.
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     ptr.copy_to_nonoverlapping(dst.as_mut_ptr(), elts);
-    ///     dst
-    /// }
-    /// ```
+    /// [`ptr::copy_nonoverlapping`]: ./ptr/fn.copy_nonoverlapping.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
@@ -1231,7 +1545,7 @@ impl<T: ?Sized> *const T {
     /// let ptr = &x[n] as *const u8;
     /// let offset = ptr.align_offset(align_of::<u16>());
     /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     let u16_ptr = ptr.add(offset) as *const u16;
     ///     assert_ne!(*u16_ptr, 500);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
@@ -1303,6 +1617,21 @@ impl<T: ?Sized> *mut T {
     ///     }
     /// }
     /// ```
+    ///
+    /// # Null-unchecked version
+    ///
+    /// If you are sure the pointer can never be null and are looking for some kind of
+    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>`, know that you can
+    /// dereference the pointer directly.
+    ///
+    /// ```
+    /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
+    ///
+    /// unsafe {
+    ///     let val_back = &*ptr;
+    ///     println!("We got back the value: {}!", val_back);
+    /// }
+    /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
@@ -1315,7 +1644,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the offset from a pointer.
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1324,7 +1653,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of *the same* allocated object.
+    ///   byte past the end of the same allocated object.
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -1334,7 +1663,7 @@ impl<T: ?Sized> *mut T {
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
     /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `vec.as_ptr().offset(vec.len() as isize)` is always safe.
+    /// `vec.as_ptr().add(vec.len())` is always safe.
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
@@ -1368,7 +1697,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1551,7 +1880,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1560,7 +1889,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of an allocated object.
+    ///   byte past the end of the same allocated object.
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -1608,7 +1937,7 @@ impl<T: ?Sized> *mut T {
     /// Calculates the offset from a pointer (convenience for
     /// `.offset((count as isize).wrapping_neg())`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1617,7 +1946,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of an allocated object.
+    ///   byte past the end of the same allocated object.
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
@@ -1665,7 +1994,7 @@ impl<T: ?Sized> *mut T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset(count as isize)`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1706,7 +2035,7 @@ impl<T: ?Sized> *mut T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1747,29 +2076,9 @@ impl<T: ?Sized> *mut T {
     /// Reads the value from `self` without moving it. This leaves the
     /// memory in `self` unchanged.
     ///
-    /// # Safety
+    /// See [`ptr::read`] for safety concerns and examples.
     ///
-    /// Beyond accepting a raw pointer, this is unsafe because it semantically
-    /// moves the value out of `self` without preventing further usage of `self`.
-    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
-    /// because it will attempt to drop the value previously at `*self`.
-    ///
-    /// The pointer must be aligned; use `read_unaligned` if that is not the case.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x = 12;
-    /// let y = &x as *const i32;
-    ///
-    /// unsafe {
-    ///     assert_eq!(y.read(), 12);
-    /// }
-    /// ```
+    /// [`ptr::read`]: ./ptr/fn.read.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read(self) -> T
@@ -1785,47 +2094,9 @@ impl<T: ?Sized> *mut T {
     /// to not be elided or reordered by the compiler across other volatile
     /// operations.
     ///
-    /// # Notes
+    /// See [`ptr::read_volatile`] for safety concerns and examples.
     ///
-    /// Rust does not currently have a rigorously and formally defined memory model,
-    /// so the precise semantics of what "volatile" means here is subject to change
-    /// over time. That being said, the semantics will almost always end up pretty
-    /// similar to [C11's definition of volatile][c11].
-    ///
-    /// The compiler shouldn't change the relative order or number of volatile
-    /// memory operations. However, volatile memory operations on zero-sized types
-    /// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
-    /// and may be ignored.
-    ///
-    /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
-    ///
-    /// # Safety
-    ///
-    /// Beyond accepting a raw pointer, this is unsafe because it semantically
-    /// moves the value out of `self` without preventing further usage of `self`.
-    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
-    /// because it will attempt to drop the value previously at `*self`.
-    ///
-    /// Just like in C, whether an operation is volatile has no bearing whatsoever
-    /// on questions involving concurrent access from multiple threads. Volatile
-    /// accesses behave exactly like non-atomic accesses in that regard. In particular,
-    /// a race between a `read_volatile` and any write operation to the same location
-    /// is undefined behavior.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x = 12;
-    /// let y = &x as *const i32;
-    ///
-    /// unsafe {
-    ///     assert_eq!(y.read_volatile(), 12);
-    /// }
-    /// ```
+    /// [`ptr::read_volatile`]: ./ptr/fn.read_volatile.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
@@ -1839,27 +2110,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// Unlike `read`, the pointer may be unaligned.
     ///
-    /// # Safety
+    /// See [`ptr::read_unaligned`] for safety concerns and examples.
     ///
-    /// Beyond accepting a raw pointer, this is unsafe because it semantically
-    /// moves the value out of `self` without preventing further usage of `self`.
-    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
-    /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
-    /// because it will attempt to drop the value previously at `*self`.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x = 12;
-    /// let y = &x as *const i32;
-    ///
-    /// unsafe {
-    ///     assert_eq!(y.read_unaligned(), 12);
-    /// }
-    /// ```
+    /// [`ptr::read_unaligned`]: ./ptr/fn.read_unaligned.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
@@ -1871,30 +2124,11 @@ impl<T: ?Sized> *mut T {
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
     /// and destination may overlap.
     ///
-    /// NOTE: this has the *same* argument order as `ptr::copy`.
+    /// NOTE: this has the *same* argument order as [`ptr::copy`].
     ///
-    /// This is semantically equivalent to C's `memmove`.
+    /// See [`ptr::copy`] for safety concerns and examples.
     ///
-    /// # Safety
-    ///
-    /// Care must be taken with the ownership of `self` and `dest`.
-    /// This method semantically moves the values of `self` into `dest`.
-    /// However it does not drop the contents of `self`, or prevent the contents
-    /// of `dest` from being dropped or used.
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     ptr.copy_to(dst.as_mut_ptr(), elts);
-    ///     dst
-    /// }
-    /// ```
+    /// [`ptr::copy`]: ./ptr/fn.copy.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
@@ -1906,32 +2140,11 @@ impl<T: ?Sized> *mut T {
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
     /// and destination may *not* overlap.
     ///
-    /// NOTE: this has the *same* argument order as `ptr::copy_nonoverlapping`.
+    /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
     ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
-    /// # Safety
-    ///
-    /// Beyond requiring that the program must be allowed to access both regions
-    /// of memory, it is Undefined Behavior for source and destination to
-    /// overlap. Care must also be taken with the ownership of `self` and
-    /// `self`. This method semantically moves the values of `self` into `dest`.
-    /// However it does not drop the contents of `dest`, or prevent the contents
-    /// of `self` from being dropped or used.
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     ptr.copy_to_nonoverlapping(dst.as_mut_ptr(), elts);
-    ///     dst
-    /// }
-    /// ```
+    /// [`ptr::copy_nonoverlapping`]: ./ptr/fn.copy_nonoverlapping.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
@@ -1943,30 +2156,11 @@ impl<T: ?Sized> *mut T {
     /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
     /// and destination may overlap.
     ///
-    /// NOTE: this has the *opposite* argument order of `ptr::copy`.
+    /// NOTE: this has the *opposite* argument order of [`ptr::copy`].
     ///
-    /// This is semantically equivalent to C's `memmove`.
+    /// See [`ptr::copy`] for safety concerns and examples.
     ///
-    /// # Safety
-    ///
-    /// Care must be taken with the ownership of `src` and `self`.
-    /// This method semantically moves the values of `src` into `self`.
-    /// However it does not drop the contents of `self`, or prevent the contents
-    /// of `src` from being dropped or used.
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     dst.as_mut_ptr().copy_from(ptr, elts);
-    ///     dst
-    /// }
-    /// ```
+    /// [`ptr::copy`]: ./ptr/fn.copy.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_from(self, src: *const T, count: usize)
@@ -1978,32 +2172,11 @@ impl<T: ?Sized> *mut T {
     /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
     /// and destination may *not* overlap.
     ///
-    /// NOTE: this has the *opposite* argument order of `ptr::copy_nonoverlapping`.
+    /// NOTE: this has the *opposite* argument order of [`ptr::copy_nonoverlapping`].
     ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
-    /// # Safety
-    ///
-    /// Beyond requiring that the program must be allowed to access both regions
-    /// of memory, it is Undefined Behavior for source and destination to
-    /// overlap. Care must also be taken with the ownership of `src` and
-    /// `self`. This method semantically moves the values of `src` into `self`.
-    /// However it does not drop the contents of `self`, or prevent the contents
-    /// of `src` from being dropped or used.
-    ///
-    /// # Examples
-    ///
-    /// Efficiently create a Rust vector from an unsafe buffer:
-    ///
-    /// ```
-    /// # #[allow(dead_code)]
-    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
-    ///     dst.set_len(elts);
-    ///     dst.as_mut_ptr().copy_from_nonoverlapping(ptr, elts);
-    ///     dst
-    /// }
-    /// ```
+    /// [`ptr::copy_nonoverlapping`]: ./ptr/fn.copy_nonoverlapping.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
@@ -2014,21 +2187,9 @@ impl<T: ?Sized> *mut T {
 
     /// Executes the destructor (if any) of the pointed-to value.
     ///
-    /// This has two use cases:
+    /// See [`ptr::drop_in_place`] for safety concerns and examples.
     ///
-    /// * It is *required* to use `drop_in_place` to drop unsized types like
-    ///   trait objects, because they can't be read out onto the stack and
-    ///   dropped normally.
-    ///
-    /// * It is friendlier to the optimizer to do this over `ptr::read` when
-    ///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
-    ///   as the compiler doesn't need to prove that it's sound to elide the
-    ///   copy.
-    ///
-    /// # Safety
-    ///
-    /// This has all the same safety problems as `ptr::read` with respect to
-    /// invalid pointers, types, and double drops.
+    /// [`ptr::drop_in_place`]: ./ptr/fn.drop_in_place.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn drop_in_place(self) {
@@ -2038,36 +2199,9 @@ impl<T: ?Sized> *mut T {
     /// Overwrites a memory location with the given value without reading or
     /// dropping the old value.
     ///
-    /// # Safety
+    /// See [`ptr::write`] for safety concerns and examples.
     ///
-    /// This operation is marked unsafe because it writes through a raw pointer.
-    ///
-    /// It does not drop the contents of `self`. This is safe, but it could leak
-    /// allocations or resources, so care must be taken not to overwrite an object
-    /// that should be dropped.
-    ///
-    /// Additionally, it does not drop `val`. Semantically, `val` is moved into the
-    /// location pointed to by `self`.
-    ///
-    /// This is appropriate for initializing uninitialized memory, or overwriting
-    /// memory that has previously been `read` from.
-    ///
-    /// The pointer must be aligned; use `write_unaligned` if that is not the case.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let mut x = 0;
-    /// let y = &mut x as *mut i32;
-    /// let z = 12;
-    ///
-    /// unsafe {
-    ///     y.write(z);
-    ///     assert_eq!(y.read(), 12);
-    /// }
-    /// ```
+    /// [`ptr::write`]: ./ptr/fn.write.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write(self, val: T)
@@ -2079,16 +2213,9 @@ impl<T: ?Sized> *mut T {
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `self` to `val`.
     ///
-    /// # Examples
+    /// See [`ptr::write_bytes`] for safety concerns and examples.
     ///
-    /// ```
-    /// let mut vec = vec![0; 4];
-    /// unsafe {
-    ///     let vec_ptr = vec.as_mut_ptr();
-    ///     vec_ptr.write_bytes(b'a', 2);
-    /// }
-    /// assert_eq!(vec, [b'a', b'a', 0, 0]);
-    /// ```
+    /// [`ptr::write_bytes`]: ./ptr/fn.write_bytes.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write_bytes(self, val: u8, count: usize)
@@ -2104,51 +2231,9 @@ impl<T: ?Sized> *mut T {
     /// to not be elided or reordered by the compiler across other volatile
     /// operations.
     ///
-    /// # Notes
+    /// See [`ptr::write_volatile`] for safety concerns and examples.
     ///
-    /// Rust does not currently have a rigorously and formally defined memory model,
-    /// so the precise semantics of what "volatile" means here is subject to change
-    /// over time. That being said, the semantics will almost always end up pretty
-    /// similar to [C11's definition of volatile][c11].
-    ///
-    /// The compiler shouldn't change the relative order or number of volatile
-    /// memory operations. However, volatile memory operations on zero-sized types
-    /// (e.g. if a zero-sized type is passed to `write_volatile`) are no-ops
-    /// and may be ignored.
-    ///
-    /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
-    ///
-    /// # Safety
-    ///
-    /// This operation is marked unsafe because it accepts a raw pointer.
-    ///
-    /// It does not drop the contents of `self`. This is safe, but it could leak
-    /// allocations or resources, so care must be taken not to overwrite an object
-    /// that should be dropped.
-    ///
-    /// This is appropriate for initializing uninitialized memory, or overwriting
-    /// memory that has previously been `read` from.
-    ///
-    /// Just like in C, whether an operation is volatile has no bearing whatsoever
-    /// on questions involving concurrent access from multiple threads. Volatile
-    /// accesses behave exactly like non-atomic accesses in that regard. In particular,
-    /// a race between a `write_volatile` and any other operation (reading or writing)
-    /// on the same location is undefined behavior.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let mut x = 0;
-    /// let y = &mut x as *mut i32;
-    /// let z = 12;
-    ///
-    /// unsafe {
-    ///     y.write_volatile(z);
-    ///     assert_eq!(y.read_volatile(), 12);
-    /// }
-    /// ```
+    /// [`ptr::write_volatile`]: ./ptr/fn.write_volatile.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write_volatile(self, val: T)
@@ -2162,34 +2247,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// Unlike `write`, the pointer may be unaligned.
     ///
-    /// # Safety
+    /// See [`ptr::write_unaligned`] for safety concerns and examples.
     ///
-    /// This operation is marked unsafe because it writes through a raw pointer.
-    ///
-    /// It does not drop the contents of `self`. This is safe, but it could leak
-    /// allocations or resources, so care must be taken not to overwrite an object
-    /// that should be dropped.
-    ///
-    /// Additionally, it does not drop `self`. Semantically, `self` is moved into the
-    /// location pointed to by `val`.
-    ///
-    /// This is appropriate for initializing uninitialized memory, or overwriting
-    /// memory that has previously been `read` from.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let mut x = 0;
-    /// let y = &mut x as *mut i32;
-    /// let z = 12;
-    ///
-    /// unsafe {
-    ///     y.write_unaligned(z);
-    ///     assert_eq!(y.read_unaligned(), 12);
-    /// }
-    /// ```
+    /// [`ptr::write_unaligned`]: ./ptr/fn.write_unaligned.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn write_unaligned(self, val: T)
@@ -2201,10 +2261,9 @@ impl<T: ?Sized> *mut T {
     /// Replaces the value at `self` with `src`, returning the old
     /// value, without dropping either.
     ///
-    /// # Safety
+    /// See [`ptr::replace`] for safety concerns and examples.
     ///
-    /// This is only unsafe because it accepts a raw pointer.
-    /// Otherwise, this operation is identical to `mem::replace`.
+    /// [`ptr::replace`]: ./ptr/fn.replace.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn replace(self, src: T) -> T
@@ -2217,12 +2276,9 @@ impl<T: ?Sized> *mut T {
     /// deinitializing either. They may overlap, unlike `mem::swap` which is
     /// otherwise equivalent.
     ///
-    /// # Safety
+    /// See [`ptr::swap`] for safety concerns and examples.
     ///
-    /// This function copies the memory through the raw pointers passed to it
-    /// as arguments.
-    ///
-    /// Ensure that these pointers are valid before calling `swap`.
+    /// [`ptr::swap`]: ./ptr/fn.swap.html
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn swap(self, with: *mut T)
@@ -2261,7 +2317,7 @@ impl<T: ?Sized> *mut T {
     /// let ptr = &x[n] as *const u8;
     /// let offset = ptr.align_offset(align_of::<u16>());
     /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     let u16_ptr = ptr.add(offset) as *const u16;
     ///     assert_ne!(*u16_ptr, 500);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
@@ -2291,7 +2347,7 @@ impl<T: ?Sized> *mut T {
 ///
 /// If we ever decide to make it possible to call the intrinsic with `a` that is not a
 /// power-of-two, it will probably be more prudent to just change to a naive implementation rather
-/// than trying to adapt this to accomodate that change.
+/// than trying to adapt this to accommodate that change.
 ///
 /// Any questions go to @nagisa.
 #[lang="align_offset"]
@@ -2308,15 +2364,15 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     fn mod_inv(x: usize, m: usize) -> usize {
         /// Multiplicative modular inverse table modulo 2⁴ = 16.
         ///
-        /// Note, that this table does not contain values where inverse does not exist (i.e. for
+        /// Note, that this table does not contain values where inverse does not exist (i.e., for
         /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
-        const INV_TABLE_MOD_16: [usize; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
+        const INV_TABLE_MOD_16: [u8; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
         /// Modulo for which the `INV_TABLE_MOD_16` is intended.
         const INV_TABLE_MOD: usize = 16;
         /// INV_TABLE_MOD²
         const INV_TABLE_MOD_SQUARED: usize = INV_TABLE_MOD * INV_TABLE_MOD;
 
-        let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1];
+        let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
         if m <= INV_TABLE_MOD {
             table_inverse & (m - 1)
         } else {
@@ -2331,7 +2387,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 // y = y * (2 - xy) mod n
                 //
                 // Note, that we use wrapping operations here intentionally – the original formula
-                // uses e.g. subtraction `mod n`. It is entirely fine to do them `mod
+                // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
                 // usize::max_value()` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(
@@ -2369,36 +2425,23 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
     let gcd = 1usize << gcdpow;
 
-    if gcd == 1 {
-        // This branch solves for the variable $o$ in following linear congruence equation:
+    if p as usize & (gcd - 1) == 0 {
+        // This branch solves for the following linear congruence equation:
         //
-        // ⎰ p + o ≡ 0 (mod a)   # $p + o$ must be aligned to specified alignment $a$
-        // ⎱     o ≡ 0 (mod s)   # offset $o$ must be a multiple of stride $s$
+        // $$ p + so ≡ 0 mod a $$
         //
-        // where
+        // $p$ here is the pointer value, $s$ – stride of `T`, $o$ offset in `T`s, and $a$ – the
+        // requested alignment.
         //
-        // * a, s are co-prime
-        //
-        // This gives us the formula below:
-        //
-        // o = (a - (p mod a)) * (s⁻¹ mod a) * s
+        // g = gcd(a, s)
+        // o = (a - (p mod a))/g * ((s/g)⁻¹ mod a)
         //
         // The first term is “the relative alignment of p to a”, the second term is “how does
-        // incrementing p by one s change the relative alignment of p”, the third term is
-        // translating change in units of s to a byte count.
+        // incrementing p by s bytes change the relative alignment of p”. Division by `g` is
+        // necessary to make this equation well formed if $a$ and $s$ are not co-prime.
         //
         // Furthermore, the result produced by this solution is not “minimal”, so it is necessary
-        // to take the result $o mod lcm(s, a)$. Since $s$ and $a$ are co-prime (i.e. $gcd(s, a) =
-        // 1$) and $lcm(s, a) = s * a / gcd(s, a)$, we can replace $lcm(s, a)$ with just a $s * a$.
-        //
-        // (Author note: we decided later on to express the offset in "elements" rather than bytes,
-        // which drops the multiplication by `s` on both sides of the modulo.)
-        return intrinsics::unchecked_rem(a.wrapping_sub(pmoda).wrapping_mul(mod_inv(smoda, a)), a);
-    }
-
-    if p as usize & (gcd - 1) == 0 {
-        // This can be aligned, but `a` and `stride` are not co-prime, so a somewhat adapted
-        // formula is used.
+        // to take the result $o mod lcm(s, a)$. We can replace $lcm(s, a)$ with just a $a / g$.
         let j = a.wrapping_sub(pmoda) >> gcdpow;
         let k = smoda >> gcdpow;
         return intrinsics::unchecked_rem(j.wrapping_mul(mod_inv(k, a)), a >> gcdpow);
@@ -2460,6 +2503,39 @@ impl<T: ?Sized> Eq for *mut T {}
 #[inline]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
+}
+
+/// Hash a raw pointer.
+///
+/// This can be used to hash a `&T` reference (which coerces to `*const T` implicitly)
+/// by its address rather than the value it points to
+/// (which is what the `Hash for &T` implementation does).
+///
+/// # Examples
+///
+/// ```
+/// #![feature(ptr_hash)]
+/// use std::collections::hash_map::DefaultHasher;
+/// use std::hash::{Hash, Hasher};
+/// use std::ptr;
+///
+/// let five = 5;
+/// let five_ref = &five;
+///
+/// let mut hasher = DefaultHasher::new();
+/// ptr::hash(five_ref, &mut hasher);
+/// let actual = hasher.finish();
+///
+/// let mut hasher = DefaultHasher::new();
+/// (five_ref as *const i32).hash(&mut hasher);
+/// let expected = hasher.finish();
+///
+/// assert_eq!(actual, expected);
+/// ```
+#[unstable(feature = "ptr_hash", reason = "newly added", issue = "56286")]
+pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
+    use hash::Hash;
+    hashee.hash(into);
 }
 
 // Impls for function pointers
@@ -2641,8 +2717,9 @@ impl<T: ?Sized> PartialOrd for *mut T {
                      (if you also use #[may_dangle]), Send, and/or Sync")]
 #[doc(hidden)]
 #[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
 pub struct Unique<T: ?Sized> {
-    pointer: NonZero<*const T>,
+    pointer: *const T,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
@@ -2699,13 +2776,13 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// `ptr` must be non-null.
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        Unique { pointer: NonZero(ptr as _), _marker: PhantomData }
+        Unique { pointer: ptr as _, _marker: PhantomData }
     }
 
     /// Creates a new `Unique` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
-            Some(Unique { pointer: NonZero(ptr as _), _marker: PhantomData })
+            Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
         } else {
             None
         }
@@ -2713,7 +2790,7 @@ impl<T: ?Sized> Unique<T> {
 
     /// Acquires the underlying `*mut` pointer.
     pub fn as_ptr(self) -> *mut T {
-        self.pointer.0 as *mut T
+        self.pointer as *mut T
     }
 
     /// Dereferences the content.
@@ -2749,6 +2826,9 @@ impl<T: ?Sized> Copy for Unique<T> { }
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> { }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> { }
+
+#[unstable(feature = "ptr_internals", issue = "0")]
 impl<T: ?Sized> fmt::Pointer for Unique<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
@@ -2758,21 +2838,21 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
     fn from(reference: &'a mut T) -> Self {
-        Unique { pointer: NonZero(reference as _), _marker: PhantomData }
+        unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     fn from(reference: &'a T) -> Self {
-        Unique { pointer: NonZero(reference as _), _marker: PhantomData }
+        unsafe { Unique { pointer: reference as *const T, _marker: PhantomData } }
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
     fn from(p: NonNull<T>) -> Self {
-        Unique { pointer: p.pointer, _marker: PhantomData }
+        unsafe { Unique { pointer: p.pointer, _marker: PhantomData } }
     }
 }
 
@@ -2795,17 +2875,18 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
 pub struct NonNull<T: ?Sized> {
-    pointer: NonZero<*const T>,
+    pointer: *const T,
 }
 
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
-// NB: This impl is unnecessary, but should provide better error messages.
+// N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> !Send for NonNull<T> { }
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
-// NB: This impl is unnecessary, but should provide better error messages.
+// N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> !Sync for NonNull<T> { }
 
@@ -2820,6 +2901,7 @@ impl<T: Sized> NonNull<T> {
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[inline]
     pub fn dangling() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
@@ -2835,15 +2917,17 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// `ptr` must be non-null.
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        NonNull { pointer: NonZero(ptr as _) }
+        NonNull { pointer: ptr as _ }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
-            Some(NonNull { pointer: NonZero(ptr as _) })
+            Some(unsafe { Self::new_unchecked(ptr) })
         } else {
             None
         }
@@ -2851,8 +2935,9 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Acquires the underlying `*mut` pointer.
     #[stable(feature = "nonnull", since = "1.25.0")]
-    pub fn as_ptr(self) -> *mut T {
-        self.pointer.0 as *mut T
+    #[inline]
+    pub const fn as_ptr(self) -> *mut T {
+        self.pointer as *mut T
     }
 
     /// Dereferences the content.
@@ -2861,6 +2946,7 @@ impl<T: ?Sized> NonNull<T> {
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[inline]
     pub unsafe fn as_ref(&self) -> &T {
         &*self.as_ptr()
     }
@@ -2871,12 +2957,14 @@ impl<T: ?Sized> NonNull<T> {
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
 
     /// Cast to a pointer of another type
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
+    #[inline]
     pub fn cast<U>(self) -> NonNull<U> {
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as *mut U)
@@ -2897,6 +2985,9 @@ impl<T: ?Sized> Copy for NonNull<T> { }
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
 
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
+
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> fmt::Debug for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2916,6 +3007,7 @@ impl<T: ?Sized> Eq for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> PartialEq for NonNull<T> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.as_ptr() == other.as_ptr()
     }
@@ -2923,6 +3015,7 @@ impl<T: ?Sized> PartialEq for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Ord for NonNull<T> {
+    #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.as_ptr().cmp(&other.as_ptr())
     }
@@ -2930,6 +3023,7 @@ impl<T: ?Sized> Ord for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> PartialOrd for NonNull<T> {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.as_ptr().partial_cmp(&other.as_ptr())
     }
@@ -2937,6 +3031,7 @@ impl<T: ?Sized> PartialOrd for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> hash::Hash for NonNull<T> {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.as_ptr().hash(state)
     }
@@ -2944,21 +3039,24 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
+    #[inline]
     fn from(unique: Unique<T>) -> Self {
-        NonNull { pointer: unique.pointer }
+        unsafe { NonNull { pointer: unique.pointer } }
     }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
+    #[inline]
     fn from(reference: &'a mut T) -> Self {
-        NonNull { pointer: NonZero(reference as _) }
+        unsafe { NonNull { pointer: reference as *mut T } }
     }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
+    #[inline]
     fn from(reference: &'a T) -> Self {
-        NonNull { pointer: NonZero(reference as _) }
+        unsafe { NonNull { pointer: reference as *const T } }
     }
 }

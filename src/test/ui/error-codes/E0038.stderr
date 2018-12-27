@@ -1,5 +1,5 @@
 error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/E0038.rs:15:1
+  --> $DIR/E0038.rs:5:1
    |
 LL | fn call_foo(x: Box<Trait>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` cannot be made into an object

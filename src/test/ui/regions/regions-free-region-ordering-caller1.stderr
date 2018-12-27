@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-free-region-ordering-caller1.rs:19:27
+  --> $DIR/regions-free-region-ordering-caller1.rs:9:27
    |
 LL |     let z: &'a & usize = &(&y);
    |                           ^^^^ temporary value does not live long enough
@@ -7,14 +7,14 @@ LL |     let z: &'a & usize = &(&y);
 LL | }
    | - temporary value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:10...
-  --> $DIR/regions-free-region-ordering-caller1.rs:15:10
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 5:10...
+  --> $DIR/regions-free-region-ordering-caller1.rs:5:10
    |
 LL | fn call1<'a>(x: &'a usize) {
    |          ^^
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/regions-free-region-ordering-caller1.rs:19:29
+  --> $DIR/regions-free-region-ordering-caller1.rs:9:29
    |
 LL |     let z: &'a & usize = &(&y);
    |                             ^ borrowed value does not live long enough
@@ -22,8 +22,8 @@ LL |     let z: &'a & usize = &(&y);
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:10...
-  --> $DIR/regions-free-region-ordering-caller1.rs:15:10
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 5:10...
+  --> $DIR/regions-free-region-ordering-caller1.rs:5:10
    |
 LL | fn call1<'a>(x: &'a usize) {
    |          ^^

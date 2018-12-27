@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This calculates the types which has storage which lives across a suspension point in a
 //! generator from the perspective of typeck. The actual types used at runtime
 //! is calculated in `rustc_mir::transform::generator` and may be a subset of the
@@ -48,7 +38,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
                 // See the mega-comment at `yield_in_scope` for a proof.
 
                 debug!("comparing counts yield: {} self: {}, source_span = {:?}",
-                    expr_count, self.expr_count, source_span);
+                       expr_count, self.expr_count, source_span);
 
                 if expr_count >= self.expr_count {
                     Some(yield_span)
@@ -86,10 +76,10 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
                                         def_id: DefId,
                                         body_id: hir::BodyId,
                                         interior: Ty<'tcx>) {
-    let body = fcx.tcx.hir.body(body_id);
+    let body = fcx.tcx.hir().body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
-        types: FxHashMap(),
+        types: FxHashMap::default(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
         expr_count: 0,
     };
@@ -121,7 +111,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
     // which means that none of the regions inside relate to any other, even if
-    // typeck had previously found contraints that would cause them to be related.
+    // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
     let type_list = fcx.tcx.fold_regions(&type_list, &mut false, |_, current_depth| {
         counter += 1;

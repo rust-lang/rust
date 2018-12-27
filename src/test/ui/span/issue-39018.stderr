@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-39018.rs:12:13
+  --> $DIR/issue-39018.rs:2:13
    |
 LL |     let x = "Hello " + "World!";
    |             ^^^^^^^^^^^^^^^^^^^ `+` can't be used to concatenate two `&str` strings
@@ -9,7 +9,7 @@ LL |     let x = "Hello ".to_owned() + "World!";
    |             ^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: binary operation `+` cannot be applied to type `World`
-  --> $DIR/issue-39018.rs:18:13
+  --> $DIR/issue-39018.rs:8:13
    |
 LL |     let y = World::Hello + World::Goodbye;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let y = World::Hello + World::Goodbye;
    = note: an implementation of `std::ops::Add` might be missing for `World`
 
 error[E0369]: binary operation `+` cannot be applied to type `&str`
-  --> $DIR/issue-39018.rs:21:13
+  --> $DIR/issue-39018.rs:11:13
    |
 LL |     let x = "Hello " + "World!".to_owned();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `+` can't be used to concatenate a `&str` with a `String`

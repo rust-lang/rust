@@ -1,17 +1,17 @@
 error[E0449]: unnecessary visibility qualifier
-  --> $DIR/useless-pub.rs:18:5
+  --> $DIR/useless-pub.rs:8:5
    |
 LL |     pub fn foo(&self) {} //~ ERROR: unnecessary visibility qualifier
    |     ^^^ `pub` not permitted here because it's implied
 
 error[E0449]: unnecessary visibility qualifier
-  --> $DIR/useless-pub.rs:22:10
+  --> $DIR/useless-pub.rs:12:10
    |
 LL |     V1 { pub f: i32 }, //~ ERROR unnecessary visibility qualifier
    |          ^^^ `pub` not permitted here because it's implied
 
 error[E0449]: unnecessary visibility qualifier
-  --> $DIR/useless-pub.rs:23:8
+  --> $DIR/useless-pub.rs:13:8
    |
 LL |     V2(pub i32), //~ ERROR unnecessary visibility qualifier
    |        ^^^ `pub` not permitted here because it's implied

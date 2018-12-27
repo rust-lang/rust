@@ -1,5 +1,5 @@
 error[E0053]: method `jumbo` has an incompatible type for trait
-  --> $DIR/trait-impl-method-mismatch.rs:18:5
+  --> $DIR/trait-impl-method-mismatch.rs:7:5
    |
 LL |     fn jumbo(&self, x: &usize) -> usize;
    |     ------------------------------------ type in trait

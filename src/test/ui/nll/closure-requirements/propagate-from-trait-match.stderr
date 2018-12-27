@@ -1,11 +1,5 @@
-warning: not reporting region error due to nll
-  --> $DIR/propagate-from-trait-match.rs:55:9
-   |
-LL |         require(value);
-   |         ^^^^^^^
-
 note: External requirements
-  --> $DIR/propagate-from-trait-match.rs:42:36
+  --> $DIR/propagate-from-trait-match.rs:32:36
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
@@ -13,7 +7,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |
 LL | |         // This function call requires that
 ...  |
-LL | |         //~^ WARNING not reporting region error due to nll
+LL | |         require(value);
 LL | |     });
    | |_____^
    |
@@ -23,11 +17,11 @@ LL | |     });
                i32,
                extern "rust-call" fn((T,))
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 2
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/propagate-from-trait-match.rs:38:1
+  --> $DIR/propagate-from-trait-match.rs:28:1
    |
 LL | / fn supply<'a, T>(value: T)
 LL | | where
@@ -44,7 +38,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/propagate-from-trait-match.rs:42:36
+  --> $DIR/propagate-from-trait-match.rs:32:36
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
@@ -52,7 +46,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |
 LL | |         // This function call requires that
 ...  |
-LL | |         //~^ WARNING not reporting region error due to nll
+LL | |         require(value);
 LL | |     });
    | |_____^
    |

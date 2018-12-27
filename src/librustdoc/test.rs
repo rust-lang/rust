@@ -1,47 +1,38 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+use errors;
+use errors::emitter::ColorConfig;
+use rustc_data_structures::sync::Lrc;
+use rustc_lint;
+use rustc_driver::{self, driver, target_features, Compilation};
+use rustc_driver::driver::phase_2_configure_and_expand;
+use rustc_metadata::cstore::CStore;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
+use rustc_resolve::MakeGlobMap;
+use rustc::hir;
+use rustc::hir::intravisit;
+use rustc::session::{self, CompileIncomplete, config};
+use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
+use rustc::session::search_paths::{SearchPath, PathKind};
+use syntax::ast;
+use syntax::source_map::SourceMap;
+use syntax::edition::Edition;
+use syntax::feature_gate::UnstableFeatures;
+use syntax::with_globals;
+use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
+use tempfile::Builder as TempFileBuilder;
+use testing;
 
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
 use std::str;
-use rustc_data_structures::sync::Lrc;
 use std::sync::{Arc, Mutex};
 
-use testing;
-use rustc_lint;
-use rustc::hir;
-use rustc::hir::intravisit;
-use rustc::session::{self, CompileIncomplete, config};
-use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
-use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_metadata::dynamic_lib::DynamicLibrary;
-use tempfile::Builder as TempFileBuilder;
-use rustc_driver::{self, driver, target_features, Compilation};
-use rustc_driver::driver::phase_2_configure_and_expand;
-use rustc_metadata::cstore::CStore;
-use rustc_resolve::MakeGlobMap;
-use syntax::ast;
-use syntax::codemap::CodeMap;
-use syntax::edition::Edition;
-use syntax::feature_gate::UnstableFeatures;
-use syntax::with_globals;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
-use errors;
-use errors::emitter::ColorConfig;
-
 use clean::Attributes;
+use config::Options;
 use html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
@@ -55,51 +46,41 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(input_path: &Path,
-           cfgs: Vec<String>,
-           libs: SearchPaths,
-           externs: Externs,
-           mut test_args: Vec<String>,
-           crate_name: Option<String>,
-           maybe_sysroot: Option<PathBuf>,
-           display_warnings: bool,
-           linker: Option<PathBuf>,
-           edition: Edition,
-           cg: CodegenOptions)
-           -> isize {
-    let input = config::Input::File(input_path.to_owned());
+pub fn run(mut options: Options) -> isize {
+    let input = config::Input::File(options.input.clone());
 
     let sessopts = config::Options {
-        maybe_sysroot: maybe_sysroot.clone().or_else(
+        maybe_sysroot: options.maybe_sysroot.clone().or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
-        search_paths: libs.clone(),
+        search_paths: options.libs.clone(),
         crate_types: vec![config::CrateType::Dylib],
-        cg: cg.clone(),
-        externs: externs.clone(),
+        cg: options.codegen_options.clone(),
+        externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
         lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
             ..config::basic_debugging_options()
         },
-        edition,
+        edition: options.edition,
         ..config::Options::default()
     };
     driver::spawn_thread_pool(sessopts, |sessopts| {
-        let codemap = Lrc::new(CodeMap::new(sessopts.file_path_mapping()));
+        let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let handler =
             errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                             true, false,
-                                            Some(codemap.clone()));
+                                            Some(source_map.clone()));
 
         let mut sess = session::build_session_(
-            sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
+            sessopts, Some(options.input), handler, source_map.clone(),
         );
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+        let mut cfg = config::build_configuration(&sess,
+                                                  config::parse_cfgspecs(options.cfgs.clone()));
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
@@ -119,24 +100,24 @@ pub fn run(input_path: &Path,
             ).expect("phase_2_configure_and_expand aborted in rustdoc!")
         };
 
-        let crate_name = crate_name.unwrap_or_else(|| {
+        let crate_name = options.crate_name.unwrap_or_else(|| {
             ::rustc_codegen_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
         });
         let mut opts = scrape_test_config(hir_forest.krate());
-        opts.display_warnings |= display_warnings;
+        opts.display_warnings |= options.display_warnings;
         let mut collector = Collector::new(
             crate_name,
-            cfgs,
-            libs,
-            cg,
-            externs,
+            options.cfgs,
+            options.libs,
+            options.codegen_options,
+            options.externs,
             false,
             opts,
-            maybe_sysroot,
-            Some(codemap),
-             None,
-            linker,
-            edition
+            options.maybe_sysroot,
+            Some(source_map),
+            None,
+            options.linker,
+            options.edition
         );
 
         {
@@ -153,16 +134,16 @@ pub fn run(input_path: &Path,
             });
         }
 
-        test_args.insert(0, "rustdoctest".to_string());
+        options.test_args.insert(0, "rustdoctest".to_string());
 
-        testing::test_main(&test_args,
+        testing::test_main(&options.test_args,
                         collector.tests.into_iter().collect(),
-                        testing::Options::new().display_output(display_warnings));
+                        testing::Options::new().display_output(options.display_warnings));
         0
     })
 }
 
-// Look for #![doc(test(no_crate_inject))], used by crates in the std facade
+// Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     use syntax::print::pprust;
 
@@ -196,19 +177,24 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 }
 
 fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
-            cfgs: Vec<String>, libs: SearchPaths,
+            cfgs: Vec<String>, libs: Vec<SearchPath>,
             cg: CodegenOptions, externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
             maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) {
-    // the test harness wants its own `main` & top level functions, so
-    // never wrap the test in `fn main() { ... }`
+    // The test harness wants its own `main` and top-level functions, so
+    // never wrap the test in `fn main() { ... }`.
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
     // FIXME(#44940): if doctests ever support path remapping, then this filename
-    // needs to be the result of CodeMap::span_to_unmapped_path
+    // needs to be the result of `SourceMap::span_to_unmapped_path`.
+    let path = match filename {
+        FileName::Real(path) => path.clone(),
+        _ => PathBuf::from(r"doctest.rs"),
+    };
+
     let input = config::Input::Str {
-        name: filename.to_owned(),
-        input: test.to_owned(),
+        name: FileName::DocTest(path, line as isize - line_offset as isize),
+        input: test,
     };
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
@@ -220,7 +206,6 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         output_types: outputs,
         externs,
         cg: config::CodegenOptions {
-            prefer_dynamic: true,
             linker,
             ..cg
         },
@@ -262,11 +247,9 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        let codemap = Lrc::new(CodeMap::new_doctest(
-            sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
-        ));
+        let source_map = Lrc::new(SourceMap::new(sessopts.file_path_mapping()));
         let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                        Some(codemap.clone()),
+                                                        Some(source_map.clone()),
                                                         false,
                                                         false);
 
@@ -274,7 +257,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
         let mut sess = session::build_session_(
-            sessopts, None, diagnostic_handler, codemap,
+            sessopts, None, diagnostic_handler, source_map,
         );
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
@@ -351,7 +334,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let newpath = {
         let path = env::var_os(var).unwrap_or(OsString::new());
         let mut path = env::split_paths(&path).collect::<Vec<_>>();
-        path.insert(0, libdir.clone());
+        path.insert(0, libdir);
         env::join_paths(path).unwrap()
     };
     cmd.env(var, &newpath);
@@ -379,7 +362,7 @@ pub fn make_test(s: &str,
                  dont_insert_main: bool,
                  opts: &TestOptions)
                  -> (String, usize) {
-    let (crate_attrs, everything_else) = partition_source(s);
+    let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
@@ -402,30 +385,90 @@ pub fn make_test(s: &str,
     // Now push any outer attributes from the example, assuming they
     // are intended to be crate attributes.
     prog.push_str(&crate_attrs);
+    prog.push_str(&crates);
+
+    // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
+    // crate already is included.
+    let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
+        use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
+        use crate::syntax_pos::FileName;
+        use errors::emitter::EmitterWriter;
+        use errors::Handler;
+
+        let filename = FileName::anon_source_code(s);
+        let source = crates + &everything_else;
+
+        // Any errors in parsing should also appear when the doctest is compiled for real, so just
+        // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
+        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let emitter = EmitterWriter::new(box io::sink(), None, false, false);
+        let handler = Handler::with_emitter(false, false, box emitter);
+        let sess = ParseSess::with_span_handler(handler, cm);
+
+        let mut found_main = false;
+        let mut found_extern_crate = cratename.is_none();
+
+        let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
+            Ok(p) => p,
+            Err(errs) => {
+                for mut err in errs {
+                    err.cancel();
+                }
+
+                return (found_main, found_extern_crate);
+            }
+        };
+
+        loop {
+            match parser.parse_item() {
+                Ok(Some(item)) => {
+                    if !found_main {
+                        if let ast::ItemKind::Fn(..) = item.node {
+                            if item.ident.as_str() == "main" {
+                                found_main = true;
+                            }
+                        }
+                    }
+
+                    if !found_extern_crate {
+                        if let ast::ItemKind::ExternCrate(original) = item.node {
+                            // This code will never be reached if `cratename` is none because
+                            // `found_extern_crate` is initialized to `true` if it is none.
+                            let cratename = cratename.unwrap();
+
+                            match original {
+                                Some(name) => found_extern_crate = name.as_str() == cratename,
+                                None => found_extern_crate = item.ident.as_str() == cratename,
+                            }
+                        }
+                    }
+
+                    if found_main && found_extern_crate {
+                        break;
+                    }
+                }
+                Ok(None) => break,
+                Err(mut e) => {
+                    e.cancel();
+                    break;
+                }
+            }
+        }
+
+        (found_main, found_extern_crate)
+    });
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !s.contains("extern crate") && !opts.no_crate_inject && cratename != Some("std") {
+    if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
+            // Make sure its actually used if not included.
             if s.contains(cratename) {
                 prog.push_str(&format!("extern crate {};\n", cratename));
                 line_offset += 1;
             }
         }
     }
-
-    // FIXME (#21299): prefer libsyntax or some other actual parser over this
-    // best-effort ad hoc approach
-    let already_has_main = s.lines()
-        .map(|line| {
-            let comment = line.find("//");
-            if let Some(comment_begins) = comment {
-                &line[0..comment_begins]
-            } else {
-                line
-            }
-        })
-        .any(|code| code.contains("fn main"));
 
     if dont_insert_main || already_has_main {
         prog.push_str(everything_else);
@@ -436,34 +479,87 @@ pub fn make_test(s: &str,
         prog.push_str("\n}");
     }
 
-    info!("final test program: {}", prog);
+    debug!("final doctest:\n{}", prog);
 
     (prog, line_offset)
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
-fn partition_source(s: &str) -> (String, String) {
-    let mut after_header = false;
+fn partition_source(s: &str) -> (String, String, String) {
+    #[derive(Copy, Clone, PartialEq)]
+    enum PartitionState {
+        Attrs,
+        Crates,
+        Other,
+    }
+    let mut state = PartitionState::Attrs;
     let mut before = String::new();
+    let mut crates = String::new();
     let mut after = String::new();
 
     for line in s.lines() {
         let trimline = line.trim();
-        let header = trimline.chars().all(|c| c.is_whitespace()) ||
-            trimline.starts_with("#![") ||
-            trimline.starts_with("#[macro_use] extern crate") ||
-            trimline.starts_with("extern crate");
-        if !header || after_header {
-            after_header = true;
-            after.push_str(line);
-            after.push_str("\n");
-        } else {
-            before.push_str(line);
-            before.push_str("\n");
+
+        // FIXME(misdreavus): if a doc comment is placed on an extern crate statement, it will be
+        // shunted into "everything else"
+        match state {
+            PartitionState::Attrs => {
+                state = if trimline.starts_with("#![") ||
+                    trimline.chars().all(|c| c.is_whitespace()) ||
+                    (trimline.starts_with("//") && !trimline.starts_with("///"))
+                {
+                    PartitionState::Attrs
+                } else if trimline.starts_with("extern crate") ||
+                    trimline.starts_with("#[macro_use] extern crate")
+                {
+                    PartitionState::Crates
+                } else {
+                    PartitionState::Other
+                };
+            }
+            PartitionState::Crates => {
+                state = if trimline.starts_with("extern crate") ||
+                    trimline.starts_with("#[macro_use] extern crate") ||
+                    trimline.chars().all(|c| c.is_whitespace()) ||
+                    (trimline.starts_with("//") && !trimline.starts_with("///"))
+                {
+                    PartitionState::Crates
+                } else {
+                    PartitionState::Other
+                };
+            }
+            PartitionState::Other => {}
+        }
+
+        match state {
+            PartitionState::Attrs => {
+                before.push_str(line);
+                before.push_str("\n");
+            }
+            PartitionState::Crates => {
+                crates.push_str(line);
+                crates.push_str("\n");
+            }
+            PartitionState::Other => {
+                after.push_str(line);
+                after.push_str("\n");
+            }
         }
     }
 
-    (before, after)
+    debug!("before:\n{}", before);
+    debug!("crates:\n{}", crates);
+    debug!("after:\n{}", after);
+
+    (before, after, crates)
+}
+
+pub trait Tester {
+    fn add_test(&mut self, test: String, config: LangString, line: usize);
+    fn get_line(&self) -> usize {
+        0
+    }
+    fn register_header(&mut self, _name: &str, _level: u32) {}
 }
 
 pub struct Collector {
@@ -472,10 +568,10 @@ pub struct Collector {
     // The name of the test displayed to the user, separated by `::`.
     //
     // In tests from Rust source, this is the path to the item
-    // e.g. `["std", "vec", "Vec", "push"]`.
+    // e.g., `["std", "vec", "Vec", "push"]`.
     //
     // In tests from a markdown file, this is the titles of all headers (h1~h6)
-    // of the sections that contain the code block, e.g. if the markdown file is
+    // of the sections that contain the code block, e.g., if the markdown file is
     // written as:
     //
     // ``````markdown
@@ -492,7 +588,7 @@ pub struct Collector {
     names: Vec<String>,
 
     cfgs: Vec<String>,
-    libs: SearchPaths,
+    libs: Vec<SearchPath>,
     cg: CodegenOptions,
     externs: Externs,
     use_headers: bool,
@@ -500,16 +596,16 @@ pub struct Collector {
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
     position: Span,
-    codemap: Option<Lrc<CodeMap>>,
+    source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
     linker: Option<PathBuf>,
     edition: Edition,
 }
 
 impl Collector {
-    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, cg: CodegenOptions,
+    pub fn new(cratename: String, cfgs: Vec<String>, libs: Vec<SearchPath>, cg: CodegenOptions,
                externs: Externs, use_headers: bool, opts: TestOptions,
-               maybe_sysroot: Option<PathBuf>, codemap: Option<Lrc<CodeMap>>,
+               maybe_sysroot: Option<PathBuf>, source_map: Option<Lrc<SourceMap>>,
                filename: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) -> Collector {
         Collector {
             tests: Vec::new(),
@@ -523,7 +619,7 @@ impl Collector {
             opts,
             maybe_sysroot,
             position: DUMMY_SP,
-            codemap,
+            source_map,
             filename,
             linker,
             edition,
@@ -534,7 +630,31 @@ impl Collector {
         format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
-    pub fn add_test(&mut self, test: String, config: LangString, line: usize) {
+    pub fn set_position(&mut self, position: Span) {
+        self.position = position;
+    }
+
+    fn get_filename(&self) -> FileName {
+        if let Some(ref source_map) = self.source_map {
+            let filename = source_map.span_to_filename(self.position);
+            if let FileName::Real(ref filename) = filename {
+                if let Ok(cur_dir) = env::current_dir() {
+                    if let Ok(path) = filename.strip_prefix(&cur_dir) {
+                        return path.to_owned().into();
+                    }
+                }
+            }
+            filename
+        } else if let Some(ref filename) = self.filename {
+            filename.clone().into()
+        } else {
+            FileName::Custom("input".to_owned())
+        }
+    }
+}
+
+impl Tester for Collector {
+    fn add_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
         let cfgs = self.cfgs.clone();
@@ -545,7 +665,7 @@ impl Collector {
         let opts = self.opts.clone();
         let maybe_sysroot = self.maybe_sysroot.clone();
         let linker = self.linker.clone();
-        let edition = self.edition;
+        let edition = config.edition.unwrap_or(self.edition);
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -588,41 +708,19 @@ impl Collector {
         });
     }
 
-    pub fn get_line(&self) -> usize {
-        if let Some(ref codemap) = self.codemap {
+    fn get_line(&self) -> usize {
+        if let Some(ref source_map) = self.source_map {
             let line = self.position.lo().to_usize();
-            let line = codemap.lookup_char_pos(BytePos(line as u32)).line;
+            let line = source_map.lookup_char_pos(BytePos(line as u32)).line;
             if line > 0 { line - 1 } else { line }
         } else {
             0
         }
     }
 
-    pub fn set_position(&mut self, position: Span) {
-        self.position = position;
-    }
-
-    fn get_filename(&self) -> FileName {
-        if let Some(ref codemap) = self.codemap {
-            let filename = codemap.span_to_filename(self.position);
-            if let FileName::Real(ref filename) = filename {
-                if let Ok(cur_dir) = env::current_dir() {
-                    if let Ok(path) = filename.strip_prefix(&cur_dir) {
-                        return path.to_owned().into();
-                    }
-                }
-            }
-            filename
-        } else if let Some(ref filename) = self.filename {
-            filename.clone().into()
-        } else {
-            FileName::Custom("input".to_owned())
-        }
-    }
-
-    pub fn register_header(&mut self, name: &str, level: u32) {
+    fn register_header(&mut self, name: &str, level: u32) {
         if self.use_headers {
-            // we use these headings as test names, so it's good if
+            // We use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
                     if (i == 0 && c.is_xid_start()) ||
@@ -636,7 +734,7 @@ impl Collector {
             // Here we try to efficiently assemble the header titles into the
             // test name in the form of `h1::h2::h3::h4::h5::h6`.
             //
-            // Suppose originally `self.names` contains `[h1, h2, h3]`...
+            // Suppose that originally `self.names` contains `[h1, h2, h3]`...
             let level = level as usize;
             if level <= self.names.len() {
                 // ... Consider `level == 2`. All headers in the lower levels
@@ -685,8 +783,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
-        // the collapse-docs pass won't combine sugared/raw doc attributes, or included files with
-        // anything else, this will combine them for us
+        // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
+        // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
             let res = markdown::find_testable_code(&doc, self.collector, self.codes);
@@ -775,13 +873,13 @@ fn main() {
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
-        assert_eq!(output, (expected.clone(), 2));
+        assert_eq!(output, (expected, 2));
     }
 
     #[test]
     fn make_test_crate_name_no_use() {
-        //if you give a crate name but *don't* use it within the test, it won't bother inserting
-        //the `extern crate` statement
+        // If you give a crate name but *don't* use it within the test, it won't bother inserting
+        // the `extern crate` statement.
         let opts = TestOptions::default();
         let input =
 "assert_eq!(2+2, 4);";
@@ -796,8 +894,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_crate_name() {
-        //if you give a crate name and use it within the test, it will insert an `extern crate`
-        //statement before `fn main`
+        // If you give a crate name and use it within the test, it will insert an `extern crate`
+        // statement before `fn main`.
         let opts = TestOptions::default();
         let input =
 "use asdf::qwop;
@@ -815,8 +913,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_no_crate_inject() {
-        //even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
-        //adding it anyway
+        // Even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
+        // adding it anyway.
         let opts = TestOptions {
             no_crate_inject: true,
             display_warnings: false,
@@ -837,8 +935,9 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_ignore_std() {
-        //even if you include a crate name, and use it in the doctest, we still won't include an
-        //`extern crate` statement if the crate is "std" - that's included already by the compiler!
+        // Even if you include a crate name, and use it in the doctest, we still won't include an
+        // `extern crate` statement if the crate is "std" -- that's included already by the
+        // compiler!
         let opts = TestOptions::default();
         let input =
 "use std::*;
@@ -855,8 +954,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_manual_extern_crate() {
-        //when you manually include an `extern crate` statement in your doctest, make_test assumes
-        //you've included one for your own crate too
+        // When you manually include an `extern crate` statement in your doctest, `make_test`
+        // assumes you've included one for your own crate too.
         let opts = TestOptions::default();
         let input =
 "extern crate asdf;
@@ -893,8 +992,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_opts_attrs() {
-        //if you supplied some doctest attributes with #![doc(test(attr(...)))], it will use those
-        //instead of the stock #![allow(unused)]
+        // If you supplied some doctest attributes with `#![doc(test(attr(...)))]`, it will use
+        // those instead of the stock `#![allow(unused)]`.
         let mut opts = TestOptions::default();
         opts.attrs.push("feature(sick_rad)".to_string());
         let input =
@@ -910,7 +1009,7 @@ assert_eq!(2+2, 4);
         let output = make_test(input, Some("asdf"), false, &opts);
         assert_eq!(output, (expected, 3));
 
-        //adding more will also bump the returned line offset
+        // Adding more will also bump the returned line offset.
         opts.attrs.push("feature(hella_dope)".to_string());
         let expected =
 "#![feature(sick_rad)]
@@ -926,8 +1025,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_crate_attrs() {
-        //including inner attributes in your doctest will apply them to the whole "crate", pasting
-        //them outside the generated main function
+        // Including inner attributes in your doctest will apply them to the whole "crate", pasting
+        // them outside the generated main function.
         let opts = TestOptions::default();
         let input =
 "#![feature(sick_rad)]
@@ -944,7 +1043,7 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_with_main() {
-        //including your own `fn main` wrapper lets the test use it verbatim
+        // Including your own `fn main` wrapper lets the test use it verbatim.
         let opts = TestOptions::default();
         let input =
 "fn main() {
@@ -961,24 +1060,24 @@ fn main() {
 
     #[test]
     fn make_test_fake_main() {
-        //...but putting it in a comment will still provide a wrapper
+        // ... but putting it in a comment will still provide a wrapper.
         let opts = TestOptions::default();
         let input =
 "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
         let expected =
 "#![allow(unused)]
-fn main() {
 //Ceci n'est pas une `fn main`
+fn main() {
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
-        assert_eq!(output, (expected.clone(), 2));
+        assert_eq!(output, (expected, 2));
     }
 
     #[test]
     fn make_test_dont_insert_main() {
-        //even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper
+        // Even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper.
         let opts = TestOptions::default();
         let input =
 "//Ceci n'est pas une `fn main`
@@ -988,12 +1087,12 @@ assert_eq!(2+2, 4);";
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);".to_string();
         let output = make_test(input, None, true, &opts);
-        assert_eq!(output, (expected.clone(), 1));
+        assert_eq!(output, (expected, 1));
     }
 
     #[test]
     fn make_test_display_warnings() {
-        //if the user is asking to display doctest warnings, suppress the default allow(unused)
+        // If the user is asking to display doctest warnings, suppress the default `allow(unused)`.
         let mut opts = TestOptions::default();
         opts.display_warnings = true;
         let input =
@@ -1003,6 +1102,40 @@ assert_eq!(2+2, 4);".to_string();
 assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
-        assert_eq!(output, (expected.clone(), 1));
+        assert_eq!(output, (expected, 1));
+    }
+
+    #[test]
+    fn make_test_issues_21299_33731() {
+        let opts = TestOptions::default();
+
+        let input =
+"// fn main
+assert_eq!(2+2, 4);";
+
+        let expected =
+"#![allow(unused)]
+// fn main
+fn main() {
+assert_eq!(2+2, 4);
+}".to_string();
+
+        let output = make_test(input, None, false, &opts);
+        assert_eq!(output, (expected, 2));
+
+        let input =
+"extern crate hella_qwop;
+assert_eq!(asdf::foo, 4);";
+
+        let expected =
+"#![allow(unused)]
+extern crate hella_qwop;
+extern crate asdf;
+fn main() {
+assert_eq!(asdf::foo, 4);
+}".to_string();
+
+        let output = make_test(input, Some("asdf"), false, &opts);
+        assert_eq!(output, (expected, 3));
     }
 }

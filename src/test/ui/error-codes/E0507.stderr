@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/E0507.rs:22:5
+  --> $DIR/E0507.rs:12:5
    |
 LL |     x.borrow().nothing_is_true(); //~ ERROR E0507
    |     ^^^^^^^^^^ cannot move out of borrowed content

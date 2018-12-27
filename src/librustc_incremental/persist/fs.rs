@@ -1,14 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //! This module manages how the incremental compilation cache is represented in
 //! the file system.
 //!
@@ -126,12 +115,12 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{UNIX_EPOCH, SystemTime, Duration};
 
-use rand::{thread_rng, Rng};
+use rand::{RngCore, thread_rng};
 
-const LOCK_FILE_EXT: &'static str = ".lock";
-const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
-const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
-const QUERY_CACHE_FILENAME: &'static str = "query-cache.bin";
+const LOCK_FILE_EXT: &str = ".lock";
+const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
+const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
+const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 
 // We encode integers using the following base, so they are shorter than decimal
 // or hexadecimal numbers (we want short file and directory names). Since these
@@ -219,7 +208,7 @@ pub fn prepare_session_directory(sess: &Session,
         }
     };
 
-    let mut source_directories_already_tried = FxHashSet();
+    let mut source_directories_already_tried = FxHashSet::default();
 
     loop {
         // Generate a session directory of the form:
@@ -354,7 +343,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     }
 
     // State: "s-{timestamp}-{random-number}-"
-    let mut new_sub_dir_name = String::from(&old_sub_dir_name[.. dash_indices[2] + 1]);
+    let mut new_sub_dir_name = String::from(&old_sub_dir_name[..= dash_indices[2]]);
 
     // Append the svh
     base_n::push_str(svh.as_u64() as u128, INT_ENCODE_BASE, &mut new_sub_dir_name);
@@ -490,7 +479,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(),()> {
     }
 }
 
-/// Allocate a the lock-file and lock it.
+/// Allocate the lock-file and lock it.
 fn lock_directory(sess: &Session,
                   session_dir: &Path)
                   -> Result<(flock::Lock, PathBuf), ()> {
@@ -656,10 +645,10 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // First do a pass over the crate directory, collecting lock files and
     // session directories
-    let mut session_directories = FxHashSet();
-    let mut lock_files = FxHashSet();
+    let mut session_directories = FxHashSet::default();
+    let mut lock_files = FxHashSet::default();
 
-    for dir_entry in try!(crate_directory.read_dir()) {
+    for dir_entry in crate_directory.read_dir()? {
         let dir_entry = match dir_entry {
             Ok(dir_entry) => dir_entry,
             _ => {
@@ -875,7 +864,7 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
                            .map(|(_, path, lock)| (path, lock))
                            .collect()
     } else {
-        FxHashMap()
+        FxHashMap::default()
     }
 }
 
@@ -887,7 +876,7 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
 /// into the '\\?\' format, which supports much longer paths.
 fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
     if p.exists() {
-        let canonicalized = try!(p.canonicalize());
+        let canonicalized = p.canonicalize()?;
         std_fs::remove_dir_all(canonicalized)
     } else {
         Ok(())
@@ -896,7 +885,7 @@ fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
     if p.exists() {
-        let canonicalized = try!(p.canonicalize());
+        let canonicalized = p.canonicalize()?;
         std_fs::remove_file(canonicalized)
     } else {
         Ok(())
@@ -924,7 +913,7 @@ fn test_all_except_most_recent() {
     assert_eq!(all_except_most_recent(
         vec![
         ]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
-        FxHashSet()
+        FxHashSet::default()
     );
 }
 
@@ -939,7 +928,7 @@ fn test_timestamp_serialization() {
 
 #[test]
 fn test_find_source_directory_in_iter() {
-    let already_visited = FxHashSet();
+    let already_visited = FxHashSet::default();
 
     // Find newest
     assert_eq!(find_source_directory_in_iter(

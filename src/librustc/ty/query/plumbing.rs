@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! The implementation of the query system itself. Defines the macros
 //! that generate the actual methods on tcx which find and execute the
 //! provider, manage the caches, and so forth.
@@ -32,7 +22,7 @@ use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
 use syntax_pos::Span;
-use syntax::codemap::DUMMY_SP;
+use syntax::source_map::DUMMY_SP;
 
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
@@ -55,11 +45,11 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<'tcx, M: QueryConfig<'tcx>> QueryCache<'tcx, M> {
-    pub(super) fn new() -> QueryCache<'tcx, M> {
+impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
+    fn default() -> QueryCache<'tcx, M> {
         QueryCache {
-            results: FxHashMap(),
-            active: FxHashMap(),
+            results: FxHashMap::default(),
+            active: FxHashMap::default(),
         }
     }
 }
@@ -100,7 +90,7 @@ pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
-    /// Either gets a JobOwner corresponding the the query, allowing us to
+    /// Either gets a JobOwner corresponding the query, allowing us to
     /// start executing the query, or it returns with the result of the query.
     /// If the query is executing elsewhere, this will wait for it.
     /// If the query panicked, this will silently panic.
@@ -136,11 +126,14 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 Entry::Vacant(entry) => {
                     // No job entry for this query. Return a new one to be started later
                     return tls::with_related_context(tcx, |icx| {
+                        // Create the `parent` variable before `info`. This allows LLVM
+                        // to elide the move of `info`
+                        let parent = icx.query.clone();
                         let info = QueryInfo {
                             span,
                             query: Q::query(key.clone()),
                         };
-                        let job = Lrc::new(QueryJob::new(info, icx.query.clone()));
+                        let job = Lrc::new(QueryJob::new(info, parent));
                         let owner = JobOwner {
                             cache,
                             job: job.clone(),
@@ -153,14 +146,25 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             };
             mem::drop(lock);
 
-            if let Err(cycle) = job.await(tcx, span) {
-                return TryGetJob::JobCompleted(Err(cycle));
+            // If we are single-threaded we know that we have cycle error,
+            // so we just turn the errror
+            #[cfg(not(parallel_queries))]
+            return job.cycle_error(tcx, span);
+
+            // With parallel queries we might just have to wait on some other
+            // thread
+            #[cfg(parallel_queries)]
+            {
+                if let Err(cycle) = job.await(tcx, span) {
+                    return TryGetJob::JobCompleted(Err(cycle));
+                }
             }
         }
     }
 
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
+    #[inline(always)]
     pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
@@ -197,7 +201,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         let r = tls::with_related_context(tcx, move |current_icx| {
             // Update the ImplicitCtxt to point to our new query job
             let new_icx = tls::ImplicitCtxt {
-                tcx,
+                tcx: tcx.global_tcx(),
                 query: Some(self.job.clone()),
                 layout_depth: current_icx.layout_depth,
                 task: current_icx.task,
@@ -217,6 +221,8 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
+    #[inline(never)]
+    #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic
         self.cache.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
@@ -241,17 +247,21 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     /// The query was already completed.
     /// Returns the result of the query and its dep node index
     /// if it succeeded or a cycle error if it failed
-    JobCompleted(Result<(D::Value, DepNodeIndex), CycleError<'tcx>>),
+    JobCompleted(Result<(D::Value, DepNodeIndex), Box<CycleError<'tcx>>>),
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub(super) fn report_cycle(self, CycleError { usage, cycle: stack }: CycleError<'gcx>)
-        -> DiagnosticBuilder<'a>
+    #[inline(never)]
+    #[cold]
+    pub(super) fn report_cycle(
+        self,
+        box CycleError { usage, cycle: stack }: Box<CycleError<'gcx>>
+    ) -> Box<DiagnosticBuilder<'a>>
     {
         assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'gcx>| {
-            self.sess.codemap().def_span(query.default_span(self, span))
+            self.sess.source_map().def_span(query.default_span(self, span))
         };
 
         // Disable naming impls with types in this path, since that
@@ -280,7 +290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                               &format!("cycle used when {}", query.describe(self)));
             }
 
-            return err
+            return Box::new(err)
         })
     }
 
@@ -299,7 +309,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  i,
                                  query.info.query.name(),
                                  query.info.query.describe(icx.tcx)));
-                    db.set_span(icx.tcx.sess.codemap().def_span(query.info.span));
+                    db.set_span(icx.tcx.sess.source_map().def_span(query.info.span));
                     icx.tcx.sess.diagnostic().force_print_db(db);
 
                     current_query = query.parent.clone();
@@ -314,7 +324,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Try to read a node index for the node dep_node.
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
-    /// the a node index can be found for that node.
+    /// a node index can be found for that node.
     pub(super) fn try_mark_green_and_read(self, dep_node: &DepNode) -> Option<DepNodeIndex> {
         match self.dep_graph.node_color(dep_node) {
             Some(DepNodeColor::Green(dep_node_index)) => {
@@ -345,11 +355,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline(never)]
     fn try_get_with<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key)
-    -> Result<Q::Value, CycleError<'gcx>>
+    -> Result<Q::Value, Box<CycleError<'gcx>>>
     {
         debug!("ty::queries::{}::try_get_with(key={:?}, span={:?})",
                Q::NAME,
@@ -436,7 +447,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         job: JobOwner<'a, 'gcx, Q>,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode
-    ) -> Result<Q::Value, CycleError<'gcx>>
+    ) -> Result<Q::Value, Box<CycleError<'gcx>>>
     {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly
@@ -449,14 +460,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let prev_dep_node_index =
                 self.dep_graph.prev_dep_node_index_of(dep_node);
             let result = Q::try_load_from_disk(self.global_tcx(),
-                                                    prev_dep_node_index);
+                                               prev_dep_node_index);
 
             // We always expect to find a cached result for things that
             // can be forced from DepNode.
             debug_assert!(!dep_node.kind.can_reconstruct_query_key() ||
-                            result.is_some(),
-                            "Missing on-disk cache entry for {:?}",
-                            dep_node);
+                          result.is_some(),
+                          "Missing on-disk cache entry for {:?}",
+                          dep_node);
             result
         } else {
             // Some things are never cached on disk.
@@ -491,7 +502,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
                     self.dep_graph.prev_fingerprint_of(dep_node),
                     "Fingerprint for green query instance not loaded \
-                        from cache: {:?}", dep_node);
+                     from cache: {:?}", dep_node);
 
             debug!("BEGIN verify_ich({:?})", dep_node);
             let mut hcx = self.create_stable_hashing_context();
@@ -522,7 +533,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         key: Q::Key,
         job: JobOwner<'_, 'gcx, Q>,
         dep_node: DepNode)
-    -> Result<(Q::Value, DepNodeIndex), CycleError<'gcx>> {
+    -> Result<(Q::Value, DepNodeIndex), Box<CycleError<'gcx>>> {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in DepGraph::try_mark_green()
@@ -530,8 +541,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //    (see for example #48923)
         assert!(!self.dep_graph.dep_node_exists(&dep_node),
                 "Forcing query with already existing DepNode.\n\
-                    - query-key: {:?}\n\
-                    - dep-node: {:?}",
+                 - query-key: {:?}\n\
+                 - dep-node: {:?}",
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
@@ -611,36 +622,54 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         key: Q::Key,
         span: Span,
         dep_node: DepNode
-    ) -> Result<(Q::Value, DepNodeIndex), CycleError<'gcx>> {
+    ) {
+        profq_msg!(
+            self,
+            ProfileQueriesMsg::QueryBegin(span.data(), profq_query_msg!(Q::NAME, self, key))
+        );
+
         // We may be concurrently trying both execute and force a query
         // Ensure that only one of them runs the query
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
-            TryGetJob::JobCompleted(result) => return result,
+            TryGetJob::JobCompleted(_) => return,
         };
-        self.force_query_with_job::<Q>(key, job, dep_node)
+        if let Err(e) = self.force_query_with_job::<Q>(key, job, dep_node) {
+            self.report_cycle(e).emit();
+        }
     }
 
     pub(super) fn try_get_query<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key,
-    ) -> Result<Q::Value, DiagnosticBuilder<'a>> {
+    ) -> Result<Q::Value, Box<DiagnosticBuilder<'a>>> {
         match self.try_get_with::<Q>(span, key) {
             Ok(e) => Ok(e),
             Err(e) => Err(self.report_cycle(e)),
         }
     }
 
+    // FIXME: Try uninlining this
+    #[inline(always)]
     pub(super) fn get_query<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
         key: Q::Key,
     ) -> Q::Value {
-        self.try_get_query::<Q>(span, key).unwrap_or_else(|mut e| {
-            e.emit();
-            Q::handle_cycle_error(self)
+        self.try_get_with::<Q>(span, key).unwrap_or_else(|e| {
+            self.emit_error::<Q>(e)
         })
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn emit_error<Q: QueryDescription<'gcx>>(
+        self,
+        e: Box<CycleError<'gcx>>,
+    ) -> Q::Value {
+        self.report_cycle(e).emit();
+        Q::handle_cycle_error(self)
     }
 }
 
@@ -692,12 +721,14 @@ macro_rules! define_queries_inner {
         impl<$tcx> Queries<$tcx> {
             pub fn new(
                 providers: IndexVec<CrateNum, Providers<$tcx>>,
+                fallback_extern_providers: Providers<$tcx>,
                 on_disk_cache: OnDiskCache<'tcx>,
             ) -> Self {
                 Queries {
                     providers,
+                    fallback_extern_providers: Box::new(fallback_extern_providers),
                     on_disk_cache,
-                    $($name: Lock::new(QueryCache::new())),*
+                    $($name: Default::default()),*
                 }
             }
 
@@ -707,18 +738,23 @@ macro_rules! define_queries_inner {
 
                 // We use try_lock here since we are only called from the
                 // deadlock handler, and this shouldn't be locked
-                $(for v in self.$name.try_lock().unwrap().active.values() {
-                    match *v {
-                        QueryResult::Started(ref job) => jobs.push(job.clone()),
-                        _ => (),
-                    }
-                })*
+                $(
+                    jobs.extend(
+                        self.$name.try_lock().unwrap().active.values().filter_map(|v|
+                            if let QueryResult::Started(ref job) = *v {
+                                Some(job.clone())
+                            } else {
+                                None
+                            }
+                        )
+                    );
+                )*
 
-                return jobs;
+                jobs
             }
         }
 
-        #[allow(bad_style)]
+        #[allow(nonstandard_style)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
@@ -731,14 +767,14 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt) -> String {
+            pub fn describe(&self, tcx: TyCtxt<'_, '_, '_>) -> Cow<'static, str> {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))
                     })*
                 };
                 if tcx.sess.verbose() {
-                    format!("{} [{}]", r, name)
+                    format!("{} [{}]", r, name).into()
                 } else {
                     r
                 }
@@ -751,9 +787,8 @@ macro_rules! define_queries_inner {
                 }
                 // The def_span query is used to calculate default_span,
                 // so exit to avoid infinite recursion
-                match *self {
-                    Query::def_span(..) => return span,
-                    _ => ()
+                if let Query::def_span(..) = *self {
+                    return span
                 }
                 match *self {
                     $(Query::$name(key) => key.default_span(tcx),)*
@@ -775,7 +810,7 @@ macro_rules! define_queries_inner {
         pub mod queries {
             use std::marker::PhantomData;
 
-            $(#[allow(bad_style)]
+            $(#[allow(nonstandard_style)]
             pub struct $name<$tcx> {
                 data: PhantomData<&$tcx ()>
             })*
@@ -800,15 +835,18 @@ macro_rules! define_queries_inner {
         }
 
         impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {
+            #[inline(always)]
             fn query(key: Self::Key) -> Query<'tcx> {
                 Query::$name(key)
             }
 
+            #[inline(always)]
             fn query_cache<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
                 &tcx.queries.$name
             }
 
             #[allow(unused)]
+            #[inline(always)]
             fn to_dep_node(tcx: TyCtxt<'_, $tcx, '_>, key: &Self::Key) -> DepNode {
                 use dep_graph::DepConstructor::*;
 
@@ -818,7 +856,13 @@ macro_rules! define_queries_inner {
             #[inline]
             fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
-                    let provider = tcx.queries.providers[key.query_crate()].$name;
+                    let provider = tcx.queries.providers.get(key.query_crate())
+                        // HACK(eddyb) it's possible crates may be loaded after
+                        // the query engine is created, and because crate loading
+                        // is not yet integrated with the query engine, such crates
+                        // would be be missing appropriate entries in `providers`.
+                        .unwrap_or(&tcx.queries.fallback_extern_providers)
+                        .$name;
                     provider(tcx.global_tcx(), key)
                 })
             }
@@ -837,7 +881,7 @@ macro_rules! define_queries_inner {
             ///
             /// Note: The optimization is only available during incr. comp.
             pub fn ensure(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> () {
-                tcx.ensure_query::<queries::$name>(key);
+                tcx.ensure_query::<queries::$name<'_>>(key);
             }
         })*
 
@@ -849,6 +893,7 @@ macro_rules! define_queries_inner {
 
         impl<'a, 'gcx, 'tcx> Deref for TyCtxtAt<'a, 'gcx, 'tcx> {
             type Target = TyCtxt<'a, 'gcx, 'tcx>;
+            #[inline(always)]
             fn deref(&self) -> &Self::Target {
                 &self.tcx
             }
@@ -857,6 +902,7 @@ macro_rules! define_queries_inner {
         impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
             /// Return a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
+            #[inline(always)]
             pub fn at(self, span: Span) -> TyCtxtAt<'a, $tcx, 'lcx> {
                 TyCtxtAt {
                     tcx: self,
@@ -865,6 +911,7 @@ macro_rules! define_queries_inner {
             }
 
             $($(#[$attr])*
+            #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
                 self.at(DUMMY_SP).$name(key)
             })*
@@ -872,8 +919,9 @@ macro_rules! define_queries_inner {
 
         impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
             $($(#[$attr])*
+            #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
-                self.tcx.get_query::<queries::$name>(self.span, key)
+                self.tcx.get_query::<queries::$name<'_>>(self.span, key)
             })*
         }
 
@@ -899,6 +947,7 @@ macro_rules! define_queries_struct {
             pub(crate) on_disk_cache: OnDiskCache<'tcx>,
 
             providers: IndexVec<CrateNum, Providers<$tcx>>,
+            fallback_extern_providers: Box<Providers<$tcx>>,
 
             $($(#[$attr])*  $name: Lock<QueryCache<$tcx, queries::$name<$tcx>>>,)*
         }
@@ -1010,21 +1059,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
     macro_rules! force {
         ($query:ident, $key:expr) => {
             {
-                use $crate::util::common::{ProfileQueriesMsg, profq_msg};
-
-                profq_msg!(tcx,
-                    ProfileQueriesMsg::QueryBegin(
-                        DUMMY_SP.data(),
-                        profq_query_msg!(::ty::query::queries::$query::NAME, tcx, $key),
-                    )
-                );
-
-                match tcx.force_query::<::ty::query::queries::$query>($key, DUMMY_SP, *dep_node) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        tcx.report_cycle(e).emit();
-                    }
-                }
+                tcx.force_query::<::ty::query::queries::$query<'_>>($key, DUMMY_SP, *dep_node);
             }
         }
     };
@@ -1051,6 +1086,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::NeedsDrop |
         DepKind::Layout |
         DepKind::ConstEval |
+        DepKind::ConstEvalRaw |
         DepKind::InstanceSymbolName |
         DepKind::MirShim |
         DepKind::BorrowCheckKrate |
@@ -1062,12 +1098,12 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
         DepKind::EraseRegionsTy |
-        DepKind::ConstValueToAllocation |
         DepKind::NormalizeProjectionTy |
         DepKind::NormalizeTyAfterErasingRegions |
         DepKind::ImpliedOutlivesBounds |
         DepKind::DropckOutlives |
         DepKind::EvaluateObligation |
+        DepKind::TypeOpAscribeUserType |
         DepKind::TypeOpEq |
         DepKind::TypeOpSubtype |
         DepKind::TypeOpProvePredicate |
@@ -1076,6 +1112,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::TypeOpNormalizePolyFnSig |
         DepKind::TypeOpNormalizeFnSig |
         DepKind::SubstituteNormalizeAndTestPredicates |
+        DepKind::MethodAutoderefSteps |
         DepKind::InstanceDefSizeEstimate |
         DepKind::ProgramClausesForEnv |
 
@@ -1126,7 +1163,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FnSignature => { force!(fn_sig, def_id!()); }
         DepKind::CoerceUnsizedInfo => { force!(coerce_unsized_info, def_id!()); }
         DepKind::ItemVariances => { force!(variances_of, def_id!()); }
-        DepKind::IsConstFn => { force!(is_const_fn, def_id!()); }
+        DepKind::IsConstFn => { force!(is_const_fn_raw, def_id!()); }
+        DepKind::IsPromotableConstFn => { force!(is_promotable_const_fn, def_id!()); }
         DepKind::IsForeignItem => { force!(is_foreign_item, def_id!()); }
         DepKind::SizedConstraint => { force!(adt_sized_constraint, def_id!()); }
         DepKind::DtorckConstraint => { force!(adt_dtorck_constraint, def_id!()); }
@@ -1144,6 +1182,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CheckMatch => { force!(check_match, def_id!()); }
 
         DepKind::ParamEnv => { force!(param_env, def_id!()); }
+        DepKind::Environment => { force!(environment, def_id!()); }
         DepKind::DescribeDef => { force!(describe_def, def_id!()); }
         DepKind::DefSpan => { force!(def_span, def_id!()); }
         DepKind::LookupStability => { force!(lookup_stability, def_id!()); }
@@ -1169,6 +1208,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }
         DepKind::IsCompilerBuiltins => { force!(is_compiler_builtins, krate!()); }
         DepKind::HasGlobalAllocator => { force!(has_global_allocator, krate!()); }
+        DepKind::HasPanicHandler => { force!(has_panic_handler, krate!()); }
         DepKind::ExternCrate => { force!(extern_crate, def_id!()); }
         DepKind::LintLevels => { force!(lint_levels, LOCAL_CRATE); }
         DepKind::InScopeTraits => { force!(in_scope_traits_map, def_id!().index); }
@@ -1184,7 +1224,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
-        DepKind::DeriveRegistrarFn => { force!(derive_registrar_fn, krate!()); }
+        DepKind::ProcMacroDeclsStatic => { force!(proc_macro_decls_static, krate!()); }
         DepKind::CrateDisambiguator => { force!(crate_disambiguator, krate!()); }
         DepKind::CrateHash => { force!(crate_hash, krate!()); }
         DepKind::OriginalCrateName => { force!(original_crate_name, krate!()); }
@@ -1272,7 +1312,7 @@ macro_rules! impl_load_from_cache {
         impl DepNode {
             // Check whether the query invocation corresponding to the given
             // DepNode is eligible for on-disk-caching.
-            pub fn cache_on_disk(&self, tcx: TyCtxt) -> bool {
+            pub fn cache_on_disk(&self, tcx: TyCtxt<'_, '_, '_>) -> bool {
                 use ty::query::queries;
                 use ty::query::QueryDescription;
 
@@ -1290,7 +1330,7 @@ macro_rules! impl_load_from_cache {
             // above `cache_on_disk` methods returns true.
             // Also, as a sanity check, it expects that the corresponding query
             // invocation has been marked as green already.
-            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt) {
+            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt<'_, '_, '_>) {
                 match self.kind {
                     $(DepKind::$dep_kind => {
                         debug_assert!(tcx.dep_graph

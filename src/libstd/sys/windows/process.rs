@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![unstable(feature = "process_internals", issue = "0")]
 
 use collections::BTreeMap;
@@ -241,7 +231,7 @@ impl<'a> DropGuard<'a> {
     fn new(lock: &'a Mutex) -> DropGuard<'a> {
         unsafe {
             lock.lock();
-            DropGuard { lock: lock }
+            DropGuard { lock }
         }
     }
 }
@@ -487,7 +477,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
             } else {
                 if x == '"' as u16 {
                     // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    cmd.extend((0..(backslashes + 1)).map(|_| '\\' as u16));
+                    cmd.extend((0..=backslashes).map(|_| '\\' as u16));
                 }
                 backslashes = 0;
             }

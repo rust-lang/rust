@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! As always, windows has something very different than unix, we mainly want
 //! to avoid having to depend too much on libunwind for windows.
 //!
@@ -152,7 +142,14 @@ type StackWalk64Fn = unsafe extern "system" fn(
 trait StackWalker {
     type Item: StackFrame;
 
-    fn walk(&self, c::DWORD, c::HANDLE, c::HANDLE, &mut Self::Item, &mut c::CONTEXT) -> c::BOOL;
+    fn walk(
+        &self,
+        _: c::DWORD,
+        _: c::HANDLE,
+        _: c::HANDLE,
+        _: &mut Self::Item,
+        _: &mut c::CONTEXT
+    ) -> c::BOOL;
 }
 
 impl StackWalker for StackWalkExFn {
@@ -229,6 +226,7 @@ impl StackFrame for c::STACKFRAME_EX {
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_I386
     }
+
     #[cfg(target_arch = "x86_64")]
     fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
         self.AddrPC.Offset = ctx.Rip as u64;
@@ -238,6 +236,28 @@ impl StackFrame for c::STACKFRAME_EX {
         self.AddrFrame.Offset = ctx.Rbp as u64;
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_AMD64
+    }
+
+    #[cfg(target_arch = "arm")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Pc as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Sp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.R11 as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_ARMNT
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Pc as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Sp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Fp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_ARM64
     }
 
     fn get_addr(&self) -> *const u8 {
@@ -260,6 +280,7 @@ impl StackFrame for c::STACKFRAME64 {
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_I386
     }
+
     #[cfg(target_arch = "x86_64")]
     fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
         self.AddrPC.Offset = ctx.Rip as u64;
@@ -269,6 +290,28 @@ impl StackFrame for c::STACKFRAME64 {
         self.AddrFrame.Offset = ctx.Rbp as u64;
         self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
         c::IMAGE_FILE_MACHINE_AMD64
+    }
+
+    #[cfg(target_arch = "arm")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Pc as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Sp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.R11 as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_ARMNT
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Pc as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Sp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Fp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_ARM64
     }
 
     fn get_addr(&self) -> *const u8 {

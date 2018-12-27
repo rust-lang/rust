@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![feature(associated_consts)]
 #![feature(decl_macro)]
 #![allow(private_in_public)]
@@ -53,9 +43,9 @@ mod m {
         <u8 as PrivTrait>::method; //~ ERROR type `fn() {<u8 as m::PrivTrait>::method}` is private
         <u8 as PubTrait>::method; // OK
         PrivTupleStruct;
-        //~^ ERROR type `fn(u8) -> m::PrivTupleStruct {m::PrivTupleStruct::{{constructor}}}` is priv
+        //~^ ERROR type `fn(u8) -> m::PrivTupleStruct {m::PrivTupleStruct}` is private
         PubTupleStruct;
-        //~^ ERROR type `fn(u8) -> m::PubTupleStruct {m::PubTupleStruct::{{constructor}}}` is privat
+        //~^ ERROR type `fn(u8) -> m::PubTupleStruct {m::PubTupleStruct}` is private
         Pub(0u8).priv_method();
         //~^ ERROR type `for<'r> fn(&'r m::Pub<u8>) {<m::Pub<u8>>::priv_method}` is private
     }

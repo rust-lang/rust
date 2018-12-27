@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #include "rustllvm.h"
 
 #include "llvm/Object/Archive.h"
@@ -145,7 +135,6 @@ extern "C" void LLVMRustArchiveIteratorFree(LLVMRustArchiveIteratorRef RAI) {
 
 extern "C" const char *
 LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
-#if LLVM_VERSION_GE(4, 0)
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
     // rustc_codegen_llvm currently doesn't use this error string, but it might be
@@ -154,11 +143,6 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
     return nullptr;
   }
-#else
-  ErrorOr<StringRef> NameOrErr = Child->getName();
-  if (NameOrErr.getError())
-    return nullptr;
-#endif
   StringRef Name = NameOrErr.get();
   *Size = Name.size();
   return Name.data();
@@ -167,19 +151,11 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
 extern "C" const char *LLVMRustArchiveChildData(LLVMRustArchiveChildRef Child,
                                                 size_t *Size) {
   StringRef Buf;
-#if LLVM_VERSION_GE(4, 0)
   Expected<StringRef> BufOrErr = Child->getBuffer();
   if (!BufOrErr) {
     LLVMRustSetLastError(toString(BufOrErr.takeError()).c_str());
     return nullptr;
   }
-#else
-  ErrorOr<StringRef> BufOrErr = Child->getBuffer();
-  if (BufOrErr.getError()) {
-    LLVMRustSetLastError(BufOrErr.getError().message().c_str());
-    return nullptr;
-  }
-#endif
   Buf = BufOrErr.get();
   *Size = Buf.size();
   return Buf.data();
@@ -218,9 +194,7 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
       }
-#if LLVM_VERSION_GE(5, 0)
       MOrErr->MemberName = sys::path::filename(MOrErr->MemberName);
-#endif
       Members.push_back(std::move(*MOrErr));
     } else {
       Expected<NewArchiveMember> MOrErr =
@@ -232,16 +206,11 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
       Members.push_back(std::move(*MOrErr));
     }
   }
+
   auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
-#if LLVM_VERSION_GE(6, 0)
   if (!Result)
     return LLVMRustResult::Success;
   LLVMRustSetLastError(toString(std::move(Result)).c_str());
-#else
-  if (!Result.second)
-    return LLVMRustResult::Success;
-  LLVMRustSetLastError(Result.second.message().c_str());
-#endif
 
   return LLVMRustResult::Failure;
 }

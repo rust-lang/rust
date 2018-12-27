@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![feature(doc_cfg)]
 #![feature(target_feature, cfg_target_feature)]
 
@@ -20,8 +10,8 @@ pub struct Portable;
 // @has doc_cfg/unix_only/index.html \
 //  '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \
 //  'This is supported on Unix only.'
-// @matches - '//*[@class=" module-item"]//*[@class="stab portability"]' '\AUnix\Z'
-// @matches - '//*[@class=" module-item"]//*[@class="stab portability"]' '\AUnix and ARM\Z'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AUnix\Z'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AUnix and ARM\Z'
 // @count - '//*[@class="stab portability"]' 3
 #[doc(cfg(unix))]
 pub mod unix_only {
@@ -36,7 +26,7 @@ pub mod unix_only {
     // @has doc_cfg/unix_only/trait.ArmOnly.html \
     //  '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \
     //  'This is supported on Unix and ARM only.'
-    // @count - '//*[@class="stab portability"]' 2
+    // @count - '//*[@class="stab portability"]' 3
     #[doc(cfg(target_arch = "arm"))]
     pub trait ArmOnly {
         fn unix_and_arm_only_function();
@@ -52,7 +42,7 @@ pub mod unix_only {
 
 // the portability header is different on the module view versus the full view
 // @has doc_cfg/index.html
-// @matches - '//*[@class=" module-item"]//*[@class="stab portability"]' '\Aavx\Z'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\Aavx\Z'
 
 // @has doc_cfg/fn.uses_target_feature.html
 // @has - '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \

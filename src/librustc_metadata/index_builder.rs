@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Builder types for generating the "item data" section of the
 //! metadata. This section winds up looking like this:
 //!
@@ -90,7 +80,7 @@ impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
-            items: Index::new(ecx.tcx.hir.definitions().def_index_counts_lo_hi()),
+            items: Index::new(ecx.tcx.hir().definitions().def_index_counts_lo_hi()),
             ecx,
         }
     }
@@ -195,7 +185,7 @@ macro_rules! read_hir {
     ($t:ty) => {
         impl<'tcx> DepGraphRead for &'tcx $t {
             fn read(&self, tcx: TyCtxt) {
-                tcx.hir.read(self.id);
+                tcx.hir().read(self.id);
             }
         }
     }
@@ -229,6 +219,6 @@ pub struct FromId<T>(pub ast::NodeId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {
     fn read(&self, tcx: TyCtxt) {
-        tcx.hir.read(self.0);
+        tcx.hir().read(self.0);
     }
 }

@@ -1,5 +1,5 @@
 error[E0392]: parameter `T` is never used
-  --> $DIR/E0392.rs:11:10
+  --> $DIR/E0392.rs:1:10
    |
 LL | enum Foo<T> { Bar } //~ ERROR E0392
    |          ^ unused type parameter

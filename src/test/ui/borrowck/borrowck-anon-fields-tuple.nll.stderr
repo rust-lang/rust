@@ -1,29 +1,5 @@
-error[E0502]: cannot borrow `y` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-anon-fields-tuple.rs:21:19
-   |
-LL |         (ref mut a, _) => a
-   |          --------- mutable borrow occurs here
-...
-LL |     let b = match y {
-   |                   ^ immutable borrow occurs here
-...
-LL |     *a += 1;
-   |     ------- borrow later used here
-
-error[E0502]: cannot borrow `y` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-anon-fields-tuple.rs:36:19
-   |
-LL |         (ref mut a, _) => a
-   |          --------- mutable borrow occurs here
-...
-LL |     let b = match y {
-   |                   ^ immutable borrow occurs here
-...
-LL |     *a += 1;
-   |     ------- borrow later used here
-
 error[E0499]: cannot borrow `y.0` as mutable more than once at a time
-  --> $DIR/borrowck-anon-fields-tuple.rs:37:10
+  --> $DIR/borrowck-anon-fields-tuple.rs:27:10
    |
 LL |         (ref mut a, _) => a
    |          --------- first mutable borrow occurs here
@@ -32,9 +8,8 @@ LL |         (ref mut b, _) => b //~ ERROR cannot borrow
    |          ^^^^^^^^^ second mutable borrow occurs here
 ...
 LL |     *a += 1;
-   |     ------- borrow later used here
+   |     ------- first borrow later used here
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
-Some errors occurred: E0499, E0502.
-For more information about an error, try `rustc --explain E0499`.
+For more information about this error, try `rustc --explain E0499`.

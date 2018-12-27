@@ -1,5 +1,5 @@
 error: expected expression, found `$`
-  --> $DIR/issue-35450.rs:14:8
+  --> $DIR/issue-35450.rs:4:8
    |
 LL |     m!($t); //~ ERROR expected expression
    |        ^ expected expression

@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![allow(non_snake_case)]
 
 register_long_diagnostics! {
@@ -538,7 +528,7 @@ fn main() {
     let foo = Foo;
     let ref_foo = &&Foo;
 
-    // error, reached the recursion limit while auto-dereferencing &&Foo
+    // error, reached the recursion limit while auto-dereferencing `&&Foo`
     ref_foo.foo();
 }
 ```
@@ -655,7 +645,7 @@ For example, a function like:
 fn f(a: u16, b: &str) {}
 ```
 
-Must always be called with exactly two arguments, e.g. `f(2, "test")`.
+Must always be called with exactly two arguments, e.g., `f(2, "test")`.
 
 Note that Rust does not have a notion of optional function arguments or
 variadic functions (except for its C-FFI).
@@ -1041,32 +1031,38 @@ enum NightsWatch {}
 "##,
 
 E0087: r##"
-Too many type parameters were supplied for a function. For example:
+#### Note: this error code is no longer emitted by the compiler.
 
-```compile_fail,E0087
+Too many type arguments were supplied for a function. For example:
+
+```compile_fail,E0107
 fn foo<T>() {}
 
 fn main() {
-    foo::<f64, bool>(); // error, expected 1 parameter, found 2 parameters
+    foo::<f64, bool>(); // error: wrong number of type arguments:
+                        //        expected 1, found 2
 }
 ```
 
-The number of supplied parameters must exactly match the number of defined type
+The number of supplied arguments must exactly match the number of defined type
 parameters.
 "##,
 
 E0088: r##"
-You gave too many lifetime parameters. Erroneous code example:
+#### Note: this error code is no longer emitted by the compiler.
 
-```compile_fail,E0088
+You gave too many lifetime arguments. Erroneous code example:
+
+```compile_fail,E0107
 fn f() {}
 
 fn main() {
-    f::<'static>() // error: too many lifetime parameters provided
+    f::<'static>() // error: wrong number of lifetime arguments:
+                   //        expected 0, found 1
 }
 ```
 
-Please check you give the right number of lifetime parameters. Example:
+Please check you give the right number of lifetime arguments. Example:
 
 ```
 fn f() {}
@@ -1101,42 +1097,48 @@ fn main() {
 "##,
 
 E0089: r##"
-Not enough type parameters were supplied for a function. For example:
+#### Note: this error code is no longer emitted by the compiler.
 
-```compile_fail,E0089
+Too few type arguments were supplied for a function. For example:
+
+```compile_fail,E0107
 fn foo<T, U>() {}
 
 fn main() {
-    foo::<f64>(); // error, expected 2 parameters, found 1 parameter
+    foo::<f64>(); // error: wrong number of type arguments: expected 2, found 1
 }
 ```
 
-Note that if a function takes multiple type parameters but you want the compiler
+Note that if a function takes multiple type arguments but you want the compiler
 to infer some of them, you can use type placeholders:
 
-```compile_fail,E0089
+```compile_fail,E0107
 fn foo<T, U>(x: T) {}
 
 fn main() {
     let x: bool = true;
-    foo::<f64>(x);    // error, expected 2 parameters, found 1 parameter
+    foo::<f64>(x);    // error: wrong number of type arguments:
+                      //        expected 2, found 1
     foo::<_, f64>(x); // same as `foo::<bool, f64>(x)`
 }
 ```
 "##,
 
 E0090: r##"
-You gave too few lifetime parameters. Example:
+#### Note: this error code is no longer emitted by the compiler.
 
-```compile_fail,E0090
+You gave too few lifetime arguments. Example:
+
+```compile_fail,E0107
 fn foo<'a: 'b, 'b: 'a>() {}
 
 fn main() {
-    foo::<'static>(); // error, expected 2 lifetime parameters
+    foo::<'static>(); // error: wrong number of lifetime arguments:
+                      //        expected 2, found 1
 }
 ```
 
-Please check you give the right number of lifetime parameters. Example:
+Please check you give the right number of lifetime arguments. Example:
 
 ```
 fn foo<'a: 'b, 'b: 'a>() {}
@@ -1254,18 +1256,34 @@ extern "rust-intrinsic" {
 "##,
 
 E0107: r##"
-This error means that an incorrect number of lifetime parameters were provided
-for a type (like a struct or enum) or trait:
+This error means that an incorrect number of generic arguments were provided:
 
 ```compile_fail,E0107
-struct Foo<'a, 'b>(&'a str, &'b str);
-enum Bar { A, B, C }
+struct Foo<T> { x: T }
 
-struct Baz<'a> {
-    foo: Foo<'a>, // error: expected 2, found 1
-    bar: Bar<'a>, // error: expected 0, found 1
+struct Bar { x: Foo }             // error: wrong number of type arguments:
+                                  //        expected 1, found 0
+struct Baz<S, T> { x: Foo<S, T> } // error: wrong number of type arguments:
+                                  //        expected 1, found 2
+
+fn foo<T, U>(x: T, y: U) {}
+
+fn main() {
+    let x: bool = true;
+    foo::<bool>(x);                 // error: wrong number of type arguments:
+                                    //        expected 2, found 1
+    foo::<bool, i32, i32>(x, 2, 4); // error: wrong number of type arguments:
+                                    //        expected 2, found 3
+}
+
+fn f() {}
+
+fn main() {
+    f::<'static>(); // error: wrong number of lifetime arguments:
+                    //        expected 0, found 1
 }
 ```
+
 "##,
 
 E0109: r##"
@@ -1582,7 +1600,7 @@ it has been disabled for now.
 
 E0185: r##"
 An associated function for a trait was defined to be static, but an
-implementation of the trait declared the same function to be a method (i.e. to
+implementation of the trait declared the same function to be a method (i.e., to
 take a `self` parameter).
 
 Here's an example of this error:
@@ -1603,7 +1621,7 @@ impl Foo for Bar {
 "##,
 
 E0186: r##"
-An associated function for a trait was defined to be a method (i.e. to take a
+An associated function for a trait was defined to be a method (i.e., to take a
 `self` parameter), but an implementation of the trait declared the same function
 to be static.
 
@@ -2393,13 +2411,15 @@ fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 "##,
 
 E0243: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error indicates that not enough type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below is defined to be generic in `T`, but the
 type parameter is missing in the definition of `Bar`:
 
-```compile_fail,E0243
+```compile_fail,E0107
 struct Foo<T> { x: T }
 
 struct Bar { x: Foo }
@@ -2407,13 +2427,15 @@ struct Bar { x: Foo }
 "##,
 
 E0244: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 This error indicates that too many type parameters were found in a type or
 trait.
 
 For example, the `Foo` struct below has no type parameters, but is supplied
 with two in the definition of `Bar`:
 
-```compile_fail,E0244
+```compile_fail,E0107
 struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }
@@ -3050,6 +3072,66 @@ impl<T, U> CoerceUnsized<Foo<U>> for Foo<T> where T: CoerceUnsized<U> {}
 Note that in Rust, structs can only contain an unsized type if the field
 containing the unsized type is the last and only unsized type field in the
 struct.
+"##,
+
+E0378: r##"
+The `DispatchFromDyn` trait currently can only be implemented for
+builtin pointer types and structs that are newtype wrappers around them
+— that is, the struct must have only one field (except for`PhantomData`),
+and that field must itself implement `DispatchFromDyn`.
+
+Examples:
+
+```
+#![feature(dispatch_from_dyn, unsize)]
+use std::{
+    marker::Unsize,
+    ops::DispatchFromDyn,
+};
+
+struct Ptr<T: ?Sized>(*const T);
+
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Ptr<U>> for Ptr<T>
+where
+    T: Unsize<U>,
+{}
+```
+
+```
+#![feature(dispatch_from_dyn)]
+use std::{
+    ops::DispatchFromDyn,
+    marker::PhantomData,
+};
+
+struct Wrapper<T> {
+    ptr: T,
+    _phantom: PhantomData<()>,
+}
+
+impl<T, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T>
+where
+    T: DispatchFromDyn<U>,
+{}
+```
+
+Example of illegal `DispatchFromDyn` implementation
+(illegal because of extra field)
+
+```compile-fail,E0378
+#![feature(dispatch_from_dyn)]
+use std::ops::DispatchFromDyn;
+
+struct WrapperExtraField<T> {
+    ptr: T,
+    extra_stuff: i32,
+}
+
+impl<T, U> DispatchFromDyn<WrapperExtraField<U>> for WrapperExtraField<T>
+where
+    T: DispatchFromDyn<U>,
+{}
+```
 "##,
 
 E0390: r##"
@@ -4626,7 +4708,7 @@ field that requires non-trivial alignment.
 Erroneous code example:
 
 ```compile_fail,E0691
-#![feature(repr_align, attr_literals)]
+#![feature(repr_align)]
 
 #[repr(align(32))]
 struct ForceAlign32;
@@ -4653,7 +4735,7 @@ Alternatively, `PhantomData<T>` has alignment 1 for all `T`, so you can use it
 if you need to keep the field for some reason:
 
 ```
-#![feature(repr_align, attr_literals)]
+#![feature(repr_align)]
 
 use std::marker::PhantomData;
 
@@ -4716,6 +4798,22 @@ and now when you call `.is_null()` on a raw pointer to `Foo`, there's ambiguity.
 Given that we don't know what type the pointer is, and there's potential
 ambiguity for some types, we disallow calling methods on raw pointers when
 the type is unknown.
+"##,
+
+E0714: r##"
+A `#[marker]` trait contained an associated item.
+
+The items of marker traits cannot be overridden, so there's no need to have them
+when they cannot be changed per-type anyway.  If you wanted them for ergonomic
+reasons, consider making an extension trait instead.
+"##,
+
+E0715: r##"
+An `impl` for a `#[marker]` trait tried to override an associated item.
+
+Because marker traits are allowed to have multiple implementations for the same
+type, it's not allowed to override anything in those implementations, as it
+would be ambiguous which override should actually be used.
 "##,
 
 }
@@ -4801,4 +4899,5 @@ register_diagnostics! {
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0698, // type inside generator must be known in this context
+    E0719, // duplicate values for associated type binding
 }

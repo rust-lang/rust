@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of `std::os` functionality for unix systems
 
 #![allow(unused_imports)] // lots of cfg code here
@@ -27,15 +17,12 @@ use path::{self, PathBuf};
 use ptr;
 use slice;
 use str;
-use sys_common::mutex::Mutex;
+use sys_common::mutex::{Mutex, MutexGuard};
 use sys::cvt;
 use sys::fd;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
-// We never call `ENV_LOCK.init()`, so it is UB to attempt to
-// acquire this mutex reentrantly!
-static ENV_LOCK: Mutex = Mutex::new();
 
 
 extern {
@@ -70,7 +57,8 @@ pub fn errno() -> i32 {
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(any(target_os = "solaris", target_os = "fuchsia"))] // only needed for readdir so far
+#[cfg(all(not(target_os = "linux"),
+          not(target_os = "dragonfly")))] // needed for readdir and syscall!
 pub fn set_errno(e: i32) {
     unsafe {
         *errno_location() = e as c_int
@@ -85,6 +73,18 @@ pub fn errno() -> i32 {
     }
 
     unsafe { errno as i32 }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn set_errno(e: i32) {
+    extern {
+        #[thread_local]
+        static mut errno: c_int;
+    }
+
+    unsafe {
+        errno = e;
+    }
 }
 
 /// Gets a detailed string description for the given error number.
@@ -286,11 +286,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    let selfexe = PathBuf::from("/proc/self/exe");
-    if selfexe.exists() {
-        ::fs::read_link(selfexe)
-    } else {
-        Err(io::Error::new(io::ErrorKind::Other, "no /proc/self/exe available. Is /proc mounted?"))
+    match ::fs::read_link("/proc/self/exe") {
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "no /proc/self/exe available. Is /proc mounted?"
+            ))
+        },
+        other => other,
     }
 }
 
@@ -408,11 +411,18 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
+pub unsafe fn env_lock() -> MutexGuard<'static> {
+    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
+    // acquire this mutex reentrantly!
+    static ENV_LOCK: Mutex = Mutex::new();
+    ENV_LOCK.lock()
+}
+
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         let mut environ = *environ();
         let mut result = Vec::new();
         while environ != ptr::null() && *environ != ptr::null() {
@@ -448,7 +458,7 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // always None as well
     let k = CString::new(k.as_bytes())?;
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
@@ -464,7 +474,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = CString::new(v.as_bytes())?;
 
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ())
     }
 }
@@ -473,7 +483,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ())
     }
 }
@@ -567,5 +577,32 @@ fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     match (parsed_ints.next(), parsed_ints.next()) {
         (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
         _ => None
+    }
+}
+
+#[cfg(all(test, target_env = "gnu"))]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_glibc_version() {
+        // This mostly just tests that the weak linkage doesn't panic wildly...
+        glibc_version();
+    }
+
+    #[test]
+    fn test_parse_glibc_version() {
+        let cases = [
+            ("0.0", Some((0, 0))),
+            ("01.+2", Some((1, 2))),
+            ("3.4.5.six", Some((3, 4))),
+            ("1", None),
+            ("1.-2", None),
+            ("1.foo", None),
+            ("foo.1", None),
+        ];
+        for &(version_str, parsed) in cases.iter() {
+            assert_eq!(parsed, parse_glibc_version(version_str));
+        }
     }
 }

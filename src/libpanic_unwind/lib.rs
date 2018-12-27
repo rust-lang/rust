@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Implementation of panics via stack unwinding
 //!
 //! This crate is an implementation of panics in Rust using "most native" stack
@@ -34,7 +24,7 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![cfg_attr(not(stage0), feature(nll))]
+#![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(raw)]
 #![feature(staged_api)]
@@ -55,36 +45,33 @@ use core::mem;
 use core::raw;
 use core::panic::BoxMeUp;
 
-// Rust runtime's startup objects depend on these symbols, so make them public.
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-pub use imp::eh_frame_registry::*;
+#[macro_use]
+mod macros;
 
-// *-pc-windows-msvc
-#[cfg(target_env = "msvc")]
-#[path = "seh.rs"]
-mod imp;
-
-// x86_64-pc-windows-gnu
-#[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))]
-#[path = "seh64_gnu.rs"]
-mod imp;
-
-// i686-pc-windows-gnu and all others
-#[cfg(any(all(unix, not(target_os = "emscripten")),
-          target_os = "cloudabi",
-          target_os = "redox",
-          all(windows, target_arch = "x86", target_env = "gnu")))]
-#[path = "gcc.rs"]
-mod imp;
-
-// emscripten
-#[cfg(target_os = "emscripten")]
-#[path = "emcc.rs"]
-mod imp;
-
-#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
-#[path = "wasm32.rs"]
-mod imp;
+cfg_if! {
+    if #[cfg(target_os = "emscripten")] {
+        #[path = "emcc.rs"]
+        mod imp;
+    } else if #[cfg(target_arch = "wasm32")] {
+        #[path = "dummy.rs"]
+        mod imp;
+    } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
+        #[path = "dummy.rs"]
+        mod imp;
+    } else if #[cfg(target_env = "msvc")] {
+        #[path = "seh.rs"]
+        mod imp;
+    } else if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+        #[path = "seh64_gnu.rs"]
+        mod imp;
+    } else {
+        // Rust runtime's startup objects depend on these symbols, so make them public.
+        #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
+        pub use imp::eh_frame_registry::*;
+        #[path = "gcc.rs"]
+        mod imp;
+    }
+}
 
 mod dwarf;
 mod windows;

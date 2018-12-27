@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Support code for encoding and decoding types.
 
 /*
@@ -16,6 +6,7 @@ Core encoding and decoding interfaces.
 
 use std::borrow::Cow;
 use std::intrinsics;
+use std::marker::PhantomData;
 use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
@@ -25,7 +16,7 @@ pub trait Encoder {
     type Error;
 
     // Primitive types:
-    fn emit_nil(&mut self) -> Result<(), Self::Error>;
+    fn emit_unit(&mut self) -> Result<(), Self::Error>;
     fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
     fn emit_u128(&mut self, v: u128) -> Result<(), Self::Error>;
     fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
@@ -119,6 +110,7 @@ pub trait Encoder {
         self.emit_enum("Option", f)
     }
 
+    #[inline]
     fn emit_option_none(&mut self) -> Result<(), Self::Error> {
         self.emit_enum_variant("None", 0, 0, |_| Ok(()))
     }
@@ -360,6 +352,18 @@ impl Decodable for u32 {
     }
 }
 
+impl Encodable for ::std::num::NonZeroU32 {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u32(self.get())
+    }
+}
+
+impl Decodable for ::std::num::NonZeroU32 {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        d.read_u32().map(|d| ::std::num::NonZeroU32::new(d).unwrap())
+    }
+}
+
 impl Encodable for u64 {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u64(*self)
@@ -524,13 +528,26 @@ impl Decodable for char {
 
 impl Encodable for () {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_nil()
+        s.emit_unit()
     }
 }
 
 impl Decodable for () {
     fn decode<D: Decoder>(d: &mut D) -> Result<(), D::Error> {
         d.read_nil()
+    }
+}
+
+impl<T> Encodable for PhantomData<T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_unit()
+    }
+}
+
+impl<T> Decodable for PhantomData<T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<PhantomData<T>, D::Error> {
+        d.read_nil()?;
+        Ok(PhantomData)
     }
 }
 
@@ -560,14 +577,12 @@ impl< T: Decodable> Decodable for Box<[T]> {
 }
 
 impl<T:Encodable> Encodable for Rc<T> {
-    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
 
 impl<T:Decodable> Decodable for Rc<T> {
-    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Rc<T>, D::Error> {
         Ok(Rc::new(Decodable::decode(d)?))
     }
@@ -618,7 +633,9 @@ impl<'a, T:Encodable> Encodable for Cow<'a, [T]> where [T]: ToOwned<Owned = Vec<
     }
 }
 
-impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]> where [T]: ToOwned<Owned = Vec<T>> {
+impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]>
+    where [T]: ToOwned<Owned = Vec<T>>
+{
     fn decode<D: Decoder>(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
@@ -894,3 +911,4 @@ impl<T: UseSpecializedDecodable> Decodable for T {
 impl<'a, T: ?Sized + Encodable> UseSpecializedEncodable for &'a T {}
 impl<T: ?Sized + Encodable> UseSpecializedEncodable for Box<T> {}
 impl<T: Decodable> UseSpecializedDecodable for Box<T> {}
+

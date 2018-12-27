@@ -1,22 +1,22 @@
 error[E0391]: cycle detected when processing `cycle1::{{impl-Trait}}`
-  --> $DIR/auto-trait-leak.rs:24:16
+  --> $DIR/auto-trait-leak.rs:14:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
 note: ...which requires processing `cycle1`...
-  --> $DIR/auto-trait-leak.rs:24:1
+  --> $DIR/auto-trait-leak.rs:14:1
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle2::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:33:16
+  --> $DIR/auto-trait-leak.rs:23:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:33:1
+  --> $DIR/auto-trait-leak.rs:23:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,31 +24,31 @@ note: ...which requires evaluating trait selection obligation `impl std::clone::
    = note: ...which again requires processing `cycle1::{{impl-Trait}}`, completing the cycle
 
 error[E0391]: cycle detected when processing `cycle1::{{impl-Trait}}`
-  --> $DIR/auto-trait-leak.rs:24:16
+  --> $DIR/auto-trait-leak.rs:14:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
 note: ...which requires processing `cycle1`...
-  --> $DIR/auto-trait-leak.rs:24:1
+  --> $DIR/auto-trait-leak.rs:14:1
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle2::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:33:16
+  --> $DIR/auto-trait-leak.rs:23:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:33:1
+  --> $DIR/auto-trait-leak.rs:23:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires processing `cycle1::{{impl-Trait}}`, completing the cycle
 
 error[E0277]: `std::rc::Rc<std::string::String>` cannot be sent between threads safely
-  --> $DIR/auto-trait-leak.rs:27:5
+  --> $DIR/auto-trait-leak.rs:17:5
    |
 LL |     send(cycle2().clone());
    |     ^^^^ `std::rc::Rc<std::string::String>` cannot be sent between threads safely
@@ -56,7 +56,7 @@ LL |     send(cycle2().clone());
    = help: within `impl std::clone::Clone`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::string::String>`
    = note: required because it appears within the type `impl std::clone::Clone`
 note: required by `send`
-  --> $DIR/auto-trait-leak.rs:16:1
+  --> $DIR/auto-trait-leak.rs:6:1
    |
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^

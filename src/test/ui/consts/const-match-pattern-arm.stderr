@@ -1,11 +1,11 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-match-pattern-arm.rs:14:5
+  --> $DIR/const-match-pattern-arm.rs:4:5
    |
 LL |     Some(value) => true,
    |     ^^^^^^^^^^^
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-match-pattern-arm.rs:21:9
+  --> $DIR/const-match-pattern-arm.rs:11:9
    |
 LL |         Some(value) => true,
    |         ^^^^^^^^^^^

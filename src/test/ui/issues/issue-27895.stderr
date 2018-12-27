@@ -1,5 +1,5 @@
 error[E0080]: runtime values cannot be referenced in patterns
-  --> $DIR/issue-27895.rs:16:13
+  --> $DIR/issue-27895.rs:6:13
    |
 LL |         0..=index => println!("winner"),
    |             ^^^^^

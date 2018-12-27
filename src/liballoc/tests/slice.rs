@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use std::cell::Cell;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::cmp::Ordering;
@@ -18,7 +8,8 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
 use std::thread;
 
-use rand::{Rng, thread_rng};
+use rand::{Rng, RngCore, thread_rng, seq::SliceRandom};
+use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
     n * n
@@ -405,7 +396,7 @@ fn test_sort() {
     for len in (2..25).chain(500..510) {
         for &modulus in &[5, 10, 100, 1000] {
             for _ in 0..10 {
-                let orig: Vec<_> = rng.gen_iter::<i32>()
+                let orig: Vec<_> = rng.sample_iter::<i32, _>(&Standard)
                     .map(|x| x % modulus)
                     .take(len)
                     .collect();
@@ -458,7 +449,7 @@ fn test_sort() {
     for i in 0..v.len() {
         v[i] = i as i32;
     }
-    v.sort_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
+    v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
     v.sort();
     for i in 0..v.len() {
         assert_eq!(v[i], i as i32);
@@ -483,7 +474,7 @@ fn test_sort_stability() {
             // create a vector like [(6, 1), (5, 1), (6, 2), ...],
             // where the first item of each tuple is random, but
             // the second item represents which occurrence of that
-            // number this element is, i.e. the second elements
+            // number this element is, i.e., the second elements
             // will occur in sorted order.
             let mut orig: Vec<_> = (0..len)
                 .map(|_| {
@@ -501,7 +492,7 @@ fn test_sort_stability() {
             // This comparison includes the count (the second item
             // of the tuple), so elements with equal first items
             // will need to be ordered with increasing
-            // counts... i.e. exactly asserting that this sort is
+            // counts... i.e., exactly asserting that this sort is
             // stable.
             assert!(v.windows(2).all(|w| w[0] <= w[1]));
 
@@ -974,27 +965,75 @@ fn test_chunksator_0() {
 }
 
 #[test]
-fn test_exact_chunksator() {
+fn test_chunks_exactator() {
     let v = &[1, 2, 3, 4, 5];
 
-    assert_eq!(v.exact_chunks(2).len(), 2);
+    assert_eq!(v.chunks_exact(2).len(), 2);
 
     let chunks: &[&[_]] = &[&[1, 2], &[3, 4]];
-    assert_eq!(v.exact_chunks(2).collect::<Vec<_>>(), chunks);
+    assert_eq!(v.chunks_exact(2).collect::<Vec<_>>(), chunks);
     let chunks: &[&[_]] = &[&[1, 2, 3]];
-    assert_eq!(v.exact_chunks(3).collect::<Vec<_>>(), chunks);
+    assert_eq!(v.chunks_exact(3).collect::<Vec<_>>(), chunks);
     let chunks: &[&[_]] = &[];
-    assert_eq!(v.exact_chunks(6).collect::<Vec<_>>(), chunks);
+    assert_eq!(v.chunks_exact(6).collect::<Vec<_>>(), chunks);
 
     let chunks: &[&[_]] = &[&[3, 4], &[1, 2]];
-    assert_eq!(v.exact_chunks(2).rev().collect::<Vec<_>>(), chunks);
+    assert_eq!(v.chunks_exact(2).rev().collect::<Vec<_>>(), chunks);
 }
 
 #[test]
 #[should_panic]
-fn test_exact_chunksator_0() {
+fn test_chunks_exactator_0() {
     let v = &[1, 2, 3, 4];
-    let _it = v.exact_chunks(0);
+    let _it = v.chunks_exact(0);
+}
+
+#[test]
+fn test_rchunksator() {
+    let v = &[1, 2, 3, 4, 5];
+
+    assert_eq!(v.rchunks(2).len(), 3);
+
+    let chunks: &[&[_]] = &[&[4, 5], &[2, 3], &[1]];
+    assert_eq!(v.rchunks(2).collect::<Vec<_>>(), chunks);
+    let chunks: &[&[_]] = &[&[3, 4, 5], &[1, 2]];
+    assert_eq!(v.rchunks(3).collect::<Vec<_>>(), chunks);
+    let chunks: &[&[_]] = &[&[1, 2, 3, 4, 5]];
+    assert_eq!(v.rchunks(6).collect::<Vec<_>>(), chunks);
+
+    let chunks: &[&[_]] = &[&[1], &[2, 3], &[4, 5]];
+    assert_eq!(v.rchunks(2).rev().collect::<Vec<_>>(), chunks);
+}
+
+#[test]
+#[should_panic]
+fn test_rchunksator_0() {
+    let v = &[1, 2, 3, 4];
+    let _it = v.rchunks(0);
+}
+
+#[test]
+fn test_rchunks_exactator() {
+    let v = &[1, 2, 3, 4, 5];
+
+    assert_eq!(v.rchunks_exact(2).len(), 2);
+
+    let chunks: &[&[_]] = &[&[4, 5], &[2, 3]];
+    assert_eq!(v.rchunks_exact(2).collect::<Vec<_>>(), chunks);
+    let chunks: &[&[_]] = &[&[3, 4, 5]];
+    assert_eq!(v.rchunks_exact(3).collect::<Vec<_>>(), chunks);
+    let chunks: &[&[_]] = &[];
+    assert_eq!(v.rchunks_exact(6).collect::<Vec<_>>(), chunks);
+
+    let chunks: &[&[_]] = &[&[2, 3], &[4, 5]];
+    assert_eq!(v.rchunks_exact(2).rev().collect::<Vec<_>>(), chunks);
+}
+
+#[test]
+#[should_panic]
+fn test_rchunks_exactator_0() {
+    let v = &[1, 2, 3, 4];
+    let _it = v.rchunks_exact(0);
 }
 
 #[test]
@@ -1204,7 +1243,7 @@ fn test_get_mut() {
 #[test]
 fn test_mut_chunks() {
     let mut v = [0, 1, 2, 3, 4, 5, 6];
-    assert_eq!(v.chunks_mut(2).len(), 4);
+    assert_eq!(v.chunks_mut(3).len(), 3);
     for (i, chunk) in v.chunks_mut(3).enumerate() {
         for x in chunk {
             *x = i as u8;
@@ -1234,10 +1273,10 @@ fn test_mut_chunks_0() {
 }
 
 #[test]
-fn test_mut_exact_chunks() {
+fn test_mut_chunks_exact() {
     let mut v = [0, 1, 2, 3, 4, 5, 6];
-    assert_eq!(v.exact_chunks_mut(2).len(), 3);
-    for (i, chunk) in v.exact_chunks_mut(3).enumerate() {
+    assert_eq!(v.chunks_exact_mut(3).len(), 2);
+    for (i, chunk) in v.chunks_exact_mut(3).enumerate() {
         for x in chunk {
             *x = i as u8;
         }
@@ -1247,9 +1286,9 @@ fn test_mut_exact_chunks() {
 }
 
 #[test]
-fn test_mut_exact_chunks_rev() {
+fn test_mut_chunks_exact_rev() {
     let mut v = [0, 1, 2, 3, 4, 5, 6];
-    for (i, chunk) in v.exact_chunks_mut(3).rev().enumerate() {
+    for (i, chunk) in v.chunks_exact_mut(3).rev().enumerate() {
         for x in chunk {
             *x = i as u8;
         }
@@ -1260,9 +1299,73 @@ fn test_mut_exact_chunks_rev() {
 
 #[test]
 #[should_panic]
-fn test_mut_exact_chunks_0() {
+fn test_mut_chunks_exact_0() {
     let mut v = [1, 2, 3, 4];
-    let _it = v.exact_chunks_mut(0);
+    let _it = v.chunks_exact_mut(0);
+}
+
+#[test]
+fn test_mut_rchunks() {
+    let mut v = [0, 1, 2, 3, 4, 5, 6];
+    assert_eq!(v.rchunks_mut(3).len(), 3);
+    for (i, chunk) in v.rchunks_mut(3).enumerate() {
+        for x in chunk {
+            *x = i as u8;
+        }
+    }
+    let result = [2, 1, 1, 1, 0, 0, 0];
+    assert_eq!(v, result);
+}
+
+#[test]
+fn test_mut_rchunks_rev() {
+    let mut v = [0, 1, 2, 3, 4, 5, 6];
+    for (i, chunk) in v.rchunks_mut(3).rev().enumerate() {
+        for x in chunk {
+            *x = i as u8;
+        }
+    }
+    let result = [0, 1, 1, 1, 2, 2, 2];
+    assert_eq!(v, result);
+}
+
+#[test]
+#[should_panic]
+fn test_mut_rchunks_0() {
+    let mut v = [1, 2, 3, 4];
+    let _it = v.rchunks_mut(0);
+}
+
+#[test]
+fn test_mut_rchunks_exact() {
+    let mut v = [0, 1, 2, 3, 4, 5, 6];
+    assert_eq!(v.rchunks_exact_mut(3).len(), 2);
+    for (i, chunk) in v.rchunks_exact_mut(3).enumerate() {
+        for x in chunk {
+            *x = i as u8;
+        }
+    }
+    let result = [0, 1, 1, 1, 0, 0, 0];
+    assert_eq!(v, result);
+}
+
+#[test]
+fn test_mut_rchunks_exact_rev() {
+    let mut v = [0, 1, 2, 3, 4, 5, 6];
+    for (i, chunk) in v.rchunks_exact_mut(3).rev().enumerate() {
+        for x in chunk {
+            *x = i as u8;
+        }
+    }
+    let result = [0, 0, 0, 0, 1, 1, 1];
+    assert_eq!(v, result);
+}
+
+#[test]
+#[should_panic]
+fn test_mut_rchunks_exact_0() {
+    let mut v = [1, 2, 3, 4];
+    let _it = v.rchunks_exact_mut(0);
 }
 
 #[test]
@@ -1466,7 +1569,7 @@ macro_rules! test {
             }).join();
 
             // Check that the number of things dropped is exactly
-            // what we expect (i.e. the contents of `v`).
+            // what we expect (i.e., the contents of `v`).
             for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
                 let count = c.load(Relaxed);
                 assert!(count == 1,

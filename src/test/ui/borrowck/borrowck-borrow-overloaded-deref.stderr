@@ -1,41 +1,41 @@
 error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:33:24
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:23:24
    |
 LL |     let __isize = &mut *x; //~ ERROR cannot borrow
    |                        ^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:37:24
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:27:24
    |
 LL |     let __isize = &mut *x; //~ ERROR cannot borrow
    |                        ^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:45:10
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:35:10
    |
 LL |     &mut **x //~ ERROR cannot borrow
    |          ^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:49:10
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:39:10
    |
 LL |     &mut **x //~ ERROR cannot borrow
    |          ^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:53:5
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:43:5
    |
 LL |     *x = 3; //~ ERROR cannot assign
    |     ^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:57:5
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:47:5
    |
 LL |     **x = 3; //~ ERROR cannot assign
    |     ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:61:5
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:51:5
    |
 LL |     **x = 3; //~ ERROR cannot assign
    |     ^^^^^^^ cannot borrow as mutable

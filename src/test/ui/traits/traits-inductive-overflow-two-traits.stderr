@@ -1,11 +1,11 @@
 error[E0275]: overflow evaluating the requirement `*mut (): Magic`
-  --> $DIR/traits-inductive-overflow-two-traits.rs:29:5
+  --> $DIR/traits-inductive-overflow-two-traits.rs:19:5
    |
 LL |     wizard::<*mut ()>(); //~ ERROR E0275
    |     ^^^^^^^^^^^^^^^^^
    |
 note: required by `wizard`
-  --> $DIR/traits-inductive-overflow-two-traits.rs:26:1
+  --> $DIR/traits-inductive-overflow-two-traits.rs:16:1
    |
 LL | fn wizard<T: Magic>() { check::<<T as Magic>::X>(); }
    | ^^^^^^^^^^^^^^^^^^^^^

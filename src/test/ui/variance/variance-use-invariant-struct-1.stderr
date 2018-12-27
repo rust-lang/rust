@@ -1,37 +1,37 @@
 error[E0308]: mismatched types
-  --> $DIR/variance-use-invariant-struct-1.rs:22:5
+  --> $DIR/variance-use-invariant-struct-1.rs:12:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `SomeStruct<&'min ()>`
               found type `SomeStruct<&'max ()>`
-note: the lifetime 'min as defined on the function body at 18:8...
-  --> $DIR/variance-use-invariant-struct-1.rs:18:8
+note: the lifetime 'min as defined on the function body at 8:8...
+  --> $DIR/variance-use-invariant-struct-1.rs:8:8
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 18:13
-  --> $DIR/variance-use-invariant-struct-1.rs:18:13
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 8:13
+  --> $DIR/variance-use-invariant-struct-1.rs:8:13
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |             ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/variance-use-invariant-struct-1.rs:29:5
+  --> $DIR/variance-use-invariant-struct-1.rs:19:5
    |
 LL |     v //~ ERROR mismatched types
    |     ^ lifetime mismatch
    |
    = note: expected type `SomeStruct<&'max ()>`
               found type `SomeStruct<&'min ()>`
-note: the lifetime 'min as defined on the function body at 25:8...
-  --> $DIR/variance-use-invariant-struct-1.rs:25:8
+note: the lifetime 'min as defined on the function body at 15:8...
+  --> $DIR/variance-use-invariant-struct-1.rs:15:8
    |
 LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
    |        ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 25:13
-  --> $DIR/variance-use-invariant-struct-1.rs:25:13
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 15:13
+  --> $DIR/variance-use-invariant-struct-1.rs:15:13
    |
 LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
    |             ^^^^

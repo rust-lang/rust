@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Walks the crate looking for items/impl-items/trait-items that have
 //! either a `rustc_symbol_name` or `rustc_item_path` attribute and
 //! generates an error giving, respectively, the symbol name or
@@ -32,8 +22,8 @@ pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let mut visitor = SymbolNamesTest { tcx: tcx };
-        tcx.hir.krate().visit_all_item_likes(&mut visitor);
+        let mut visitor = SymbolNamesTest { tcx };
+        tcx.hir().krate().visit_all_item_likes(&mut visitor);
     })
 }
 
@@ -45,7 +35,7 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
     fn process_attrs(&mut self,
                      node_id: ast::NodeId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir.local_def_id(node_id);
+        let def_id = tcx.hir().local_def_id(node_id);
         for attr in tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
                 // for now, can only use on monomorphic names

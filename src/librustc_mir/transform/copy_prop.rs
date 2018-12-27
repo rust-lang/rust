@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Trivial copy propagation pass.
 //!
 //! This uses def-use analysis to remove values that have exactly one def and one use, which must
@@ -104,7 +94,7 @@ impl MirPass for CopyPropagation {
 
                     // That use of the source must be an assignment.
                     match statement.kind {
-                        StatementKind::Assign(Place::Local(local), Rvalue::Use(ref operand)) if
+                        StatementKind::Assign(Place::Local(local), box Rvalue::Use(ref operand)) if
                                 local == dest_local => {
                             let maybe_action = match *operand {
                                 Operand::Copy(ref src_place) |
@@ -155,11 +145,11 @@ fn eliminate_self_assignments<'tcx>(
                 match stmt.kind {
                     StatementKind::Assign(
                         Place::Local(local),
-                        Rvalue::Use(Operand::Copy(Place::Local(src_local))),
+                        box Rvalue::Use(Operand::Copy(Place::Local(src_local))),
                     ) |
                     StatementKind::Assign(
                         Place::Local(local),
-                        Rvalue::Use(Operand::Move(Place::Local(src_local))),
+                        box Rvalue::Use(Operand::Move(Place::Local(src_local))),
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
                         continue;

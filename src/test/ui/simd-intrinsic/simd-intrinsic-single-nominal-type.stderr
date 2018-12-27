@@ -1,11 +1,11 @@
 error[E0443]: intrinsic return value has wrong type: found `B`, expected `A` which was used for this vector type previously in this signature
-  --> $DIR/simd-intrinsic-single-nominal-type.rs:23:5
+  --> $DIR/simd-intrinsic-single-nominal-type.rs:13:5
    |
 LL |     fn x86_mm_adds_epi16(x: A, y: A) -> B;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0443]: intrinsic argument 2 has wrong type: found `B`, expected `A` which was used for this vector type previously in this signature
-  --> $DIR/simd-intrinsic-single-nominal-type.rs:25:5
+  --> $DIR/simd-intrinsic-single-nominal-type.rs:15:5
    |
 LL |     fn x86_mm_subs_epi16(x: A, y: B) -> A;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

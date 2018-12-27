@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
@@ -125,7 +115,7 @@ pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
 // example happen for generics when using multiple codegen units. This function simply uses the
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
-// For more details on COMDAT sections see e.g. http://www.airs.com/blog/archives/52
+// For more details on COMDAT sections see e.g., http://www.airs.com/blog/archives/52
 pub fn SetUniqueComdat(llmod: &Module, val: &'a Value) {
     unsafe {
         LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
@@ -190,7 +180,7 @@ impl ObjectFile {
     pub fn new(llmb: &'static mut MemoryBuffer) -> Option<ObjectFile> {
         unsafe {
             let llof = LLVMCreateObjectFile(llmb)?;
-            Some(ObjectFile { llof: llof })
+            Some(ObjectFile { llof })
         }
     }
 }

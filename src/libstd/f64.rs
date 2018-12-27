@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
@@ -176,6 +166,35 @@ impl f64 {
         }
     }
 
+    /// Returns a number composed of the magnitude of `self` and the sign of
+    /// `y`.
+    ///
+    /// Equal to `self` if the sign of `self` and `y` are the same, otherwise
+    /// equal to `-self`. If `self` is a `NAN`, then a `NAN` with the sign of
+    /// `y` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copysign)]
+    /// use std::f64;
+    ///
+    /// let f = 3.5_f64;
+    ///
+    /// assert_eq!(f.copysign(0.42), 3.5_f64);
+    /// assert_eq!(f.copysign(-0.42), -3.5_f64);
+    /// assert_eq!((-f).copysign(0.42), 3.5_f64);
+    /// assert_eq!((-f).copysign(-0.42), -3.5_f64);
+    ///
+    /// assert!(f64::NAN.copysign(1.0).is_nan());
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature="copysign", issue="55169")]
+    pub fn copysign(self, y: f64) -> f64 {
+        unsafe { intrinsics::copysignf64(self, y) }
+    }
+
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
@@ -200,10 +219,10 @@ impl f64 {
         unsafe { intrinsics::fmaf64(self, a, b) }
     }
 
-    /// Calculates Euclidean division, the matching method for `mod_euc`.
+    /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
     /// This computes the integer `n` such that
-    /// `self = n * rhs + self.mod_euc(rhs)`.
+    /// `self = n * rhs + self.rem_euclid(rhs)`.
     /// In other words, the result is `self / rhs` rounded to the integer `n`
     /// such that `self >= n * rhs`.
     ///
@@ -213,14 +232,14 @@ impl f64 {
     /// #![feature(euclidean_division)]
     /// let a: f64 = 7.0;
     /// let b = 4.0;
-    /// assert_eq!(a.div_euc(b), 1.0); // 7.0 > 4.0 * 1.0
-    /// assert_eq!((-a).div_euc(b), -2.0); // -7.0 >= 4.0 * -2.0
-    /// assert_eq!(a.div_euc(-b), -1.0); // 7.0 >= -4.0 * -1.0
-    /// assert_eq!((-a).div_euc(-b), 2.0); // -7.0 >= -4.0 * 2.0
+    /// assert_eq!(a.div_euclid(b), 1.0); // 7.0 > 4.0 * 1.0
+    /// assert_eq!((-a).div_euclid(b), -2.0); // -7.0 >= 4.0 * -2.0
+    /// assert_eq!(a.div_euclid(-b), -1.0); // 7.0 >= -4.0 * -1.0
+    /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
     /// ```
     #[inline]
     #[unstable(feature = "euclidean_division", issue = "49048")]
-    pub fn div_euc(self, rhs: f64) -> f64 {
+    pub fn div_euclid(self, rhs: f64) -> f64 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
             return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
@@ -228,7 +247,7 @@ impl f64 {
         q
     }
 
-    /// Calculates the Euclidean modulo (self mod rhs), which is never negative.
+    /// Calculates the least nonnegative remainder of `self (mod rhs)`.
     ///
     /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
     /// most cases.  However, due to a floating point round-off error it can
@@ -236,7 +255,7 @@ impl f64 {
     /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
     /// This result is not an element of the function's codomain, but it is the
     /// closest floating point number in the real numbers and thus fulfills the
-    /// property `self == self.div_euc(rhs) * rhs + self.mod_euc(rhs)`
+    /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
     /// approximatively.
     ///
     /// # Examples
@@ -245,16 +264,16 @@ impl f64 {
     /// #![feature(euclidean_division)]
     /// let a: f64 = 7.0;
     /// let b = 4.0;
-    /// assert_eq!(a.mod_euc(b), 3.0);
-    /// assert_eq!((-a).mod_euc(b), 1.0);
-    /// assert_eq!(a.mod_euc(-b), 3.0);
-    /// assert_eq!((-a).mod_euc(-b), 1.0);
+    /// assert_eq!(a.rem_euclid(b), 3.0);
+    /// assert_eq!((-a).rem_euclid(b), 1.0);
+    /// assert_eq!(a.rem_euclid(-b), 3.0);
+    /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-std::f64::EPSILON).mod_euc(3.0) != 0.0);
+    /// assert!((-std::f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[inline]
     #[unstable(feature = "euclidean_division", issue = "49048")]
-    pub fn mod_euc(self, rhs: f64) -> f64 {
+    pub fn rem_euclid(self, rhs: f64) -> f64 {
         let r = self % rhs;
         if r < 0.0 {
             r + rhs.abs()
@@ -462,7 +481,8 @@ impl f64 {
     #[inline]
     #[rustc_deprecated(since = "1.10.0",
                        reason = "you probably meant `(self - other).abs()`: \
-                                 this operation is `(self - other).max(0.0)` (also \
+                                 this operation is `(self - other).max(0.0)` \
+                                 except that `abs_sub` also propagates NaNs (also \
                                  known as `fdim` in C). If you truly need the positive \
                                  difference, consider using that expression or the C function \
                                  `fdim`, depending on how you wish to handle NaN (please consider \
@@ -859,7 +879,7 @@ impl f64 {
     }
 
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
-    // because of their non-standard behavior (e.g. log(-n) returns -Inf instead
+    // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
     // of expected NaN).
     fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
         if !cfg!(target_os = "solaris") {

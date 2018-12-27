@@ -1,0 +1,8 @@
+warning: the feature `crate_in_paths` has been stable since 1.30.0 and no longer requires an attribute to enable
+  --> $DIR/crate-path-absolute.rs:2:12
+   |
+LL | #![feature(crate_in_paths)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: #[warn(stable_features)] on by default
+

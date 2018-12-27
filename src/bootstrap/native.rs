@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Compilation of native dependencies like LLVM.
 //!
 //! Native projects like LLVM unfortunately aren't suited just yet for
@@ -21,7 +11,6 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -29,10 +18,11 @@ use build_helper::output;
 use cmake;
 use cc;
 
-use util::{self, exe};
+use crate::util::{self, exe};
 use build_helper::up_to_date;
-use builder::{Builder, RunConfig, ShouldRun, Step};
-use cache::Interned;
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::cache::Interned;
+use crate::GitRepo;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
@@ -74,8 +64,7 @@ impl Step for Llvm {
         }
 
         let rebuild_trigger = builder.src.join("src/rustllvm/llvm-rebuild-trigger");
-        let mut rebuild_trigger_contents = String::new();
-        t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
+        let rebuild_trigger_contents = t!(fs::read_to_string(&rebuild_trigger));
 
         let (out_dir, llvm_config_ret_dir) = if emscripten {
             let dir = builder.emscripten_llvm_out(target);
@@ -92,8 +81,7 @@ impl Step for Llvm {
         let build_llvm_config = llvm_config_ret_dir
             .join(exe("llvm-config", &*builder.config.build));
         if done_stamp.exists() {
-            let mut done_contents = String::new();
-            t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
+            let done_contents = t!(fs::read_to_string(&done_stamp));
 
             // If LLVM was already built previously and contents of the rebuild-trigger file
             // didn't change from the previous build, then no action is required.
@@ -145,6 +133,7 @@ impl Step for Llvm {
            .define("LLVM_INCLUDE_EXAMPLES", "OFF")
            .define("LLVM_INCLUDE_TESTS", "OFF")
            .define("LLVM_INCLUDE_DOCS", "OFF")
+           .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
            .define("LLVM_ENABLE_ZLIB", "OFF")
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
@@ -152,6 +141,11 @@ impl Step for Llvm {
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+
+        if builder.config.llvm_thin_lto && !emscripten {
+            cfg.define("LLVM_ENABLE_LTO", "Thin")
+               .define("LLVM_ENABLE_LLD", "ON");
+        }
 
         // By default, LLVM will automatically find OCaml and, if it finds it,
         // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
@@ -166,14 +160,10 @@ impl Step for Llvm {
 
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
-        // for the tools.  We don't distribute any of those tools, so this is
-        // just a local concern.  However, it doesn't work well everywhere.
-        //
-        // If we are shipping llvm tools then we statically link them LLVM
-        if (target.contains("linux-gnu") || target.contains("apple-darwin")) &&
-            !builder.config.llvm_tools_enabled &&
-            !want_lldb {
-                cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+        // for the tools. We don't do this on every platform as it doesn't work
+        // equally well everywhere.
+        if builder.llvm_link_tools_dynamically(target) && !emscripten {
+            cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
@@ -237,10 +227,18 @@ impl Step for Llvm {
             cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
         }
 
+        if let Some(ref suffix) = builder.config.llvm_version_suffix {
+            cfg.define("LLVM_VERSION_SUFFIX", suffix);
+        }
+
+        if let Some(ref python) = builder.config.python {
+            cfg.define("PYTHON_EXECUTABLE", python);
+        }
+
         configure_cmake(builder, target, &mut cfg, false);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
-        //        libraries here, e.g. we just want a few components and a few
+        //        libraries here, e.g., we just want a few components and a few
         //        tools. Figure out how to filter them down and only build the right
         //        tools and libs on all platforms.
 
@@ -250,7 +248,7 @@ impl Step for Llvm {
 
         cfg.build();
 
-        t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
+        t!(fs::write(&done_stamp, &rebuild_trigger_contents));
 
         build_llvm_config
     }
@@ -270,11 +268,11 @@ fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
     let mut parts = version.split('.').take(2)
         .filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 5 {
+        if major >= 6 {
             return
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=5.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=6.0\n\n", version)
 }
 
 fn configure_cmake(builder: &Builder,
@@ -342,7 +340,7 @@ fn configure_cmake(builder: &Builder,
        // definitely causes problems since all the env vars are pointing to
        // 32-bit libraries.
        //
-       // To hack aroudn this... again... we pass an argument that's
+       // To hack around this... again... we pass an argument that's
        // unconditionally passed in the sccache shim. This'll get CMake to
        // correctly diagnose it's doing a 32-bit compilation and LLVM will
        // internally configure itself appropriately.
@@ -350,7 +348,7 @@ fn configure_cmake(builder: &Builder,
            cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
        }
 
-    // If ccache is configured we inform the build a little differently hwo
+    // If ccache is configured we inform the build a little differently how
     // to invoke ccache while also invoking our compilers.
     } else if let Some(ref ccache) = builder.config.ccache {
        cfg.define("CMAKE_C_COMPILER", ccache)
@@ -363,8 +361,8 @@ fn configure_cmake(builder: &Builder,
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    cfg.define("CMAKE_C_FLAGS", builder.cflags(target).join(" "));
-    let mut cxxflags = builder.cflags(target).join(" ");
+    cfg.define("CMAKE_C_FLAGS", builder.cflags(target, GitRepo::Llvm).join(" "));
+    let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
     if building_dist_binaries {
         if builder.config.llvm_static_stdcpp && !target.contains("windows") {
             cxxflags.push_str(" -static-libstdc++");
@@ -376,6 +374,14 @@ fn configure_cmake(builder: &Builder,
             // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
             cfg.define("CMAKE_AR", sanitize_cc(ar));
+        }
+    }
+
+    if let Some(ranlib) = builder.ranlib(target) {
+        if ranlib.is_absolute() {
+            // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
+            // tries to resolve this path in the LLVM build directory.
+            cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
         }
     }
 
@@ -510,191 +516,5 @@ impl Step for TestHelpers {
            .debug(false)
            .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
            .compile("rust_test_helpers");
-    }
-}
-
-const OPENSSL_VERS: &'static str = "1.0.2n";
-const OPENSSL_SHA256: &'static str =
-    "370babb75f278c39e0c50e8c4e7493bc0f18db6867478341a832a982fd15a8fe";
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Openssl {
-    pub target: Interned<String>,
-}
-
-impl Step for Openssl {
-    type Output = ();
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.never()
-    }
-
-    fn run(self, builder: &Builder) {
-        if builder.config.dry_run {
-            return;
-        }
-        let target = self.target;
-        let out = match builder.openssl_dir(target) {
-            Some(dir) => dir,
-            None => return,
-        };
-
-        let stamp = out.join(".stamp");
-        let mut contents = String::new();
-        drop(File::open(&stamp).and_then(|mut f| f.read_to_string(&mut contents)));
-        if contents == OPENSSL_VERS {
-            return
-        }
-        t!(fs::create_dir_all(&out));
-
-        let name = format!("openssl-{}.tar.gz", OPENSSL_VERS);
-        let tarball = out.join(&name);
-        if !tarball.exists() {
-            let tmp = tarball.with_extension("tmp");
-            // originally from https://www.openssl.org/source/...
-            let url = format!("https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/{}",
-                              name);
-            let mut last_error = None;
-            for _ in 0..3 {
-                let status = Command::new("curl")
-                                .arg("-o").arg(&tmp)
-                                .arg("-f")  // make curl fail if the URL does not return HTTP 200
-                                .arg(&url)
-                                .status()
-                                .expect("failed to spawn curl");
-
-                // Retry if download failed.
-                if !status.success() {
-                    last_error = Some(status.to_string());
-                    continue;
-                }
-
-                // Ensure the hash is correct.
-                let mut shasum = if target.contains("apple") ||
-                    builder.config.build.contains("netbsd") {
-                    let mut cmd = Command::new("shasum");
-                    cmd.arg("-a").arg("256");
-                    cmd
-                } else {
-                    Command::new("sha256sum")
-                };
-                let output = output(&mut shasum.arg(&tmp));
-                let found = output.split_whitespace().next().unwrap();
-
-                // If the hash is wrong, probably the download is incomplete or S3 served an error
-                // page. In any case, retry.
-                if found != OPENSSL_SHA256 {
-                    last_error = Some(format!(
-                        "downloaded openssl sha256 different\n\
-                         expected: {}\n\
-                         found:    {}\n",
-                        OPENSSL_SHA256,
-                        found
-                    ));
-                    continue;
-                }
-
-                // Everything is fine, so exit the retry loop.
-                last_error = None;
-                break;
-            }
-            if let Some(error) = last_error {
-                panic!("failed to download openssl source: {}", error);
-            }
-            t!(fs::rename(&tmp, &tarball));
-        }
-        let obj = out.join(format!("openssl-{}", OPENSSL_VERS));
-        let dst = builder.openssl_install_dir(target).unwrap();
-        drop(fs::remove_dir_all(&obj));
-        drop(fs::remove_dir_all(&dst));
-        builder.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
-
-        let mut configure = Command::new("perl");
-        configure.arg(obj.join("Configure"));
-        configure.arg(format!("--prefix={}", dst.display()));
-        configure.arg("no-dso");
-        configure.arg("no-ssl2");
-        configure.arg("no-ssl3");
-
-        let os = match &*target {
-            "aarch64-linux-android" => "linux-aarch64",
-            "aarch64-unknown-linux-gnu" => "linux-aarch64",
-            "aarch64-unknown-linux-musl" => "linux-aarch64",
-            "aarch64-unknown-netbsd" => "BSD-generic64",
-            "arm-linux-androideabi" => "android",
-            "arm-unknown-linux-gnueabi" => "linux-armv4",
-            "arm-unknown-linux-gnueabihf" => "linux-armv4",
-            "armv6-unknown-netbsd-eabihf" => "BSD-generic32",
-            "armv7-linux-androideabi" => "android-armv7",
-            "armv7-unknown-linux-gnueabihf" => "linux-armv4",
-            "armv7-unknown-netbsd-eabihf" => "BSD-generic32",
-            "i586-unknown-linux-gnu" => "linux-elf",
-            "i586-unknown-linux-musl" => "linux-elf",
-            "i686-apple-darwin" => "darwin-i386-cc",
-            "i686-linux-android" => "android-x86",
-            "i686-unknown-freebsd" => "BSD-x86-elf",
-            "i686-unknown-linux-gnu" => "linux-elf",
-            "i686-unknown-linux-musl" => "linux-elf",
-            "i686-unknown-netbsd" => "BSD-x86-elf",
-            "mips-unknown-linux-gnu" => "linux-mips32",
-            "mips64-unknown-linux-gnuabi64" => "linux64-mips64",
-            "mips64el-unknown-linux-gnuabi64" => "linux64-mips64",
-            "mipsel-unknown-linux-gnu" => "linux-mips32",
-            "powerpc-unknown-linux-gnu" => "linux-ppc",
-            "powerpc-unknown-linux-gnuspe" => "linux-ppc",
-            "powerpc-unknown-netbsd" => "BSD-generic32",
-            "powerpc64-unknown-linux-gnu" => "linux-ppc64",
-            "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
-            "powerpc64le-unknown-linux-musl" => "linux-ppc64le",
-            "s390x-unknown-linux-gnu" => "linux64-s390x",
-            "sparc-unknown-linux-gnu" => "linux-sparcv9",
-            "sparc64-unknown-linux-gnu" => "linux64-sparcv9",
-            "sparc64-unknown-netbsd" => "BSD-sparc64",
-            "x86_64-apple-darwin" => "darwin64-x86_64-cc",
-            "x86_64-linux-android" => "linux-x86_64",
-            "x86_64-unknown-freebsd" => "BSD-x86_64",
-            "x86_64-unknown-dragonfly" => "BSD-x86_64",
-            "x86_64-unknown-linux-gnu" => "linux-x86_64",
-            "x86_64-unknown-linux-gnux32" => "linux-x32",
-            "x86_64-unknown-linux-musl" => "linux-x86_64",
-            "x86_64-unknown-netbsd" => "BSD-x86_64",
-            _ => panic!("don't know how to configure OpenSSL for {}", target),
-        };
-        configure.arg(os);
-        configure.env("CC", builder.cc(target));
-        for flag in builder.cflags(target) {
-            configure.arg(flag);
-        }
-        // There is no specific os target for android aarch64 or x86_64,
-        // so we need to pass some extra cflags
-        if target == "aarch64-linux-android" || target == "x86_64-linux-android" {
-            configure.arg("-mandroid");
-            configure.arg("-fomit-frame-pointer");
-        }
-        if target == "sparc64-unknown-netbsd" {
-            // Need -m64 to get assembly generated correctly for sparc64.
-            configure.arg("-m64");
-            if builder.config.build.contains("netbsd") {
-                // Disable sparc64 asm on NetBSD builders, it uses
-                // m4(1)'s -B flag, which NetBSD m4 does not support.
-                configure.arg("no-asm");
-            }
-        }
-        // Make PIE binaries
-        // Non-PIE linker support was removed in Lollipop
-        // https://source.android.com/security/enhancements/enhancements50
-        if target == "i686-linux-android" {
-            configure.arg("no-asm");
-        }
-        configure.current_dir(&obj);
-        builder.info(&format!("Configuring openssl for {}", target));
-        builder.run_quiet(&mut configure);
-        builder.info(&format!("Building openssl for {}", target));
-        builder.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
-        builder.info(&format!("Installing openssl for {}", target));
-        builder.run_quiet(Command::new("make").arg("install").arg("-j1").current_dir(&obj));
-
-        let mut f = t!(File::create(&stamp));
-        t!(f.write_all(OPENSSL_VERS.as_bytes()));
     }
 }

@@ -1,13 +1,3 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // revisions: ast nll
 //[ast]compile-flags:
 //[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows
@@ -49,7 +39,7 @@ fn deref_coercion(x: &mut u32) {
 //
 // - [x] Resolving overloaded_call_traits (call, call_mut, call_once)
 // - [x] deref_coercion (shown above)
-// - [x] coerce_unsized e.g. `&[T; n]`, `&mut [T; n] -> &[T]`,
+// - [x] coerce_unsized e.g., `&[T; n]`, `&mut [T; n] -> &[T]`,
 //                      `&mut [T; n] -> &mut [T]`, `&Concrete -> &Trait`
 // - [x] Method Call Receivers (the case we want to support!)
 // - [x] ExprKind::Index and ExprKind::Unary Deref; only need to handle coerce_index_op

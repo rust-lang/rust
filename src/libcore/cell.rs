@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Shareable mutable containers.
 //!
 //! Rust memory safety is based on this rule: Given an object `T`, it is only possible to
@@ -97,7 +87,7 @@
 //! ## Implementation details of logically-immutable methods
 //!
 //! Occasionally it may be desirable not to expose in an API that there is mutation happening
-//! "under the hood". This may be because logically the operation is immutable, but e.g. caching
+//! "under the hood". This may be because logically the operation is immutable, but e.g., caching
 //! forces the implementation to perform mutation; or because you must employ mutation to implement
 //! a trait method that was originally defined to take `&self`.
 //!
@@ -207,8 +197,8 @@ use ptr;
 ///
 /// # Examples
 ///
-/// Here you can see how using `Cell<T>` allows to use mutable field inside
-/// immutable struct (which is also called 'interior mutability').
+/// In this example, you can see that `Cell<T>` enables mutation inside an
+/// immutable struct. In other words, it enables "interior mutability".
 ///
 /// ```
 /// use std::cell::Cell;
@@ -225,10 +215,11 @@ use ptr;
 ///
 /// let new_value = 100;
 ///
-/// // ERROR, because my_struct is immutable
+/// // ERROR: `my_struct` is immutable
 /// // my_struct.regular_field = new_value;
 ///
-/// // WORKS, although `my_struct` is immutable, field `special_field` is mutable because it is Cell
+/// // WORKS: although `my_struct` is immutable, `special_field` is a `Cell`,
+/// // which can always be mutated
 /// my_struct.special_field.set(new_value);
 /// assert_eq!(my_struct.special_field.get(), new_value);
 /// ```
@@ -473,7 +464,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    pub fn as_ptr(&self) -> *mut T {
+    pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
 
@@ -1092,7 +1083,7 @@ impl<'b> BorrowRef<'b> {
     }
 }
 
-impl<'b> Drop for BorrowRef<'b> {
+impl Drop for BorrowRef<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
@@ -1101,9 +1092,9 @@ impl<'b> Drop for BorrowRef<'b> {
     }
 }
 
-impl<'b> Clone for BorrowRef<'b> {
+impl Clone for BorrowRef<'_> {
     #[inline]
-    fn clone(&self) -> BorrowRef<'b> {
+    fn clone(&self) -> Self {
         // Since this Ref exists, we know the borrow flag
         // is a reading borrow.
         let borrow = self.borrow.get();
@@ -1127,7 +1118,7 @@ pub struct Ref<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: ?Sized> Deref for Ref<'b, T> {
+impl<T: ?Sized> Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]
@@ -1219,14 +1210,14 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for Ref<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
     }
 }
 
 impl<'b, T: ?Sized> RefMut<'b, T> {
-    /// Make a new `RefMut` for a component of the borrowed data, e.g. an enum
+    /// Make a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
@@ -1305,7 +1296,7 @@ struct BorrowRefMut<'b> {
     borrow: &'b Cell<BorrowFlag>,
 }
 
-impl<'b> Drop for BorrowRefMut<'b> {
+impl Drop for BorrowRefMut<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
@@ -1356,7 +1347,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
+impl<T: ?Sized> Deref for RefMut<'_, T> {
     type Target = T;
 
     #[inline]
@@ -1366,7 +1357,7 @@ impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
+impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         self.value
@@ -1377,7 +1368,7 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
     }
@@ -1507,8 +1498,10 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> *mut T {
-        &self.value as *const T as *mut T
+    pub const fn get(&self) -> *mut T {
+        // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
+        // #[repr(transparent)]
+        self as *const UnsafeCell<T> as *const T as *mut T
     }
 }
 

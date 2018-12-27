@@ -1,5 +1,5 @@
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:21:10
+  --> $DIR/borrowck-use-mut-borrow.rs:11:10
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
@@ -9,7 +9,7 @@ LL |     *p = 2;
    |     ------ borrow later used here
 
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:28:10
+  --> $DIR/borrowck-use-mut-borrow.rs:18:10
    |
 LL |     let p = &mut x.a;
    |             -------- borrow of `x.a` occurs here
@@ -19,7 +19,7 @@ LL |     *p = 3;
    |     ------ borrow later used here
 
 error[E0503]: cannot use `x.a` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:35:10
+  --> $DIR/borrowck-use-mut-borrow.rs:25:10
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
@@ -29,7 +29,7 @@ LL |     p.a = 3;
    |     ------- borrow later used here
 
 error[E0503]: cannot use `x.a` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:42:10
+  --> $DIR/borrowck-use-mut-borrow.rs:32:10
    |
 LL |     let p = &mut x.a;
    |             -------- borrow of `x.a` occurs here
@@ -39,7 +39,7 @@ LL |     *p = 3;
    |     ------ borrow later used here
 
 error[E0503]: cannot use `x.a` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:49:13
+  --> $DIR/borrowck-use-mut-borrow.rs:39:13
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
@@ -50,7 +50,7 @@ LL |     p.a = 4;
    |     ------- borrow later used here
 
 error[E0503]: cannot use `x.a` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:57:13
+  --> $DIR/borrowck-use-mut-borrow.rs:47:13
    |
 LL |     let p = &mut x.a;
    |             -------- borrow of `x.a` occurs here
@@ -61,7 +61,7 @@ LL |     *p = 4;
    |     ------ borrow later used here
 
 error[E0503]: cannot use `*x` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:65:10
+  --> $DIR/borrowck-use-mut-borrow.rs:55:10
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
@@ -71,7 +71,7 @@ LL |     **p = 2;
    |     ------- borrow later used here
 
 error[E0503]: cannot use `*x.b` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:72:10
+  --> $DIR/borrowck-use-mut-borrow.rs:62:10
    |
 LL |     let p = &mut x;
    |             ------ borrow of `x` occurs here
@@ -81,7 +81,7 @@ LL |     p.a = 3;
    |     ------- borrow later used here
 
 error[E0503]: cannot use `*x.b` because it was mutably borrowed
-  --> $DIR/borrowck-use-mut-borrow.rs:79:10
+  --> $DIR/borrowck-use-mut-borrow.rs:69:10
    |
 LL |     let p = &mut x.b;
    |             -------- borrow of `x.b` occurs here

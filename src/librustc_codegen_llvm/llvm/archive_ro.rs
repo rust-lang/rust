@@ -1,19 +1,9 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A wrapper around LLVM's archive (.a) code
 
-use std::ffi::CString;
 use std::path::Path;
 use std::slice;
 use std::str;
+use rustc_fs_util::path_to_c_string;
 
 pub struct ArchiveRO {
     pub raw: &'static mut super::Archive,
@@ -38,24 +28,12 @@ impl ArchiveRO {
     /// raised.
     pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
         return unsafe {
-            let s = path2cstr(dst);
+            let s = path_to_c_string(dst);
             let ar = super::LLVMRustOpenArchive(s.as_ptr()).ok_or_else(|| {
-                super::last_error().unwrap_or("failed to open archive".to_string())
+                super::last_error().unwrap_or_else(|| "failed to open archive".to_owned())
             })?;
             Ok(ArchiveRO { raw: ar })
         };
-
-        #[cfg(unix)]
-        fn path2cstr(p: &Path) -> CString {
-            use std::os::unix::prelude::*;
-            use std::ffi::OsStr;
-            let p: &OsStr = p.as_ref();
-            CString::new(p.as_bytes()).unwrap()
-        }
-        #[cfg(windows)]
-        fn path2cstr(p: &Path) -> CString {
-            CString::new(p.to_str().unwrap()).unwrap()
-        }
     }
 
     pub fn iter(&self) -> Iter {

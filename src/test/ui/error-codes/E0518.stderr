@@ -1,5 +1,5 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/E0518.rs:11:1
+  --> $DIR/E0518.rs:1:1
    |
 LL | #[inline(always)] //~ ERROR: E0518
    | ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | struct Foo;
    | ----------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/E0518.rs:14:1
+  --> $DIR/E0518.rs:4:1
    |
 LL |   #[inline(never)] //~ ERROR: E0518
    |   ^^^^^^^^^^^^^^^^

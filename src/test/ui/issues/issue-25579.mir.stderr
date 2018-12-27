@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/issue-25579.rs:31:1
+  --> $DIR/issue-25579.rs:21:1
    |
 LL | / fn main() { //[mir]~ ERROR compilation successful
 LL | | }

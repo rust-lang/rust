@@ -1,22 +1,9 @@
-error: attempt to add with overflow
-  --> $DIR/const-eval-overflow-4.rs:24:13
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-eval-overflow-4.rs:13:13
    |
 LL |     : [u32; (i8::MAX as i8 + 1i8) as usize]
-   |             ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: #[deny(const_err)] on by default
+   |             ^^^^^^^^^^^^^^^^^^^^^ attempt to add with overflow
 
-error[E0080]: could not evaluate constant expression
-  --> $DIR/const-eval-overflow-4.rs:22:1
-   |
-LL | / const A_I8_T
-LL | |     //~^ ERROR could not evaluate constant expression
-LL | |     : [u32; (i8::MAX as i8 + 1i8) as usize]
-   | |             --------------------- attempt to add with overflow
-LL | |     //~^ ERROR attempt to add with overflow
-LL | |     = [0; (i8::MAX as usize) + 1];
-   | |__________________________________^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

@@ -1,47 +1,47 @@
 error[E0412]: cannot find type `esize` in this scope
-  --> $DIR/levenshtein.rs:15:11
+  --> $DIR/levenshtein.rs:5:11
    |
 LL | fn foo(c: esize) {} // Misspelled primitive type name.
    |           ^^^^^ did you mean `isize`?
 
 error[E0412]: cannot find type `Baz` in this scope
-  --> $DIR/levenshtein.rs:20:10
+  --> $DIR/levenshtein.rs:10:10
    |
 LL | type A = Baz; // Misspelled type name.
    |          ^^^ did you mean `Bar`?
 
 error[E0412]: cannot find type `Opiton` in this scope
-  --> $DIR/levenshtein.rs:22:10
+  --> $DIR/levenshtein.rs:12:10
    |
 LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
    |          ^^^^^^ did you mean `Option`?
 
 error[E0412]: cannot find type `Baz` in this scope
-  --> $DIR/levenshtein.rs:26:14
+  --> $DIR/levenshtein.rs:16:14
    |
 LL |     type A = Baz; // No suggestion here, Bar is not visible
    |              ^^^ not found in this scope
 
 error[E0425]: cannot find value `MAXITEM` in this scope
-  --> $DIR/levenshtein.rs:34:20
+  --> $DIR/levenshtein.rs:24:20
    |
 LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
    |                    ^^^^^^^ did you mean `MAX_ITEM`?
 
 error[E0425]: cannot find function `foobar` in this scope
-  --> $DIR/levenshtein.rs:36:5
+  --> $DIR/levenshtein.rs:26:5
    |
 LL |     foobar(); // Misspelled function name.
    |     ^^^^^^ did you mean `foo_bar`?
 
 error[E0412]: cannot find type `first` in module `m`
-  --> $DIR/levenshtein.rs:38:15
+  --> $DIR/levenshtein.rs:28:15
    |
 LL |     let b: m::first = m::second; // Misspelled item in module.
    |               ^^^^^ did you mean `First`?
 
 error[E0425]: cannot find value `second` in module `m`
-  --> $DIR/levenshtein.rs:38:26
+  --> $DIR/levenshtein.rs:28:26
    |
 LL |     let b: m::first = m::second; // Misspelled item in module.
    |                          ^^^^^^ did you mean `Second`?

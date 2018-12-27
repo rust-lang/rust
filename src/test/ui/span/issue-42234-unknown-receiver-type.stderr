@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-42234-unknown-receiver-type.rs:17:5
+  --> $DIR/issue-42234-unknown-receiver-type.rs:7:5
    |
 LL |     let x: Option<_> = None;
    |         - consider giving `x` a type
@@ -9,9 +9,9 @@ LL |     x.unwrap().method_that_could_exist_on_some_type();
    = note: type must be known at this point
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-42234-unknown-receiver-type.rs:22:5
+  --> $DIR/issue-42234-unknown-receiver-type.rs:12:5
    |
-LL | /     data.iter() //~ ERROR 22:5: 23:20: type annotations needed
+LL | /     data.iter() //~ ERROR type annotations needed
 LL | |         .sum::<_>()
    | |___________________^ cannot infer type
    |

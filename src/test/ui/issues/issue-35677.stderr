@@ -1,0 +1,18 @@
+error[E0601]: `main` function not found in crate `issue_35677`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-35677.rs`
+
+error[E0599]: no method named `drain` found for type `&mut std::collections::HashMap<K, V>` in the current scope
+  --> $DIR/issue-35677.rs:3:10
+   |
+LL |     this.drain()
+   |          ^^^^^
+   |
+   = note: the method `drain` exists but the following trait bounds were not satisfied:
+           `K : std::cmp::Eq`
+           `K : std::hash::Hash`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0599, E0601.
+For more information about an error, try `rustc --explain E0599`.

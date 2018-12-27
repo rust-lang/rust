@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Primitive traits and types representing basic properties of types.
 //!
 //! Rust types can be classified in various useful ways according to
@@ -92,6 +82,7 @@ impl<T: ?Sized> !Send for *mut T { }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
+    on(parent_trait="std::path::Path", label="borrow the `Path` instead"),
     message="the size for values of type `{Self}` cannot be known at compilation time",
     label="doesn't have a size known at compile-time",
     note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
@@ -273,10 +264,10 @@ pub trait Unsize<T: ?Sized> {
 /// In addition to the [implementors listed below][impls],
 /// the following types also implement `Copy`:
 ///
-/// * Function item types (i.e. the distinct types defined for each function)
-/// * Function pointer types (e.g. `fn() -> i32`)
-/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
-/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
+/// * Function item types (i.e., the distinct types defined for each function)
+/// * Function pointer types (e.g., `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g., `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
 ///   Note that variables captured by shared reference always implement `Copy`
@@ -511,7 +502,7 @@ macro_rules! impls{
 ///     let ptr = vec.as_ptr();
 ///     Slice {
 ///         start: ptr,
-///         end: unsafe { ptr.offset(vec.len() as isize) },
+///         end: unsafe { ptr.add(vec.len()) },
 ///         phantom: PhantomData,
 ///     }
 /// }
@@ -577,6 +568,7 @@ macro_rules! impls{
 ///
 /// [drop check]: ../../nomicon/dropck.html
 #[lang = "phantom_data"]
+#[structural_match]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;
 
@@ -584,9 +576,9 @@ impls! { PhantomData }
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
+    unsafe impl<T: Sync + ?Sized> Send for &T {}
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
+    unsafe impl<T: Send + ?Sized> Send for &mut T {}
 }
 
 /// Compiler-internal trait used to determine whether a type contains
@@ -594,41 +586,63 @@ mod impls {
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
 #[lang = "freeze"]
-unsafe auto trait Freeze {}
+pub(crate) unsafe auto trait Freeze {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
 unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
-unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
-unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+unsafe impl<T: ?Sized> Freeze for &T {}
+unsafe impl<T: ?Sized> Freeze for &mut T {}
 
-/// Types which can be moved out of a `PinMut`.
+/// Types which can be safely moved after being pinned.
 ///
-/// The `Unpin` trait is used to control the behavior of the [`PinMut`] type. If a
-/// type implements `Unpin`, it is safe to move a value of that type out of the
-/// `PinMut` pointer.
+/// Since Rust itself has no notion of immovable types, and will consider moves to always be safe,
+/// this trait cannot prevent types from moving by itself.
+///
+/// Instead it can be used to prevent moves through the type system,
+/// by controlling the behavior of pointers wrapped in the [`Pin`] wrapper,
+/// which "pin" the type in place by not allowing it to be moved out of them.
+/// See the [`pin module`] documentation for more information on pinning.
+///
+/// Implementing this trait lifts the restrictions of pinning off a type,
+/// which then allows it to move out with functions such as [`replace`].
+///
+/// So this, for example, can only be done on types implementing `Unpin`:
+///
+/// ```rust
+/// use std::mem::replace;
+/// use std::pin::Pin;
+///
+/// let mut string = "this".to_string();
+/// let mut pinned_string = Pin::new(&mut string);
+///
+/// // dereferencing the pointer mutably is only possible because String implements Unpin
+/// replace(&mut *pinned_string, "other".to_string());
+/// ```
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`PinMut`]: ../mem/struct.PinMut.html
-#[unstable(feature = "pin", issue = "49150")]
+/// [`replace`]: ../../std/mem/fn.replace.html
+/// [`Pin`]: ../pin/struct.Pin.html
+/// [`pin module`]: ../../std/pin/index.html
+#[stable(feature = "pin", since = "1.33.0")]
 pub auto trait Unpin {}
 
-/// A type which does not implement `Unpin`.
+/// A marker type which does not implement `Unpin`.
 ///
-/// If a type contains a `Pinned`, it will not implement `Unpin` by default.
-#[unstable(feature = "pin", issue = "49150")]
+/// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
+#[stable(feature = "pin", since = "1.33.0")]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Pinned;
+pub struct PhantomPinned;
 
-#[unstable(feature = "pin", issue = "49150")]
-impl !Unpin for Pinned {}
+#[stable(feature = "pin", since = "1.33.0")]
+impl !Unpin for PhantomPinned {}
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 
-#[unstable(feature = "pin", issue = "49150")]
+#[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 
 /// Implementations of `Copy` for primitive types.
@@ -666,6 +680,6 @@ mod copy_impls {
 
     // Shared references can be copied, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized> Copy for &'a T {}
+    impl<T: ?Sized> Copy for &T {}
 
 }

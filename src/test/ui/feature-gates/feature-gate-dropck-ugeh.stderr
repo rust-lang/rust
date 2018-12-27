@@ -1,5 +1,5 @@
 error[E0658]: unsafe_destructor_blind_to_params has been replaced by may_dangle and will be removed in the future (see issue #28498)
-  --> $DIR/feature-gate-dropck-ugeh.rs:29:5
+  --> $DIR/feature-gate-dropck-ugeh.rs:19:5
    |
 LL |     #[unsafe_destructor_blind_to_params] // This is the UGEH attribute
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

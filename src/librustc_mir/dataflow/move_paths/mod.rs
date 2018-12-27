@@ -1,18 +1,8 @@
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
+use smallvec::SmallVec;
 use syntax_pos::{Span};
 
 use std::fmt;
@@ -97,6 +87,20 @@ pub struct MovePath<'tcx> {
     pub place: Place<'tcx>,
 }
 
+impl<'tcx> MovePath<'tcx> {
+    pub fn parents(&self, move_paths: &IndexVec<MovePathIndex, MovePath>) -> Vec<MovePathIndex> {
+        let mut parents = Vec::new();
+
+        let mut curr_parent = self.parent;
+        while let Some(parent_mpi) = curr_parent {
+            parents.push(parent_mpi);
+            curr_parent = move_paths[parent_mpi].parent;
+        }
+
+        parents
+    }
+}
+
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         write!(w, "MovePath {{")?;
@@ -127,14 +131,14 @@ pub struct MoveData<'tcx> {
     /// of executing the code at `l`. (There can be multiple MoveOut's
     /// for a given `l` because each MoveOut is associated with one
     /// particular path being moved.)
-    pub loc_map: LocationMap<Vec<MoveOutIndex>>,
-    pub path_map: IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
+    pub loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
+    pub path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
     pub rev_lookup: MovePathLookup<'tcx>,
     pub inits: IndexVec<InitIndex, Init>,
     /// Each Location `l` is mapped to the Inits that are effects
     /// of executing the code at `l`.
-    pub init_loc_map: LocationMap<Vec<InitIndex>>,
-    pub init_path_map: IndexVec<MovePathIndex, Vec<InitIndex>>,
+    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 4]>>,
+    pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
 }
 
 pub trait HasMoveData<'tcx> {
@@ -196,10 +200,19 @@ impl fmt::Debug for MoveOut {
 pub struct Init {
     /// path being initialized
     pub path: MovePathIndex,
-    /// span of initialization
-    pub span: Span,
+    /// location of initialization
+    pub location: InitLocation,
     /// Extra information about this initialization
     pub kind: InitKind,
+}
+
+
+/// Initializations can be from an argument or from a statement. Arguments
+/// do not have locations, in those cases the `Local` is kept..
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InitLocation {
+    Argument(Local),
+    Statement(Location),
 }
 
 /// Additional information about the initialization.
@@ -215,7 +228,16 @@ pub enum InitKind {
 
 impl fmt::Debug for Init {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{:?}@{:?} ({:?})", self.path, self.span, self.kind)
+        write!(fmt, "{:?}@{:?} ({:?})", self.path, self.location, self.kind)
+    }
+}
+
+impl Init {
+    crate fn span<'gcx>(&self, mir: &Mir<'gcx>) -> Span {
+        match self.location {
+            InitLocation::Argument(local) => mir.local_decls[local].source_info.span,
+            InitLocation::Statement(location) => mir.source_info(location).span,
+        }
     }
 }
 
@@ -315,5 +337,15 @@ impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
     pub fn gather_moves(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                         -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         builder::gather_moves(mir, tcx)
+    }
+
+    /// For the move path `mpi`, returns the root local variable (if any) that starts the path.
+    /// (e.g., for a path like `a.b.c` returns `Some(a)`)
+    pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
+        loop {
+            let path = &self.move_paths[mpi];
+            if let Place::Local(l) = path.place { return Some(l); }
+            if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
+        }
     }
 }

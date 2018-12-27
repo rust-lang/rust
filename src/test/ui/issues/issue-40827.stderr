@@ -1,0 +1,35 @@
+error[E0277]: `std::rc::Rc<Foo>` cannot be sent between threads safely
+  --> $DIR/issue-40827.rs:14:5
+   |
+LL |     f(Foo(Arc::new(Bar::B(None))));
+   |     ^ `std::rc::Rc<Foo>` cannot be sent between threads safely
+   |
+   = help: within `Bar`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<Foo>`
+   = note: required because it appears within the type `Bar`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::sync::Arc<Bar>`
+   = note: required because it appears within the type `Foo`
+note: required by `f`
+  --> $DIR/issue-40827.rs:11:1
+   |
+LL | fn f<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `std::rc::Rc<Foo>` cannot be shared between threads safely
+  --> $DIR/issue-40827.rs:14:5
+   |
+LL |     f(Foo(Arc::new(Bar::B(None))));
+   |     ^ `std::rc::Rc<Foo>` cannot be shared between threads safely
+   |
+   = help: within `Bar`, the trait `std::marker::Sync` is not implemented for `std::rc::Rc<Foo>`
+   = note: required because it appears within the type `Bar`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::sync::Arc<Bar>`
+   = note: required because it appears within the type `Foo`
+note: required by `f`
+  --> $DIR/issue-40827.rs:11:1
+   |
+LL | fn f<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

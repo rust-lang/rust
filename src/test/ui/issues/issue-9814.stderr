@@ -1,5 +1,5 @@
 error[E0614]: type `Foo` cannot be dereferenced
-  --> $DIR/issue-9814.rs:17:13
+  --> $DIR/issue-9814.rs:7:13
    |
 LL |     let _ = *Foo::Bar(2); //~ ERROR type `Foo` cannot be dereferenced
    |             ^^^^^^^^^^^^

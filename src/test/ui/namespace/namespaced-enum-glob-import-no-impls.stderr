@@ -1,23 +1,23 @@
 error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/namespaced-enum-glob-import-no-impls.rs:31:5
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:21:5
    |
 LL |     foo(); //~ ERROR cannot find function `foo` in this scope
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `foo` in module `m`
-  --> $DIR/namespaced-enum-glob-import-no-impls.rs:32:8
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:22:8
    |
 LL |     m::foo(); //~ ERROR cannot find function `foo` in module `m`
    |        ^^^ not found in `m`
 
 error[E0425]: cannot find function `bar` in this scope
-  --> $DIR/namespaced-enum-glob-import-no-impls.rs:33:5
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:23:5
    |
 LL |     bar(); //~ ERROR cannot find function `bar` in this scope
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `bar` in module `m`
-  --> $DIR/namespaced-enum-glob-import-no-impls.rs:34:8
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:24:8
    |
 LL |     m::bar(); //~ ERROR cannot find function `bar` in module `m`
    |        ^^^ not found in `m`

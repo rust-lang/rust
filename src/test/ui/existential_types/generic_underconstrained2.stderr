@@ -1,5 +1,5 @@
 error[E0277]: `U` doesn't implement `std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:16:1
+  --> $DIR/generic_underconstrained2.rs:5:1
    |
 LL | existential type Underconstrained<T: std::fmt::Debug>: 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
@@ -9,7 +9,7 @@ LL | existential type Underconstrained<T: std::fmt::Debug>: 'static;
    = note: the return type of a function must have a statically known size
 
 error[E0277]: `V` doesn't implement `std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:24:1
+  --> $DIR/generic_underconstrained2.rs:13:1
    |
 LL | existential type Underconstrained2<T: std::fmt::Debug>: 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`

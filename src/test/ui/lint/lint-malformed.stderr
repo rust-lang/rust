@@ -1,11 +1,11 @@
 error[E0452]: malformed lint attribute
-  --> $DIR/lint-malformed.rs:11:1
+  --> $DIR/lint-malformed.rs:1:1
    |
 LL | #![deny = "foo"] //~ ERROR malformed lint attribute
    | ^^^^^^^^^^^^^^^^
 
 error[E0452]: malformed lint attribute
-  --> $DIR/lint-malformed.rs:12:10
+  --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")] //~ ERROR malformed lint attribute
    |          ^^^^^^^^^^^

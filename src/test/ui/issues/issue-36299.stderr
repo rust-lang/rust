@@ -1,5 +1,5 @@
 error[E0392]: parameter `'a` is never used
-  --> $DIR/issue-36299.rs:11:12
+  --> $DIR/issue-36299.rs:1:12
    |
 LL | struct Foo<'a, A> {}
    |            ^^ unused type parameter
@@ -7,7 +7,7 @@ LL | struct Foo<'a, A> {}
    = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`
 
 error[E0392]: parameter `A` is never used
-  --> $DIR/issue-36299.rs:11:16
+  --> $DIR/issue-36299.rs:1:16
    |
 LL | struct Foo<'a, A> {}
    |                ^ unused type parameter

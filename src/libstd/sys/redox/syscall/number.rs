@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 pub const SYS_CLASS: usize =    0xF000_0000;
 pub const SYS_CLASS_PATH: usize=0x1000_0000;
 pub const SYS_CLASS_FILE: usize=0x2000_0000;
@@ -36,6 +26,7 @@ pub const SYS_FCHMOD: usize =   SYS_CLASS_FILE | 94;
 pub const SYS_FCHOWN: usize =   SYS_CLASS_FILE | 207;
 pub const SYS_FCNTL: usize =    SYS_CLASS_FILE | 55;
 pub const SYS_FEVENT: usize =   SYS_CLASS_FILE | 927;
+pub const SYS_FEXEC: usize =    SYS_CLASS_FILE | 11;
 pub const SYS_FMAP: usize =     SYS_CLASS_FILE | 90;
 pub const SYS_FUNMAP: usize =   SYS_CLASS_FILE | 91;
 pub const SYS_FPATH: usize =    SYS_CLASS_FILE | SYS_ARG_MSLICE | 928;
@@ -50,7 +41,6 @@ pub const SYS_BRK: usize =      45;
 pub const SYS_CHDIR: usize =    12;
 pub const SYS_CLOCK_GETTIME: usize = 265;
 pub const SYS_CLONE: usize =    120;
-pub const SYS_EXECVE: usize =   11;
 pub const SYS_EXIT: usize =     1;
 pub const SYS_FUTEX: usize =    240;
 pub const SYS_GETCWD: usize =   183;

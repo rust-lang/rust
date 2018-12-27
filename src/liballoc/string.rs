@@ -1,13 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! A UTF-8 encoded, growable string.
 //!
 //! This module contains the [`String`] type, a trait for converting
@@ -413,7 +403,7 @@ impl String {
     ///
     /// // These are all done without reallocating...
     /// let cap = s.capacity();
-    /// for i in 0..10 {
+    /// for _ in 0..10 {
     ///     s.push('a');
     /// }
     ///
@@ -502,7 +492,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
-            Ok(..) => Ok(String { vec: vec }),
+            Ok(..) => Ok(String { vec }),
             Err(e) => {
                 Err(FromUtf8Error {
                     bytes: vec,
@@ -577,7 +567,7 @@ impl String {
             return Cow::Borrowed("");
         };
 
-        const REPLACEMENT: &'static str = "\u{FFFD}";
+        const REPLACEMENT: &str = "\u{FFFD}";
 
         let mut res = String::with_capacity(v.len());
         res.push_str(first_valid);
@@ -618,7 +608,17 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error(()))
+        // This isn't done via collect::<Result<_, _>>() for performance reasons.
+        // FIXME: the function can be simplified again when #48994 is closed.
+        let mut ret = String::with_capacity(v.len());
+        for c in decode_utf16(v.iter().cloned()) {
+            if let Ok(c) = c {
+                ret.push(c);
+            } else {
+                return Err(FromUtf16Error(()));
+            }
+        }
+        Ok(ret)
     }
 
     /// Decode a UTF-16 encoded slice `v` into a `String`, replacing
@@ -752,7 +752,7 @@ impl String {
         self.vec
     }
 
-    /// Extracts a string slice containing the entire string.
+    /// Extracts a string slice containing the entire `String`.
     ///
     /// # Examples
     ///
@@ -1040,7 +1040,7 @@ impl String {
     /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.vec.shrink_to(min_capacity)
     }
@@ -1190,8 +1190,8 @@ impl String {
         let next = idx + ch.len_utf8();
         let len = self.len();
         unsafe {
-            ptr::copy(self.vec.as_ptr().offset(next as isize),
-                      self.vec.as_mut_ptr().offset(idx as isize),
+            ptr::copy(self.vec.as_ptr().add(next),
+                      self.vec.as_mut_ptr().add(idx),
                       len - next);
             self.vec.set_len(len - (next - idx));
         }
@@ -1232,8 +1232,8 @@ impl String {
                 del_bytes += ch_len;
             } else if del_bytes > 0 {
                 unsafe {
-                    ptr::copy(self.vec.as_ptr().offset(idx as isize),
-                              self.vec.as_mut_ptr().offset((idx - del_bytes) as isize),
+                    ptr::copy(self.vec.as_ptr().add(idx),
+                              self.vec.as_mut_ptr().add(idx - del_bytes),
                               ch_len);
                 }
             }
@@ -1289,11 +1289,11 @@ impl String {
         let amt = bytes.len();
         self.vec.reserve(amt);
 
-        ptr::copy(self.vec.as_ptr().offset(idx as isize),
-                  self.vec.as_mut_ptr().offset((idx + amt) as isize),
+        ptr::copy(self.vec.as_ptr().add(idx),
+                  self.vec.as_mut_ptr().add(idx + amt),
                   len - idx);
         ptr::copy(bytes.as_ptr(),
-                  self.vec.as_mut_ptr().offset(idx as isize),
+                  self.vec.as_mut_ptr().add(idx),
                   amt);
         self.vec.set_len(len + amt);
     }
@@ -1454,8 +1454,8 @@ impl String {
         self.vec.clear()
     }
 
-    /// Creates a draining iterator that removes the specified range in the string
-    /// and yields the removed chars.
+    /// Creates a draining iterator that removes the specified range in the `String`
+    /// and yields the removed `chars`.
     ///
     /// Note: The element range is removed even if the iterator is not
     /// consumed until the end.
@@ -1722,18 +1722,37 @@ impl<'a> FromIterator<&'a str> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `String`s, we can avoid at least
+        // one allocation by getting the first string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => String::new(),
+            Some(mut buf) => {
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }
 
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over CoWs, we can (potentially) avoid at least
+        // one allocation by getting the first item and appending to it all the
+        // subsequent items.
+        match iterator.next() {
+            None => String::new(),
+            Some(cow) => {
+                let mut buf = cow.into_owned();
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }
 
@@ -1743,9 +1762,7 @@ impl Extend<char> for String {
         let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
-        for ch in iterator {
-            self.push(ch)
-        }
+        iterator.for_each(move |c| self.push(c));
     }
 }
 
@@ -1759,27 +1776,21 @@ impl<'a> Extend<&'a char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(s)
-        }
+        iter.into_iter().for_each(move |s| self.push_str(s));
     }
 }
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(&s)
-        }
+        iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
 
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(&s)
-        }
+        iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 }
 
@@ -1927,9 +1938,7 @@ impl<'a> Add<&'a str> for String {
 
 /// Implements the `+=` operator for appending to a `String`.
 ///
-/// This has the same behavior as the [`push_str`] method.
-///
-/// [`push_str`]: struct.String.html#method.push_str
+/// This has the same behavior as the [`push_str`][String::push_str] method.
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl<'a> AddAssign<&'a str> for String {
     #[inline]
@@ -2150,7 +2159,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
         use core::fmt::Write;
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
-           .expect("a Display implementation return an error unexpectedly");
+           .expect("a Display implementation returned an error unexpectedly");
         buf.shrink_to_fit();
         buf
     }
@@ -2198,6 +2207,7 @@ impl AsRef<[u8]> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for String {
+    #[inline]
     fn from(s: &'a str) -> String {
         s.to_owned()
     }
@@ -2207,6 +2217,20 @@ impl<'a> From<&'a str> for String {
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {
+    /// Converts the given boxed `str` slice to a `String`.
+    /// It is notable that the `str` slice is owned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s1: String = String::from("hello world");
+    /// let s2: Box<str> = s1.into_boxed_str();
+    /// let s3: String = String::from(s2);
+    ///
+    /// assert_eq!("hello world", s3)
+    /// ```
     fn from(s: Box<str>) -> String {
         s.into_string()
     }
@@ -2214,6 +2238,19 @@ impl From<Box<str>> for String {
 
 #[stable(feature = "box_from_str", since = "1.20.0")]
 impl From<String> for Box<str> {
+    /// Converts the given `String` to a boxed `str` slice that is owned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s1: String = String::from("hello world");
+    /// let s2: Box<str> = Box::from(s1);
+    /// let s3: String = String::from(s2);
+    ///
+    /// assert_eq!("hello world", s3)
+    /// ```
     fn from(s: String) -> Box<str> {
         s.into_boxed_str()
     }
@@ -2273,6 +2310,20 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
 impl From<String> for Vec<u8> {
+    /// Converts the given `String` to a vector `Vec` that holds values of type `u8`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s1 = String::from("hello world");
+    /// let v1 = Vec::from(s1);
+    ///
+    /// for b in v1 {
+    ///     println!("{}", b);
+    /// }
+    /// ```
     fn from(string: String) -> Vec<u8> {
         string.into_bytes()
     }

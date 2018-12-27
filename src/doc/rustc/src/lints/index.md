@@ -12,7 +12,7 @@ $ cat main.rs
 fn main() {
     let x = 5;
 }
-> rustc main.rs
+$ rustc main.rs
 warning: unused variable: `x`
  --> main.rs:2:9
   |

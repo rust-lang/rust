@@ -1,5 +1,5 @@
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/maybe-initialized-drop-with-fragment.rs:31:5
+  --> $DIR/maybe-initialized-drop-with-fragment.rs:21:5
    |
 LL |     let wrap = Wrap { p: &mut x };
    |                          ------ borrow of `x` occurs here
@@ -7,7 +7,7 @@ LL |     let wrap = Wrap { p: &mut x };
 LL |     x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
    |     ^^^^^ assignment to borrowed `x` occurs here
 LL | }
-   | - borrow later used here, when `foo` is dropped
+   | - borrow might be used here, when `foo` is dropped and runs the destructor for type `Foo<'_>`
 
 error: aborting due to previous error
 

@@ -1,13 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // ignore-cross-compile
 
 // error-pattern:expected expression, found statement (`let`)
@@ -18,7 +8,7 @@ extern crate syntax;
 extern crate syntax_pos;
 
 use syntax::ast;
-use syntax::codemap;
+use syntax::source_map;
 use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
@@ -28,7 +18,7 @@ fn main() {
 }
 
 fn run() {
-    let ps = syntax::parse::ParseSess::new(codemap::FilePathMapping::empty());
+    let ps = syntax::parse::ParseSess::new(source_map::FilePathMapping::empty());
     let mut resolver = syntax::ext::base::DummyResolver;
     let mut cx = syntax::ext::base::ExtCtxt::new(
         &ps,

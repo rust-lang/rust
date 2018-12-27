@@ -1,5 +1,5 @@
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/regions-escape-loop-via-vec.rs:15:11
+  --> $DIR/regions-escape-loop-via-vec.rs:5:11
    |
 LL |     let mut _y = vec![&mut x];
    |                       ------ borrow of `x` occurs here
@@ -7,10 +7,10 @@ LL |     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
    |           ^ use of borrowed `x`
 LL |         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
 LL |         _y.push(&mut z);
-   |         -- borrow used here in later iteration of loop
+   |         -- borrow used here, in later iteration of loop
 
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/regions-escape-loop-via-vec.rs:16:21
+  --> $DIR/regions-escape-loop-via-vec.rs:6:21
    |
 LL |     let mut _y = vec![&mut x];
    |                       ------ borrow of `x` occurs here
@@ -18,27 +18,27 @@ LL |     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
 LL |         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
    |                     ^ use of borrowed `x`
 LL |         _y.push(&mut z);
-   |         -- borrow used here in later iteration of loop
+   |         -- borrow used here, in later iteration of loop
 
 error[E0597]: `z` does not live long enough
-  --> $DIR/regions-escape-loop-via-vec.rs:17:17
+  --> $DIR/regions-escape-loop-via-vec.rs:7:17
    |
 LL |         _y.push(&mut z);
    |         --      ^^^^^^ borrowed value does not live long enough
    |         |
-   |         borrow used here in later iteration of loop
+   |         borrow used here, in later iteration of loop
 ...
 LL |     }
    |     - `z` dropped here while still borrowed
 
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/regions-escape-loop-via-vec.rs:19:9
+  --> $DIR/regions-escape-loop-via-vec.rs:9:9
    |
 LL |     let mut _y = vec![&mut x];
    |                       ------ borrow of `x` occurs here
 ...
 LL |         _y.push(&mut z);
-   |         -- borrow used here in later iteration of loop
+   |         -- borrow used here, in later iteration of loop
 LL |         //~^ ERROR `z` does not live long enough
 LL |         x += 1; //~ ERROR cannot assign
    |         ^^^^^^ use of borrowed `x`

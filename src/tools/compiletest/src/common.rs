@@ -1,12 +1,3 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 pub use self::Mode::*;
 
 use std::fmt;
@@ -19,11 +10,12 @@ use util::PathBufExt;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
-    ParseFail,
     RunFail,
+    /// This now behaves like a `ui` test that has an implict `// run-pass`.
     RunPass,
     RunPassValgrind,
     Pretty,
+    DebugInfoBoth,
     DebugInfoGdb,
     DebugInfoLldb,
     Codegen,
@@ -54,11 +46,11 @@ impl FromStr for Mode {
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
             "compile-fail" => Ok(CompileFail),
-            "parse-fail" => Ok(ParseFail),
             "run-fail" => Ok(RunFail),
             "run-pass" => Ok(RunPass),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
+            "debuginfo-both" => Ok(DebugInfoBoth),
             "debuginfo-lldb" => Ok(DebugInfoLldb),
             "debuginfo-gdb" => Ok(DebugInfoGdb),
             "codegen" => Ok(Codegen),
@@ -77,11 +69,11 @@ impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match *self {
             CompileFail => "compile-fail",
-            ParseFail => "parse-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
+            DebugInfoBoth => "debuginfo-both",
             DebugInfoGdb => "debuginfo-gdb",
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
@@ -203,6 +195,9 @@ pub struct Config {
 
     /// Version of LLDB
     pub lldb_version: Option<String>,
+
+    /// Whether LLDB has native rust support
+    pub lldb_native_rust: bool,
 
     /// Version of LLVM
     pub llvm_version: Option<String>,

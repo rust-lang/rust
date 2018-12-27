@@ -1,5 +1,5 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/attr-usage-inline.rs:16:1
+  --> $DIR/attr-usage-inline.rs:6:1
    |
 LL | #[inline] //~ ERROR: attribute should be applied to function or closure
    | ^^^^^^^^^

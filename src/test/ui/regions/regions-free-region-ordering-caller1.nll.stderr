@@ -1,18 +1,17 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-free-region-ordering-caller1.rs:19:27
-   |
-LL |     let z: &'a & usize = &(&y);
-   |                           ^^^^ temporary value does not live long enough
-...
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:10...
-  --> $DIR/regions-free-region-ordering-caller1.rs:15:10
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/regions-free-region-ordering-caller1.rs:9:27
    |
 LL | fn call1<'a>(x: &'a usize) {
-   |          ^^
+   |          -- lifetime `'a` defined here
+...
+LL |     let z: &'a & usize = &(&y);
+   |            -----------    ^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'a`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

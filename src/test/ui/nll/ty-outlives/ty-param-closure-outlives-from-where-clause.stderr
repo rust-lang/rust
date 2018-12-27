@@ -1,17 +1,5 @@
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:44:9
-   |
-LL |         require(&x, &y)
-   |         ^^^^^^^
-
-warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:78:9
-   |
-LL |         require(&x, &y)
-   |         ^^^^^^^
-
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -19,7 +7,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         //
 LL | |         // See `correct_region`, which explains the point of this
 ...  |
-LL | |         //~^ WARNING not reporting region error due to nll
+LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
@@ -28,11 +16,12 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: late-bound region is '_#2r
+   = note: number of external vids: 3
    = note: where T: '_#1r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:36:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
    |
 LL | / fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 LL | |     with_signature(a, b, |x, y| {
@@ -48,7 +37,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -56,14 +45,14 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         //
 LL | |         // See `correct_region`, which explains the point of this
 ...  |
-LL | |         //~^ WARNING not reporting region error due to nll
+LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(1:14), 'a))`...
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:54:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -81,11 +70,11 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 3
    = note: where T: '_#2r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:50:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:39:1
    |
 LL | / fn correct_region<'a, T>(a: Cell<&'a ()>, b: T)
 LL | | where
@@ -102,14 +91,13 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:75:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
-LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
    |
@@ -119,11 +107,12 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: late-bound region is '_#3r
+   = note: number of external vids: 4
    = note: where T: '_#2r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:71:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:60:1
    |
 LL | / fn wrong_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
 LL | | where
@@ -140,21 +129,20 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:75:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
-LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(1:20), 'a))`...
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:89:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -170,11 +158,11 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 5
+   = note: number of external vids: 4
    = note: where T: '_#3r
 
 note: No external requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:84:1
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:72:1
    |
 LL | / fn outlives_region<'a, 'b, T>(a: Cell<&'a ()>, b: T)
 LL | | where

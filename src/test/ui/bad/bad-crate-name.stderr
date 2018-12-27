@@ -1,5 +1,5 @@
 error: crate name using dashes are not valid in `extern crate` statements
-  --> $DIR/bad-crate-name.rs:11:14
+  --> $DIR/bad-crate-name.rs:1:14
    |
 LL | extern crate krate-name-here;
    |              ^^^^^^^^^^^^^^^ dash-separated idents are not valid
@@ -9,7 +9,7 @@ LL | extern crate krate_name_here;
    |                   ^    ^
 
 error[E0463]: can't find crate for `krate_name_here`
-  --> $DIR/bad-crate-name.rs:11:1
+  --> $DIR/bad-crate-name.rs:1:1
    |
 LL | extern crate krate-name-here;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate

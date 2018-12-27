@@ -1,13 +1,3 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 // Issue 34101: Circa 2016-06-05, `fn inline` below issued an
 // erroneous warning from the elaborate_drops pass about moving out of
 // a field in `Foo`, which has a destructor (and thus cannot have
@@ -20,15 +10,15 @@
 // even though the compiler should enforce an invariant that any drop
 // flag for such subcontent of `Foo` will always have the same value
 // as the drop flag for `Foo` itself.
-//
-// This test is structured in a funny way; we cannot test for emission
-// of the warning in question via the lint system, and therefore
-// `#![deny(warnings)]` does nothing to detect it.
-//
-// So instead we use `#[rustc_error]` and put the test into
-// `compile_fail`, where the emitted warning *will* be caught.
 
-#![feature(rustc_attrs)]
+
+
+
+
+
+
+
+// compile-pass
 
 struct Foo(String);
 
@@ -49,8 +39,8 @@ fn outline() {
     f.0 = String::from("bar");
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     inline();
     outline();
 }

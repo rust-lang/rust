@@ -18,7 +18,6 @@ lazy_static = "1.0.0"
 scoped-tls = { version = "0.1.1", features = ["nightly"] }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 polonius-engine = "0.5.0"
-proc_macro = { path = "../libproc_macro" }
 rustc-rayon = "0.1.1"
 rustc-rayon-core = "0.1.1"
 rustc_apfloat = { path = "../librustc_apfloat" }
@@ -29,10 +28,11 @@ serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 backtrace = "0.3.3"
-parking_lot = "0.5.5"
+parking_lot = "0.6"
 byteorder = { version = "1.1", features = ["i128"]}
-chalk-engine = { version = "0.6.0", default-features=false }
+chalk-engine = { version = "0.8.0", default-features=false }
 rustc_fs_util = { path = "../librustc_fs_util" }
+smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 
 # Note that these dependencies are a lie, they're just here to get linkage to
 # work.

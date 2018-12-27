@@ -1,0 +1,20 @@
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/issue-53840.rs:13:16
+   |
+LL |         E::Foo(a, b, ref c) => {}
+   |                ^  ^  ----- both by-ref and by-move used
+   |                |  |
+   |                |  by-move pattern here
+   |                by-move pattern here
+
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/issue-53840.rs:17:14
+   |
+LL |         Bar {a, ref b} => {}
+   |              ^  ----- both by-ref and by-move used
+   |              |
+   |              by-move pattern here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0009`.

@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use dep_graph::{DepConstructor, DepNode};
 use errors::DiagnosticBuilder;
 use hir::def_id::{CrateNum, DefId, DefIndex};
@@ -27,16 +17,20 @@ use middle::stability::{self, DeprecationEntry};
 use middle::lib_features::LibFeatures;
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use mir::interpret::ConstEvalResult;
-use mir::mono::{CodegenUnit, Stats};
+use mir::interpret::{ConstEvalRawResult, ConstEvalResult};
+use mir::mono::CodegenUnit;
 use mir;
-use mir::interpret::{GlobalId, Allocation};
+use mir::interpret::GlobalId;
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};
-use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal,
-                    CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
-                    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal, NoSolution};
+use traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal,
+    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal,
+    CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTypeOpNormalizeGoal, NoSolution,
+};
+use traits::query::method_autoderef::MethodAutoderefStepsResult;
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::query::outlives_bounds::OutlivesBound;
@@ -49,14 +43,15 @@ use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use util::common::{ErrorReported};
 use util::profiling::ProfileCategory::*;
 
-use rustc_data_structures::indexed_set::IdxSetBuf;
-use rustc_target::spec::PanicStrategy;
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
-
-use std::ops::Deref;
 use rustc_data_structures::sync::Lrc;
+use rustc_target::spec::PanicStrategy;
+
+use std::borrow::Cow;
+use std::ops::Deref;
 use std::sync::Arc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
@@ -123,17 +118,18 @@ define_queries! { <'tcx>
         /// predicate gets in the way of some checks, which are intended
         /// to operate over only the actual where-clauses written by the
         /// user.)
-        [] fn predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+        [] fn predicates_of: PredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Maps from the def-id of an item (trait/struct/enum/fn) to the
         /// predicates (where clauses) directly defined on it. This is
         /// equal to the `explicit_predicates_of` predicates plus the
         /// `inferred_outlives_of` predicates.
-        [] fn predicates_defined_on: PredicatesDefinedOnItem(DefId) -> ty::GenericPredicates<'tcx>,
+        [] fn predicates_defined_on: PredicatesDefinedOnItem(DefId)
+            -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Returns the predicates written explicit by the user.
         [] fn explicit_predicates_of: ExplicitPredicatesOfItem(DefId)
-            -> ty::GenericPredicates<'tcx>,
+            -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
@@ -145,12 +141,12 @@ define_queries! { <'tcx>
         /// evaluate them even during type conversion, often before the
         /// full predicates are available (note that supertraits have
         /// additional acyclicity requirements).
-        [] fn super_predicates_of: SuperPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+        [] fn super_predicates_of: SuperPredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         [] fn type_param_predicates: type_param_predicates((DefId, DefId))
-            -> ty::GenericPredicates<'tcx>,
+            -> Lrc<ty::GenericPredicates<'tcx>>,
 
         [] fn trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
         [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
@@ -160,8 +156,23 @@ define_queries! { <'tcx>
             DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
-        /// True if this is a const fn
-        [] fn is_const_fn: IsConstFn(DefId) -> bool,
+        /// True if this is a const fn, use the `is_const_fn` to know whether your crate actually
+        /// sees it as const fn (e.g., the const-fn-ness might be unstable and you might not have
+        /// the feature gate active)
+        ///
+        /// **Do not call this function manually.** It is only meant to cache the base data for the
+        /// `is_const_fn` function.
+        [] fn is_const_fn_raw: IsConstFn(DefId) -> bool,
+
+
+        /// Returns true if calls to the function may be promoted
+        ///
+        /// This is either because the function is e.g., a tuple-struct or tuple-variant
+        /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
+        /// be removed in the future in favour of some form of check which figures out whether the
+        /// function does not inspect the bits of any of its arguments (so is essentially just a
+        /// constructor function).
+        [] fn is_promotable_const_fn: IsPromotableConstFn(DefId) -> bool,
 
         /// True if this is a foreign item (i.e., linked via `extern { ... }`).
         [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
@@ -208,7 +219,7 @@ define_queries! { <'tcx>
         /// Maps DefId's that have an associated Mir to the result
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
-        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<IdxSetBuf<mir::Local>>),
+        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<BitSet<mir::Local>>),
 
         /// Fetch the MIR for a given def-id right after it's built - this includes
         /// unreachable code.
@@ -272,7 +283,8 @@ define_queries! { <'tcx>
         /// Gets a complete map from all types to their inherent impls.
         /// Not meant to be used directly outside of coherence.
         /// (Defined only for LOCAL_CRATE)
-        [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
+        [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum)
+            -> Lrc<CrateInherentImpls>,
 
         /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
         /// Not meant to be used directly outside of coherence.
@@ -282,15 +294,18 @@ define_queries! { <'tcx>
     },
 
     Other {
+        /// Evaluate a constant without running sanity checks
+        ///
+        /// DO NOT USE THIS outside const eval. Const eval uses this to break query cycles during
+        /// validation. Please add a comment to every use site explaining why using `const_eval`
+        /// isn't sufficient
+        [] fn const_eval_raw: const_eval_raw_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+            -> ConstEvalRawResult<'tcx>,
+
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).
         [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx>,
-
-        /// Converts a constant value to an constant allocation
-        [] fn const_value_to_allocation: const_value_to_allocation(
-            &'tcx ty::Const<'tcx>
-        ) -> &'tcx Allocation,
     },
 
     TypeChecking {
@@ -358,16 +373,16 @@ define_queries! { <'tcx>
             -> Lrc<specialization_graph::Graph>,
         [] fn is_object_safe: ObjectSafety(DefId) -> bool,
 
-        // Get the ParameterEnvironment for a given item; this environment
-        // will be in "user-facing" mode, meaning that it is suitabe for
-        // type-checking etc, and it does not normalize specializable
-        // associated types. This is almost always what you want,
-        // unless you are doing MIR optimizations, in which case you
-        // might want to use `reveal_all()` method to change modes.
+        /// Get the ParameterEnvironment for a given item; this environment
+        /// will be in "user-facing" mode, meaning that it is suitabe for
+        /// type-checking etc, and it does not normalize specializable
+        /// associated types. This is almost always what you want,
+        /// unless you are doing MIR optimizations, in which case you
+        /// might want to use `reveal_all()` method to change modes.
         [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
-        // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
-        // `ty.is_copy()`, etc, since that will prune the environment where possible.
+        /// Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
+        /// `ty.is_copy()`, etc, since that will prune the environment where possible.
         [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
@@ -386,6 +401,7 @@ define_queries! { <'tcx>
         [fatal_cycle] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
         [fatal_cycle] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
         [fatal_cycle] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
+        [fatal_cycle] fn has_panic_handler: HasPanicHandler(CrateNum) -> bool,
         [fatal_cycle] fn is_sanitizer_runtime: IsSanitizerRuntime(CrateNum) -> bool,
         [fatal_cycle] fn is_profiler_runtime: IsProfilerRuntime(CrateNum) -> bool,
         [fatal_cycle] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,
@@ -445,7 +461,7 @@ define_queries! { <'tcx>
         [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
 
         [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
-        [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
+        [] fn proc_macro_decls_static: ProcMacroDeclsStatic(CrateNum) -> Option<DefId>,
         [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
         [] fn crate_hash: CrateHash(CrateNum) -> Svh,
         [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
@@ -514,7 +530,7 @@ define_queries! { <'tcx>
         [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
         /// A vector of every trait accessible in the whole crate
-        /// (i.e. including those from subcrates). This is used only for
+        /// (i.e., including those from subcrates). This is used only for
         /// error reporting.
         [] fn all_traits: all_traits_node(CrateNum) -> Lrc<Vec<DefId>>,
     },
@@ -530,7 +546,6 @@ define_queries! { <'tcx>
             -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),
         [] fn is_codegened_item: IsCodegenedItem(DefId) -> bool,
         [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
-        [] fn compile_codegen_unit: CompileCodegenUnit(InternedString) -> Stats,
     },
 
     Other {
@@ -548,7 +563,7 @@ define_queries! { <'tcx>
         [] fn normalize_projection_ty: NormalizeProjectionTy(
             CanonicalProjectionGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>>,
             NoSolution,
         >,
 
@@ -560,7 +575,7 @@ define_queries! { <'tcx>
         [] fn implied_outlives_bounds: ImpliedOutlivesBounds(
             CanonicalTyGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, Vec<OutlivesBound<'tcx>>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
             NoSolution,
         >,
 
@@ -568,7 +583,7 @@ define_queries! { <'tcx>
         [] fn dropck_outlives: DropckOutlives(
             CanonicalTyGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>,
             NoSolution,
         >,
 
@@ -579,10 +594,18 @@ define_queries! { <'tcx>
         ) -> Result<traits::EvaluationResult, traits::OverflowError>,
 
         /// Do not call this query directly: part of the `Eq` type-op
+        [] fn type_op_ascribe_user_type: TypeOpAscribeUserType(
+            CanonicalTypeOpAscribeUserTypeGoal<'tcx>
+        ) -> Result<
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            NoSolution,
+        >,
+
+        /// Do not call this query directly: part of the `Eq` type-op
         [] fn type_op_eq: TypeOpEq(
             CanonicalTypeOpEqGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -590,7 +613,7 @@ define_queries! { <'tcx>
         [] fn type_op_subtype: TypeOpSubtype(
             CanonicalTypeOpSubtypeGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -598,7 +621,7 @@ define_queries! { <'tcx>
         [] fn type_op_prove_predicate: TypeOpProvePredicate(
             CanonicalTypeOpProvePredicateGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -606,7 +629,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_ty: TypeOpNormalizeTy(
             CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, Ty<'tcx>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>>,
             NoSolution,
         >,
 
@@ -614,7 +637,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_predicate: TypeOpNormalizePredicate(
             CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ty::Predicate<'tcx>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>>,
             NoSolution,
         >,
 
@@ -622,7 +645,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_poly_fn_sig: TypeOpNormalizePolyFnSig(
             CanonicalTypeOpNormalizeGoal<'tcx, ty::PolyFnSig<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ty::PolyFnSig<'tcx>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>>,
             NoSolution,
         >,
 
@@ -630,12 +653,16 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_fn_sig: TypeOpNormalizeFnSig(
             CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ty::FnSig<'tcx>>>>,
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>>,
             NoSolution,
         >,
 
         [] fn substitute_normalize_and_test_predicates:
             substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
+
+        [] fn method_autoderef_steps: MethodAutoderefSteps(
+            CanonicalTyGoal<'tcx>
+        ) -> MethodAutoderefStepsResult<'tcx>,
     },
 
     Other {
@@ -653,8 +680,11 @@ define_queries! { <'tcx>
         [] fn program_clauses_for: ProgramClausesFor(DefId) -> Clauses<'tcx>,
 
         [] fn program_clauses_for_env: ProgramClausesForEnv(
-            ty::ParamEnv<'tcx>
+            traits::Environment<'tcx>
         ) -> Clauses<'tcx>,
+
+        // Get the chalk-style environment of the given item.
+        [] fn environment: Environment(DefId) -> ty::Binder<traits::Environment<'tcx>>,
     },
 
     Linking {
@@ -670,22 +700,22 @@ impl<'a, 'tcx, 'lcx> TyCtxt<'a, 'tcx, 'lcx> {
         self,
         span: Span,
         key: DefId,
-    ) -> Result<&'tcx [Ty<'tcx>], DiagnosticBuilder<'a>> {
-        self.try_get_query::<queries::adt_sized_constraint>(span, key)
+    ) -> Result<&'tcx [Ty<'tcx>], Box<DiagnosticBuilder<'a>>> {
+        self.try_get_query::<queries::adt_sized_constraint<'_>>(span, key)
     }
     pub fn try_needs_drop_raw(
         self,
         span: Span,
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, DiagnosticBuilder<'a>> {
-        self.try_get_query::<queries::needs_drop_raw>(span, key)
+    ) -> Result<bool, Box<DiagnosticBuilder<'a>>> {
+        self.try_get_query::<queries::needs_drop_raw<'_>>(span, key)
     }
     pub fn try_optimized_mir(
         self,
         span: Span,
         key: DefId,
-    ) -> Result<&'tcx mir::Mir<'tcx>, DiagnosticBuilder<'a>> {
-        self.try_get_query::<queries::optimized_mir>(span, key)
+    ) -> Result<&'tcx mir::Mir<'tcx>, Box<DiagnosticBuilder<'a>>> {
+        self.try_get_query::<queries::optimized_mir<'_>>(span, key)
     }
 }
 
@@ -704,12 +734,6 @@ fn codegen_fn_attrs<'tcx>(id: DefId) -> DepConstructor<'tcx> {
 
 fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::EraseRegionsTy { ty }
-}
-
-fn const_value_to_allocation<'tcx>(
-    val: &'tcx ty::Const<'tcx>,
-) -> DepConstructor<'tcx> {
-    DepConstructor::ConstValueToAllocation { val }
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -756,6 +780,10 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 fn const_eval_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
                              -> DepConstructor<'tcx> {
     DepConstructor::ConstEval { param_env }
+}
+fn const_eval_raw_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+                             -> DepConstructor<'tcx> {
+    DepConstructor::ConstEvalRaw { param_env }
 }
 
 fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

@@ -1,13 +1,3 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Traits, helpers, and type definitions for core I/O functionality.
 //!
 //! The `std::io` module contains a number of common things you'll need
@@ -271,6 +261,7 @@
 
 use cmp;
 use fmt;
+use slice;
 use str;
 use memchr;
 use ptr;
@@ -431,7 +422,7 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
 ///     // read up to 10 bytes
 ///     f.read(&mut buffer)?;
 ///
-///     let mut buffer = vec![0; 10];
+///     let mut buffer = Vec::new();
 ///     // read the whole file
 ///     f.read_to_end(&mut buffer)?;
 ///
@@ -1204,8 +1195,8 @@ pub trait Write {
 pub trait Seek {
     /// Seek to an offset, in bytes, in a stream.
     ///
-    /// A seek beyond the end of a stream is allowed, but implementation
-    /// defined.
+    /// A seek beyond the end of a stream is allowed, but behavior is defined
+    /// by the implementation.
     ///
     /// If the seek operation completed successfully,
     /// this method returns the new position from the start of the stream.
@@ -1261,7 +1252,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
             };
             match memchr::memchr(delim, available) {
                 Some(i) => {
-                    buf.extend_from_slice(&available[..i + 1]);
+                    buf.extend_from_slice(&available[..=i]);
                     (true, i + 1)
                 }
                 None => {
@@ -1330,7 +1321,8 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BufRead: Read {
-    /// Fills the internal buffer of this object, returning the buffer contents.
+    /// Returns the contents of the internal buffer, filling it with more data
+    /// from the inner reader if it is empty.
     ///
     /// This function is a lower-level call. It needs to be paired with the
     /// [`consume`] method to function properly. When calling this
@@ -1935,18 +1927,6 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
-fn read_one_byte(reader: &mut dyn Read) -> Option<Result<u8>> {
-    let mut buf = [0];
-    loop {
-        return match reader.read(&mut buf) {
-            Ok(0) => None,
-            Ok(..) => Some(Ok(buf[0])),
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-            Err(e) => Some(Err(e)),
-        };
-    }
-}
-
 /// An iterator over `u8` values of a reader.
 ///
 /// This struct is generally created by calling [`bytes`] on a reader.
@@ -1964,7 +1944,15 @@ impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
-        read_one_byte(&mut self.inner)
+        let mut byte = 0;
+        loop {
+            return match self.inner.read(slice::from_mut(&mut byte)) {
+                Ok(0) => None,
+                Ok(..) => Some(Ok(byte)),
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => Some(Err(e)),
+            };
+        }
     }
 }
 

@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Oper` in this scope
+  --> $DIR/issue-54966.rs:3:27
+   |
+LL | fn generate_duration() -> Oper<impl FnMut()> {}
+   |                           ^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

@@ -1,22 +1,12 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 //! Code related to processing overloaded binary and unary operators.
 
 use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::TypeVariants::{TyRef, TyAdt, TyStr, TyUint, TyNever, TyTuple, TyChar, TyArray};
+use rustc::ty::TyKind::{Ref, Adt, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use errors;
+use errors::{self,Applicability};
 use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
@@ -35,12 +25,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ty = if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var()
                     && is_builtin_binop(lhs_ty, rhs_ty, op) {
             self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-            self.tcx.mk_nil()
+            self.tcx.mk_unit()
         } else {
             return_ty
         };
 
-        if !self.is_place_expr(lhs_expr) {
+        if !lhs_expr.is_place_expr() {
             struct_span_err!(
                 self.tcx.sess, lhs_expr.span,
                 E0067, "invalid left-hand side expression")
@@ -170,7 +160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Find a suitable supertype of the LHS expression's type, by coercing to
                 // a type variable, to pass as the `Self` to the trait, avoiding invariant
                 // trait matching creating lifetime constraints that are too strict.
-                // E.g. adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
+                // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
                 let lhs_ty = self.check_expr_with_needs(lhs_expr, Needs::None);
                 let fresh_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span));
@@ -186,7 +176,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
-        // NB: As we have not yet type-checked the RHS, we don't have the
+        // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
         // for this indirection is so that, below, we can check the expr
         // using this variable as the expected type, which sometimes lets
@@ -204,7 +194,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
-                    if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -221,7 +211,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 if by_ref_binop {
-                    if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[1].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].sty {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -242,7 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .borrow_mut()
                             .adjustments_mut()
                             .entry(rhs_expr.hir_id)
-                            .or_insert(vec![])
+                            .or_default()
                             .push(autoref);
                     }
                 }
@@ -253,19 +243,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(()) => {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
-                    let codemap = self.tcx.sess.codemap();
+                    let source_map = self.tcx.sess.source_map();
                     match is_assign {
                         IsAssign::Yes => {
-                            let mut err = struct_span_err!(self.tcx.sess, expr.span, E0368,
-                                                "binary assignment operation `{}=` \
-                                                cannot be applied to type `{}`",
-                                                op.node.as_str(),
-                                                lhs_ty);
-                            err.span_label(lhs_expr.span,
-                                    format!("cannot use `{}=` on type `{}`",
-                                    op.node.as_str(), lhs_ty));
+                            let mut err = struct_span_err!(
+                                self.tcx.sess,
+                                expr.span,
+                                E0368,
+                                "binary assignment operation `{}=` cannot be applied to type `{}`",
+                                op.node.as_str(),
+                                lhs_ty,
+                            );
+                            err.span_label(
+                                lhs_expr.span,
+                                format!("cannot use `{}=` on type `{}`",
+                                op.node.as_str(), lhs_ty),
+                            );
                             let mut suggested_deref = false;
-                            if let TyRef(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
                                                                         rty,
@@ -275,18 +270,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                               Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
-                                    if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
-                                        while let TyRef(_, rty_inner, _) = rty.sty {
+                                    if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
+                                        while let Ref(_, rty_inner, _) = rty.sty {
                                             rty = rty_inner;
                                         }
                                         let msg = &format!(
-                                                "`{}=` can be used on '{}', you can \
-                                                dereference `{2}`: `*{2}`",
-                                                op.node.as_str(),
-                                                rty,
-                                                lstring
+                                            "`{}=` can be used on '{}', you can dereference `{}`",
+                                            op.node.as_str(),
+                                            rty,
+                                            lstring,
                                         );
-                                        err.help(msg);
+                                        err.span_suggestion_with_applicability(
+                                            lhs_expr.span,
+                                            msg,
+                                            format!("*{}", lstring),
+                                            errors::Applicability::MachineApplicable,
+                                        );
                                         suggested_deref = true;
                                     }
                                 }
@@ -302,16 +301,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 hir::BinOpKind::BitOr  => Some("std::ops::BitOrAssign"),
                                 hir::BinOpKind::Shl    => Some("std::ops::ShlAssign"),
                                 hir::BinOpKind::Shr    => Some("std::ops::ShrAssign"),
-                                _             => None
+                                _                      => None
                             };
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
                                                             rhs_ty, &mut err, true) {
                                     // This has nothing here because it means we did string
-                                    // concatenation (e.g. "Hello " += "World!"). This means
+                                    // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::TyParam(_) = lhs_ty.sty {
+                                } else if let ty::Param(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
                                     err.note(&format!(
                                         "`{}` might need a bound for `{}`",
@@ -329,22 +328,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                         IsAssign::No => {
                             let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
-                                            "binary operation `{}` cannot be applied to type `{}`",
-                                            op.node.as_str(),
-                                            lhs_ty);
+                                "binary operation `{}` cannot be applied to type `{}`",
+                                op.node.as_str(),
+                                lhs_ty);
                             let mut suggested_deref = false;
-                            if let TyRef(_, mut rty, _) = lhs_ty.sty {
+                            if let Ref(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
-                                                                        rty,
-                                                                        lhs_expr.span) &&
+                                                                      rty,
+                                                                      lhs_expr.span) &&
                                         self.lookup_op_method(rty,
                                                               &[rhs_ty],
                                                               Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
-                                    if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
-                                        while let TyRef(_, rty_inner, _) = rty.sty {
+                                    if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
+                                        while let Ref(_, rty_inner, _) = rty.sty {
                                             rty = rty_inner;
                                         }
                                         let msg = &format!(
@@ -383,9 +382,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
                                                             rhs_ty, &mut err, false) {
                                     // This has nothing here because it means we did string
-                                    // concatenation (e.g. "Hello " + "World!"). This means
+                                    // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::TyParam(_) = lhs_ty.sty {
+                                } else if let ty::Param(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
                                     err.note(&format!(
                                         "`{}` might need a bound for `{}`",
@@ -420,7 +419,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err: &mut errors::DiagnosticBuilder,
         is_assign: bool,
     ) -> bool {
-        let codemap = self.tcx.sess.codemap();
+        let source_map = self.tcx.sess.source_map();
         let msg = "`to_owned()` can be used to create an owned `String` \
                    from a string reference. String concatenation \
                    appends the string on the right to the string \
@@ -429,34 +428,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If this function returns true it means a note was printed, so we don't need
         // to print the normal "implementation of `std::ops::Add` might be missing" note
         match (&lhs_ty.sty, &rhs_ty.sty) {
-            (&TyRef(_, l_ty, _), &TyRef(_, r_ty, _))
-            if l_ty.sty == TyStr && r_ty.sty == TyStr => {
+            (&Ref(_, l_ty, _), &Ref(_, r_ty, _))
+            if l_ty.sty == Str && r_ty.sty == Str => {
                 if !is_assign {
                     err.span_label(expr.span,
                                    "`+` can't be used to concatenate two `&str` strings");
-                    match codemap.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => err.span_suggestion(lhs_expr.span,
-                                                           msg,
-                                                           format!("{}.to_owned()", lstring)),
+                    match source_map.span_to_snippet(lhs_expr.span) {
+                        Ok(lstring) => err.span_suggestion_with_applicability(
+                            lhs_expr.span,
+                            msg,
+                            format!("{}.to_owned()", lstring),
+                            Applicability::MachineApplicable,
+                        ),
                         _ => err.help(msg),
                     };
                 }
                 true
             }
-            (&TyRef(_, l_ty, _), &TyAdt(..))
-            if l_ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
+            (&Ref(_, l_ty, _), &Adt(..))
+            if l_ty.sty == Str && &format!("{:?}", rhs_ty) == "std::string::String" => {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
                 match (
-                    codemap.span_to_snippet(lhs_expr.span),
-                    codemap.span_to_snippet(rhs_expr.span),
+                    source_map.span_to_snippet(lhs_expr.span),
+                    source_map.span_to_snippet(rhs_expr.span),
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        err.multipart_suggestion(msg, vec![
-                            (lhs_expr.span, format!("{}.to_owned()", l)),
-                            (rhs_expr.span, format!("&{}", r)),
-                        ]);
+                        err.multipart_suggestion_with_applicability(
+                            msg,
+                            vec![
+                                (lhs_expr.span, format!("{}.to_owned()", l)),
+                                (rhs_expr.span, format!("&{}", r)),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
                     }
                     _ => {
                         err.help(msg);
@@ -489,11 +495,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_label(ex.span, format!("cannot apply unary \
                                                     operator `{}`", op.as_str()));
                     match actual.sty {
-                        TyUint(_) if op == hir::UnNeg => {
+                        Uint(_) if op == hir::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         },
-                        TyStr | TyNever | TyChar | TyTuple(_) | TyArray(_,_) => {},
-                        TyRef(_, ref lty, _) if lty.sty == TyStr => {},
+                        Str | Never | Char | Tuple(_) | Array(_,_) => {},
+                        Ref(_, ref lty, _) if lty.sty == Str => {},
                         _ => {
                             let missing_trait = match op {
                                 hir::UnNeg => "std::ops::Neg",
@@ -666,7 +672,7 @@ enum Op {
     Unary(hir::UnOp, Span),
 }
 
-/// Returns true if this is a built-in arithmetic operation (e.g. u32
+/// Returns true if this is a built-in arithmetic operation (e.g., u32
 /// + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
 /// builtin operations from overloaded ones (vs trying to drive

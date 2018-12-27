@@ -1,13 +1,3 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use mir::interpret::ConstValue;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
@@ -28,7 +18,7 @@ impl FlagComputation {
         }
     }
 
-    pub fn for_sty(st: &ty::TypeVariants) -> FlagComputation {
+    pub fn for_sty(st: &ty::TyKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_sty(st);
         result
@@ -62,35 +52,33 @@ impl FlagComputation {
         let outer_exclusive_binder = computation.outer_exclusive_binder;
         if outer_exclusive_binder > ty::INNERMOST {
             self.add_exclusive_binder(outer_exclusive_binder.shifted_out(1));
-        } else {
-            // otherwise, this binder captures nothing
-        }
+        } // otherwise, this binder captures nothing
     }
 
-    fn add_sty(&mut self, st: &ty::TypeVariants) {
+    fn add_sty(&mut self, st: &ty::TyKind<'_>) {
         match st {
-            &ty::TyBool |
-            &ty::TyChar |
-            &ty::TyInt(_) |
-            &ty::TyFloat(_) |
-            &ty::TyUint(_) |
-            &ty::TyNever |
-            &ty::TyStr |
-            &ty::TyForeign(..) => {
+            &ty::Bool |
+            &ty::Char |
+            &ty::Int(_) |
+            &ty::Float(_) |
+            &ty::Uint(_) |
+            &ty::Never |
+            &ty::Str |
+            &ty::Foreign(..) => {
             }
 
-            // You might think that we could just return TyError for
-            // any type containing TyError as a component, and get
+            // You might think that we could just return Error for
+            // any type containing Error as a component, and get
             // rid of the TypeFlags::HAS_TY_ERR flag -- likewise for ty_bot (with
             // the exception of function types that return bot).
             // But doing so caused sporadic memory corruption, and
             // neither I (tjc) nor nmatsakis could figure out why,
             // so we're doing it this way.
-            &ty::TyError => {
+            &ty::Error => {
                 self.add_flags(TypeFlags::HAS_TY_ERR)
             }
 
-            &ty::TyParam(ref p) => {
+            &ty::Param(ref p) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 if p.is_self() {
                     self.add_flags(TypeFlags::HAS_SELF);
@@ -99,33 +87,39 @@ impl FlagComputation {
                 }
             }
 
-            &ty::TyGenerator(_, ref substs, _) => {
+            &ty::Generator(_, ref substs, _) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(&substs.substs);
             }
 
-            &ty::TyGeneratorWitness(ref ts) => {
+            &ty::GeneratorWitness(ref ts) => {
                 let mut computation = FlagComputation::new();
                 computation.add_tys(&ts.skip_binder()[..]);
                 self.add_bound_computation(&computation);
             }
 
-            &ty::TyClosure(_, ref substs) => {
+            &ty::Closure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(&substs.substs);
             }
 
-            &ty::TyInfer(infer) => {
+            &ty::Bound(debruijn, _) => {
+                self.add_binder(debruijn);
+            }
+
+            &ty::Placeholder(..) => {
+                self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
+            }
+
+            &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
                 self.add_flags(TypeFlags::HAS_TY_INFER);
                 match infer {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) |
-                    ty::CanonicalTy(_) => {
-                        self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
+                    ty::FreshFloatTy(_) => {
                     }
 
                     ty::TyVar(_) |
@@ -136,26 +130,31 @@ impl FlagComputation {
                 }
             }
 
-            &ty::TyAdt(_, substs) => {
+            &ty::Adt(_, substs) => {
                 self.add_substs(substs);
             }
 
-            &ty::TyProjection(ref data) => {
+            &ty::Projection(ref data) => {
                 // currently we can't normalize projections that
                 // include bound regions, so track those separately.
-                if !data.has_escaping_regions() {
+                if !data.has_escaping_bound_vars() {
                     self.add_flags(TypeFlags::HAS_NORMALIZABLE_PROJECTION);
                 }
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_projection_ty(data);
             }
 
-            &ty::TyAnon(_, substs) => {
+            &ty::UnnormalizedProjection(ref data) => {
+                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_projection_ty(data);
+            },
+
+            &ty::Opaque(_, substs) => {
                 self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_substs(substs);
             }
 
-            &ty::TyDynamic(ref obj, r) => {
+            &ty::Dynamic(ref obj, r) => {
                 let mut computation = FlagComputation::new();
                 for predicate in obj.skip_binder().iter() {
                     match *predicate {
@@ -172,50 +171,50 @@ impl FlagComputation {
                 self.add_region(r);
             }
 
-            &ty::TyArray(tt, len) => {
+            &ty::Array(tt, len) => {
                 self.add_ty(tt);
                 self.add_const(len);
             }
 
-            &ty::TySlice(tt) => {
+            &ty::Slice(tt) => {
                 self.add_ty(tt)
             }
 
-            &ty::TyRawPtr(ref m) => {
+            &ty::RawPtr(ref m) => {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyRef(r, ty, _) => {
+            &ty::Ref(r, ty, _) => {
                 self.add_region(r);
                 self.add_ty(ty);
             }
 
-            &ty::TyTuple(ref ts) => {
+            &ty::Tuple(ref ts) => {
                 self.add_tys(&ts[..]);
             }
 
-            &ty::TyFnDef(_, substs) => {
+            &ty::FnDef(_, substs) => {
                 self.add_substs(substs);
             }
 
-            &ty::TyFnPtr(f) => {
+            &ty::FnPtr(f) => {
                 self.add_fn_sig(f);
             }
         }
     }
 
-    fn add_ty(&mut self, ty: Ty) {
+    fn add_ty(&mut self, ty: Ty<'_>) {
         self.add_flags(ty.flags);
         self.add_exclusive_binder(ty.outer_exclusive_binder);
     }
 
-    fn add_tys(&mut self, tys: &[Ty]) {
+    fn add_tys(&mut self, tys: &[Ty<'_>]) {
         for &ty in tys {
             self.add_ty(ty);
         }
     }
 
-    fn add_fn_sig(&mut self, fn_sig: ty::PolyFnSig) {
+    fn add_fn_sig(&mut self, fn_sig: ty::PolyFnSig<'_>) {
         let mut computation = FlagComputation::new();
 
         computation.add_tys(fn_sig.skip_binder().inputs());
@@ -224,14 +223,14 @@ impl FlagComputation {
         self.add_bound_computation(&computation);
     }
 
-    fn add_region(&mut self, r: ty::Region) {
+    fn add_region(&mut self, r: ty::Region<'_>) {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_binder(debruijn);
         }
     }
 
-    fn add_const(&mut self, constant: &ty::Const) {
+    fn add_const(&mut self, constant: &ty::Const<'_>) {
         self.add_ty(constant.ty);
         if let ConstValue::Unevaluated(_, substs) = constant.val {
             self.add_flags(TypeFlags::HAS_PROJECTION);
@@ -239,16 +238,16 @@ impl FlagComputation {
         }
     }
 
-    fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection) {
+    fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {
         self.add_substs(projection.substs);
         self.add_ty(projection.ty);
     }
 
-    fn add_projection_ty(&mut self, projection_ty: &ty::ProjectionTy) {
+    fn add_projection_ty(&mut self, projection_ty: &ty::ProjectionTy<'_>) {
         self.add_substs(projection_ty.substs);
     }
 
-    fn add_substs(&mut self, substs: &Substs) {
+    fn add_substs(&mut self, substs: &Substs<'_>) {
         for ty in substs.types() {
             self.add_ty(ty);
         }

@@ -4,4 +4,4 @@ that runs towards the end of the compilation process.
 
 For more information about how codegen works, see the [rustc guide].
 
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/codegen.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/codegen.html

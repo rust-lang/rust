@@ -1,13 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #![feature(const_fn)]
 
 type Field1 = i32;
@@ -20,9 +10,9 @@ union DummyUnion {
 
 const UNION: DummyUnion = DummyUnion { field1: 1065353216 };
 
-const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant cannot be used
+const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR it is undefined behavior to use this value
 
-const FIELD_PATH: Struct = Struct { //~ ERROR this constant cannot be used
+const FIELD_PATH: Struct = Struct { //~ ERROR it is undefined behavior to use this value
     a: 42,
     b: unsafe { UNION.field3 },
 };
@@ -32,7 +22,7 @@ struct Struct {
     b: Field3,
 }
 
-const FIELD_PATH2: Struct2 = Struct2 { //~ ERROR this constant likely exhibits undefined behavior
+const FIELD_PATH2: Struct2 = Struct2 { //~ ERROR it is undefined behavior to use this value
     b: [
         21,
         unsafe { UNION.field3 },

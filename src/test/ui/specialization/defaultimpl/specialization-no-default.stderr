@@ -1,5 +1,5 @@
 error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/specialization-no-default.rs:32:5
+  --> $DIR/specialization-no-default.rs:22:5
    |
 LL | / impl<T> Foo for T {
 LL | |     fn foo(&self) {}
@@ -13,7 +13,7 @@ LL |       fn foo(&self) {} //~ ERROR E0520
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 
 error[E0520]: `bar` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/specialization-no-default.rs:35:5
+  --> $DIR/specialization-no-default.rs:25:5
    |
 LL | / impl<T> Foo for T {
 LL | |     fn foo(&self) {}
@@ -27,7 +27,7 @@ LL |       fn bar(&self) {} //~ ERROR E0520
    = note: to specialize, `bar` in the parent `impl` must be marked `default`
 
 error[E0520]: `T` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/specialization-no-default.rs:51:5
+  --> $DIR/specialization-no-default.rs:41:5
    |
 LL | / impl<T> Bar for T {
 LL | |     type T = u8;
@@ -40,7 +40,7 @@ LL |       type T = (); //~ ERROR E0520
    = note: to specialize, `T` in the parent `impl` must be marked `default`
 
 error[E0520]: `baz` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/specialization-no-default.rs:71:5
+  --> $DIR/specialization-no-default.rs:61:5
    |
 LL | / impl<T: Clone> Baz for T {
 LL | |     fn baz(&self) {}
@@ -53,7 +53,7 @@ LL |       fn baz(&self) {} //~ ERROR E0520
    = note: to specialize, `baz` in the parent `impl` must be marked `default`
 
 error[E0520]: `redundant` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/specialization-no-default.rs:92:5
+  --> $DIR/specialization-no-default.rs:82:5
    |
 LL | / impl<T: Clone> Redundant for T {
 LL | |     fn redundant(&self) {}

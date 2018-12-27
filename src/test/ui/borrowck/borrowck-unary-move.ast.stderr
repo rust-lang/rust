@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/borrowck-unary-move.rs:17:10
+  --> $DIR/borrowck-unary-move.rs:7:10
    |
 LL |     let y = &*x;
    |              -- borrow of `*x` occurs here

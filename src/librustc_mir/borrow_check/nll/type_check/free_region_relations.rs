@@ -1,29 +1,18 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use borrow_check::location::LocationTable;
-use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::type_check::constraint_conversion;
 use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
-use rustc::hir::def_id::DefId;
+use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
 use rustc::infer::InferCtxt;
+use rustc::mir::ConstraintCategory;
 use rustc::traits::query::outlives_bounds::{self, OutlivesBound};
 use rustc::traits::query::type_op::{self, TypeOp};
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use std::rc::Rc;
-use syntax::ast;
+use syntax_pos::DUMMY_SP;
 
 #[derive(Debug)]
 crate struct UniversalRegionRelations<'tcx> {
@@ -67,30 +56,22 @@ crate struct CreateResult<'tcx> {
 
 crate fn create(
     infcx: &InferCtxt<'_, '_, 'tcx>,
-    mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    location_table: &LocationTable,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-    all_facts: &mut Option<AllFacts>,
 ) -> CreateResult<'tcx> {
-    let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
     UniversalRegionRelationsBuilder {
         infcx,
-        mir_def_id,
-        mir_node_id,
         param_env,
         implicit_region_bound,
         constraints,
-        location_table,
-        all_facts,
         universal_regions: universal_regions.clone(),
         region_bound_pairs: Vec::new(),
         relations: UniversalRegionRelations {
             universal_regions: universal_regions.clone(),
-            outlives: TransitiveRelation::new(),
-            inverse_outlives: TransitiveRelation::new(),
+            outlives: Default::default(),
+            inverse_outlives: Default::default(),
         },
     }.create()
 }
@@ -212,14 +193,10 @@ impl UniversalRegionRelations<'tcx> {
 
 struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
     infcx: &'this InferCtxt<'this, 'gcx, 'tcx>,
-    mir_def_id: DefId,
-    mir_node_id: ast::NodeId,
     param_env: ty::ParamEnv<'tcx>,
-    location_table: &'this LocationTable,
     universal_regions: Rc<UniversalRegions<'tcx>>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     constraints: &'this mut MirTypeckRegionConstraints<'tcx>,
-    all_facts: &'this mut Option<AllFacts>,
 
     // outputs:
     relations: UniversalRegionRelations<'tcx>,
@@ -248,14 +225,16 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
         let constraint_sets: Vec<_> = unnormalized_input_output_tys
             .flat_map(|ty| {
                 debug!("build: input_or_output={:?}", ty);
-                let (ty, constraints) = self
+                let (ty, constraints1) = self
                     .param_env
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx)
                     .unwrap_or_else(|_| bug!("failed to normalize {:?}", ty));
-                self.add_implied_bounds(ty);
+                let constraints2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);
-                constraints
+                constraints1
+                    .into_iter()
+                    .chain(constraints2)
             })
             .collect();
 
@@ -282,16 +261,14 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
 
         for data in constraint_sets {
             constraint_conversion::ConstraintConversion::new(
-                self.infcx.tcx,
+                self.infcx,
                 &self.universal_regions,
-                &self.location_table,
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                Locations::All,
-                &mut self.constraints.outlives_constraints,
-                &mut self.constraints.type_tests,
-                &mut self.all_facts,
+                Locations::All(DUMMY_SP),
+                ConstraintCategory::Internal,
+                &mut self.constraints,
             ).convert_all(&data);
         }
 
@@ -306,13 +283,15 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
     /// either the return type of the MIR or one of its arguments. At
     /// the same time, compute and add any implied bounds that come
     /// from this local.
-    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) {
+    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<Vec<QueryRegionConstraint<'tcx>>>> {
         debug!("add_implied_bounds(ty={:?})", ty);
-        let span = self.infcx.tcx.def_span(self.mir_def_id);
-        let bounds = self
-            .infcx
-            .implied_outlives_bounds(self.param_env, self.mir_node_id, ty, span);
+        let (bounds, constraints) =
+            self.param_env
+            .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
+            .fully_perform(self.infcx)
+            .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));
         self.add_outlives_bounds(bounds);
+        constraints
     }
 
     /// Registers the `OutlivesBound` items from `outlives_bounds` in

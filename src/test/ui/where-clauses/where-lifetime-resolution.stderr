@@ -1,17 +1,17 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/where-lifetime-resolution.rs:16:34
+  --> $DIR/where-lifetime-resolution.rs:6:34
    |
 LL |     (for<'a> Trait1<'a>): Trait1<'a>,
    |                                  ^^ undeclared lifetime
 
 error[E0316]: nested quantification of lifetimes
-  --> $DIR/where-lifetime-resolution.rs:18:13
+  --> $DIR/where-lifetime-resolution.rs:8:13
    |
 LL |     for<'a> for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/where-lifetime-resolution.rs:18:48
+  --> $DIR/where-lifetime-resolution.rs:8:48
    |
 LL |     for<'a> for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
    |                                                ^^ undeclared lifetime

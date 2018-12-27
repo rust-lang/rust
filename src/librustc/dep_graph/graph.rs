@@ -1,18 +1,8 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 use errors::DiagnosticBuilder;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::small_vec::SmallVec;
+use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::env;
 use std::hash::Hash;
@@ -39,10 +29,12 @@ pub struct DepGraph {
     fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
-newtype_index!(DepNodeIndex);
+newtype_index! {
+    pub struct DepNodeIndex { .. }
+}
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = DepNodeIndex(::std::u32::MAX);
+    const INVALID: DepNodeIndex = DepNodeIndex::MAX;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -99,11 +91,11 @@ impl DepGraph {
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
-                dep_node_debug: Lock::new(FxHashMap()),
+                dep_node_debug: Default::default(),
                 current: Lock::new(CurrentDepGraph::new()),
                 previous: prev_graph,
                 colors: Lock::new(DepNodeColorMap::new(prev_graph_node_count)),
-                loaded_from_cache: Lock::new(FxHashMap()),
+                loaded_from_cache: Default::default(),
             })),
             fingerprints: Lrc::new(Lock::new(fingerprints)),
         }
@@ -193,7 +185,7 @@ impl DepGraph {
     /// - If you need 3+ arguments, use a tuple for the
     ///   `arg` parameter.
     ///
-    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/incremental-compilation.html
+    /// [rustc guide]: https://rust-lang.github.io/rustc-guide/incremental-compilation.html
     pub fn with_task<'gcx, C, A, R>(&self,
                                    key: DepNode,
                                    cx: C,
@@ -207,7 +199,7 @@ impl DepGraph {
             |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
                 reads: SmallVec::new(),
-                read_set: FxHashSet(),
+                read_set: Default::default(),
             })),
             |data, key, task| data.borrow_mut().complete_task(key, task))
     }
@@ -351,7 +343,7 @@ impl DepGraph {
             let (result, open_task) = ty::tls::with_context(|icx| {
                 let task = OpenTask::Anon(Lock::new(AnonOpenTask {
                     reads: SmallVec::new(),
-                    read_set: FxHashSet(),
+                    read_set: Default::default(),
                 }));
 
                 let r = {
@@ -878,7 +870,7 @@ pub struct WorkProduct {
     pub saved_files: Vec<(WorkProductFileKind, String)>,
 }
 
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, PartialEq)]
 pub enum WorkProductFileKind {
     Object,
     Bytecode,
@@ -935,7 +927,7 @@ impl CurrentDepGraph {
         CurrentDepGraph {
             nodes: IndexVec::new(),
             edges: IndexVec::new(),
-            node_to_node_index: FxHashMap(),
+            node_to_node_index: Default::default(),
             anon_id_seed: stable_hasher.finish(),
             forbidden_edge,
             total_read_count: 0,
@@ -1025,7 +1017,7 @@ impl CurrentDepGraph {
         } = task {
             debug_assert_eq!(node, key);
             let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
-            self.alloc_node(node, SmallVec::one(krate_idx))
+            self.alloc_node(node, smallvec![krate_idx])
         } else {
             bug!("complete_eval_always_task() - Expected eval always task to be popped");
         }
@@ -1125,14 +1117,16 @@ impl DepNodeColorMap {
         match self.values[index] {
             COMPRESSED_NONE => None,
             COMPRESSED_RED => Some(DepNodeColor::Red),
-            value => Some(DepNodeColor::Green(DepNodeIndex(value - COMPRESSED_FIRST_GREEN)))
+            value => Some(DepNodeColor::Green(DepNodeIndex::from_u32(
+                value - COMPRESSED_FIRST_GREEN
+            )))
         }
     }
 
     fn insert(&mut self, index: SerializedDepNodeIndex, color: DepNodeColor) {
         self.values[index] = match color {
             DepNodeColor::Red => COMPRESSED_RED,
-            DepNodeColor::Green(index) => index.0 + COMPRESSED_FIRST_GREEN,
+            DepNodeColor::Green(index) => index.as_u32() + COMPRESSED_FIRST_GREEN,
         }
     }
 }

@@ -1,5 +1,5 @@
 error[E0658]: let bindings in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement-3.rs:11:31
+  --> $DIR/const-block-non-item-statement-3.rs:1:31
    |
 LL | type Array = [u32; {  let x = 2; 5 }];
    |                               ^
@@ -7,7 +7,7 @@ LL | type Array = [u32; {  let x = 2; 5 }];
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement-3.rs:11:31
+  --> $DIR/const-block-non-item-statement-3.rs:1:31
    |
 LL | type Array = [u32; {  let x = 2; 5 }];
    |                               ^
@@ -15,7 +15,7 @@ LL | type Array = [u32; {  let x = 2; 5 }];
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: let bindings in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement-3.rs:11:20
+  --> $DIR/const-block-non-item-statement-3.rs:1:20
    |
 LL | type Array = [u32; {  let x = 2; 5 }];
    |                    ^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | type Array = [u32; {  let x = 2; 5 }];
    = help: add #![feature(const_let)] to the crate attributes to enable
 
 error[E0658]: statements in constants are unstable (see issue #48821)
-  --> $DIR/const-block-non-item-statement-3.rs:11:20
+  --> $DIR/const-block-non-item-statement-3.rs:1:20
    |
 LL | type Array = [u32; {  let x = 2; 5 }];
    |                    ^^^^^^^^^^^^^^^^^

@@ -1,0 +1,13 @@
+error: crate is not marked with #![crate_okay]
+  --> $DIR/issue-15778-fail.rs:5:1
+   |
+LL | / #![feature(plugin)] //~ ERROR crate is not marked with #![crate_okay]
+LL | | #![plugin(lint_for_crate)]
+LL | |
+LL | | pub fn main() { }
+   | |_________________^
+   |
+   = note: requested on the command line with `-D crate-not-okay`
+
+error: aborting due to previous error
+

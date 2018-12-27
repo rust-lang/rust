@@ -1,14 +1,3 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-
 //! A singly-linked list.
 //!
 //! Using this data structure only makes sense under very specific
@@ -21,8 +10,6 @@
 //!
 //! If you expect to store more than 1 element in the common case, steer clear
 //! and use a `Vec<T>`, `Box<[T]>`, or a `SmallVec<T>`.
-
-use std::mem;
 
 #[derive(Clone, Hash, Debug, PartialEq)]
 pub struct TinyList<T: PartialEq> {
@@ -52,7 +39,7 @@ impl<T: PartialEq> TinyList<T> {
     pub fn insert(&mut self, data: T) {
         self.head = Some(Element {
             data,
-            next: mem::replace(&mut self.head, None).map(Box::new),
+            next: self.head.take().map(Box::new)
         });
     }
 
@@ -60,7 +47,7 @@ impl<T: PartialEq> TinyList<T> {
     pub fn remove(&mut self, data: &T) -> bool {
         self.head = match self.head {
             Some(ref mut head) if head.data == *data => {
-                mem::replace(&mut head.next, None).map(|x| *x)
+                head.next.take().map(|x| *x)
             }
             Some(ref mut head) => return head.remove_next(data),
             None => return false,
@@ -100,7 +87,7 @@ impl<T: PartialEq> Element<T> {
             if next.data != *data {
                 return next.remove_next(data)
             } else {
-                mem::replace(&mut next.next, None)
+                next.next.take()
             }
         } else {
             return false

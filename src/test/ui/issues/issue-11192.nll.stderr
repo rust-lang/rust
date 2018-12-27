@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*ptr` as immutable because it is also borrowed as mutable
-  --> $DIR/issue-11192.rs:30:10
+  --> $DIR/issue-11192.rs:20:10
    |
 LL |     let mut test = |foo: &Foo| {
    |                    ----------- mutable borrow occurs here
@@ -8,10 +8,9 @@ LL |         ptr = box Foo { x: ptr.x + 1 };
    |         --- first borrow occurs due to use of `ptr` in closure
 ...
 LL |     test(&*ptr);
-   |     -----^^^^^-
-   |     |    |
-   |     |    immutable borrow occurs here
-   |     borrow later used here
+   |     ---- ^^^^^ immutable borrow occurs here
+   |     |
+   |     mutable borrow later used by call
 
 error: aborting due to previous error
 

@@ -1,0 +1,6 @@
+warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
+  --> $DIR/shadowing.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+

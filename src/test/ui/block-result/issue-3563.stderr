@@ -1,5 +1,5 @@
 error[E0599]: no method named `b` found for type `&Self` in the current scope
-  --> $DIR/issue-3563.rs:13:17
+  --> $DIR/issue-3563.rs:3:17
    |
 LL |         || self.b()
    |                 ^

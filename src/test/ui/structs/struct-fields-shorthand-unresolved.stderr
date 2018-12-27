@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `y` in this scope
-  --> $DIR/struct-fields-shorthand-unresolved.rs:20:9
+  --> $DIR/struct-fields-shorthand-unresolved.rs:10:9
    |
 LL |         y //~ ERROR cannot find value `y` in this scope
    |         ^ did you mean `x`?
