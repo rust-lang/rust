@@ -27,6 +27,10 @@ pub(super) fn validate_byte_node(node: ast::Byte, errors: &mut Vec<SyntaxError>)
         errors.push(SyntaxError::new(UnclosedByte, literal_range));
     }
 
+    if let Some(range) = components.suffix {
+        errors.push(SyntaxError::new(InvalidSuffix, range));
+    }
+
     if len == 0 {
         errors.push(SyntaxError::new(EmptyByte, literal_range));
     }

@@ -1,12 +1,15 @@
-use crate::string_lexing::{
+use crate::{
+    TextRange,
+    string_lexing::{
     parser::Parser,
     StringComponent,
-};
+}};
 
 pub fn parse_string_literal(src: &str) -> StringComponentIterator {
     StringComponentIterator {
         parser: Parser::new(src, b'"'),
         has_closing_quote: false,
+        suffix: None,
         prefix: None,
         quote: b'"',
     }
@@ -16,6 +19,7 @@ pub fn parse_byte_string_literal(src: &str) -> StringComponentIterator {
     StringComponentIterator {
         parser: Parser::new(src, b'"'),
         has_closing_quote: false,
+        suffix: None,
         prefix: Some(b'b'),
         quote: b'"',
     }
@@ -25,6 +29,7 @@ pub fn parse_char_literal(src: &str) -> StringComponentIterator {
     StringComponentIterator {
         parser: Parser::new(src, b'\''),
         has_closing_quote: false,
+        suffix: None,
         prefix: None,
         quote: b'\'',
     }
@@ -34,6 +39,7 @@ pub fn parse_byte_literal(src: &str) -> StringComponentIterator {
     StringComponentIterator {
         parser: Parser::new(src, b'\''),
         has_closing_quote: false,
+        suffix: None,
         prefix: Some(b'b'),
         quote: b'\'',
     }
@@ -42,6 +48,7 @@ pub fn parse_byte_literal(src: &str) -> StringComponentIterator {
 pub struct StringComponentIterator<'a> {
     parser: Parser<'a>,
     pub has_closing_quote: bool,
+    pub suffix: Option<TextRange>,
     prefix: Option<u8>,
     quote: u8,
 }
@@ -72,6 +79,9 @@ impl<'a> Iterator for StringComponentIterator<'a> {
         if self.parser.peek() == Some(self.quote as char) {
             self.parser.advance();
             self.has_closing_quote = true;
+            if let Some(range) = self.parser.parse_suffix() {
+                self.suffix = Some(range);
+            }
         }
 
         assert!(

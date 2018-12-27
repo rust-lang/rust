@@ -27,6 +27,10 @@ pub(crate) fn validate_string_node(node: ast::String, errors: &mut Vec<SyntaxErr
     if !components.has_closing_quote {
         errors.push(SyntaxError::new(UnclosedString, literal_range));
     }
+
+    if let Some(range) = components.suffix {
+        errors.push(SyntaxError::new(InvalidSuffix, range));
+    }
 }
 
 #[cfg(test)]

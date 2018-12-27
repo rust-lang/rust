@@ -139,6 +139,16 @@ impl<'a> Parser<'a> {
             ))
         }
     }
+
+    pub fn parse_suffix(&mut self) -> Option<TextRange> {
+        let start = self.get_pos();
+        let _ = self.peek()?;
+        while let Some(_) = self.peek() {
+            self.advance();
+        }
+        let end = self.get_pos();
+        Some(TextRange::from_to(start, end))
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

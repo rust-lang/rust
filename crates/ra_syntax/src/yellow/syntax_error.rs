@@ -93,6 +93,7 @@ pub enum SyntaxErrorKind {
     OverlongUnicodeEscape,
     UnicodeEscapeOutOfRange,
     UnclosedString,
+    InvalidSuffix,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -134,6 +135,7 @@ impl fmt::Display for SyntaxErrorKind {
             }
             UnicodeEscapeOutOfRange => write!(f, "Unicode escape code should be at most 0x10FFFF"),
             UnclosedString => write!(f, "Unclosed string literal"),
+            InvalidSuffix => write!(f, "Invalid literal suffix"),
             ParseError(msg) => write!(f, "{}", msg.0),
         }
     }

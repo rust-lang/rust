@@ -32,6 +32,10 @@ pub(crate) fn validate_byte_string_node(node: ast::ByteString, errors: &mut Vec<
     if !components.has_closing_quote {
         errors.push(SyntaxError::new(UnclosedString, literal_range));
     }
+
+    if let Some(range) = components.suffix {
+        errors.push(SyntaxError::new(InvalidSuffix, range));
+    }
 }
 
 #[cfg(test)]

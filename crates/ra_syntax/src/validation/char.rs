@@ -30,6 +30,10 @@ pub(super) fn validate_char_node(node: ast::Char, errors: &mut Vec<SyntaxError>)
         errors.push(SyntaxError::new(UnclosedChar, literal_range));
     }
 
+    if let Some(range) = components.suffix {
+        errors.push(SyntaxError::new(InvalidSuffix, range));
+    }
+
     if len == 0 {
         errors.push(SyntaxError::new(EmptyChar, literal_range));
     }
