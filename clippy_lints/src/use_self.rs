@@ -25,7 +25,13 @@ use syntax_pos::symbol::keywords::SelfUpper;
 /// name
 /// feels inconsistent.
 ///
-/// **Known problems:** None.
+/// **Known problems:**
+/// - Does not trigger within locally defined macros (#2098)
+/// - False positive when using associated types (#2843)
+/// - False positives in some situations when using generics (#3410)
+/// - False positive when type from outer function can't be used (#3463)
+/// - Does not diagnose tuple structs (#3498)
+/// - Does not trigger in lifetimed struct
 ///
 /// **Example:**
 /// ```rust
