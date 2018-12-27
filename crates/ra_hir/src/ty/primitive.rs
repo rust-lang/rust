@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::{Name, KnownName};
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 pub enum IntTy {
     Isize,
@@ -34,14 +36,14 @@ impl IntTy {
         }
     }
 
-    pub fn from_string(s: &str) -> Option<IntTy> {
-        match s {
-            "isize" => Some(IntTy::Isize),
-            "i8" => Some(IntTy::I8),
-            "i16" => Some(IntTy::I16),
-            "i32" => Some(IntTy::I32),
-            "i64" => Some(IntTy::I64),
-            "i128" => Some(IntTy::I128),
+    pub fn from_name(name: &Name) -> Option<IntTy> {
+        match name.as_known_name()? {
+            KnownName::Isize => Some(IntTy::Isize),
+            KnownName::I8 => Some(IntTy::I8),
+            KnownName::I16 => Some(IntTy::I16),
+            KnownName::I32 => Some(IntTy::I32),
+            KnownName::I64 => Some(IntTy::I64),
+            KnownName::I128 => Some(IntTy::I128),
             _ => None,
         }
     }
@@ -69,14 +71,14 @@ impl UintTy {
         }
     }
 
-    pub fn from_string(s: &str) -> Option<UintTy> {
-        match s {
-            "usize" => Some(UintTy::Usize),
-            "u8" => Some(UintTy::U8),
-            "u16" => Some(UintTy::U16),
-            "u32" => Some(UintTy::U32),
-            "u64" => Some(UintTy::U64),
-            "u128" => Some(UintTy::U128),
+    pub fn from_name(name: &Name) -> Option<UintTy> {
+        match name.as_known_name()? {
+            KnownName::Usize => Some(UintTy::Usize),
+            KnownName::U8 => Some(UintTy::U8),
+            KnownName::U16 => Some(UintTy::U16),
+            KnownName::U32 => Some(UintTy::U32),
+            KnownName::U64 => Some(UintTy::U64),
+            KnownName::U128 => Some(UintTy::U128),
             _ => None,
         }
     }
@@ -120,10 +122,10 @@ impl FloatTy {
         }
     }
 
-    pub fn from_string(s: &str) -> Option<FloatTy> {
-        match s {
-            "f32" => Some(FloatTy::F32),
-            "f64" => Some(FloatTy::F64),
+    pub fn from_name(name: &Name) -> Option<FloatTy> {
+        match name.as_known_name()? {
+            KnownName::F32 => Some(FloatTy::F32),
+            KnownName::F64 => Some(FloatTy::F64),
             _ => None,
         }
     }

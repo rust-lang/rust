@@ -1,16 +1,13 @@
 use std::sync::Arc;
 
-use ra_syntax::{
-    ast::{self, NameOwner},
-    SmolStr,
-};
+use ra_syntax::ast::{self, NameOwner};
 use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
 use arrayvec::ArrayVec;
 use ra_db::{SourceRoot, SourceRootId, Cancelable, FileId};
 
 use crate::{
-    HirDatabase,
+    HirDatabase, Name, AsName,
 };
 
 use super::{
@@ -20,12 +17,12 @@ use super::{
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum Submodule {
-    Declaration(SmolStr),
-    Definition(SmolStr, ModuleSource),
+    Declaration(Name),
+    Definition(Name, ModuleSource),
 }
 
 impl Submodule {
-    fn name(&self) -> &SmolStr {
+    fn name(&self) -> &Name {
         match self {
             Submodule::Declaration(name) => name,
             Submodule::Definition(name, _) => name,
@@ -35,14 +32,14 @@ impl Submodule {
 
 pub(crate) fn modules<'a>(
     root: impl ast::ModuleItemOwner<'a>,
-) -> impl Iterator<Item = (SmolStr, ast::Module<'a>)> {
+) -> impl Iterator<Item = (Name, ast::Module<'a>)> {
     root.items()
         .filter_map(|item| match item {
             ast::ModuleItem::Module(m) => Some(m),
             _ => None,
         })
         .filter_map(|module| {
-            let name = module.name()?.text();
+            let name = module.name()?.as_name();
             Some((name, module))
         })
 }
@@ -155,7 +152,7 @@ fn build_subtree(
 fn resolve_submodule(
     db: &impl HirDatabase,
     source: ModuleSource,
-    name: &SmolStr,
+    name: &Name,
 ) -> (Vec<FileId>, Option<Problem>) {
     // FIXME: handle submodules of inline modules properly
     let file_id = source.file_id();

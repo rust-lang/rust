@@ -1,7 +1,6 @@
-use ra_syntax::SmolStr;
 pub use ra_db::CrateId;
 
-use crate::{HirDatabase, Module, Cancelable};
+use crate::{HirDatabase, Module, Cancelable, Name, AsName};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -14,7 +13,7 @@ pub struct Crate {
 #[derive(Debug)]
 pub struct CrateDependency {
     pub krate: Crate,
-    pub name: SmolStr,
+    pub name: Name,
 }
 
 impl Crate {
@@ -27,7 +26,7 @@ impl Crate {
             .dependencies(self.crate_id)
             .map(|dep| {
                 let krate = Crate::new(dep.crate_id());
-                let name = dep.name.clone();
+                let name = dep.as_name();
                 CrateDependency { krate, name }
             })
             .collect()

@@ -22,6 +22,7 @@ mod path;
 mod arena;
 pub mod source_binder;
 
+mod name;
 mod krate;
 mod module;
 mod function;
@@ -37,10 +38,12 @@ use ra_db::{LocationIntener, SourceRootId, FileId, Cancelable};
 use crate::{
     db::HirDatabase,
     arena::{Arena, Id},
+    name::{AsName, KnownName},
 };
 
 pub use self::{
     path::{Path, PathKind},
+    name::Name,
     krate::Crate,
     module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
     function::{Function, FnScopes},

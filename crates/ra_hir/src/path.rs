@@ -1,9 +1,11 @@
-use ra_syntax::{SmolStr, ast, AstNode, TextRange};
+use ra_syntax::{ast, AstNode, TextRange};
+
+use crate::{Name, AsName};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub kind: PathKind,
-    pub segments: Vec<SmolStr>,
+    pub segments: Vec<Name>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,7 +31,7 @@ impl Path {
         loop {
             let segment = path.segment()?;
             match segment.kind()? {
-                ast::PathSegmentKind::Name(name) => segments.push(name.text()),
+                ast::PathSegmentKind::Name(name) => segments.push(name.as_name()),
                 ast::PathSegmentKind::CrateKw => {
                     kind = PathKind::Crate;
                     break;
@@ -66,6 +68,14 @@ impl Path {
     /// `true` is this path is a single identifier, like `foo`
     pub fn is_ident(&self) -> bool {
         self.kind == PathKind::Plain && self.segments.len() == 1
+    }
+
+    /// If this path is a single identifier, like `foo`, return its name.
+    pub fn as_ident(&self) -> Option<&Name> {
+        if self.kind != PathKind::Plain || self.segments.len() > 1 {
+            return None;
+        }
+        self.segments.first()
     }
 }
 
@@ -130,7 +140,7 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
                 kind: PathKind::Plain,
                 segments: Vec::with_capacity(1),
             });
-            res.segments.push(name.text());
+            res.segments.push(name.as_name());
             res
         }
         ast::PathSegmentKind::CrateKw => {

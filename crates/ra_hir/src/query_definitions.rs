@@ -11,7 +11,7 @@ use ra_syntax::{
 use ra_db::{SourceRootId, FileId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, Function, DefId,
+    SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName,
     db::HirDatabase,
     function::{FnScopes, FnId},
     module::{
@@ -130,14 +130,14 @@ pub(crate) fn submodules(
 
 pub(crate) fn modules<'a>(
     root: impl ast::ModuleItemOwner<'a>,
-) -> impl Iterator<Item = (SmolStr, ast::Module<'a>)> {
+) -> impl Iterator<Item = (Name, ast::Module<'a>)> {
     root.items()
         .filter_map(|item| match item {
             ast::ModuleItem::Module(m) => Some(m),
             _ => None,
         })
         .filter_map(|module| {
-            let name = module.name()?.text();
+            let name = module.name()?.as_name();
             Some((name, module))
         })
 }

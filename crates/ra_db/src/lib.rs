@@ -14,7 +14,7 @@ pub use crate::{
     cancelation::{Canceled, Cancelable},
     syntax_ptr::LocalSyntaxPtr,
     input::{
-        FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph,
+        FilesDatabase, FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency,
         FileTextQuery, FileSourceRootQuery, SourceRootQuery, LocalRootsQuery, LibraryRootsQuery, CrateGraphQuery,
         FileRelativePathQuery
     },

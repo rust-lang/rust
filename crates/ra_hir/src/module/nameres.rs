@@ -14,14 +14,12 @@
 //! modifications (that is, typing inside a function shold not change IMIs),
 //! such that the results of name resolution can be preserved unless the module
 //! structure itself is modified.
-use std::{
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
     TextRange,
-    SmolStr, SyntaxKind::{self, *},
+    SyntaxKind::{self, *},
     ast::{self, AstNode}
 };
 use ra_db::SourceRootId;
@@ -32,6 +30,7 @@ use crate::{
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
     HirDatabase, Crate,
+    Name, AsName,
     module::{Module, ModuleId, ModuleTree},
 };
 
@@ -45,14 +44,14 @@ pub struct ItemMap {
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
-    items: FxHashMap<SmolStr, Resolution>,
+    items: FxHashMap<Name, Resolution>,
 }
 
 impl ModuleScope {
-    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a SmolStr, &'a Resolution)> + 'a {
+    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
         self.items.iter()
     }
-    pub fn get(&self, name: &SmolStr) -> Option<&Resolution> {
+    pub fn get(&self, name: &Name) -> Option<&Resolution> {
         self.items.get(name)
     }
 }
@@ -72,7 +71,7 @@ pub struct InputModuleItems {
 #[derive(Debug, PartialEq, Eq)]
 struct ModuleItem {
     id: SourceFileItemId,
-    name: SmolStr,
+    name: Name,
     kind: SyntaxKind,
     vis: Vis,
 }
@@ -260,7 +259,7 @@ impl InputModuleItems {
 
 impl ModuleItem {
     fn new<'a>(file_items: &SourceFileItems, item: impl ast::NameOwner<'a>) -> Option<ModuleItem> {
-        let name = item.name()?.text();
+        let name = item.name()?.as_name();
         let kind = item.syntax().kind();
         let vis = Vis::Other;
         let id = file_items.id_of_unchecked(item.syntax());
@@ -328,7 +327,11 @@ where
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db)? {
                         let def_id = module.def_id(self.db);
-                        self.add_module_item(&mut module_items, dep.name, PerNs::types(def_id));
+                        self.add_module_item(
+                            &mut module_items,
+                            dep.name.clone(),
+                            PerNs::types(def_id),
+                        );
                     }
                 }
             };
@@ -389,7 +392,7 @@ where
         Ok(())
     }
 
-    fn add_module_item(&self, module_items: &mut ModuleScope, name: SmolStr, def_id: PerNs<DefId>) {
+    fn add_module_item(&self, module_items: &mut ModuleScope, name: Name, def_id: PerNs<DefId>) {
         let resolution = Resolution {
             def_id,
             import: None,
