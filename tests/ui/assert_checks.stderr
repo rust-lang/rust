@@ -6,7 +6,7 @@ error: assert!(true) will be optimized out by the compiler
    |
    = note: #[deny(clippy::explicit_true)] on by default
 
-error: assert!(false) should probably be replaced by a panic!()
+error: assert!(false) should probably be replaced by a panic!() or unreachable!()
   --> $DIR/assert_checks.rs:12:5
    |
 12 |     assert!(false);

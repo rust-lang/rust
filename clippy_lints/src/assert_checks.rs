@@ -32,7 +32,7 @@ declare_clippy_lint! {
 
 /// **What it does:** Check explicit call assert!(false)
 ///
-/// **Why is this bad?** Should probably be replaced by a panic!()
+/// **Why is this bad?** Should probably be replaced by a panic!() or unreachable!()
 ///
 /// **Known problems:** None
 ///
@@ -43,7 +43,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub EXPLICIT_FALSE,
     correctness,
-    "assert!(false) should probably be replaced by a panic!()r"
+    "assert!(false) should probably be replaced by a panic!() or unreachable!()"
 }
 
 pub struct AssertChecks;
@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertChecks {
                     },
                     LitKind::Bool(false) => {
                         span_lint(cx, EXPLICIT_FALSE, e.span,
-                            "assert!(false) should probably be replaced by a panic!()");
+                            "assert!(false) should probably be replaced by a panic!() or unreachable!()");
                     },
                     _ => (),
                 }
