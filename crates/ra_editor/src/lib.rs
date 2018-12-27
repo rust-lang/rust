@@ -22,7 +22,7 @@ pub use self::{
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
     algo::find_leaf_at_offset,
-    ast::{self, AstNode, NameOwner},
+    ast::{self, AstNode},
     SourceFileNode,
     SyntaxKind::{self, *},
     SyntaxNodeRef, TextRange, TextUnit, Direction,
@@ -47,18 +47,6 @@ pub struct Diagnostic {
     pub msg: String,
     pub severity: Severity,
     pub fix: Option<LocalEdit>,
-}
-
-#[derive(Debug)]
-pub struct Runnable {
-    pub range: TextRange,
-    pub kind: RunnableKind,
-}
-
-#[derive(Debug)]
-pub enum RunnableKind {
-    Test { name: String },
-    Bin,
 }
 
 pub fn matching_brace(file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
@@ -133,29 +121,6 @@ pub fn syntax_tree(file: &SourceFileNode) -> String {
     ::ra_syntax::utils::dump_tree(file.syntax())
 }
 
-pub fn runnables(file: &SourceFileNode) -> Vec<Runnable> {
-    file.syntax()
-        .descendants()
-        .filter_map(ast::FnDef::cast)
-        .filter_map(|f| {
-            let name = f.name()?.text();
-            let kind = if name == "main" {
-                RunnableKind::Bin
-            } else if f.has_atom_attr("test") {
-                RunnableKind::Test {
-                    name: name.to_string(),
-                }
-            } else {
-                return None;
-            };
-            Some(Runnable {
-                range: f.syntax().range(),
-                kind,
-            })
-        })
-        .collect()
-}
-
 pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     syntax: SyntaxNodeRef<'a>,
     offset: TextUnit,
@@ -188,29 +153,6 @@ fn main() {}
                 HighlightedRange { range: [52; 54), tag: "literal" }]"#,
             &hls,
         );
-    }
-
-    #[test]
-    fn test_runnables() {
-        let file = SourceFileNode::parse(
-            r#"
-fn main() {}
-
-#[test]
-fn test_foo() {}
-
-#[test]
-#[ignore]
-fn test_foo() {}
-"#,
-        );
-        let runnables = runnables(&file);
-        assert_eq_dbg(
-            r#"[Runnable { range: [1; 13), kind: Bin },
-                Runnable { range: [15; 39), kind: Test { name: "test_foo" } },
-                Runnable { range: [41; 75), kind: Test { name: "test_foo" } }]"#,
-            &runnables,
-        )
     }
 
     #[test]

@@ -257,6 +257,7 @@ pub fn handle_runnables(
             range: runnable.range.conv_with(&line_index),
             label: match &runnable.kind {
                 RunnableKind::Test { name } => format!("test {}", name),
+                RunnableKind::TestMod { path } => format!("test-mod {}", path),
                 RunnableKind::Bin => "run binary".to_string(),
             },
             bin: "cargo".to_string(),
@@ -306,6 +307,15 @@ pub fn handle_runnables(
                 }
                 res.push("--".to_string());
                 res.push(name.to_string());
+                res.push("--nocapture".to_string());
+            }
+            RunnableKind::TestMod { path } => {
+                res.push("test".to_string());
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
+                }
+                res.push("--".to_string());
+                res.push(path.to_string());
                 res.push("--nocapture".to_string());
             }
             RunnableKind::Bin => {
