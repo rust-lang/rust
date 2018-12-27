@@ -491,12 +491,7 @@ impl AnalysisImpl {
         let file = self.db.source_file(file_id);
         let syntax = file.syntax();
         let node = find_covering_node(syntax, range);
-        let parent_fn = node.ancestors().filter_map(FnDef::cast).next();
-        let parent_fn = if let Some(p) = parent_fn {
-            p
-        } else {
-            return Ok(None);
-        };
+        let parent_fn = ctry!(node.ancestors().find_map(FnDef::cast));
         let function = ctry!(source_binder::function_from_source(
             &*self.db, file_id, parent_fn
         )?);
