@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use salsa::Database;
 use ra_db::{FilesDatabase, CrateGraph};
-use ra_syntax::SmolStr;
 use relative_path::RelativePath;
+use test_utils::assert_eq_text;
 
 use crate::{
     self as hir,
     db::HirDatabase,
     mock::MockDatabase,
-    Name,
 };
 
 fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
@@ -20,6 +19,35 @@ fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
         .unwrap();
     let module_id = module.module_id;
     (db.item_map(source_root).unwrap(), module_id)
+}
+
+fn check_module_item_map(map: &hir::ItemMap, module_id: hir::ModuleId, expected: &str) {
+    let mut lines = map.per_module[&module_id]
+        .items
+        .iter()
+        .map(|(name, res)| format!("{}: {}", name, dump_resolution(res)))
+        .collect::<Vec<_>>();
+    lines.sort();
+    let actual = lines.join("\n");
+    let expected = expected
+        .trim()
+        .lines()
+        .map(|it| it.trim())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq_text!(&actual, &expected);
+
+    fn dump_resolution(resolution: &hir::Resolution) -> &'static str {
+        match (
+            resolution.def_id.types.is_some(),
+            resolution.def_id.values.is_some(),
+        ) {
+            (true, true) => "t v",
+            (true, false) => "t",
+            (false, true) => "v",
+            (false, false) => "_",
+        }
+    }
 }
 
 #[test]
@@ -39,13 +67,18 @@ fn item_map_smoke_test() {
         pub struct Baz;
     ",
     );
-    let name = Name::new(SmolStr::from("Baz"));
-    let resolution = &item_map.per_module[&module_id].items[&name];
-    assert!(resolution.def_id.take_types().is_some());
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            foo: t
+        ",
+    );
 }
 
 #[test]
-fn test_self() {
+fn item_map_using_self() {
     let (item_map, module_id) = item_map(
         "
             //- /lib.rs
@@ -58,9 +91,14 @@ fn test_self() {
             pub struct Baz;
         ",
     );
-    let name = Name::new(SmolStr::from("Baz"));
-    let resolution = &item_map.per_module[&module_id].items[&name];
-    assert!(resolution.def_id.take_types().is_some());
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            foo: t
+        ",
+    );
 }
 
 #[test]
@@ -91,9 +129,14 @@ fn item_map_across_crates() {
     let module_id = module.module_id;
     let item_map = db.item_map(source_root).unwrap();
 
-    let name = Name::new(SmolStr::from("Baz"));
-    let resolution = &item_map.per_module[&module_id].items[&name];
-    assert!(resolution.def_id.take_types().is_some());
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t v
+            test_crate: t
+        ",
+    );
 }
 
 #[test]

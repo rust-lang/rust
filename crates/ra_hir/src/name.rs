@@ -5,7 +5,7 @@ use ra_syntax::{ast, SmolStr};
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygene info, but we are
 /// not there yet!
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     text: SmolStr,
 }
@@ -13,6 +13,12 @@ pub struct Name {
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.text, f)
+    }
+}
+
+impl fmt::Debug for Name {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.text, f)
     }
 }
 
@@ -38,13 +44,7 @@ impl Name {
         Some(name)
     }
 
-    #[cfg(not(test))]
     fn new(text: SmolStr) -> Name {
-        Name { text }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn new(text: SmolStr) -> Name {
         Name { text }
     }
 }
