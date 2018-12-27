@@ -55,7 +55,10 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
     }
-    config.target_rustcflags = Some(format!("-L {0} -L {0}/deps -Dwarnings", host_libs().display()));
+    config.target_rustcflags = Some(format!(
+        "-L {0} -L {0}/deps -Dwarnings -Zui-testing",
+        host_libs().display()
+    ));
 
     config.mode = cfg_mode;
     config.build_base = if rustc_test_suite().is_some() {
