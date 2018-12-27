@@ -292,7 +292,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     };
     let tmp = fmtstr.clone();
     let mut args = vec![];
-    let mut fmt_parser = Parser::new(&tmp, None);
+    let mut fmt_parser = Parser::new(&tmp, None, Vec::new(), false);
     while let Some(piece) = fmt_parser.next() {
         if !fmt_parser.errors.is_empty() {
             return (None, expr);
