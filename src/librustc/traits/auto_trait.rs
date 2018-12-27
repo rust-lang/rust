@@ -732,9 +732,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
 
                     // We can only call poly_project_and_unify_type when our predicate's
-                    // Ty is an inference variable - otherwise, there won't be anything to
+                    // Ty contains an inference variable - otherwise, there won't be anything to
                     // unify
-                    if p.ty().skip_binder().is_ty_infer() {
+                    if p.ty().skip_binder().has_infer_types() {
                         debug!("Projecting and unifying projection predicate {:?}",
                                predicate);
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
