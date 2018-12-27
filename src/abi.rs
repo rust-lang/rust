@@ -197,8 +197,10 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = self.get_function_id(inst);
-        self.module
-            .declare_func_in_func(func_id, &mut self.bcx.func)
+        let func_ref = self.module
+            .declare_func_in_func(func_id, &mut self.bcx.func);
+        self.add_entity_comment(func_ref, format!("{:?}", inst));
+        func_ref
     }
 
     fn lib_call(
@@ -271,13 +273,13 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     }
 }
 
-fn add_local_comment<'a, 'tcx: 'a>(
+fn add_arg_comment<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     msg: &str,
     local: mir::Local,
     local_field: Option<usize>,
     param: Option<Value>,
-    pass_mode: Option<PassMode>,
+    pass_mode: PassMode,
     ssa: crate::analyze::Flags,
     ty: Ty<'tcx>,
 ) {
@@ -291,11 +293,7 @@ fn add_local_comment<'a, 'tcx: 'a>(
     } else {
         Cow::Borrowed("-")
     };
-    let pass_mode = if let Some(pass_mode) = pass_mode {
-        Cow::Owned(format!("{:?}", pass_mode))
-    } else {
-        Cow::Borrowed("-")
-    };
+    let pass_mode = format!("{:?}", pass_mode);
     fx.add_global_comment(format!(
         "{msg:5} {local:>3}{local_field:<5} {param:10} {pass_mode:20} {ssa:10} {ty:?}",
         msg=msg, local=format!("{:?}", local), local_field=local_field, param=param, pass_mode=pass_mode, ssa=format!("{:?}", ssa), ty=ty,
@@ -322,6 +320,13 @@ fn local_place<'a, 'tcx: 'a>(
             offset: None,
         });
 
+        let TyLayout { ty, details } = layout;
+        let ty::layout::LayoutDetails { size, align, abi: _, variants: _, fields: _ } = details;
+        fx.add_entity_comment(stack_slot, format!(
+            "{:?}: {:?} size={} align={},{}",
+            local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
+        ));
+
         CPlace::from_stack_slot(fx, stack_slot, layout.ty)
     };
 
@@ -329,8 +334,20 @@ fn local_place<'a, 'tcx: 'a>(
     fx.local_map[&local]
 }
 
-fn param_to_cvalue<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>, ebb_param: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
-    match get_pass_mode(fx.tcx, fx.self_sig().abi, layout.ty, false) {
+fn cvalue_for_param<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    start_ebb: Ebb,
+    local: mir::Local,
+    local_field: Option<usize>,
+    arg_ty: Ty<'tcx>,
+    ssa_flags: crate::analyze::Flags,
+) -> CValue<'tcx> {
+    let layout = fx.layout_of(arg_ty);
+    let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
+    let clif_type = pass_mode.get_param_ty(fx);
+    let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
+    add_arg_comment(fx, "arg", local, local_field, Some(ebb_param), pass_mode, ssa_flags, arg_ty);
+    match pass_mode {
         PassMode::NoPass => unimplemented!("pass mode nopass"),
         PassMode::ByVal(_) => CValue::ByVal(ebb_param, layout),
         PassMode::ByRef => CValue::ByRef(ebb_param, layout),
@@ -352,9 +369,12 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.pointer_type)),
     };
 
-    enum ArgKind {
-        Normal(Value),
-        Spread(Vec<Value>),
+    add_local_header_comment(fx);
+    add_arg_comment(fx, "ret", RETURN_PLACE, None, ret_param, output_pass_mode, ssa_analyzed[&RETURN_PLACE], ret_layout.ty);
+
+    enum ArgKind<'tcx> {
+        Normal(CValue<'tcx>),
+        Spread(Vec<CValue<'tcx>>),
     }
 
     let func_params = fx
@@ -375,25 +395,18 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
 
-                let mut ebb_params = Vec::new();
+                let mut params = Vec::new();
                 for (i, arg_ty) in tupled_arg_tys.iter().enumerate() {
-                    let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);;
-                    let clif_type = pass_mode.get_param_ty(fx);
-                    let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
-                    add_local_comment(fx, "arg", local, Some(i), Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], arg_ty);
-                    ebb_params.push(ebb_param);
+                    let param = cvalue_for_param(fx, start_ebb, local, Some(i), arg_ty, ssa_analyzed[&local]);
+                    params.push(param);
                 }
 
-                (local, ArgKind::Spread(ebb_params), arg_ty)
+                (local, ArgKind::Spread(params), arg_ty)
             } else {
-                let clif_type =
-                    get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
-                let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
-                let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
-                add_local_comment(fx, "arg", local, None, Some(ebb_param), Some(pass_mode), ssa_analyzed[&local], arg_ty);
+                let param = cvalue_for_param(fx, start_ebb, local, None, arg_ty, ssa_analyzed[&local]);
                 (
                     local,
-                    ArgKind::Normal(ebb_param),
+                    ArgKind::Normal(param),
                     arg_ty,
                 )
             }
@@ -423,9 +436,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         }
     }
 
-    add_local_header_comment(fx);
-    add_local_comment(fx, "ret", RETURN_PLACE, None, ret_param, Some(output_pass_mode), ssa_analyzed[&RETURN_PLACE], ret_layout.ty);
-
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
 
@@ -437,15 +447,12 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         let place = local_place(fx, local, layout, is_ssa);
 
         match arg_kind {
-            ArgKind::Normal(ebb_param) => {
-                let cvalue = param_to_cvalue(fx, ebb_param, layout);
-                place.write_cvalue(fx, cvalue);
+            ArgKind::Normal(param) => {
+                place.write_cvalue(fx, param);
             }
-            ArgKind::Spread(ebb_params) => {
-                for (i, ebb_param) in ebb_params.into_iter().enumerate() {
-                    let sub_place = place.place_field(fx, mir::Field::new(i));
-                    let cvalue = param_to_cvalue(fx, ebb_param, sub_place.layout());
-                    sub_place.write_cvalue(fx, cvalue);
+            ArgKind::Spread(params) => {
+                for (i, param) in params.into_iter().enumerate() {
+                    place.place_field(fx, mir::Field::new(i)).write_cvalue(fx, param);
                 }
             }
         }
@@ -454,8 +461,6 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     for local in fx.mir.vars_and_temps_iter() {
         let ty = fx.mir.local_decls[local].ty;
         let layout = fx.layout_of(ty);
-
-        add_local_comment(fx, "local", local, None, None, None, ssa_analyzed[&local], ty);
 
         let is_ssa = !ssa_analyzed
             .get(&local)
