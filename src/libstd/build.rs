@@ -71,7 +71,7 @@ fn main() {
     } else if target.contains("fuchsia") {
         println!("cargo:rustc-link-lib=zircon");
         println!("cargo:rustc-link-lib=fdio");
-    } else if target.contains("cloudabi") {
+    } else if target.contains("cloudabi") && !target.contains("wasm32") {
         if cfg!(feature = "backtrace") {
             println!("cargo:rustc-link-lib=unwind");
         }

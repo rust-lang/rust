@@ -43,7 +43,7 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("redox") {
         println!("cargo:rustc-link-lib=gcc");
-    } else if target.contains("cloudabi") {
+    } else if target.contains("cloudabi") && !target.contains("wasm32") {
         println!("cargo:rustc-link-lib=unwind");
     }
 }

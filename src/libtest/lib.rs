@@ -1261,7 +1261,9 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(any(target_os = "android", target_os = "cloudabi", target_os = "emscripten",
+    #[cfg(any(target_os = "android",
+              all(target_os = "cloudabi", not(target_arch = "wasm32")),
+              target_os = "emscripten",
               target_os = "fuchsia", target_os = "ios", target_os = "linux",
               target_os = "macos", target_os = "solaris"))]
     fn num_cpus() -> usize {

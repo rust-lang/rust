@@ -40,8 +40,15 @@ cfg_if! {
         mod windows;
         pub use self::windows::*;
     } else if #[cfg(target_os = "cloudabi")] {
-        mod cloudabi;
-        pub use self::cloudabi::*;
+        cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                mod wasm_cloudabi;
+                pub use self::wasm_cloudabi::*;
+            } else {
+                mod cloudabi;
+                pub use self::cloudabi::*;
+            }
+        }
     } else if #[cfg(target_os = "redox")] {
         mod redox;
         pub use self::redox::*;
