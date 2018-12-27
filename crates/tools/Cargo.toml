@@ -8,6 +8,6 @@ publish = false
 [dependencies]
 teraron = "0.0.1"
 walkdir = "2.1.3"
-itertools = "0.7.8"
+itertools = "0.8.0"
 clap = "2.32.0"
 failure = "0.1.1"
