@@ -67,4 +67,6 @@ raw  { \n
     asdf}
     ", asdf=1);
     //~^^ ERROR invalid format string
+    println!("\t{}");
+    //~^ ERROR 1 positional argument in format string
 }

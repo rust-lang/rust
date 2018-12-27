@@ -861,7 +861,9 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     let arg_spans = parser.arg_places.iter()
-        .map(|&(start, end)| fmt.span.from_inner_byte_pos(start, end))
+        .map(|&(parse::SpanIndex(start), parse::SpanIndex(end))| {
+            fmt.span.from_inner_byte_pos(start, end)
+        })
         .collect();
 
     let mut cx = Context {
