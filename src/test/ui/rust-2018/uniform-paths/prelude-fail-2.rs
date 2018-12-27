@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(uniform_paths)]
-
 // Built-in attribute
 use inline as imported_inline;
 mod builtin {

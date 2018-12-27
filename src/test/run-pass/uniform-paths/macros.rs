@@ -1,11 +1,9 @@
-// run-pass
-#![allow(non_camel_case_types)]
+// This test is similar to `basic.rs`, but with macros defining local items.
 
+// run-pass
 // edition:2018
 
-#![feature(uniform_paths)]
-
-// This test is similar to `basic.rs`, but with macros defining local items.
+#![allow(non_camel_case_types)]
 
 // Test that ambiguity errors are not emitted between `self::test` and
 // `::test`, assuming the latter (crate) is not in `extern_prelude`.

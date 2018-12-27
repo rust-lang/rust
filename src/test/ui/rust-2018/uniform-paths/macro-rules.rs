@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(decl_macro, uniform_paths)]
+#![feature(decl_macro)]
 
 mod m1 {
     // Non-exported legacy macros are treated as `pub(crate)`.
@@ -14,6 +14,7 @@ mod m1 {
 mod m2 {
     macro_rules! legacy_macro { () => () }
 
+    #[allow(non_camel_case_types)]
     type legacy_macro = u8;
 
     // Legacy macro imports don't prevent names from other namespaces from being imported.

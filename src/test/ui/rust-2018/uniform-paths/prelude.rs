@@ -1,8 +1,6 @@
 // compile-pass
 // edition:2018
 
-#![feature(uniform_paths)]
-
 // Macro imported with `#[macro_use] extern crate`
 use vec as imported_vec;
 

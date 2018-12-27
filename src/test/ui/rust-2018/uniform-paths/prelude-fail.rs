@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(uniform_paths)]
-
 // Built-in macro
 use env as env_imported; //~ ERROR cannot import a built-in macro
 
