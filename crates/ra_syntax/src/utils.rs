@@ -1,10 +1,13 @@
-use crate::{SourceFileNode, SyntaxKind, SyntaxNodeRef, WalkEvent};
+use crate::{SourceFileNode, SyntaxKind, SyntaxNodeRef, WalkEvent, AstNode};
 use std::fmt::Write;
 use std::str;
 
 /// Parse a file and create a string representation of the resulting parse tree.
 pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
-    let mut errors: Vec<_> = syntax.root_data().to_vec();
+    let mut errors: Vec<_> = match syntax.ancestors().find_map(SourceFileNode::cast) {
+        Some(file) => file.owned().errors(),
+        None => syntax.root_data().to_vec(),
+    };
     errors.sort_by_key(|e| e.offset());
     let mut err_pos = 0;
     let mut level = 0;

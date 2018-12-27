@@ -2,7 +2,7 @@
 
 use crate::{
     ast::{self, AstNode},
-    string_lexing::{self, CharComponentKind},
+    string_lexing::{self, StringComponentKind},
     TextRange,
     validation::char,
     yellow::{
@@ -27,6 +27,13 @@ pub(super) fn validate_byte_node(node: ast::Byte, errors: &mut Vec<SyntaxError>)
         errors.push(SyntaxError::new(UnclosedByte, literal_range));
     }
 
+    if let Some(range) = components.suffix {
+        errors.push(SyntaxError::new(
+            InvalidSuffix,
+            range + literal_range.start(),
+        ));
+    }
+
     if len == 0 {
         errors.push(SyntaxError::new(EmptyByte, literal_range));
     }
@@ -38,11 +45,11 @@ pub(super) fn validate_byte_node(node: ast::Byte, errors: &mut Vec<SyntaxError>)
 
 pub(super) fn validate_byte_component(
     text: &str,
-    kind: CharComponentKind,
+    kind: StringComponentKind,
     range: TextRange,
     errors: &mut Vec<SyntaxError>,
 ) {
-    use self::CharComponentKind::*;
+    use self::StringComponentKind::*;
     match kind {
         AsciiEscape => validate_byte_escape(text, range, errors),
         AsciiCodeEscape => validate_byte_code_escape(text, range, errors),
@@ -63,6 +70,7 @@ pub(super) fn validate_byte_component(
                 errors.push(SyntaxError::new(ByteOutOfRange, range));
             }
         }
+        IgnoreNewline => { /* always valid */ }
     }
 }
 

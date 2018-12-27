@@ -1,15 +1,16 @@
 use rowan::{TextRange, TextUnit};
 
-use self::CharComponentKind::*;
+use self::StringComponentKind::*;
 
 pub struct Parser<'a> {
+    pub(super) quote: u8,
     pub(super) src: &'a str,
     pub(super) pos: usize,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(src: &'a str) -> Parser<'a> {
-        Parser { src, pos: 0 }
+    pub fn new(src: &'a str, quote: u8) -> Parser<'a> {
+        Parser { quote, src, pos: 0 }
     }
 
     // Utility methods
@@ -42,7 +43,7 @@ impl<'a> Parser<'a> {
 
     // Char parsing methods
 
-    fn parse_unicode_escape(&mut self, start: TextUnit) -> CharComponent {
+    fn parse_unicode_escape(&mut self, start: TextUnit) -> StringComponent {
         match self.peek() {
             Some('{') => {
                 self.advance();
@@ -56,16 +57,16 @@ impl<'a> Parser<'a> {
                 }
 
                 let end = self.get_pos();
-                CharComponent::new(TextRange::from_to(start, end), UnicodeEscape)
+                StringComponent::new(TextRange::from_to(start, end), UnicodeEscape)
             }
             Some(_) | None => {
                 let end = self.get_pos();
-                CharComponent::new(TextRange::from_to(start, end), UnicodeEscape)
+                StringComponent::new(TextRange::from_to(start, end), UnicodeEscape)
             }
         }
     }
 
-    fn parse_ascii_code_escape(&mut self, start: TextUnit) -> CharComponent {
+    fn parse_ascii_code_escape(&mut self, start: TextUnit) -> StringComponent {
         let code_start = self.get_pos();
         while let Some(next) = self.peek() {
             if next == '\'' || (self.get_pos() - code_start == 2.into()) {
@@ -76,12 +77,12 @@ impl<'a> Parser<'a> {
         }
 
         let end = self.get_pos();
-        CharComponent::new(TextRange::from_to(start, end), AsciiCodeEscape)
+        StringComponent::new(TextRange::from_to(start, end), AsciiCodeEscape)
     }
 
-    fn parse_escape(&mut self, start: TextUnit) -> CharComponent {
+    fn parse_escape(&mut self, start: TextUnit) -> StringComponent {
         if self.peek().is_none() {
-            return CharComponent::new(TextRange::from_to(start, start), AsciiEscape);
+            return StringComponent::new(TextRange::from_to(start, start), AsciiEscape);
         }
 
         let next = self.advance();
@@ -90,29 +91,7 @@ impl<'a> Parser<'a> {
         match next {
             'x' => self.parse_ascii_code_escape(start),
             'u' => self.parse_unicode_escape(start),
-            _ => CharComponent::new(range, AsciiEscape),
-        }
-    }
-
-    pub fn parse_char_component(&mut self) -> Option<CharComponent> {
-        let next = self.peek()?;
-
-        // Ignore character close
-        if next == '\'' {
-            return None;
-        }
-
-        let start = self.get_pos();
-        self.advance();
-
-        if next == '\\' {
-            Some(self.parse_escape(start))
-        } else {
-            let end = self.get_pos();
-            Some(CharComponent::new(
-                TextRange::from_to(start, end),
-                CodePoint,
-            ))
+            _ => StringComponent::new(range, AsciiEscape),
         }
     }
 
@@ -131,11 +110,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_string_component(&mut self) -> Option<StringComponent> {
+    pub fn parse_component(&mut self) -> Option<StringComponent> {
         let next = self.peek()?;
 
         // Ignore string close
-        if next == '"' {
+        if next == self.quote as char {
             return None;
         }
 
@@ -145,20 +124,30 @@ impl<'a> Parser<'a> {
         if next == '\\' {
             // Strings can use `\` to ignore newlines, so we first try to parse one of those
             // before falling back to parsing char escapes
-            self.parse_ignore_newline(start).or_else(|| {
-                let char_component = self.parse_escape(start);
-                Some(StringComponent::new(
-                    char_component.range,
-                    StringComponentKind::Char(char_component.kind),
-                ))
-            })
+            if self.quote == b'"' {
+                if let Some(component) = self.parse_ignore_newline(start) {
+                    return Some(component);
+                }
+            }
+
+            Some(self.parse_escape(start))
         } else {
             let end = self.get_pos();
             Some(StringComponent::new(
                 TextRange::from_to(start, end),
-                StringComponentKind::Char(CodePoint),
+                CodePoint,
             ))
         }
+    }
+
+    pub fn parse_suffix(&mut self) -> Option<TextRange> {
+        let start = self.get_pos();
+        let _ = self.peek()?;
+        while let Some(_) = self.peek() {
+            self.advance();
+        }
+        let end = self.get_pos();
+        Some(TextRange::from_to(start, end))
     }
 }
 
@@ -177,23 +166,6 @@ impl StringComponent {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StringComponentKind {
     IgnoreNewline,
-    Char(CharComponentKind),
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub struct CharComponent {
-    pub range: TextRange,
-    pub kind: CharComponentKind,
-}
-
-impl CharComponent {
-    fn new(range: TextRange, kind: CharComponentKind) -> CharComponent {
-        CharComponent { range, kind }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum CharComponentKind {
     CodePoint,
     AsciiEscape,
     AsciiCodeEscape,
