@@ -502,12 +502,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // emit a panic or a NOP for `panic_if_uninhabited`
                 if intrinsic == Some("panic_if_uninhabited") {
-                    let ty = match callee.layout.ty.sty {
-                        ty::FnDef(_, substs) => {
-                            substs.type_at(0)
-                        }
-                        _ => bug!("{} is not callable as intrinsic", callee.layout.ty)
-                    };
+                    let ty = instance.unwrap().substs.type_at(0);
                     let layout = bx.layout_of(ty);
                     if layout.abi.is_uninhabited() {
                         let loc = bx.sess().source_map().lookup_char_pos(span.lo());
