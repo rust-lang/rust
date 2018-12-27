@@ -189,7 +189,6 @@ salsa::database_storage! {
             fn file_item() for db::FileItemQuery;
             fn input_module_items() for db::InputModuleItemsQuery;
             fn item_map() for db::ItemMapQuery;
-            fn fn_syntax() for db::FnSyntaxQuery;
             fn submodules() for db::SubmodulesQuery;
             fn infer() for db::InferQuery;
             fn type_for_def() for db::TypeForDefQuery;

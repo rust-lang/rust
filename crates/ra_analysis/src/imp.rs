@@ -7,10 +7,7 @@ use rayon::prelude::*;
 use salsa::{Database, ParallelDatabase};
 
 use hir::{
-    self,
-    FnSignatureInfo,
-    Problem,
-    source_binder,
+    self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, FileSymbol, find_node_at_offset, LineIndex, LocalEdit, Severity};
@@ -121,9 +118,6 @@ impl AnalysisHostImpl {
     fn gc_syntax_trees(&mut self) {
         self.db
             .query(ra_db::SourceFileQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
-        self.db
-            .query(hir::db::FnSyntaxQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         self.db
             .query(hir::db::SourceFileItemsQuery)
@@ -332,16 +326,6 @@ impl AnalysisImpl {
             Ok(Some((binding, descr)))
         }
     }
-
-    pub fn doc_comment_for(
-        &self,
-        file_id: FileId,
-        symbol: FileSymbol,
-    ) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(file_id);
-
-        Ok(symbol.docs(&file))
-    }
     pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
         let file = self.db.source_file(file_id);
         let result = match (symbol.description(&file), symbol.docs(&file)) {
@@ -507,12 +491,7 @@ impl AnalysisImpl {
         let file = self.db.source_file(file_id);
         let syntax = file.syntax();
         let node = find_covering_node(syntax, range);
-        let parent_fn = node.ancestors().filter_map(FnDef::cast).next();
-        let parent_fn = if let Some(p) = parent_fn {
-            p
-        } else {
-            return Ok(None);
-        };
+        let parent_fn = ctry!(node.ancestors().find_map(FnDef::cast));
         let function = ctry!(source_binder::function_from_source(
             &*self.db, file_id, parent_fn
         )?);

@@ -91,7 +91,6 @@ salsa::database_storage! {
             fn file_item() for hir::db::FileItemQuery;
             fn input_module_items() for hir::db::InputModuleItemsQuery;
             fn item_map() for hir::db::ItemMapQuery;
-            fn fn_syntax() for hir::db::FnSyntaxQuery;
             fn submodules() for hir::db::SubmodulesQuery;
             fn infer() for hir::db::InferQuery;
             fn type_for_def() for hir::db::TypeForDefQuery;

@@ -323,13 +323,6 @@ impl Analysis {
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
         self.imp.find_all_refs(position)
     }
-    pub fn doc_comment_for(
-        &self,
-        file_id: FileId,
-        symbol: FileSymbol,
-    ) -> Cancelable<Option<String>> {
-        self.imp.doc_comment_for(file_id, symbol)
-    }
     pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
         self.imp.doc_text_for(file_id, symbol)
     }

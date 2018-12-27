@@ -5,15 +5,15 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
-    AstNode,  SyntaxNode, SmolStr,
-    ast::{self, FnDef, FnDefNode, NameOwner, ModuleItemOwner}
+    AstNode, SyntaxNode, SmolStr,
+    ast::{self, NameOwner, ModuleItemOwner}
 };
 use ra_db::{SourceRootId, FileId, Cancelable,};
 
 use crate::{
     SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName,
     db::HirDatabase,
-    function::{FnScopes, FnId},
+    function::FnScopes,
     module::{
         ModuleSource, ModuleSourceNode, ModuleId,
         imp::Submodule,
@@ -23,22 +23,15 @@ use crate::{
     adt::{StructData, EnumData},
 };
 
-/// Resolve `FnId` to the corresponding `SyntaxNode`
-pub(super) fn fn_syntax(db: &impl HirDatabase, fn_id: FnId) -> FnDefNode {
-    let def_loc = fn_id.0.loc(db);
-    assert!(def_loc.kind == DefKind::Function);
-    let syntax = db.file_item(def_loc.source_item_id);
-    FnDef::cast(syntax.borrowed()).unwrap().owned()
-}
-
-pub(super) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
-    let syntax = db.fn_syntax(fn_id);
+pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Arc<FnScopes> {
+    let function = Function::new(def_id);
+    let syntax = function.syntax(db);
     let res = FnScopes::new(syntax.borrowed());
     Arc::new(res)
 }
 
-pub(super) fn infer(db: &impl HirDatabase, fn_id: FnId) -> Cancelable<Arc<InferenceResult>> {
-    let function = Function { fn_id };
+pub(super) fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
+    let function = Function::new(def_id);
     ty::infer(db, function).map(Arc::new)
 }
 
