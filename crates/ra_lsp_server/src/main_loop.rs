@@ -427,7 +427,7 @@ impl<'a> PoolDispatcher<'a> {
                                     RawResponse::err(
                                         id,
                                         ErrorCode::ContentModified as i32,
-                                        format!("content modified: {}", e),
+                                        format!("content modified: {:?}", e),
                                     )
                                 } else {
                                     RawResponse::err(
