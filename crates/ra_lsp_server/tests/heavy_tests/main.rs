@@ -141,7 +141,7 @@ fn main() {}
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
-            range: Range::new(Position::new(0, 0), Position::new(0, 7)),
+            range: Range::new(Position::new(0, 4), Position::new(0, 7)),
             context: empty_context(),
         },
         json!([
@@ -168,7 +168,7 @@ fn main() {}
     server.request::<CodeActionRequest>(
         CodeActionParams {
             text_document: server.doc_id("src/lib.rs"),
-            range: Range::new(Position::new(2, 0), Position::new(2, 7)),
+            range: Range::new(Position::new(2, 4), Position::new(2, 7)),
             context: empty_context(),
         },
         json!([]),
