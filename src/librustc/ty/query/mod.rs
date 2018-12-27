@@ -593,6 +593,13 @@ define_queries! { <'tcx>
             CanonicalPredicateGoal<'tcx>
         ) -> Result<traits::EvaluationResult, traits::OverflowError>,
 
+        [] fn evaluate_goal: EvaluateGoal(
+            traits::ChalkCanonicalGoal<'tcx>
+        ) -> Result<
+            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            NoSolution
+        >,
+
         /// Do not call this query directly: part of the `Eq` type-op
         [] fn type_op_ascribe_user_type: TypeOpAscribeUserType(
             CanonicalTypeOpAscribeUserTypeGoal<'tcx>
@@ -684,7 +691,7 @@ define_queries! { <'tcx>
         ) -> Clauses<'tcx>,
 
         // Get the chalk-style environment of the given item.
-        [] fn environment: Environment(DefId) -> ty::Binder<traits::Environment<'tcx>>,
+        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
     },
 
     Linking {

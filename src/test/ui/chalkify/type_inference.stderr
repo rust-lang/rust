@@ -1,0 +1,28 @@
+error[E0308]: mismatched types
+  --> $DIR/type_inference.rs:21:14
+   |
+LL |     only_foo(x); //~ ERROR mismatched types
+   |              ^ expected i32, found floating-point variable
+   |
+   = note: expected type `i32`
+              found type `{float}`
+
+error[E0277]: the trait bound `{float}: Bar` is not satisfied
+  --> $DIR/type_inference.rs:25:5
+   |
+LL |     only_bar(x); //~ ERROR the trait bound `{float}: Bar` is not satisfied
+   |     ^^^^^^^^ the trait `Bar` is not implemented for `{float}`
+   |
+   = help: the following implementations were found:
+             <i32 as Bar>
+             <u32 as Bar>
+note: required by `only_bar`
+  --> $DIR/type_inference.rs:12:1
+   |
+LL | fn only_bar<T: Bar>(_x: T) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

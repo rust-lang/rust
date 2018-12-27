@@ -1617,6 +1617,11 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
+
+    /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
+    /// register that `def_id` (useful for transitioning to the chalk trait
+    /// solver).
+    pub def_id: Option<DefId>,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1626,7 +1631,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// type-checking.
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing)
+        Self::new(List::empty(), Reveal::UserFacing, None)
     }
 
     /// Construct a trait environment with no where clauses in scope
@@ -1638,15 +1643,17 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All)
+        Self::new(List::empty(), Reveal::All, None)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
-               reveal: Reveal)
-               -> Self {
-        ty::ParamEnv { caller_bounds, reveal }
+    pub fn new(
+        caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
+        reveal: Reveal,
+        def_id: Option<DefId>
+    ) -> Self {
+        ty::ParamEnv { caller_bounds, reveal, def_id }
     }
 
     /// Returns a new parameter environment with the same clauses, but
@@ -3148,8 +3155,11 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                             traits::Reveal::UserFacing);
+    let unnormalized_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        traits::Reveal::UserFacing,
+        if tcx.sess.opts.debugging_opts.chalk { Some(def_id) } else { None }
+    );
 
     let body_id = tcx.hir().as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.node_id)

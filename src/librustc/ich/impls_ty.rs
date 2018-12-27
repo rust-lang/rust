@@ -885,7 +885,8 @@ for ty::steal::Steal<T>
 
 impl_stable_hash_for!(struct ty::ParamEnv<'tcx> {
     caller_bounds,
-    reveal
+    reveal,
+    def_id
 });
 
 impl_stable_hash_for!(enum traits::Reveal {
@@ -1194,6 +1195,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
                 quantifier.hash_stable(hcx, hasher);
                 goal.hash_stable(hcx, hasher);
             },
+            Subtype(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
+            }
             CannotProve => { },
         }
     }
@@ -1237,5 +1242,12 @@ impl_stable_hash_for!(struct ty::subst::UserSelfTy<'tcx> { impl_def_id, self_ty 
 impl_stable_hash_for!(
     struct traits::Environment<'tcx> {
         clauses,
+    }
+);
+
+impl_stable_hash_for!(
+    impl<'tcx, G> for struct traits::InEnvironment<'tcx, G> {
+        environment,
+        goal,
     }
 );

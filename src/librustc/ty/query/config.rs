@@ -106,6 +106,15 @@ impl<'tcx> QueryDescription<'tcx> for queries::evaluate_obligation<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::evaluate_goal<'tcx> {
+    fn describe(
+        _tcx: TyCtxt<'_, '_, '_>,
+        goal: traits::ChalkCanonicalGoal<'tcx>
+    ) -> Cow<'static, str> {
+        format!("evaluating trait selection obligation `{}`", goal.value.goal).into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_ascribe_user_type<'tcx> {
     fn describe(
         _tcx: TyCtxt<'_, '_, '_>,

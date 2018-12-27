@@ -388,12 +388,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             computed_preds.extend(user_computed_preds.iter().cloned());
             let normalized_preds =
                 elaborate_predicates(tcx, computed_preds.clone().into_iter().collect());
-            new_env = ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal);
+            new_env = ty::ParamEnv::new(
+                tcx.mk_predicates(normalized_preds),
+                param_env.reveal,
+                None
+            );
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
             user_env.reveal,
+            None
         );
         debug!(
             "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
