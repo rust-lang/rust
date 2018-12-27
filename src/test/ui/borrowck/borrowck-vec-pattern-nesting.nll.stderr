@@ -1,23 +1,23 @@
-error[E0506]: cannot assign to `vec[..]` because it is borrowed
+error[E0506]: cannot assign to `vec[_]` because it is borrowed
   --> $DIR/borrowck-vec-pattern-nesting.rs:10:13
    |
 LL |         [box ref _a, _, _] => {
-   |              ------ borrow of `vec[..]` occurs here
+   |              ------ borrow of `vec[_]` occurs here
 LL |         //~^ borrow of `vec[..]` occurs here
 LL |             vec[0] = box 4; //~ ERROR cannot assign
-   |             ^^^^^^ assignment to borrowed `vec[..]` occurs here
+   |             ^^^^^^ assignment to borrowed `vec[_]` occurs here
 LL |             //~^ assignment to borrowed `vec[..]` occurs here
 LL |             _a.use_ref();
    |             -- borrow later used here
 
-error[E0506]: cannot assign to `vec[..]` because it is borrowed
+error[E0506]: cannot assign to `vec[_]` because it is borrowed
   --> $DIR/borrowck-vec-pattern-nesting.rs:23:13
    |
 LL |         &mut [ref _b..] => {
-   |               ------ borrow of `vec[..]` occurs here
+   |               ------ borrow of `vec[_]` occurs here
 LL |         //~^ borrow of `vec[..]` occurs here
 LL |             vec[0] = box 4; //~ ERROR cannot assign
-   |             ^^^^^^ assignment to borrowed `vec[..]` occurs here
+   |             ^^^^^^ assignment to borrowed `vec[_]` occurs here
 LL |             //~^ assignment to borrowed `vec[..]` occurs here
 LL |             _b.use_ref();
    |             -- borrow later used here

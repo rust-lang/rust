@@ -5,6 +5,8 @@ LL |     let y = x;
    |             - value moved here
 LL |     println!("{}", *x); //~ ERROR use of moved value: `*x`
    |                    ^^ value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

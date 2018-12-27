@@ -5,6 +5,8 @@ LL |     drop(x.b);
    |          --- value moved here
 LL |     drop(*x.b); //~ ERROR use of moved value: `*x.b`
    |          ^^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:14:10
@@ -13,6 +15,8 @@ LL |     let y = A { a: 3, .. x };
    |             ---------------- value moved here
 LL |     drop(*x.b); //~ ERROR use of moved value: `*x.b`
    |          ^^^^ value used here after move
+   |
+   = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:20:13

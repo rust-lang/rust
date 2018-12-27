@@ -15,6 +15,8 @@ LL |         let _y = *x;
    |                  -- value moved here
 LL |         drop_unsized(x); //~ERROR use of moved value
    |                      ^ value used here after move
+   |
+   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `*x`
   --> $DIR/double-move.rs:32:18
@@ -23,6 +25,8 @@ LL |         drop_unsized(x);
    |                      - value moved here
 LL |         let _y = *x; //~ERROR use of moved value
    |                  ^^ value used here after move
+   |
+   = note: move occurs because `x` has type `std::boxed::Box<str>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `y`
   --> $DIR/double-move.rs:39:9
@@ -41,6 +45,8 @@ LL |         let _y = *x;
    |                  -- value moved here
 LL |         x.foo(); //~ERROR use of moved value
    |         ^ value used here after move
+   |
+   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `*x`
   --> $DIR/double-move.rs:51:18
@@ -49,6 +55,8 @@ LL |         x.foo();
    |         - value moved here
 LL |         let _y = *x; //~ERROR use of moved value
    |                  ^^ value used here after move
+   |
+   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 
