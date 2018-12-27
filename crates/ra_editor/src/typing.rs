@@ -8,9 +8,8 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
-use ra_text_edit::text_utils::{
-    contains_offset_nonstrict
-};
+use ra_text_edit::text_utils::contains_offset_nonstrict;
+use itertools::Itertools;
 
 use crate::{find_node_at_offset, TextEditBuilder, LocalEdit};
 
@@ -246,21 +245,12 @@ fn single_expr(block: ast::Block) -> Option<ast::Expr> {
 
 fn join_single_use_tree(edit: &mut TextEditBuilder, node: SyntaxNodeRef) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.parent()?)?;
-    let tree = single_use_tree(use_tree_list)?;
+    let (tree,) = use_tree_list.use_trees().collect_tuple()?;
     edit.replace(
         use_tree_list.syntax().range(),
         tree.syntax().text().to_string(),
     );
     Some(())
-}
-
-fn single_use_tree(tree_list: ast::UseTreeList) -> Option<ast::UseTree> {
-    let sub_use_trees = tree_list.use_trees().count();
-    if sub_use_trees != 1 {
-        return None;
-    }
-
-    tree_list.use_trees().next()
 }
 
 fn compute_ws(left: SyntaxNodeRef, right: SyntaxNodeRef) -> &'static str {
