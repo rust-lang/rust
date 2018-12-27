@@ -1,8 +1,8 @@
 error[E0658]: `log_syntax!` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/feature-gate-log_syntax2.rs:4:20
+  --> $DIR/feature-gate-log_syntax2.rs:4:22
    |
-LL |     println!("{}", log_syntax!()); //~ ERROR `log_syntax!` is not stable
-   |                    ^^^^^^^^^^^^^
+LL |     println!("{:?}", log_syntax!()); //~ ERROR `log_syntax!` is not stable
+   |                      ^^^^^^^^^^^^^
    |
    = help: add #![feature(log_syntax)] to the crate attributes to enable
 

@@ -5,3 +5,5 @@ mod foo {
     #![foo] //~ ERROR is currently unknown to the compiler
             //~| ERROR non-builtin inner attributes are unstable
 }
+
+fn main() {}

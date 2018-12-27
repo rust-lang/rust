@@ -1,11 +1,11 @@
 error: no rules expected the token `r#async`
-  --> $DIR/edition-keywords-2015-2015-parsing.rs:12:31
+  --> $DIR/edition-keywords-2015-2015-parsing.rs:16:31
    |
 LL |     r#async = consumes_async!(r#async); //~ ERROR no rules expected the token `r#async`
    |                               ^^^^^^^ no rules expected this token in macro call
 
 error: no rules expected the token `async`
-  --> $DIR/edition-keywords-2015-2015-parsing.rs:13:35
+  --> $DIR/edition-keywords-2015-2015-parsing.rs:17:35
    |
 LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
    |                                   ^^^^^ no rules expected this token in macro call

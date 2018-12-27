@@ -1272,16 +1272,15 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if name.starts_with("rustc_") {
-            gate_feature!(self, rustc_attrs, attr.span,
-                          "unless otherwise specified, attributes \
-                           with the prefix `rustc_` \
-                           are reserved for internal compiler diagnostics");
-        } else if !attr::is_known(attr) {
-            // Only run the custom attribute lint during regular feature gate
-            // checking. Macro gating runs before the plugin attributes are
-            // registered, so we skip this in that case.
-            if !is_macro {
+        if !attr::is_known(attr) {
+            if name.starts_with("rustc_") {
+                let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
+                           are reserved for internal compiler diagnostics";
+                gate_feature!(self, rustc_attrs, attr.span, msg);
+            } else if !is_macro {
+                // Only run the custom attribute lint during regular feature gate
+                // checking. Macro gating runs before the plugin attributes are
+                // registered, so we skip this in that case.
                 let msg = format!("The attribute `{}` is currently unknown to the compiler and \
                                    may have meaning added to it in the future", attr.path);
                 gate_feature!(self, custom_attribute, attr.span, &msg);

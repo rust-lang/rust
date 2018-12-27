@@ -1,9 +1,0 @@
-error: the crate `depends` cannot depend on a crate that needs a panic runtime, but it depends on `needs_panic_runtime`
-
-error[E0601]: `main` function not found in crate `runtime_depend_on_needs_runtime`
-   |
-   = note: consider adding a `main` function to `$DIR/runtime-depend-on-needs-runtime.rs`
-
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

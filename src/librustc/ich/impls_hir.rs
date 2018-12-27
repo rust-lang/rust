@@ -410,7 +410,6 @@ impl_stable_hash_for!(struct hir::Block {
     rules,
     span,
     targeted_by_break,
-    recovered,
 });
 
 impl_stable_hash_for!(struct hir::Pat {
@@ -592,7 +591,8 @@ impl_stable_hash_for!(enum hir::ExprKind {
     InlineAsm(asm, inputs, outputs),
     Struct(path, fields, base),
     Repeat(val, times),
-    Yield(val)
+    Yield(val),
+    Err
 });
 
 impl_stable_hash_for!(enum hir::LocalSource {

@@ -1,5 +1,5 @@
 error: macros that expand to items must either be surrounded with braces or followed by a semicolon
-  --> $DIR/issue-10536.rs:16:22
+  --> $DIR/issue-10536.rs:14:22
    |
 LL |     assert!({one! two()});
    |                      ^^
@@ -10,5 +10,21 @@ error: expected `(` or `{`, found `}`
 LL |     assert!({one! two});
    |                      ^ expected `(` or `{`
 
-error: aborting due to 2 previous errors
+error: cannot find macro `one!` in this scope
+  --> $DIR/issue-10536.rs:14:14
+   |
+LL |     assert!({one! two()});
+   |              ^^^
 
+error[E0308]: mismatched types
+  --> $DIR/issue-10536.rs:14:13
+   |
+LL |     assert!({one! two()});
+   |             ^^^^^^^^^^^^ expected bool, found ()
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

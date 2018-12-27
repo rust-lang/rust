@@ -153,6 +153,5 @@ fn call_intrinsic(cx: &ExtCtxt,
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
-        recovered: false,
     }))
 }

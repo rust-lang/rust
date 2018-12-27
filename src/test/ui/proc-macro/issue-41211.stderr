@@ -6,6 +6,12 @@ LL | #![emit_unchanged]
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error: aborting due to previous error
+error: inconsistent resolution for a macro: first custom attribute, then attribute macro
+  --> $DIR/issue-41211.rs:8:4
+   |
+LL | #![emit_unchanged]
+   |    ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

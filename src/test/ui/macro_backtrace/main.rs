@@ -12,6 +12,9 @@ macro_rules! pong {
 //~| ERROR expected one of
 //~| ERROR expected one of
 
+#[allow(non_camel_case_types)]
+struct syntax;
+
 fn main() {
     pong!();
     ping!();

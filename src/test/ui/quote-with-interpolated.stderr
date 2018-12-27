@@ -1,11 +1,40 @@
 error: quote! with interpolated token
   --> $DIR/quote-with-interpolated.rs:5:29
    |
-LL |             quote_expr!(cx, $bar) //~ ERROR quote! with interpolated token
+LL |             quote_expr!(cx, $bar)
    |                             ^^^^
 ...
 LL |     foo!(bar);
    |     ---------- in this macro invocation
 
-error: aborting due to previous error
+error[E0433]: failed to resolve: maybe a missing `extern crate syntax;`?
+  --> $DIR/quote-with-interpolated.rs:5:13
+   |
+LL |             quote_expr!(cx, $bar)
+   |             ^^^^^^^^^^^^^^^^^^^^^ maybe a missing `extern crate syntax;`?
 
+error[E0433]: failed to resolve: maybe a missing `extern crate syntax;`?
+  --> $DIR/quote-with-interpolated.rs:5:29
+   |
+LL |             quote_expr!(cx, $bar)
+   |                             ^^^^ maybe a missing `extern crate syntax;`?
+
+error[E0425]: cannot find value `cx` in this scope
+  --> $DIR/quote-with-interpolated.rs:5:25
+   |
+LL |             quote_expr!(cx, $bar)
+   |                         ^^ not found in this scope
+...
+LL |     foo!(bar);
+   |     ---------- in this macro invocation
+
+error[E0425]: cannot find function `new_parser_from_tts` in this scope
+  --> $DIR/quote-with-interpolated.rs:5:13
+   |
+LL |             quote_expr!(cx, $bar)
+   |             ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

@@ -344,8 +344,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
                 if let Some(ext) = ext {
-                    let dummy = invoc.fragment_kind.dummy(invoc.span()).unwrap();
-                    let fragment = self.expand_invoc(invoc, &*ext).unwrap_or(dummy);
+                    let (invoc_fragment_kind, invoc_span) = (invoc.fragment_kind, invoc.span());
+                    let fragment = self.expand_invoc(invoc, &*ext).unwrap_or_else(|| {
+                        invoc_fragment_kind.dummy(invoc_span).unwrap()
+                    });
                     self.collect_invocations(fragment, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
                     if !item.derive_allowed() {
@@ -431,9 +433,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn resolve_imports(&mut self) {
         if self.monotonic {
-            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             self.cx.resolver.resolve_imports();
-            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
     }
 
@@ -457,11 +457,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         if self.monotonic {
-            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
-            let mark = self.cx.current_expansion.mark;
-            self.cx.resolver.visit_ast_fragment_with_placeholders(mark, &fragment_with_placeholders,
-                                                                  derives);
-            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
+            self.cx.resolver.visit_ast_fragment_with_placeholders(
+                self.cx.current_expansion.mark, &fragment_with_placeholders, derives
+            );
         }
 
         (fragment_with_placeholders, invocations)
@@ -724,7 +722,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     emit_feature_err(this.cx.parse_sess, &*feature.as_str(), span,
                                      GateIssue::Library(Some(issue)), &explain);
                     this.cx.trace_macros_diag();
-                    return Err(kind.dummy(span));
                 }
             }
 

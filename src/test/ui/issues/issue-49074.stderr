@@ -6,6 +6,14 @@ LL | #[marco_use] // typo
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error: aborting due to previous error
+error: cannot find macro `bar!` in this scope
+  --> $DIR/issue-49074.rs:12:4
+   |
+LL |    bar!(); //~ ERROR cannot find macro `bar!` in this scope
+   |    ^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

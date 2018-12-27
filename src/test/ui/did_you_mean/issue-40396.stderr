@@ -1,38 +1,107 @@
 error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:2:37
+  --> $DIR/issue-40396.rs:2:20
    |
-LL |     println!("{:?}", (0..13).collect<Vec<i32>>()); //~ ERROR chained comparison
-   |                                     ^^^^^^^^
-   |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
-   = help: or use `(...)` if you meant to specify fn arguments
-
-error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:6:25
-   |
-LL |     println!("{:?}", Vec<i32>::new()); //~ ERROR chained comparison
-   |                         ^^^^^^^
+LL |     (0..13).collect<Vec<i32>>();
+   |                    ^^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
 error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:10:37
+  --> $DIR/issue-40396.rs:10:8
    |
-LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
-   |                                     ^^^^^^^^
+LL |     Vec<i32>::new();
+   |        ^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
 error: chained comparison operators require parentheses
-  --> $DIR/issue-40396.rs:10:41
+  --> $DIR/issue-40396.rs:18:20
    |
-LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
-   |                                         ^^^^^^
+LL |     (0..13).collect<Vec<i32>();
+   |                    ^^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
-error: aborting due to 4 previous errors
+error: chained comparison operators require parentheses
+  --> $DIR/issue-40396.rs:18:24
+   |
+LL |     (0..13).collect<Vec<i32>();
+   |                        ^^^^^^
+   |
+   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
 
+error[E0423]: expected value, found struct `Vec`
+  --> $DIR/issue-40396.rs:2:21
+   |
+LL |     (0..13).collect<Vec<i32>>();
+   |                     ^^^ did you mean `Vec { /* fields */ }`?
+
+error[E0423]: expected value, found builtin type `i32`
+  --> $DIR/issue-40396.rs:2:25
+   |
+LL |     (0..13).collect<Vec<i32>>();
+   |                         ^^^ not a value
+
+error[E0423]: expected value, found struct `Vec`
+  --> $DIR/issue-40396.rs:10:5
+   |
+LL |     Vec<i32>::new();
+   |     ^^^ did you mean `Vec { /* fields */ }`?
+
+error[E0423]: expected value, found builtin type `i32`
+  --> $DIR/issue-40396.rs:10:9
+   |
+LL |     Vec<i32>::new();
+   |         ^^^ not a value
+
+error[E0425]: cannot find function `new` in the crate root
+  --> $DIR/issue-40396.rs:10:15
+   |
+LL |     Vec<i32>::new();
+   |               ^^^ not found in the crate root
+
+error[E0423]: expected value, found struct `Vec`
+  --> $DIR/issue-40396.rs:18:21
+   |
+LL |     (0..13).collect<Vec<i32>();
+   |                     ^^^ did you mean `Vec { /* fields */ }`?
+
+error[E0423]: expected value, found builtin type `i32`
+  --> $DIR/issue-40396.rs:18:25
+   |
+LL |     (0..13).collect<Vec<i32>();
+   |                         ^^^ not a value
+
+error[E0615]: attempted to take value of method `collect` on type `std::ops::Range<{integer}>`
+  --> $DIR/issue-40396.rs:2:13
+   |
+LL |     (0..13).collect<Vec<i32>>();
+   |             ^^^^^^^
+   |
+   = help: maybe a `()` to call it is missing?
+
+error[E0615]: attempted to take value of method `collect` on type `std::ops::Range<{integer}>`
+  --> $DIR/issue-40396.rs:18:13
+   |
+LL |     (0..13).collect<Vec<i32>();
+   |             ^^^^^^^
+   |
+   = help: maybe a `()` to call it is missing?
+
+error[E0308]: mismatched types
+  --> $DIR/issue-40396.rs:18:29
+   |
+LL |     (0..13).collect<Vec<i32>();
+   |                             ^^ expected bool, found ()
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error: aborting due to 14 previous errors
+
+Some errors occurred: E0308, E0423, E0425, E0615.
+For more information about an error, try `rustc --explain E0308`.

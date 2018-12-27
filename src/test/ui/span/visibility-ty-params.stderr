@@ -5,10 +5,19 @@ LL | m!{ S<u8> } //~ ERROR unexpected generic arguments in path
    |     ^^^^^
 
 error: unexpected generic arguments in path
-  --> $DIR/visibility-ty-params.rs:9:9
+  --> $DIR/visibility-ty-params.rs:10:9
    |
 LL |     m!{ m<> } //~ ERROR unexpected generic arguments in path
    |         ^^^
 
-error: aborting due to 2 previous errors
+error[E0577]: expected module, found struct `S`
+  --> $DIR/visibility-ty-params.rs:6:5
+   |
+LL | m!{ S<u8> } //~ ERROR unexpected generic arguments in path
+   |     -^^^^
+   |     |
+   |     did you mean `m`?
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0577`.

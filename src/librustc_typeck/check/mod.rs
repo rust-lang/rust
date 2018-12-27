@@ -4513,6 +4513,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 tcx.mk_unit()
             }
+            hir::ExprKind::Err => {
+                tcx.types.err
+            }
         }
     }
 
@@ -4769,12 +4772,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
-                //
-                // #44579 -- if the block was recovered during parsing,
-                // the type would be nonsensical and it is not worth it
-                // to perform the type check, so we avoid generating the
-                // diagnostic output.
-                if !self.diverges.get().always() && !blk.recovered {
+                if !self.diverges.get().always() {
                     coerce.coerce_forced_unit(self, &self.misc(blk.span), &mut |err| {
                         if let Some(expected_ty) = expected.only_has_type(self) {
                             self.consider_hint_about_removing_semicolon(blk,

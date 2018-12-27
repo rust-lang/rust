@@ -49,7 +49,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_ASM);
-        return DummyResult::expr(sp);
     }
 
     // Split the tts before the first colon, to avoid `asm!("x": y)`  being

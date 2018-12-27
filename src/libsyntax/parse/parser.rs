@@ -32,6 +32,7 @@ use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
+use ext::base::DummyResult;
 use source_map::{self, SourceMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
@@ -2870,6 +2871,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
                 err.span_label(self.span, "unknown macro variable");
                 err.emit();
+                self.bump();
                 return
             }
             token::Interpolated(ref nt) => {
@@ -4966,16 +4968,16 @@ impl<'a> Parser<'a> {
     /// Precondition: already parsed the '{'.
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
-        let mut recovered = false;
-
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    self.eat(&token::CloseDelim(token::Brace));
-                    recovered = true;
-                    break;
+                    Some(Stmt {
+                        id: ast::DUMMY_NODE_ID,
+                        node: StmtKind::Expr(DummyResult::raw_expr(self.span, true)),
+                        span: self.span,
+                    })
                 }
                 Ok(stmt) => stmt,
             };
@@ -4993,7 +4995,6 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: lo.to(self.prev_span),
-            recovered,
         }))
     }
 

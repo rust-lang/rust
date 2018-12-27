@@ -22,3 +22,5 @@ pub trait Graph<'a> {
 //~^ ERROR cannot infer
     }
 }
+
+fn main() {}

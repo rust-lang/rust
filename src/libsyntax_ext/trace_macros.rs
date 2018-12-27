@@ -15,7 +15,6 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_TRACE_MACROS);
-        return base::DummyResult::any(sp);
     }
 
     match (tt.len(), tt.first()) {
@@ -28,5 +27,5 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),
     }
 
-    base::DummyResult::any(sp)
+    base::DummyResult::any_valid(sp)
 }

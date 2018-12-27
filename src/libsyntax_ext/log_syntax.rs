@@ -14,11 +14,10 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_LOG_SYNTAX);
-        return base::DummyResult::any(sp);
     }
 
     println!("{}", print::pprust::tts_to_string(tts));
 
     // any so that `log_syntax` can be invoked as an expression and item.
-    base::DummyResult::any(sp)
+    base::DummyResult::any_valid(sp)
 }

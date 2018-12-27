@@ -3,3 +3,5 @@
 // error-pattern:cannot depend on a crate that needs a panic runtime
 
 extern crate depends;
+
+fn main() {}

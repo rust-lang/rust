@@ -6,48 +6,30 @@ LL |     trace_macros!(); //~ ERROR `trace_macros` is not stable
    |
    = help: add #![feature(trace_macros)] to the crate attributes to enable
 
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/trace_macros-gate.rs:5:5
+error: trace_macros! accepts only `true` or `false`
+  --> $DIR/trace_macros-gate.rs:4:5
    |
-LL |     trace_macros!(1); //~ ERROR `trace_macros` is not stable
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+LL |     trace_macros!(); //~ ERROR `trace_macros` is not stable
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
   --> $DIR/trace_macros-gate.rs:6:5
    |
-LL |     trace_macros!(ident); //~ ERROR `trace_macros` is not stable
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     trace_macros!(true); //~ ERROR `trace_macros` is not stable
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(trace_macros)] to the crate attributes to enable
 
 error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
   --> $DIR/trace_macros-gate.rs:7:5
    |
-LL |     trace_macros!(for); //~ ERROR `trace_macros` is not stable
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
-
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/trace_macros-gate.rs:8:5
-   |
-LL |     trace_macros!(true,); //~ ERROR `trace_macros` is not stable
+LL |     trace_macros!(false); //~ ERROR `trace_macros` is not stable
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(trace_macros)] to the crate attributes to enable
 
 error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/trace_macros-gate.rs:9:5
-   |
-LL |     trace_macros!(false 1); //~ ERROR `trace_macros` is not stable
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
-
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/trace_macros-gate.rs:16:26
+  --> $DIR/trace_macros-gate.rs:10:26
    |
 LL |         ($x: ident) => { trace_macros!($x) } //~ ERROR `trace_macros` is not stable
    |                          ^^^^^^^^^^^^^^^^^
@@ -57,6 +39,6 @@ LL |     expando!(true);
    |
    = help: add #![feature(trace_macros)] to the crate attributes to enable
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

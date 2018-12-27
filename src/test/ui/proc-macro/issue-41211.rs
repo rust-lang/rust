@@ -7,6 +7,7 @@
 
 #![emit_unchanged]
 //~^ ERROR attribute `emit_unchanged` is currently unknown to the compiler
+//~| ERROR inconsistent resolution for a macro: first custom attribute, then attribute macro
 extern crate issue_41211;
 use issue_41211::emit_unchanged;
 

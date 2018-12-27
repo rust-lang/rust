@@ -6,6 +6,13 @@ LL |     concat_idents!(a, b); //~ ERROR `concat_idents` is not stable enough
    |
    = help: add #![feature(concat_idents)] to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0425]: cannot find value `ab` in this scope
+  --> $DIR/feature-gate-concat_idents2.rs:4:5
+   |
+LL |     concat_idents!(a, b); //~ ERROR `concat_idents` is not stable enough
+   |     ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

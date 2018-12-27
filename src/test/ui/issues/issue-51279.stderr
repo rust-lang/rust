@@ -46,5 +46,14 @@ error: #[cfg] cannot be applied on a generic parameter
 LL | type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
    |                       ^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0658]: The attribute `ignored` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/issue-51279.rs:23:8
+   |
+LL | type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
+   |        ^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

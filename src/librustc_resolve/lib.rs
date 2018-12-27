@@ -1576,7 +1576,6 @@ pub struct Resolver<'a> {
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
-    pub found_unresolved_macro: bool,
 
     /// List of crate local macros that we need to warn about as being unused.
     /// Right now this only includes macro_rules! macros, and macros 2.0.
@@ -1911,7 +1910,6 @@ impl<'a> Resolver<'a> {
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: Default::default(),
-            found_unresolved_macro: false,
             unused_macros: FxHashSet::default(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
@@ -2024,8 +2022,10 @@ impl<'a> Resolver<'a> {
                                       record_used_id: Option<NodeId>,
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
-        let record_used = record_used_id.is_some();
         assert!(ns == TypeNS  || ns == ValueNS);
+        if ident.name == keywords::Invalid.name() {
+            return Some(LexicalScopeBinding::Def(Def::Err));
+        }
         if ns == TypeNS {
             ident.span = if ident.name == keywords::SelfUpper.name() {
                 // FIXME(jseyfried) improve `Self` hygiene
@@ -2038,6 +2038,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Walk backwards up the ribs in scope.
+        let record_used = record_used_id.is_some();
         let mut module = self.graph_root;
         for i in (0 .. self.ribs[ns].len()).rev() {
             if let Some(def) = self.ribs[ns][i].bindings.get(&ident).cloned() {

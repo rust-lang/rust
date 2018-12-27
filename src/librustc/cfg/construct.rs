@@ -392,7 +392,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprKind::Closure(..) |
             hir::ExprKind::Lit(..) |
-            hir::ExprKind::Path(_) => {
+            hir::ExprKind::Path(_) |
+            hir::ExprKind::Err => {
                 self.straightline(expr, pred, None::<hir::Expr>.iter())
             }
         }

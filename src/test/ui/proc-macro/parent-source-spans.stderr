@@ -35,25 +35,25 @@ LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
 
 error: first grandparent: "hello"
-  --> $DIR/parent-source-spans.rs:34:5
+  --> $DIR/parent-source-spans.rs:37:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: second grandparent: "world"
-  --> $DIR/parent-source-spans.rs:34:5
+  --> $DIR/parent-source-spans.rs:37:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: first source: "hello"
-  --> $DIR/parent-source-spans.rs:34:5
+  --> $DIR/parent-source-spans.rs:37:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: second source: "world"
-  --> $DIR/parent-source-spans.rs:34:5
+  --> $DIR/parent-source-spans.rs:37:5
    |
 LL |     one!("hello", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -77,52 +77,80 @@ LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
 
 error: first parent: "yay"
-  --> $DIR/parent-source-spans.rs:40:5
+  --> $DIR/parent-source-spans.rs:43:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: second parent: "rust"
-  --> $DIR/parent-source-spans.rs:40:5
+  --> $DIR/parent-source-spans.rs:43:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: first source: "yay"
-  --> $DIR/parent-source-spans.rs:40:5
+  --> $DIR/parent-source-spans.rs:43:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: second source: "rust"
-  --> $DIR/parent-source-spans.rs:40:5
+  --> $DIR/parent-source-spans.rs:43:5
    |
 LL |     two!("yay", "rust");
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: first final: "hip"
-  --> $DIR/parent-source-spans.rs:46:12
+  --> $DIR/parent-source-spans.rs:49:12
    |
 LL |     three!("hip", "hop");
    |            ^^^^^
 
 error: second final: "hop"
-  --> $DIR/parent-source-spans.rs:46:19
+  --> $DIR/parent-source-spans.rs:49:19
    |
 LL |     three!("hip", "hop");
    |                   ^^^^^
 
 error: first source: "hip"
-  --> $DIR/parent-source-spans.rs:46:12
+  --> $DIR/parent-source-spans.rs:49:12
    |
 LL |     three!("hip", "hop");
    |            ^^^^^
 
 error: second source: "hop"
-  --> $DIR/parent-source-spans.rs:46:19
+  --> $DIR/parent-source-spans.rs:49:19
    |
 LL |     three!("hip", "hop");
    |                   ^^^^^
 
-error: aborting due to 18 previous errors
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:30:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+...
+LL |     one!("hello", "world");
+   |     ----------------------- in this macro invocation
 
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:30:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+...
+LL |     two!("yay", "rust");
+   |     -------------------- in this macro invocation
+
+error[E0425]: cannot find value `ok` in this scope
+  --> $DIR/parent-source-spans.rs:30:5
+   |
+LL |     parent_source_spans!($($tokens)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `Ok`?
+...
+LL |     three!("hip", "hop");
+   |     --------------------- in this macro invocation
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

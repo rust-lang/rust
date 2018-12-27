@@ -9,5 +9,12 @@ LL |     pub_x!();
    |
    = help: try adjusting the macro to put `pub` inside the invocation
 
-error: aborting due to previous error
+error[E0603]: static `x` is private
+  --> $DIR/pub-item-macro.rs:17:23
+   |
+LL |     let y: u32 = foo::x; //~ ERROR static `x` is private
+   |                       ^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

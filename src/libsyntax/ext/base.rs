@@ -2,7 +2,7 @@ pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use source_map::{self, SourceMap, Spanned, respan};
+use source_map::{SourceMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -456,7 +456,8 @@ impl MacResult for MacEager {
 #[derive(Copy, Clone)]
 pub struct DummyResult {
     expr_only: bool,
-    span: Span
+    is_error: bool,
+    span: Span,
 }
 
 impl DummyResult {
@@ -464,8 +465,13 @@ impl DummyResult {
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
-    pub fn any(sp: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, span: sp })
+    pub fn any(span: Span) -> Box<dyn MacResult+'static> {
+        Box::new(DummyResult { expr_only: false, is_error: true, span })
+    }
+
+    /// Same as `any`, but must be a valid fragment, not error.
+    pub fn any_valid(span: Span) -> Box<dyn MacResult+'static> {
+        Box::new(DummyResult { expr_only: false, is_error: false, span })
     }
 
     /// Create a default MacResult that can only be an expression.
@@ -473,15 +479,15 @@ impl DummyResult {
     /// Use this for macros that must expand to an expression, so even
     /// if an error is encountered internally, the user will receive
     /// an error that they also used it in the wrong place.
-    pub fn expr(sp: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: true, span: sp })
+    pub fn expr(span: Span) -> Box<dyn MacResult+'static> {
+        Box::new(DummyResult { expr_only: true, is_error: true, span })
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span) -> P<ast::Expr> {
+    pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(source_map::respan(sp, ast::LitKind::Bool(false))),
+            node: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ThinVec::new(),
         })
@@ -496,10 +502,11 @@ impl DummyResult {
         }
     }
 
-    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
+    /// A plain dummy type.
+    pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: ast::TyKind::Infer,
+            node: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
             span: sp
         })
     }
@@ -507,7 +514,7 @@ impl DummyResult {
 
 impl MacResult for DummyResult {
     fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
-        Some(DummyResult::raw_expr(self.span))
+        Some(DummyResult::raw_expr(self.span, self.is_error))
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
@@ -550,13 +557,13 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
+            node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
         }])
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
-        Some(DummyResult::raw_ty(self.span))
+        Some(DummyResult::raw_ty(self.span, self.is_error))
     }
 }
 
@@ -796,7 +803,6 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
-    pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
 }
@@ -811,7 +817,6 @@ impl<'a> ExtCtxt<'a> {
             ecfg,
             root_path: PathBuf::new(),
             resolver,
-            resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,

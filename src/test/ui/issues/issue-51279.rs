@@ -22,3 +22,4 @@ unsafe impl<#[cfg_attr(none, may_dangle)] T> Drop for M<T> {
 
 type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
 //~^ ERROR #[cfg] cannot be applied on a generic parameter
+//~| ERROR attribute `ignored` is currently unknown to the compiler
