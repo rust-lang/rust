@@ -3,7 +3,7 @@ use languageserver_types::{
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, InsertTextFormat,
 };
 use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition, CompletionItem, CompletionItemKind, InsertText};
-use ra_editor::{LineCol, LineIndex};
+use ra_editor::{LineCol, LineIndex, translate_offset_with_edit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 
@@ -238,13 +238,15 @@ impl TryConvWith for SourceChange {
             None => None,
             Some(pos) => {
                 let line_index = world.analysis().file_line_index(pos.file_id);
-                let edits = self
+                let edit = self
                     .source_file_edits
                     .iter()
                     .find(|it| it.file_id == pos.file_id)
-                    .map(|it| it.edit.as_atoms())
-                    .unwrap_or(&[]);
-                let line_col = translate_offset_with_edit(&*line_index, pos.offset, edits);
+                    .map(|it| &it.edit);
+                let line_col = match edit {
+                    Some(edit) => translate_offset_with_edit(&*line_index, pos.offset, edit),
+                    None => line_index.line_col(pos.offset),
+                };
                 let position =
                     Position::new(u64::from(line_col.line), u64::from(line_col.col_utf16));
                 Some(TextDocumentPositionParams {
@@ -261,41 +263,6 @@ impl TryConvWith for SourceChange {
             file_system_edits,
             cursor_position,
         })
-    }
-}
-
-// HACK: we should translate offset to line/column using linde_index *with edits applied*.
-// A naive version of this function would be to apply `edits` to the original text,
-// construct a new line index and use that, but it would be slow.
-//
-// Writing fast & correct version is issue #105, let's use a quick hack in the meantime
-fn translate_offset_with_edit(
-    pre_edit_index: &LineIndex,
-    offset: TextUnit,
-    edits: &[AtomTextEdit],
-) -> LineCol {
-    let fallback = pre_edit_index.line_col(offset);
-    let edit = match edits.first() {
-        None => return fallback,
-        Some(edit) => edit,
-    };
-    let end_offset = edit.delete.start() + TextUnit::of_str(&edit.insert);
-    if !(edit.delete.start() <= offset && offset <= end_offset) {
-        return fallback;
-    }
-    let rel_offset = offset - edit.delete.start();
-    let in_edit_line_col = LineIndex::new(&edit.insert).line_col(rel_offset);
-    let edit_line_col = pre_edit_index.line_col(edit.delete.start());
-    if in_edit_line_col.line == 0 {
-        LineCol {
-            line: edit_line_col.line,
-            col_utf16: edit_line_col.col_utf16 + in_edit_line_col.col_utf16,
-        }
-    } else {
-        LineCol {
-            line: edit_line_col.line + in_edit_line_col.line,
-            col_utf16: in_edit_line_col.col_utf16,
-        }
     }
 }
 
