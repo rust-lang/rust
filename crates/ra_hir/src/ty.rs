@@ -95,7 +95,7 @@ pub enum Ty {
     Tuple(Vec<Ty>),
 
     // The projection of an associated type.  For example,
-    // `<T as Trait<..>>::N`.
+    // `<T as Trait<..>>::N`.pub
     // Projection(ProjectionTy),
 
     // Opaque (`impl Trait`) type found in a return type.
@@ -180,12 +180,11 @@ impl Ty {
         path: &Path,
     ) -> Cancelable<Self> {
         if let Some(name) = path.as_ident() {
-            let name = name.as_str(); // :-(
-            if let Some(int_ty) = primitive::IntTy::from_string(name) {
+            if let Some(int_ty) = primitive::IntTy::from_name(name) {
                 return Ok(Ty::Int(int_ty));
-            } else if let Some(uint_ty) = primitive::UintTy::from_string(name) {
+            } else if let Some(uint_ty) = primitive::UintTy::from_name(name) {
                 return Ok(Ty::Uint(uint_ty));
-            } else if let Some(float_ty) = primitive::FloatTy::from_string(name) {
+            } else if let Some(float_ty) = primitive::FloatTy::from_name(name) {
                 return Ok(Ty::Float(float_ty));
             }
         }

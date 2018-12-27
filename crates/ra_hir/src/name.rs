@@ -17,9 +17,25 @@ impl fmt::Display for Name {
 }
 
 impl Name {
-    // TODO: get rid of this?
-    pub(crate) fn as_str(&self) -> &str {
-        self.text.as_str()
+    pub(crate) fn as_known_name(&self) -> Option<KnownName> {
+        let name = match self.text.as_str() {
+            "isize" => KnownName::Isize,
+            "i8" => KnownName::I8,
+            "i16" => KnownName::I16,
+            "i32" => KnownName::I32,
+            "i64" => KnownName::I64,
+            "i128" => KnownName::I128,
+            "usize" => KnownName::Usize,
+            "u8" => KnownName::U8,
+            "u16" => KnownName::U16,
+            "u32" => KnownName::U32,
+            "u64" => KnownName::U64,
+            "u128" => KnownName::U128,
+            "f32" => KnownName::F32,
+            "f64" => KnownName::F64,
+            _ => return None,
+        };
+        Some(name)
     }
 
     #[cfg(not(test))]
@@ -53,4 +69,29 @@ impl AsName for ra_db::Dependency {
     fn as_name(&self) -> Name {
         Name::new(self.name.clone())
     }
+}
+
+// Ideally, should be replaced with
+// ```
+// const ISIZE: Name = Name::new("isize")
+// ```
+// but const-fn is not that powerful yet.
+#[derive(Debug)]
+pub(crate) enum KnownName {
+    Isize,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+
+    F32,
+    F64,
 }

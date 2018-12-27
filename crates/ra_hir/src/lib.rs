@@ -38,7 +38,7 @@ use ra_db::{LocationIntener, SourceRootId, FileId, Cancelable};
 use crate::{
     db::HirDatabase,
     arena::{Arena, Id},
-    name::AsName,
+    name::{AsName, KnownName},
 };
 
 pub use self::{
