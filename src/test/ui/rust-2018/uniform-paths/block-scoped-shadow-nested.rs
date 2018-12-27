@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(uniform_paths)]
-
 mod my {
     pub mod sub {
         pub fn bar() {}

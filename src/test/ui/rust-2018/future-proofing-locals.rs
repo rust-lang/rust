@@ -1,6 +1,7 @@
 // edition:2018
 
-#![feature(uniform_paths, underscore_imports)]
+#![feature(underscore_imports)]
+#![allow(non_camel_case_types)]
 
 mod T {
     pub struct U;
