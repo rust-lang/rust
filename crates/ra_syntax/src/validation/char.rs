@@ -6,7 +6,7 @@ use arrayvec::ArrayString;
 
 use crate::{
     ast::{self, AstNode},
-    string_lexing::{self, CharComponentKind},
+    string_lexing::{self, StringComponentKind},
     TextRange,
     yellow::{
         SyntaxError,
@@ -41,12 +41,12 @@ pub(super) fn validate_char_node(node: ast::Char, errors: &mut Vec<SyntaxError>)
 
 pub(super) fn validate_char_component(
     text: &str,
-    kind: CharComponentKind,
+    kind: StringComponentKind,
     range: TextRange,
     errors: &mut Vec<SyntaxError>,
 ) {
     // Validate escapes
-    use self::CharComponentKind::*;
+    use self::StringComponentKind::*;
     match kind {
         AsciiEscape => validate_ascii_escape(text, range, errors),
         AsciiCodeEscape => validate_ascii_code_escape(text, range, errors),
@@ -57,6 +57,7 @@ pub(super) fn validate_char_component(
                 errors.push(SyntaxError::new(UnescapedCodepoint, range));
             }
         }
+        StringComponentKind::IgnoreNewline => { /* always valid */ }
     }
 }
 

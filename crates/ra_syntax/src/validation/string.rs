@@ -1,6 +1,6 @@
 use crate::{
     ast::{self, AstNode},
-    string_lexing::{self, StringComponentKind},
+    string_lexing,
     yellow::{
         SyntaxError,
         SyntaxErrorKind::*,
@@ -16,16 +16,11 @@ pub(crate) fn validate_string_node(node: ast::String, errors: &mut Vec<SyntaxErr
     for component in &mut components {
         let range = component.range + literal_range.start();
 
-        match component.kind {
-            StringComponentKind::Char(kind) => {
-                // Chars must escape \t, \n and \r codepoints, but strings don't
-                let text = &literal_text[component.range];
-                match text {
-                    "\t" | "\n" | "\r" => { /* always valid */ }
-                    _ => char::validate_char_component(text, kind, range, errors),
-                }
-            }
-            StringComponentKind::IgnoreNewline => { /* always valid */ }
+        // Chars must escape \t, \n and \r codepoints, but strings don't
+        let text = &literal_text[component.range];
+        match text {
+            "\t" | "\n" | "\r" => { /* always valid */ }
+            _ => char::validate_char_component(text, component.kind, range, errors),
         }
     }
 
