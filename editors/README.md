@@ -1,6 +1,8 @@
 To install experimental VS Code plugin:
 
 ```
+$ git clone https://github.com/rust-analyzer/rust-analyzer.git
+$ cd rust-analyzer
 $ cargo install-code
 ```
 
