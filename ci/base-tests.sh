@@ -35,13 +35,10 @@ cd ..
 ./util/dev update_lints --check
 cargo +nightly fmt --all -- --check
 
-
-
-
 # make sure tests are formatted
 
 # some lints are sensitive to formatting, exclude some files
-tests_need_reformatting=false
+tests_need_reformatting="false"
 # switch to nightly
 rustup default nightly
 # avoid loop spam and allow cmds with exit status != 0
@@ -51,13 +48,13 @@ for file in `find tests -not -path "tests/ui/methods.rs" -not -path "tests/ui/fo
   rustfmt ${file} --check
   if [ $? -ne 0 ]; then
     echo "${file} needs reformatting!"
-    tests_need_reformatting=true
+    tests_need_reformatting="true"
   fi
 done
 
 set -ex # reset
 
-if [ ${tests_need_reformatting} ] ; then
+if [ "${tests_need_reformatting}" == "true" ] ; then
     echo "Tests need reformatting!"
     exit 2
 fi

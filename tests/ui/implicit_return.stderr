@@ -49,15 +49,15 @@ error: missing return statement
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:68:18
+  --> $DIR/implicit_return.rs:67:18
    |
-68 |     let _ = || { true };
+67 |     let _ = || { true };
    |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:69:16
+  --> $DIR/implicit_return.rs:68:16
    |
-69 |     let _ = || true;
+68 |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
 error: aborting due to 10 previous errors
