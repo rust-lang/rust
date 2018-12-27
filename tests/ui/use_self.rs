@@ -216,6 +216,16 @@ mod existential {
     }
 }
 
+mod tuple_structs {
+    pub struct TS(i32);
+
+    impl TS {
+        pub fn ts() -> Self {
+            TS(0)
+        }
+    }
+}
+
 mod issue3410 {
 
     struct A;

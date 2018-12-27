@@ -126,5 +126,11 @@ error: unnecessary structure name repetition
 LL |         fn bad(foos: &[Self]) -> impl Iterator<Item = &Foo> {
    |                                                        ^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 21 previous errors
+error: unnecessary structure name repetition
+   --> $DIR/use_self.rs:224:13
+    |
+224 |             TS(0)
+    |             ^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 22 previous errors
 
