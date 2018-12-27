@@ -84,17 +84,6 @@ You need to link your code to the relevant crate in order to be able to use it
 well, and you link to them the same way.
 "##,
 
-E0649: r##"
-A link was used with repeated arguments. Erroneous code example:
-
-```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
-#[link(name = "foo", name = "bar)] extern {}
-// error: #[link(...)] contains repeated `name` arguments
-```
-
-Each argument may occur at most once.
-"##,
-
 }
 
 register_diagnostics! {
@@ -108,4 +97,5 @@ register_diagnostics! {
     E0465, // multiple .. candidates for `..` found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
+    E0649, // `link` was used with repeated arguments
 }
