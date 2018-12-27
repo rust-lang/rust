@@ -69,4 +69,19 @@ raw  { \n
     //~^^ ERROR invalid format string
     println!("\t{}");
     //~^ ERROR 1 positional argument in format string
+
+    // note: `\x7B` is `{`
+    println!("\x7B}\u{8} {", 1);
+    //~^ ERROR invalid format string: expected `'}'` but string was terminated
+
+    println!("\x7B}\u8 {", 1);
+    //~^ ERROR incorrect unicode escape sequence
+    //~| ERROR argument never used
+
+    // note: raw strings don't escape `\xFF` and `\u{FF}` sequences
+    println!(r#"\x7B}\u{8} {"#, 1);
+    //~^ ERROR invalid format string: unmatched `}` found
+
+    println!(r#"\x7B}\u8 {"#, 1);
+    //~^ ERROR invalid format string: unmatched `}` found
 }
