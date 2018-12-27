@@ -10,4 +10,4 @@ debug = true
 # https://github.com/salsa-rs/salsa/pull/75
 # and
 # https://github.com/salsa-rs/salsa/issues/99
-salsa = { git = "https://github.com/matklad/salsa", branch = "no-upgrade" }
+salsa = { git = "https://github.com/matklad/salsa", branch = "fix-cancelation-maybe" }
