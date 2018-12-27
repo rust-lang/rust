@@ -25,7 +25,7 @@
 //! values.
 //!
 //! However, these restrictions are usually not necessary. Many types are always freely
-//! movable. These types implement the [`Unpin`] auto-trait, which nullifies the affect
+//! movable. These types implement the [`Unpin`] auto-trait, which nullifies the effect
 //! of [`Pin`]. For `T: Unpin`, `Pin<Box<T>>` and `Box<T>` function identically, as do
 //! `Pin<&mut T>` and `&mut T`.
 //!
