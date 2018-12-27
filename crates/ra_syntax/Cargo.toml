@@ -10,7 +10,7 @@ repository = "https://github.com/rust-analyzer/rust-analyzer"
 [dependencies]
 arrayvec = "0.4.7"
 unicode-xid = "0.1.0"
-itertools = "0.7.8"
+itertools = "0.8.0"
 drop_bomb = "0.1.4"
 parking_lot = "0.6.0"
 rowan = "0.1.2"
