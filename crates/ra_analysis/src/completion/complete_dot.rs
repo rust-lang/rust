@@ -6,20 +6,9 @@ use crate::completion::{CompletionContext, Completions, CompletionKind, Completi
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
-    let module = if let Some(module) = &ctx.module {
-        module
-    } else {
-        return Ok(());
-    };
-    let function = if let Some(fn_def) = ctx.enclosing_fn {
-        hir::source_binder::function_from_module(ctx.db, module, fn_def)
-    } else {
-        return Ok(());
-    };
-    let receiver = if let Some(receiver) = ctx.dot_receiver {
-        receiver
-    } else {
-        return Ok(());
+    let (function, receiver) = match (&ctx.function, ctx.dot_receiver) {
+        (Some(function), Some(receiver)) => (function, receiver),
+        _ => return Ok(()),
     };
     let infer_result = function.infer(ctx.db)?;
     let receiver_ty = if let Some(ty) = infer_result.type_of_node(receiver.syntax()) {
