@@ -565,8 +565,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::all", Some("clippy"), vec![
         approx_const::APPROX_CONSTANT,
-        assert_checks::EXPLICIT_TRUE,
         assert_checks::EXPLICIT_FALSE,
+        assert_checks::EXPLICIT_TRUE,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_CFG_ATTR,
@@ -944,8 +944,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::correctness", Some("clippy_correctness"), vec![
         approx_const::APPROX_CONSTANT,
-        assert_checks::EXPLICIT_TRUE,
         assert_checks::EXPLICIT_FALSE,
+        assert_checks::EXPLICIT_TRUE,
         attrs::DEPRECATED_SEMVER,
         attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,

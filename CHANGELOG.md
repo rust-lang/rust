@@ -679,8 +679,10 @@ All notable changes to this project will be documented in this file.
 [`expect_fun_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#expect_fun_call
 [`expl_impl_clone_on_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#expl_impl_clone_on_copy
 [`explicit_counter_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_counter_loop
+[`explicit_false`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_false
 [`explicit_into_iter_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_into_iter_loop
 [`explicit_iter_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_iter_loop
+[`explicit_true`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_true
 [`explicit_write`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_write
 [`extend_from_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#extend_from_slice
 [`extra_unused_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#extra_unused_lifetimes
