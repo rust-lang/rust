@@ -137,7 +137,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
     /// in-bounds!  This follows C's/LLVM's rules.
     /// If you want to check bounds before doing a memory access, better use `check_bounds`.
-    pub fn check_bounds_ptr(
+    fn check_bounds_ptr(
         &self,
         ptr: Pointer<Tag>,
     ) -> EvalResult<'tcx> {
