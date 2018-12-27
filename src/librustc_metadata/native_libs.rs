@@ -78,7 +78,17 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             let mut kind_specified = false;
 
             for item in items.iter() {
+                let handle_duplicate_arg = |name, report| {
+                    if report {
+                        struct_span_err!(self.tcx.sess, m.span, E0494,
+                            "#[link(...)] contains repeated `{}` arguments", name)
+                        .span_label(item.span, format!("repeated `{}` argument", name))
+                        .emit();
+                    }
+                };
+
                 if item.check_name("kind") {
+                    handle_duplicate_arg("kind", kind_specified);
                     kind_specified = true;
                     let kind = match item.value_str() {
                         Some(name) => name,
@@ -97,8 +107,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                         }
                     };
                 } else if item.check_name("name") {
+                    handle_duplicate_arg("name", lib.name.is_some());
                     lib.name = item.value_str();
                 } else if item.check_name("cfg") {
+                    handle_duplicate_arg("cfg", lib.cfg.is_some());
                     let cfg = match item.meta_item_list() {
                         Some(list) => list,
                         None => continue, // skip like historical compilers
@@ -114,6 +126,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                         self.tcx.sess.span_err(cfg[0].span(), "invalid argument for `cfg(..)`");
                     }
                 } else if item.check_name("wasm_import_module") {
+                    handle_duplicate_arg("wasm_import_module", lib.wasm_import_module.is_some());
                     match item.value_str() {
                         Some(s) => lib.wasm_import_module = Some(s),
                         None => {

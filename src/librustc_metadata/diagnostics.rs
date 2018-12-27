@@ -84,6 +84,17 @@ You need to link your code to the relevant crate in order to be able to use it
 well, and you link to them the same way.
 "##,
 
+E0494: r##"
+A link was used with repeated arguments. Erroneous code example:
+
+```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
+#[link(name = "foo", name = "bar)] extern {}
+// error: #[link(...)] contains repeated `name` arguments
+```
+
+Each argument may occur at most once.
+"##,
+
 }
 
 register_diagnostics! {

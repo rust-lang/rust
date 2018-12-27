@@ -1,17 +1,17 @@
 error[E0459]: #[link(...)] specified without `name = "foo"`
-  --> $DIR/bad-extern-link-attrs.rs:1:1
+  --> $DIR/bad-extern-link-attrs.rs:3:1
    |
 LL | #[link()] //~ ERROR: specified without `name =
    | ^^^^^^^^^ missing `name` argument
 
 error[E0454]: #[link(name = "")] given with empty name
-  --> $DIR/bad-extern-link-attrs.rs:2:1
+  --> $DIR/bad-extern-link-attrs.rs:4:1
    |
 LL | #[link(name = "")] //~ ERROR: with empty name
    | ^^^^^^^^^^^^^^^^^^ empty name given
 
 error[E0458]: unknown kind: `bar`
-  --> $DIR/bad-extern-link-attrs.rs:4:1
+  --> $DIR/bad-extern-link-attrs.rs:6:1
    |
 LL | #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
    | ^^^^^^^^^^^^^^^^^^^^^------------^^
@@ -19,18 +19,50 @@ LL | #[link(name = "foo", kind = "bar")] //~ ERROR: unknown kind
    |                      unknown kind
 
 error[E0459]: #[link(...)] specified without arguments
-  --> $DIR/bad-extern-link-attrs.rs:5:1
+  --> $DIR/bad-extern-link-attrs.rs:7:1
    |
 LL | #[link] //~ ERROR #[link(...)] specified without arguments
    | ^^^^^^^
 
 error[E0459]: #[link(...)] specified without arguments
-  --> $DIR/bad-extern-link-attrs.rs:6:1
+  --> $DIR/bad-extern-link-attrs.rs:8:1
    |
 LL | #[link = "foo"] //~ ERROR #[link(...)] specified without arguments
    | ^^^^^^^^^^^^^^^ help: specify a `name` argument instead: `#[link(name = "foo")]`
 
-error: aborting due to 5 previous errors
+error[E0494]: #[link(...)] contains repeated `name` arguments
+  --> $DIR/bad-extern-link-attrs.rs:9:1
+   |
+LL | #[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] contains repeated `name` arguments
+   | ^^^^^^^^^^^^^^^^^^^^^------------^^
+   |                      |
+   |                      repeated `name` argument
 
-Some errors occurred: E0454, E0458, E0459.
+error[E0494]: #[link(...)] contains repeated `kind` arguments
+  --> $DIR/bad-extern-link-attrs.rs:10:1
+   |
+LL | #[link(name = "foo", kind = "dylib", kind = "dylib")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------^^
+   |                                      |
+   |                                      repeated `kind` argument
+
+error[E0494]: #[link(...)] contains repeated `cfg` arguments
+  --> $DIR/bad-extern-link-attrs.rs:12:1
+   |
+LL | #[link(name = "foo", cfg(foo), cfg(bar))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |                                |
+   |                                repeated `cfg` argument
+
+error[E0494]: #[link(...)] contains repeated `wasm_import_module` arguments
+  --> $DIR/bad-extern-link-attrs.rs:14:1
+   |
+LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------^^
+   |                                    |
+   |                                    repeated `wasm_import_module` argument
+
+error: aborting due to 9 previous errors
+
+Some errors occurred: E0454, E0458, E0459, E0494.
 For more information about an error, try `rustc --explain E0454`.
