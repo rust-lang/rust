@@ -1,0 +1,11 @@
+error: expected type, found `$`
+  --> $DIR/dollar-crate-in-tokens.rs:18:9
+   |
+LL |         #[dollar_crate::a] //~ ERROR expected type, found `$`
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | m!();
+   | ----- in this macro invocation
+
+error: aborting due to previous error
+

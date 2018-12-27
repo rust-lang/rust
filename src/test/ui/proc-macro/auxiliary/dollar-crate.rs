@@ -7,6 +7,13 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 
 #[proc_macro]
+pub fn m_empty(input: TokenStream) -> TokenStream {
+    println!("PROC MACRO INPUT (PRETTY-PRINTED): {}", input);
+    println!("PROC MACRO INPUT: {:#?}", input);
+    TokenStream::new()
+}
+
+#[proc_macro]
 pub fn m(input: TokenStream) -> TokenStream {
     println!("PROC MACRO INPUT (PRETTY-PRINTED): {}", input);
     println!("PROC MACRO INPUT: {:#?}", input);
