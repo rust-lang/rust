@@ -335,6 +335,17 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         let foo = "";
         return Ok(&foo[0..]);
     }
+
+    // false positive if_same_then_else, let(x,y) vs let(y,x), see #3559
+    if true {
+        let foo = "";
+        let (x, y) = (1, 2);
+        return Ok(&foo[x..y]);
+    } else {
+        let foo = "";
+        let (y, x) = (1, 2);
+        return Ok(&foo[x..y]);
+    }
 }
 
 #[warn(clippy::ifs_same_cond)]

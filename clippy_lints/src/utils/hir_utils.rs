@@ -54,7 +54,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&StmtKind::Decl(ref l, _), &StmtKind::Decl(ref r, _)) => {
                 if let (&DeclKind::Local(ref l), &DeclKind::Local(ref r)) = (&l.node, &r.node) {
-                    both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
+                    self.eq_pat(&l.pat, &r.pat)
+                        && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
+                        && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                 } else {
                     false
                 }
