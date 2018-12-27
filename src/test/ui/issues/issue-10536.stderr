@@ -1,5 +1,5 @@
 error: macros that expand to items must either be surrounded with braces or followed by a semicolon
-  --> $DIR/issue-10536.rs:16:22
+  --> $DIR/issue-10536.rs:14:22
    |
 LL |     assert!({one! two()});
    |                      ^^
@@ -11,13 +11,13 @@ LL |     assert!({one! two});
    |                      ^ expected `(` or `{`
 
 error: cannot find macro `one!` in this scope
-  --> $DIR/issue-10536.rs:24:14
+  --> $DIR/issue-10536.rs:14:14
    |
 LL |     assert!({one! two()});
    |              ^^^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-10536.rs:24:13
+  --> $DIR/issue-10536.rs:14:13
    |
 LL |     assert!({one! two()});
    |             ^^^^^^^^^^^^ expected bool, found ()

@@ -7,7 +7,7 @@ LL | #[rustc_attribute_should_be_reserved]
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
 error: cannot determine resolution for the macro `foo`
-  --> $DIR/reserved-attr-on-macro.rs:18:5
+  --> $DIR/reserved-attr-on-macro.rs:8:5
    |
 LL |     foo!(); //~ ERROR cannot determine resolution for the macro `foo`
    |     ^^^

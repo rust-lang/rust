@@ -7,7 +7,7 @@ LL | #[marco_use] // typo
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: cannot find macro `bar!` in this scope
-  --> $DIR/issue-49074.rs:22:4
+  --> $DIR/issue-49074.rs:12:4
    |
 LL |    bar!(); //~ ERROR cannot find macro `bar!` in this scope
    |    ^^^

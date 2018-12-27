@@ -7,7 +7,7 @@ LL |     trace_macros!(); //~ ERROR `trace_macros` is not stable
    = help: add #![feature(trace_macros)] to the crate attributes to enable
 
 error: trace_macros! accepts only `true` or `false`
-  --> $DIR/trace_macros-gate.rs:14:5
+  --> $DIR/trace_macros-gate.rs:4:5
    |
 LL |     trace_macros!(); //~ ERROR `trace_macros` is not stable
    |     ^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     trace_macros!(false); //~ ERROR `trace_macros` is not stable
    = help: add #![feature(trace_macros)] to the crate attributes to enable
 
 error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/trace_macros-gate.rs:20:26
+  --> $DIR/trace_macros-gate.rs:10:26
    |
 LL |         ($x: ident) => { trace_macros!($x) } //~ ERROR `trace_macros` is not stable
    |                          ^^^^^^^^^^^^^^^^^

@@ -47,7 +47,7 @@ LL | type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
    |                       ^^^^^^^^^^^^
 
 error[E0658]: The attribute `ignored` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
-  --> $DIR/issue-51279.rs:33:8
+  --> $DIR/issue-51279.rs:23:8
    |
 LL | type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
    |        ^^^^^^^^^^
