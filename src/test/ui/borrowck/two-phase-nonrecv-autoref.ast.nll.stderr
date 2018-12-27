@@ -14,6 +14,8 @@ LL |         f(f(10));
    |         - ^ value used here after move
    |         |
    |         value moved here
+   |
+   = note: move occurs because `*f` has type `F`, which does not implement the `Copy` trait
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
   --> $DIR/two-phase-nonrecv-autoref.rs:76:11
@@ -43,6 +45,8 @@ LL |         f(f(10));
    |         - ^ value used here after move
    |         |
    |         value moved here
+   |
+   = note: move occurs because `*f` has type `dyn std::ops::FnOnce(i32) -> i32`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
   --> $DIR/two-phase-nonrecv-autoref.rs:129:27

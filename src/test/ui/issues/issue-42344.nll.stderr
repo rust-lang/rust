@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow `*TAB[..]` as mutable, as `TAB` is an immutable static item
+error[E0596]: cannot borrow `*TAB[_]` as mutable, as `TAB` is an immutable static item
   --> $DIR/issue-42344.rs:4:5
    |
 LL |     TAB[0].iter_mut(); //~ ERROR cannot borrow data mutably in a `&` reference [E0389]
