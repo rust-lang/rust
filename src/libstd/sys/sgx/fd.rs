@@ -2,7 +2,7 @@ use fortanix_sgx_abi::Fd;
 
 use io;
 use mem;
-use sys_common::AsInner;
+use sys::{AsInner, FromInner, IntoInner};
 use super::abi::usercalls;
 
 #[derive(Debug)]
@@ -39,6 +39,20 @@ impl FileDesc {
 
 impl AsInner<Fd> for FileDesc {
     fn as_inner(&self) -> &Fd { &self.fd }
+}
+
+impl IntoInner<Fd> for FileDesc {
+    fn into_inner(self) -> Fd {
+        let fd = self.fd;
+        mem::forget(self);
+        fd
+    }
+}
+
+impl FromInner<Fd> for FileDesc {
+    fn from_inner(fd: Fd) -> FileDesc {
+        FileDesc { fd }
+    }
 }
 
 impl Drop for FileDesc {

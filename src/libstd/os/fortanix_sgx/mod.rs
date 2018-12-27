@@ -55,3 +55,5 @@ pub mod usercalls {
 pub mod mem {
     pub use sys::abi::mem::*;
 }
+
+pub use sys::ext::{io, arch};

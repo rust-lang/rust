@@ -304,7 +304,8 @@
 #![feature(alloc_layout_extra)]
 #![feature(maybe_uninit)]
 #![cfg_attr(target_env = "sgx", feature(global_asm, range_contains, slice_index_methods,
-                                        decl_macro, coerce_unsized, sgx_platform))]
+                                        decl_macro, coerce_unsized, sgx_platform,
+                                        min_const_unsafe_fn))]
 
 #![default_lib_allocator]
 

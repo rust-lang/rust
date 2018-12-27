@@ -2,7 +2,7 @@ use fmt;
 use io;
 use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use time::Duration;
-use sys::{unsupported, Void, sgx_ineffective};
+use sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
 use sys::fd::FileDesc;
 use convert::TryFrom;
 use error;
@@ -13,21 +13,38 @@ use super::abi::usercalls;
 const DEFAULT_FAKE_TTL: u32 = 64;
 
 #[derive(Debug, Clone)]
-struct Socket {
+pub struct Socket {
     inner: Arc<FileDesc>,
-    local_addr: String,
+    local_addr: Option<String>,
 }
 
 impl Socket {
     fn new(fd: usercalls::raw::Fd, local_addr: String) -> Socket {
-        Socket { inner: Arc::new(FileDesc::new(fd)), local_addr }
+        Socket { inner: Arc::new(FileDesc::new(fd)), local_addr: Some(local_addr) }
+    }
+}
+
+impl AsInner<FileDesc> for Socket {
+    fn as_inner(&self) -> &FileDesc { &self.inner }
+}
+
+impl TryIntoInner<FileDesc> for Socket {
+    fn try_into_inner(self) -> Result<FileDesc, Socket> {
+        let Socket { inner, local_addr } = self;
+        Arc::try_unwrap(inner).map_err(|inner| Socket { inner, local_addr } )
+    }
+}
+
+impl FromInner<FileDesc> for Socket {
+    fn from_inner(inner: FileDesc) -> Socket {
+        Socket { inner: Arc::new(inner), local_addr: None }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct TcpStream {
     inner: Socket,
-    peer_addr: String,
+    peer_addr: Option<String>,
 }
 
 fn io_err_to_addr(result: io::Result<&SocketAddr>) -> io::Result<String> {
@@ -43,16 +60,19 @@ fn io_err_to_addr(result: io::Result<&SocketAddr>) -> io::Result<String> {
     }
 }
 
-fn addr_to_sockaddr(addr: &str) -> io::Result<SocketAddr> {
-    // unwrap OK: if an iterator is returned, we're guaranteed to get exactly one entry
-    addr.to_socket_addrs().map(|mut it| it.next().unwrap())
+fn addr_to_sockaddr(addr: &Option<String>) -> io::Result<SocketAddr> {
+    addr.as_ref()
+        .ok_or(io::ErrorKind::AddrNotAvailable)?
+        .to_socket_addrs()
+        // unwrap OK: if an iterator is returned, we're guaranteed to get exactly one entry
+        .map(|mut it| it.next().unwrap())
 }
 
 impl TcpStream {
     pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
         let addr = io_err_to_addr(addr)?;
         let (fd, local_addr, peer_addr) = usercalls::connect_stream(&addr)?;
-        Ok(TcpStream { inner: Socket::new(fd, local_addr), peer_addr })
+        Ok(TcpStream { inner: Socket::new(fd, local_addr), peer_addr: Some(peer_addr) })
     }
 
     pub fn connect_timeout(addr: &SocketAddr, _: Duration) -> io::Result<TcpStream> {
@@ -128,6 +148,24 @@ impl TcpStream {
     }
 }
 
+impl AsInner<Socket> for TcpStream {
+    fn as_inner(&self) -> &Socket { &self.inner }
+}
+
+// `Inner` includes `peer_addr` so that a `TcpStream` maybe correctly
+// reconstructed if `Socket::try_into_inner` fails.
+impl IntoInner<(Socket, Option<String>)> for TcpStream {
+    fn into_inner(self) -> (Socket, Option<String>) {
+        (self.inner, self.peer_addr)
+    }
+}
+
+impl FromInner<(Socket, Option<String>)> for TcpStream {
+    fn from_inner((inner, peer_addr): (Socket, Option<String>)) -> TcpStream {
+        TcpStream { inner, peer_addr }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TcpListener {
     inner: Socket,
@@ -146,6 +184,7 @@ impl TcpListener {
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let (fd, local_addr, peer_addr) = usercalls::accept_stream(self.inner.inner.raw())?;
+        let peer_addr = Some(peer_addr);
         let ret_peer = addr_to_sockaddr(&peer_addr).unwrap_or_else(|_| ([0; 4], 0).into());
         Ok((TcpStream { inner: Socket::new(fd, local_addr), peer_addr }, ret_peer))
     }
@@ -176,6 +215,22 @@ impl TcpListener {
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
         sgx_ineffective(())
+    }
+}
+
+impl AsInner<Socket> for TcpListener {
+    fn as_inner(&self) -> &Socket { &self.inner }
+}
+
+impl IntoInner<Socket> for TcpListener {
+    fn into_inner(self) -> Socket {
+        self.inner
+    }
+}
+
+impl FromInner<Socket> for TcpListener {
+    fn from_inner(inner: Socket) -> TcpListener {
+        TcpListener { inner }
     }
 }
 
