@@ -29,7 +29,10 @@ pub(crate) fn validate_string_node(node: ast::String, errors: &mut Vec<SyntaxErr
     }
 
     if let Some(range) = components.suffix {
-        errors.push(SyntaxError::new(InvalidSuffix, range));
+        errors.push(SyntaxError::new(
+            InvalidSuffix,
+            range + literal_range.start(),
+        ));
     }
 }
 

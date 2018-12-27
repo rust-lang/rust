@@ -34,7 +34,10 @@ pub(crate) fn validate_byte_string_node(node: ast::ByteString, errors: &mut Vec<
     }
 
     if let Some(range) = components.suffix {
-        errors.push(SyntaxError::new(InvalidSuffix, range));
+        errors.push(SyntaxError::new(
+            InvalidSuffix,
+            range + literal_range.start(),
+        ));
     }
 }
 
