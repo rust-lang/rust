@@ -42,6 +42,13 @@ Some issues are easier than others. The [`good first issue`](https://github.com/
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
 so that we can assign it to you!
 
+There are also some abandoned PRs, marked with
+[`S-inactive-closed`](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Aclosed+label%3AS-inactive-closed).
+Pretty often these PRs are nearly completed and just need some extra steps
+(formatting, addressing review comments, ...) to be merged. If you want to
+complete such a PR, please leave a comment in the PR and open a new one based
+on it.
+
 Issues marked [`T-AST`](https://github.com/rust-lang/rust-clippy/labels/T-AST) involve simple
 matching of the syntax tree structure, and are generally easier than
 [`T-middle`](https://github.com/rust-lang/rust-clippy/labels/T-middle) issues, which involve types
