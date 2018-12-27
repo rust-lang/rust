@@ -30,7 +30,7 @@ error[E0459]: #[link(...)] specified without arguments
 LL | #[link = "foo"] //~ ERROR #[link(...)] specified without arguments
    | ^^^^^^^^^^^^^^^ help: specify a `name` argument instead: `#[link(name = "foo")]`
 
-error[E0494]: #[link(...)] contains repeated `name` arguments
+error[E0649]: #[link(...)] contains repeated `name` arguments
   --> $DIR/bad-extern-link-attrs.rs:9:1
    |
 LL | #[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] contains repeated `name` arguments
@@ -38,7 +38,7 @@ LL | #[link(name = "foo", name = "bar")] //~ ERROR #[link(...)] contains repeate
    |                      |
    |                      repeated `name` argument
 
-error[E0494]: #[link(...)] contains repeated `kind` arguments
+error[E0649]: #[link(...)] contains repeated `kind` arguments
   --> $DIR/bad-extern-link-attrs.rs:10:1
    |
 LL | #[link(name = "foo", kind = "dylib", kind = "dylib")]
@@ -46,7 +46,7 @@ LL | #[link(name = "foo", kind = "dylib", kind = "dylib")]
    |                                      |
    |                                      repeated `kind` argument
 
-error[E0494]: #[link(...)] contains repeated `cfg` arguments
+error[E0649]: #[link(...)] contains repeated `cfg` arguments
   --> $DIR/bad-extern-link-attrs.rs:12:1
    |
 LL | #[link(name = "foo", cfg(foo), cfg(bar))]
@@ -54,7 +54,7 @@ LL | #[link(name = "foo", cfg(foo), cfg(bar))]
    |                                |
    |                                repeated `cfg` argument
 
-error[E0494]: #[link(...)] contains repeated `wasm_import_module` arguments
+error[E0649]: #[link(...)] contains repeated `wasm_import_module` arguments
   --> $DIR/bad-extern-link-attrs.rs:14:1
    |
 LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
@@ -64,5 +64,5 @@ LL | #[link(wasm_import_module = "foo", wasm_import_module = "bar")]
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0454, E0458, E0459, E0494.
+Some errors occurred: E0454, E0458, E0459, E0649.
 For more information about an error, try `rustc --explain E0454`.

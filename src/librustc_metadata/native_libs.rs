@@ -80,7 +80,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             for item in items.iter() {
                 let handle_duplicate_arg = |name, report| {
                     if report {
-                        struct_span_err!(self.tcx.sess, m.span, E0494,
+                        struct_span_err!(self.tcx.sess, m.span, E0649,
                             "#[link(...)] contains repeated `{}` arguments", name)
                         .span_label(item.span, format!("repeated `{}` argument", name))
                         .emit();
