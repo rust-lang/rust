@@ -1,137 +1,137 @@
 error: `x` is shadowed by itself in `&mut x`
   --> $DIR/shadow.rs:29:5
    |
-29 |     let x = &mut x;
+LL |     let x = &mut x;
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::shadow-same` implied by `-D warnings`
 note: previous binding is here
   --> $DIR/shadow.rs:28:13
    |
-28 |     let mut x = 1;
+LL |     let mut x = 1;
    |             ^
 
 error: `x` is shadowed by itself in `{ x }`
   --> $DIR/shadow.rs:30:5
    |
-30 |     let x = { x };
+LL |     let x = { x };
    |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:29:9
    |
-29 |     let x = &mut x;
+LL |     let x = &mut x;
    |         ^
 
 error: `x` is shadowed by itself in `(&*x)`
   --> $DIR/shadow.rs:31:5
    |
-31 |     let x = (&*x);
+LL |     let x = (&*x);
    |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:30:9
    |
-30 |     let x = { x };
+LL |     let x = { x };
    |         ^
 
 error: `x` is shadowed by `{ *x + 1 }` which reuses the original value
   --> $DIR/shadow.rs:32:9
    |
-32 |     let x = { *x + 1 };
+LL |     let x = { *x + 1 };
    |         ^
    |
    = note: `-D clippy::shadow-reuse` implied by `-D warnings`
 note: initialization happens here
   --> $DIR/shadow.rs:32:13
    |
-32 |     let x = { *x + 1 };
+LL |     let x = { *x + 1 };
    |             ^^^^^^^^^^
 note: previous binding is here
   --> $DIR/shadow.rs:31:9
    |
-31 |     let x = (&*x);
+LL |     let x = (&*x);
    |         ^
 
 error: `x` is shadowed by `id(x)` which reuses the original value
   --> $DIR/shadow.rs:33:9
    |
-33 |     let x = id(x);
+LL |     let x = id(x);
    |         ^
    |
 note: initialization happens here
   --> $DIR/shadow.rs:33:13
    |
-33 |     let x = id(x);
+LL |     let x = id(x);
    |             ^^^^^
 note: previous binding is here
   --> $DIR/shadow.rs:32:9
    |
-32 |     let x = { *x + 1 };
+LL |     let x = { *x + 1 };
    |         ^
 
 error: `x` is shadowed by `(1, x)` which reuses the original value
   --> $DIR/shadow.rs:34:9
    |
-34 |     let x = (1, x);
+LL |     let x = (1, x);
    |         ^
    |
 note: initialization happens here
   --> $DIR/shadow.rs:34:13
    |
-34 |     let x = (1, x);
+LL |     let x = (1, x);
    |             ^^^^^^
 note: previous binding is here
   --> $DIR/shadow.rs:33:9
    |
-33 |     let x = id(x);
+LL |     let x = id(x);
    |         ^
 
 error: `x` is shadowed by `first(x)` which reuses the original value
   --> $DIR/shadow.rs:35:9
    |
-35 |     let x = first(x);
+LL |     let x = first(x);
    |         ^
    |
 note: initialization happens here
   --> $DIR/shadow.rs:35:13
    |
-35 |     let x = first(x);
+LL |     let x = first(x);
    |             ^^^^^^^^
 note: previous binding is here
   --> $DIR/shadow.rs:34:9
    |
-34 |     let x = (1, x);
+LL |     let x = (1, x);
    |         ^
 
 error: `x` is shadowed by `y`
   --> $DIR/shadow.rs:37:9
    |
-37 |     let x = y;
+LL |     let x = y;
    |         ^
    |
    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
 note: initialization happens here
   --> $DIR/shadow.rs:37:13
    |
-37 |     let x = y;
+LL |     let x = y;
    |             ^
 note: previous binding is here
   --> $DIR/shadow.rs:35:9
    |
-35 |     let x = first(x);
+LL |     let x = first(x);
    |         ^
 
 error: `x` shadows a previous declaration
   --> $DIR/shadow.rs:39:5
    |
-39 |     let x;
+LL |     let x;
    |     ^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:37:9
    |
-37 |     let x = y;
+LL |     let x = y;
    |         ^
 
 error: aborting due to 9 previous errors

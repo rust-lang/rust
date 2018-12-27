@@ -1,7 +1,7 @@
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:14:14
    |
-14 |         x != "foo".to_string();
+LL |         x != "foo".to_string();
    |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
    |
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
@@ -9,49 +9,49 @@ error: this creates an owned instance just for comparison
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:16:9
    |
-16 |         "foo".to_string() != x;
+LL |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:23:10
    |
-23 |     x != "foo".to_owned();
+LL |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:25:10
    |
-25 |     x != String::from("foo");
+LL |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:29:5
    |
-29 |     Foo.to_owned() == Foo;
+LL |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:31:30
    |
-31 |     "abc".chars().filter(|c| c.to_owned() != 'X');
+LL |     "abc".chars().filter(|c| c.to_owned() != 'X');
    |                              ^^^^^^^^^^^^ help: try: `*c`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:38:5
    |
-38 |     y.to_owned() == *x;
+LL |     y.to_owned() == *x;
    |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:43:5
    |
-43 |     y.to_owned() == **x;
+LL |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:50:9
    |
-50 |         self.to_owned() == *other
+LL |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: aborting due to 9 previous errors

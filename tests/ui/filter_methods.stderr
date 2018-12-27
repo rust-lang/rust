@@ -1,7 +1,7 @@
 error: called `filter(p).map(q)` on an `Iterator`. This is more succinctly expressed by calling `.filter_map(..)` instead.
   --> $DIR/filter_methods.rs:14:21
    |
-14 |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 2).collect();
+LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 2).collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::filter-map` implied by `-D warnings`
@@ -9,31 +9,31 @@ error: called `filter(p).map(q)` on an `Iterator`. This is more succinctly expre
 error: called `filter(p).flat_map(q)` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)` and filtering by returning an empty Iterator.
   --> $DIR/filter_methods.rs:16:21
    |
-16 |       let _: Vec<_> = vec![5_i8; 6]
+LL |       let _: Vec<_> = vec![5_i8; 6]
    |  _____________________^
-17 | |         .into_iter()
-18 | |         .filter(|&x| x == 0)
-19 | |         .flat_map(|x| x.checked_mul(2))
+LL | |         .into_iter()
+LL | |         .filter(|&x| x == 0)
+LL | |         .flat_map(|x| x.checked_mul(2))
    | |_______________________________________^
 
 error: called `filter_map(p).flat_map(q)` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)` and filtering by returning an empty Iterator.
   --> $DIR/filter_methods.rs:22:21
    |
-22 |       let _: Vec<_> = vec![5_i8; 6]
+LL |       let _: Vec<_> = vec![5_i8; 6]
    |  _____________________^
-23 | |         .into_iter()
-24 | |         .filter_map(|x| x.checked_mul(2))
-25 | |         .flat_map(|x| x.checked_mul(2))
+LL | |         .into_iter()
+LL | |         .filter_map(|x| x.checked_mul(2))
+LL | |         .flat_map(|x| x.checked_mul(2))
    | |_______________________________________^
 
 error: called `filter_map(p).map(q)` on an `Iterator`. This is more succinctly expressed by only calling `.filter_map(..)` instead.
   --> $DIR/filter_methods.rs:28:21
    |
-28 |       let _: Vec<_> = vec![5_i8; 6]
+LL |       let _: Vec<_> = vec![5_i8; 6]
    |  _____________________^
-29 | |         .into_iter()
-30 | |         .filter_map(|x| x.checked_mul(2))
-31 | |         .map(|x| x.checked_mul(2))
+LL | |         .into_iter()
+LL | |         .filter_map(|x| x.checked_mul(2))
+LL | |         .map(|x| x.checked_mul(2))
    | |__________________________________^
 
 error: aborting due to 4 previous errors

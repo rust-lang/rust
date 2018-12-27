@@ -1,13 +1,13 @@
 error: this loop never actually loops
   --> $DIR/never_loop.rs:19:5
    |
-19 | /     loop {
-20 | |         // clippy::never_loop
-21 | |         x += 1;
-22 | |         if x == 1 {
+LL | /     loop {
+LL | |         // clippy::never_loop
+LL | |         x += 1;
+LL | |         if x == 1 {
 ...  |
-25 | |         break;
-26 | |     }
+LL | |         break;
+LL | |     }
    | |_____^
    |
    = note: #[deny(clippy::never_loop)] on by default
@@ -15,86 +15,86 @@ error: this loop never actually loops
 error: this loop never actually loops
   --> $DIR/never_loop.rs:41:5
    |
-41 | /     loop {
-42 | |         // never loops
-43 | |         x += 1;
-44 | |         break;
-45 | |     }
+LL | /     loop {
+LL | |         // never loops
+LL | |         x += 1;
+LL | |         break;
+LL | |     }
    | |_____^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:61:5
    |
-61 | /     loop {
-62 | |         // never loops
-63 | |         while i == 0 {
-64 | |             // never loops
+LL | /     loop {
+LL | |         // never loops
+LL | |         while i == 0 {
+LL | |             // never loops
 ...  |
-67 | |         return;
-68 | |     }
+LL | |         return;
+LL | |     }
    | |_____^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:63:9
    |
-63 | /         while i == 0 {
-64 | |             // never loops
-65 | |             break;
-66 | |         }
+LL | /         while i == 0 {
+LL | |             // never loops
+LL | |             break;
+LL | |         }
    | |_________^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:75:9
    |
-75 | /         loop {
-76 | |             // never loops
-77 | |             if x == 5 {
-78 | |                 break;
-79 | |             }
-80 | |             continue 'outer;
-81 | |         }
+LL | /         loop {
+LL | |             // never loops
+LL | |             if x == 5 {
+LL | |                 break;
+LL | |             }
+LL | |             continue 'outer;
+LL | |         }
    | |_________^
 
 error: this loop never actually loops
-   --> $DIR/never_loop.rs:111:5
-    |
-111 | /     while let Some(y) = x {
-112 | |         // never loops
-113 | |         return;
-114 | |     }
-    | |_____^
+  --> $DIR/never_loop.rs:111:5
+   |
+LL | /     while let Some(y) = x {
+LL | |         // never loops
+LL | |         return;
+LL | |     }
+   | |_____^
 
 error: this loop never actually loops
-   --> $DIR/never_loop.rs:118:5
-    |
-118 | /     for x in 0..10 {
-119 | |         // never loops
-120 | |         match x {
-121 | |             1 => break,
-122 | |             _ => return,
-123 | |         }
-124 | |     }
-    | |_____^
+  --> $DIR/never_loop.rs:118:5
+   |
+LL | /     for x in 0..10 {
+LL | |         // never loops
+LL | |         match x {
+LL | |             1 => break,
+LL | |             _ => return,
+LL | |         }
+LL | |     }
+   | |_____^
 
 error: this loop never actually loops
-   --> $DIR/never_loop.rs:166:5
-    |
-166 | /     'outer: while a {
-167 | |         // never loops
-168 | |         while a {
-169 | |             if a {
-...   |
-174 | |         break 'outer;
-175 | |     }
-    | |_____^
+  --> $DIR/never_loop.rs:166:5
+   |
+LL | /     'outer: while a {
+LL | |         // never loops
+LL | |         while a {
+LL | |             if a {
+...  |
+LL | |         break 'outer;
+LL | |     }
+   | |_____^
 
 error: this loop never actually loops
-   --> $DIR/never_loop.rs:181:9
-    |
-181 | /         while false {
-182 | |             break 'label;
-183 | |         }
-    | |_________^
+  --> $DIR/never_loop.rs:181:9
+   |
+LL | /         while false {
+LL | |             break 'label;
+LL | |         }
+   | |_________^
 
 error: aborting due to 9 previous errors
 

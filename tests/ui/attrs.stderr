@@ -1,7 +1,7 @@
 error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
   --> $DIR/attrs.rs:12:1
    |
-12 | #[inline(always)]
+LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::inline-always` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usuall
 error: the since field must contain a semver-compliant version
   --> $DIR/attrs.rs:32:14
    |
-32 | #[deprecated(since = "forever")]
+LL | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::deprecated-semver` implied by `-D warnings`
@@ -17,7 +17,7 @@ error: the since field must contain a semver-compliant version
 error: the since field must contain a semver-compliant version
   --> $DIR/attrs.rs:35:14
    |
-35 | #[deprecated(since = "1")]
+LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

@@ -1,7 +1,7 @@
 error: boolean short circuit operator in statement may be clearer using an explicit test
   --> $DIR/short_circuit_statement.rs:13:5
    |
-13 |     f() && g();
+LL |     f() && g();
    |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
    |
    = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
@@ -9,13 +9,13 @@ error: boolean short circuit operator in statement may be clearer using an expli
 error: boolean short circuit operator in statement may be clearer using an explicit test
   --> $DIR/short_circuit_statement.rs:14:5
    |
-14 |     f() || g();
+LL |     f() || g();
    |     ^^^^^^^^^^^ help: replace it with: `if !f() { g(); }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
   --> $DIR/short_circuit_statement.rs:15:5
    |
-15 |     1 == 2 || g();
+LL |     1 == 2 || g();
    |     ^^^^^^^^^^^^^^ help: replace it with: `if !(1 == 2) { g(); }`
 
 error: aborting due to 3 previous errors

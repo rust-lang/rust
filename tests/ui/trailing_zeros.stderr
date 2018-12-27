@@ -1,7 +1,7 @@
 error: bit mask could be simplified with a call to `trailing_zeros`
   --> $DIR/trailing_zeros.rs:16:5
    |
-16 |     (x & 0b1111 == 0); // suggest trailing_zeros
+LL |     (x & 0b1111 == 0); // suggest trailing_zeros
    |     ^^^^^^^^^^^^^^^^^ help: try: `x.trailing_zeros() >= 4`
    |
    = note: `-D clippy::verbose-bit-mask` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: bit mask could be simplified with a call to `trailing_zeros`
 error: bit mask could be simplified with a call to `trailing_zeros`
   --> $DIR/trailing_zeros.rs:17:13
    |
-17 |     let _ = x & 0b1_1111 == 0; // suggest trailing_zeros
+LL |     let _ = x & 0b1_1111 == 0; // suggest trailing_zeros
    |             ^^^^^^^^^^^^^^^^^ help: try: `x.trailing_zeros() >= 5`
 
 error: aborting due to 2 previous errors

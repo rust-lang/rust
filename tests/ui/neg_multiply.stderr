@@ -1,7 +1,7 @@
 error: Negation by multiplying with -1
   --> $DIR/neg_multiply.rs:36:5
    |
-36 |     x * -1;
+LL |     x * -1;
    |     ^^^^^^
    |
    = note: `-D clippy::neg-multiply` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: Negation by multiplying with -1
 error: Negation by multiplying with -1
   --> $DIR/neg_multiply.rs:38:5
    |
-38 |     -1 * x;
+LL |     -1 * x;
    |     ^^^^^^
 
 error: aborting due to 2 previous errors

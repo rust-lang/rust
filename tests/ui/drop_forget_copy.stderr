@@ -1,75 +1,75 @@
 error: calls to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:42:5
    |
-42 |     drop(s1);
+LL |     drop(s1);
    |     ^^^^^^^^
    |
    = note: `-D clippy::drop-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:42:10
    |
-42 |     drop(s1);
+LL |     drop(s1);
    |          ^^
 
 error: calls to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:43:5
    |
-43 |     drop(s2);
+LL |     drop(s2);
    |     ^^^^^^^^
    |
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:43:10
    |
-43 |     drop(s2);
+LL |     drop(s2);
    |          ^^
 
 error: calls to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:45:5
    |
-45 |     drop(s4);
+LL |     drop(s4);
    |     ^^^^^^^^
    |
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:45:10
    |
-45 |     drop(s4);
+LL |     drop(s4);
    |          ^^
 
 error: calls to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:48:5
    |
-48 |     forget(s1);
+LL |     forget(s1);
    |     ^^^^^^^^^^
    |
    = note: `-D clippy::forget-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:48:12
    |
-48 |     forget(s1);
+LL |     forget(s1);
    |            ^^
 
 error: calls to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:49:5
    |
-49 |     forget(s2);
+LL |     forget(s2);
    |     ^^^^^^^^^^
    |
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:49:12
    |
-49 |     forget(s2);
+LL |     forget(s2);
    |            ^^
 
 error: calls to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:51:5
    |
-51 |     forget(s4);
+LL |     forget(s4);
    |     ^^^^^^^^^^
    |
 note: argument has type SomeStruct
   --> $DIR/drop_forget_copy.rs:51:12
    |
-51 |     forget(s4);
+LL |     forget(s4);
    |            ^^
 
 error: aborting due to 6 previous errors

@@ -1,7 +1,7 @@
 error: redundant closure found
   --> $DIR/eta.rs:22:27
    |
-22 |     let a = Some(1u8).map(|a| foo(a));
+LL |     let a = Some(1u8).map(|a| foo(a));
    |                           ^^^^^^^^^^ help: remove closure as shown: `foo`
    |
    = note: `-D clippy::redundant-closure` implied by `-D warnings`
@@ -9,19 +9,19 @@ error: redundant closure found
 error: redundant closure found
   --> $DIR/eta.rs:23:10
    |
-23 |     meta(|a| foo(a));
+LL |     meta(|a| foo(a));
    |          ^^^^^^^^^^ help: remove closure as shown: `foo`
 
 error: redundant closure found
   --> $DIR/eta.rs:24:27
    |
-24 |     let c = Some(1u8).map(|a| {1+2; foo}(a));
+LL |     let c = Some(1u8).map(|a| {1+2; foo}(a));
    |                           ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `{1+2; foo}`
 
 error: this expression borrows a reference that is immediately dereferenced by the compiler
   --> $DIR/eta.rs:26:21
    |
-26 |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
+LL |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
    |                     ^^^ help: change this to: `&2`
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
@@ -29,7 +29,7 @@ error: this expression borrows a reference that is immediately dereferenced by t
 error: redundant closure found
   --> $DIR/eta.rs:33:27
    |
-33 |     let e = Some(1u8).map(|a| generic(a));
+LL |     let e = Some(1u8).map(|a| generic(a));
    |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `generic`
 
 error: aborting due to 5 previous errors

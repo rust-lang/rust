@@ -1,7 +1,7 @@
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:13:1
    |
-13 | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
+LL | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
@@ -9,114 +9,114 @@ error: explicit lifetimes given in parameter types where they could be elided (o
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:15:1
    |
-15 | fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) {}
+LL | fn distinct_and_static<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: &'static u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:23:1
    |
-23 | / fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 {
-24 | |     x
-25 | | }
+LL | / fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 {
+LL | |     x
+LL | | }
    | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:47:1
    |
-47 | / fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> {
-48 | |     Ok(x)
-49 | | }
+LL | / fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> {
+LL | |     Ok(x)
+LL | | }
    | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:52:1
    |
-52 | / fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()>
-53 | | where
-54 | |     T: Copy,
-55 | | {
-56 | |     Ok(x)
-57 | | }
+LL | / fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()>
+LL | | where
+LL | |     T: Copy,
+LL | | {
+LL | |     Ok(x)
+LL | | }
    | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:63:1
    |
-63 | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
+LL | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/lifetimes.rs:84:1
    |
-84 | / fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
-85 | | where
-86 | |     for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>,
-87 | | {
-88 | |     unreachable!()
-89 | | }
+LL | / fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
+LL | | where
+LL | |     for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>,
+LL | | {
+LL | |     unreachable!()
+LL | | }
    | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:117:5
-    |
-117 | /     fn self_and_out<'s>(&'s self) -> &'s u8 {
-118 | |         &self.x
-119 | |     }
-    | |_____^
+  --> $DIR/lifetimes.rs:117:5
+   |
+LL | /     fn self_and_out<'s>(&'s self) -> &'s u8 {
+LL | |         &self.x
+LL | |     }
+   | |_____^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:125:5
-    |
-125 |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $DIR/lifetimes.rs:125:5
+   |
+LL |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:141:1
-    |
-141 | / fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
-142 | |     unimplemented!()
-143 | | }
-    | |_^
+  --> $DIR/lifetimes.rs:141:1
+   |
+LL | / fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
+LL | |     unimplemented!()
+LL | | }
+   | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:171:1
-    |
-171 | / fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str {
-172 | |     unimplemented!()
-173 | | }
-    | |_^
+  --> $DIR/lifetimes.rs:171:1
+   |
+LL | / fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str {
+LL | |     unimplemented!()
+LL | | }
+   | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:177:1
-    |
-177 | / fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
-178 | |     unimplemented!()
-179 | | }
-    | |_^
+  --> $DIR/lifetimes.rs:177:1
+   |
+LL | / fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
+LL | |     unimplemented!()
+LL | | }
+   | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:196:1
-    |
-196 | / fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
-197 | |     unimplemented!()
-198 | | }
-    | |_^
+  --> $DIR/lifetimes.rs:196:1
+   |
+LL | / fn named_input_elided_output<'a>(_arg: &'a str) -> &str {
+LL | |     unimplemented!()
+LL | | }
+   | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:204:1
-    |
-204 | / fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) {
-205 | |     unimplemented!()
-206 | | }
-    | |_^
+  --> $DIR/lifetimes.rs:204:1
+   |
+LL | / fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) {
+LL | |     unimplemented!()
+LL | | }
+   | |_^
 
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-   --> $DIR/lifetimes.rs:241:1
-    |
-241 | / fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
-242 | |     unimplemented!()
-243 | | }
-    | |_^
+  --> $DIR/lifetimes.rs:241:1
+   |
+LL | / fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
+LL | |     unimplemented!()
+LL | | }
+   | |_^
 
 error: aborting due to 15 previous errors
 

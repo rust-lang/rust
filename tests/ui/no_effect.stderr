@@ -1,7 +1,7 @@
 error: statement with no effect
   --> $DIR/no_effect.rs:74:5
    |
-74 |     0;
+LL |     0;
    |     ^^
    |
    = note: `-D clippy::no-effect` implied by `-D warnings`
@@ -9,146 +9,146 @@ error: statement with no effect
 error: statement with no effect
   --> $DIR/no_effect.rs:75:5
    |
-75 |     s2;
+LL |     s2;
    |     ^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:76:5
    |
-76 |     Unit;
+LL |     Unit;
    |     ^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:77:5
    |
-77 |     Tuple(0);
+LL |     Tuple(0);
    |     ^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:78:5
    |
-78 |     Struct { field: 0 };
+LL |     Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:79:5
    |
-79 |     Struct { ..s };
+LL |     Struct { ..s };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:80:5
    |
-80 |     Union { a: 0 };
+LL |     Union { a: 0 };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:81:5
    |
-81 |     Enum::Tuple(0);
+LL |     Enum::Tuple(0);
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:82:5
    |
-82 |     Enum::Struct { field: 0 };
+LL |     Enum::Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:83:5
    |
-83 |     5 + 6;
+LL |     5 + 6;
    |     ^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:84:5
    |
-84 |     *&42;
+LL |     *&42;
    |     ^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:85:5
    |
-85 |     &6;
+LL |     &6;
    |     ^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:86:5
    |
-86 |     (5, 6, 7);
+LL |     (5, 6, 7);
    |     ^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:87:5
    |
-87 |     box 42;
+LL |     box 42;
    |     ^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:88:5
    |
-88 |     ..;
+LL |     ..;
    |     ^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:89:5
    |
-89 |     5..;
+LL |     5..;
    |     ^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:90:5
    |
-90 |     ..5;
+LL |     ..5;
    |     ^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:91:5
    |
-91 |     5..6;
+LL |     5..6;
    |     ^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:93:5
    |
-93 |     [42, 55];
+LL |     [42, 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:94:5
    |
-94 |     [42, 55][1];
+LL |     [42, 55][1];
    |     ^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:95:5
    |
-95 |     (42, 55).1;
+LL |     (42, 55).1;
    |     ^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:96:5
    |
-96 |     [42; 55];
+LL |     [42; 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:97:5
    |
-97 |     [42; 55][13];
+LL |     [42; 55][13];
    |     ^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:99:5
    |
-99 |     || x += 5;
+LL |     || x += 5;
    |     ^^^^^^^^^^
 
 error: statement with no effect
-   --> $DIR/no_effect.rs:101:5
-    |
-101 |     FooString { s: s };
-    |     ^^^^^^^^^^^^^^^^^^^
+  --> $DIR/no_effect.rs:101:5
+   |
+LL |     FooString { s: s };
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 25 previous errors
 

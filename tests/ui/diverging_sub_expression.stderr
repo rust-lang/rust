@@ -1,7 +1,7 @@
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:30:10
    |
-30 |     b || diverge();
+LL |     b || diverge();
    |          ^^^^^^^^^
    |
    = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
@@ -9,31 +9,31 @@ error: sub-expression diverges
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:31:10
    |
-31 |     b || A.foo();
+LL |     b || A.foo();
    |          ^^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:40:26
    |
-40 |             6 => true || return,
+LL |             6 => true || return,
    |                          ^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:41:26
    |
-41 |             7 => true || continue,
+LL |             7 => true || continue,
    |                          ^^^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:44:26
    |
-44 |             3 => true || diverge(),
+LL |             3 => true || diverge(),
    |                          ^^^^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:49:26
    |
-49 |             _ => true || break,
+LL |             _ => true || break,
    |                          ^^^^^
 
 error: aborting due to 6 previous errors

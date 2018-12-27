@@ -1,7 +1,7 @@
 error: casting i32 to f32 causes a loss of precision (i32 is 32 bits wide, but f32's mantissa is only 23 bits wide)
   --> $DIR/cast.rs:20:5
    |
-20 |     1i32 as f32;
+LL |     1i32 as f32;
    |     ^^^^^^^^^^^
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
@@ -9,37 +9,37 @@ error: casting i32 to f32 causes a loss of precision (i32 is 32 bits wide, but f
 error: casting i64 to f32 causes a loss of precision (i64 is 64 bits wide, but f32's mantissa is only 23 bits wide)
   --> $DIR/cast.rs:21:5
    |
-21 |     1i64 as f32;
+LL |     1i64 as f32;
    |     ^^^^^^^^^^^
 
 error: casting i64 to f64 causes a loss of precision (i64 is 64 bits wide, but f64's mantissa is only 52 bits wide)
   --> $DIR/cast.rs:22:5
    |
-22 |     1i64 as f64;
+LL |     1i64 as f64;
    |     ^^^^^^^^^^^
 
 error: casting u32 to f32 causes a loss of precision (u32 is 32 bits wide, but f32's mantissa is only 23 bits wide)
   --> $DIR/cast.rs:23:5
    |
-23 |     1u32 as f32;
+LL |     1u32 as f32;
    |     ^^^^^^^^^^^
 
 error: casting u64 to f32 causes a loss of precision (u64 is 64 bits wide, but f32's mantissa is only 23 bits wide)
   --> $DIR/cast.rs:24:5
    |
-24 |     1u64 as f32;
+LL |     1u64 as f32;
    |     ^^^^^^^^^^^
 
 error: casting u64 to f64 causes a loss of precision (u64 is 64 bits wide, but f64's mantissa is only 52 bits wide)
   --> $DIR/cast.rs:25:5
    |
-25 |     1u64 as f64;
+LL |     1u64 as f64;
    |     ^^^^^^^^^^^
 
 error: casting f32 to i32 may truncate the value
   --> $DIR/cast.rs:27:5
    |
-27 |     1f32 as i32;
+LL |     1f32 as i32;
    |     ^^^^^^^^^^^
    |
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
@@ -47,13 +47,13 @@ error: casting f32 to i32 may truncate the value
 error: casting f32 to u32 may truncate the value
   --> $DIR/cast.rs:28:5
    |
-28 |     1f32 as u32;
+LL |     1f32 as u32;
    |     ^^^^^^^^^^^
 
 error: casting f32 to u32 may lose the sign of the value
   --> $DIR/cast.rs:28:5
    |
-28 |     1f32 as u32;
+LL |     1f32 as u32;
    |     ^^^^^^^^^^^
    |
    = note: `-D clippy::cast-sign-loss` implied by `-D warnings`
@@ -61,49 +61,49 @@ error: casting f32 to u32 may lose the sign of the value
 error: casting f64 to f32 may truncate the value
   --> $DIR/cast.rs:29:5
    |
-29 |     1f64 as f32;
+LL |     1f64 as f32;
    |     ^^^^^^^^^^^
 
 error: casting i32 to i8 may truncate the value
   --> $DIR/cast.rs:30:5
    |
-30 |     1i32 as i8;
+LL |     1i32 as i8;
    |     ^^^^^^^^^^
 
 error: casting i32 to u8 may lose the sign of the value
   --> $DIR/cast.rs:31:5
    |
-31 |     1i32 as u8;
+LL |     1i32 as u8;
    |     ^^^^^^^^^^
 
 error: casting i32 to u8 may truncate the value
   --> $DIR/cast.rs:31:5
    |
-31 |     1i32 as u8;
+LL |     1i32 as u8;
    |     ^^^^^^^^^^
 
 error: casting f64 to isize may truncate the value
   --> $DIR/cast.rs:32:5
    |
-32 |     1f64 as isize;
+LL |     1f64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting f64 to usize may truncate the value
   --> $DIR/cast.rs:33:5
    |
-33 |     1f64 as usize;
+LL |     1f64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting f64 to usize may lose the sign of the value
   --> $DIR/cast.rs:33:5
    |
-33 |     1f64 as usize;
+LL |     1f64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u8 to i8 may wrap around the value
   --> $DIR/cast.rs:35:5
    |
-35 |     1u8 as i8;
+LL |     1u8 as i8;
    |     ^^^^^^^^^
    |
    = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
@@ -111,31 +111,31 @@ error: casting u8 to i8 may wrap around the value
 error: casting u16 to i16 may wrap around the value
   --> $DIR/cast.rs:36:5
    |
-36 |     1u16 as i16;
+LL |     1u16 as i16;
    |     ^^^^^^^^^^^
 
 error: casting u32 to i32 may wrap around the value
   --> $DIR/cast.rs:37:5
    |
-37 |     1u32 as i32;
+LL |     1u32 as i32;
    |     ^^^^^^^^^^^
 
 error: casting u64 to i64 may wrap around the value
   --> $DIR/cast.rs:38:5
    |
-38 |     1u64 as i64;
+LL |     1u64 as i64;
    |     ^^^^^^^^^^^
 
 error: casting usize to isize may wrap around the value
   --> $DIR/cast.rs:39:5
    |
-39 |     1usize as isize;
+LL |     1usize as isize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting f32 to f64 may become silently lossy if types change
   --> $DIR/cast.rs:41:5
    |
-41 |     1.0f32 as f64;
+LL |     1.0f32 as f64;
    |     ^^^^^^^^^^^^^ help: try: `f64::from(1.0f32)`
    |
    = note: `-D clippy::cast-lossless` implied by `-D warnings`
@@ -143,25 +143,25 @@ error: casting f32 to f64 may become silently lossy if types change
 error: casting u8 to u16 may become silently lossy if types change
   --> $DIR/cast.rs:43:5
    |
-43 |     (1u8 + 1u8) as u16;
+LL |     (1u8 + 1u8) as u16;
    |     ^^^^^^^^^^^^^^^^^^ help: try: `u16::from(1u8 + 1u8)`
 
 error: casting i32 to u32 may lose the sign of the value
   --> $DIR/cast.rs:45:5
    |
-45 |     1i32 as u32;
+LL |     1i32 as u32;
    |     ^^^^^^^^^^^
 
 error: casting isize to usize may lose the sign of the value
   --> $DIR/cast.rs:46:5
    |
-46 |     1isize as usize;
+LL |     1isize as usize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting to the same type is unnecessary (`i32` -> `i32`)
   --> $DIR/cast.rs:49:5
    |
-49 |     1i32 as i32;
+LL |     1i32 as i32;
    |     ^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
@@ -169,13 +169,13 @@ error: casting to the same type is unnecessary (`i32` -> `i32`)
 error: casting to the same type is unnecessary (`f32` -> `f32`)
   --> $DIR/cast.rs:50:5
    |
-50 |     1f32 as f32;
+LL |     1f32 as f32;
    |     ^^^^^^^^^^^
 
 error: casting to the same type is unnecessary (`bool` -> `bool`)
   --> $DIR/cast.rs:51:5
    |
-51 |     false as bool;
+LL |     false as bool;
    |     ^^^^^^^^^^^^^
 
 error: aborting due to 28 previous errors

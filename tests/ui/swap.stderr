@@ -1,9 +1,9 @@
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:17:5
    |
-17 | /     let temp = foo[0];
-18 | |     foo[0] = foo[1];
-19 | |     foo[1] = temp;
+LL | /     let temp = foo[0];
+LL | |     foo[0] = foo[1];
+LL | |     foo[1] = temp;
    | |_________________^ help: try: `foo.swap(0, 1)`
    |
    = note: `-D clippy::manual-swap` implied by `-D warnings`
@@ -11,26 +11,26 @@ error: this looks like you are swapping elements of `foo` manually
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:26:5
    |
-26 | /     let temp = foo[0];
-27 | |     foo[0] = foo[1];
-28 | |     foo[1] = temp;
+LL | /     let temp = foo[0];
+LL | |     foo[0] = foo[1];
+LL | |     foo[1] = temp;
    | |_________________^ help: try: `foo.swap(0, 1)`
 
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:35:5
    |
-35 | /     let temp = foo[0];
-36 | |     foo[0] = foo[1];
-37 | |     foo[1] = temp;
+LL | /     let temp = foo[0];
+LL | |     foo[0] = foo[1];
+LL | |     foo[1] = temp;
    | |_________________^ help: try: `foo.swap(0, 1)`
 
 error: this looks like you are swapping `a` and `b` manually
   --> $DIR/swap.rs:54:7
    |
-54 |       ; let t = a;
+LL |       ; let t = a;
    |  _______^
-55 | |     a = b;
-56 | |     b = t;
+LL | |     a = b;
+LL | |     b = t;
    | |_________^ help: try: `std::mem::swap(&mut a, &mut b)`
    |
    = note: or maybe you should use `std::mem::replace`?
@@ -38,10 +38,10 @@ error: this looks like you are swapping `a` and `b` manually
 error: this looks like you are swapping `c.0` and `a` manually
   --> $DIR/swap.rs:63:7
    |
-63 |       ; let t = c.0;
+LL |       ; let t = c.0;
    |  _______^
-64 | |     c.0 = a;
-65 | |     a = t;
+LL | |     c.0 = a;
+LL | |     a = t;
    | |_________^ help: try: `std::mem::swap(&mut c.0, &mut a)`
    |
    = note: or maybe you should use `std::mem::replace`?
@@ -49,8 +49,8 @@ error: this looks like you are swapping `c.0` and `a` manually
 error: this looks like you are trying to swap `a` and `b`
   --> $DIR/swap.rs:51:5
    |
-51 | /     a = b;
-52 | |     b = a;
+LL | /     a = b;
+LL | |     b = a;
    | |_________^ help: try: `std::mem::swap(&mut a, &mut b)`
    |
    = note: `-D clippy::almost-swapped` implied by `-D warnings`
@@ -59,8 +59,8 @@ error: this looks like you are trying to swap `a` and `b`
 error: this looks like you are trying to swap `c.0` and `a`
   --> $DIR/swap.rs:60:5
    |
-60 | /     c.0 = a;
-61 | |     a = c.0;
+LL | /     c.0 = a;
+LL | |     a = c.0;
    | |___________^ help: try: `std::mem::swap(&mut c.0, &mut a)`
    |
    = note: or maybe you should use `std::mem::replace`?

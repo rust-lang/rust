@@ -1,7 +1,7 @@
 error: casting function pointer `foo` to `i8`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:19:13
    |
-19 |     let _ = foo as i8;
+LL |     let _ = foo as i8;
    |             ^^^^^^^^^ help: try: `foo as usize`
    |
    = note: `-D clippy::fn-to-numeric-cast-with-truncation` implied by `-D warnings`
@@ -9,19 +9,19 @@ error: casting function pointer `foo` to `i8`, which truncates the value
 error: casting function pointer `foo` to `i16`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:20:13
    |
-20 |     let _ = foo as i16;
+LL |     let _ = foo as i16;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `i32`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:21:13
    |
-21 |     let _ = foo as i32;
+LL |     let _ = foo as i32;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `i64`
   --> $DIR/fn_to_numeric_cast.rs:22:13
    |
-22 |     let _ = foo as i64;
+LL |     let _ = foo as i64;
    |             ^^^^^^^^^^ help: try: `foo as usize`
    |
    = note: `-D clippy::fn-to-numeric-cast` implied by `-D warnings`
@@ -29,115 +29,115 @@ error: casting function pointer `foo` to `i64`
 error: casting function pointer `foo` to `i128`
   --> $DIR/fn_to_numeric_cast.rs:23:13
    |
-23 |     let _ = foo as i128;
+LL |     let _ = foo as i128;
    |             ^^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `isize`
   --> $DIR/fn_to_numeric_cast.rs:24:13
    |
-24 |     let _ = foo as isize;
+LL |     let _ = foo as isize;
    |             ^^^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u8`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:26:13
    |
-26 |     let _ = foo as u8;
+LL |     let _ = foo as u8;
    |             ^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u16`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:27:13
    |
-27 |     let _ = foo as u16;
+LL |     let _ = foo as u16;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u32`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:28:13
    |
-28 |     let _ = foo as u32;
+LL |     let _ = foo as u32;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u64`
   --> $DIR/fn_to_numeric_cast.rs:29:13
    |
-29 |     let _ = foo as u64;
+LL |     let _ = foo as u64;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `foo` to `u128`
   --> $DIR/fn_to_numeric_cast.rs:30:13
    |
-30 |     let _ = foo as u128;
+LL |     let _ = foo as u128;
    |             ^^^^^^^^^^^ help: try: `foo as usize`
 
 error: casting function pointer `abc` to `i8`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:43:13
    |
-43 |     let _ = abc as i8;
+LL |     let _ = abc as i8;
    |             ^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `i16`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:44:13
    |
-44 |     let _ = abc as i16;
+LL |     let _ = abc as i16;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `i32`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:45:13
    |
-45 |     let _ = abc as i32;
+LL |     let _ = abc as i32;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `i64`
   --> $DIR/fn_to_numeric_cast.rs:46:13
    |
-46 |     let _ = abc as i64;
+LL |     let _ = abc as i64;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `i128`
   --> $DIR/fn_to_numeric_cast.rs:47:13
    |
-47 |     let _ = abc as i128;
+LL |     let _ = abc as i128;
    |             ^^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `isize`
   --> $DIR/fn_to_numeric_cast.rs:48:13
    |
-48 |     let _ = abc as isize;
+LL |     let _ = abc as isize;
    |             ^^^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `u8`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:50:13
    |
-50 |     let _ = abc as u8;
+LL |     let _ = abc as u8;
    |             ^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `u16`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:51:13
    |
-51 |     let _ = abc as u16;
+LL |     let _ = abc as u16;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `u32`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:52:13
    |
-52 |     let _ = abc as u32;
+LL |     let _ = abc as u32;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `u64`
   --> $DIR/fn_to_numeric_cast.rs:53:13
    |
-53 |     let _ = abc as u64;
+LL |     let _ = abc as u64;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `abc` to `u128`
   --> $DIR/fn_to_numeric_cast.rs:54:13
    |
-54 |     let _ = abc as u128;
+LL |     let _ = abc as u128;
    |             ^^^^^^^^^^^ help: try: `abc as usize`
 
 error: casting function pointer `f` to `i32`, which truncates the value
   --> $DIR/fn_to_numeric_cast.rs:61:5
    |
-61 |     f as i32
+LL |     f as i32
    |     ^^^^^^^^ help: try: `f as usize`
 
 error: aborting due to 23 previous errors

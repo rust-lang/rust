@@ -1,12 +1,12 @@
 error: ==-comparison of unit values detected. This will always be true
   --> $DIR/unit_cmp.rs:21:8
    |
-21 |       if {
+LL |       if {
    |  ________^
-22 | |         true;
-23 | |     } == {
-24 | |         false;
-25 | |     } {}
+LL | |         true;
+LL | |     } == {
+LL | |         false;
+LL | |     } {}
    | |_____^
    |
    = note: `-D clippy::unit-cmp` implied by `-D warnings`
@@ -14,12 +14,12 @@ error: ==-comparison of unit values detected. This will always be true
 error: >-comparison of unit values detected. This will always be false
   --> $DIR/unit_cmp.rs:27:8
    |
-27 |       if {
+LL |       if {
    |  ________^
-28 | |         true;
-29 | |     } > {
-30 | |         false;
-31 | |     } {}
+LL | |         true;
+LL | |     } > {
+LL | |         false;
+LL | |     } {}
    | |_____^
 
 error: aborting due to 2 previous errors

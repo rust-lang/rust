@@ -1,7 +1,7 @@
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
   --> $DIR/fxhash.rs:16:24
    |
-16 | use std::collections::{HashMap, HashSet};
+LL | use std::collections::{HashMap, HashSet};
    |                        ^^^^^^^ help: use: `FxHashMap`
    |
    = note: `-D clippy::default-hash-types` implied by `-D warnings`
@@ -9,31 +9,31 @@ error: Prefer FxHashMap over HashMap, it has better performance and we don't nee
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
   --> $DIR/fxhash.rs:16:33
    |
-16 | use std::collections::{HashMap, HashSet};
+LL | use std::collections::{HashMap, HashSet};
    |                                 ^^^^^^^ help: use: `FxHashSet`
 
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
   --> $DIR/fxhash.rs:19:15
    |
-19 |     let _map: HashMap<String, String> = HashMap::default();
+LL |     let _map: HashMap<String, String> = HashMap::default();
    |               ^^^^^^^ help: use: `FxHashMap`
 
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
   --> $DIR/fxhash.rs:19:41
    |
-19 |     let _map: HashMap<String, String> = HashMap::default();
+LL |     let _map: HashMap<String, String> = HashMap::default();
    |                                         ^^^^^^^ help: use: `FxHashMap`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
   --> $DIR/fxhash.rs:20:15
    |
-20 |     let _set: HashSet<String> = HashSet::default();
+LL |     let _set: HashSet<String> = HashSet::default();
    |               ^^^^^^^ help: use: `FxHashSet`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
   --> $DIR/fxhash.rs:20:33
    |
-20 |     let _set: HashSet<String> = HashSet::default();
+LL |     let _set: HashSet<String> = HashSet::default();
    |                                 ^^^^^^^ help: use: `FxHashSet`
 
 error: aborting due to 6 previous errors

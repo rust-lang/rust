@@ -1,17 +1,17 @@
 error: the lint `TEST_LINT` is not added to any `LintPass`
   --> $DIR/lint_without_lint_pass.rs:11:1
    |
-11 | / declare_clippy_lint! {
-12 | |     pub TEST_LINT,
-13 | |     correctness,
-14 | |     ""
-15 | | }
+LL | / declare_clippy_lint! {
+LL | |     pub TEST_LINT,
+LL | |     correctness,
+LL | |     ""
+LL | | }
    | |_^
    |
 note: lint level defined here
   --> $DIR/lint_without_lint_pass.rs:1:9
    |
-1  | #![deny(clippy::internal)]
+LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
    = note: #[deny(clippy::lint_without_lint_pass)] implied by #[deny(clippy::internal)]
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)

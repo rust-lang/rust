@@ -1,9 +1,9 @@
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:22:5
    |
-21 |     let mut vec1 = Vec::with_capacity(len);
+LL |     let mut vec1 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replace allocation with: `vec![0; len]`
-22 |     vec1.extend(repeat(0).take(len));
+LL |     vec1.extend(repeat(0).take(len));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
@@ -11,49 +11,49 @@ error: slow zero-filling initialization
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:26:5
    |
-25 |     let mut vec2 = Vec::with_capacity(len - 10);
+LL |     let mut vec2 = Vec::with_capacity(len - 10);
    |                    ---------------------------- help: consider replace allocation with: `vec![0; len - 10]`
-26 |     vec2.extend(repeat(0).take(len - 10));
+LL |     vec2.extend(repeat(0).take(len - 10));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:40:5
    |
-39 |     let mut resized_vec = Vec::with_capacity(30);
+LL |     let mut resized_vec = Vec::with_capacity(30);
    |                           ---------------------- help: consider replace allocation with: `vec![0; 30]`
-40 |     resized_vec.resize(30, 0);
+LL |     resized_vec.resize(30, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:43:5
    |
-42 |     let mut extend_vec = Vec::with_capacity(30);
+LL |     let mut extend_vec = Vec::with_capacity(30);
    |                          ---------------------- help: consider replace allocation with: `vec![0; 30]`
-43 |     extend_vec.extend(repeat(0).take(30));
+LL |     extend_vec.extend(repeat(0).take(30));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:50:5
    |
-49 |     let mut vec1 = Vec::with_capacity(len);
+LL |     let mut vec1 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replace allocation with: `vec![0; len]`
-50 |     vec1.resize(len, 0);
+LL |     vec1.resize(len, 0);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:58:5
    |
-57 |     let mut vec3 = Vec::with_capacity(len - 10);
+LL |     let mut vec3 = Vec::with_capacity(len - 10);
    |                    ---------------------------- help: consider replace allocation with: `vec![0; len - 10]`
-58 |     vec3.resize(len - 10, 0);
+LL |     vec3.resize(len - 10, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:62:5
    |
-61 |     vec1 = Vec::with_capacity(10);
+LL |     vec1 = Vec::with_capacity(10);
    |            ---------------------- help: consider replace allocation with: `vec![0; 10]`
-62 |     vec1.resize(10, 0);
+LL |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors

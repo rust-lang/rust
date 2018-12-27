@@ -1,7 +1,7 @@
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:25:5
    |
-25 |     x + 0;
+LL |     x + 0;
    |     ^^^^^
    |
    = note: `-D clippy::identity-op` implied by `-D warnings`
@@ -9,43 +9,43 @@ error: the operation is ineffective. Consider reducing it to `x`
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:26:5
    |
-26 |     x + (1 - 1);
+LL |     x + (1 - 1);
    |     ^^^^^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:28:5
    |
-28 |     0 + x;
+LL |     0 + x;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:31:5
    |
-31 |     x | (0);
+LL |     x | (0);
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:34:5
    |
-34 |     x * 1;
+LL |     x * 1;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:35:5
    |
-35 |     1 * x;
+LL |     1 * x;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:41:5
    |
-41 |     -1 & x;
+LL |     -1 & x;
    |     ^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `u`
   --> $DIR/identity_op.rs:44:5
    |
-44 |     u & 255;
+LL |     u & 255;
    |     ^^^^^^^
 
 error: aborting due to 8 previous errors

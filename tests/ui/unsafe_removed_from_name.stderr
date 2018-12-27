@@ -1,7 +1,7 @@
 error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell`
   --> $DIR/unsafe_removed_from_name.rs:14:1
    |
-14 | use std::cell::UnsafeCell as TotallySafeCell;
+LL | use std::cell::UnsafeCell as TotallySafeCell;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unsafe-removed-from-name` implied by `-D warnings`
@@ -9,13 +9,13 @@ error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell
 error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
   --> $DIR/unsafe_removed_from_name.rs:16:1
    |
-16 | use std::cell::UnsafeCell as TotallySafeCellAgain;
+LL | use std::cell::UnsafeCell as TotallySafeCellAgain;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: removed "unsafe" from the name of `Unsafe` in use as `LieAboutModSafety`
   --> $DIR/unsafe_removed_from_name.rs:30:1
    |
-30 | use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
+LL | use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

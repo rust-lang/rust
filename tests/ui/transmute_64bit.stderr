@@ -1,7 +1,7 @@
 error: transmute from a `f64` to a pointer
   --> $DIR/transmute_64bit.rs:16:31
    |
-16 |         let _: *const usize = std::mem::transmute(6.0f64);
+LL |         let _: *const usize = std::mem::transmute(6.0f64);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::wrong-transmute` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: transmute from a `f64` to a pointer
 error: transmute from a `f64` to a pointer
   --> $DIR/transmute_64bit.rs:18:29
    |
-18 |         let _: *mut usize = std::mem::transmute(6.0f64);
+LL |         let _: *mut usize = std::mem::transmute(6.0f64);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

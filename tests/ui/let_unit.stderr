@@ -1,7 +1,7 @@
 error: this let-binding has unit value. Consider omitting `let _x =`
   --> $DIR/let_unit.rs:20:5
    |
-20 |     let _x = println!("x");
+LL |     let _x = println!("x");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::let-unit-value` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: this let-binding has unit value. Consider omitting `let _x =`
 error: this let-binding has unit value. Consider omitting `let _a =`
   --> $DIR/let_unit.rs:24:9
    |
-24 |         let _a = ();
+LL |         let _a = ();
    |         ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

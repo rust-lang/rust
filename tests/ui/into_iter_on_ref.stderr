@@ -1,25 +1,25 @@
 error: this .into_iter() call is equivalent to .iter() and will not move the array
   --> $DIR/into_iter_on_ref.rs:11:24
    |
-11 |     for _ in [1, 2, 3].into_iter() {} //~ ERROR equivalent to .iter()
+LL |     for _ in [1, 2, 3].into_iter() {} //~ ERROR equivalent to .iter()
    |                        ^^^^^^^^^ help: call directly: `iter`
    |
 note: lint level defined here
   --> $DIR/into_iter_on_ref.rs:2:9
    |
-2  | #![deny(clippy::into_iter_on_array)]
+LL | #![deny(clippy::into_iter_on_array)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this .into_iter() call is equivalent to .iter() and will not move the array
   --> $DIR/into_iter_on_ref.rs:13:23
    |
-13 |     let _ = [1, 2, 3].into_iter(); //~ ERROR equivalent to .iter()
+LL |     let _ = [1, 2, 3].into_iter(); //~ ERROR equivalent to .iter()
    |                       ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Vec
   --> $DIR/into_iter_on_ref.rs:15:30
    |
-15 |     let _ = (&vec![1, 2, 3]).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&vec![1, 2, 3]).into_iter(); //~ WARN equivalent to .iter()
    |                              ^^^^^^^^^ help: call directly: `iter`
    |
    = note: `-D clippy::into-iter-on-ref` implied by `-D warnings`
@@ -27,151 +27,151 @@ error: this .into_iter() call is equivalent to .iter() and will not move the Vec
 error: this .into_iter() call is equivalent to .iter() and will not move the slice
   --> $DIR/into_iter_on_ref.rs:16:46
    |
-16 |     let _ = vec![1, 2, 3].into_boxed_slice().into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = vec![1, 2, 3].into_boxed_slice().into_iter(); //~ WARN equivalent to .iter()
    |                                              ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the slice
   --> $DIR/into_iter_on_ref.rs:17:41
    |
-17 |     let _ = std::rc::Rc::from(&[X][..]).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = std::rc::Rc::from(&[X][..]).into_iter(); //~ WARN equivalent to .iter()
    |                                         ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the slice
   --> $DIR/into_iter_on_ref.rs:18:44
    |
-18 |     let _ = std::sync::Arc::from(&[X][..]).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = std::sync::Arc::from(&[X][..]).into_iter(); //~ WARN equivalent to .iter()
    |                                            ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the array
   --> $DIR/into_iter_on_ref.rs:20:32
    |
-20 |     let _ = (&&&&&&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
+LL |     let _ = (&&&&&&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
    |                                ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the array
   --> $DIR/into_iter_on_ref.rs:21:36
    |
-21 |     let _ = (&&&&mut &&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
+LL |     let _ = (&&&&mut &&&[1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter()
    |                                    ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the array
   --> $DIR/into_iter_on_ref.rs:22:40
    |
-22 |     let _ = (&mut &mut &mut [1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter_mut()
+LL |     let _ = (&mut &mut &mut [1, 2, 3]).into_iter(); //~ ERROR equivalent to .iter_mut()
    |                                        ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Option
   --> $DIR/into_iter_on_ref.rs:24:24
    |
-24 |     let _ = (&Some(4)).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&Some(4)).into_iter(); //~ WARN equivalent to .iter()
    |                        ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the Option
   --> $DIR/into_iter_on_ref.rs:25:28
    |
-25 |     let _ = (&mut Some(5)).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut Some(5)).into_iter(); //~ WARN equivalent to .iter_mut()
    |                            ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Result
   --> $DIR/into_iter_on_ref.rs:26:32
    |
-26 |     let _ = (&Ok::<_, i32>(6)).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&Ok::<_, i32>(6)).into_iter(); //~ WARN equivalent to .iter()
    |                                ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the Result
   --> $DIR/into_iter_on_ref.rs:27:37
    |
-27 |     let _ = (&mut Err::<i32, _>(7)).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut Err::<i32, _>(7)).into_iter(); //~ WARN equivalent to .iter_mut()
    |                                     ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Vec
   --> $DIR/into_iter_on_ref.rs:28:34
    |
-28 |     let _ = (&Vec::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&Vec::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                  ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the Vec
   --> $DIR/into_iter_on_ref.rs:29:38
    |
-29 |     let _ = (&mut Vec::<i32>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut Vec::<i32>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
    |                                      ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the BTreeMap
   --> $DIR/into_iter_on_ref.rs:30:44
    |
-30 |     let _ = (&BTreeMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&BTreeMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                            ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the BTreeMap
   --> $DIR/into_iter_on_ref.rs:31:48
    |
-31 |     let _ = (&mut BTreeMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut BTreeMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
    |                                                ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the VecDeque
   --> $DIR/into_iter_on_ref.rs:32:39
    |
-32 |     let _ = (&VecDeque::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&VecDeque::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                       ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the VecDeque
   --> $DIR/into_iter_on_ref.rs:33:43
    |
-33 |     let _ = (&mut VecDeque::<i32>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut VecDeque::<i32>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
    |                                           ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the LinkedList
   --> $DIR/into_iter_on_ref.rs:34:41
    |
-34 |     let _ = (&LinkedList::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&LinkedList::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                         ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the LinkedList
   --> $DIR/into_iter_on_ref.rs:35:45
    |
-35 |     let _ = (&mut LinkedList::<i32>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut LinkedList::<i32>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
    |                                             ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the HashMap
   --> $DIR/into_iter_on_ref.rs:36:43
    |
-36 |     let _ = (&HashMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&HashMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                           ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter_mut() and will not move the HashMap
   --> $DIR/into_iter_on_ref.rs:37:47
    |
-37 |     let _ = (&mut HashMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
+LL |     let _ = (&mut HashMap::<i32, u64>::new()).into_iter(); //~ WARN equivalent to .iter_mut()
    |                                               ^^^^^^^^^ help: call directly: `iter_mut`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the BTreeSet
   --> $DIR/into_iter_on_ref.rs:39:39
    |
-39 |     let _ = (&BTreeSet::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&BTreeSet::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                       ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the BinaryHeap
   --> $DIR/into_iter_on_ref.rs:40:41
    |
-40 |     let _ = (&BinaryHeap::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&BinaryHeap::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                         ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the HashSet
   --> $DIR/into_iter_on_ref.rs:41:38
    |
-41 |     let _ = (&HashSet::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = (&HashSet::<i32>::new()).into_iter(); //~ WARN equivalent to .iter()
    |                                      ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Path
   --> $DIR/into_iter_on_ref.rs:42:43
    |
-42 |     let _ = std::path::Path::new("12/34").into_iter(); //~ WARN equivalent to .iter()
+LL |     let _ = std::path::Path::new("12/34").into_iter(); //~ WARN equivalent to .iter()
    |                                           ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the PathBuf
   --> $DIR/into_iter_on_ref.rs:43:47
    |
-43 |     let _ = std::path::PathBuf::from("12/34").into_iter(); //~ ERROR equivalent to .iter()
+LL |     let _ = std::path::PathBuf::from("12/34").into_iter(); //~ ERROR equivalent to .iter()
    |                                               ^^^^^^^^^ help: call directly: `iter`
 
 error: aborting due to 28 previous errors

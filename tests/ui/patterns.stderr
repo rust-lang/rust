@@ -1,7 +1,7 @@
 error: the `y @ _` pattern can be written as just `y`
   --> $DIR/patterns.rs:17:9
    |
-17 |         y @ _ => (),
+LL |         y @ _ => (),
    |         ^^^^^
    |
    = note: `-D clippy::redundant-pattern` implied by `-D warnings`

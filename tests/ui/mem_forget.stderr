@@ -1,7 +1,7 @@
 error: usage of mem::forget on Drop type
   --> $DIR/mem_forget.rs:23:5
    |
-23 |     memstuff::forget(six);
+LL |     memstuff::forget(six);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mem-forget` implied by `-D warnings`
@@ -9,13 +9,13 @@ error: usage of mem::forget on Drop type
 error: usage of mem::forget on Drop type
   --> $DIR/mem_forget.rs:26:5
    |
-26 |     std::mem::forget(seven);
+LL |     std::mem::forget(seven);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of mem::forget on Drop type
   --> $DIR/mem_forget.rs:29:5
    |
-29 |     forgetSomething(eight);
+LL |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
