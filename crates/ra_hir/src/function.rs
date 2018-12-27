@@ -11,43 +11,42 @@ use ra_syntax::{
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
 };
 
-use crate::{ DefId, HirDatabase, ty::InferenceResult, Module };
+use crate::{DefId, DefKind, HirDatabase, ty::InferenceResult, Module};
 
 pub use self::scope::FnScopes;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct FnId(pub(crate) DefId);
-
 #[derive(Debug)]
 pub struct Function {
-    pub(crate) fn_id: FnId,
+    def_id: DefId,
 }
 
 impl Function {
     pub(crate) fn new(def_id: DefId) -> Function {
-        let fn_id = FnId(def_id);
-        Function { fn_id }
+        Function { def_id }
     }
 
     pub fn syntax(&self, db: &impl HirDatabase) -> ast::FnDefNode {
-        db.fn_syntax(self.fn_id)
+        let def_loc = self.def_id.loc(db);
+        assert!(def_loc.kind == DefKind::Function);
+        let syntax = db.file_item(def_loc.source_item_id);
+        ast::FnDef::cast(syntax.borrowed()).unwrap().owned()
     }
 
     pub fn scopes(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
-        db.fn_scopes(self.fn_id)
+        db.fn_scopes(self.def_id)
     }
 
     pub fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
-        let syntax = db.fn_syntax(self.fn_id);
+        let syntax = self.syntax(db);
         FnSignatureInfo::new(syntax.borrowed())
     }
 
     pub fn infer(&self, db: &impl HirDatabase) -> Cancelable<Arc<InferenceResult>> {
-        db.infer(self.fn_id)
+        db.infer(self.def_id)
     }
 
     pub fn module(&self, db: &impl HirDatabase) -> Cancelable<Module> {
-        self.fn_id.0.module(db)
+        self.def_id.module(db)
     }
 }
 

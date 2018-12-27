@@ -123,9 +123,6 @@ impl AnalysisHostImpl {
             .query(ra_db::SourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         self.db
-            .query(hir::db::FnSyntaxQuery)
-            .sweep(salsa::SweepStrategy::default().discard_values());
-        self.db
             .query(hir::db::SourceFileItemsQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         self.db

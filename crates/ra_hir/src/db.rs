@@ -3,7 +3,6 @@ use std::sync::Arc;
 use ra_syntax::{
     SmolStr,
     SyntaxNode,
-    ast::FnDefNode,
 };
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, FileId, Cancelable};
 
@@ -12,7 +11,6 @@ use crate::{
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
-    function::FnId,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
@@ -24,13 +22,9 @@ salsa::query_group! {
 pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
 {
-    fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
+    fn fn_scopes(def_id: DefId) -> Arc<FnScopes> {
         type FnScopesQuery;
         use fn query_definitions::fn_scopes;
-    }
-    fn fn_syntax(fn_id: FnId) -> FnDefNode {
-        type FnSyntaxQuery;
-        use fn query_definitions::fn_syntax;
     }
 
     fn struct_data(def_id: DefId) -> Cancelable<Arc<StructData>> {
@@ -43,7 +37,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::enum_data;
     }
 
-    fn infer(fn_id: FnId) -> Cancelable<Arc<InferenceResult>> {
+    fn infer(def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
         type InferQuery;
         use fn query_definitions::infer;
     }
