@@ -8,20 +8,39 @@
 use ra_db::{FileId, FilePosition, Cancelable};
 use ra_editor::find_node_at_offset;
 use ra_syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, NameOwner},
     SyntaxNodeRef,
 };
 
 use crate::{
     HirDatabase, Module, Function, SourceItemId,
     module::ModuleSource,
-    DefKind, DefLoc
+    DefKind, DefLoc, AsName,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Cancelable<Option<Module>> {
     let module_source = ModuleSource::new_file(file_id);
     module_from_source(db, module_source)
+}
+
+/// Locates the child module by `mod child;` declaration.
+pub fn module_from_declaration(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    decl: ast::Module,
+) -> Cancelable<Option<Module>> {
+    let parent_module = module_from_file_id(db, file_id)?;
+    let child_name = decl.name();
+    match (parent_module, child_name) {
+        (Some(parent_module), Some(child_name)) => {
+            if let Some(child) = parent_module.child(&child_name.as_name()) {
+                return Ok(Some(child));
+            }
+        }
+        _ => (),
+    }
+    Ok(None)
 }
 
 /// Locates the module by position in the source code.

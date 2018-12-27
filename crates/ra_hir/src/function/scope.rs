@@ -1,7 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
-    AstNode, SmolStr, SyntaxNodeRef, TextUnit, TextRange,
+    AstNode, SyntaxNodeRef, TextUnit, TextRange,
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
 };
@@ -9,6 +9,7 @@ use ra_db::LocalSyntaxPtr;
 
 use crate::{
     arena::{Arena, Id},
+    Name, AsName,
 };
 
 pub(crate) type ScopeId = Id<ScopeData>;
@@ -22,7 +23,7 @@ pub struct FnScopes {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ScopeEntry {
-    name: SmolStr,
+    name: Name,
     ptr: LocalSyntaxPtr,
 }
 
@@ -101,11 +102,12 @@ impl FnScopes {
 
     pub fn resolve_local_name<'a>(&'a self, name_ref: ast::NameRef) -> Option<&'a ScopeEntry> {
         let mut shadowed = FxHashSet::default();
+        let name = name_ref.as_name();
         let ret = self
             .scope_chain(name_ref.syntax())
             .flat_map(|scope| self.entries(scope).iter())
             .filter(|entry| shadowed.insert(entry.name()))
-            .filter(|entry| entry.name() == &name_ref.text())
+            .filter(|entry| entry.name() == &name)
             .nth(0);
         ret
     }
@@ -170,14 +172,14 @@ impl FnScopes {
 
 impl ScopeEntry {
     fn new(pat: ast::BindPat) -> Option<ScopeEntry> {
-        let name = pat.name()?;
+        let name = pat.name()?.as_name();
         let res = ScopeEntry {
-            name: name.text(),
+            name,
             ptr: LocalSyntaxPtr::new(pat.syntax()),
         };
         Some(res)
     }
-    pub fn name(&self) -> &SmolStr {
+    pub fn name(&self) -> &Name {
         &self.name
     }
     pub fn ptr(&self) -> LocalSyntaxPtr {
@@ -334,7 +336,7 @@ pub struct ReferenceDescriptor {
 mod tests {
     use ra_editor::find_node_at_offset;
     use ra_syntax::SourceFileNode;
-    use test_utils::extract_offset;
+    use test_utils::{extract_offset, assert_eq_text};
 
     use super::*;
 
@@ -355,9 +357,11 @@ mod tests {
         let actual = scopes
             .scope_chain(marker.syntax())
             .flat_map(|scope| scopes.entries(scope))
-            .map(|it| it.name())
-            .collect::<Vec<_>>();
-        assert_eq!(actual.as_slice(), expected);
+            .map(|it| it.name().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let expected = expected.join("\n");
+        assert_eq_text!(&actual, &expected);
     }
 
     #[test]

@@ -243,7 +243,7 @@ impl AnalysisImpl {
                     rr.add_resolution(
                         position.file_id,
                         FileSymbol {
-                            name: entry.name().clone(),
+                            name: entry.name().to_string().into(),
                             node_range: entry.ptr().range(),
                             kind: NAME,
                         },
@@ -261,23 +261,21 @@ impl AnalysisImpl {
             let mut rr = ReferenceResolution::new(name.syntax().range());
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    let parent_module =
-                        source_binder::module_from_file_id(&*self.db, position.file_id)?;
-                    let child_name = module.name();
-                    match (parent_module, child_name) {
-                        (Some(parent_module), Some(child_name)) => {
-                            if let Some(child) = parent_module.child(&child_name.text()) {
-                                let file_id = child.source().file_id();
-                                let symbol = FileSymbol {
-                                    name: child_name.text(),
-                                    node_range: TextRange::offset_len(0.into(), 0.into()),
-                                    kind: MODULE,
-                                };
-                                rr.add_resolution(file_id, symbol);
-                                return Ok(Some(rr));
-                            }
-                        }
-                        _ => (),
+                    if let Some(child_module) =
+                        source_binder::module_from_declaration(&*self.db, position.file_id, module)?
+                    {
+                        let file_id = child_module.source().file_id();
+                        let name = match child_module.name() {
+                            Some(name) => name.to_string().into(),
+                            None => "".into(),
+                        };
+                        let symbol = FileSymbol {
+                            name,
+                            node_range: TextRange::offset_len(0.into(), 0.into()),
+                            kind: MODULE,
+                        };
+                        rr.add_resolution(file_id, symbol);
+                        return Ok(Some(rr));
                     }
                 }
             }
