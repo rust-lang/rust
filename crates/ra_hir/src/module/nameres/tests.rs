@@ -9,6 +9,7 @@ use crate::{
     self as hir,
     db::HirDatabase,
     mock::MockDatabase,
+    Name,
 };
 
 fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
@@ -38,7 +39,7 @@ fn item_map_smoke_test() {
         pub struct Baz;
     ",
     );
-    let name = SmolStr::from("Baz");
+    let name = Name::new(SmolStr::from("Baz"));
     let resolution = &item_map.per_module[&module_id].items[&name];
     assert!(resolution.def_id.take_types().is_some());
 }
@@ -57,7 +58,7 @@ fn test_self() {
             pub struct Baz;
         ",
     );
-    let name = SmolStr::from("Baz");
+    let name = Name::new(SmolStr::from("Baz"));
     let resolution = &item_map.per_module[&module_id].items[&name];
     assert!(resolution.def_id.take_types().is_some());
 }
@@ -90,7 +91,7 @@ fn item_map_across_crates() {
     let module_id = module.module_id;
     let item_map = db.item_map(source_root).unwrap();
 
-    let name = SmolStr::from("Baz");
+    let name = Name::new(SmolStr::from("Baz"));
     let resolution = &item_map.per_module[&module_id].items[&name];
     assert!(resolution.def_id.take_types().is_some());
 }

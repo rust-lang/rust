@@ -179,13 +179,13 @@ impl Ty {
         module: &Module,
         path: &Path,
     ) -> Cancelable<Self> {
-        if path.is_ident() {
-            let name = &path.segments[0];
-            if let Some(int_ty) = primitive::IntTy::from_string(&name) {
+        if let Some(name) = path.as_ident() {
+            let name = name.as_str(); // :-(
+            if let Some(int_ty) = primitive::IntTy::from_string(name) {
                 return Ok(Ty::Int(int_ty));
-            } else if let Some(uint_ty) = primitive::UintTy::from_string(&name) {
+            } else if let Some(uint_ty) = primitive::UintTy::from_string(name) {
                 return Ok(Ty::Uint(uint_ty));
-            } else if let Some(float_ty) = primitive::FloatTy::from_string(&name) {
+            } else if let Some(float_ty) = primitive::FloatTy::from_string(name) {
                 return Ok(Ty::Float(float_ty));
             }
         }

@@ -7,13 +7,14 @@ use log;
 use ra_syntax::{
     algo::generate,
     ast::{self, AstNode, NameOwner},
-    SmolStr, SyntaxNode,
+    SyntaxNode,
 };
 use ra_db::{SourceRootId, FileId, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
     DefKind, DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
+    Name,
     arena::{Arena, Id},
 };
 
@@ -84,7 +85,7 @@ impl Module {
     }
 
     /// `name` is `None` for the crate's root module
-    pub fn name(&self) -> Option<SmolStr> {
+    pub fn name(&self) -> Option<&Name> {
         let link = self.module_id.parent_link(&self.tree)?;
         Some(link.name(&self.tree))
     }
@@ -100,7 +101,7 @@ impl Module {
     }
 
     /// Finds a child module with the specified name.
-    pub fn child(&self, name: &str) -> Option<Module> {
+    pub fn child(&self, name: &Name) -> Option<Module> {
         let child_id = self.module_id.child(&self.tree, name)?;
         Some(Module {
             module_id: child_id,
@@ -230,15 +231,15 @@ impl ModuleId {
             .last()
             .unwrap()
     }
-    fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
+    fn child(self, tree: &ModuleTree, name: &Name) -> Option<ModuleId> {
         let link = tree.mods[self]
             .children
             .iter()
             .map(|&it| &tree.links[it])
-            .find(|it| it.name == name)?;
+            .find(|it| it.name == *name)?;
         Some(*link.points_to.first()?)
     }
-    fn children<'a>(self, tree: &'a ModuleTree) -> impl Iterator<Item = (SmolStr, ModuleId)> + 'a {
+    fn children<'a>(self, tree: &'a ModuleTree) -> impl Iterator<Item = (Name, ModuleId)> + 'a {
         tree.mods[self].children.iter().filter_map(move |&it| {
             let link = &tree.links[it];
             let module = *link.points_to.first()?;
@@ -263,8 +264,8 @@ impl LinkId {
     fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.links[self].owner
     }
-    fn name(self, tree: &ModuleTree) -> SmolStr {
-        tree.links[self].name.clone()
+    fn name(self, tree: &ModuleTree) -> &Name {
+        &tree.links[self].name
     }
     fn bind_source<'a>(self, tree: &ModuleTree, db: &impl HirDatabase) -> ast::ModuleNode {
         let owner = self.owner(tree);
@@ -328,7 +329,7 @@ impl ModuleSource {
 #[derive(Hash, Debug, PartialEq, Eq)]
 struct LinkData {
     owner: ModuleId,
-    name: SmolStr,
+    name: Name,
     points_to: Vec<ModuleId>,
     problem: Option<Problem>,
 }
