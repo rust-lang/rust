@@ -9,7 +9,6 @@
 
 //! Test casts for alignment issues
 
-
 #![feature(rustc_private)]
 extern crate libc;
 

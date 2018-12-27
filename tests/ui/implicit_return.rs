@@ -56,8 +56,7 @@ fn test_loop_with_nests() -> bool {
     loop {
         if true {
             break true;
-        }
-        else {
+        } else {
             let _ = true;
         }
     }

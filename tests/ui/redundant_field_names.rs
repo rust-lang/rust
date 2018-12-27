@@ -70,8 +70,7 @@ fn main() {
 }
 
 fn issue_3476() {
-    fn foo<T>() {
-    }
+    fn foo<T>() {}
 
     struct S {
         foo: fn(),
