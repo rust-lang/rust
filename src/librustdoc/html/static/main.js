@@ -2409,8 +2409,17 @@ if (!DOMTokenList.prototype.remove) {
             e.remove();
         });
         onEachLazy(main.childNodes, function(e) {
+            // Unhide the actual content once loading is complete. Headers get
+            // flex treatment for their horizontal layout, divs get block treatment
+            // for vertical layout (column-oriented flex layout for divs caused
+            // errors in mobile browsers).
             if (e.tagName === "H2" || e.tagName === "H3") {
-                e.nextElementSibling.style.display = "block";
+                let nextTagName = e.nextElementSibling.tagName;
+                if (nextTagName == "H2" || nextTagName == "H3") {
+                    e.nextElementSibling.style.display = "flex";
+                } else {
+                    e.nextElementSibling.style.display = "block";
+                }
             }
         });
     }
