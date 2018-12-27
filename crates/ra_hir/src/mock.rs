@@ -193,6 +193,9 @@ salsa::database_storage! {
             fn submodules() for db::SubmodulesQuery;
             fn infer() for db::InferQuery;
             fn type_for_def() for db::TypeForDefQuery;
+            fn type_for_field() for db::TypeForFieldQuery;
+            fn struct_data() for db::StructDataQuery;
+            fn enum_data() for db::EnumDataQuery;
         }
     }
 }

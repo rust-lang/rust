@@ -363,3 +363,73 @@ impl<'a, N: AstNode<'a>> Iterator for AstChildren<'a, N> {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StructFlavor<'a> {
+    Tuple(PosFieldList<'a>),
+    Named(NamedFieldDefList<'a>),
+    Unit,
+}
+
+impl<'a> StructFlavor<'a> {
+    fn from_node<N: AstNode<'a>>(node: N) -> StructFlavor<'a> {
+        if let Some(nfdl) = child_opt::<_, NamedFieldDefList>(node) {
+            StructFlavor::Named(nfdl)
+        } else if let Some(pfl) = child_opt::<_, PosFieldList>(node) {
+            StructFlavor::Tuple(pfl)
+        } else {
+            StructFlavor::Unit
+        }
+    }
+}
+
+impl<'a> StructDef<'a> {
+    pub fn flavor(self) -> StructFlavor<'a> {
+        StructFlavor::from_node(self)
+    }
+}
+
+impl<'a> EnumVariant<'a> {
+    pub fn flavor(self) -> StructFlavor<'a> {
+        StructFlavor::from_node(self)
+    }
+}
+
+impl<'a> PointerType<'a> {
+    pub fn is_mut(&self) -> bool {
+        self.syntax().children().any(|n| n.kind() == MUT_KW)
+    }
+}
+
+impl<'a> ReferenceType<'a> {
+    pub fn is_mut(&self) -> bool {
+        self.syntax().children().any(|n| n.kind() == MUT_KW)
+    }
+}
+
+impl<'a> RefExpr<'a> {
+    pub fn is_mut(&self) -> bool {
+        self.syntax().children().any(|n| n.kind() == MUT_KW)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum PrefixOp {
+    /// The `*` operator for dereferencing
+    Deref,
+    /// The `!` operator for logical inversion
+    Not,
+    /// The `-` operator for negation
+    Neg,
+}
+
+impl<'a> PrefixExpr<'a> {
+    pub fn op(&self) -> Option<PrefixOp> {
+        match self.syntax().first_child()?.kind() {
+            STAR => Some(PrefixOp::Deref),
+            EXCL => Some(PrefixOp::Not),
+            MINUS => Some(PrefixOp::Neg),
+            _ => None,
+        }
+    }
+}

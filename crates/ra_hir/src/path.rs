@@ -1,12 +1,12 @@
 use ra_syntax::{SmolStr, ast, AstNode, TextRange};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub kind: PathKind,
     pub segments: Vec<SmolStr>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PathKind {
     Plain,
     Self_,

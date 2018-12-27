@@ -1,5 +1,7 @@
 use crate::db;
 
+use hir::PerNs;
+
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
@@ -25,7 +27,10 @@ pub enum CompletionItemKind {
     Keyword,
     Module,
     Function,
+    Struct,
+    Enum,
     Binding,
+    Field,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -117,16 +122,27 @@ impl Builder {
         db: &db::RootDatabase,
         resolution: &hir::Resolution,
     ) -> Builder {
-        if let Some(def_id) = resolution.def_id {
-            if let Ok(def) = def_id.resolve(db) {
-                let kind = match def {
-                    hir::Def::Module(..) => CompletionItemKind::Module,
-                    hir::Def::Function(..) => CompletionItemKind::Function,
-                    _ => return self,
-                };
-                self.kind = Some(kind);
-            }
-        }
+        let resolved = resolution.def_id.and_then(|d| d.resolve(db).ok());
+        let kind = match resolved {
+            PerNs {
+                types: Some(hir::Def::Module(..)),
+                ..
+            } => CompletionItemKind::Module,
+            PerNs {
+                types: Some(hir::Def::Struct(..)),
+                ..
+            } => CompletionItemKind::Struct,
+            PerNs {
+                types: Some(hir::Def::Enum(..)),
+                ..
+            } => CompletionItemKind::Enum,
+            PerNs {
+                values: Some(hir::Def::Function(..)),
+                ..
+            } => CompletionItemKind::Function,
+            _ => return self,
+        };
+        self.kind = Some(kind);
         self
     }
 }

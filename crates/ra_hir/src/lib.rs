@@ -25,6 +25,8 @@ pub mod source_binder;
 mod krate;
 mod module;
 mod function;
+mod adt;
+mod type_ref;
 mod ty;
 
 use std::ops::Index;
@@ -40,8 +42,10 @@ use crate::{
 pub use self::{
     path::{Path, PathKind},
     krate::Crate,
-    module::{Module, ModuleId, Problem, nameres::ItemMap, ModuleScope, Resolution},
+    module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
     function::{Function, FnScopes},
+    adt::{Struct, Enum},
+    ty::Ty,
 };
 
 pub use self::function::FnSignatureInfo;
@@ -56,7 +60,11 @@ ra_db::impl_numeric_id!(DefId);
 pub(crate) enum DefKind {
     Module,
     Function,
+    Struct,
+    Enum,
     Item,
+
+    StructCtor,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -68,18 +76,18 @@ pub struct DefLoc {
 }
 
 impl DefKind {
-    pub(crate) fn for_syntax_kind(kind: SyntaxKind) -> Option<DefKind> {
+    pub(crate) fn for_syntax_kind(kind: SyntaxKind) -> PerNs<DefKind> {
         match kind {
-            SyntaxKind::FN_DEF => Some(DefKind::Function),
-            SyntaxKind::MODULE => Some(DefKind::Module),
+            SyntaxKind::FN_DEF => PerNs::values(DefKind::Function),
+            SyntaxKind::MODULE => PerNs::types(DefKind::Module),
+            SyntaxKind::STRUCT_DEF => PerNs::both(DefKind::Struct, DefKind::StructCtor),
+            SyntaxKind::ENUM_DEF => PerNs::types(DefKind::Enum),
             // These define items, but don't have their own DefKinds yet:
-            SyntaxKind::STRUCT_DEF => Some(DefKind::Item),
-            SyntaxKind::ENUM_DEF => Some(DefKind::Item),
-            SyntaxKind::TRAIT_DEF => Some(DefKind::Item),
-            SyntaxKind::TYPE_DEF => Some(DefKind::Item),
-            SyntaxKind::CONST_DEF => Some(DefKind::Item),
-            SyntaxKind::STATIC_DEF => Some(DefKind::Item),
-            _ => None,
+            SyntaxKind::TRAIT_DEF => PerNs::types(DefKind::Item),
+            SyntaxKind::TYPE_DEF => PerNs::types(DefKind::Item),
+            SyntaxKind::CONST_DEF => PerNs::values(DefKind::Item),
+            SyntaxKind::STATIC_DEF => PerNs::values(DefKind::Item),
+            _ => PerNs::none(),
         }
     }
 }
@@ -99,6 +107,8 @@ impl DefLoc {
 pub enum Def {
     Module(Module),
     Function(Function),
+    Struct(Struct),
+    Enum(Enum),
     Item,
 }
 
@@ -114,9 +124,24 @@ impl DefId {
                 let function = Function::new(self);
                 Def::Function(function)
             }
+            DefKind::Struct => {
+                let struct_def = Struct::new(self);
+                Def::Struct(struct_def)
+            }
+            DefKind::Enum => {
+                let enum_def = Enum::new(self);
+                Def::Enum(enum_def)
+            }
+            DefKind::StructCtor => Def::Item,
             DefKind::Item => Def::Item,
         };
         Ok(res)
+    }
+
+    /// For a module, returns that module; for any other def, returns the containing module.
+    pub fn module(self, db: &impl HirDatabase) -> Cancelable<Module> {
+        let loc = self.loc(db);
+        Module::new(db, loc.source_root_id, loc.module_id)
     }
 }
 

@@ -68,6 +68,51 @@ fn test() {
     );
 }
 
+#[test]
+fn infer_struct() {
+    check_inference(
+        r#"
+struct A {
+    b: B,
+    c: C,
+}
+struct B;
+struct C(usize);
+
+fn test() {
+    let c = C(1);
+    B;
+    let a: A = A { b: B, c: C(1) };
+    a.b;
+    a.c;
+}
+"#,
+        "0004_struct.txt",
+    );
+}
+
+#[test]
+fn infer_refs_and_ptrs() {
+    check_inference(
+        r#"
+fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
+    a;
+    *a;
+    &a;
+    &mut a;
+    b;
+    *b;
+    &b;
+    c;
+    *c;
+    d;
+    *d;
+}
+"#,
+        "0005_refs.txt",
+    );
+}
+
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.source_file(file_id);

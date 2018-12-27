@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{
+    SmolStr,
     SyntaxNode,
     ast::FnDefNode,
 };
@@ -15,6 +16,7 @@ use crate::{
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
+    adt::{StructData, EnumData},
 };
 
 salsa::query_group! {
@@ -31,6 +33,16 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::fn_syntax;
     }
 
+    fn struct_data(def_id: DefId) -> Cancelable<Arc<StructData>> {
+        type StructDataQuery;
+        use fn query_definitions::struct_data;
+    }
+
+    fn enum_data(def_id: DefId) -> Cancelable<Arc<EnumData>> {
+        type EnumDataQuery;
+        use fn query_definitions::enum_data;
+    }
+
     fn infer(fn_id: FnId) -> Cancelable<Arc<InferenceResult>> {
         type InferQuery;
         use fn query_definitions::infer;
@@ -39,6 +51,11 @@ pub trait HirDatabase: SyntaxDatabase
     fn type_for_def(def_id: DefId) -> Cancelable<Ty> {
         type TypeForDefQuery;
         use fn query_definitions::type_for_def;
+    }
+
+    fn type_for_field(def_id: DefId, field: SmolStr) -> Cancelable<Ty> {
+        type TypeForFieldQuery;
+        use fn query_definitions::type_for_field;
     }
 
     fn file_items(file_id: FileId) -> Arc<SourceFileItems> {

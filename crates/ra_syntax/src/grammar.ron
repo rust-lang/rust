@@ -261,18 +261,20 @@ Grammar(
                 "TypeParamsOwner",
                 "AttrsOwner",
                 "DocCommentsOwner"
-            ],
-            collections: [
-                ["fields", "NamedFieldDef"]
             ]
         ),
-        "NamedFieldDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
+        "NamedFieldDef": ( traits: ["NameOwner", "AttrsOwner"], options: ["TypeRef"] ),
+        "PosFieldList": (collections: [["fields", "PosField"]]),
+        "PosField": ( traits: ["AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
             "DocCommentsOwner"
-        ] ),
+        ], options: [["variant_list", "EnumVariantList"]] ),
+        "EnumVariantList": ( collections: [["variants", "EnumVariant"]] ),
+        "EnumVariant": ( traits: ["NameOwner"], options: ["Expr"] ),
         "TraitDef": ( traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner"] ),
         "Module": (
             traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner" ],
@@ -301,17 +303,17 @@ Grammar(
         ] ),
         "ImplItem": (),
 
-        "ParenType": (),
-        "TupleType": (),
+        "ParenType": (options: ["TypeRef"]),
+        "TupleType": ( collections: [["fields", "TypeRef"]] ),
         "NeverType": (),
         "PathType": (options: ["Path"]),
-        "PointerType": (),
-        "ArrayType": (),
-        "SliceType": (),
-        "ReferenceType": (),
+        "PointerType": (options: ["TypeRef"]),
+        "ArrayType": ( options: ["TypeRef", "Expr"] ),
+        "SliceType": ( options: ["TypeRef"] ),
+        "ReferenceType": (options: ["TypeRef"]),
         "PlaceholderType": (),
-        "FnPointerType": (),
-        "ForType": (),
+        "FnPointerType": (options: ["ParamList", "RetType"]),
+        "ForType": (options: ["TypeRef"]),
         "ImplTraitType": (),
         "DynTraitType": (),
 
@@ -392,19 +394,19 @@ Grammar(
             collections: [ [ "pats", "Pat" ] ]
         ),
         "MatchGuard": (),
-        "StructLit": (),
-        "NamedFieldList": (),
-        "NamedField": (),
+        "StructLit": (options: ["Path", "NamedFieldList"]),
+        "NamedFieldList": (collections: [ ["fields", "NamedField"] ]),
+        "NamedField": (options: ["NameRef", "Expr"]),
         "CallExpr": (
             traits: ["ArgListOwner"],
             options: [ "Expr" ],
         ),
         "MethodCallExpr": (
             traits: ["ArgListOwner"],
-            options: [ "Expr" ],
+            options: [ "Expr", "NameRef" ],
         ),
         "IndexExpr": (),
-        "FieldExpr": (),
+        "FieldExpr": (options: ["Expr", "NameRef"]),
         "TryExpr": (options: ["Expr"]),
         "CastExpr": (options: ["Expr", "TypeRef"]),
         "RefExpr": (options: ["Expr"]),

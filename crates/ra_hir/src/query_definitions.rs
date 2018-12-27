@@ -19,7 +19,8 @@ use crate::{
         imp::Submodule,
         nameres::{InputModuleItems, ItemMap, Resolver},
     },
-    ty::{self, InferenceResult, Ty}
+    ty::{self, InferenceResult, Ty},
+    adt::{StructData, EnumData},
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`
@@ -43,6 +44,32 @@ pub(super) fn infer(db: &impl HirDatabase, fn_id: FnId) -> Cancelable<Arc<Infere
 
 pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     ty::type_for_def(db, def_id)
+}
+
+pub(super) fn type_for_field(
+    db: &impl HirDatabase,
+    def_id: DefId,
+    field: SmolStr,
+) -> Cancelable<Ty> {
+    ty::type_for_field(db, def_id, field)
+}
+
+pub(super) fn struct_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<StructData>> {
+    let def_loc = def_id.loc(db);
+    assert!(def_loc.kind == DefKind::Struct);
+    let syntax = db.file_item(def_loc.source_item_id);
+    let struct_def =
+        ast::StructDef::cast(syntax.borrowed()).expect("struct def should point to StructDef node");
+    Ok(Arc::new(StructData::new(struct_def.borrowed())))
+}
+
+pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<EnumData>> {
+    let def_loc = def_id.loc(db);
+    assert!(def_loc.kind == DefKind::Enum);
+    let syntax = db.file_item(def_loc.source_item_id);
+    let enum_def =
+        ast::EnumDef::cast(syntax.borrowed()).expect("enum def should point to EnumDef node");
+    Ok(Arc::new(EnumData::new(enum_def.borrowed())))
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {
