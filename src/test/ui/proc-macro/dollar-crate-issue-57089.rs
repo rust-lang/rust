@@ -1,3 +1,4 @@
+// compile-pass
 // edition:2018
 // aux-build:dollar-crate.rs
 
@@ -15,7 +16,7 @@ macro_rules! m {
             struct M($crate::S);
         }
 
-        #[dollar_crate::a] //~ ERROR expected type, found `$`
+        #[dollar_crate::a]
         struct A($crate::S);
     };
 }

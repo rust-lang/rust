@@ -1,6 +1,6 @@
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
 use {CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
-use {Module, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
 use {is_known_tool, resolve_error};
 use ModuleOrUniformRoot;
 use Namespace::*;
@@ -15,12 +15,13 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
-use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::base::{Annotatable, MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{feature_err, is_builtin_attr_name, GateIssue};
 use syntax::symbol::{Symbol, keywords};
+use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::Applicability;
@@ -124,6 +125,26 @@ impl<'a> base::Resolver for Resolver<'a> {
             output_legacy_scope: Cell::new(Some(LegacyScope::Empty)),
         }));
         mark
+    }
+
+    fn resolve_dollar_crates(&mut self, annotatable: &Annotatable) {
+        pub struct ResolveDollarCrates<'a, 'b: 'a> {
+            pub resolver: &'a mut Resolver<'b>,
+        }
+        impl<'a> Visitor<'a> for ResolveDollarCrates<'a, '_> {
+            fn visit_ident(&mut self, ident: Ident) {
+                if ident.name == keywords::DollarCrate.name() {
+                    let name = match self.resolver.resolve_crate_root(ident).kind {
+                        ModuleKind::Def(_, name) if name != keywords::Invalid.name() => name,
+                        _ => keywords::Crate.name(),
+                    };
+                    ident.span.ctxt().set_dollar_crate_name(name);
+                }
+            }
+            fn visit_mac(&mut self, _: &ast::Mac) {}
+        }
+
+        annotatable.visit_with(&mut ResolveDollarCrates { resolver: self });
     }
 
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,

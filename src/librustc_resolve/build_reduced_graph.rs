@@ -1025,15 +1025,4 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         }
         visit::walk_attribute(self, attr);
     }
-
-    fn visit_ident(&mut self, ident: Ident) {
-        if ident.name == keywords::DollarCrate.name() {
-            let name = match self.resolver.resolve_crate_root(ident).kind {
-                ModuleKind::Def(_, name) if name != keywords::Invalid.name() => name,
-                _ => keywords::Crate.name(),
-            };
-            ident.span.ctxt().set_dollar_crate_name(name);
-        }
-        visit::walk_ident(self, ident);
-    }
 }
