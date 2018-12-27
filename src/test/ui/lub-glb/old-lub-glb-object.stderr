@@ -1,17 +1,19 @@
 error[E0308]: match arms have incompatible types
   --> $DIR/old-lub-glb-object.rs:10:13
    |
-LL |       let z = match 22 { //~ ERROR incompatible types
+LL |       let z = match 22 { //~ ERROR cannot infer
    |  _____________^
 LL | |         0 => x,
 LL | |         _ => y,
-   | |              - match arm with an incompatible type
 LL | |     };
-   | |_____^ expected bound lifetime parameter 'a, found concrete lifetime
+   | |_____^
    |
-   = note: expected type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-              found type `&dyn for<'a> Foo<&'a u8, &'a u8>`
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U5, name: BrNamed(crate0:DefIndex(1:11), 'a) })...
+   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U5, name: BrNamed(crate0:DefIndex(1:12), 'b) })...
+   = note: ...so that the types are compatible:
+           expected dyn for<'a, 'b> Foo<&'a u8, &'b u8>
+              found dyn for<'a> Foo<&'a u8, &'a u8>
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0495`.

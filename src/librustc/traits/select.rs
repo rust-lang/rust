@@ -3268,10 +3268,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         );
                     tcx.mk_existential_predicates(iter)
                 });
-                let new_trait = tcx.mk_dynamic(existential_predicates, r_b);
+                let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
                 let InferOk { obligations, .. } = self.infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(target, new_trait)
+                    .sup(target, source_trait)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
