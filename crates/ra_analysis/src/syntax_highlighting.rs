@@ -108,7 +108,7 @@ mod tests {
         assert_eq_dbg(
             r#"[HighlightedRange { range: [13; 15), tag: "keyword" },
                 HighlightedRange { range: [16; 20), tag: "function" },
-                HighlightedRange { range: [41; 45), tag: "text" },
+                HighlightedRange { range: [41; 46), tag: "macro" },
                 HighlightedRange { range: [49; 52), tag: "keyword" },
                 HighlightedRange { range: [57; 59), tag: "literal" },
                 HighlightedRange { range: [49; 52), tag: "keyword" },

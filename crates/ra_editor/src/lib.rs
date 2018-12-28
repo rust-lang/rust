@@ -24,9 +24,10 @@ use ra_syntax::{
     SourceFileNode,
     Location,
     SyntaxKind::{self, *},
-    SyntaxNodeRef, TextRange, TextUnit,
+    SyntaxNodeRef, TextRange, TextUnit, Direction,
 };
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 
 #[derive(Debug)]
 pub struct HighlightedRange {
@@ -79,8 +80,13 @@ pub fn matching_brace(file: &SourceFileNode, offset: TextUnit) -> Option<TextUni
 }
 
 pub fn highlight(file: &SourceFileNode) -> Vec<HighlightedRange> {
+    // Visited nodes to handle highlighting priorities
+    let mut highlighted = FxHashSet::default();
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
+        if highlighted.contains(&node) {
+            continue;
+        }
         let tag = match node.kind() {
             COMMENT => "comment",
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
@@ -90,7 +96,30 @@ pub fn highlight(file: &SourceFileNode) -> Vec<HighlightedRange> {
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
             LIFETIME => "parameter",
             k if k.is_keyword() => "keyword",
-            _ => continue,
+            _ => {
+                if let Some(macro_call) = ast::MacroCall::cast(node) {
+                    if let Some(path) = macro_call.path() {
+                        if let Some(segment) = path.segment() {
+                            if let Some(name_ref) = segment.name_ref() {
+                                highlighted.insert(name_ref.syntax());
+                                let range_start = name_ref.syntax().range().start();
+                                let mut range_end = name_ref.syntax().range().end();
+                                for sibling in path.syntax().siblings(Direction::Next) {
+                                    match sibling.kind() {
+                                        EXCL | IDENT => range_end = sibling.range().end(),
+                                        _ => (),
+                                    }
+                                }
+                                res.push(HighlightedRange {
+                                    range: TextRange::from_to(range_start, range_end),
+                                    tag: "macro",
+                                })
+                            }
+                        }
+                    }
+                }
+                continue;
+            }
         };
         res.push(HighlightedRange {
             range: node.range(),
@@ -235,7 +264,7 @@ fn main() {}
             r#"[HighlightedRange { range: [1; 11), tag: "comment" },
                 HighlightedRange { range: [12; 14), tag: "keyword" },
                 HighlightedRange { range: [15; 19), tag: "function" },
-                HighlightedRange { range: [29; 36), tag: "text" },
+                HighlightedRange { range: [29; 37), tag: "macro" },
                 HighlightedRange { range: [38; 50), tag: "string" },
                 HighlightedRange { range: [52; 54), tag: "literal" }]"#,
             &hls,

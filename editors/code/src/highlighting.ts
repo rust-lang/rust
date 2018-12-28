@@ -28,7 +28,8 @@ export class Highlighter {
             ['builtin', decor('#DD6718')],
             ['text', decor('#DCDCCC')],
             ['attribute', decor('#BFEBBF')],
-            ['literal', decor('#DFAF8F')]
+            ['literal', decor('#DFAF8F')],
+            ['macro', decor('#DFAF8F')]
         ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);
