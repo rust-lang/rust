@@ -1709,221 +1709,69 @@ pub trait Lift<'tcx>: fmt::Debug {
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
-impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
-    type Lifted = Ty<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
+
+macro_rules! nop_lift {
+    ($ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<'tcx> for $ty {
+            type Lifted = $lifted;
+            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+                if tcx.interners.arena.in_arena(*self as *const _) {
+                    return Some(unsafe { mem::transmute(*self) });
+                }
+                // Also try in the global tcx if we're not that.
+                if !tcx.is_global() {
+                    self.lift_to_tcx(tcx.global_tcx())
+                } else {
+                    None
+                }
+            }
         }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
+    };
 }
 
-impl<'a, 'tcx> Lift<'tcx> for Region<'a> {
-    type Lifted = Region<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Region<'tcx>> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
+macro_rules! nop_list_lift {
+    ($ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
+            type Lifted = &'tcx List<$lifted>;
+            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+                        if self.is_empty() {
+                    return Some(List::empty());
+                }
+                if tcx.interners.arena.in_arena(*self as *const _) {
+                    return Some(unsafe { mem::transmute(*self) });
+                }
+                // Also try in the global tcx if we're not that.
+                if !tcx.is_global() {
+                    self.lift_to_tcx(tcx.global_tcx())
+                } else {
+                    None
+                }
+            }
         }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
+    };
 }
 
-impl<'a, 'tcx> Lift<'tcx> for Goal<'a> {
-    type Lifted = Goal<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Goal<'tcx>> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        Some(tcx.intern_const_alloc(mir::interpret::Allocation::clone(self)))
-    }
-}
+nop_lift!{Ty<'a> => Ty<'tcx>}
+nop_lift!{Region<'a> => Region<'tcx>}
+nop_lift!{Goal<'a> => Goal<'tcx>}
+nop_lift!{&'a LazyConst<'a> => &'tcx LazyConst<'tcx>}
 
-impl<'a, 'tcx> Lift<'tcx> for &'a List<Goal<'a>> {
-    type Lifted = &'tcx List<Goal<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(
-        &self,
-        tcx: TyCtxt<'b, 'gcx, 'tcx>,
-    ) -> Option<&'tcx List<Goal<'tcx>>> {
-        if self.is_empty() {
-            return Some(List::empty());
-        }
+nop_list_lift!{Goal<'a> => Goal<'tcx>}
+nop_list_lift!{Clause<'a> => Clause<'tcx>}
+nop_list_lift!{Ty<'a> => Ty<'tcx>}
+nop_list_lift!{ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
+nop_list_lift!{Predicate<'a> => Predicate<'tcx>}
+nop_list_lift!{CanonicalVarInfo => CanonicalVarInfo}
+nop_list_lift!{ProjectionKind<'a> => ProjectionKind<'tcx>}
 
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a List<Clause<'a>> {
-    type Lifted = &'tcx List<Clause<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(
-        &self,
-        tcx: TyCtxt<'b, 'gcx, 'tcx>,
-    ) -> Option<&'tcx List<Clause<'tcx>>> {
-        if self.is_empty() {
-            return Some(List::empty());
-        }
-
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a LazyConst<'a> {
-    type Lifted = &'tcx LazyConst<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx LazyConst<'tcx>> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
+// this is the impl for `&'a Substs<'a>`
+nop_list_lift!{Kind<'a> => Kind<'tcx>}
 
 impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
     type Lifted = &'tcx mir::interpret::Allocation;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         assert!(tcx.global_interners.arena.in_arena(*self as *const _));
         Some(unsafe { mem::transmute(*self) })
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
-    type Lifted = &'tcx Substs<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
-        if self.len() == 0 {
-            return Some(List::empty());
-        }
-        if tcx.interners.arena.in_arena(&self[..] as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
-    type Lifted = &'tcx List<Ty<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-                             -> Option<&'tcx List<Ty<'tcx>>> {
-        if self.len() == 0 {
-            return Some(List::empty());
-        }
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a List<ExistentialPredicate<'a>> {
-    type Lifted = &'tcx List<ExistentialPredicate<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-        -> Option<&'tcx List<ExistentialPredicate<'tcx>>> {
-        if self.is_empty() {
-            return Some(List::empty());
-        }
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a List<Predicate<'a>> {
-    type Lifted = &'tcx List<Predicate<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-        -> Option<&'tcx List<Predicate<'tcx>>> {
-        if self.is_empty() {
-            return Some(List::empty());
-        }
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a List<CanonicalVarInfo> {
-    type Lifted = &'tcx List<CanonicalVarInfo>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        if self.len() == 0 {
-            return Some(List::empty());
-        }
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for &'a List<ProjectionKind<'a>> {
-    type Lifted = &'tcx List<ProjectionKind<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        if self.len() == 0 {
-            return Some(List::empty());
-        }
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
     }
 }
 
