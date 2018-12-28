@@ -7,13 +7,19 @@ use crate::value::Value;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
+<<<<<<< HEAD
+=======
+use type_::Type;
+use type_of::{LayoutLlvmExt};
+use value::Value;
+>>>>>>> Remove old pointee_info_at body.
 use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty, Instance};
-use rustc::ty::layout;
+use rustc::ty::layout::{self, PointerKind};
 
 use libc::c_uint;
 
