@@ -14,6 +14,7 @@ mod db;
 mod imp;
 mod completion;
 mod symbol_index;
+mod syntax_highlighting;
 pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
@@ -340,8 +341,7 @@ impl Analysis {
         Ok(ra_editor::runnables(&file))
     }
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        let file = self.imp.file_syntax(file_id);
-        Ok(ra_editor::highlight(&file))
+        syntax_highlighting::highlight(&*self.imp.db, file_id)
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         self.imp.completions(position)
