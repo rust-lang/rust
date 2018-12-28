@@ -1351,7 +1351,8 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         // the user-friendly path, otherwise fall back to stringifying DefPath.
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
-                tcx.node_path_str(id)
+                let def_id = map.local_def_id(id);
+                tcx.def_path_str(def_id)
             } else if let Some(path) = map.def_path_from_id(id) {
                 path.data.into_iter().map(|elem| {
                     elem.data.to_string()

@@ -4,7 +4,6 @@ use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, SubstsRef, UnpackedKind};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use syntax::ast;
 use syntax::symbol::{keywords, Symbol};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -216,12 +215,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
             .print_def_path(def_id, None, ns, iter::empty());
         s
-    }
-
-    /// Returns a string identifying this local node-id.
-    // FIXME(eddyb) remove in favor of calling `def_path_str` directly.
-    pub fn node_path_str(self, id: ast::NodeId) -> String {
-        self.def_path_str(self.hir().local_def_id(id))
     }
 }
 
