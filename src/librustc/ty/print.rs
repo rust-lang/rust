@@ -722,9 +722,9 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         // FIXME(eddyb) avoid querying `tcx.generics_of` and `tcx.def_key`
         // both here and in `default_print_def_path`.
         let generics = substs.map(|_| self.tcx.generics_of(def_id));
-        if // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
-            !FORCE_ABSOLUTE.with(|force| force.get()) &&
-            generics.as_ref().and_then(|g| g.parent).is_none() {
+        // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
+        assert!(!FORCE_ABSOLUTE.with(|force| force.get()));
+        if generics.as_ref().and_then(|g| g.parent).is_none() {
             if let Some(path) = self.try_print_visible_def_path(def_id) {
                 let path = if let (Some(generics), Some(substs)) = (generics, substs) {
                     let has_own_self = generics.has_self && generics.parent_count == 0;
@@ -742,8 +742,6 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
             // Always use types for non-local impls, where types are always
             // available, and filename/line-number is mostly uninteresting.
             let use_types =
-                // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
-                FORCE_ABSOLUTE.with(|force| force.get()) ||
                 !def_id.is_local() || {
                     // Otherwise, use filename/line-number if forced.
                     let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
@@ -766,10 +764,8 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
         // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
-        if FORCE_ABSOLUTE.with(|force| force.get()) {
-            write!(self.printer, "{}", self.tcx.original_crate_name(cnum))?;
-            return Ok(PrettyPath { empty: false });
-        }
+        assert!(!FORCE_ABSOLUTE.with(|force| force.get()));
+
         if cnum == LOCAL_CRATE {
             if self.tcx.sess.rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.

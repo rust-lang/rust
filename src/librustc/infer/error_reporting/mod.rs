@@ -58,7 +58,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TyKind, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use std::{cmp, fmt};
+use std::{cmp, fmt, iter};
 use syntax_pos::{Pos, Span};
 
 mod note;
@@ -444,20 +444,69 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         terr: &TypeError<'tcx>,
         sp: Span,
     ) {
+        use hir::def::Namespace;
+        use hir::def_id::CrateNum;
+        use ty::print::{PrintCx, Printer};
+        use ty::subst::Substs;
+
+        struct AbsolutePathPrinter;
+
+        struct NonTrivialPath;
+
+        impl Printer for AbsolutePathPrinter {
+            type Path = Result<Vec<String>, NonTrivialPath>;
+
+            fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
+                Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
+            }
+            fn path_qualified<'tcx>(
+                self: &mut PrintCx<'_, '_, 'tcx, Self>,
+                _impl_prefix: Option<Self::Path>,
+                _self_ty: Ty<'tcx>,
+                _trait_ref: Option<ty::TraitRef<'tcx>>,
+                _ns: Namespace,
+            ) -> Self::Path {
+                Err(NonTrivialPath)
+            }
+            fn path_append(
+                self: &mut PrintCx<'_, '_, '_, Self>,
+                path: Self::Path,
+                text: &str,
+            ) -> Self::Path {
+                let mut path = path?;
+                path.push(text.to_string());
+                Ok(path)
+            }
+            fn path_generic_args<'tcx>(
+                self: &mut PrintCx<'_, '_, 'tcx, Self>,
+                path: Self::Path,
+                _params: &[ty::GenericParamDef],
+                _substs: &'tcx Substs<'tcx>,
+                _ns: Namespace,
+                _projections: impl Iterator<Item = ty::ExistentialProjection<'tcx>>,
+            ) -> Self::Path {
+                path
+            }
+        }
+
         let report_path_match = |err: &mut DiagnosticBuilder<'_>, did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
-                let exp_path = self.tcx.def_path_str(did1);
-                let found_path = self.tcx.def_path_str(did2);
-                // HACK(eddyb) switch form `with_forced_absolute_paths`
-                // to a custom implementation of `ty::print::Printer`.
-                let (exp_abs_path, found_abs_path) = ty::print::with_forced_absolute_paths(|| {
-                    (self.tcx.def_path_str(did1), self.tcx.def_path_str(did2))
-                });
+                let abs_path = |def_id| {
+                    PrintCx::new(self.tcx, AbsolutePathPrinter)
+                        .print_def_path(def_id, None, Namespace::TypeNS, iter::empty())
+                };
+
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
-                if exp_path == found_path || exp_abs_path == found_abs_path {
+                let same_path = || -> Result<_, NonTrivialPath> {
+                    Ok(
+                        self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2) ||
+                        abs_path(did1)? == abs_path(did2)?
+                    )
+                };
+                if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
                     err.span_note(
                         sp,
