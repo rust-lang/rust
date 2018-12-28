@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:47:9
+  --> $DIR/question_mark.rs:56:9
    |
 LL | /         if (self.opt).is_none() {
 LL | |             return None;
@@ -17,7 +17,7 @@ LL | |         }
    | |_________^ help: replace_it_with: `(self.opt)?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:51:9
+  --> $DIR/question_mark.rs:60:9
    |
 LL | /         if self.opt.is_none() {
 LL | |             return None
@@ -25,7 +25,7 @@ LL | |         }
    | |_________^ help: replace_it_with: `self.opt?;`
 
 error: this block may be rewritten with the `?` operator
-  --> $DIR/question_mark.rs:55:17
+  --> $DIR/question_mark.rs:64:17
    |
 LL |           let _ = if self.opt.is_none() {
    |  _________________^
@@ -35,5 +35,29 @@ LL | |             self.opt
 LL | |         };
    | |_________^ help: replace_it_with: `Some(self.opt?)`
 
-error: aborting due to 4 previous errors
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:81:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:89:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:97:9
+   |
+LL | /         if self.opt.is_none() {
+LL | |             return None;
+LL | |         }
+   | |_________^ help: replace_it_with: `self.opt.as_ref()?;`
+
+error: aborting due to 7 previous errors
 
