@@ -13,8 +13,8 @@ use ra_db::{SourceRootId, FileId, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
-    DefKind, DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
-    Name,
+    Def, DefKind, DefLoc, DefId,
+    Name, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
     arena::{Arena, Id},
 };
 
@@ -139,13 +139,8 @@ impl Module {
             } else {
                 return Ok(PerNs::none());
             };
-            let module = match curr.loc(db) {
-                DefLoc {
-                    kind: DefKind::Module,
-                    source_root_id,
-                    module_id,
-                    ..
-                } => Module::new(db, source_root_id, module_id)?,
+            let module = match curr.resolve(db)? {
+                Def::Module(it) => it,
                 // TODO here would be the place to handle enum variants...
                 _ => return Ok(PerNs::none()),
             };
