@@ -1,5 +1,5 @@
 error: functions with parameters of uninhabited types are uncallable
-  --> $DIR/uninhabited-function-parameter-warning.rs:5:1
+  --> $DIR/uninhabited-function-parameter-warning.rs:13:1
    |
 LL |   fn foo(a: (), b: Void) { //~ ERROR functions with parameters of uninhabited types are uncallable
    |   ^             - this parameter has an uninhabited type
@@ -15,5 +15,17 @@ note: lint level defined here
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: functions with parameters of uninhabited types are uncallable
+  --> $DIR/uninhabited-function-parameter-warning.rs:21:1
+   |
+LL |   fn baz(a: (), b: hide::PubliclyUninhabited) {
+   |   ^             - this parameter has an uninhabited type
+   |  _|
+   | |
+LL | |     //~^ ERROR functions with parameters of uninhabited types are uncallable
+LL | |     a
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
 
