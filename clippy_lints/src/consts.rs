@@ -23,7 +23,6 @@ use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use std::mem;
 use std::rc::Rc;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
@@ -61,14 +60,14 @@ impl PartialEq for Constant {
             (&Constant::F64(l), &Constant::F64(r)) => {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
-                // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
-                unsafe { mem::transmute::<f64, u64>(l) == mem::transmute::<f64, u64>(r) }
+                // to_bits is required to catch non-matching 0.0, -0.0, and NaNs
+                l.to_bits() == r.to_bits()
             },
             (&Constant::F32(l), &Constant::F32(r)) => {
                 // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
                 // `Fw32 == Fw64` so don’t compare them
-                // mem::transmute is required to catch non-matching 0.0, -0.0, and NaNs
-                unsafe { mem::transmute::<f64, u64>(f64::from(l)) == mem::transmute::<f64, u64>(f64::from(r)) }
+                // to_bits is required to catch non-matching 0.0, -0.0, and NaNs
+                f64::from(l).to_bits() == f64::from(r).to_bits()
             },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
             (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => {
@@ -99,10 +98,10 @@ impl Hash for Constant {
                 i.hash(state);
             },
             Constant::F32(f) => {
-                unsafe { mem::transmute::<f64, u64>(f64::from(f)) }.hash(state);
+                f64::from(f).to_bits().hash(state);
             },
             Constant::F64(f) => {
-                unsafe { mem::transmute::<f64, u64>(f) }.hash(state);
+                f.to_bits().hash(state);
             },
             Constant::Bool(b) => {
                 b.hash(state);
