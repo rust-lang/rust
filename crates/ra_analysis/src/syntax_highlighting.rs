@@ -1,4 +1,4 @@
-use ra_syntax::{ast, AstNode, SourceFileNode, TextRange};
+use ra_syntax::{ast, AstNode,};
 use ra_editor::HighlightedRange;
 use ra_db::SyntaxDatabase;
 
@@ -15,7 +15,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Hi
         .descendants()
         .filter_map(ast::MacroCall::cast)
     {
-        if let Some(exp) = expand(db, file_id, macro_call) {
+        if let Some(exp) = crate::macros::expand(db, file_id, macro_call) {
             let mapped_ranges = ra_editor::highlight(exp.source_file())
                 .into_iter()
                 .filter_map(|r| {
@@ -30,64 +30,6 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Hi
         }
     }
     Ok(res)
-}
-
-fn expand(
-    _db: &RootDatabase,
-    _file_id: FileId,
-    macro_call: ast::MacroCall,
-) -> Option<MacroExpansion> {
-    let path = macro_call.path()?;
-    if path.qualifier().is_some() {
-        return None;
-    }
-    let name_ref = path.segment()?.name_ref()?;
-    if name_ref.text() != "ctry" {
-        return None;
-    }
-
-    let arg = macro_call.token_tree()?;
-    let text = format!(
-        r"
-        fn dummy() {{
-            match {} {{
-                None => return Ok(None),
-                Some(it) => it,
-            }}
-        }}",
-        arg.syntax().text()
-    );
-    let file = SourceFileNode::parse(&text);
-    let match_expr = file.syntax().descendants().find_map(ast::MatchExpr::cast)?;
-    let match_arg = match_expr.expr()?;
-    let ranges_map = vec![(arg.syntax().range(), match_arg.syntax().range())];
-    let res = MacroExpansion {
-        source_file: file,
-        ranges_map,
-    };
-    Some(res)
-}
-
-struct MacroExpansion {
-    source_file: SourceFileNode,
-    ranges_map: Vec<(TextRange, TextRange)>,
-}
-
-impl MacroExpansion {
-    fn source_file(&self) -> &SourceFileNode {
-        &self.source_file
-    }
-    fn map_range_back(&self, tgt_range: TextRange) -> Option<TextRange> {
-        for (s_range, t_range) in self.ranges_map.iter() {
-            if tgt_range.is_subrange(&t_range) {
-                let tgt_at_zero_range = tgt_range - tgt_range.start();
-                let tgt_range_offset = tgt_range.start() - t_range.start();
-                let src_range = tgt_at_zero_range + tgt_range_offset + s_range.start();
-                return Some(src_range);
-            }
-        }
-        None
-    }
 }
 
 #[cfg(test)]

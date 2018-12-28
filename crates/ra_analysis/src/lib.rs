@@ -18,6 +18,7 @@ pub mod mock_analysis;
 
 mod extend_selection;
 mod syntax_highlighting;
+mod macros;
 
 use std::{fmt, sync::Arc};
 
