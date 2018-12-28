@@ -1,392 +1,392 @@
 error: this `if` has identical blocks
   --> $DIR/copies.rs:50:12
    |
-50 |       } else {
+LL |       } else {
    |  ____________^
-51 | |         //~ ERROR same body as `if` block
-52 | |         Foo { bar: 42 };
-53 | |         0..10;
+LL | |         //~ ERROR same body as `if` block
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
 ...  |
-58 | |         foo();
-59 | |     }
+LL | |         foo();
+LL | |     }
    | |_____^
    |
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
 note: same as this
   --> $DIR/copies.rs:42:13
    |
-42 |       if true {
+LL |       if true {
    |  _____________^
-43 | |         Foo { bar: 42 };
-44 | |         0..10;
-45 | |         ..;
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
+LL | |         ..;
 ...  |
-49 | |         foo();
-50 | |     } else {
+LL | |         foo();
+LL | |     } else {
    | |_____^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:96:14
-    |
-96  |           _ => {
-    |  ______________^
-97  | |             //~ ERROR match arms have same body
-98  | |             foo();
-99  | |             let mut a = 42 + [23].len() as i32;
-...   |
-104 | |             a
-105 | |         },
-    | |_________^
-    |
-    = note: `-D clippy::match-same-arms` implied by `-D warnings`
+  --> $DIR/copies.rs:96:14
+   |
+LL |           _ => {
+   |  ______________^
+LL | |             //~ ERROR match arms have same body
+LL | |             foo();
+LL | |             let mut a = 42 + [23].len() as i32;
+...  |
+LL | |             a
+LL | |         },
+   | |_________^
+   |
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
 note: same as this
-   --> $DIR/copies.rs:87:15
-    |
-87  |           42 => {
-    |  _______________^
-88  | |             foo();
-89  | |             let mut a = 42 + [23].len() as i32;
-90  | |             if true {
-...   |
-94  | |             a
-95  | |         },
-    | |_________^
+  --> $DIR/copies.rs:87:15
+   |
+LL |           42 => {
+   |  _______________^
+LL | |             foo();
+LL | |             let mut a = 42 + [23].len() as i32;
+LL | |             if true {
+...  |
+LL | |             a
+LL | |         },
+   | |_________^
 note: `42` has the same arm body as the `_` wildcard, consider removing it`
-   --> $DIR/copies.rs:87:15
-    |
-87  |           42 => {
-    |  _______________^
-88  | |             foo();
-89  | |             let mut a = 42 + [23].len() as i32;
-90  | |             if true {
-...   |
-94  | |             a
-95  | |         },
-    | |_________^
+  --> $DIR/copies.rs:87:15
+   |
+LL |           42 => {
+   |  _______________^
+LL | |             foo();
+LL | |             let mut a = 42 + [23].len() as i32;
+LL | |             if true {
+...  |
+LL | |             a
+LL | |         },
+   | |_________^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:111:14
-    |
-111 |         _ => 0, //~ ERROR match arms have same body
-    |              ^
-    |
+  --> $DIR/copies.rs:111:14
+   |
+LL |         _ => 0, //~ ERROR match arms have same body
+   |              ^
+   |
 note: same as this
-   --> $DIR/copies.rs:109:19
-    |
-109 |         Abc::A => 0,
-    |                   ^
+  --> $DIR/copies.rs:109:19
+   |
+LL |         Abc::A => 0,
+   |                   ^
 note: `Abc::A` has the same arm body as the `_` wildcard, consider removing it`
-   --> $DIR/copies.rs:109:19
-    |
-109 |         Abc::A => 0,
-    |                   ^
+  --> $DIR/copies.rs:109:19
+   |
+LL |         Abc::A => 0,
+   |                   ^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:120:12
-    |
-120 |       } else {
-    |  ____________^
-121 | |         //~ ERROR same body as `if` block
-122 | |         42
-123 | |     };
-    | |_____^
-    |
+  --> $DIR/copies.rs:120:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         42
+LL | |     };
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:118:21
-    |
-118 |       let _ = if true {
-    |  _____________________^
-119 | |         42
-120 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:118:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         42
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:134:12
-    |
-134 |       } else {
-    |  ____________^
-135 | |         //~ ERROR same body as `if` block
-136 | |         for _ in &[42] {
-137 | |             let foo: &Option<_> = &Some::<u8>(42);
-...   |
-143 | |         }
-144 | |     }
-    | |_____^
-    |
+  --> $DIR/copies.rs:134:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         for _ in &[42] {
+LL | |             let foo: &Option<_> = &Some::<u8>(42);
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:125:13
-    |
-125 |       if true {
-    |  _____________^
-126 | |         for _ in &[42] {
-127 | |             let foo: &Option<_> = &Some::<u8>(42);
-128 | |             if true {
-...   |
-133 | |         }
-134 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:125:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         for _ in &[42] {
+LL | |             let foo: &Option<_> = &Some::<u8>(42);
+LL | |             if true {
+...  |
+LL | |         }
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:153:12
-    |
-153 |       } else {
-    |  ____________^
-154 | |         //~ ERROR same body as `if` block
-155 | |         let bar = if true { 42 } else { 43 };
-156 | |
-...   |
-160 | |         bar + 1;
-161 | |     }
-    | |_____^
-    |
+  --> $DIR/copies.rs:153:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+...  |
+LL | |         bar + 1;
+LL | |     }
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:146:13
-    |
-146 |       if true {
-    |  _____________^
-147 | |         let bar = if true { 42 } else { 43 };
-148 | |
-149 | |         while foo() {
-...   |
-152 | |         bar + 1;
-153 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:146:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+LL | |         while foo() {
+...  |
+LL | |         bar + 1;
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:183:12
-    |
-183 |       } else {
-    |  ____________^
-184 | |         //~ ERROR same body as `if` block
-185 | |         if let Some(a) = Some(42) {}
-186 | |     }
-    | |_____^
-    |
+  --> $DIR/copies.rs:183:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         if let Some(a) = Some(42) {}
+LL | |     }
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:181:13
-    |
-181 |       if true {
-    |  _____________^
-182 | |         if let Some(a) = Some(42) {}
-183 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:181:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         if let Some(a) = Some(42) {}
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:190:12
-    |
-190 |       } else {
-    |  ____________^
-191 | |         //~ ERROR same body as `if` block
-192 | |         if let (1, .., 3) = (1, 2, 3) {}
-193 | |     }
-    | |_____^
-    |
+  --> $DIR/copies.rs:190:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         if let (1, .., 3) = (1, 2, 3) {}
+LL | |     }
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:188:13
-    |
-188 |       if true {
-    |  _____________^
-189 | |         if let (1, .., 3) = (1, 2, 3) {}
-190 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:188:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         if let (1, .., 3) = (1, 2, 3) {}
+LL | |     } else {
+   | |_____^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:239:15
-    |
-239 |         51 => foo(), //~ ERROR match arms have same body
-    |               ^^^^^
-    |
+  --> $DIR/copies.rs:239:15
+   |
+LL |         51 => foo(), //~ ERROR match arms have same body
+   |               ^^^^^
+   |
 note: same as this
-   --> $DIR/copies.rs:238:15
-    |
-238 |         42 => foo(),
-    |               ^^^^^
+  --> $DIR/copies.rs:238:15
+   |
+LL |         42 => foo(),
+   |               ^^^^^
 note: consider refactoring into `42 | 51`
-   --> $DIR/copies.rs:238:15
-    |
-238 |         42 => foo(),
-    |               ^^^^^
+  --> $DIR/copies.rs:238:15
+   |
+LL |         42 => foo(),
+   |               ^^^^^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:245:17
-    |
-245 |         None => 24, //~ ERROR match arms have same body
-    |                 ^^
-    |
+  --> $DIR/copies.rs:245:17
+   |
+LL |         None => 24, //~ ERROR match arms have same body
+   |                 ^^
+   |
 note: same as this
-   --> $DIR/copies.rs:244:20
-    |
-244 |         Some(_) => 24,
-    |                    ^^
+  --> $DIR/copies.rs:244:20
+   |
+LL |         Some(_) => 24,
+   |                    ^^
 note: consider refactoring into `Some(_) | None`
-   --> $DIR/copies.rs:244:20
-    |
-244 |         Some(_) => 24,
-    |                    ^^
+  --> $DIR/copies.rs:244:20
+   |
+LL |         Some(_) => 24,
+   |                    ^^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:267:28
-    |
-267 |         (None, Some(a)) => bar(a), //~ ERROR match arms have same body
-    |                            ^^^^^^
-    |
+  --> $DIR/copies.rs:267:28
+   |
+LL |         (None, Some(a)) => bar(a), //~ ERROR match arms have same body
+   |                            ^^^^^^
+   |
 note: same as this
-   --> $DIR/copies.rs:266:28
-    |
-266 |         (Some(a), None) => bar(a),
-    |                            ^^^^^^
+  --> $DIR/copies.rs:266:28
+   |
+LL |         (Some(a), None) => bar(a),
+   |                            ^^^^^^
 note: consider refactoring into `(Some(a), None) | (None, Some(a))`
-   --> $DIR/copies.rs:266:28
-    |
-266 |         (Some(a), None) => bar(a),
-    |                            ^^^^^^
+  --> $DIR/copies.rs:266:28
+   |
+LL |         (Some(a), None) => bar(a),
+   |                            ^^^^^^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:273:26
-    |
-273 |         (.., Some(a)) => bar(a), //~ ERROR match arms have same body
-    |                          ^^^^^^
-    |
+  --> $DIR/copies.rs:273:26
+   |
+LL |         (.., Some(a)) => bar(a), //~ ERROR match arms have same body
+   |                          ^^^^^^
+   |
 note: same as this
-   --> $DIR/copies.rs:272:26
-    |
-272 |         (Some(a), ..) => bar(a),
-    |                          ^^^^^^
+  --> $DIR/copies.rs:272:26
+   |
+LL |         (Some(a), ..) => bar(a),
+   |                          ^^^^^^
 note: consider refactoring into `(Some(a), ..) | (.., Some(a))`
-   --> $DIR/copies.rs:272:26
-    |
-272 |         (Some(a), ..) => bar(a),
-    |                          ^^^^^^
+  --> $DIR/copies.rs:272:26
+   |
+LL |         (Some(a), ..) => bar(a),
+   |                          ^^^^^^
 
 error: this `match` has identical arm bodies
-   --> $DIR/copies.rs:279:20
-    |
-279 |         (.., 3) => 42, //~ ERROR match arms have same body
-    |                    ^^
-    |
+  --> $DIR/copies.rs:279:20
+   |
+LL |         (.., 3) => 42, //~ ERROR match arms have same body
+   |                    ^^
+   |
 note: same as this
-   --> $DIR/copies.rs:278:23
-    |
-278 |         (1, .., 3) => 42,
-    |                       ^^
+  --> $DIR/copies.rs:278:23
+   |
+LL |         (1, .., 3) => 42,
+   |                       ^^
 note: consider refactoring into `(1, .., 3) | (.., 3)`
-   --> $DIR/copies.rs:278:23
-    |
-278 |         (1, .., 3) => 42,
-    |                       ^^
+  --> $DIR/copies.rs:278:23
+   |
+LL |         (1, .., 3) => 42,
+   |                       ^^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:285:12
-    |
-285 |       } else {
-    |  ____________^
-286 | |         //~ ERROR same body as `if` block
-287 | |         0.0
-288 | |     };
-    | |_____^
-    |
+  --> $DIR/copies.rs:285:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         0.0
+LL | |     };
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:283:21
-    |
-283 |       let _ = if true {
-    |  _____________________^
-284 | |         0.0
-285 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:283:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         0.0
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:292:12
-    |
-292 |       } else {
-    |  ____________^
-293 | |         //~ ERROR same body as `if` block
-294 | |         -0.0
-295 | |     };
-    | |_____^
-    |
+  --> $DIR/copies.rs:292:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         -0.0
+LL | |     };
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:290:21
-    |
-290 |       let _ = if true {
-    |  _____________________^
-291 | |         -0.0
-292 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:290:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         -0.0
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:305:12
-    |
-305 |       } else {
-    |  ____________^
-306 | |         //~ ERROR same body as `if` block
-307 | |         std::f32::NAN
-308 | |     };
-    | |_____^
-    |
+  --> $DIR/copies.rs:305:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         std::f32::NAN
+LL | |     };
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:303:21
-    |
-303 |       let _ = if true {
-    |  _____________________^
-304 | |         std::f32::NAN
-305 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:303:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         std::f32::NAN
+LL | |     } else {
+   | |_____^
 
 error: this `if` has identical blocks
-   --> $DIR/copies.rs:323:12
-    |
-323 |       } else {
-    |  ____________^
-324 | |         //~ ERROR same body as `if` block
-325 | |         try!(Ok("foo"));
-326 | |     }
-    | |_____^
-    |
+  --> $DIR/copies.rs:323:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         try!(Ok("foo"));
+LL | |     }
+   | |_____^
+   |
 note: same as this
-   --> $DIR/copies.rs:321:13
-    |
-321 |       if true {
-    |  _____________^
-322 | |         try!(Ok("foo"));
-323 | |     } else {
-    | |_____^
+  --> $DIR/copies.rs:321:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         try!(Ok("foo"));
+LL | |     } else {
+   | |_____^
 
 error: this `if` has the same condition as a previous if
-   --> $DIR/copies.rs:347:15
-    |
-347 |     } else if b {
-    |               ^
-    |
-    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
+  --> $DIR/copies.rs:347:15
+   |
+LL |     } else if b {
+   |               ^
+   |
+   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
 note: same as this
-   --> $DIR/copies.rs:346:8
-    |
-346 |     if b {
-    |        ^
+  --> $DIR/copies.rs:346:8
+   |
+LL |     if b {
+   |        ^
 
 error: this `if` has the same condition as a previous if
-   --> $DIR/copies.rs:352:15
-    |
-352 |     } else if a == 1 {
-    |               ^^^^^^
-    |
+  --> $DIR/copies.rs:352:15
+   |
+LL |     } else if a == 1 {
+   |               ^^^^^^
+   |
 note: same as this
-   --> $DIR/copies.rs:351:8
-    |
-351 |     if a == 1 {
-    |        ^^^^^^
+  --> $DIR/copies.rs:351:8
+   |
+LL |     if a == 1 {
+   |        ^^^^^^
 
 error: this `if` has the same condition as a previous if
-   --> $DIR/copies.rs:358:15
-    |
-358 |     } else if 2 * a == 1 {
-    |               ^^^^^^^^^^
-    |
+  --> $DIR/copies.rs:358:15
+   |
+LL |     } else if 2 * a == 1 {
+   |               ^^^^^^^^^^
+   |
 note: same as this
-   --> $DIR/copies.rs:356:8
-    |
-356 |     if 2 * a == 1 {
-    |        ^^^^^^^^^^
+  --> $DIR/copies.rs:356:8
+   |
+LL |     if 2 * a == 1 {
+   |        ^^^^^^^^^^
 
 error: aborting due to 20 previous errors
 

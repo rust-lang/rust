@@ -1,7 +1,7 @@
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:16:5
    |
-16 |     "".chars().next() == Some(' ');
+LL |     "".chars().next() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
    |
    = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
@@ -9,19 +9,19 @@ error: you should use the `starts_with` method
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:17:5
    |
-17 |     Some(' ') != "".chars().next();
+LL |     Some(' ') != "".chars().next();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
 
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:22:8
    |
-22 |     if s.chars().next().unwrap() == 'f' {
+LL |     if s.chars().next().unwrap() == 'f' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:26:8
    |
-26 |     if s.chars().next_back().unwrap() == 'o' {
+LL |     if s.chars().next_back().unwrap() == 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
    |
    = note: `-D clippy::chars-last-cmp` implied by `-D warnings`
@@ -29,49 +29,49 @@ error: you should use the `ends_with` method
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:30:8
    |
-30 |     if s.chars().last().unwrap() == 'o' {
+LL |     if s.chars().last().unwrap() == 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
 
 error: you should use the `starts_with` method
   --> $DIR/starts_ends_with.rs:34:8
    |
-34 |     if s.chars().next().unwrap() != 'f' {
+LL |     if s.chars().next().unwrap() != 'f' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:38:8
    |
-38 |     if s.chars().next_back().unwrap() != 'o' {
+LL |     if s.chars().next_back().unwrap() != 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:42:8
    |
-42 |     if s.chars().last().unwrap() != 'o' {
+LL |     if s.chars().last().unwrap() != 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:50:5
    |
-50 |     "".chars().last() == Some(' ');
+LL |     "".chars().last() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:51:5
    |
-51 |     Some(' ') != "".chars().last();
+LL |     Some(' ') != "".chars().last();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:52:5
    |
-52 |     "".chars().next_back() == Some(' ');
+LL |     "".chars().next_back() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
   --> $DIR/starts_ends_with.rs:53:5
    |
-53 |     Some(' ') != "".chars().next_back();
+LL |     Some(' ') != "".chars().next_back();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: aborting due to 12 previous errors

@@ -1,7 +1,7 @@
 error: Variant name ends with the enum's name
   --> $DIR/enum_variants.rs:25:5
    |
-25 |     cFoo,
+LL |     cFoo,
    |     ^^^^
    |
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
@@ -9,29 +9,29 @@ error: Variant name ends with the enum's name
 error: Variant name starts with the enum's name
   --> $DIR/enum_variants.rs:36:5
    |
-36 |     FoodGood,
+LL |     FoodGood,
    |     ^^^^^^^^
 
 error: Variant name starts with the enum's name
   --> $DIR/enum_variants.rs:37:5
    |
-37 |     FoodMiddle,
+LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
 error: Variant name starts with the enum's name
   --> $DIR/enum_variants.rs:38:5
    |
-38 |     FoodBad,
+LL |     FoodBad,
    |     ^^^^^^^
 
 error: All variants have the same prefix: `Food`
   --> $DIR/enum_variants.rs:35:1
    |
-35 | / enum Food {
-36 | |     FoodGood,
-37 | |     FoodMiddle,
-38 | |     FoodBad,
-39 | | }
+LL | / enum Food {
+LL | |     FoodGood,
+LL | |     FoodMiddle,
+LL | |     FoodBad,
+LL | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
@@ -39,11 +39,11 @@ error: All variants have the same prefix: `Food`
 error: All variants have the same prefix: `CallType`
   --> $DIR/enum_variants.rs:45:1
    |
-45 | / enum BadCallType {
-46 | |     CallTypeCall,
-47 | |     CallTypeCreate,
-48 | |     CallTypeDestroy,
-49 | | }
+LL | / enum BadCallType {
+LL | |     CallTypeCall,
+LL | |     CallTypeCreate,
+LL | |     CallTypeDestroy,
+LL | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
@@ -51,11 +51,11 @@ error: All variants have the same prefix: `CallType`
 error: All variants have the same prefix: `Constant`
   --> $DIR/enum_variants.rs:57:1
    |
-57 | / enum Consts {
-58 | |     ConstantInt,
-59 | |     ConstantCake,
-60 | |     ConstantLie,
-61 | | }
+LL | / enum Consts {
+LL | |     ConstantInt,
+LL | |     ConstantCake,
+LL | |     ConstantLie,
+LL | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
@@ -63,39 +63,39 @@ error: All variants have the same prefix: `Constant`
 error: All variants have the same prefix: `With`
   --> $DIR/enum_variants.rs:91:1
    |
-91 | / enum Seallll {
-92 | |     WithOutCake,
-93 | |     WithOutTea,
-94 | |     WithOut,
-95 | | }
+LL | / enum Seallll {
+LL | |     WithOutCake,
+LL | |     WithOutTea,
+LL | |     WithOut,
+LL | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `Prefix`
-   --> $DIR/enum_variants.rs:97:1
-    |
-97  | / enum NonCaps {
-98  | |     Prefix的,
-99  | |     PrefixTea,
-100 | |     PrefixCake,
-101 | | }
-    | |_^
-    |
-    = help: remove the prefixes and use full paths to the variants instead of glob imports
+  --> $DIR/enum_variants.rs:97:1
+   |
+LL | / enum NonCaps {
+LL | |     Prefix的,
+LL | |     PrefixTea,
+LL | |     PrefixCake,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `With`
-   --> $DIR/enum_variants.rs:103:1
-    |
-103 | / pub enum PubSeall {
-104 | |     WithOutCake,
-105 | |     WithOutTea,
-106 | |     WithOut,
-107 | | }
-    | |_^
-    |
-    = note: `-D clippy::pub-enum-variant-names` implied by `-D warnings`
-    = help: remove the prefixes and use full paths to the variants instead of glob imports
+  --> $DIR/enum_variants.rs:103:1
+   |
+LL | / pub enum PubSeall {
+LL | |     WithOutCake,
+LL | |     WithOutTea,
+LL | |     WithOut,
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::pub-enum-variant-names` implied by `-D warnings`
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: aborting due to 10 previous errors
 

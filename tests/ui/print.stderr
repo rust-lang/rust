@@ -1,7 +1,7 @@
 error: use of `Debug`-based formatting
   --> $DIR/print.rs:20:19
    |
-20 |         write!(f, "{:?}", 43.1415)
+LL |         write!(f, "{:?}", 43.1415)
    |                   ^^^^^^
    |
    = note: `-D clippy::use-debug` implied by `-D warnings`
@@ -9,13 +9,13 @@ error: use of `Debug`-based formatting
 error: use of `Debug`-based formatting
   --> $DIR/print.rs:27:19
    |
-27 |         write!(f, "{:?}", 42.718)
+LL |         write!(f, "{:?}", 42.718)
    |                   ^^^^^^
 
 error: use of `println!`
   --> $DIR/print.rs:32:5
    |
-32 |     println!("Hello");
+LL |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::print-stdout` implied by `-D warnings`
@@ -23,37 +23,37 @@ error: use of `println!`
 error: use of `print!`
   --> $DIR/print.rs:33:5
    |
-33 |     print!("Hello");
+LL |     print!("Hello");
    |     ^^^^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:35:5
    |
-35 |     print!("Hello {}", "World");
+LL |     print!("Hello {}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:37:5
    |
-37 |     print!("Hello {:?}", "World");
+LL |     print!("Hello {:?}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
   --> $DIR/print.rs:37:12
    |
-37 |     print!("Hello {:?}", "World");
+LL |     print!("Hello {:?}", "World");
    |            ^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:39:5
    |
-39 |     print!("Hello {:#?}", "#orld");
+LL |     print!("Hello {:#?}", "#orld");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
   --> $DIR/print.rs:39:12
    |
-39 |     print!("Hello {:#?}", "#orld");
+LL |     print!("Hello {:#?}", "#orld");
    |            ^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors

@@ -1,11 +1,11 @@
 error: if expression with an `else if`, but without a final `else`
   --> $DIR/else_if_without_else.rs:54:12
    |
-54 |       } else if bla2() {
+LL |       } else if bla2() {
    |  ____________^
-55 | |         //~ ERROR else if without else
-56 | |         println!("else if");
-57 | |     }
+LL | |         //~ ERROR else if without else
+LL | |         println!("else if");
+LL | |     }
    | |_____^
    |
    = note: `-D clippy::else-if-without-else` implied by `-D warnings`
@@ -14,11 +14,11 @@ error: if expression with an `else if`, but without a final `else`
 error: if expression with an `else if`, but without a final `else`
   --> $DIR/else_if_without_else.rs:63:12
    |
-63 |       } else if bla3() {
+LL |       } else if bla3() {
    |  ____________^
-64 | |         //~ ERROR else if without else
-65 | |         println!("else if 2");
-66 | |     }
+LL | |         //~ ERROR else if without else
+LL | |         println!("else if 2");
+LL | |     }
    | |_____^
    |
    = help: add an `else` block here

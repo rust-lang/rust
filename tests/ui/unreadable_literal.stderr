@@ -1,7 +1,7 @@
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:24:16
    |
-24 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                ^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
    |
    = note: `-D clippy::unreadable-literal` implied by `-D warnings`
@@ -9,25 +9,25 @@ error: long literal lacking separators
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:24:30
    |
-24 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                              ^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
 
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:24:51
    |
-24 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                                                   ^^^^^^^^^^ help: consider: `123_456_f32`
 
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:24:63
    |
-24 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
+LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                                                               ^^^^^^^^^^^^ help: consider: `1.234_567_f32`
 
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:26:19
    |
-26 |     let bad_sci = 1.123456e1;
+LL |     let bad_sci = 1.123456e1;
    |                   ^^^^^^^^^^ help: consider: `1.123_456e1`
 
 error: aborting due to 5 previous errors

@@ -1,7 +1,7 @@
 error: Closure called just once immediately after it was declared
   --> $DIR/redundant_closure_call.rs:21:5
    |
-21 |     i = closure();
+LL |     i = closure();
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
@@ -9,25 +9,25 @@ error: Closure called just once immediately after it was declared
 error: Closure called just once immediately after it was declared
   --> $DIR/redundant_closure_call.rs:24:5
    |
-24 |     i = closure(3);
+LL |     i = closure(3);
    |     ^^^^^^^^^^^^^^
 
 error: Try not to call a closure in the expression where it is declared.
   --> $DIR/redundant_closure_call.rs:13:13
    |
-13 |     let a = (|| 42)();
+LL |     let a = (|| 42)();
    |             ^^^^^^^^^ help: Try doing something like: : `42`
 
 error: Try not to call a closure in the expression where it is declared.
   --> $DIR/redundant_closure_call.rs:16:17
    |
-16 |     let mut k = (|m| m + 1)(i);
+LL |     let mut k = (|m| m + 1)(i);
    |                 ^^^^^^^^^^^^^^
 
 error: Try not to call a closure in the expression where it is declared.
   --> $DIR/redundant_closure_call.rs:18:9
    |
-18 |     k = (|a, b| a * b)(1, 5);
+LL |     k = (|a, b| a * b)(1, 5);
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

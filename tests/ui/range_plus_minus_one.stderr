@@ -1,7 +1,7 @@
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:19:14
    |
-19 |     for _ in 0..3 + 1 {}
+LL |     for _ in 0..3 + 1 {}
    |              ^^^^^^^^ help: use: `0..=3`
    |
    = note: `-D clippy::range-plus-one` implied by `-D warnings`
@@ -9,25 +9,25 @@ error: an inclusive range would be more readable
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:22:14
    |
-22 |     for _ in 0..1 + 5 {}
+LL |     for _ in 0..1 + 5 {}
    |              ^^^^^^^^ help: use: `0..=5`
 
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:25:14
    |
-25 |     for _ in 1..1 + 1 {}
+LL |     for _ in 1..1 + 1 {}
    |              ^^^^^^^^ help: use: `1..=1`
 
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:31:14
    |
-31 |     for _ in 0..(1 + f()) {}
+LL |     for _ in 0..(1 + f()) {}
    |              ^^^^^^^^^^^^ help: use: `0..=f()`
 
 error: an exclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:35:13
    |
-35 |     let _ = ..=11 - 1;
+LL |     let _ = ..=11 - 1;
    |             ^^^^^^^^^ help: use: `..11`
    |
    = note: `-D clippy::range-minus-one` implied by `-D warnings`
@@ -35,19 +35,19 @@ error: an exclusive range would be more readable
 error: an exclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:36:13
    |
-36 |     let _ = ..=(11 - 1);
+LL |     let _ = ..=(11 - 1);
    |             ^^^^^^^^^^^ help: use: `..11`
 
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:37:13
    |
-37 |     let _ = (1..11 + 1);
+LL |     let _ = (1..11 + 1);
    |             ^^^^^^^^^^^ help: use: `(1..=11)`
 
 error: an inclusive range would be more readable
   --> $DIR/range_plus_minus_one.rs:38:13
    |
-38 |     let _ = (f() + 1)..(f() + 1);
+LL |     let _ = (f() + 1)..(f() + 1);
    |             ^^^^^^^^^^^^^^^^^^^^ help: use: `((f() + 1)..=f())`
 
 error: aborting due to 8 previous errors

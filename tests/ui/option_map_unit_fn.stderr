@@ -1,7 +1,7 @@
 error: called `map(f)` on an Option value where `f` is a unit function
   --> $DIR/option_map_unit_fn.rs:41:5
    |
-41 |     x.field.map(do_nothing);
+LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(x_field) = x.field { do_nothing(...) }`
@@ -11,7 +11,7 @@ error: called `map(f)` on an Option value where `f` is a unit function
 error: called `map(f)` on an Option value where `f` is a unit function
   --> $DIR/option_map_unit_fn.rs:43:5
    |
-43 |     x.field.map(do_nothing);
+LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(x_field) = x.field { do_nothing(...) }`
@@ -19,7 +19,7 @@ error: called `map(f)` on an Option value where `f` is a unit function
 error: called `map(f)` on an Option value where `f` is a unit function
   --> $DIR/option_map_unit_fn.rs:45:5
    |
-45 |     x.field.map(diverge);
+LL |     x.field.map(diverge);
    |     ^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(x_field) = x.field { diverge(...) }`
@@ -27,7 +27,7 @@ error: called `map(f)` on an Option value where `f` is a unit function
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:51:5
    |
-51 |     x.field.map(|value| x.do_option_nothing(value + captured));
+LL |     x.field.map(|value| x.do_option_nothing(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { x.do_option_nothing(value + captured) }`
@@ -35,7 +35,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:53:5
    |
-53 |     x.field.map(|value| { x.do_option_plus_one(value + captured); });
+LL |     x.field.map(|value| { x.do_option_plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { x.do_option_plus_one(value + captured); }`
@@ -43,7 +43,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:56:5
    |
-56 |     x.field.map(|value| do_nothing(value + captured));
+LL |     x.field.map(|value| do_nothing(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured) }`
@@ -51,7 +51,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:58:5
    |
-58 |     x.field.map(|value| { do_nothing(value + captured) });
+LL |     x.field.map(|value| { do_nothing(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured) }`
@@ -59,7 +59,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:60:5
    |
-60 |     x.field.map(|value| { do_nothing(value + captured); });
+LL |     x.field.map(|value| { do_nothing(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured); }`
@@ -67,7 +67,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:62:5
    |
-62 |     x.field.map(|value| { { do_nothing(value + captured); } });
+LL |     x.field.map(|value| { { do_nothing(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured); }`
@@ -75,7 +75,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:65:5
    |
-65 |     x.field.map(|value| diverge(value + captured));
+LL |     x.field.map(|value| diverge(value + captured));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured) }`
@@ -83,7 +83,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:67:5
    |
-67 |     x.field.map(|value| { diverge(value + captured) });
+LL |     x.field.map(|value| { diverge(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured) }`
@@ -91,7 +91,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:69:5
    |
-69 |     x.field.map(|value| { diverge(value + captured); });
+LL |     x.field.map(|value| { diverge(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured); }`
@@ -99,7 +99,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:71:5
    |
-71 |     x.field.map(|value| { { diverge(value + captured); } });
+LL |     x.field.map(|value| { { diverge(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { diverge(value + captured); }`
@@ -107,7 +107,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:76:5
    |
-76 |     x.field.map(|value| { let y = plus_one(value + captured); });
+LL |     x.field.map(|value| { let y = plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { let y = plus_one(value + captured); }`
@@ -115,7 +115,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:78:5
    |
-78 |     x.field.map(|value| { plus_one(value + captured); });
+LL |     x.field.map(|value| { plus_one(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { plus_one(value + captured); }`
@@ -123,7 +123,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:80:5
    |
-80 |     x.field.map(|value| { { plus_one(value + captured); } });
+LL |     x.field.map(|value| { { plus_one(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { plus_one(value + captured); }`
@@ -131,7 +131,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:83:5
    |
-83 |     x.field.map(|ref value| { do_nothing(value + captured) });
+LL |     x.field.map(|ref value| { do_nothing(value + captured) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(ref value) = x.field { do_nothing(value + captured) }`
@@ -139,7 +139,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:86:5
    |
-86 |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
+LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { ... }`
@@ -147,7 +147,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:88:5
    |
-88 |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { ... }`
@@ -155,13 +155,13 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:92:5
    |
-92 |        x.field.map(|value| {
+LL |        x.field.map(|value| {
    |   _____^
    |  |_____|
    | ||
-93 | ||         do_nothing(value);
-94 | ||         do_nothing(value)
-95 | ||     });
+LL | ||         do_nothing(value);
+LL | ||         do_nothing(value)
+LL | ||     });
    | ||______^- help: try this: `if let Some(value) = x.field { ... }`
    | |_______|
    | 
@@ -169,7 +169,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:96:5
    |
-96 |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
+LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(value) = x.field { ... }`
@@ -177,34 +177,34 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 error: called `map(f)` on an Option value where `f` is a unit function
   --> $DIR/option_map_unit_fn.rs:99:5
    |
-99 |     Some(42).map(diverge);
+LL |     Some(42).map(diverge);
    |     ^^^^^^^^^^^^^^^^^^^^^-
    |     |
    |     help: try this: `if let Some(_) = Some(42) { diverge(...) }`
 
 error: called `map(f)` on an Option value where `f` is a unit function
-   --> $DIR/option_map_unit_fn.rs:100:5
-    |
-100 |     "12".parse::<i32>().ok().map(diverge);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-    |     |
-    |     help: try this: `if let Some(_) = "12".parse::<i32>().ok() { diverge(...) }`
+  --> $DIR/option_map_unit_fn.rs:100:5
+   |
+LL |     "12".parse::<i32>().ok().map(diverge);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try this: `if let Some(_) = "12".parse::<i32>().ok() { diverge(...) }`
 
 error: called `map(f)` on an Option value where `f` is a unit function
-   --> $DIR/option_map_unit_fn.rs:101:5
-    |
-101 |     Some(plus_one(1)).map(do_nothing);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-    |     |
-    |     help: try this: `if let Some(_) = Some(plus_one(1)) { do_nothing(...) }`
+  --> $DIR/option_map_unit_fn.rs:101:5
+   |
+LL |     Some(plus_one(1)).map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try this: `if let Some(_) = Some(plus_one(1)) { do_nothing(...) }`
 
 error: called `map(f)` on an Option value where `f` is a unit function
-   --> $DIR/option_map_unit_fn.rs:105:5
-    |
-105 |     y.map(do_nothing);
-    |     ^^^^^^^^^^^^^^^^^-
-    |     |
-    |     help: try this: `if let Some(_y) = y { do_nothing(...) }`
+  --> $DIR/option_map_unit_fn.rs:105:5
+   |
+LL |     y.map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try this: `if let Some(_y) = y { do_nothing(...) }`
 
 error: aborting due to 25 previous errors
 

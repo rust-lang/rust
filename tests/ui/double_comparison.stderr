@@ -1,7 +1,7 @@
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:13:8
    |
-13 |     if x == y || x < y {
+LL |     if x == y || x < y {
    |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
    |
    = note: `-D clippy::double-comparisons` implied by `-D warnings`
@@ -9,43 +9,43 @@ error: This binary expression can be simplified
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:16:8
    |
-16 |     if x < y || x == y {
+LL |     if x < y || x == y {
    |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
 
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:19:8
    |
-19 |     if x == y || x > y {
+LL |     if x == y || x > y {
    |        ^^^^^^^^^^^^^^^ help: try: `x >= y`
 
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:22:8
    |
-22 |     if x > y || x == y {
+LL |     if x > y || x == y {
    |        ^^^^^^^^^^^^^^^ help: try: `x >= y`
 
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:25:8
    |
-25 |     if x < y || x > y {
+LL |     if x < y || x > y {
    |        ^^^^^^^^^^^^^^ help: try: `x != y`
 
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:28:8
    |
-28 |     if x > y || x < y {
+LL |     if x > y || x < y {
    |        ^^^^^^^^^^^^^^ help: try: `x != y`
 
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:31:8
    |
-31 |     if x <= y && x >= y {
+LL |     if x <= y && x >= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`
 
 error: This binary expression can be simplified
   --> $DIR/double_comparison.rs:34:8
    |
-34 |     if x >= y && x <= y {
+LL |     if x >= y && x <= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`
 
 error: aborting due to 8 previous errors

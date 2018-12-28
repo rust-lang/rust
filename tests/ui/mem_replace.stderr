@@ -1,7 +1,7 @@
 error: replacing an `Option` with `None`
   --> $DIR/mem_replace.rs:16:13
    |
-16 |     let _ = mem::replace(&mut an_option, None);
+LL |     let _ = mem::replace(&mut an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
    |
    = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: replacing an `Option` with `None`
 error: replacing an `Option` with `None`
   --> $DIR/mem_replace.rs:18:13
    |
-18 |     let _ = mem::replace(an_option, None);
+LL |     let _ = mem::replace(an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
 
 error: aborting due to 2 previous errors

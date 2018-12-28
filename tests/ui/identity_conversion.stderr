@@ -1,67 +1,67 @@
 error: identical conversion
   --> $DIR/identity_conversion.rs:13:13
    |
-13 |     let _ = T::from(val);
+LL |     let _ = T::from(val);
    |             ^^^^^^^^^^^^ help: consider removing `T::from()`: `val`
    |
 note: lint level defined here
   --> $DIR/identity_conversion.rs:10:9
    |
-10 | #![deny(clippy::identity_conversion)]
+LL | #![deny(clippy::identity_conversion)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:14:5
    |
-14 |     val.into()
+LL |     val.into()
    |     ^^^^^^^^^^ help: consider removing `.into()`: `val`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:26:22
    |
-26 |         let _: i32 = 0i32.into();
+LL |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:47:21
    |
-47 |     let _: String = "foo".to_string().into();
+LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:48:21
    |
-48 |     let _: String = From::from("foo".to_string());
+LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:49:13
    |
-49 |     let _ = String::from("foo".to_string());
+LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:50:13
    |
-50 |     let _ = String::from(format!("A: {:04}", 123));
+LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:51:13
    |
-51 |     let _ = "".lines().into_iter();
+LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:52:13
    |
-52 |     let _ = vec![1, 2, 3].into_iter().into_iter();
+LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
 error: identical conversion
   --> $DIR/identity_conversion.rs:53:21
    |
-53 |     let _: String = format!("Hello {}", "world").into();
+LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
 
 error: aborting due to 10 previous errors

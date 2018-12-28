@@ -1,9 +1,9 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:19:5
    |
-19 | /     if !m.contains_key(&k) {
-20 | |         m.insert(k, v);
-21 | |     }
+LL | /     if !m.contains_key(&k) {
+LL | |         m.insert(k, v);
+LL | |     }
    | |_____^ help: consider using: `m.entry(k).or_insert(v)`
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
@@ -11,63 +11,63 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:25:5
    |
-25 | /     if !m.contains_key(&k) {
-26 | |         foo();
-27 | |         m.insert(k, v);
-28 | |     }
+LL | /     if !m.contains_key(&k) {
+LL | |         foo();
+LL | |         m.insert(k, v);
+LL | |     }
    | |_____^ help: consider using: `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:32:5
    |
-32 | /     if !m.contains_key(&k) {
-33 | |         m.insert(k, v)
-34 | |     } else {
-35 | |         None
-36 | |     };
+LL | /     if !m.contains_key(&k) {
+LL | |         m.insert(k, v)
+LL | |     } else {
+LL | |         None
+LL | |     };
    | |_____^ help: consider using: `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:40:5
    |
-40 | /     if m.contains_key(&k) {
-41 | |         None
-42 | |     } else {
-43 | |         m.insert(k, v)
-44 | |     };
+LL | /     if m.contains_key(&k) {
+LL | |         None
+LL | |     } else {
+LL | |         m.insert(k, v)
+LL | |     };
    | |_____^ help: consider using: `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:48:5
    |
-48 | /     if !m.contains_key(&k) {
-49 | |         foo();
-50 | |         m.insert(k, v)
-51 | |     } else {
-52 | |         None
-53 | |     };
+LL | /     if !m.contains_key(&k) {
+LL | |         foo();
+LL | |         m.insert(k, v)
+LL | |     } else {
+LL | |         None
+LL | |     };
    | |_____^ help: consider using: `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:57:5
    |
-57 | /     if m.contains_key(&k) {
-58 | |         None
-59 | |     } else {
-60 | |         foo();
-61 | |         m.insert(k, v)
-62 | |     };
+LL | /     if m.contains_key(&k) {
+LL | |         None
+LL | |     } else {
+LL | |         foo();
+LL | |         m.insert(k, v)
+LL | |     };
    | |_____^ help: consider using: `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `BTreeMap`
   --> $DIR/entry.rs:66:5
    |
-66 | /     if !m.contains_key(&k) {
-67 | |         foo();
-68 | |         m.insert(k, v)
-69 | |     } else {
-70 | |         None
-71 | |     };
+LL | /     if !m.contains_key(&k) {
+LL | |         foo();
+LL | |         m.insert(k, v)
+LL | |     } else {
+LL | |         None
+LL | |     };
    | |_____^ help: consider using: `m.entry(k)`
 
 error: aborting due to 7 previous errors

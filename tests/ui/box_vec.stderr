@@ -1,7 +1,7 @@
 error: you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`
   --> $DIR/box_vec.rs:23:18
    |
-23 | pub fn test(foo: Box<Vec<bool>>) {
+LL | pub fn test(foo: Box<Vec<bool>>) {
    |                  ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::box-vec` implied by `-D warnings`

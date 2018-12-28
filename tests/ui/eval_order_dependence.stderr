@@ -1,50 +1,50 @@
 error: unsequenced read of a variable
   --> $DIR/eval_order_dependence.rs:24:9
    |
-24 |     } + x;
+LL |     } + x;
    |         ^
    |
    = note: `-D clippy::eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
   --> $DIR/eval_order_dependence.rs:22:9
    |
-22 |         x = 1;
+LL |         x = 1;
    |         ^^^^^
 
 error: unsequenced read of a variable
   --> $DIR/eval_order_dependence.rs:27:5
    |
-27 |     x += {
+LL |     x += {
    |     ^
    |
 note: whether read occurs before this write depends on evaluation order
   --> $DIR/eval_order_dependence.rs:28:9
    |
-28 |         x = 20;
+LL |         x = 20;
    |         ^^^^^^
 
 error: unsequenced read of a variable
   --> $DIR/eval_order_dependence.rs:40:12
    |
-40 |         a: x,
+LL |         a: x,
    |            ^
    |
 note: whether read occurs before this write depends on evaluation order
   --> $DIR/eval_order_dependence.rs:42:13
    |
-42 |             x = 6;
+LL |             x = 6;
    |             ^^^^^
 
 error: unsequenced read of a variable
   --> $DIR/eval_order_dependence.rs:49:9
    |
-49 |         x += {
+LL |         x += {
    |         ^
    |
 note: whether read occurs before this write depends on evaluation order
   --> $DIR/eval_order_dependence.rs:50:13
    |
-50 |             x = 20;
+LL |             x = 20;
    |             ^^^^^^
 
 error: aborting due to 4 previous errors

@@ -1,10 +1,10 @@
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:13:1
    |
-13 | / #[crate_type = "lib"]
-14 | |
-15 | | /// some comment
-16 | | fn with_one_newline_and_comment() { assert!(true) }
+LL | / #[crate_type = "lib"]
+LL | |
+LL | | /// some comment
+LL | | fn with_one_newline_and_comment() { assert!(true) }
    | |_
    |
    = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
@@ -12,42 +12,42 @@ error: Found an empty line after an outer attribute. Perhaps you forgot to add a
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:25:1
    |
-25 | / #[crate_type = "lib"]
-26 | |
-27 | | fn with_one_newline() { assert!(true) }
+LL | / #[crate_type = "lib"]
+LL | |
+LL | | fn with_one_newline() { assert!(true) }
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:30:1
    |
-30 | / #[crate_type = "lib"]
-31 | |
-32 | |
-33 | | fn with_two_newlines() { assert!(true) }
+LL | / #[crate_type = "lib"]
+LL | |
+LL | |
+LL | | fn with_two_newlines() { assert!(true) }
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:37:1
    |
-37 | / #[crate_type = "lib"]
-38 | |
-39 | | enum Baz {
+LL | / #[crate_type = "lib"]
+LL | |
+LL | | enum Baz {
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:45:1
    |
-45 | / #[crate_type = "lib"]
-46 | |
-47 | | struct Foo {
+LL | / #[crate_type = "lib"]
+LL | |
+LL | | struct Foo {
    | |_
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:53:1
    |
-53 | / #[crate_type = "lib"]
-54 | |
-55 | | mod foo {
+LL | / #[crate_type = "lib"]
+LL | |
+LL | | mod foo {
    | |_
 
 error: aborting due to 6 previous errors

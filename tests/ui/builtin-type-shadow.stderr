@@ -1,7 +1,7 @@
 error: This generic shadows the built-in type `u32`
   --> $DIR/builtin-type-shadow.rs:13:8
    |
-13 | fn foo<u32>(a: u32) -> u32 {
+LL | fn foo<u32>(a: u32) -> u32 {
    |        ^^^
    |
    = note: `-D clippy::builtin-type-shadow` implied by `-D warnings`
@@ -9,9 +9,9 @@ error: This generic shadows the built-in type `u32`
 error[E0308]: mismatched types
   --> $DIR/builtin-type-shadow.rs:14:5
    |
-13 | fn foo<u32>(a: u32) -> u32 {
+LL | fn foo<u32>(a: u32) -> u32 {
    |                        --- expected `u32` because of return type
-14 |     42
+LL |     42
    |     ^^ expected type parameter, found integral variable
    |
    = note: expected type `u32`

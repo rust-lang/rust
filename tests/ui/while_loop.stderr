@@ -1,13 +1,13 @@
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:15:5
    |
-15 | /     loop {
-16 | |         if let Some(_x) = y {
-17 | |             let _v = 1;
-18 | |         } else {
-19 | |             break;
-20 | |         }
-21 | |     }
+LL | /     loop {
+LL | |         if let Some(_x) = y {
+LL | |             let _v = 1;
+LL | |         } else {
+LL | |             break;
+LL | |         }
+LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
@@ -15,54 +15,54 @@ error: this loop could be written as a `while let` loop
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:29:5
    |
-29 | /     loop {
-30 | |         match y {
-31 | |             Some(_x) => true,
-32 | |             None => break,
-33 | |         };
-34 | |     }
+LL | /     loop {
+LL | |         match y {
+LL | |             Some(_x) => true,
+LL | |             None => break,
+LL | |         };
+LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:35:5
    |
-35 | /     loop {
-36 | |         let x = match y {
-37 | |             Some(x) => x,
-38 | |             None => break,
+LL | /     loop {
+LL | |         let x = match y {
+LL | |             Some(x) => x,
+LL | |             None => break,
 ...  |
-41 | |         let _str = "foo";
-42 | |     }
+LL | |         let _str = "foo";
+LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:43:5
    |
-43 | /     loop {
-44 | |         let x = match y {
-45 | |             Some(x) => x,
-46 | |             None => break,
+LL | /     loop {
+LL | |         let x = match y {
+LL | |             Some(x) => x,
+LL | |             None => break,
 ...  |
-53 | |         }
-54 | |     }
+LL | |         }
+LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:71:5
    |
-71 | /     loop {
-72 | |         let (e, l) = match "".split_whitespace().next() {
-73 | |             Some(word) => (word.is_empty(), word.len()),
-74 | |             None => break,
+LL | /     loop {
+LL | |         let (e, l) = match "".split_whitespace().next() {
+LL | |             Some(word) => (word.is_empty(), word.len()),
+LL | |             None => break,
 ...  |
-77 | |         let _ = (e, l);
-78 | |     }
+LL | |         let _ = (e, l);
+LL | |     }
    | |_____^ help: try: `while let Some(word) = "".split_whitespace().next() { .. }`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:81:33
    |
-81 |     while let Option::Some(x) = iter.next() {
+LL |     while let Option::Some(x) = iter.next() {
    |                                 ^^^^^^^^^^^ help: try: `for x in iter { .. }`
    |
    = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
@@ -70,46 +70,46 @@ error: this loop could be written as a `for` loop
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:86:25
    |
-86 |     while let Some(x) = iter.next() {
+LL |     while let Some(x) = iter.next() {
    |                         ^^^^^^^^^^^ help: try: `for x in iter { .. }`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:91:25
    |
-91 |     while let Some(_) = iter.next() {}
+LL |     while let Some(_) = iter.next() {}
    |                         ^^^^^^^^^^^ help: try: `for _ in iter { .. }`
 
 error: this loop could be written as a `while let` loop
-   --> $DIR/while_loop.rs:134:5
-    |
-134 | /     loop {
-135 | |         let _ = match iter.next() {
-136 | |             Some(ele) => ele,
-137 | |             None => break,
-138 | |         };
-139 | |         loop {}
-140 | |     }
-    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
+  --> $DIR/while_loop.rs:134:5
+   |
+LL | /     loop {
+LL | |         let _ = match iter.next() {
+LL | |             Some(ele) => ele,
+LL | |             None => break,
+LL | |         };
+LL | |         loop {}
+LL | |     }
+   | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
 
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
-   --> $DIR/while_loop.rs:139:9
-    |
-139 |         loop {}
-    |         ^^^^^^^
-    |
-    = note: `-D clippy::empty-loop` implied by `-D warnings`
+  --> $DIR/while_loop.rs:139:9
+   |
+LL |         loop {}
+   |         ^^^^^^^
+   |
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-   --> $DIR/while_loop.rs:197:29
-    |
-197 |         while let Some(v) = y.next() {
-    |                             ^^^^^^^^ help: try: `for v in y { .. }`
+  --> $DIR/while_loop.rs:197:29
+   |
+LL |         while let Some(v) = y.next() {
+   |                             ^^^^^^^^ help: try: `for v in y { .. }`
 
 error: this loop could be written as a `for` loop
-   --> $DIR/while_loop.rs:225:26
-    |
-225 |     while let Some(..) = values.iter().next() {
-    |                          ^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in values.iter() { .. }`
+  --> $DIR/while_loop.rs:225:26
+   |
+LL |     while let Some(..) = values.iter().next() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in values.iter() { .. }`
 
 error: aborting due to 12 previous errors
 
