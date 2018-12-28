@@ -1811,15 +1811,8 @@ impl<'a, 'tcx> Lift<'tcx> for &'a LazyConst<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
     type Lifted = &'tcx mir::interpret::Allocation;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
+        assert!(tcx.global_interners.arena.in_arena(*self as *const _));
+        Some(unsafe { mem::transmute(*self) })
     }
 }
 
