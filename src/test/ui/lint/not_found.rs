@@ -1,7 +1,3 @@
-// Copyright 2014–2017 The Rust Project Developers. See the COPYRIGHT
-// http://rust-lang.org/COPYRIGHT.
-//
-
 // compile-pass
 
 // this tests the `unknown_lint` lint, especially the suggestions
