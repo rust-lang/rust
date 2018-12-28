@@ -1762,7 +1762,7 @@ nop_list_lift!{Kind<'a> => Kind<'tcx>}
 impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
     type Lifted = &'tcx mir::interpret::Allocation;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        assert!(tcx.global_interners.arena.in_arena(*self as *const _));
+        assert!(tcx.global_arenas.const_allocs.in_arena(*self as *const _));
         Some(unsafe { mem::transmute(*self) })
     }
 }
