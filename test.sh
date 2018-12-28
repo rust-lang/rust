@@ -19,7 +19,8 @@ echo "[JIT] mini_core_hello_world"
 SHOULD_RUN=1 $RUSTC --crate-type bin example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
-build_example_bin mini_core_hello_world example/mini_core_hello_world.rs
+$RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin
+sh -c ./target/out/mini_core_hello_world || true
 
 echo "[BUILD] sysroot"
 time ./build_sysroot/build_sysroot.sh

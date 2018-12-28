@@ -19,7 +19,8 @@ else
 fi
 
 # Build libs
-export RUSTFLAGS="$RUSTFLAGS -Z force-unstable-if-unmarked --sysroot ../"
+mkdir -p sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+export RUSTFLAGS="$RUSTFLAGS -Z force-unstable-if-unmarked --sysroot sysroot"
 if [[ "$1" == "--release" ]]; then
     channel='release'
     RUSTFLAGS="$RUSTFLAGS -Zmir-opt-level=3" cargo build --target $TARGET_TRIPLE --release
@@ -29,5 +30,4 @@ else
 fi
 
 # Copy files to sysroot
-mkdir -p sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
 cp target/$TARGET_TRIPLE/$channel/deps/*.rlib sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
