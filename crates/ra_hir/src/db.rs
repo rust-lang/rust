@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use ra_syntax::{
-    SmolStr,
-    SyntaxNode,
-};
+use ra_syntax::SyntaxNode;
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, FileId, Cancelable};
 
 use crate::{
-    DefLoc, DefId,
+    DefLoc, DefId, Name,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
@@ -47,7 +44,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn query_definitions::type_for_def;
     }
 
-    fn type_for_field(def_id: DefId, field: SmolStr) -> Cancelable<Ty> {
+    fn type_for_field(def_id: DefId, field: Name) -> Cancelable<Ty> {
         type TypeForFieldQuery;
         use fn query_definitions::type_for_field;
     }
