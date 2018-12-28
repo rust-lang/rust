@@ -1,4 +1,4 @@
-// Test that the use of the box syntax is gated by `box_syntax` feature gate.
+// Test that the use of the box syntax is gated by `re-rebalance-coherence` feature gate.
 
 // aux-build:re_rebalance_coherence_lib.rs
 
