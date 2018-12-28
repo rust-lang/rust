@@ -56,18 +56,22 @@ pub mod time;
 
 cfg_if! {
     if #[cfg(target_feature = "atomics")] {
-        #[path = "condvar_atomics.rs"]
+        #[path = "../wasm/condvar_atomics.rs"]
         pub mod condvar;
-        #[path = "mutex_atomics.rs"]
+        #[path = "../wasm/mutex_atomics.rs"]
         pub mod mutex;
-        #[path = "rwlock_atomics.rs"]
+        #[path = "../wasm/rwlock_atomics.rs"]
         pub mod rwlock;
-        #[path = "thread_local_atomics.rs"]
+        #[path = "../wasm/thread_local_atomics.rs"]
         pub mod thread_local;
     } else {
+        #[path = "../wasm/condvar.rs"]
         pub mod condvar;
+        #[path = "../wasm/mutex.rs"]
         pub mod mutex;
+        #[path = "../wasm/rwlock.rs"]
         pub mod rwlock;
+        #[path = "../wasm/thread_local.rs"]
         pub mod thread_local;
     }
 }
