@@ -2,6 +2,9 @@
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
 // aux-build:coherence_copy_like_lib.rs
+// revisions: old re
+
+#![cfg_attr(re, feature(re_rebalance_coherence))]
 
 extern crate coherence_copy_like_lib as lib;
 
@@ -15,6 +18,8 @@ impl<T: lib::MyCopy> MyTrait for T { }
 //     (MyType,): !MyTrait
 //
 // which we cannot approve.
-impl MyTrait for (MyType,) { } //~ ERROR E0119
+impl MyTrait for (MyType,) { }
+//[old]~^ ERROR E0119
+//[re]~^^ ERROR E0119
 
 fn main() { }
