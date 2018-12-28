@@ -1877,6 +1877,10 @@ impl<'a> MacroCall<'a> {
     pub fn token_tree(self) -> Option<TokenTree<'a>> {
         super::child_opt(self)
     }
+
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
 }
 
 // MatchArm

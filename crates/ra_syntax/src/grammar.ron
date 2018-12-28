@@ -484,7 +484,7 @@ Grammar(
 
         "Name": (),
         "NameRef": (),
-        "MacroCall": ( options: [ "TokenTree" ] ),
+        "MacroCall": ( options: [ "TokenTree", "Path" ] ),
         "Attr": ( options: [ ["value", "TokenTree"] ] ),
         "TokenTree": (),
         "TypeParamList": (
