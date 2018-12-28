@@ -1,4 +1,4 @@
-error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/local-modularized-tricky-fail-2.rs:20:32
    |
 LL | exported!();
@@ -9,7 +9,7 @@ LL |                 () => ( struct Б; ) //~ ERROR non-ascii idents are not ful
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
-error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/local-modularized-tricky-fail-2.rs:36:24
    |
 LL |     panic!();
@@ -20,7 +20,7 @@ LL |         () => ( struct Г; ) //~ ERROR non-ascii idents are not fully suppo
    |
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
-error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+error[E0658]: non-ascii idents are not fully supported. (see issue #55467)
   --> $DIR/local-modularized-tricky-fail-2.rs:46:24
    |
 LL | include!();
