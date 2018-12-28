@@ -29,6 +29,7 @@ pub enum CompletionItemKind {
     Function,
     Struct,
     Enum,
+    EnumVariant,
     Binding,
     Field,
 }

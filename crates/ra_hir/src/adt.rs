@@ -73,6 +73,10 @@ impl Enum {
     pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<SmolStr>> {
         Ok(db.enum_data(self.def_id)?.name.clone())
     }
+
+    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(SmolStr, Arc<VariantData>)>> {
+        Ok(db.enum_data(self.def_id)?.variants.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
