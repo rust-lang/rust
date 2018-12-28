@@ -23,7 +23,7 @@ use crate::{
     AnalysisChange,
     Cancelable,
     completion::{CompletionItem, completions},
-    CrateId, db, Diagnostic, FileId, FilePosition, FileSystemEdit,
+    CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase},
 };
@@ -404,19 +404,21 @@ impl AnalysisImpl {
         Ok(res)
     }
 
-    pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
-        let file = self.file_syntax(file_id);
-        let offset = range.start();
+    pub fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
+        let file = self.file_syntax(frange.file_id);
+        let offset = frange.range.start();
         let actions = vec![
             ra_editor::flip_comma(&file, offset).map(|f| f()),
             ra_editor::add_derive(&file, offset).map(|f| f()),
             ra_editor::add_impl(&file, offset).map(|f| f()),
             ra_editor::make_pub_crate(&file, offset).map(|f| f()),
-            ra_editor::introduce_variable(&file, range).map(|f| f()),
+            ra_editor::introduce_variable(&file, frange.range).map(|f| f()),
         ];
         actions
             .into_iter()
-            .filter_map(|local_edit| Some(SourceChange::from_local_edit(file_id, local_edit?)))
+            .filter_map(|local_edit| {
+                Some(SourceChange::from_local_edit(frange.file_id, local_edit?))
+            })
             .collect()
     }
 
@@ -487,13 +489,15 @@ impl AnalysisImpl {
         Ok(None)
     }
 
-    pub fn type_of(&self, file_id: FileId, range: TextRange) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(file_id);
+    pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
+        let file = self.db.source_file(frange.file_id);
         let syntax = file.syntax();
-        let node = find_covering_node(syntax, range);
+        let node = find_covering_node(syntax, frange.range);
         let parent_fn = ctry!(node.ancestors().find_map(FnDef::cast));
         let function = ctry!(source_binder::function_from_source(
-            &*self.db, file_id, parent_fn
+            &*self.db,
+            frange.file_id,
+            parent_fn
         )?);
         let infer = function.infer(&*self.db)?;
         Ok(infer.type_of_node(node).map(|t| t.to_string()))
