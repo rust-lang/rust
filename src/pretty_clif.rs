@@ -152,6 +152,7 @@ impl<'a> FuncWriter for &'a CommentWriter {
     }
 }
 
+#[cfg(debug_assertions)]
 impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     pub fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
         self.clif_comments.global_comments.push(comment.into());
@@ -202,7 +203,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             Ok(mut file) => {
                 let target_triple: ::target_lexicon::Triple = self.tcx.sess.target.target.llvm_target.parse().unwrap();
                 writeln!(file, "test compile").unwrap();
-                writeln!(file, "target {}", target_triple.architecture).unwrap();
+                writeln!(file, "target {}", target_triple).unwrap();
                 writeln!(file, "").unwrap();
                 file.write(clif.as_bytes()).unwrap();
             }

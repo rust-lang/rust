@@ -110,9 +110,8 @@ fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     });
 
     // Step 7. Write function to file for debugging
-    if cfg!(debug_assertions) {
-        fx.write_clif_file();
-    }
+    #[cfg(debug_assertions)]
+    fx.write_clif_file();
 
     // Step 8. Verify function
     verify_func(tcx, fx.clif_comments, &func);
@@ -158,14 +157,17 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             trans_stmt(fx, ebb, stmt);
         }
 
-        let mut terminator_head = "\n".to_string();
-        bb_data
-            .terminator()
-            .kind
-            .fmt_head(&mut terminator_head)
-            .unwrap();
-        let inst = fx.bcx.func.layout.last_inst(ebb).unwrap();
-        fx.add_comment(inst, terminator_head);
+        #[cfg(debug_assertions)]
+        {
+            let mut terminator_head = "\n".to_string();
+            bb_data
+                .terminator()
+                .kind
+                .fmt_head(&mut terminator_head)
+                .unwrap();
+            let inst = fx.bcx.func.layout.last_inst(ebb).unwrap();
+            fx.add_comment(inst, terminator_head);
+        }
 
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
@@ -320,6 +322,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
 ) {
     let _print_guard = PrintOnPanic(|| format!("stmt {:?}", stmt));
 
+    #[cfg(debug_assertions)]
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {

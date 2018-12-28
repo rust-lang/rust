@@ -199,7 +199,10 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         let func_id = self.get_function_id(inst);
         let func_ref = self.module
             .declare_func_in_func(func_id, &mut self.bcx.func);
+
+        #[cfg(debug_assertions)]
         self.add_entity_comment(func_ref, format!("{:?}", inst));
+
         func_ref
     }
 
@@ -273,6 +276,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     }
 }
 
+#[cfg(debug_assertions)]
 fn add_arg_comment<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     msg: &str,
@@ -300,6 +304,7 @@ fn add_arg_comment<'a, 'tcx: 'a>(
     ));
 }
 
+#[cfg(debug_assertions)]
 fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!("msg   loc.idx    param    pass mode            ssa flags  ty"));
 }
@@ -320,12 +325,15 @@ fn local_place<'a, 'tcx: 'a>(
             offset: None,
         });
 
-        let TyLayout { ty, details } = layout;
-        let ty::layout::LayoutDetails { size, align, abi: _, variants: _, fields: _ } = details;
-        fx.add_entity_comment(stack_slot, format!(
-            "{:?}: {:?} size={} align={},{}",
-            local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
-        ));
+        #[cfg(debug_assertions)]
+        {
+            let TyLayout { ty, details } = layout;
+            let ty::layout::LayoutDetails { size, align, abi: _, variants: _, fields: _ } = details;
+            fx.add_entity_comment(stack_slot, format!(
+                "{:?}: {:?} size={} align={},{}",
+                local, ty, size.bytes(), align.abi.bytes(), align.pref.bytes(),
+            ));
+        }
 
         CPlace::from_stack_slot(fx, stack_slot, layout.ty)
     };
@@ -347,7 +355,10 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
     let clif_type = pass_mode.get_param_ty(fx);
     let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
+
+    #[cfg(debug_assertions)]
     add_arg_comment(fx, "arg", local, local_field, Some(ebb_param), pass_mode, ssa_flags, arg_ty);
+
     match pass_mode {
         PassMode::NoPass => unimplemented!("pass mode nopass"),
         PassMode::ByVal(_) => CValue::ByVal(ebb_param, layout),
@@ -360,6 +371,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     start_ebb: Ebb,
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
+
+    #[cfg(debug_assertions)]
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
     let ret_layout = fx.layout_of(fx.return_type());
@@ -370,8 +383,11 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.pointer_type)),
     };
 
-    add_local_header_comment(fx);
-    add_arg_comment(fx, "ret", RETURN_PLACE, None, ret_param, output_pass_mode, ssa_analyzed[&RETURN_PLACE], ret_layout.ty);
+    #[cfg(debug_assertions)]
+    {
+        add_local_header_comment(fx);
+        add_arg_comment(fx, "ret", RETURN_PLACE, None, ret_param, output_pass_mode, ssa_analyzed[&RETURN_PLACE], ret_layout.ty);
+    }
 
     enum ArgKind<'tcx> {
         Normal(CValue<'tcx>),
