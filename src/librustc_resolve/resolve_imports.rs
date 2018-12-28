@@ -836,7 +836,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
                 if let Some(initial_module) = directive.imported_module.get() {
-                    if module != initial_module && self.ambiguity_errors.is_empty() {
+                    if !ModuleOrUniformRoot::same_def(module, initial_module)
+                        && self.ambiguity_errors.is_empty()
+                    {
                         span_bug!(directive.span, "inconsistent resolution for an import");
                     }
                 } else {
