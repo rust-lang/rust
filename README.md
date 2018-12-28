@@ -19,8 +19,7 @@ Work on the Rust Analyzer is sponsored by
 
 ## Quick Start
 
-Rust analyzer builds on Rust >= 1.30.0 (currently in beta) and uses
-the 2018 edition.
+Rust analyzer builds on Rust >= 1.31.0 and uses the 2018 edition.
 
 ```
 # run tests
