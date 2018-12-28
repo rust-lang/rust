@@ -8,7 +8,7 @@ pub mod mock;
 use std::sync::Arc;
 
 use ra_editor::LineIndex;
-use ra_syntax::{TextUnit, SourceFileNode};
+use ra_syntax::{TextUnit, TextRange, SourceFileNode};
 
 pub use crate::{
     cancelation::{Canceled, Cancelable},
@@ -69,4 +69,10 @@ fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
 pub struct FilePosition {
     pub file_id: FileId,
     pub offset: TextUnit,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FileRange {
+    pub file_id: FileId,
+    pub range: TextRange,
 }

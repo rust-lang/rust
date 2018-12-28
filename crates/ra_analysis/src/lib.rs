@@ -16,6 +16,10 @@ mod completion;
 mod symbol_index;
 pub mod mock_analysis;
 
+mod extend_selection;
+mod syntax_highlighting;
+mod macros;
+
 use std::{fmt, sync::Arc};
 
 use rustc_hash::FxHashMap;
@@ -37,7 +41,7 @@ pub use ra_editor::{
 pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
-    Canceled, Cancelable, FilePosition,
+    Canceled, Cancelable, FilePosition, FileRange,
     CrateGraph, CrateId, SourceRootId, FileId
 };
 
@@ -276,8 +280,8 @@ impl Analysis {
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.imp.file_line_index(file_id)
     }
-    pub fn extend_selection(&self, file: &SourceFileNode, range: TextRange) -> TextRange {
-        ra_editor::extend_selection(file, range).unwrap_or(range)
+    pub fn extend_selection(&self, frange: FileRange) -> TextRange {
+        extend_selection::extend_selection(&self.imp.db, frange)
     }
     pub fn matching_brace(&self, file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
         ra_editor::matching_brace(file, offset)
@@ -286,9 +290,9 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         ra_editor::syntax_tree(&file)
     }
-    pub fn join_lines(&self, file_id: FileId, range: TextRange) -> SourceChange {
-        let file = self.imp.file_syntax(file_id);
-        SourceChange::from_local_edit(file_id, ra_editor::join_lines(&file, range))
+    pub fn join_lines(&self, frange: FileRange) -> SourceChange {
+        let file = self.imp.file_syntax(frange.file_id);
+        SourceChange::from_local_edit(frange.file_id, ra_editor::join_lines(&file, frange.range))
     }
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
         let file = self.imp.file_syntax(position.file_id);
@@ -340,14 +344,13 @@ impl Analysis {
         Ok(ra_editor::runnables(&file))
     }
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        let file = self.imp.file_syntax(file_id);
-        Ok(ra_editor::highlight(&file))
+        syntax_highlighting::highlight(&*self.imp.db, file_id)
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         self.imp.completions(position)
     }
-    pub fn assists(&self, file_id: FileId, range: TextRange) -> Cancelable<Vec<SourceChange>> {
-        Ok(self.imp.assists(file_id, range))
+    pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<SourceChange>> {
+        Ok(self.imp.assists(frange))
     }
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         self.imp.diagnostics(file_id)
@@ -358,8 +361,8 @@ impl Analysis {
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
         self.imp.resolve_callable(position)
     }
-    pub fn type_of(&self, file_id: FileId, range: TextRange) -> Cancelable<Option<String>> {
-        self.imp.type_of(file_id, range)
+    pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
+        self.imp.type_of(frange)
     }
 }
 

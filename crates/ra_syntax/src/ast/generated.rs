@@ -1838,6 +1838,51 @@ impl<R: TreeRoot<RaTypes>> LoopExprNode<R> {
 impl<'a> ast::LoopBodyOwner<'a> for LoopExpr<'a> {}
 impl<'a> LoopExpr<'a> {}
 
+// MacroCall
+#[derive(Debug, Clone, Copy,)]
+pub struct MacroCallNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type MacroCall<'a> = MacroCallNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MacroCallNode<R1>> for MacroCallNode<R2> {
+    fn eq(&self, other: &MacroCallNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for MacroCallNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for MacroCallNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for MacroCall<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            MACRO_CALL => Some(MacroCall { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> MacroCallNode<R> {
+    pub fn borrowed(&self) -> MacroCall {
+        MacroCallNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> MacroCallNode {
+        MacroCallNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> MacroCall<'a> {
+    pub fn token_tree(self) -> Option<TokenTree<'a>> {
+        super::child_opt(self)
+    }
+
+    pub fn path(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
+}
+
 // MatchArm
 #[derive(Debug, Clone, Copy,)]
 pub struct MatchArmNode<R: TreeRoot<RaTypes> = OwnedRoot> {
