@@ -328,6 +328,10 @@ pub fn compile_input(
                     }
                 }
 
+                if tcx.sess.opts.debugging_opts.query_stats {
+                    tcx.queries.print_stats();
+                }
+
                 Ok((outputs.clone(), ongoing_codegen, tcx.dep_graph.clone()))
             },
         )??

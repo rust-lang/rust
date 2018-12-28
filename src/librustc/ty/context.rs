@@ -903,7 +903,7 @@ pub struct GlobalCtxt<'tcx> {
     /// as well as all upstream crates. Only populated in incremental mode.
     pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
 
-    pub(crate) queries: query::Queries<'tcx>,
+    pub queries: query::Queries<'tcx>,
 
     // Records the free variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from

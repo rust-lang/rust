@@ -27,6 +27,8 @@ use syntax::source_map::DUMMY_SP;
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
+    #[cfg(debug_assertions)]
+    pub(super) cache_hits: usize,
 }
 
 pub(super) struct QueryValue<T> {
@@ -50,6 +52,8 @@ impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
         QueryCache {
             results: FxHashMap::default(),
             active: FxHashMap::default(),
+            #[cfg(debug_assertions)]
+            cache_hits: 0,
         }
     }
 }
@@ -114,6 +118,10 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 });
 
                 let result = Ok((value.value.clone(), value.index));
+                #[cfg(debug_assertions)]
+                {
+                    lock.cache_hits += 1;
+                }
                 return TryGetJob::JobCompleted(result);
             }
             let job = match lock.active.entry((*key).clone()) {
@@ -752,6 +760,101 @@ macro_rules! define_queries_inner {
 
                 jobs
             }
+
+            pub fn print_stats(&self) {
+                let mut queries = Vec::new();
+
+                #[derive(Clone)]
+                struct QueryStats {
+                    name: &'static str,
+                    cache_hits: usize,
+                    key_size: usize,
+                    key_type: &'static str,
+                    value_size: usize,
+                    value_type: &'static str,
+                    entry_count: usize,
+                }
+
+                fn stats<'tcx, Q: QueryConfig<'tcx>>(
+                    name: &'static str,
+                    map: &QueryCache<'tcx, Q>
+                ) -> QueryStats {
+                    QueryStats {
+                        name,
+                        #[cfg(debug_assertions)]
+                        cache_hits: map.cache_hits,
+                        #[cfg(not(debug_assertions))]
+                        cache_hits: 0,
+                        key_size: mem::size_of::<Q::Key>(),
+                        key_type: unsafe { type_name::<Q::Key>() },
+                        value_size: mem::size_of::<Q::Value>(),
+                        value_type: unsafe { type_name::<Q::Value>() },
+                        entry_count: map.results.len(),
+                    }
+                }
+
+                $(
+                    queries.push(stats::<queries::$name<'_>>(
+                        stringify!($name),
+                        &*self.$name.lock()
+                    ));
+                )*
+
+                if cfg!(debug_assertions) {
+                    let hits: usize = queries.iter().map(|s| s.cache_hits).sum();
+                    let results: usize = queries.iter().map(|s| s.entry_count).sum();
+                    println!("\nQuery cache hit rate: {}", hits as f64 / (hits + results) as f64);
+                }
+
+                let mut query_key_sizes = queries.clone();
+                query_key_sizes.sort_by_key(|q| q.key_size);
+                println!("\nLarge query keys:");
+                for q in query_key_sizes.iter().rev()
+                                        .filter(|q| q.key_size > 8) {
+                    println!(
+                        "   {} - {} x {} - {}",
+                        q.name,
+                        q.key_size,
+                        q.entry_count,
+                        q.key_type
+                    );
+                }
+
+                let mut query_value_sizes = queries.clone();
+                query_value_sizes.sort_by_key(|q| q.value_size);
+                println!("\nLarge query values:");
+                for q in query_value_sizes.iter().rev()
+                                          .filter(|q| q.value_size > 8) {
+                    println!(
+                        "   {} - {} x {} - {}",
+                        q.name,
+                        q.value_size,
+                        q.entry_count,
+                        q.value_type
+                    );
+                }
+
+                if cfg!(debug_assertions) {
+                    let mut query_cache_hits = queries.clone();
+                    query_cache_hits.sort_by_key(|q| q.cache_hits);
+                    println!("\nQuery cache hits:");
+                    for q in query_cache_hits.iter().rev() {
+                        println!(
+                            "   {} - {} ({}%)",
+                            q.name,
+                            q.cache_hits,
+                            q.cache_hits as f64 / (q.cache_hits + q.entry_count) as f64
+                        );
+                    }
+                }
+
+                let mut query_value_count = queries.clone();
+                query_value_count.sort_by_key(|q| q.entry_count);
+                println!("\nQuery value count:");
+                for q in query_value_count.iter().rev() {
+                    println!("   {} - {}", q.name, q.entry_count);
+                }
+            }
         }
 
         #[allow(nonstandard_style)]
@@ -940,7 +1043,7 @@ macro_rules! define_queries_inner {
 macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
-        pub(crate) struct Queries<$tcx> {
+        pub struct Queries<$tcx> {
             /// This provides access to the incr. comp. on-disk cache for query results.
             /// Do not access this directly. It is only meant to be used by
             /// `DepGraph::try_mark_green()` and the query infrastructure.
