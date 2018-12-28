@@ -1,9 +1,9 @@
 error: methods called `new` usually return `Self`
   --> $DIR/new_ret_no_self.rs:49:5
    |
-49 | /     pub fn new(_: String) -> impl R<Item = u32> {
-50 | |         S3
-51 | |     }
+LL | /     pub fn new(_: String) -> impl R<Item = u32> {
+LL | |         S3
+LL | |     }
    | |_____^
    |
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
@@ -11,42 +11,42 @@ error: methods called `new` usually return `Self`
 error: methods called `new` usually return `Self`
   --> $DIR/new_ret_no_self.rs:81:5
    |
-81 | /     pub fn new() -> u32 {
-82 | |         unimplemented!();
-83 | |     }
+LL | /     pub fn new() -> u32 {
+LL | |         unimplemented!();
+LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
   --> $DIR/new_ret_no_self.rs:90:5
    |
-90 | /     pub fn new(_: String) -> u32 {
-91 | |         unimplemented!();
-92 | |     }
+LL | /     pub fn new(_: String) -> u32 {
+LL | |         unimplemented!();
+LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-   --> $DIR/new_ret_no_self.rs:126:5
-    |
-126 | /     pub fn new() -> (u32, u32) {
-127 | |         unimplemented!();
-128 | |     }
-    | |_____^
+  --> $DIR/new_ret_no_self.rs:126:5
+   |
+LL | /     pub fn new() -> (u32, u32) {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
 
 error: methods called `new` usually return `Self`
-   --> $DIR/new_ret_no_self.rs:153:5
-    |
-153 | /     pub fn new() -> *mut V {
-154 | |         unimplemented!();
-155 | |     }
-    | |_____^
+  --> $DIR/new_ret_no_self.rs:153:5
+   |
+LL | /     pub fn new() -> *mut V {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
 
 error: methods called `new` usually return `Self`
-   --> $DIR/new_ret_no_self.rs:171:5
-    |
-171 | /     pub fn new() -> Option<u32> {
-172 | |         unimplemented!();
-173 | |     }
-    | |_____^
+  --> $DIR/new_ret_no_self.rs:171:5
+   |
+LL | /     pub fn new() -> Option<u32> {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
 
 error: aborting due to 6 previous errors
 

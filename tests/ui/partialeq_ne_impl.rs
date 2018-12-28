@@ -23,9 +23,13 @@ impl PartialEq for Foo {
 struct Bar;
 
 impl PartialEq for Bar {
-    fn eq(&self, _: &Bar) -> bool { true }
+    fn eq(&self, _: &Bar) -> bool {
+        true
+    }
     #[allow(clippy::partialeq_ne_impl)]
-    fn ne(&self, _: &Bar) -> bool { false }
+    fn ne(&self, _: &Bar) -> bool {
+        false
+    }
 }
 
 fn main() {}

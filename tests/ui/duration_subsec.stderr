@@ -1,7 +1,7 @@
 error: Calling `subsec_millis()` is more concise than this calculation
   --> $DIR/duration_subsec.rs:17:24
    |
-17 |     let bad_millis_1 = dur.subsec_micros() / 1_000;
+LL |     let bad_millis_1 = dur.subsec_micros() / 1_000;
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `dur.subsec_millis()`
    |
    = note: `-D clippy::duration-subsec` implied by `-D warnings`
@@ -9,25 +9,25 @@ error: Calling `subsec_millis()` is more concise than this calculation
 error: Calling `subsec_millis()` is more concise than this calculation
   --> $DIR/duration_subsec.rs:18:24
    |
-18 |     let bad_millis_2 = dur.subsec_nanos() / 1_000_000;
+LL |     let bad_millis_2 = dur.subsec_nanos() / 1_000_000;
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `dur.subsec_millis()`
 
 error: Calling `subsec_micros()` is more concise than this calculation
   --> $DIR/duration_subsec.rs:23:22
    |
-23 |     let bad_micros = dur.subsec_nanos() / 1_000;
+LL |     let bad_micros = dur.subsec_nanos() / 1_000;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `dur.subsec_micros()`
 
 error: Calling `subsec_micros()` is more concise than this calculation
   --> $DIR/duration_subsec.rs:28:13
    |
-28 |     let _ = (&dur).subsec_nanos() / 1_000;
+LL |     let _ = (&dur).subsec_nanos() / 1_000;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&dur).subsec_micros()`
 
 error: Calling `subsec_micros()` is more concise than this calculation
   --> $DIR/duration_subsec.rs:32:13
    |
-32 |     let _ = dur.subsec_nanos() / NANOS_IN_MICRO;
+LL |     let _ = dur.subsec_nanos() / NANOS_IN_MICRO;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `dur.subsec_micros()`
 
 error: aborting due to 5 previous errors

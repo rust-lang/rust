@@ -1,34 +1,34 @@
 error: Multiple implementations of this structure
   --> $DIR/impl.rs:19:1
    |
-19 | / impl MyStruct {
-20 | |     fn second() {}
-21 | | }
+LL | / impl MyStruct {
+LL | |     fn second() {}
+LL | | }
    | |_^
    |
    = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
 note: First implementation here
   --> $DIR/impl.rs:15:1
    |
-15 | / impl MyStruct {
-16 | |     fn first() {}
-17 | | }
+LL | / impl MyStruct {
+LL | |     fn first() {}
+LL | | }
    | |_^
 
 error: Multiple implementations of this structure
   --> $DIR/impl.rs:33:5
    |
-33 | /     impl super::MyStruct {
-34 | |         fn third() {}
-35 | |     }
+LL | /     impl super::MyStruct {
+LL | |         fn third() {}
+LL | |     }
    | |_____^
    |
 note: First implementation here
   --> $DIR/impl.rs:15:1
    |
-15 | / impl MyStruct {
-16 | |     fn first() {}
-17 | | }
+LL | / impl MyStruct {
+LL | |     fn first() {}
+LL | | }
    | |_^
 
 error: aborting due to 2 previous errors

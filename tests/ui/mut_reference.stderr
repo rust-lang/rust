@@ -1,7 +1,7 @@
 error: The function/method `takes_an_immutable_reference` doesn't need a mutable reference
   --> $DIR/mut_reference.rs:26:34
    |
-26 |     takes_an_immutable_reference(&mut 42);
+LL |     takes_an_immutable_reference(&mut 42);
    |                                  ^^^^^^^
    |
    = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
@@ -9,13 +9,13 @@ error: The function/method `takes_an_immutable_reference` doesn't need a mutable
 error: The function/method `as_ptr` doesn't need a mutable reference
   --> $DIR/mut_reference.rs:28:12
    |
-28 |     as_ptr(&mut 42);
+LL |     as_ptr(&mut 42);
    |            ^^^^^^^
 
 error: The function/method `takes_an_immutable_reference` doesn't need a mutable reference
   --> $DIR/mut_reference.rs:32:44
    |
-32 |     my_struct.takes_an_immutable_reference(&mut 42);
+LL |     my_struct.takes_an_immutable_reference(&mut 42);
    |                                            ^^^^^^^
 
 error: aborting due to 3 previous errors

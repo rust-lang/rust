@@ -1,7 +1,7 @@
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:24:23
    |
-24 | fn foo<T: Default>(v: Vec<T>, w: Vec<T>, mut x: Vec<T>, y: Vec<T>) -> Vec<T> {
+LL | fn foo<T: Default>(v: Vec<T>, w: Vec<T>, mut x: Vec<T>, y: Vec<T>) -> Vec<T> {
    |                       ^^^^^^ help: consider changing the type to: `&[T]`
    |
    = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
@@ -9,192 +9,192 @@ error: this argument is passed by value, but not consumed in the function body
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:38:11
    |
-38 | fn bar(x: String, y: Wrapper) {
+LL | fn bar(x: String, y: Wrapper) {
    |           ^^^^^^ help: consider changing the type to: `&str`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:38:22
    |
-38 | fn bar(x: String, y: Wrapper) {
+LL | fn bar(x: String, y: Wrapper) {
    |                      ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:44:71
    |
-44 | fn test_borrow_trait<T: Borrow<str>, U: AsRef<str>, V>(t: T, u: U, v: V) {
+LL | fn test_borrow_trait<T: Borrow<str>, U: AsRef<str>, V>(t: T, u: U, v: V) {
    |                                                                       ^ help: consider taking a reference instead: `&V`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:56:18
    |
-56 | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
+LL | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
    |                  ^^^^^^^^^^^^^^^^^^^^^^
 help: consider taking a reference instead
    |
-56 | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
-57 |     match *x {
+LL | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
+LL |     match *x {
    |
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:69:24
    |
-69 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
+LL | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                        ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:69:36
    |
-69 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
+LL | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                                    ^^^^^^^
 help: consider taking a reference instead
    |
-69 | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
-70 |     let Wrapper(s) = z; // moved
-71 |     let Wrapper(ref t) = *y; // not moved
-72 |     let Wrapper(_) = *y; // still not moved
+LL | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
+LL |     let Wrapper(s) = z; // moved
+LL |     let Wrapper(ref t) = *y; // not moved
+LL |     let Wrapper(_) = *y; // still not moved
    |
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:85:49
    |
-85 | fn test_blanket_ref<T: Foo, S: Serialize>(_foo: T, _serializable: S) {}
+LL | fn test_blanket_ref<T: Foo, S: Serialize>(_foo: T, _serializable: S) {}
    |                                                 ^ help: consider taking a reference instead: `&T`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:87:18
    |
-87 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                  ^^^^^^ help: consider taking a reference instead: `&String`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:87:29
    |
-87 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                             ^^^^^^
 help: consider changing the type to
    |
-87 | fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
+LL | fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
    |                             ^^^^
 help: change `t.clone()` to
    |
-89 |     let _ = t.to_string();
+LL |     let _ = t.to_string();
    |             ^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:87:40
    |
-87 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                                        ^^^^^^^^ help: consider taking a reference instead: `&Vec<i32>`
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:87:53
    |
-87 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                                                     ^^^^^^^^
 help: consider changing the type to
    |
-87 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {
+LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {
    |                                                     ^^^^^^
 help: change `v.clone()` to
    |
-91 |     let _ = v.to_owned();
+LL |     let _ = v.to_owned();
    |             ^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:100:12
-    |
-100 |         s: String,
-    |            ^^^^^^ help: consider changing the type to: `&str`
+  --> $DIR/needless_pass_by_value.rs:100:12
+   |
+LL |         s: String,
+   |            ^^^^^^ help: consider changing the type to: `&str`
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:101:12
-    |
-101 |         t: String,
-    |            ^^^^^^ help: consider taking a reference instead: `&String`
+  --> $DIR/needless_pass_by_value.rs:101:12
+   |
+LL |         t: String,
+   |            ^^^^^^ help: consider taking a reference instead: `&String`
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:110:23
-    |
-110 |     fn baz(&self, _u: U, _s: Self) {}
-    |                       ^ help: consider taking a reference instead: `&U`
+  --> $DIR/needless_pass_by_value.rs:110:23
+   |
+LL |     fn baz(&self, _u: U, _s: Self) {}
+   |                       ^ help: consider taking a reference instead: `&U`
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:110:30
-    |
-110 |     fn baz(&self, _u: U, _s: Self) {}
-    |                              ^^^^ help: consider taking a reference instead: `&Self`
+  --> $DIR/needless_pass_by_value.rs:110:30
+   |
+LL |     fn baz(&self, _u: U, _s: Self) {}
+   |                              ^^^^ help: consider taking a reference instead: `&Self`
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:132:24
-    |
-132 | fn bar_copy(x: u32, y: CopyWrapper) {
-    |                        ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
-    |
+  --> $DIR/needless_pass_by_value.rs:132:24
+   |
+LL | fn bar_copy(x: u32, y: CopyWrapper) {
+   |                        ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
+   |
 help: consider marking this type as Copy
-   --> $DIR/needless_pass_by_value.rs:130:1
-    |
-130 | struct CopyWrapper(u32);
-    | ^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $DIR/needless_pass_by_value.rs:130:1
+   |
+LL | struct CopyWrapper(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:138:29
-    |
-138 | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
-    |                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
-    |
+  --> $DIR/needless_pass_by_value.rs:138:29
+   |
+LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
+   |                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
+   |
 help: consider marking this type as Copy
-   --> $DIR/needless_pass_by_value.rs:130:1
-    |
-130 | struct CopyWrapper(u32);
-    | ^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $DIR/needless_pass_by_value.rs:130:1
+   |
+LL | struct CopyWrapper(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:138:45
-    |
-138 | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
-    |                                             ^^^^^^^^^^^
-    |
+  --> $DIR/needless_pass_by_value.rs:138:45
+   |
+LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
+   |                                             ^^^^^^^^^^^
+   |
 help: consider marking this type as Copy
-   --> $DIR/needless_pass_by_value.rs:130:1
-    |
-130 | struct CopyWrapper(u32);
-    | ^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $DIR/needless_pass_by_value.rs:130:1
+   |
+LL | struct CopyWrapper(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider taking a reference instead
-    |
-138 | fn test_destructure_copy(x: CopyWrapper, y: &CopyWrapper, z: CopyWrapper) {
-139 |     let CopyWrapper(s) = z; // moved
-140 |     let CopyWrapper(ref t) = *y; // not moved
-141 |     let CopyWrapper(_) = *y; // still not moved
-    |
+   |
+LL | fn test_destructure_copy(x: CopyWrapper, y: &CopyWrapper, z: CopyWrapper) {
+LL |     let CopyWrapper(s) = z; // moved
+LL |     let CopyWrapper(ref t) = *y; // not moved
+LL |     let CopyWrapper(_) = *y; // still not moved
+   |
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:138:61
-    |
-138 | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
-    |                                                             ^^^^^^^^^^^
-    |
+  --> $DIR/needless_pass_by_value.rs:138:61
+   |
+LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
+   |                                                             ^^^^^^^^^^^
+   |
 help: consider marking this type as Copy
-   --> $DIR/needless_pass_by_value.rs:130:1
-    |
-130 | struct CopyWrapper(u32);
-    | ^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $DIR/needless_pass_by_value.rs:130:1
+   |
+LL | struct CopyWrapper(u32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider taking a reference instead
-    |
-138 | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: &CopyWrapper) {
-139 |     let CopyWrapper(s) = *z; // moved
-    |
+   |
+LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: &CopyWrapper) {
+LL |     let CopyWrapper(s) = *z; // moved
+   |
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:150:40
-    |
-150 | fn some_fun<'b, S: Bar<'b, ()>>(_item: S) {}
-    |                                        ^ help: consider taking a reference instead: `&S`
+  --> $DIR/needless_pass_by_value.rs:150:40
+   |
+LL | fn some_fun<'b, S: Bar<'b, ()>>(_item: S) {}
+   |                                        ^ help: consider taking a reference instead: `&S`
 
 error: this argument is passed by value, but not consumed in the function body
-   --> $DIR/needless_pass_by_value.rs:155:20
-    |
-155 | fn more_fun(_item: impl Club<'static, i32>) {}
-    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`
+  --> $DIR/needless_pass_by_value.rs:155:20
+   |
+LL | fn more_fun(_item: impl Club<'static, i32>) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`
 
 error: aborting due to 22 previous errors
 

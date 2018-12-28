@@ -1,7 +1,7 @@
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:17:5
    |
-17 |     X = 0x1_0000_0000,
+LL |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::enum-clike-unportable-variant` implied by `-D warnings`
@@ -9,43 +9,43 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:24:5
    |
-24 |     X = 0x1_0000_0000,
+LL |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:27:5
    |
-27 |     A = 0xFFFF_FFFF,
+LL |     A = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:34:5
    |
-34 |     Z = 0xFFFF_FFFF,
+LL |     Z = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:35:5
    |
-35 |     A = 0x1_0000_0000,
+LL |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:37:5
    |
-37 |     C = (std::i32::MIN as isize) - 1,
+LL |     C = (std::i32::MIN as isize) - 1,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:43:5
    |
-43 |     Z = 0xFFFF_FFFF,
+LL |     Z = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enums_clike.rs:44:5
    |
-44 |     A = 0x1_0000_0000,
+LL |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors

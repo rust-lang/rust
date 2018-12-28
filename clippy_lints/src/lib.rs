@@ -517,8 +517,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         doc::DOC_MARKDOWN,
         empty_enum::EMPTY_ENUM,
         enum_glob_use::ENUM_GLOB_USE,
+        enum_variants::MODULE_NAME_REPETITIONS,
         enum_variants::PUB_ENUM_VARIANT_NAMES,
-        enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
@@ -1028,6 +1028,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         unwrap::PANICKING_UNWRAP,
         unwrap::UNNECESSARY_UNWRAP,
     ]);
+}
+
+pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
+    ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
 }
 
 // only exists to let the dogfood integration test works.

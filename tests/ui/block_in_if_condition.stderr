@@ -1,11 +1,11 @@
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
   --> $DIR/block_in_if_condition.rs:35:8
    |
-35 |       if {
+LL |       if {
    |  ________^
-36 | |         let x = 3;
-37 | |         x == 3
-38 | |     } {
+LL | |         let x = 3;
+LL | |         x == 3
+LL | |     } {
    | |_____^
    |
    = note: `-D clippy::block-in-if-condition-stmt` implied by `-D warnings`
@@ -21,7 +21,7 @@ error: in an 'if' condition, avoid complex blocks or closures with blocks; inste
 error: omit braces around single expression condition
   --> $DIR/block_in_if_condition.rs:46:8
    |
-46 |     if { true } {
+LL |     if { true } {
    |        ^^^^^^^^
    |
    = note: `-D clippy::block-in-if-condition-expr` implied by `-D warnings`
@@ -33,27 +33,27 @@ error: omit braces around single expression condition
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
   --> $DIR/block_in_if_condition.rs:66:17
    |
-66 |               |x| {
+LL |               |x| {
    |  _________________^
-67 | |                 let target = 3;
-68 | |                 x == target
-69 | |             },
+LL | |                 let target = 3;
+LL | |                 x == target
+LL | |             },
    | |_____________^
 
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
   --> $DIR/block_in_if_condition.rs:75:13
    |
-75 |           |x| {
+LL |           |x| {
    |  _____________^
-76 | |             let target = 3;
-77 | |             x == target
-78 | |         },
+LL | |             let target = 3;
+LL | |             x == target
+LL | |         },
    | |_________^
 
 error: this boolean expression can be simplified
   --> $DIR/block_in_if_condition.rs:85:8
    |
-85 |     if true && x == 3 {
+LL |     if true && x == 3 {
    |        ^^^^^^^^^^^^^^ help: try: `x == 3`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`

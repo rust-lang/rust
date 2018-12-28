@@ -1,9 +1,9 @@
 error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:25:5
    |
-25 | /     let data = match wrapper {
-26 | |         SingleVariantEnum::Variant(i) => i,
-27 | |     };
+LL | /     let data = match wrapper {
+LL | |         SingleVariantEnum::Variant(i) => i,
+LL | |     };
    | |______^ help: try this: `let SingleVariantEnum::Variant(data) = wrapper;`
    |
    = note: `-D clippy::infallible-destructuring-match` implied by `-D warnings`
@@ -11,17 +11,17 @@ error: you seem to be trying to use match to destructure a single infallible pat
 error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:46:5
    |
-46 | /     let data = match wrapper {
-47 | |         TupleStruct(i) => i,
-48 | |     };
+LL | /     let data = match wrapper {
+LL | |         TupleStruct(i) => i,
+LL | |     };
    | |______^ help: try this: `let TupleStruct(data) = wrapper;`
 
 error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
   --> $DIR/infallible_destructuring_match.rs:67:5
    |
-67 | /     let data = match wrapper {
-68 | |         Ok(i) => i,
-69 | |     };
+LL | /     let data = match wrapper {
+LL | |         Ok(i) => i,
+LL | |     };
    | |______^ help: try this: `let Ok(data) = wrapper;`
 
 error: aborting due to 3 previous errors

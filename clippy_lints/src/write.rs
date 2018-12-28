@@ -257,7 +257,7 @@ impl EarlyLintPass for Pass {
 }
 
 /// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
-/// options. The first part of the tuple is `format_str` of the macros. The secund part of the tuple
+/// options. The first part of the tuple is `format_str` of the macros. The second part of the tuple
 /// is in the `write[ln]!` case the expression the `format_str` should be written to.
 ///
 /// Example:
@@ -292,7 +292,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
     };
     let tmp = fmtstr.clone();
     let mut args = vec![];
-    let mut fmt_parser = Parser::new(&tmp, None);
+    let mut fmt_parser = Parser::new(&tmp, None, Vec::new(), false);
     while let Some(piece) = fmt_parser.next() {
         if !fmt_parser.errors.is_empty() {
             return (None, expr);

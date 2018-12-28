@@ -1,7 +1,7 @@
 error: this boolean expression can be simplified
   --> $DIR/match_bool.rs:38:11
    |
-38 |     match test && test {
+LL |     match test && test {
    |           ^^^^^^^^^^^^ help: try: `test`
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
@@ -9,10 +9,10 @@ error: this boolean expression can be simplified
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:13:5
    |
-13 | /     match test {
-14 | |         true => 0,
-15 | |         false => 42,
-16 | |     };
+LL | /     match test {
+LL | |         true => 0,
+LL | |         false => 42,
+LL | |     };
    | |_____^ help: consider using an if/else expression: `if test { 0 } else { 42 }`
    |
    = note: `-D clippy::match-bool` implied by `-D warnings`
@@ -20,67 +20,67 @@ error: you seem to be trying to match on a boolean expression
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:19:5
    |
-19 | /     match option == 1 {
-20 | |         true => 1,
-21 | |         false => 0,
-22 | |     };
+LL | /     match option == 1 {
+LL | |         true => 1,
+LL | |         false => 0,
+LL | |     };
    | |_____^ help: consider using an if/else expression: `if option == 1 { 1 } else { 0 }`
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:24:5
    |
-24 | /     match test {
-25 | |         true => (),
-26 | |         false => {
-27 | |             println!("Noooo!");
-28 | |         },
-29 | |     };
+LL | /     match test {
+LL | |         true => (),
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
+LL | |     };
    | |_____^
 help: consider using an if/else expression
    |
-24 |     if !test {
-25 |     println!("Noooo!");
-26 | };
+LL |     if !test {
+LL |     println!("Noooo!");
+LL | };
    |
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:31:5
    |
-31 | /     match test {
-32 | |         false => {
-33 | |             println!("Noooo!");
-34 | |         },
-35 | |         _ => (),
-36 | |     };
+LL | /     match test {
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
+LL | |         _ => (),
+LL | |     };
    | |_____^
 help: consider using an if/else expression
    |
-31 |     if !test {
-32 |     println!("Noooo!");
-33 | };
+LL |     if !test {
+LL |     println!("Noooo!");
+LL | };
    |
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:38:5
    |
-38 | /     match test && test {
-39 | |         false => {
-40 | |             println!("Noooo!");
-41 | |         },
-42 | |         _ => (),
-43 | |     };
+LL | /     match test && test {
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
+LL | |         _ => (),
+LL | |     };
    | |_____^
 help: consider using an if/else expression
    |
-38 |     if !(test && test) {
-39 |     println!("Noooo!");
-40 | };
+LL |     if !(test && test) {
+LL |     println!("Noooo!");
+LL | };
    |
 
 error: equal expressions as operands to `&&`
   --> $DIR/match_bool.rs:38:11
    |
-38 |     match test && test {
+LL |     match test && test {
    |           ^^^^^^^^^^^^
    |
    = note: #[deny(clippy::eq_op)] on by default
@@ -88,21 +88,21 @@ error: equal expressions as operands to `&&`
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:45:5
    |
-45 | /     match test {
-46 | |         false => {
-47 | |             println!("Noooo!");
-48 | |         },
+LL | /     match test {
+LL | |         false => {
+LL | |             println!("Noooo!");
+LL | |         },
 ...  |
-51 | |         },
-52 | |     };
+LL | |         },
+LL | |     };
    | |_____^
 help: consider using an if/else expression
    |
-45 |     if test {
-46 |     println!("Yes!");
-47 | } else {
-48 |     println!("Noooo!");
-49 | };
+LL |     if test {
+LL |     println!("Yes!");
+LL | } else {
+LL |     println!("Noooo!");
+LL | };
    |
 
 error: aborting due to 8 previous errors

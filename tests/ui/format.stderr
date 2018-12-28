@@ -1,7 +1,7 @@
 error: useless use of `format!`
   --> $DIR/format.rs:21:5
    |
-21 |     format!("foo");
+LL |     format!("foo");
    |     ^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
    |
    = note: `-D clippy::useless-format` implied by `-D warnings`
@@ -9,7 +9,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:23:5
    |
-23 |     format!("{}", "foo");
+LL |     format!("{}", "foo");
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -17,7 +17,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:27:5
    |
-27 |     format!("{:+}", "foo"); // warn when the format makes no difference
+LL |     format!("{:+}", "foo"); // warn when the format makes no difference
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -25,7 +25,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:28:5
    |
-28 |     format!("{:<}", "foo"); // warn when the format makes no difference
+LL |     format!("{:<}", "foo"); // warn when the format makes no difference
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -33,7 +33,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:33:5
    |
-33 |     format!("{}", arg);
+LL |     format!("{}", arg);
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -41,7 +41,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:37:5
    |
-37 |     format!("{:+}", arg); // warn when the format makes no difference
+LL |     format!("{:+}", arg); // warn when the format makes no difference
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -49,7 +49,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:38:5
    |
-38 |     format!("{:<}", arg); // warn when the format makes no difference
+LL |     format!("{:<}", arg); // warn when the format makes no difference
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `arg.to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -57,7 +57,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:65:5
    |
-65 |     format!("{}", 42.to_string());
+LL |     format!("{}", 42.to_string());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `42.to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -65,7 +65,7 @@ error: useless use of `format!`
 error: useless use of `format!`
   --> $DIR/format.rs:67:5
    |
-67 |     format!("{}", x.display().to_string());
+LL |     format!("{}", x.display().to_string());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `x.display().to_string()`
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)

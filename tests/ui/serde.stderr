@@ -1,12 +1,12 @@
 error: you should not implement `visit_string` without also implementing `visit_str`
   --> $DIR/serde.rs:48:5
    |
-48 | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-49 | |     where
-50 | |         E: serde::de::Error,
-51 | |     {
-52 | |         unimplemented!()
-53 | |     }
+LL | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
+LL | |     where
+LL | |         E: serde::de::Error,
+LL | |     {
+LL | |         unimplemented!()
+LL | |     }
    | |_____^
    |
    = note: `-D clippy::serde-api-misuse` implied by `-D warnings`

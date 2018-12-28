@@ -1,22 +1,22 @@
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match_else.rs:21:5
    |
-21 | /     match ExprNode::Butterflies {
-22 | |         ExprNode::ExprAddrOf => Some(&NODE),
-23 | |         _ => {
-24 | |             let x = 5;
-25 | |             None
-26 | |         },
-27 | |     }
+LL | /     match ExprNode::Butterflies {
+LL | |         ExprNode::ExprAddrOf => Some(&NODE),
+LL | |         _ => {
+LL | |             let x = 5;
+LL | |             None
+LL | |         },
+LL | |     }
    | |_____^
    |
    = note: `-D clippy::single-match-else` implied by `-D warnings`
 help: try this
    |
-21 |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
-22 |     let x = 5;
-23 |     None
-24 | }
+LL |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+LL |     let x = 5;
+LL |     None
+LL | }
    |
 
 error: aborting due to previous error

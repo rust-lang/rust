@@ -19,8 +19,8 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [Running test suite](#running-test-suite)
   * [Running rustfmt](#running-rustfmt)
   * [Testing manually](#testing-manually)
-  * [How Clippy works](#how-clippy-works)
-  * [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
+* [How Clippy works](#how-clippy-works)
+* [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
 * [Issue and PR Triage](#issue-and-pr-triage)
 * [Bors and Homu](#bors-and-homu)
 * [Contributions](#contributions)
@@ -41,6 +41,13 @@ All issues on Clippy are mentored, if you want help with a bug just ask @Manishe
 Some issues are easier than others. The [`good first issue`](https://github.com/rust-lang/rust-clippy/labels/good%20first%20issue)
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
 so that we can assign it to you!
+
+There are also some abandoned PRs, marked with
+[`S-inactive-closed`](https://github.com/rust-lang/rust-clippy/pulls?q=is%3Aclosed+label%3AS-inactive-closed).
+Pretty often these PRs are nearly completed and just need some extra steps
+(formatting, addressing review comments, ...) to be merged. If you want to
+complete such a PR, please leave a comment in the PR and open a new one based
+on it.
 
 Issues marked [`T-AST`](https://github.com/rust-lang/rust-clippy/labels/T-AST) involve simple
 matching of the syntax tree structure, and are generally easier than
@@ -168,7 +175,7 @@ Manually testing against an example file is useful if you have added some
 local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
 from the working copy root.
 
-### How Clippy works
+## How Clippy works
 
 Clippy is a [rustc compiler plugin][compiler_plugin]. The main entry point is at [`src/lib.rs`][main_entry]. In there, the lint registration is delegated to the [`clippy_lints`][lint_crate] crate.
 
@@ -218,7 +225,7 @@ The difference between `EarlyLintPass` and `LateLintPass` is that the methods of
 
 That's why the `else_if_without_else` example uses the `register_early_lint_pass` function. Because the [actual lint logic][else_if_without_else] does not depend on any type information.
 
-### Fixing build failures caused by Rust
+## Fixing build failures caused by Rust
 
 Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures caused by Rust updates, can be a good way to learn about Rust internals.
 

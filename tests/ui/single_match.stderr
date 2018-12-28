@@ -1,68 +1,68 @@
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:17:5
    |
-17 | /     match x {
-18 | |         Some(y) => {
-19 | |             println!("{:?}", y);
-20 | |         },
-21 | |         _ => (),
-22 | |     };
+LL | /     match x {
+LL | |         Some(y) => {
+LL | |             println!("{:?}", y);
+LL | |         },
+LL | |         _ => (),
+LL | |     };
    | |_____^
    |
    = note: `-D clippy::single-match` implied by `-D warnings`
 help: try this
    |
-17 |     if let Some(y) = x {
-18 |     println!("{:?}", y);
-19 | };
+LL |     if let Some(y) = x {
+LL |     println!("{:?}", y);
+LL | };
    |
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:25:5
    |
-25 | /     match x {
-26 | |         // Note the missing block braces.
-27 | |         // We suggest `if let Some(y) = x { .. }` because the macro
-28 | |         // is expanded before we can do anything.
-29 | |         Some(y) => println!("{:?}", y),
-30 | |         _ => (),
-31 | |     }
+LL | /     match x {
+LL | |         // Note the missing block braces.
+LL | |         // We suggest `if let Some(y) = x { .. }` because the macro
+LL | |         // is expanded before we can do anything.
+LL | |         Some(y) => println!("{:?}", y),
+LL | |         _ => (),
+LL | |     }
    | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y) }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:34:5
    |
-34 | /     match z {
-35 | |         (2...3, 7...9) => dummy(),
-36 | |         _ => {},
-37 | |     };
+LL | /     match z {
+LL | |         (2...3, 7...9) => dummy(),
+LL | |         _ => {},
+LL | |     };
    | |_____^ help: try this: `if let (2...3, 7...9) = z { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:63:5
    |
-63 | /     match x {
-64 | |         Some(y) => dummy(),
-65 | |         None => (),
-66 | |     };
+LL | /     match x {
+LL | |         Some(y) => dummy(),
+LL | |         None => (),
+LL | |     };
    | |_____^ help: try this: `if let Some(y) = x { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:68:5
    |
-68 | /     match y {
-69 | |         Ok(y) => dummy(),
-70 | |         Err(..) => (),
-71 | |     };
+LL | /     match y {
+LL | |         Ok(y) => dummy(),
+LL | |         Err(..) => (),
+LL | |     };
    | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:75:5
    |
-75 | /     match c {
-76 | |         Cow::Borrowed(..) => dummy(),
-77 | |         Cow::Owned(..) => (),
-78 | |     };
+LL | /     match c {
+LL | |         Cow::Borrowed(..) => dummy(),
+LL | |         Cow::Owned(..) => (),
+LL | |     };
    | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
 
 error: aborting due to 6 previous errors

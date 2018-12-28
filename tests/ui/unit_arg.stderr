@@ -1,73 +1,73 @@
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:32:9
    |
-32 |     foo({});
+LL |     foo({});
    |         ^^
    |
    = note: `-D clippy::unit-arg` implied by `-D warnings`
 help: if you intended to pass a unit value, use a unit literal instead
    |
-32 |     foo(());
+LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:33:9
    |
-33 |       foo({
+LL |       foo({
    |  _________^
-34 | |         1;
-35 | |     });
+LL | |         1;
+LL | |     });
    | |_____^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-33 |     foo(());
+LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:36:9
    |
-36 |     foo(foo(1));
+LL |     foo(foo(1));
    |         ^^^^^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-36 |     foo(());
+LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:37:9
    |
-37 |       foo({
+LL |       foo({
    |  _________^
-38 | |         foo(1);
-39 | |         foo(2);
-40 | |     });
+LL | |         foo(1);
+LL | |         foo(2);
+LL | |     });
    | |_____^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-37 |     foo(());
+LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:41:10
    |
-41 |     foo3({}, 2, 2);
+LL |     foo3({}, 2, 2);
    |          ^^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-41 |     foo3((), 2, 2);
+LL |     foo3((), 2, 2);
    |          ^^
 
 error: passing a unit value to a function
   --> $DIR/unit_arg.rs:43:11
    |
-43 |       b.bar({
+LL |       b.bar({
    |  ___________^
-44 | |         1;
-45 | |     });
+LL | |         1;
+LL | |     });
    | |_____^
 help: if you intended to pass a unit value, use a unit literal instead
    |
-43 |     b.bar(());
+LL |     b.bar(());
    |           ^^
 
 error: aborting due to 6 previous errors

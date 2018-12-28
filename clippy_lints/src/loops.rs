@@ -478,6 +478,11 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        // we don't want to check expanded macros
+        if in_macro(expr.span) {
+            return;
+        }
+
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
@@ -751,7 +756,8 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
         | ExprKind::Closure(_, _, _, _, _)
         | ExprKind::InlineAsm(_, _, _)
         | ExprKind::Path(_)
-        | ExprKind::Lit(_) => NeverLoopResult::Otherwise,
+        | ExprKind::Lit(_)
+        | ExprKind::Err => NeverLoopResult::Otherwise,
     }
 }
 

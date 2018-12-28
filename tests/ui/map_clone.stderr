@@ -1,7 +1,7 @@
 error: You are using an explicit closure for cloning elements
   --> $DIR/map_clone.rs:14:22
    |
-14 |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
+LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![5_i8; 6].iter().cloned()`
    |
    = note: `-D clippy::map-clone` implied by `-D warnings`
@@ -9,13 +9,13 @@ error: You are using an explicit closure for cloning elements
 error: You are using an explicit closure for cloning elements
   --> $DIR/map_clone.rs:15:26
    |
-15 |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
+LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
 
 error: You are using an explicit closure for cloning elements
   --> $DIR/map_clone.rs:16:23
    |
-16 |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
+LL |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider calling the dedicated `cloned` method: `vec![42, 43].iter().cloned()`
 
 error: aborting due to 3 previous errors

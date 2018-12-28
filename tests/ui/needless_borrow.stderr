@@ -1,7 +1,7 @@
 error: this expression borrows a reference that is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:22:15
    |
-22 |     let c = x(&&a);
+LL |     let c = x(&&a);
    |               ^^^ help: change this to: `&a`
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
@@ -9,19 +9,19 @@ error: this expression borrows a reference that is immediately dereferenced by t
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow.rs:29:17
    |
-29 |     if let Some(ref cake) = Some(&5) {}
+LL |     if let Some(ref cake) = Some(&5) {}
    |                 ^^^^^^^^ help: change this to: `cake`
 
 error: this expression borrows a reference that is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:36:15
    |
-36 |         46 => &&a,
+LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
 error: this pattern takes a reference on something that is being de-referenced
   --> $DIR/needless_borrow.rs:58:34
    |
-58 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
    |                                  ^^^^^^ help: try removing the `&ref` part and just keep: `a`
    |
    = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
@@ -29,13 +29,13 @@ error: this pattern takes a reference on something that is being de-referenced
 error: this pattern takes a reference on something that is being de-referenced
   --> $DIR/needless_borrow.rs:59:30
    |
-59 |     let _ = v.iter().filter(|&ref a| a.is_empty());
+LL |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                              ^^^^^^ help: try removing the `&ref` part and just keep: `a`
 
 error: this pattern creates a reference to a reference
   --> $DIR/needless_borrow.rs:59:31
    |
-59 |     let _ = v.iter().filter(|&ref a| a.is_empty());
+LL |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                               ^^^^^ help: change this to: `a`
 
 error: aborting due to 6 previous errors

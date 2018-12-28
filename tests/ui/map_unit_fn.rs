@@ -7,19 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(clippy::stutter)]
-#![allow(dead_code)]
+#![allow(unused)]
+struct Mappable {}
 
-mod foo {
-    pub fn foo() {}
-    pub fn foo_bar() {}
-    pub fn bar_foo() {}
-    pub struct FooCake {}
-    pub enum CakeFoo {}
-    pub struct Foo7Bar;
-
-    // Should not warn
-    pub struct Foobar;
+impl Mappable {
+    pub fn map(&self) {}
 }
 
-fn main() {}
+fn main() {
+    let m = Mappable {};
+    m.map();
+}

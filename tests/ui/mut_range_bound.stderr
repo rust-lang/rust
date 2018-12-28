@@ -1,7 +1,7 @@
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:25:9
    |
-25 |         m = 5;
+LL |         m = 5;
    |         ^^^^^
    |
    = note: `-D clippy::mut-range-bound` implied by `-D warnings`
@@ -9,25 +9,25 @@ error: attempt to mutate range bound within loop; note that the range of the loo
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:32:9
    |
-32 |         m *= 2;
+LL |         m *= 2;
    |         ^^^^^^
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:40:9
    |
-40 |         m = 5;
+LL |         m = 5;
    |         ^^^^^
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:41:9
    |
-41 |         n = 7;
+LL |         n = 7;
    |         ^^^^^
 
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:55:22
    |
-55 |         let n = &mut m; // warning
+LL |         let n = &mut m; // warning
    |                      ^
 
 error: aborting due to 5 previous errors

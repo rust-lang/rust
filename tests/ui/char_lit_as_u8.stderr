@@ -1,7 +1,7 @@
 error: casting character literal to u8. `char`s are 4 bytes wide in rust, so casting to u8 truncates them
   --> $DIR/char_lit_as_u8.rs:13:13
    |
-13 |     let c = 'a' as u8;
+LL |     let c = 'a' as u8;
    |             ^^^^^^^^^
    |
    = note: `-D clippy::char-lit-as-u8` implied by `-D warnings`

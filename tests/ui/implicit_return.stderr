@@ -1,7 +1,7 @@
 error: missing return statement
   --> $DIR/implicit_return.rs:17:5
    |
-17 |     true
+LL |     true
    |     ^^^^ help: add `return` as shown: `return true`
    |
    = note: `-D clippy::implicit-return` implied by `-D warnings`
@@ -9,55 +9,55 @@ error: missing return statement
 error: missing return statement
   --> $DIR/implicit_return.rs:23:9
    |
-23 |         true
+LL |         true
    |         ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
   --> $DIR/implicit_return.rs:25:9
    |
-25 |         false
+LL |         false
    |         ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
   --> $DIR/implicit_return.rs:33:17
    |
-33 |         true => false,
+LL |         true => false,
    |                 ^^^^^ help: add `return` as shown: `return false`
 
 error: missing return statement
   --> $DIR/implicit_return.rs:34:20
    |
-34 |         false => { true },
+LL |         false => { true },
    |                    ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
   --> $DIR/implicit_return.rs:41:9
    |
-41 |         break true;
+LL |         break true;
    |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
   --> $DIR/implicit_return.rs:49:13
    |
-49 |             break true;
+LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
   --> $DIR/implicit_return.rs:58:13
    |
-58 |             break true;
+LL |             break true;
    |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:68:18
+  --> $DIR/implicit_return.rs:67:18
    |
-68 |     let _ = || { true };
+LL |     let _ = || { true };
    |                  ^^^^ help: add `return` as shown: `return true`
 
 error: missing return statement
-  --> $DIR/implicit_return.rs:69:16
+  --> $DIR/implicit_return.rs:68:16
    |
-69 |     let _ = || true;
+LL |     let _ = || true;
    |                ^^^^ help: add `return` as shown: `return true`
 
 error: aborting due to 10 previous errors

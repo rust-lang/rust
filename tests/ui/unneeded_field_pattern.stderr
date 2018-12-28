@@ -1,7 +1,7 @@
 error: You matched a field with a wildcard pattern. Consider using `..` instead
   --> $DIR/unneeded_field_pattern.rs:23:15
    |
-23 |         Foo { a: _, b: 0, .. } => {},
+LL |         Foo { a: _, b: 0, .. } => {},
    |               ^^^^
    |
    = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
@@ -10,7 +10,7 @@ error: You matched a field with a wildcard pattern. Consider using `..` instead
 error: All the struct fields are matched to a wildcard pattern, consider using `..`.
   --> $DIR/unneeded_field_pattern.rs:25:9
    |
-25 |         Foo { a: _, b: _, c: _ } => {},
+LL |         Foo { a: _, b: _, c: _ } => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: Try with `Foo { .. }` instead
