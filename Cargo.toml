@@ -4,10 +4,3 @@ members = [ "crates/*" ]
 [profile.release]
 incremental = true
 debug = true
-
-
-[patch.'crates-io']
-# https://github.com/salsa-rs/salsa/pull/75
-# and
-# https://github.com/salsa-rs/salsa/issues/99
-salsa = { git = "https://github.com/matklad/salsa", branch = "fix-cancelation-maybe" }
