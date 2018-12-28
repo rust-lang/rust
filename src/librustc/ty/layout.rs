@@ -1888,7 +1888,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             _ => {
                 let mut data_variant = match this.variants {
                     Variants::NicheFilling { dataful_variant, .. } => {
-                        // Only the niche itthis is always initialized,
+                        // Only the niche in this is always initialized,
                         // so only check for a pointer at its offset.
                         //
                         // If the niche is a pointer, it's either valid
