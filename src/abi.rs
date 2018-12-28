@@ -330,7 +330,8 @@ fn local_place<'a, 'tcx: 'a>(
         CPlace::from_stack_slot(fx, stack_slot, layout.ty)
     };
 
-    debug_assert!(fx.local_map.insert(local, place).is_none());
+    let prev_place = fx.local_map.insert(local, place);
+    debug_assert!(prev_place.is_none());
     fx.local_map[&local]
 }
 

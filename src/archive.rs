@@ -56,8 +56,9 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     pub fn remove_file(&mut self, name: &str) {
+        let file = self.src_entries.remove(name);
         assert!(
-            self.src_entries.remove(name).is_some(),
+            file.is_some(),
             "Tried to remove file not existing in src archive",
         );
     }
