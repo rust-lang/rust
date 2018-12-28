@@ -1,5 +1,5 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/issue-52475.rs:8:9
+  --> $DIR/issue-52475.rs:6:9
    |
 LL | /         while n < 5 { //~ ERROR constant contains unimplemented expression type
 LL | |             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
@@ -8,7 +8,7 @@ LL | |         }
    | |_________^
 
 warning: Constant evaluating a complex constant, this might take some time
-  --> $DIR/issue-52475.rs:4:18
+  --> $DIR/issue-52475.rs:2:18
    |
 LL |       let _ = [(); {
    |  __________________^
@@ -21,7 +21,7 @@ LL | |     }];
    | |_____^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52475.rs:9:17
+  --> $DIR/issue-52475.rs:7:17
    |
 LL |             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
    |                 ^^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate

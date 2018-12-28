@@ -1,4 +1,4 @@
-#![feature(const_let, const_fn)]
+#![feature(const_fn)]
 
 // run-pass
 

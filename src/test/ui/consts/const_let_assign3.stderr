@@ -1,16 +1,28 @@
 error[E0019]: constant function contains unimplemented expression type
-  --> $DIR/const_let_assign3.rs:10:9
+  --> $DIR/const_let_assign3.rs:9:9
    |
 LL |         self.state = x;
    |         ^^^^^^^^^^^^^^
 
 error[E0017]: references in constants may only refer to immutable values
-  --> $DIR/const_let_assign3.rs:17:5
+  --> $DIR/const_let_assign3.rs:16:5
    |
 LL |     s.foo(3); //~ ERROR references in constants may only refer to immutable values
    |     ^ constants require immutable values
 
-error: aborting due to 2 previous errors
+error[E0017]: references in constants may only refer to immutable values
+  --> $DIR/const_let_assign3.rs:20:45
+   |
+LL | type Array = [u32; { let mut x = 2; let y = &mut x; *y = 42; *y}];
+   |                                             ^^^^^^ constants require immutable values
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/const_let_assign3.rs:20:53
+   |
+LL | type Array = [u32; { let mut x = 2; let y = &mut x; *y = 42; *y}];
+   |                                                     ^^^^^^^
+
+error: aborting due to 4 previous errors
 
 Some errors occurred: E0017, E0019.
 For more information about an error, try `rustc --explain E0017`.

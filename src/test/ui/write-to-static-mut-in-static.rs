@@ -1,5 +1,3 @@
-#![feature(const_let)]
-
 pub static mut A: u32 = 0;
 pub static mut B: () = unsafe { A = 1; };
 //~^ ERROR could not evaluate static initializer

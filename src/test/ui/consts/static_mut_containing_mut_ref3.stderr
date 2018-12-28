@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/static_mut_containing_mut_ref3.rs:5:31
+  --> $DIR/static_mut_containing_mut_ref3.rs:3:31
    |
 LL | static mut BAR: () = unsafe { FOO.0 = 99; };
    |                               ^^^^^^^^^^ tried to modify a static's initial value from another static's initializer

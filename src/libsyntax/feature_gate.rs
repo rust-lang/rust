@@ -193,9 +193,6 @@ declare_features! (
     // Allows the definition of `const` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(24111), None),
 
-    // Allows let bindings and destructuring in `const` functions and constants.
-    (active, const_let, "1.22.1", Some(48821), None),
-
     // Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 
@@ -688,6 +685,8 @@ declare_features! (
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
     // `#[cfg_attr(predicate, multiple, attributes, here)]`
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
+    // Allows let bindings and destructuring in `const` functions and constants.
+    (accepted, const_let, "1.33.0", Some(48821), None),
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must

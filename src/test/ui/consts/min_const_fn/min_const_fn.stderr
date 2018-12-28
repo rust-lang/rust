@@ -112,12 +112,6 @@ error: `if`, `match`, `&&` and `||` are not stable in const fn
 LL | const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
    |                             ^^^^^^^^^^^
 
-error: local variables in const fn are unstable
-  --> $DIR/min_const_fn.rs:99:34
-   |
-LL | const fn foo30_6() -> bool { let x = true; x } //~ ERROR local variables in const fn
-   |                                  ^
-
 error: `if`, `match`, `&&` and `||` are not stable in const fn
   --> $DIR/min_const_fn.rs:100:44
    |
@@ -208,6 +202,6 @@ error: function pointers in const fn are unstable
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
 
-error: aborting due to 35 previous errors
+error: aborting due to 34 previous errors
 
 For more information about this error, try `rustc --explain E0493`.

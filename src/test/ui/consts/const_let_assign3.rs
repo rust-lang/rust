@@ -1,4 +1,3 @@
-#![feature(const_let)]
 #![feature(const_fn)]
 
 struct S {
@@ -17,6 +16,10 @@ const FOO: S = {
     s.foo(3); //~ ERROR references in constants may only refer to immutable values
     s
 };
+
+type Array = [u32; { let mut x = 2; let y = &mut x; *y = 42; *y}];
+//~^ ERROR references in constants may only refer to immutable values
+//~| ERROR constant contains unimplemented expression type
 
 fn main() {
     assert_eq!(FOO.state, 3);
