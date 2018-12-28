@@ -14,8 +14,10 @@ mod db;
 mod imp;
 mod completion;
 mod symbol_index;
-mod syntax_highlighting;
 pub mod mock_analysis;
+
+mod extend_selection;
+mod syntax_highlighting;
 
 use std::{fmt, sync::Arc};
 
@@ -277,8 +279,8 @@ impl Analysis {
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.imp.file_line_index(file_id)
     }
-    pub fn extend_selection(&self, file: &SourceFileNode, range: TextRange) -> TextRange {
-        ra_editor::extend_selection(file, range).unwrap_or(range)
+    pub fn extend_selection(&self, frange: FileRange) -> TextRange {
+        extend_selection::extend_selection(&self.imp.db, frange)
     }
     pub fn matching_brace(&self, file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
         ra_editor::matching_brace(file, offset)

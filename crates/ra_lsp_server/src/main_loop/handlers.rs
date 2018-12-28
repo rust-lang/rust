@@ -8,7 +8,7 @@ use languageserver_types::{
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
     WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover, HoverContents,
 };
-use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition, Severity};
+use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FileRange, FilePosition, Severity};
 use ra_syntax::{TextUnit, text_utils::intersect};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
@@ -33,13 +33,13 @@ pub fn handle_extend_selection(
     params: req::ExtendSelectionParams,
 ) -> Result<req::ExtendSelectionResult> {
     let file_id = params.text_document.try_conv_with(&world)?;
-    let file = world.analysis().file_syntax(file_id);
     let line_index = world.analysis().file_line_index(file_id);
     let selections = params
         .selections
         .into_iter()
         .map_conv_with(&line_index)
-        .map(|r| world.analysis().extend_selection(&file, r))
+        .map(|range| FileRange { file_id, range })
+        .map(|frange| world.analysis().extend_selection(frange))
         .map_conv_with(&line_index)
         .collect();
     Ok(req::ExtendSelectionResult { selections })
@@ -71,13 +71,8 @@ pub fn handle_join_lines(
     world: ServerWorld,
     params: req::JoinLinesParams,
 ) -> Result<req::SourceChange> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let range = params.range.conv_with(&line_index);
-    world
-        .analysis()
-        .join_lines(file_id, range)
-        .try_conv_with(&world)
+    let frange = (&params.text_document, params.range).try_conv_with(&world)?;
+    world.analysis().join_lines(frange).try_conv_with(&world)
 }
 
 pub fn handle_on_enter(
@@ -614,7 +609,10 @@ pub fn handle_code_action(
     let line_index = world.analysis().file_line_index(file_id);
     let range = params.range.conv_with(&line_index);
 
-    let assists = world.analysis().assists(file_id, range)?.into_iter();
+    let assists = world
+        .analysis()
+        .assists(FileRange { file_id, range })?
+        .into_iter();
     let fixes = world
         .analysis()
         .diagnostics(file_id)?
