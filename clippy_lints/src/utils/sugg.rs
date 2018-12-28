@@ -79,7 +79,8 @@ impl<'a> Sugg<'a> {
                 | hir::ExprKind::Ret(..)
                 | hir::ExprKind::Struct(..)
                 | hir::ExprKind::Tup(..)
-                | hir::ExprKind::While(..) => Sugg::NonParen(snippet),
+                | hir::ExprKind::While(..)
+                | hir::ExprKind::Err => Sugg::NonParen(snippet),
                 hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
                 hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
                 hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
@@ -158,7 +159,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Tup(..)
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
-            | ast::ExprKind::WhileLet(..) => Sugg::NonParen(snippet),
+            | ast::ExprKind::WhileLet(..)
+            | ast::ExprKind::Err => Sugg::NonParen(snippet),
             ast::ExprKind::Range(.., RangeLimits::HalfOpen) => Sugg::BinOp(AssocOp::DotDot, snippet),
             ast::ExprKind::Range(.., RangeLimits::Closed) => Sugg::BinOp(AssocOp::DotDotEq, snippet),
             ast::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),

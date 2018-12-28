@@ -347,6 +347,9 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             println!("{}repeat count:", ind);
             print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
         },
+        hir::ExprKind::Err => {
+            println!("{}Err", ind);
+        },
     }
 }
 
