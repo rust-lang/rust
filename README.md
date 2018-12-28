@@ -26,7 +26,7 @@ for example:
 Install Miri as a cargo subcommand:
 
 ```sh
-cargo +nightly install --git https://github.com/solson/miri/ miri
+cargo +nightly install --force --git https://github.com/solson/miri miri
 ```
 
 If this does not work, try using the nightly version given in
