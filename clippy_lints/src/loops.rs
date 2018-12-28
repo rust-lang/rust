@@ -756,7 +756,8 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
         | ExprKind::Closure(_, _, _, _, _)
         | ExprKind::InlineAsm(_, _, _)
         | ExprKind::Path(_)
-        | ExprKind::Lit(_) => NeverLoopResult::Otherwise,
+        | ExprKind::Lit(_)
+        | ExprKind::Err => NeverLoopResult::Otherwise,
     }
 }
 

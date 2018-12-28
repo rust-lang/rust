@@ -504,6 +504,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = value_pat;
                 self.visit_expr(value);
             },
+            ExprKind::Err => {
+                println!("Err = {}", current);
+            },
         }
     }
 

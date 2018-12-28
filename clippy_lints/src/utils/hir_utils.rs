@@ -615,6 +615,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_name(l.ident.name);
                 }
             },
+            ExprKind::Err => {},
         }
     }
 
