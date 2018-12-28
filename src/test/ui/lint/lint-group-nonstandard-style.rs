@@ -1,7 +1,3 @@
-// Copyright 2014–2017 The Rust Project Developers. See the COPYRIGHT
-// http://rust-lang.org/COPYRIGHT.
-//
-
 #![deny(nonstandard_style)]
 #![allow(dead_code)]
 
