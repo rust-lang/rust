@@ -5,7 +5,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
-    AstNode, SyntaxNode, SmolStr,
+    AstNode, SyntaxNode,
     ast::{self, NameOwner, ModuleItemOwner}
 };
 use ra_db::{SourceRootId, FileId, Cancelable,};
@@ -39,11 +39,7 @@ pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<T
     ty::type_for_def(db, def_id)
 }
 
-pub(super) fn type_for_field(
-    db: &impl HirDatabase,
-    def_id: DefId,
-    field: SmolStr,
-) -> Cancelable<Ty> {
+pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) -> Cancelable<Ty> {
     ty::type_for_field(db, def_id, field)
 }
 

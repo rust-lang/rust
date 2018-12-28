@@ -1,6 +1,6 @@
 use crate::{
     Cancelable,
-    completion::{CompletionItem, Completions, CompletionKind, CompletionContext},
+    completion::{CompletionItem, CompletionItemKind, Completions, CompletionKind, CompletionContext},
 };
 
 pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> Cancelable<()> {
@@ -12,16 +12,25 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
         Some(it) => it,
         None => return Ok(()),
     };
-    let target_module = match def_id.resolve(ctx.db)? {
-        hir::Def::Module(it) => it,
+    match def_id.resolve(ctx.db)? {
+        hir::Def::Module(module) => {
+            let module_scope = module.scope(ctx.db)?;
+            module_scope.entries().for_each(|(name, res)| {
+                CompletionItem::new(CompletionKind::Reference, name.to_string())
+                    .from_resolution(ctx.db, res)
+                    .add_to(acc)
+            });
+        }
+        hir::Def::Enum(e) => e
+            .variants(ctx.db)?
+            .into_iter()
+            .for_each(|(name, _variant)| {
+                CompletionItem::new(CompletionKind::Reference, name.to_string())
+                    .kind(CompletionItemKind::EnumVariant)
+                    .add_to(acc)
+            }),
         _ => return Ok(()),
     };
-    let module_scope = target_module.scope(ctx.db)?;
-    module_scope.entries().for_each(|(name, res)| {
-        CompletionItem::new(CompletionKind::Reference, name.to_string())
-            .from_resolution(ctx.db, res)
-            .add_to(acc)
-    });
     Ok(())
 }
 
@@ -90,6 +99,18 @@ mod tests {
             use crate::{bar::{baz::Sp<|>}};
             ",
             "Spam",
+        );
+    }
+
+    #[test]
+    fn completes_enum_variant() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            enum E { Foo, Bar(i32) }
+            fn foo() { let _ = E::<|> }
+            ",
+            "Foo;Bar",
         );
     }
 }

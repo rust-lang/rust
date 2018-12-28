@@ -10,13 +10,12 @@ use rustc_hash::{FxHashMap};
 
 use ra_db::{LocalSyntaxPtr, Cancelable};
 use ra_syntax::{
-    SmolStr,
     ast::{self, AstNode, LoopBodyOwner, ArgListOwner, PrefixOp},
     SyntaxNodeRef
 };
 
 use crate::{
-    Def, DefId, FnScopes, Module, Function, Struct, Enum, Path,
+    Def, DefId, FnScopes, Module, Function, Struct, Enum, Path, Name, AsName,
     db::HirDatabase,
     adt::VariantData,
     type_ref::{TypeRef, Mutability},
@@ -45,7 +44,7 @@ pub enum Ty {
         /// The DefId of the struct/enum.
         def_id: DefId,
         /// The name, for displaying.
-        name: SmolStr,
+        name: Name,
         // later we'll need generic substitutions here
     },
 
@@ -276,18 +275,14 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
 pub fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s
-            .name(db)?
-            .unwrap_or_else(|| SmolStr::new("[unnamed struct]")),
+        name: s.name(db)?.unwrap_or_else(Name::missing),
     })
 }
 
 pub fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
-        name: s
-            .name(db)?
-            .unwrap_or_else(|| SmolStr::new("[unnamed enum]")),
+        name: s.name(db)?.unwrap_or_else(Name::missing),
     })
 }
 
@@ -308,11 +303,7 @@ pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     }
 }
 
-pub(super) fn type_for_field(
-    db: &impl HirDatabase,
-    def_id: DefId,
-    field: SmolStr,
-) -> Cancelable<Ty> {
+pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) -> Cancelable<Ty> {
     let def = def_id.resolve(db)?;
     let variant_data = match def {
         Def::Struct(s) => {
@@ -559,14 +550,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ast::Expr::FieldExpr(e) => {
                 let receiver_ty = self.infer_expr_opt(e.expr())?;
                 if let Some(nr) = e.name_ref() {
-                    let text = nr.text();
                     match receiver_ty {
                         Ty::Tuple(fields) => {
-                            let i = text.parse::<usize>().ok();
+                            let i = nr.text().parse::<usize>().ok();
                             i.and_then(|i| fields.get(i).cloned())
                                 .unwrap_or(Ty::Unknown)
                         }
-                        Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, text)?,
+                        Ty::Adt { def_id, .. } => self.db.type_for_field(def_id, nr.as_name())?,
                         _ => Ty::Unknown,
                     }
                 } else {

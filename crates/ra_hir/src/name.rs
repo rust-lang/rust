@@ -23,6 +23,18 @@ impl fmt::Debug for Name {
 }
 
 impl Name {
+    fn new(text: SmolStr) -> Name {
+        Name { text }
+    }
+
+    pub(crate) fn missing() -> Name {
+        Name::new("[missing name]".into())
+    }
+
+    pub(crate) fn tuple_field_name(idx: usize) -> Name {
+        Name::new(idx.to_string().into())
+    }
+
     pub(crate) fn as_known_name(&self) -> Option<KnownName> {
         let name = match self.text.as_str() {
             "isize" => KnownName::Isize,
@@ -42,10 +54,6 @@ impl Name {
             _ => return None,
         };
         Some(name)
-    }
-
-    fn new(text: SmolStr) -> Name {
-        Name { text }
     }
 }
 

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
-use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
+use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
 use ra_db::mock::FileMap;
 
-use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FilePosition, SourceRootId};
+use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FilePosition, FileRange, SourceRootId};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
@@ -66,6 +66,12 @@ impl MockAnalysis {
         self.files.push((path.to_string(), text.to_string()));
         FilePosition { file_id, offset }
     }
+    pub fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
+        let (range, text) = extract_range(text);
+        let file_id = FileId((self.files.len() + 1) as u32);
+        self.files.push((path.to_string(), text.to_string()));
+        FileRange { file_id, range }
+    }
     pub fn id_of(&self, path: &str) -> FileId {
         let (idx, _) = self
             .files
@@ -113,5 +119,12 @@ pub fn single_file(code: &str) -> (Analysis, FileId) {
 pub fn single_file_with_position(code: &str) -> (Analysis, FilePosition) {
     let mut mock = MockAnalysis::new();
     let pos = mock.add_file_with_position("/main.rs", code);
+    (mock.analysis(), pos)
+}
+
+/// Creates analysis for a single file, returns range marked with a pair of <|>.
+pub fn single_file_with_range(code: &str) -> (Analysis, FileRange) {
+    let mut mock = MockAnalysis::new();
+    let pos = mock.add_file_with_range("/main.rs", code);
     (mock.analysis(), pos)
 }

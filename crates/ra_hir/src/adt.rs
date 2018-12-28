@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use ra_syntax::{SmolStr, ast::{self, NameOwner, StructFlavor}};
+use ra_syntax::ast::{self, NameOwner, StructFlavor};
 
 use crate::{
-    DefId, Cancelable,
-    db::{HirDatabase},
+    DefId, Cancelable, Name, AsName,
+    db::HirDatabase,
     type_ref::TypeRef,
 };
 
@@ -29,26 +29,26 @@ impl Struct {
         Ok(db.struct_data(self.def_id)?)
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<SmolStr>> {
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
         Ok(db.struct_data(self.def_id)?.name.clone())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
-    name: Option<SmolStr>,
+    name: Option<Name>,
     variant_data: Arc<VariantData>,
 }
 
 impl StructData {
     pub(crate) fn new(struct_def: ast::StructDef) -> StructData {
-        let name = struct_def.name().map(|n| n.text());
+        let name = struct_def.name().map(|n| n.as_name());
         let variant_data = VariantData::new(struct_def.flavor());
         let variant_data = Arc::new(variant_data);
         StructData { name, variant_data }
     }
 
-    pub fn name(&self) -> Option<&SmolStr> {
+    pub fn name(&self) -> Option<&Name> {
         self.name.as_ref()
     }
 
@@ -70,27 +70,29 @@ impl Enum {
         self.def_id
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<SmolStr>> {
+    pub fn name(&self, db: &impl HirDatabase) -> Cancelable<Option<Name>> {
         Ok(db.enum_data(self.def_id)?.name.clone())
+    }
+
+    pub fn variants(&self, db: &impl HirDatabase) -> Cancelable<Vec<(Name, Arc<VariantData>)>> {
+        Ok(db.enum_data(self.def_id)?.variants.clone())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
-    name: Option<SmolStr>,
-    variants: Vec<(SmolStr, Arc<VariantData>)>,
+    name: Option<Name>,
+    variants: Vec<(Name, Arc<VariantData>)>,
 }
 
 impl EnumData {
     pub(crate) fn new(enum_def: ast::EnumDef) -> Self {
-        let name = enum_def.name().map(|n| n.text());
+        let name = enum_def.name().map(|n| n.as_name());
         let variants = if let Some(evl) = enum_def.variant_list() {
             evl.variants()
                 .map(|v| {
                     (
-                        v.name()
-                            .map(|n| n.text())
-                            .unwrap_or_else(|| SmolStr::new("[error]")),
+                        v.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         Arc::new(VariantData::new(v.flavor())),
                     )
                 })
@@ -105,12 +107,12 @@ impl EnumData {
 /// A single field of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructField {
-    name: SmolStr,
+    name: Name,
     type_ref: TypeRef,
 }
 
 impl StructField {
-    pub fn name(&self) -> SmolStr {
+    pub fn name(&self) -> Name {
         self.name.clone()
     }
     pub fn type_ref(&self) -> &TypeRef {
@@ -134,7 +136,7 @@ impl VariantData {
                     .fields()
                     .enumerate()
                     .map(|(i, fd)| StructField {
-                        name: SmolStr::new(i.to_string()),
+                        name: Name::tuple_field_name(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
                     .collect();
@@ -144,10 +146,7 @@ impl VariantData {
                 let fields = fl
                     .fields()
                     .map(|fd| StructField {
-                        name: fd
-                            .name()
-                            .map(|n| n.text())
-                            .unwrap_or_else(|| SmolStr::new("[error]")),
+                        name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
                     .collect();
@@ -157,10 +156,10 @@ impl VariantData {
         }
     }
 
-    pub(crate) fn get_field_type_ref(&self, field_name: &str) -> Option<&TypeRef> {
+    pub(crate) fn get_field_type_ref(&self, field_name: &Name) -> Option<&TypeRef> {
         self.fields()
             .iter()
-            .find(|f| f.name == field_name)
+            .find(|f| f.name == *field_name)
             .map(|f| &f.type_ref)
     }
 
