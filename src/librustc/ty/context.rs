@@ -1061,14 +1061,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.adt_def.alloc(def)
     }
 
-    pub fn alloc_byte_array(self, bytes: &[u8]) -> &'gcx [u8] {
-        if bytes.is_empty() {
-            &[]
-        } else {
-            self.global_interners.arena.alloc_slice(bytes)
-        }
-    }
-
     pub fn intern_const_alloc(
         self,
         alloc: Allocation,
