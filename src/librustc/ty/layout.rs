@@ -1833,17 +1833,19 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         })
     }
 
-    fn pointee_info_at(this: TyLayout<'tcx>, cx: &C, offset: Size
+    fn pointee_info_at(
+        this: TyLayout<'tcx>,
+        cx: &C,
+        offset: Size,
     ) -> Option<PointeeInfo> {
-        let mut result = None;
         match this.ty.sty {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
-                result = cx.layout_of(mt.ty).ok()
+                cx.layout_of(mt.ty).ok()
                     .map(|layout| PointeeInfo {
                         size: layout.size,
                         align: layout.align.abi,
                         safe: None,
-                    });
+                    })
             }
 
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
@@ -1877,12 +1879,12 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     }
                 };
 
-                result = cx.layout_of(ty).ok()
+                cx.layout_of(ty).ok()
                     .map(|layout| PointeeInfo {
                         size: layout.size,
                         align: layout.align.abi,
                         safe: Some(kind),
-                    });
+                    })
             }
 
             _ => {
@@ -1915,6 +1917,8 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     }
                 }
 
+                let mut result = None;
+
                 if let Some(variant) = data_variant {
                     let ptr_end = offset + Pointer.size(cx);
                     for i in 0..variant.fields.count() {
@@ -1945,10 +1949,10 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                         }
                     }
                 }
+
+                result
             }
         }
-
-        result
     }
 
 }
