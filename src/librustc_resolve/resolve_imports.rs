@@ -223,11 +223,6 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            if let Some(blacklisted_binding) = this.blacklisted_binding {
-                if ptr::eq(binding, blacklisted_binding) {
-                    return Err((Determined, Weak::No));
-                }
-            }
             // `extern crate` are always usable for backwards compatibility, see issue #37020,
             // remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`.
             let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();
@@ -235,7 +230,18 @@ impl<'a> Resolver<'a> {
         };
 
         if record_used {
-            return resolution.binding.ok_or((Determined, Weak::No)).and_then(|binding| {
+            return resolution.binding.and_then(|binding| {
+                // If the primary binding is blacklisted, search further and return the shadowed
+                // glob binding if it exists. What we really want here is having two separate
+                // scopes in a module - one for non-globs and one for globs, but until that's done
+                // use this hack to avoid inconsistent resolution ICEs during import validation.
+                if let Some(blacklisted_binding) = self.blacklisted_binding {
+                    if ptr::eq(binding, blacklisted_binding) {
+                        return resolution.shadowed_glob;
+                    }
+                }
+                Some(binding)
+            }).ok_or((Determined, Weak::No)).and_then(|binding| {
                 if self.last_import_segment && check_usable(self, binding).is_err() {
                     Err((Determined, Weak::No))
                 } else {
