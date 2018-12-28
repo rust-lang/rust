@@ -1442,7 +1442,39 @@ impl<R: TreeRoot<RaTypes>> ImplBlockNode<R> {
 }
 
 
-impl<'a> ImplBlock<'a> {}
+impl<'a> ImplBlock<'a> {
+    pub fn item_list(self) -> Option<ItemList<'a>> {
+        super::child_opt(self)
+    }
+}
+
+// ImplItem
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImplItem<'a> {
+    FnDef(FnDef<'a>),
+    TypeDef(TypeDef<'a>),
+    ConstDef(ConstDef<'a>),
+}
+
+impl<'a> AstNode<'a> for ImplItem<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            FN_DEF => Some(ImplItem::FnDef(FnDef { syntax })),
+            TYPE_DEF => Some(ImplItem::TypeDef(TypeDef { syntax })),
+            CONST_DEF => Some(ImplItem::ConstDef(ConstDef { syntax })),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            ImplItem::FnDef(inner) => inner.syntax(),
+            ImplItem::TypeDef(inner) => inner.syntax(),
+            ImplItem::ConstDef(inner) => inner.syntax(),
+        }
+    }
+}
+
+impl<'a> ImplItem<'a> {}
 
 // ImplTraitType
 #[derive(Debug, Clone, Copy,)]
@@ -1555,7 +1587,11 @@ impl<R: TreeRoot<RaTypes>> ItemListNode<R> {
 
 impl<'a> ast::FnDefOwner<'a> for ItemList<'a> {}
 impl<'a> ast::ModuleItemOwner<'a> for ItemList<'a> {}
-impl<'a> ItemList<'a> {}
+impl<'a> ItemList<'a> {
+    pub fn impl_items(self) -> impl Iterator<Item = ImplItem<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // Label
 #[derive(Debug, Clone, Copy,)]

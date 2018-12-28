@@ -31,6 +31,7 @@ mod function;
 mod adt;
 mod type_ref;
 mod ty;
+mod impl_block;
 
 use crate::{
     db::HirDatabase,
@@ -48,6 +49,7 @@ pub use self::{
     function::{Function, FnScopes},
     adt::{Struct, Enum},
     ty::Ty,
+    impl_block::{ImplBlock, ImplItem},
 };
 
 pub use self::function::FnSignatureInfo;

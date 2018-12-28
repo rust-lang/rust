@@ -203,6 +203,7 @@ salsa::database_storage! {
             fn type_for_field() for db::TypeForFieldQuery;
             fn struct_data() for db::StructDataQuery;
             fn enum_data() for db::EnumDataQuery;
+            fn impls_in_crate() for db::ImplsInCrateQuery;
         }
     }
 }

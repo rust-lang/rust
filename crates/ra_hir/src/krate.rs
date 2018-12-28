@@ -5,7 +5,7 @@ use crate::{HirDatabase, Module, Name, AsName, HirFileId};
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
 /// root module.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     crate_id: CrateId,
 }

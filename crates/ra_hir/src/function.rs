@@ -11,11 +11,11 @@ use ra_syntax::{
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
 };
 
-use crate::{DefId, DefKind, HirDatabase, ty::InferenceResult, Module};
+use crate::{DefId, DefKind, HirDatabase, ty::InferenceResult, Module, Crate, impl_block::ImplBlock};
 
 pub use self::scope::FnScopes;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function {
     def_id: DefId,
 }
@@ -23,6 +23,10 @@ pub struct Function {
 impl Function {
     pub(crate) fn new(def_id: DefId) -> Function {
         Function { def_id }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        self.def_id
     }
 
     pub fn syntax(&self, db: &impl HirDatabase) -> ast::FnDefNode {
@@ -47,6 +51,15 @@ impl Function {
 
     pub fn module(&self, db: &impl HirDatabase) -> Cancelable<Module> {
         self.def_id.module(db)
+    }
+
+    pub fn krate(&self, db: &impl HirDatabase) -> Cancelable<Option<Crate>> {
+        self.def_id.krate(db)
+    }
+
+    /// The containing impl block, if this is a method.
+    pub fn impl_block(&self, db: &impl HirDatabase) -> Cancelable<Option<ImplBlock>> {
+        self.def_id.impl_block(db)
     }
 }
 

@@ -71,6 +71,21 @@ impl Module {
         })
     }
 
+    /// Returns an iterator of all children of this module.
+    pub fn children<'a>(&'a self) -> impl Iterator<Item = (Name, Module)> + 'a {
+        self.module_id
+            .children(&self.tree)
+            .map(move |(name, module_id)| {
+                (
+                    name,
+                    Module {
+                        module_id,
+                        ..self.clone()
+                    },
+                )
+            })
+    }
+
     /// Returns the crate this module is part of.
     pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
         let root_id = self.module_id.crate_root(&self.tree);

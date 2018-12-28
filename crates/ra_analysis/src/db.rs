@@ -105,6 +105,7 @@ salsa::database_storage! {
             fn type_for_field() for hir::db::TypeForFieldQuery;
             fn struct_data() for hir::db::StructDataQuery;
             fn enum_data() for hir::db::EnumDataQuery;
+            fn impls_in_crate() for hir::db::ImplsInCrateQuery;
         }
     }
 }
