@@ -67,7 +67,7 @@ mod lifetimes {
             Foo { foo_str: "foo" }
         }
 
-        // TODO: the lint does not handle lifetimed struct
+        // FIXME: the lint does not handle lifetimed struct
         // `Self` should be applicable here
         fn clone(&self) -> Foo<'a> {
             Foo { foo_str: self.foo_str }

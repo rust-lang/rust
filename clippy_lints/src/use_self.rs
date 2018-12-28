@@ -27,11 +27,9 @@ use syntax_pos::symbol::keywords::SelfUpper;
 /// feels inconsistent.
 ///
 /// **Known problems:**
-/// - Does not trigger within locally defined macros (#2098)
 /// - False positive when using associated types (#2843)
 /// - False positives in some situations when using generics (#3410)
 /// - False positive when type from outer function can't be used (#3463)
-/// - Does not trigger in lifetimed structs
 ///
 /// **Example:**
 /// ```rust
