@@ -15,7 +15,7 @@ use context::CodegenCx;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use type_::Type;
-use type_of::{LayoutLlvmExt, PointerKind};
+use type_of::{LayoutLlvmExt};
 use value::Value;
 use rustc_target::abi::call::ArgType;
 
@@ -23,7 +23,7 @@ use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty, Instance};
-use rustc::ty::layout;
+use rustc::ty::layout::{self, PointerKind};
 
 use libc::c_uint;
 
