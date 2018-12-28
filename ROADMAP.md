@@ -16,7 +16,7 @@ High-level architecture constraints:
     It's *obvious* that the code should be shared, but OTOH, all great IDEs started as from-scratch rewrites.
   * Don't hard-code a particular protocol or mode of operation.
     Produce a library which could be used for implementing an LSP server, or for in-process embedding.
-  * As long as possible, stick with stable Rust (NB: we currently use beta for 2018 edition and salsa).
+  * As long as possible, stick with stable Rust.
 
 
 # Current Goals
