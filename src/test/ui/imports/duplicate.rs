@@ -43,7 +43,7 @@ mod g {
 fn main() {
     e::foo();
     f::foo(); //~ ERROR `foo` is ambiguous
-    g::foo(); //~ ERROR `foo` is ambiguous
+    g::foo();
 }
 
 mod ambiguous_module_errors {
