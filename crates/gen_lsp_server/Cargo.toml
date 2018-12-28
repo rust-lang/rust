@@ -12,5 +12,5 @@ languageserver-types = "0.53.1"
 log = "0.4.3"
 failure = "0.1.2"
 serde_json = "1.0.24"
-serde = { version = "1.0.71", features = ["derive"] }
+serde = { version = "1.0.83", features = ["derive"] }
 crossbeam-channel = "0.2.4"
