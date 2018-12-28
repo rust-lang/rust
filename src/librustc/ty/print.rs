@@ -16,23 +16,8 @@ use std::iter;
 use std::ops::Deref;
 
 thread_local! {
-    static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false);
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
-}
-
-/// Enforces that def_path_str always returns an absolute path and
-/// also enables "type-based" impl paths. This is used when building
-/// symbols that contain types, where we want the crate name to be
-/// part of the symbol.
-pub fn with_forced_absolute_paths<F: FnOnce() -> R, R>(f: F) -> R {
-    FORCE_ABSOLUTE.with(|force| {
-        let old = force.get();
-        force.set(true);
-        let result = f();
-        force.set(old);
-        result
-    })
 }
 
 /// Force us to name impls with just the filename/line number. We
@@ -223,24 +208,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Returns a string identifying this `DefId`. This string is
-    /// suitable for user output. It is relative to the current crate
-    /// root, unless with_forced_absolute_paths was used.
-    pub fn def_path_str_with_substs_and_ns(
-        self,
-        def_id: DefId,
-        substs: Option<SubstsRef<'tcx>>,
-        ns: Namespace,
-    ) -> String {
-        debug!("def_path_str: def_id={:?}, substs={:?}, ns={:?}", def_id, substs, ns);
-        let mut s = String::new();
-        let _ = PrintCx::new(self, FmtPrinter { fmt: &mut s })
-            .print_def_path(def_id, substs, ns, iter::empty());
-        s
-    }
-
-    /// Returns a string identifying this `DefId`. This string is
-    /// suitable for user output. It is relative to the current crate
-    /// root, unless with_forced_absolute_paths was used.
+    /// suitable for user output.
     pub fn def_path_str(self, def_id: DefId) -> String {
         let ns = self.guess_def_namespace(def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
@@ -722,8 +690,6 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
         // FIXME(eddyb) avoid querying `tcx.generics_of` and `tcx.def_key`
         // both here and in `default_print_def_path`.
         let generics = substs.map(|_| self.tcx.generics_of(def_id));
-        // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
-        assert!(!FORCE_ABSOLUTE.with(|force| force.get()));
         if generics.as_ref().and_then(|g| g.parent).is_none() {
             if let Some(path) = self.try_print_visible_def_path(def_id) {
                 let path = if let (Some(generics), Some(substs)) = (generics, substs) {
@@ -763,9 +729,6 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
     }
 
     fn path_crate(self: &mut PrintCx<'_, '_, '_, Self>, cnum: CrateNum) -> Self::Path {
-        // HACK(eddyb) remove the `FORCE_ABSOLUTE` hack by bypassing `FmtPrinter`
-        assert!(!FORCE_ABSOLUTE.with(|force| force.get()));
-
         if cnum == LOCAL_CRATE {
             if self.tcx.sess.rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
