@@ -1,3 +1,6 @@
+// Local js definitions:
+/* global getCurrentValue, updateLocalStorage */
+
 (function () {
     function changeSetting(settingName, isEnabled) {
         updateLocalStorage('rustdoc-' + settingName, isEnabled);

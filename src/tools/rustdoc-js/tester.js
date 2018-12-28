@@ -81,9 +81,9 @@ function extractFunction(content, functionName) {
 
 // Stupid function extractor for array.
 function extractArrayVariable(content, arrayName) {
-    var splitter = "var " + arrayName;
+    var splitter = new RegExp("(?:var|const|let) " + arrayName);
     while (true) {
-        var start = content.indexOf(splitter);
+        var start = content.search(splitter);
         if (start === -1) {
             break;
         }
@@ -126,9 +126,9 @@ function extractArrayVariable(content, arrayName) {
 
 // Stupid function extractor for variable.
 function extractVariable(content, varName) {
-    var splitter = "var " + varName;
+    var splitter = new RegExp("(?:var|const|let) " + varName);
     while (true) {
-        var start = content.indexOf(splitter);
+        var start = content.search(splitter);
         if (start === -1) {
             break;
         }

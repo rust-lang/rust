@@ -1,6 +1,9 @@
 // From rust:
 /* global sourcesIndex */
 
+// From DOM global ids:
+/* global search */
+
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass, removeClass, updateLocalStorage */
 

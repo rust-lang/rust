@@ -1,9 +1,12 @@
 // From rust:
 /* global ALIASES, currentCrate, rootPath */
 
+// From DOM global ids:
+/* global help */
+
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global isHidden onEach, removeClass, updateLocalStorage */
+/* global isHidden, onEachLazy, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -78,8 +81,6 @@ if (!DOMTokenList.prototype.remove) {
     // 1 for "In Parameters"
     // 2 for "In Return Types"
     var currentTab = 0;
-
-    var themesWidth = null;
 
     var titleBeforeSearch = document.title;
 
@@ -378,7 +379,7 @@ if (!DOMTokenList.prototype.remove) {
                 len = rootPath.match(/\.\.\//g).length + 1;
 
             for (i = 0; i < len; ++i) {
-                match = url.match(/\/[^\/]*$/);
+                match = url.match(/\/[^/]*$/);
                 if (i < len - 1) {
                     stripped = match[0] + stripped;
                 }
@@ -631,8 +632,6 @@ if (!DOMTokenList.prototype.remove) {
                     if (obj.length > GENERICS_DATA &&
                           obj[GENERICS_DATA].length >= val.generics.length) {
                         var elems = obj[GENERICS_DATA].slice(0);
-                        var total = 0;
-                        var done = 0;
                         // We need to find the type that matches the most to remove it in order
                         // to move forward.
                         var vlength = val.generics.length;
@@ -649,8 +648,6 @@ if (!DOMTokenList.prototype.remove) {
                             if (lev.pos !== -1) {
                                 elems.splice(lev.pos, 1);
                                 lev_distance = Math.min(lev.lev, lev_distance);
-                                total += lev.lev;
-                                done += 1;
                             } else {
                                 return MAX_LEV_DISTANCE + 1;
                             }
@@ -912,7 +909,6 @@ if (!DOMTokenList.prototype.remove) {
                     fullId = generateId(ty);
 
                     // allow searching for void (no output) functions as well
-                    var typeOutput = type.length > OUTPUT_DATA ? type[OUTPUT_DATA].name : "";
                     returned = checkReturned(ty, output, true);
                     if (output.name === "*" || returned === true) {
                         in_args = false;
@@ -959,7 +955,7 @@ if (!DOMTokenList.prototype.remove) {
                 query.output = val;
                 query.search = val;
                 // gather matching search results up to a certain maximum
-                val = val.replace(/\_/g, "");
+                val = val.replace(/_/g, "");
 
                 var valGenerics = extractGenerics(val);
 
@@ -976,12 +972,10 @@ if (!DOMTokenList.prototype.remove) {
 
                 for (j = 0; j < nSearchWords; ++j) {
                     var lev;
-                    var lev_distance;
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
                         continue;
                     }
-                    var lev_distance;
                     var lev_add = 0;
                     if (paths.length > 1) {
                         lev = checkPath(contains, paths[paths.length - 1], ty);
