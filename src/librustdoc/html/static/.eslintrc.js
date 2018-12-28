@@ -6,7 +6,7 @@ module.exports = {
     "extends": "eslint:recommended",
     "parserOptions": {
         "ecmaVersion": 2015,
-        "sourceType": "module"
+        "sourceType": "script"
     },
     "rules": {
         "linebreak-style": [
@@ -16,6 +16,10 @@ module.exports = {
         "semi": [
             "error",
             "always"
+        ],
+        "no-constant-condition": [
+            "error",
+            { "checkLoops": false }
         ]
     }
 };
