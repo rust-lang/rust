@@ -61,4 +61,15 @@ impl MacroExpansion {
         }
         None
     }
+    pub(crate) fn map_range_forward(&self, src_range: TextRange) -> Option<TextRange> {
+        for (s_range, t_range) in self.ranges_map.iter() {
+            if src_range.is_subrange(&s_range) {
+                let src_at_zero_range = src_range - src_range.start();
+                let src_range_offset = src_range.start() - s_range.start();
+                let src_range = src_at_zero_range + src_range_offset + t_range.start();
+                return Some(src_range);
+            }
+        }
+        None
+    }
 }
