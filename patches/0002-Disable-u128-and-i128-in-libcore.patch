@@ -1,6 +1,6 @@
-From a759066c5c2c63d945b23f1e9d35d0dd0489faf1 Mon Sep 17 00:00:00 2001
+From 84040eb5ffeecaeb13863ff6d4106d6e4e2daaa9 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 15 Dec 2018 11:28:12 +0100
+Date: Fri, 28 Dec 2018 10:31:59 +0100
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -14,21 +14,25 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/lib.rs           |   2 -
  src/libcore/marker.rs        |   4 +-
  src/libcore/mem.rs           |   2 -
- src/libcore/num/mod.rs       |  99 ++++++++-------------------
+ src/libcore/num/mod.rs       |  99 ++++++++--------------------
  src/libcore/num/wrapping.rs  |  14 ++--
- src/libcore/ops/arith.rs     |  22 +++---
- src/libcore/ops/bit.rs       |  30 +++------
+ src/libcore/ops/arith.rs     |  22 +++----
+ src/libcore/ops/bit.rs       |  30 ++++-----
  src/libcore/sync/atomic.rs   |  28 --------
  src/libcore/tests/iter.rs    |  15 -----
  src/libcore/tests/num/mod.rs |  18 -----
- src/libcore/time.rs          | 126 -----------------------------------
- 18 files changed, 62 insertions(+), 339 deletions(-)
+ src/libcore/time.rs          | 123 -----------------------------------
+ src/libstd/lib.rs            |   5 --
+ src/libstd/net/ip.rs         |  20 ------
+ src/libstd/num.rs            |   2 +-
+ src/libstd/panic.rs          |   6 --
+ 22 files changed, 63 insertions(+), 368 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
-index 225ea3d..a7f2637 100644
+index 74b3ce4..9617ed1 100644
 --- a/src/libcore/clone.rs
 +++ b/src/libcore/clone.rs
-@@ -172,8 +172,8 @@ mod impls {
+@@ -162,8 +162,8 @@ mod impls {
      }
  
      impl_clone! {
@@ -40,10 +44,10 @@ index 225ea3d..a7f2637 100644
          bool char
      }
 diff --git a/src/libcore/cmp.rs b/src/libcore/cmp.rs
-index 33881de..0e1e823 100644
+index 9336b13..8faa03f 100644
 --- a/src/libcore/cmp.rs
 +++ b/src/libcore/cmp.rs
-@@ -883,7 +883,7 @@ mod impls {
+@@ -873,7 +873,7 @@ mod impls {
      }
  
      partial_eq_impl! {
@@ -52,7 +56,7 @@ index 33881de..0e1e823 100644
      }
  
      macro_rules! eq_impl {
-@@ -893,7 +893,7 @@ mod impls {
+@@ -883,7 +883,7 @@ mod impls {
          )*)
      }
  
@@ -61,7 +65,7 @@ index 33881de..0e1e823 100644
  
      macro_rules! partial_ord_impl {
          ($($t:ty)*) => ($(
-@@ -982,7 +982,7 @@ mod impls {
+@@ -972,7 +972,7 @@ mod impls {
          }
      }
  
@@ -71,10 +75,10 @@ index 33881de..0e1e823 100644
      #[unstable(feature = "never_type", issue = "35121")]
      impl PartialEq for ! {
 diff --git a/src/libcore/default.rs b/src/libcore/default.rs
-index 638aceb..8b6ff80 100644
+index 0e47c2f..570b949 100644
 --- a/src/libcore/default.rs
 +++ b/src/libcore/default.rs
-@@ -145,14 +145,12 @@ default_impl! { u8, 0, "Returns the default value of `0`" }
+@@ -135,14 +135,12 @@ default_impl! { u8, 0, "Returns the default value of `0`" }
  default_impl! { u16, 0, "Returns the default value of `0`" }
  default_impl! { u32, 0, "Returns the default value of `0`" }
  default_impl! { u64, 0, "Returns the default value of `0`" }
@@ -90,10 +94,10 @@ index 638aceb..8b6ff80 100644
  default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
  default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
 diff --git a/src/libcore/fmt/num.rs b/src/libcore/fmt/num.rs
-index 51391fa..140255e 100644
+index c7c8fc5..689d611 100644
 --- a/src/libcore/fmt/num.rs
 +++ b/src/libcore/fmt/num.rs
-@@ -29,7 +29,6 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
+@@ -19,7 +19,6 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
      fn to_u16(&self) -> u16;
      fn to_u32(&self) -> u32;
      fn to_u64(&self) -> u64;
@@ -101,7 +105,7 @@ index 51391fa..140255e 100644
  }
  
  macro_rules! doit {
-@@ -40,10 +39,9 @@ macro_rules! doit {
+@@ -30,10 +29,9 @@ macro_rules! doit {
          fn to_u16(&self) -> u16 { *self as u16 }
          fn to_u32(&self) -> u32 { *self as u32 }
          fn to_u64(&self) -> u64 { *self as u64 }
@@ -113,7 +117,7 @@ index 51391fa..140255e 100644
  
  /// A type that represents a specific radix
  #[doc(hidden)]
-@@ -184,7 +182,6 @@ integer! { i8, u8 }
+@@ -174,7 +172,6 @@ integer! { i8, u8 }
  integer! { i16, u16 }
  integer! { i32, u32 }
  integer! { i64, u64 }
@@ -121,7 +125,7 @@ index 51391fa..140255e 100644
  
  const DEC_DIGITS_LUT: &'static[u8] =
      b"0001020304050607080910111213141516171819\
-@@ -260,7 +257,6 @@ macro_rules! impl_Display {
+@@ -250,7 +247,6 @@ macro_rules! impl_Display {
  
  impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
  impl_Display!(i64, u64: to_u64);
@@ -130,10 +134,10 @@ index 51391fa..140255e 100644
  impl_Display!(isize, usize: to_u16);
  #[cfg(target_pointer_width = "32")]
 diff --git a/src/libcore/hash/mod.rs b/src/libcore/hash/mod.rs
-index 3e59ee1..3f8d682 100644
+index d5d29c9..f98f382 100644
 --- a/src/libcore/hash/mod.rs
 +++ b/src/libcore/hash/mod.rs
-@@ -306,12 +306,6 @@ pub trait Hasher {
+@@ -296,12 +296,6 @@ pub trait Hasher {
      fn write_u64(&mut self, i: u64) {
          self.write(&unsafe { mem::transmute::<_, [u8; 8]>(i) })
      }
@@ -146,7 +150,7 @@ index 3e59ee1..3f8d682 100644
      /// Writes a single `usize` into this hasher.
      #[inline]
      #[stable(feature = "hasher_write", since = "1.3.0")]
-@@ -346,12 +340,6 @@ pub trait Hasher {
+@@ -336,12 +330,6 @@ pub trait Hasher {
      fn write_i64(&mut self, i: i64) {
          self.write_u64(i as u64)
      }
@@ -159,7 +163,7 @@ index 3e59ee1..3f8d682 100644
      /// Writes a single `isize` into this hasher.
      #[inline]
      #[stable(feature = "hasher_write", since = "1.3.0")]
-@@ -380,9 +368,6 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
+@@ -370,9 +358,6 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
      fn write_u64(&mut self, i: u64) {
          (**self).write_u64(i)
      }
@@ -169,7 +173,7 @@ index 3e59ee1..3f8d682 100644
      fn write_usize(&mut self, i: usize) {
          (**self).write_usize(i)
      }
-@@ -398,9 +383,6 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
+@@ -388,9 +373,6 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
      fn write_i64(&mut self, i: i64) {
          (**self).write_i64(i)
      }
@@ -179,7 +183,7 @@ index 3e59ee1..3f8d682 100644
      fn write_isize(&mut self, i: isize) {
          (**self).write_isize(i)
      }
-@@ -587,8 +569,6 @@ mod impls {
+@@ -577,8 +559,6 @@ mod impls {
          (i32, write_i32),
          (i64, write_i64),
          (isize, write_isize),
@@ -189,10 +193,10 @@ index 3e59ee1..3f8d682 100644
  
      #[stable(feature = "rust1", since = "1.0.0")]
 diff --git a/src/libcore/iter/range.rs b/src/libcore/iter/range.rs
-index f0fd07b..72a3ec9 100644
+index 66c09a0..1b8c5c9 100644
 --- a/src/libcore/iter/range.rs
 +++ b/src/libcore/iter/range.rs
-@@ -183,7 +183,6 @@ step_impl_signed!([i64: u64]);
+@@ -173,7 +173,6 @@ step_impl_signed!([i64: u64]);
  // assume here that it is less than 64-bits.
  #[cfg(not(target_pointer_width = "64"))]
  step_impl_no_between!(u64 i64);
@@ -201,10 +205,10 @@ index f0fd07b..72a3ec9 100644
  macro_rules! range_exact_iter_impl {
      ($($t:ty)*) => ($(
 diff --git a/src/libcore/iter/traits.rs b/src/libcore/iter/traits.rs
-index 45e5b61..64a3038 100644
+index e8c6cd8..f58b446 100644
 --- a/src/libcore/iter/traits.rs
 +++ b/src/libcore/iter/traits.rs
-@@ -843,7 +843,7 @@ macro_rules! float_sum_product {
+@@ -901,7 +901,7 @@ macro_rules! float_sum_product {
      )*)
  }
  
@@ -214,10 +218,10 @@ index 45e5b61..64a3038 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 313c173..4315135 100644
+index 252d7da..3c13282 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -154,14 +154,12 @@ mod uint_macros;
+@@ -145,14 +145,12 @@ mod uint_macros;
  #[path = "num/i16.rs"]   pub mod i16;
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
@@ -233,10 +237,10 @@ index 313c173..4315135 100644
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index d3d1612..f827f64 100644
+index 53af924..243a4f3 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
-@@ -674,8 +674,8 @@ mod copy_impls {
+@@ -663,8 +663,8 @@ mod copy_impls {
      }
  
      impl_copy! {
@@ -248,10 +252,10 @@ index d3d1612..f827f64 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index afd9fcb..ad3362c 100644
+index c024868..e512596 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
-@@ -173,12 +173,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
+@@ -163,12 +163,10 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
  /// u16 | 2
  /// u32 | 4
  /// u64 | 8
@@ -265,10 +269,10 @@ index afd9fcb..ad3362c 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index 4acf3a1..b5b3f54 100644
+index e776513..6018aea 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
-@@ -112,7 +112,6 @@ nonzero_integers! {
+@@ -102,7 +102,6 @@ nonzero_integers! {
      NonZeroU16(u16);
      NonZeroU32(u32);
      NonZeroU64(u64);
@@ -276,7 +280,7 @@ index 4acf3a1..b5b3f54 100644
      NonZeroUsize(usize);
  }
  
-@@ -2114,18 +2113,6 @@ impl i64 {
+@@ -2110,18 +2109,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -295,7 +299,7 @@ index 4acf3a1..b5b3f54 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4394,17 +4381,6 @@ impl u64 {
+@@ -4393,17 +4380,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -313,7 +317,7 @@ index 4acf3a1..b5b3f54 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4488,7 +4464,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4487,7 +4463,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -322,7 +326,7 @@ index 4acf3a1..b5b3f54 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4604,30 +4580,25 @@ macro_rules! rev {
+@@ -4603,30 +4579,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -357,7 +361,7 @@ index 4acf3a1..b5b3f54 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4639,21 +4610,21 @@ mod ptr_try_from_impls {
+@@ -4638,21 +4609,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -387,7 +391,7 @@ index 4acf3a1..b5b3f54 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4662,24 +4633,24 @@ mod ptr_try_from_impls {
+@@ -4661,24 +4632,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -420,7 +424,7 @@ index 4acf3a1..b5b3f54 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -4688,24 +4659,20 @@ mod ptr_try_from_impls {
+@@ -4687,24 +4658,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -449,7 +453,7 @@ index 4acf3a1..b5b3f54 100644
  }
  
  #[doc(hidden)]
-@@ -4740,7 +4707,7 @@ macro_rules! doit {
+@@ -4739,7 +4706,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -458,7 +462,7 @@ index 4acf3a1..b5b3f54 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -4931,52 +4898,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -4930,52 +4897,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -512,10 +516,10 @@ index 4acf3a1..b5b3f54 100644
  // The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
  // which imply that pointer-sized integers must be at least 16 bits:
 diff --git a/src/libcore/num/wrapping.rs b/src/libcore/num/wrapping.rs
-index 94dd657..fba1319 100644
+index 50e189c..2da3b35 100644
 --- a/src/libcore/num/wrapping.rs
 +++ b/src/libcore/num/wrapping.rs
-@@ -112,19 +112,17 @@ macro_rules! sh_impl_all {
+@@ -102,19 +102,17 @@ macro_rules! sh_impl_all {
          //sh_impl_unsigned! { $t, u16 }
          //sh_impl_unsigned! { $t, u32 }
          //sh_impl_unsigned! { $t, u64 }
@@ -536,7 +540,7 @@ index 94dd657..fba1319 100644
  
  // FIXME(30524): impl Op<T> for Wrapping<T>, impl OpAssign<T> for Wrapping<T>
  macro_rules! wrapping_impl {
-@@ -323,7 +321,7 @@ macro_rules! wrapping_impl {
+@@ -313,7 +311,7 @@ macro_rules! wrapping_impl {
      )*)
  }
  
@@ -545,7 +549,7 @@ index 94dd657..fba1319 100644
  
  macro_rules! wrapping_int_impl {
      ($($t:ty)*) => ($(
-@@ -685,7 +683,7 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
+@@ -675,7 +673,7 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
      )*)
  }
  
@@ -554,7 +558,7 @@ index 94dd657..fba1319 100644
  
  macro_rules! wrapping_int_impl_signed {
      ($($t:ty)*) => ($(
-@@ -814,7 +812,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
+@@ -804,7 +802,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
      )*)
  }
  
@@ -563,7 +567,7 @@ index 94dd657..fba1319 100644
  
  macro_rules! wrapping_int_impl_unsigned {
      ($($t:ty)*) => ($(
-@@ -891,7 +889,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
+@@ -881,7 +879,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
      )*)
  }
  
@@ -572,7 +576,7 @@ index 94dd657..fba1319 100644
  
  mod shift_max {
      #![allow(non_upper_case_globals)]
-@@ -918,13 +916,11 @@ mod shift_max {
+@@ -908,13 +906,11 @@ mod shift_max {
      pub const i16: u32 = (1 << 4) - 1;
      pub const i32: u32 = (1 << 5) - 1;
      pub const i64: u32 = (1 << 6) - 1;
@@ -587,10 +591,10 @@ index 94dd657..fba1319 100644
      pub use self::platform::usize;
  }
 diff --git a/src/libcore/ops/arith.rs b/src/libcore/ops/arith.rs
-index a1bc546..38742be 100644
+index 7d8bf18..91fd879 100644
 --- a/src/libcore/ops/arith.rs
 +++ b/src/libcore/ops/arith.rs
-@@ -114,7 +114,7 @@ macro_rules! add_impl {
+@@ -104,7 +104,7 @@ macro_rules! add_impl {
      )*)
  }
  
@@ -599,7 +603,7 @@ index a1bc546..38742be 100644
  
  /// The subtraction operator `-`.
  ///
-@@ -212,7 +212,7 @@ macro_rules! sub_impl {
+@@ -202,7 +202,7 @@ macro_rules! sub_impl {
      )*)
  }
  
@@ -608,7 +612,7 @@ index a1bc546..38742be 100644
  
  /// The multiplication operator `*`.
  ///
-@@ -332,7 +332,7 @@ macro_rules! mul_impl {
+@@ -322,7 +322,7 @@ macro_rules! mul_impl {
      )*)
  }
  
@@ -617,7 +621,7 @@ index a1bc546..38742be 100644
  
  /// The division operator `/`.
  ///
-@@ -457,7 +457,7 @@ macro_rules! div_impl_integer {
+@@ -447,7 +447,7 @@ macro_rules! div_impl_integer {
      )*)
  }
  
@@ -626,7 +630,7 @@ index a1bc546..38742be 100644
  
  macro_rules! div_impl_float {
      ($($t:ty)*) => ($(
-@@ -542,7 +542,7 @@ macro_rules! rem_impl_integer {
+@@ -532,7 +532,7 @@ macro_rules! rem_impl_integer {
      )*)
  }
  
@@ -635,7 +639,7 @@ index a1bc546..38742be 100644
  
  
  macro_rules! rem_impl_float {
-@@ -641,7 +641,7 @@ macro_rules! neg_impl_unsigned {
+@@ -631,7 +631,7 @@ macro_rules! neg_impl_unsigned {
  }
  
  // neg_impl_unsigned! { usize u8 u16 u32 u64 }
@@ -644,7 +648,7 @@ index a1bc546..38742be 100644
  
  /// The addition assignment operator `+=`.
  ///
-@@ -697,7 +697,7 @@ macro_rules! add_assign_impl {
+@@ -687,7 +687,7 @@ macro_rules! add_assign_impl {
      )+)
  }
  
@@ -653,7 +657,7 @@ index a1bc546..38742be 100644
  
  /// The subtraction assignment operator `-=`.
  ///
-@@ -753,7 +753,7 @@ macro_rules! sub_assign_impl {
+@@ -743,7 +743,7 @@ macro_rules! sub_assign_impl {
      )+)
  }
  
@@ -662,7 +666,7 @@ index a1bc546..38742be 100644
  
  /// The multiplication assignment operator `*=`.
  ///
-@@ -800,7 +800,7 @@ macro_rules! mul_assign_impl {
+@@ -790,7 +790,7 @@ macro_rules! mul_assign_impl {
      )+)
  }
  
@@ -671,7 +675,7 @@ index a1bc546..38742be 100644
  
  /// The division assignment operator `/=`.
  ///
-@@ -846,7 +846,7 @@ macro_rules! div_assign_impl {
+@@ -836,7 +836,7 @@ macro_rules! div_assign_impl {
      )+)
  }
  
@@ -680,17 +684,17 @@ index a1bc546..38742be 100644
  
  /// The remainder assignment operator `%=`.
  ///
-@@ -896,4 +896,4 @@ macro_rules! rem_assign_impl {
+@@ -886,4 +886,4 @@ macro_rules! rem_assign_impl {
      )+)
  }
  
 -rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 diff --git a/src/libcore/ops/bit.rs b/src/libcore/ops/bit.rs
-index 3900f36..66b7980 100644
+index 2c9bf24..af2ab6f 100644
 --- a/src/libcore/ops/bit.rs
 +++ b/src/libcore/ops/bit.rs
-@@ -65,7 +65,7 @@ macro_rules! not_impl {
+@@ -55,7 +55,7 @@ macro_rules! not_impl {
      )*)
  }
  
@@ -699,7 +703,7 @@ index 3900f36..66b7980 100644
  
  /// The bitwise AND operator `&`.
  ///
-@@ -149,7 +149,7 @@ macro_rules! bitand_impl {
+@@ -139,7 +139,7 @@ macro_rules! bitand_impl {
      )*)
  }
  
@@ -708,7 +712,7 @@ index 3900f36..66b7980 100644
  
  /// The bitwise OR operator `|`.
  ///
-@@ -233,7 +233,7 @@ macro_rules! bitor_impl {
+@@ -223,7 +223,7 @@ macro_rules! bitor_impl {
      )*)
  }
  
@@ -717,7 +721,7 @@ index 3900f36..66b7980 100644
  
  /// The bitwise XOR operator `^`.
  ///
-@@ -320,7 +320,7 @@ macro_rules! bitxor_impl {
+@@ -310,7 +310,7 @@ macro_rules! bitxor_impl {
      )*)
  }
  
@@ -726,7 +730,7 @@ index 3900f36..66b7980 100644
  
  /// The left shift operator `<<`. Note that because this trait is implemented
  /// for all integer types with multiple right-hand-side types, Rust's type
-@@ -417,19 +417,17 @@ macro_rules! shl_impl_all {
+@@ -407,19 +407,17 @@ macro_rules! shl_impl_all {
          shl_impl! { $t, u16 }
          shl_impl! { $t, u32 }
          shl_impl! { $t, u64 }
@@ -747,7 +751,7 @@ index 3900f36..66b7980 100644
  
  /// The right shift operator `>>`. Note that because this trait is implemented
  /// for all integer types with multiple right-hand-side types, Rust's type
-@@ -526,19 +524,17 @@ macro_rules! shr_impl_all {
+@@ -516,19 +514,17 @@ macro_rules! shr_impl_all {
          shr_impl! { $t, u16 }
          shr_impl! { $t, u32 }
          shr_impl! { $t, u64 }
@@ -768,7 +772,7 @@ index 3900f36..66b7980 100644
  
  /// The bitwise AND assignment operator `&=`.
  ///
-@@ -626,7 +622,7 @@ macro_rules! bitand_assign_impl {
+@@ -616,7 +612,7 @@ macro_rules! bitand_assign_impl {
      )+)
  }
  
@@ -777,7 +781,7 @@ index 3900f36..66b7980 100644
  
  /// The bitwise OR assignment operator `|=`.
  ///
-@@ -675,7 +671,7 @@ macro_rules! bitor_assign_impl {
+@@ -665,7 +661,7 @@ macro_rules! bitor_assign_impl {
      )+)
  }
  
@@ -786,7 +790,7 @@ index 3900f36..66b7980 100644
  
  /// The bitwise XOR assignment operator `^=`.
  ///
-@@ -724,7 +720,7 @@ macro_rules! bitxor_assign_impl {
+@@ -714,7 +710,7 @@ macro_rules! bitxor_assign_impl {
      )+)
  }
  
@@ -795,7 +799,7 @@ index 3900f36..66b7980 100644
  
  /// The left shift assignment operator `<<=`.
  ///
-@@ -780,19 +776,17 @@ macro_rules! shl_assign_impl_all {
+@@ -770,19 +766,17 @@ macro_rules! shl_assign_impl_all {
          shl_assign_impl! { $t, u16 }
          shl_assign_impl! { $t, u32 }
          shl_assign_impl! { $t, u64 }
@@ -816,7 +820,7 @@ index 3900f36..66b7980 100644
  
  /// The right shift assignment operator `>>=`.
  ///
-@@ -848,16 +842,14 @@ macro_rules! shr_assign_impl_all {
+@@ -838,16 +832,14 @@ macro_rules! shr_assign_impl_all {
          shr_assign_impl! { $t, u16 }
          shr_assign_impl! { $t, u32 }
          shr_assign_impl! { $t, u64 }
@@ -835,10 +839,10 @@ index 3900f36..66b7980 100644
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
-index 060983a..ade04a5 100644
+index 99e6365..d863e33 100644
 --- a/src/libcore/sync/atomic.rs
 +++ b/src/libcore/sync/atomic.rs
-@@ -1940,34 +1940,6 @@ atomic_int! {
+@@ -1943,34 +1943,6 @@ atomic_int! {
      8,
      u64 AtomicU64 ATOMIC_U64_INIT
  }
@@ -874,10 +878,10 @@ index 060983a..ade04a5 100644
  macro_rules! ptr_width {
      () => { 2 }
 diff --git a/src/libcore/tests/iter.rs b/src/libcore/tests/iter.rs
-index 4efa013..717bcdc 100644
+index cf19851..6b4a72b 100644
 --- a/src/libcore/tests/iter.rs
 +++ b/src/libcore/tests/iter.rs
-@@ -224,8 +224,6 @@ fn test_iterator_step_by_nth_overflow() {
+@@ -214,8 +214,6 @@ fn test_iterator_step_by_nth_overflow() {
      type Bigger = u32;
      #[cfg(target_pointer_width = "32")]
      type Bigger = u64;
@@ -886,7 +890,7 @@ index 4efa013..717bcdc 100644
  
      #[derive(Clone)]
      struct Test(Bigger);
-@@ -1914,19 +1912,6 @@ fn test_step_replace_signed() {
+@@ -1950,19 +1948,6 @@ fn test_step_replace_signed() {
      assert_eq!(y, 5);
  }
  
@@ -907,10 +911,10 @@ index 4efa013..717bcdc 100644
  fn test_rev_try_folds() {
      let f = &|acc, x| i32::checked_add(2*acc, x);
 diff --git a/src/libcore/tests/num/mod.rs b/src/libcore/tests/num/mod.rs
-index 0928f75..34a5296 100644
+index a17c094..3c36d10 100644
 --- a/src/libcore/tests/num/mod.rs
 +++ b/src/libcore/tests/num/mod.rs
-@@ -188,12 +188,10 @@ test_impl_from! { test_boolu8, bool, u8 }
+@@ -178,12 +178,10 @@ test_impl_from! { test_boolu8, bool, u8 }
  test_impl_from! { test_boolu16, bool, u16 }
  test_impl_from! { test_boolu32, bool, u32 }
  test_impl_from! { test_boolu64, bool, u64 }
@@ -923,7 +927,7 @@ index 0928f75..34a5296 100644
  
  // Signed -> Float
  test_impl_from! { test_i8f32, i8, f32 }
-@@ -275,51 +273,35 @@ test_impl_try_from_always_ok! { test_try_u8u8, u8, u8 }
+@@ -265,51 +263,35 @@ test_impl_try_from_always_ok! { test_try_u8u8, u8, u8 }
  test_impl_try_from_always_ok! { test_try_u8u16, u8, u16 }
  test_impl_try_from_always_ok! { test_try_u8u32, u8, u32 }
  test_impl_try_from_always_ok! { test_try_u8u64, u8, u64 }
@@ -976,10 +980,10 @@ index 0928f75..34a5296 100644
  test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
  test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
 diff --git a/src/libcore/time.rs b/src/libcore/time.rs
-index 475bb72..a8a9d42 100644
+index b12ee04..fe0faad 100644
 --- a/src/libcore/time.rs
 +++ b/src/libcore/time.rs
-@@ -30,7 +30,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
+@@ -21,7 +21,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
  const NANOS_PER_MICRO: u32 = 1_000;
  const MILLIS_PER_SEC: u64 = 1_000;
  const MICROS_PER_SEC: u64 = 1_000_000;
@@ -987,7 +991,7 @@ index 475bb72..a8a9d42 100644
  
  /// A `Duration` type to represent a span of time, typically used for system
  /// timeouts.
-@@ -269,57 +268,6 @@ impl Duration {
+@@ -260,54 +259,6 @@ impl Duration {
      #[inline]
      pub const fn subsec_nanos(&self) -> u32 { self.nanos }
  
@@ -996,13 +1000,12 @@ index 475bb72..a8a9d42 100644
 -    /// # Examples
 -    ///
 -    /// ```
--    /// # #![feature(duration_as_u128)]
 -    /// use std::time::Duration;
 -    ///
 -    /// let duration = Duration::new(5, 730023852);
 -    /// assert_eq!(duration.as_millis(), 5730);
 -    /// ```
--    #[unstable(feature = "duration_as_u128", issue = "50202")]
+-    #[stable(feature = "duration_as_u128", since = "1.33.0")]
 -    #[inline]
 -    pub const fn as_millis(&self) -> u128 {
 -        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
@@ -1013,13 +1016,12 @@ index 475bb72..a8a9d42 100644
 -    /// # Examples
 -    ///
 -    /// ```
--    /// # #![feature(duration_as_u128)]
 -    /// use std::time::Duration;
 -    ///
 -    /// let duration = Duration::new(5, 730023852);
 -    /// assert_eq!(duration.as_micros(), 5730023);
 -    /// ```
--    #[unstable(feature = "duration_as_u128", issue = "50202")]
+-    #[stable(feature = "duration_as_u128", since = "1.33.0")]
 -    #[inline]
 -    pub const fn as_micros(&self) -> u128 {
 -        self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
@@ -1030,13 +1032,12 @@ index 475bb72..a8a9d42 100644
 -    /// # Examples
 -    ///
 -    /// ```
--    /// # #![feature(duration_as_u128)]
 -    /// use std::time::Duration;
 -    ///
 -    /// let duration = Duration::new(5, 730023852);
 -    /// assert_eq!(duration.as_nanos(), 5730023852);
 -    /// ```
--    #[unstable(feature = "duration_as_u128", issue = "50202")]
+-    #[stable(feature = "duration_as_u128", since = "1.33.0")]
 -    #[inline]
 -    pub const fn as_nanos(&self) -> u128 {
 -        self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128
@@ -1045,7 +1046,7 @@ index 475bb72..a8a9d42 100644
      /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
      /// if overflow occurred.
      ///
-@@ -478,80 +426,6 @@ impl Duration {
+@@ -466,80 +417,6 @@ impl Duration {
          (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
      }
  
@@ -1126,6 +1127,104 @@ index 475bb72..a8a9d42 100644
      /// Divide `Duration` by `Duration` and return `f64`.
      ///
      /// # Examples
+diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
+index 3051100..61001a4 100644
+--- a/src/libstd/lib.rs
++++ b/src/libstd/lib.rs
+@@ -248,7 +248,6 @@
+ #![feature(const_cstr_unchecked)]
+ #![feature(core_intrinsics)]
+ #![feature(dropck_eyepatch)]
+-#![cfg_attr(stage0, feature(duration_as_u128))]
+ #![feature(exact_size_is_empty)]
+ #![feature(external_doc)]
+ #![feature(fixed_size_array)]
+@@ -404,8 +403,6 @@ pub use core::i16;
+ pub use core::i32;
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use core::i64;
+-#[stable(feature = "i128", since = "1.26.0")]
+-pub use core::i128;
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use core::usize;
+ #[stable(feature = "rust1", since = "1.0.0")]
+@@ -438,8 +435,6 @@ pub use alloc_crate::string;
+ pub use alloc_crate::vec;
+ #[stable(feature = "rust1", since = "1.0.0")]
+ pub use core::char;
+-#[stable(feature = "i128", since = "1.26.0")]
+-pub use core::u128;
+ #[stable(feature = "core_hint", since = "1.27.0")]
+ pub use core::hint;
+ 
+diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
+index 52a29f4..cafe50e 100644
+--- a/src/libstd/net/ip.rs
++++ b/src/libstd/net/ip.rs
+@@ -1382,26 +1382,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
+     }
+ }
+ 
+-#[stable(feature = "i128", since = "1.26.0")]
+-impl From<Ipv6Addr> for u128 {
+-    fn from(ip: Ipv6Addr) -> u128 {
+-        let ip = ip.segments();
+-        ((ip[0] as u128) << 112) + ((ip[1] as u128) << 96) + ((ip[2] as u128) << 80) +
+-            ((ip[3] as u128) << 64) + ((ip[4] as u128) << 48) + ((ip[5] as u128) << 32) +
+-            ((ip[6] as u128) << 16) + (ip[7] as u128)
+-    }
+-}
+-#[stable(feature = "i128", since = "1.26.0")]
+-impl From<u128> for Ipv6Addr {
+-    fn from(ip: u128) -> Ipv6Addr {
+-        Ipv6Addr::new(
+-            (ip >> 112) as u16, (ip >> 96) as u16, (ip >> 80) as u16,
+-            (ip >> 64) as u16, (ip >> 48) as u16, (ip >> 32) as u16,
+-            (ip >> 16) as u16, ip as u16,
+-        )
+-    }
+-}
+-
+ #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
+ impl From<[u8; 16]> for Ipv6Addr {
+     fn from(octets: [u8; 16]) -> Ipv6Addr {
+diff --git a/src/libstd/num.rs b/src/libstd/num.rs
+index c80b9a5..e32a6b3 100644
+--- a/src/libstd/num.rs
++++ b/src/libstd/num.rs
+@@ -12,7 +12,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
+ pub use core::num::Wrapping;
+ 
+ #[stable(feature = "nonzero", since = "1.28.0")]
+-pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
++pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
+ 
+ #[cfg(test)] use fmt;
+ #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
+diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
+index d27f6ca..8ac2a44 100644
+--- a/src/libstd/panic.rs
++++ b/src/libstd/panic.rs
+@@ -254,9 +254,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
+ #[cfg(target_has_atomic = "64")]
+ #[unstable(feature = "integer_atomics", issue = "32976")]
+ impl RefUnwindSafe for atomic::AtomicI64 {}
+-#[cfg(target_has_atomic = "128")]
+-#[unstable(feature = "integer_atomics", issue = "32976")]
+-impl RefUnwindSafe for atomic::AtomicI128 {}
+ 
+ #[cfg(target_has_atomic = "ptr")]
+ #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+@@ -273,9 +270,6 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
+ #[cfg(target_has_atomic = "64")]
+ #[unstable(feature = "integer_atomics", issue = "32976")]
+ impl RefUnwindSafe for atomic::AtomicU64 {}
+-#[cfg(target_has_atomic = "128")]
+-#[unstable(feature = "integer_atomics", issue = "32976")]
+-impl RefUnwindSafe for atomic::AtomicU128 {}
+ 
+ #[cfg(target_has_atomic = "8")]
+ #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 -- 
 2.17.2 (Apple Git-113)
 
