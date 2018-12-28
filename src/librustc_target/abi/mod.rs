@@ -936,6 +936,8 @@ pub struct PointeeInfo {
 }
 
 pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
+    type ParamEnv;
+
     fn for_variant(
         this: TyLayout<'a, Self>,
         cx: &C,
@@ -945,7 +947,8 @@ pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
     fn pointee_info_at(
         this: TyLayout<'a, Self>,
         cx: &C,
-        offset: Size
+        offset: Size,
+        param_env: Self::ParamEnv,
     ) -> Option<PointeeInfo>;
 }
 
