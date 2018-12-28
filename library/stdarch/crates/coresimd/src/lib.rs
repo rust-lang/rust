@@ -18,7 +18,6 @@
     simd_ffi,
     asm,
     proc_macro_hygiene,
-    integer_atomics,
     stmt_expr_attributes,
     core_intrinsics,
     no_core,
@@ -37,6 +36,14 @@
     mips_target_feature,
     powerpc_target_feature,
     wasm_target_feature
+)]
+// NB: When running nvptx/nvptx64 cross tests, enabling "integer_atomics" yields
+// a compile-time error: 'unknown feature `integer_atomics`'. This ought to be
+// investigated further, but for now just disable "integer_atomics" so we can
+// run _some_ test for the nvptx/nvptx64 targets.
+#![cfg_attr(
+    not(any(target_arch = "nvptx", target_arch = "nvptx64")),
+    feature(integer_atomics)
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
 #![cfg_attr(

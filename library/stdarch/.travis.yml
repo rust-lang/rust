@@ -56,6 +56,14 @@ matrix:
       script: ci/run.sh
     - name: "wasm32-unknown-unknown"
       env: TARGET=wasm32-unknown-unknown
+    - name: "nvptx64-nvidia-cuda - cross compiled, build libcore only"
+      env: TARGET=x86_64-unknown-linux-gnu CROSS_TARGET=nvptx64-nvidia-cuda-cross NORUN=1 NOSTD=1
+      install:
+        - travis_retry rustup target add $TARGET
+        - travis_retry rustup component add rust-src
+        - cargo install xargo
+        - xargo --version
+        - mkdir -p $HOME/.xargo
     - name: "thumbv6m-none-eabi - build libcore only"
       env: TARGET=thumbv6m-none-eabi NORUN=1 NOSTD=1
       script: ci/run.sh
@@ -103,7 +111,7 @@ matrix:
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
-  - ci/run-docker.sh $TARGET $FEATURES
+  - ci/run-docker.sh $TARGET $CROSS_TARGET $FEATURES
 
 notifications:
   email:
