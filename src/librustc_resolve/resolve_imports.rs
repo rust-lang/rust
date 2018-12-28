@@ -472,6 +472,10 @@ impl<'a> Resolver<'a> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
+                if binding.def() == Def::Err {
+                    // Do not override real bindings with `Def::Err`s from error recovery.
+                    return Ok(());
+                }
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
                         if binding.def() != old_binding.def() {
