@@ -4237,16 +4237,21 @@ where F: Fn(DefId) -> Def {
         }
         fn path_qualified(
             self: &mut PrintCx<'_, '_, 'tcx, Self>,
+            impl_prefix: Option<Self::Path>,
             self_ty: Ty<'tcx>,
             trait_ref: Option<ty::TraitRef<'tcx>>,
             _ns: Namespace,
         ) -> Self::Path {
+            let mut path = impl_prefix.unwrap_or(vec![]);
+
             // This shouldn't ever be needed, but just in case:
             if let Some(trait_ref) = trait_ref {
-                vec![format!("{:?}", trait_ref)]
+                path.push(format!("{:?}", trait_ref));
             } else {
-                vec![format!("<{}>", self_ty)]
+                path.push(format!("<{}>", self_ty));
             }
+
+            path
         }
         fn path_append(
             self: &mut PrintCx<'_, '_, '_, Self>,

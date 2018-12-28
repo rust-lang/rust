@@ -173,6 +173,7 @@ pub trait Printer: Sized {
     #[must_use]
     fn path_qualified(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        impl_prefix: Option<Self::Path>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
@@ -301,7 +302,7 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
                         parent_generics.has_self && parent_generics.parent_count == 0;
                     if let (Some(substs), true) = (substs, parent_has_own_self) {
                         let trait_ref = ty::TraitRef::new(parent_def_id, substs);
-                        self.path_qualified(trait_ref.self_ty(), Some(trait_ref), ns)
+                        self.path_qualified(None, trait_ref.self_ty(), Some(trait_ref), ns)
                     } else {
                         self.print_def_path(parent_def_id, substs, ns, iter::empty())
                     }
@@ -357,21 +358,18 @@ impl<P: Printer> PrintCx<'a, 'gcx, 'tcx, P> {
             Some(trait_ref) => self.tcx.parent(trait_ref.def_id) == Some(parent_def_id),
         };
 
-        if !in_self_mod && !in_trait_mod {
+        let prefix_path = if !in_self_mod && !in_trait_mod {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
-            let path = self.print_def_path(parent_def_id, None, ns, iter::empty());
-            if let Some(trait_ref) = impl_trait_ref {
-                return self.path_append(path, &format!("<impl {} for {}>", trait_ref, self_ty));
-            } else {
-                return self.path_append(path, &format!("<impl {}>", self_ty));
-            }
-        }
+            Some(self.print_def_path(parent_def_id, None, ns, iter::empty()))
+        } else {
+            // Otherwise, try to give a good form that would be valid language
+            // syntax. Preferably using associated item notation.
+            None
+        };
 
-        // Otherwise, try to give a good form that would be valid language
-        // syntax. Preferably using associated item notation.
-        self.path_qualified(self_ty, impl_trait_ref, ns)
+        self.path_qualified(prefix_path, self_ty, impl_trait_ref, ns)
     }
 }
 
@@ -561,10 +559,24 @@ impl<P: PrettyPrinter> PrintCx<'a, 'gcx, 'tcx, P> {
 
     pub fn pretty_path_qualified(
         &mut self,
+        impl_prefix: Option<P::Path>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
     ) -> P::Path {
+        if let Some(prefix) = impl_prefix {
+            // HACK(eddyb) going through `path_append` means symbol name
+            // computation gets to handle its equivalent of `::` correctly.
+            let _ = self.path_append(prefix, "<impl ")?;
+            if let Some(trait_ref) = trait_ref {
+                trait_ref.print_display(self)?;
+                write!(self.printer, " for ")?;
+            }
+            self_ty.print_display(self)?;
+            write!(self.printer, ">")?;
+            return Ok(PrettyPath { empty: false });
+        }
+
         if trait_ref.is_none() {
             // Inherent impls. Try to print `Foo::bar` for an inherent
             // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
@@ -774,11 +786,12 @@ impl<F: fmt::Write> Printer for FmtPrinter<F> {
     }
     fn path_qualified(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        impl_prefix: Option<Self::Path>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
     ) -> Self::Path {
-        self.pretty_path_qualified(self_ty, trait_ref, ns)
+        self.pretty_path_qualified(impl_prefix, self_ty, trait_ref, ns)
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,

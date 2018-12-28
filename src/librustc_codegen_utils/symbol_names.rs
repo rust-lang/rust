@@ -387,7 +387,7 @@ impl SymbolPath {
     }
 
     fn finalize_pending_component(&mut self) {
-        if !self.keep_within_component && !self.temp_buf.is_empty() {
+        if !self.temp_buf.is_empty() {
             let _ = write!(self.result, "{}{}", self.temp_buf.len(), self.temp_buf);
             self.temp_buf.clear();
         }
@@ -414,6 +414,7 @@ impl Printer for SymbolPath {
     }
     fn path_qualified(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
+        impl_prefix: Option<Self::Path>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
         ns: Namespace,
@@ -423,25 +424,51 @@ impl Printer for SymbolPath {
         match self_ty.sty {
             ty::Adt(..) | ty::Foreign(_) |
             ty::Bool | ty::Char | ty::Str |
-            ty::Int(_) | ty::Uint(_) | ty::Float(_) if trait_ref.is_none() => {
-                return self.pretty_path_qualified(self_ty, trait_ref, ns);
+            ty::Int(_) | ty::Uint(_) | ty::Float(_)
+                if impl_prefix.is_none() && trait_ref.is_none() =>
+            {
+                return self.pretty_path_qualified(None, self_ty, trait_ref, ns);
             }
             _ => {}
         }
 
+        // HACK(eddyb) make sure to finalize the last component of the
+        // `impl` prefix, to avoid it fusing with the following text.
+        let impl_prefix = impl_prefix.map(|prefix| {
+            let mut prefix = self.path_append(prefix, "")?;
+
+            // HACK(eddyb) also avoid an unnecessary `::`.
+            prefix.empty = true;
+
+            Ok(prefix)
+        });
+
         let kept_within_component = mem::replace(&mut self.printer.keep_within_component, true);
-        let r = self.pretty_path_qualified(self_ty, trait_ref, ns);
+        let r = self.pretty_path_qualified(impl_prefix, self_ty, trait_ref, ns);
         self.printer.keep_within_component = kept_within_component;
         r
     }
     fn path_append(
         self: &mut PrintCx<'_, '_, '_, Self>,
-        _: Self::Path,
+        path: Self::Path,
         text: &str,
     ) -> Self::Path {
-        self.printer.finalize_pending_component();
+        let mut path = path?;
+
+        if self.keep_within_component {
+            // HACK(eddyb) print the path similarly to how `FmtPrinter` prints it.
+            if !path.empty {
+                self.printer.write_str("::")?;
+            } else {
+                path.empty = text.is_empty();
+            }
+        } else {
+            self.printer.finalize_pending_component();
+            path.empty = false;
+        }
+
         self.printer.write_str(text)?;
-        Ok(PrettyPath { empty: false })
+        Ok(path)
     }
     fn path_generic_args(
         self: &mut PrintCx<'_, '_, 'tcx, Self>,
