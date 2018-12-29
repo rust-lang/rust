@@ -1,5 +1,5 @@
 error: statement with no effect
-  --> $DIR/no_effect.rs:74:5
+  --> $DIR/no_effect.rs:85:5
    |
 LL |     0;
    |     ^^
@@ -7,148 +7,166 @@ LL |     0;
    = note: `-D clippy::no-effect` implied by `-D warnings`
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:75:5
+  --> $DIR/no_effect.rs:86:5
    |
 LL |     s2;
    |     ^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:76:5
+  --> $DIR/no_effect.rs:87:5
    |
 LL |     Unit;
    |     ^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:77:5
+  --> $DIR/no_effect.rs:88:5
    |
 LL |     Tuple(0);
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:78:5
+  --> $DIR/no_effect.rs:89:5
    |
 LL |     Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:79:5
+  --> $DIR/no_effect.rs:90:5
    |
 LL |     Struct { ..s };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:80:5
+  --> $DIR/no_effect.rs:91:5
    |
 LL |     Union { a: 0 };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:81:5
+  --> $DIR/no_effect.rs:92:5
    |
 LL |     Enum::Tuple(0);
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:82:5
+  --> $DIR/no_effect.rs:93:5
    |
 LL |     Enum::Struct { field: 0 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:83:5
+  --> $DIR/no_effect.rs:94:5
    |
 LL |     5 + 6;
    |     ^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:84:5
+  --> $DIR/no_effect.rs:95:5
    |
 LL |     *&42;
    |     ^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:85:5
+  --> $DIR/no_effect.rs:96:5
    |
 LL |     &6;
    |     ^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:86:5
+  --> $DIR/no_effect.rs:97:5
    |
 LL |     (5, 6, 7);
    |     ^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:87:5
+  --> $DIR/no_effect.rs:98:5
    |
 LL |     box 42;
    |     ^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:88:5
+  --> $DIR/no_effect.rs:99:5
    |
 LL |     ..;
    |     ^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:89:5
+  --> $DIR/no_effect.rs:100:5
    |
 LL |     5..;
    |     ^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:90:5
+  --> $DIR/no_effect.rs:101:5
    |
 LL |     ..5;
    |     ^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:91:5
+  --> $DIR/no_effect.rs:102:5
    |
 LL |     5..6;
    |     ^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:93:5
+  --> $DIR/no_effect.rs:104:5
    |
 LL |     [42, 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:94:5
+  --> $DIR/no_effect.rs:105:5
    |
 LL |     [42, 55][1];
    |     ^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:95:5
+  --> $DIR/no_effect.rs:106:5
    |
 LL |     (42, 55).1;
    |     ^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:96:5
+  --> $DIR/no_effect.rs:107:5
    |
 LL |     [42; 55];
    |     ^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:97:5
+  --> $DIR/no_effect.rs:108:5
    |
 LL |     [42; 55][13];
    |     ^^^^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:99:5
+  --> $DIR/no_effect.rs:110:5
    |
 LL |     || x += 5;
    |     ^^^^^^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:101:5
+  --> $DIR/no_effect.rs:112:5
    |
 LL |     FooString { s: s };
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: statement with no effect
+  --> $DIR/no_effect.rs:113:5
+   |
+LL |     A_CONST.0 = 2;
+   |     ^^^^^^^^^^^^^^
+
+error: statement with no effect
+  --> $DIR/no_effect.rs:114:5
+   |
+LL |     B.field = 2;
+   |     ^^^^^^^^^^^^
+
+error: statement with no effect
+  --> $DIR/no_effect.rs:115:5
+   |
+LL |     C.b.field = 2;
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to 28 previous errors
 

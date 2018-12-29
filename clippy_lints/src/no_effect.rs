@@ -98,6 +98,20 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
                     false
                 }
         },
+        ExprKind::Assign(ref left, ref right) => {
+            if has_no_effect(cx, left) {
+                let mut left = left;
+                while let ExprKind::Field(f, _) = &left.node {
+                    left = f;
+                }
+                if let ExprKind::Path(qpath) = &left.node {
+                    if let Def::Const(..) = cx.tables.qpath_def(qpath, left.hir_id) {
+                        return has_no_effect(cx, right);
+                    }
+                }
+            }
+            false
+        },
         _ => false,
     }
 }

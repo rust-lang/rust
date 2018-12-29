@@ -67,6 +67,17 @@ unsafe fn unsafe_fn() -> i32 {
     0
 }
 
+struct A(i32);
+struct B {
+    field: i32,
+}
+struct C {
+    b: B,
+}
+const A_CONST: A = A(1);
+const B: B = B { field: 1 };
+const C: C = C { b: B { field: 1 } };
+
 fn main() {
     let s = get_struct();
     let s2 = get_struct();
@@ -99,6 +110,9 @@ fn main() {
     || x += 5;
     let s: String = "foo".into();
     FooString { s: s };
+    A_CONST.0 = 2;
+    B.field = 2;
+    C.b.field = 2;
 
     // Do not warn
     get_number();
@@ -108,4 +122,10 @@ fn main() {
     DropTuple(0);
     DropEnum::Tuple(0);
     DropEnum::Struct { field: 0 };
+    let mut a_mut = A(1);
+    a_mut.0 = 2;
+    let mut b_mut = B { field: 1 };
+    b_mut.field = 2;
+    let mut c_mut = C { b: B { field: 1 } };
+    c_mut.b.field = 2;
 }
