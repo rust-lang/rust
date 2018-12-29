@@ -649,7 +649,7 @@ a {
 	box-sizing: border-box !important;
 	outline: none;
 	border: none;
-	border-radius: 0 1px 1px 0;
+	border-radius: 1px;
 	margin-top: 5px;
 	padding: 10px 16px;
 	font-size: 17px;
@@ -657,6 +657,10 @@ a {
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
 	width: 100%;
+}
+
+#crate-search + .search-input {
+	border-radius: 0 1px 1px 0;
 }
 
 .search-input:focus {

@@ -336,6 +336,11 @@ fn opts() -> Vec<RustcOptGroup> {
                       If not set, uses combinations of '../' to reach the documentation root.",
                      "PATH")
         }),
+        unstable("disable-per-crate-search", |o| {
+            o.optflag("",
+                      "disable-per-crate-search",
+                      "disables generating the crate selector on the search box")
+        }),
     ]
 }
 

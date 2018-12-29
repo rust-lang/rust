@@ -185,6 +185,9 @@ pub struct RenderOptions {
     /// If present, playground URL to use in the "Run" button added to code samples generated from
     /// standalone Markdown files. If not present, `playground_url` is used.
     pub markdown_playground_url: Option<String>,
+    /// If false, the `select` element to have search filtering by crates on rendered docs
+    /// won't be generated.
+    pub generate_search_filter: bool,
 }
 
 impl Options {
@@ -427,6 +430,7 @@ impl Options {
         let crate_version = matches.opt_str("crate-version");
         let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
         let static_root_path = matches.opt_str("static-root-path");
+        let generate_search_filter = !matches.opt_present("disable-per-crate-search");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -469,6 +473,7 @@ impl Options {
                 markdown_no_toc,
                 markdown_css,
                 markdown_playground_url,
+                generate_search_filter,
             }
         })
     }

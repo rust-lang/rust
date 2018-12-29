@@ -25,10 +25,15 @@ pub struct Page<'a> {
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
-    dst: &mut dyn io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
-    css_file_extension: bool, themes: &[PathBuf])
-    -> io::Result<()>
-{
+    dst: &mut dyn io::Write,
+    layout: &Layout,
+    page: &Page,
+    sidebar: &S,
+    t: &T,
+    css_file_extension: bool,
+    themes: &[PathBuf],
+    generate_search_filter: bool,
+) -> io::Result<()> {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
     write!(dst,
 "<!DOCTYPE html>\
@@ -81,10 +86,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <nav class=\"sub\">\
         <form class=\"search-form js-only\">\
             <div class=\"search-container\">\
-                <div>\
-                    <select id=\"crate-search\">\
-                        <option value=\"All crates\">All crates</option>\
-                    </select>\
+                <div>{filter_crates}\
                     <input class=\"search-input\" name=\"search\" \
                            autocomplete=\"off\" \
                            spellcheck=\"false\" \
@@ -214,6 +216,13 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                 root_path=page.root_path,
                 extra_script=e)
     }).collect::<String>(),
+    filter_crates=if generate_search_filter {
+        "<select id=\"crate-search\">\
+            <option value=\"All crates\">All crates</option>\
+        </select>"
+    } else {
+        ""
+    },
     )
 }
 
