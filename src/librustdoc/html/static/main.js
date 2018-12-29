@@ -1340,6 +1340,17 @@ if (!DOMTokenList.prototype.remove) {
                               "&nbsp;</span></a></td></tr>";
                 });
                 output += "</table>";
+            } else if (location.hostname === "") { // viewing offline
+                output = "<div class=\"search-failed\"" + extraStyle + ">No results :(<br/>" +
+                    "Try looking in one of these:<ul><li>The <a " +
+                    "href=\"../reference/index.html\">Rust Reference</a> " +
+                    " for technical details about the language.</li><li><a " +
+                    "href=\"../rust-by-example/index.html\">Rust By " +
+                    "Example</a> for expository code examples.</a></li><li>The <a " +
+                    "href=\"../book/index.html\">Rust Book</a> for " +
+                    "introductions to language features and the language itself.</li><li>" +
+                    "Offline Cargo docs by running \"<code>cargo doc --open</code>\" in your terminal." +
+                    "</li></ul></div>";
             } else {
                 output = "<div class=\"search-failed\"" + extraStyle + ">No results :(<br/>" +
                     "Try on <a href=\"https://duckduckgo.com/?q=" +
