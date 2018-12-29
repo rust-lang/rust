@@ -10,7 +10,6 @@
 // Tests for the various helper functions used by the needless_continue
 // lint that don't belong in utils.
 
-extern crate clippy_lints;
 use clippy_lints::needless_continue::{erode_block, erode_from_back, erode_from_front};
 
 #[test]
