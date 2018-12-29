@@ -1,3 +1,18 @@
+//! The type system. We currently use this to infer types for completion.
+//!
+//! For type inference, compare the implementations in rustc (the various
+//! check_* methods in librustc_typeck/check/mod.rs are a good entry point) and
+//! IntelliJ-Rust (org.rust.lang.core.types.infer). Our entry point for
+//! inference here is the `infer` function, which infers the types of all
+//! expressions in a given function.
+//!
+//! The central struct here is `Ty`, which represents a type. During inference,
+//! it can contain type 'variables' which represent currently unknown types; as
+//! we walk through the expressions, we might determine that certain variables
+//! need to be equal to each other, or to certain types. To record this, we use
+//! the union-find implementation from the `ena` crate, which is extracted from
+//! rustc.
+
 mod primitive;
 #[cfg(test)]
 mod tests;
@@ -21,6 +36,7 @@ use crate::{
     type_ref::{TypeRef, Mutability},
 };
 
+/// The ID of a type variable.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TypeVarId(u32);
 
@@ -40,6 +56,8 @@ impl UnifyKey for TypeVarId {
     }
 }
 
+/// The value of a type variable: either we already know the type, or we don't
+/// know it yet.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TypeVarValue {
     Known(Ty),
@@ -47,7 +65,7 @@ pub enum TypeVarValue {
 }
 
 impl TypeVarValue {
-    pub fn known(&self) -> Option<&Ty> {
+    fn known(&self) -> Option<&Ty> {
         match self {
             TypeVarValue::Known(ty) => Some(ty),
             TypeVarValue::Unknown => None,
@@ -75,10 +93,13 @@ impl UnifyValue for TypeVarValue {
     }
 }
 
+/// The kinds of placeholders we need during type inference. Currently, we only
+/// have type variables; in the future, we will probably also need int and float
+/// variables, for inference of literal values (e.g. `100` could be one of
+/// several integer types).
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum InferTy {
     TypeVar(TypeVarId),
-    // later we'll have IntVar and FloatVar as well
 }
 
 /// When inferring an expression, we propagate downward whatever type hint we
@@ -92,15 +113,21 @@ struct Expectation {
 }
 
 impl Expectation {
+    /// The expectation that the type of the expression needs to equal the given
+    /// type.
     fn has_type(ty: Ty) -> Self {
         Expectation { ty }
     }
 
+    /// This expresses no expectation on the type.
     fn none() -> Self {
         Expectation { ty: Ty::Unknown }
     }
 }
 
+/// A type. This is based on the `TyKind` enum in rustc (librustc/ty/sty.rs).
+///
+/// This should be cheap to clone.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Ty {
     /// The primitive boolean type. Written as `bool`.
@@ -134,14 +161,14 @@ pub enum Ty {
     // An array with the given length. Written as `[T; n]`.
     // Array(Ty, ty::Const),
     /// The pointee of an array slice.  Written as `[T]`.
-    Slice(TyRef),
+    Slice(Arc<Ty>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(TyRef, Mutability),
+    RawPtr(Arc<Ty>, Mutability),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(TyRef, Mutability),
+    Ref(Arc<Ty>, Mutability),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -152,6 +179,10 @@ pub enum Ty {
     /// let bar: fn() -> i32 = foo;
     /// ```
     FnPtr(Arc<FnSig>),
+
+    // rustc has a separate type for each function, which just coerces to the
+    // above function pointer type. Once we implement generics, we will probably
+    // need this as well.
 
     // A trait, defined with `dyn trait`.
     // Dynamic(),
@@ -166,7 +197,7 @@ pub enum Ty {
     // A type representin the types stored inside a generator.
     // This should only appear in GeneratorInteriors.
     // GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
-    /// The never type `!`
+    /// The never type `!`.
     Never,
 
     /// A tuple type.  For example, `(i32, bool)`.
@@ -177,10 +208,6 @@ pub enum Ty {
     // Projection(ProjectionTy),
 
     // Opaque (`impl Trait`) type found in a return type.
-    // The `DefId` comes either from
-    // * the `impl Trait` ast::Ty node,
-    // * or the `existential type` declaration
-    // The substitutions are for the generics of the function in question.
     // Opaque(DefId, Substs),
 
     // A type parameter; for example, `T` in `fn f<T>(x: T) {}
@@ -192,12 +219,12 @@ pub enum Ty {
     /// A placeholder for a type which could not be computed; this is propagated
     /// to avoid useless error messages. Doubles as a placeholder where type
     /// variables are inserted before type checking, since we want to try to
-    /// infer a better type here anyway.
+    /// infer a better type here anyway -- for the IDE use case, we want to try
+    /// to infer as much as possible even in the presence of type errors.
     Unknown,
 }
 
-type TyRef = Arc<Ty>;
-
+/// A function signature.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FnSig {
     input: Vec<Ty>,
@@ -368,7 +395,11 @@ impl fmt::Display for Ty {
     }
 }
 
-pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
+// Functions returning declared types for items
+
+/// Compute the declared type of a function. This should not need to look at the
+/// function body (but currently uses the function AST, so does anyway - TODO).
+fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     let syntax = f.syntax(db);
     let module = f.module(db)?;
     let node = syntax.borrowed();
@@ -390,7 +421,7 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
 
-pub fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
+fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Cancelable<Ty> {
     Ok(Ty::Adt {
         def_id: s.def_id(),
         name: s.name(db)?.unwrap_or_else(Name::missing),
@@ -404,7 +435,7 @@ pub fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Cancelable<Ty> {
     })
 }
 
-pub fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
+pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
     let def = def_id.resolve(db)?;
     match def {
         Def::Module(..) => {
@@ -444,19 +475,25 @@ pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) 
     Ty::from_hir(db, &module, &type_ref)
 }
 
+/// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct InferenceResult {
     type_of: FxHashMap<LocalSyntaxPtr, Ty>,
 }
 
 impl InferenceResult {
+    /// Returns the type of the given syntax node, if it was inferred. Will
+    /// return `None` for syntax nodes not in the inferred function or not
+    /// pointing to an expression/pattern, `Some(Ty::Unknown)` for
+    /// expressions/patterns that could not be inferred.
     pub fn type_of_node(&self, node: SyntaxNodeRef) -> Option<Ty> {
         self.type_of.get(&LocalSyntaxPtr::new(node)).cloned()
     }
 }
 
+/// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
-pub struct InferenceContext<'a, D: HirDatabase> {
+struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
     scopes: Arc<FnScopes>,
     module: Module,
@@ -738,6 +775,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ast::Expr::ParenExpr(e) => self.infer_expr_opt(e.expr(), expected)?,
             ast::Expr::Label(_e) => Ty::Unknown,
             ast::Expr::ReturnExpr(e) => {
+                // TODO expect return type of function
                 self.infer_expr_opt(e.expr(), &Expectation::none())?;
                 Ty::Never
             }
@@ -870,7 +908,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 }
 
-pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceResult> {
+pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
+    let function = Function::new(def_id); // TODO: consts also need inference
     let scopes = function.scopes(db);
     let module = function.module(db)?;
     let mut ctx = InferenceContext::new(db, scopes, module);
@@ -909,5 +948,5 @@ pub fn infer(db: &impl HirDatabase, function: Function) -> Cancelable<InferenceR
         ctx.infer_block(block, &Expectation::has_type(ret_ty))?;
     }
 
-    Ok(ctx.resolve_all())
+    Ok(Arc::new(ctx.resolve_all()))
 }
