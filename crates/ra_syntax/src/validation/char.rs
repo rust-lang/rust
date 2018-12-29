@@ -70,7 +70,7 @@ pub(super) fn validate_char_component(
 
 fn validate_ascii_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxError>) {
     if text.len() == 1 {
-        // Escape sequence consists only of leading `\`
+        // Escape sequence consists only of leading `\` (only occurs at EOF, otherwise e.g. '\' is treated as an unclosed char containing a single quote `'`)
         errors.push(SyntaxError::new(EmptyAsciiEscape, range));
     } else {
         let escape_code = text.chars().skip(1).next().unwrap();
