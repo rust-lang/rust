@@ -9,7 +9,7 @@
 
 #![feature(const_fn)]
 #![allow(dead_code)]
-#![warn(clippy::new_without_default, clippy::new_without_default_derive)]
+#![warn(clippy::new_without_default)]
 
 pub struct Foo;
 
@@ -151,7 +151,7 @@ impl Allow {
 pub struct AllowDerive;
 
 impl AllowDerive {
-    #[allow(clippy::new_without_default_derive)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         unimplemented!()
     }

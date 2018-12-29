@@ -6,7 +6,7 @@ LL | |         Foo
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::new-without-default-derive` implied by `-D warnings`
+   = note: `-D clippy::new-without-default` implied by `-D warnings`
 help: try this
    |
 LL | #[derive(Default)]
@@ -31,8 +31,6 @@ LL | /     pub fn new() -> LtKo<'c> {
 LL | |         unimplemented!()
 LL | |     }
    | |_____^
-   |
-   = note: `-D clippy::new-without-default` implied by `-D warnings`
 help: try this
    |
 LL | impl Default for LtKo<'c> {

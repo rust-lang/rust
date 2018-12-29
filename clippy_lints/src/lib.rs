@@ -702,7 +702,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
-        new_without_default::NEW_WITHOUT_DEFAULT_DERIVE,
         no_effect::NO_EFFECT,
         no_effect::UNNECESSARY_OPERATION,
         non_copy_const::BORROW_INTERIOR_MUTABLE_CONST,
@@ -838,7 +837,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         mut_reference::UNNECESSARY_MUT_PASSED,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
-        new_without_default::NEW_WITHOUT_DEFAULT_DERIVE,
         non_expressive_names::JUST_UNDERSCORES_AND_DIGITS,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         ok_if_let::IF_LET_SOME_RESULT,
@@ -1033,6 +1031,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
 pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
+    ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
 }
 
 // only exists to let the dogfood integration test works.

@@ -14,5 +14,11 @@ LL | #[warn(clippy::stutter)]
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
-error: aborting due to 2 previous errors
+error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
+  --> $DIR/rename.rs:15:8
+   |
+LL | #[warn(clippy::new_without_default_derive)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
+
+error: aborting due to 3 previous errors
 

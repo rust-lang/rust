@@ -14,7 +14,6 @@
     clippy::print_stdout,
     clippy::non_ascii_literal,
     clippy::new_without_default,
-    clippy::new_without_default_derive,
     clippy::missing_docs_in_private_items,
     clippy::needless_pass_by_value,
     clippy::default_trait_access,
