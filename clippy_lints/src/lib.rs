@@ -20,6 +20,7 @@
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![feature(crate_visibility_modifier)]
 #![feature(try_from)]
+#![feature(if_while_or_patterns)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (currently there is no way to opt into sysroot crates w/o `extern crate`)
