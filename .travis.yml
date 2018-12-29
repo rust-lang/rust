@@ -13,7 +13,9 @@ build: &rust_build
   script:
     - cargo gen-tests --verify
     - cargo gen-syntax --verify
-    - cargo test
+    - RUSTFLAGS='-D warnings' cargo test
+  env:
+    RUSTFLAGS: '-D warnings'
 
 matrix:
   include:
@@ -33,6 +35,9 @@ matrix:
       <<: *rust_build
 
   allow_failures:
+    # Because Travis-Windows-Rust can be flaky
+    # We still support Windows and want the tests to be succeeding,
+    # but there are too few spurious failures
     - os: windows
 
 branches:
