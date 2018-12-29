@@ -591,7 +591,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL.
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`read`]: ./fn.read.html
@@ -759,7 +759,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// * `dst` must be [valid] for writes.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-NULL.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
