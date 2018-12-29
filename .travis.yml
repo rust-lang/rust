@@ -13,7 +13,7 @@ build: &rust_build
     script:
         - cargo gen-tests --verify
         - cargo gen-syntax --verify
-        - RUSTFLAGS='-D warnings' cargo test
+        - cargo test
     env:
         RUSTFLAGS: -D warnings
 
