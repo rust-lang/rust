@@ -2,11 +2,13 @@
 //!
 //! When doing analysis, we don't want to do any IO, we want to keep all source
 //! code in memory. However, the actual source code is stored on disk, so you
-//! component which does this.
 //! need to get it into the memory in the first place somehow. VFS is the
+//! component which does this.
 //!
-//! It also is responsible for watching the disk for changes, and for merging
+//! It is also responsible for watching the disk for changes, and for merging
 //! editor state (modified, unsaved files) with disk state.
+//! TODO: Some LSP clients support watching the disk, so this crate should
+//! to support custom watcher events (related to https://github.com/rust-analyzer/rust-analyzer/issues/131)
 //!
 //! VFS is based on a concept of roots: a set of directories on the file system
 //! whihc are watched for changes. Typically, there will be a root for each
@@ -29,7 +31,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use relative_path::RelativePathBuf;
 use crossbeam_channel::Receiver;
 use walkdir::DirEntry;
-use thread_worker::{WorkerHandle};
+use thread_worker::WorkerHandle;
 
 use crate::{
     arena::{ArenaId, Arena},
@@ -57,12 +59,8 @@ impl RootFilter {
         if !(self.file_filter)(path) {
             return None;
         }
-        if !(path.starts_with(&self.root)) {
-            return None;
-        }
-        let path = path.strip_prefix(&self.root).unwrap();
-        let path = RelativePathBuf::from_path(path).unwrap();
-        Some(path)
+        let path = path.strip_prefix(&self.root).ok()?;
+        RelativePathBuf::from_path(path).ok()
     }
 }
 
