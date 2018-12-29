@@ -316,7 +316,7 @@ LL |         v[0].y;
 LL |         drop(x);
    |              - borrow later used here
 
-error[E0503]: cannot use `v[..].y` because it was mutably borrowed
+error[E0503]: cannot use `v[_].y` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:261:9
    |
 LL |         let x = &mut v;

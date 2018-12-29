@@ -7,14 +7,14 @@ LL |         [1, 2, ref tail..] => tail,
 LL |     a[2] = 0; //[ast]~ ERROR cannot assign to `a[..]` because it is borrowed
    |     ^^^^^^^^ assignment to borrowed `a[..]` occurs here
 
-error[E0506]: cannot assign to `a[..]` because it is borrowed (Mir)
+error[E0506]: cannot assign to `a[_]` because it is borrowed (Mir)
   --> $DIR/borrowck-vec-pattern-move-tail.rs:16:5
    |
 LL |         [1, 2, ref tail..] => tail,
-   |                -------- borrow of `a[..]` occurs here
+   |                -------- borrow of `a[_]` occurs here
 ...
 LL |     a[2] = 0; //[ast]~ ERROR cannot assign to `a[..]` because it is borrowed
-   |     ^^^^^^^^ assignment to borrowed `a[..]` occurs here
+   |     ^^^^^^^^ assignment to borrowed `a[_]` occurs here
 ...
 LL |     println!("t[0]: {}", t[0]);
    |                          ---- borrow later used here
