@@ -6,13 +6,16 @@ use languageserver_types::{
     DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
     FoldingRangeParams, Location, MarkupContent, MarkupKind, MarkedString, Position,
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
+    Range,
     WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover, HoverContents,
+    DocumentFormattingParams,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FileRange, FilePosition, Severity};
 use ra_syntax::{TextUnit, text_utils::intersect};
 use ra_text_edit::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
+use std::io::Write;
 
 use crate::{
     conv::{to_location, Conv, ConvWith, MapConvWith, TryConvWith},
@@ -599,6 +602,36 @@ pub fn handle_references(
             .filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok())
             .collect(),
     ))
+}
+
+pub fn handle_formatting(
+    world: ServerWorld,
+    params: DocumentFormattingParams,
+) -> Result<Option<Vec<TextEdit>>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let file = world.analysis().file_text(file_id);
+
+    let file_line_index = world.analysis().file_line_index(file_id);
+    let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
+
+    use std::process;
+    let mut rustfmt = process::Command::new("rustfmt")
+        .stdin(process::Stdio::piped())
+        .stdout(process::Stdio::piped())
+        .spawn()?;
+
+    rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
+
+    let output = rustfmt.wait_with_output()?;
+    let captured_stdout = String::from_utf8(output.stdout)?;
+    if !output.status.success() {
+        return Err(failure::err_msg(captured_stdout));
+    }
+
+    Ok(Some(vec![TextEdit {
+        range: Range::new(Position::new(0, 0), end_position),
+        new_text: captured_stdout,
+    }]))
 }
 
 pub fn handle_code_action(
