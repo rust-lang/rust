@@ -73,6 +73,21 @@ mod tests {
     }
 
     #[test]
+    fn test_struct_field_completion_self() {
+        check_ref_completion(
+            r"
+            struct A { the_field: u32 }
+            impl A {
+                fn foo(self) {
+                    self.<|>
+                }
+            }
+            ",
+            r#"the_field"#,
+        );
+    }
+
+    #[test]
     fn test_no_struct_field_completion_for_method_call() {
         check_ref_completion(
             r"
