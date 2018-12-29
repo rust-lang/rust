@@ -4,6 +4,12 @@ error[E0425]: cannot find function `f` in module `glob_conflict`
 LL |     glob_conflict::f(); //~ ERROR cannot find function `f` in module `glob_conflict`
    |                    ^ not found in `glob_conflict`
 
-error: aborting due to previous error
+error[E0425]: cannot find function `f` in module `glob_conflict::glob`
+  --> $DIR/glob-conflict-cross-crate.rs:7:26
+   |
+LL |     glob_conflict::glob::f(); //~ ERROR cannot find function `f` in module `glob_conflict::glob`
+   |                          ^ not found in `glob_conflict::glob`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
