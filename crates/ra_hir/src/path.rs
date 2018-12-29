@@ -70,6 +70,11 @@ impl Path {
         self.kind == PathKind::Plain && self.segments.len() == 1
     }
 
+    /// `true` if this path is just a standalone `self`
+    pub fn is_self(&self) -> bool {
+        self.kind == PathKind::Self_ && self.segments.len() == 0
+    }
+
     /// If this path is a single identifier, like `foo`, return its name.
     pub fn as_ident(&self) -> Option<&Name> {
         if self.kind != PathKind::Plain || self.segments.len() > 1 {

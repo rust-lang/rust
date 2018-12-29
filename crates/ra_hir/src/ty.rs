@@ -496,6 +496,8 @@ impl InferenceResult {
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
     scopes: Arc<FnScopes>,
+    /// The self param for the current method, if it exists.
+    self_param: Option<LocalSyntaxPtr>,
     module: Module,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
     type_of: FxHashMap<LocalSyntaxPtr, Ty>,
@@ -506,6 +508,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         InferenceContext {
             type_of: FxHashMap::default(),
             var_unification_table: InPlaceUnificationTable::new(),
+            self_param: None, // set during parameter typing
             db,
             scopes,
             module,
@@ -628,6 +631,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.resolve_ty_as_possible(ty.clone());
                 return Ok(Some(ty));
             };
+        } else if path.is_self() {
+            // resolve `self` param
+            let self_param = ctry!(self.self_param);
+            let ty = ctry!(self.type_of.get(&self_param));
+            let ty = self.resolve_ty_as_possible(ty.clone());
+            return Ok(Some(ty));
         };
 
         // resolve in module
@@ -940,8 +949,9 @@ pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceRe
                 ctx.new_type_var()
             };
             if let Some(self_kw) = self_param.self_kw() {
-                ctx.type_of
-                    .insert(LocalSyntaxPtr::new(self_kw.syntax()), self_type);
+                let self_param = LocalSyntaxPtr::new(self_kw.syntax());
+                ctx.self_param = Some(self_param);
+                ctx.type_of.insert(self_param, self_type);
             }
         }
         for param in param_list.params() {
