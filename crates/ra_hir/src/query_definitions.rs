@@ -19,7 +19,6 @@ use crate::{
         imp::Submodule,
         nameres::{InputModuleItems, ItemMap, Resolver},
     },
-    ty::{self, InferenceResult, Ty},
     adt::{StructData, EnumData},
 };
 
@@ -28,19 +27,6 @@ pub(super) fn fn_scopes(db: &impl HirDatabase, def_id: DefId) -> Arc<FnScopes> {
     let syntax = function.syntax(db);
     let res = FnScopes::new(syntax.borrowed());
     Arc::new(res)
-}
-
-pub(super) fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceResult>> {
-    let function = Function::new(def_id);
-    ty::infer(db, function).map(Arc::new)
-}
-
-pub(super) fn type_for_def(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Ty> {
-    ty::type_for_def(db, def_id)
-}
-
-pub(super) fn type_for_field(db: &impl HirDatabase, def_id: DefId, field: Name) -> Cancelable<Ty> {
-    ty::type_for_field(db, def_id, field)
 }
 
 pub(super) fn struct_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<StructData>> {
