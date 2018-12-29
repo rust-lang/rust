@@ -70,9 +70,9 @@ impl LintPass for AssignOps {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        match expr.node {
-            hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
-                if let hir::ExprKind::Binary(binop, ref l, ref r) = rhs.node {
+        match &expr.node {
+            hir::ExprKind::AssignOp(op, lhs, rhs) => {
+                if let hir::ExprKind::Binary(binop, l, r) = &rhs.node {
                     if op.node == binop.node {
                         let lint = |assignee: &hir::Expr, rhs_other: &hir::Expr| {
                             span_lint_and_then(
@@ -122,8 +122,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                     }
                 }
             },
-            hir::ExprKind::Assign(ref assignee, ref e) => {
-                if let hir::ExprKind::Binary(op, ref l, ref r) = e.node {
+            hir::ExprKind::Assign(assignee, e) => {
+                if let hir::ExprKind::Binary(op, l, r) = &e.node {
                     #[allow(clippy::cyclomatic_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);
@@ -150,8 +150,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         if_chain! {
                                             if parent_impl != ast::CRATE_NODE_ID;
                                             if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
-                                            if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) =
-                                                item.node;
+                                            if let hir::ItemKind::Impl(_, _, _, _, Some(trait_ref), _, _) =
+                                                &item.node;
                                             if trait_ref.path.def.def_id() == trait_id;
                                             then { return; }
                                         }
