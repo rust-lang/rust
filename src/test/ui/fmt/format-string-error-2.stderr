@@ -133,5 +133,11 @@ LL |     asdf}
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
-error: aborting due to 13 previous errors
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/format-string-error-2.rs:70:17
+   |
+LL |     println!("/t{}");
+   |                 ^^
+
+error: aborting due to 14 previous errors
 
