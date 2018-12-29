@@ -381,7 +381,11 @@ pub fn type_for_fn(db: &impl HirDatabase, f: Function) -> Cancelable<Ty> {
                 .collect()
         })
         .unwrap_or_else(|| Ok(Vec::new()))?;
-    let output = Ty::from_ast_opt(db, &module, node.ret_type().and_then(|rt| rt.type_ref()))?;
+    let output = if let Some(type_ref) = node.ret_type().and_then(|rt| rt.type_ref()) {
+        Ty::from_ast(db, &module, type_ref)?
+    } else {
+        Ty::unit()
+    };
     let sig = FnSig { input, output };
     Ok(Ty::FnPtr(Arc::new(sig)))
 }
