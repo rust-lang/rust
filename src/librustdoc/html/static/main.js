@@ -1349,7 +1349,7 @@ if (!DOMTokenList.prototype.remove) {
                     "Example</a> for expository code examples.</a></li><li>The <a " +
                     "href=\"../book/index.html\">Rust Book</a> for " +
                     "introductions to language features and the language itself.</li><li>" +
-                    "Offline Cargo docs by running \"<code>cargo doc --open</code>\" in your terminal." +
+                    "Offline Cargo docs by running \"<code>cargo doc --open</code>\"." +
                     "</li></ul></div>";
             } else {
                 output = "<div class=\"search-failed\"" + extraStyle + ">No results :(<br/>" +
