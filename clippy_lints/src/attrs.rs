@@ -212,7 +212,7 @@ impl LintPass for AttrPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
-        if let Some(ref items) = attr.meta_item_list() {
+        if let Some(items) = &attr.meta_item_list() {
             match &*attr.name().as_str() {
                 "allow" | "warn" | "deny" | "forbid" => {
                     check_clippy_lint_names(cx, items);
@@ -224,8 +224,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             }
             for item in items {
                 if_chain! {
-                    if let NestedMetaItemKind::MetaItem(ref mi) = item.node;
-                    if let MetaItemKind::NameValue(ref lit) = mi.node;
+                    if let NestedMetaItemKind::MetaItem(mi) = &item.node;
+                    if let MetaItemKind::NameValue(lit) = &mi.node;
                     if mi.name() == "since";
                     then {
                         check_semver(cx, item.span, lit);
@@ -244,7 +244,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                 let skip_unused_imports = item.attrs.iter().any(|attr| attr.name() == "macro_use");
 
                 for attr in &item.attrs {
-                    if let Some(ref lint_list) = attr.meta_item_list() {
+                    if let Some(lint_list) = &attr.meta_item_list() {
                         match &*attr.name().as_str() {
                             "allow" | "warn" | "deny" | "forbid" => {
                                 // whitelist `unused_imports` and `deprecated` for `use` items
@@ -381,9 +381,9 @@ fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
 
 fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
-        match stmt.node {
+        match &stmt.node {
             StmtKind::Decl(_, _) => true,
-            StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
+            StmtKind::Expr(expr, _) | StmtKind::Semi(expr, _) => is_relevant_expr(tcx, tables, expr),
         }
     } else {
         block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
@@ -391,12 +391,12 @@ fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, blo
 }
 
 fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
-    match expr.node {
-        ExprKind::Block(ref block, _) => is_relevant_block(tcx, tables, block),
-        ExprKind::Ret(Some(ref e)) => is_relevant_expr(tcx, tables, e),
+    match &expr.node {
+        ExprKind::Block(block, _) => is_relevant_block(tcx, tables, block),
+        ExprKind::Ret(Some(e)) => is_relevant_expr(tcx, tables, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
-        ExprKind::Call(ref path_expr, _) => {
-            if let ExprKind::Path(ref qpath) = path_expr.node {
+        ExprKind::Call(path_expr, _) => {
+            if let ExprKind::Path(qpath) = &path_expr.node {
                 if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
                     !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
                 } else {
@@ -443,7 +443,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
             }
         }
 
-        if let Some(ref values) = attr.meta_item_list() {
+        if let Some(values) = attr.meta_item_list() {
             if values.len() != 1 || attr.name() != "inline" {
                 continue;
             }
@@ -463,7 +463,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
 }
 
 fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
-    if let LitKind::Str(ref is, _) = lit.node {
+    if let LitKind::Str(is, _) = lit.node {
         if Version::parse(&is.as_str()).is_ok() {
             return;
         }
@@ -477,7 +477,7 @@ fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
 }
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
-    if let NestedMetaItemKind::MetaItem(ref mi) = nmi.node {
+    if let NestedMetaItemKind::MetaItem(mi) = &nmi.node {
         mi.is_word() && mi.name() == expected
     } else {
         false
@@ -512,7 +512,7 @@ impl EarlyLintPass for CfgAttrPass {
         if_chain! {
             // check cfg_attr
             if attr.name() == "cfg_attr";
-            if let Some(ref items) = attr.meta_item_list();
+            if let Some(items) = attr.meta_item_list();
             if items.len() == 2;
             // check for `rustfmt`
             if let Some(feature_item) = items[0].meta_item();
