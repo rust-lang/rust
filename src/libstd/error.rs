@@ -30,17 +30,17 @@ use string;
 /// themselves through the [`Display`] and [`Debug`] traits, and may provide
 /// cause chain information:
 ///
-/// The [`cause`] method is generally used when errors cross "abstraction
-/// boundaries", i.e.,  when a one module must report an error that is "caused"
-/// by an error from a lower-level module. This setup makes it possible for the
-/// high-level module to provide its own errors that do not commit to any
-/// particular implementation, but also reveal some of its implementation for
-/// debugging via [`cause`] chains.
+/// The [`source`] method is generally used when errors cross "abstraction
+/// boundaries". If one module must report an error that is caused by an error
+/// from a lower-level module, it can allow access to that error via the
+/// [`source`] method. This makes it possible for the high-level module to
+/// provide its own errors while also revealing some of the implementation for
+/// debugging via [`source`] chains.
 ///
 /// [`Result<T, E>`]: ../result/enum.Result.html
 /// [`Display`]: ../fmt/trait.Display.html
 /// [`Debug`]: ../fmt/trait.Debug.html
-/// [`cause`]: trait.Error.html#method.cause
+/// [`source`]: trait.Error.html#method.source
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
     /// **This method is soft-deprecated.**
