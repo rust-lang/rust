@@ -1005,26 +1005,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         {
                             let mut show_suggestion = true;
                             for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
-                                if let TyKind::Ref(_, exp_ty, _) = exp_ty.sty {
-                                    match (&exp_ty.sty, &found_ty.sty) {
-                                        (TyKind::Adt(exp_did, _), TyKind::Adt(found_did, _))
-                                        if exp_did == found_did => {}
-                                        (TyKind::Bool, TyKind::Bool) |
-                                        (TyKind::Char, TyKind::Char) |
-                                        (TyKind::Str, TyKind::Str) |
-                                        (_, TyKind::Param(_)) |
-                                        (_, TyKind::Infer(_)) |
-                                        (TyKind::Param(_), _) |
-                                        (TyKind::Infer(_), _) => {}
-                                        (TyKind::Int(x), TyKind::Int(y)) if x == y => {}
-                                        (TyKind::Uint(x), TyKind::Uint(y)) if x == y => {}
-                                        (TyKind::Int(x), TyKind::Int(y)) if x == y => {}
-                                        (TyKind::Uint(x), TyKind::Uint(y)) if x == y => {}
-                                        (TyKind::Float(x), TyKind::Float(y)) if x == y => {}
-                                        _ => show_suggestion = false,
+                                match exp_ty.sty {
+                                    TyKind::Ref(_, exp_ty, _) => {
+                                        match (&exp_ty.sty, &found_ty.sty) {
+                                            (_, TyKind::Param(_)) |
+                                            (_, TyKind::Infer(_)) |
+                                            (TyKind::Param(_), _) |
+                                            (TyKind::Infer(_), _) => {}
+                                            _ if ty::TyS::same_type(exp_ty, found_ty) => {}
+                                            _ => show_suggestion = false,
+                                        };
                                     }
-                                } else {
-                                    show_suggestion = false;
+                                    TyKind::Param(_) | TyKind::Infer(_) => {}
+                                    _ => show_suggestion = false,
                                 }
                             }
                             if let (Ok(snippet), true) = (
