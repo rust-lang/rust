@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `(_, _)`:
+  --> $DIR/coherence-tuple-conflict.rs:19:1
+   |
+LL | impl<T> MyTrait for (T,T) {
+   | ------------------------- first implementation here
+...
+LL | impl<A,B> MyTrait for (A,B) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(_, _)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

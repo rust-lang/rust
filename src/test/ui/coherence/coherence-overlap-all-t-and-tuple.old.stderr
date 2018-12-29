@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `From<(_,)>` for type `(_,)`:
+  --> $DIR/coherence-overlap-all-t-and-tuple.rs:20:1
+   |
+LL | impl <T> From<T> for T {
+   | ---------------------- first implementation here
+...
+LL | impl <T11, U11> From<(U11,)> for (T11,) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(_,)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

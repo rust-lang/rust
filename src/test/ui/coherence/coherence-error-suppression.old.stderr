@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `DoesNotExist` in this scope
+  --> $DIR/coherence-error-suppression.rs:13:14
+   |
+LL | impl Foo for DoesNotExist {}
+   |              ^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.
