@@ -31,7 +31,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use relative_path::RelativePathBuf;
 use crossbeam_channel::Receiver;
 use walkdir::DirEntry;
-use thread_worker::{WorkerHandle};
+use thread_worker::WorkerHandle;
 
 use crate::{
     arena::{ArenaId, Arena},
