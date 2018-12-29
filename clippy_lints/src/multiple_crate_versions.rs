@@ -9,10 +9,10 @@
 
 //! lint on multiple versions of a crate being used
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::{ast::*, source_map::DUMMY_SP};
 use crate::utils::span_lint;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::{ast::*, source_map::DUMMY_SP};
 
 use cargo_metadata;
 use itertools::Itertools;

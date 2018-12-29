@@ -7,11 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
-use crate::syntax::ptr::P;
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast;
+use syntax::ptr::P;
 
 /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
 /// operators.

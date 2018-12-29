@@ -7,14 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::*;
-use crate::syntax::parse::{parser, token};
-use crate::syntax::tokenstream::{ThinTokenStream, TokenStream};
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::borrow::Cow;
+use syntax::ast::*;
+use syntax::parse::{parser, token};
+use syntax::tokenstream::{ThinTokenStream, TokenStream};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -271,7 +271,7 @@ impl EarlyLintPass for Pass {
 /// (Some("string to write: {}"), Some(buf))
 /// ```
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
-    use crate::fmt_macros::*;
+    use fmt_macros::*;
     let tts = TokenStream::from(tts.clone());
     let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false);
     let mut expr: Option<Expr> = None;

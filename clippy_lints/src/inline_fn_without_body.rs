@@ -9,13 +9,13 @@
 
 //! checks for `#[inline]` on trait methods without bodies
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::{Attribute, Name};
 use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::{Attribute, Name};
 
 /// **What it does:** Checks for `#[inline]` on trait methods without bodies
 ///

@@ -18,12 +18,12 @@
 //   except according to those terms.
 //
 
-use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
-use crate::syntax::source_map::Span;
 use crate::utils::span_lint;
+use rustc::hir;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast;
+use syntax::source_map::Span;
 
 /// **What it does:** it lints if an exported function, method, trait method with default impl,
 /// or trait method impl is not `#[inline]`.
@@ -91,7 +91,7 @@ fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute]
 }
 
 fn is_executable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>) -> bool {
-    use crate::rustc::session::config::CrateType;
+    use rustc::session::config::CrateType;
 
     cx.tcx.sess.crate_types.get().iter().any(|t: &CrateType| match t {
         CrateType::Executable => true,
@@ -156,7 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
-        use crate::rustc::ty::{ImplContainer, TraitContainer};
+        use rustc::ty::{ImplContainer, TraitContainer};
         if is_executable(cx) {
             return;
         }

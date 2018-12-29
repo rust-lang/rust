@@ -213,7 +213,7 @@ pub mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    crate use crate::syntax::ast::{Name, NodeId};
+    crate use syntax::ast::{Name, NodeId};
 }
 
 pub fn register_pre_expansion_lints(

@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::*;
-use crate::syntax::source_map::Spanned;
 use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::*;
+use syntax::source_map::Spanned;
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:
@@ -138,7 +138,7 @@ fn is_arith_expr(expr: &Expr) -> bool {
 }
 
 fn is_bit_op(op: BinOpKind) -> bool {
-    use crate::syntax::ast::BinOpKind::*;
+    use syntax::ast::BinOpKind::*;
     match op {
         BitXor | BitAnd | BitOr | Shl | Shr => true,
         _ => false,
@@ -146,7 +146,7 @@ fn is_bit_op(op: BinOpKind) -> bool {
 }
 
 fn is_arith_op(op: BinOpKind) -> bool {
-    use crate::syntax::ast::BinOpKind::*;
+    use syntax::ast::BinOpKind::*;
     match op {
         Add | Sub | Mul | Div | Rem => true,
         _ => false,

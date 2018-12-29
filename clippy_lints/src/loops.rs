@@ -8,31 +8,31 @@
 // except according to those terms.
 
 use crate::reexport::*;
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::def_id;
-use crate::rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::middle::region;
-use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use itertools::Itertools;
-// use crate::rustc::middle::region::CodeExtent;
+use rustc::hir::def::Def;
+use rustc::hir::def_id;
+use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc::hir::*;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::middle::region;
+use rustc::{declare_tool_lint, lint_array};
+// use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
-use crate::rustc::middle::expr_use_visitor::*;
-use crate::rustc::middle::mem_categorization::cmt_;
-use crate::rustc::middle::mem_categorization::Categorization;
-use crate::rustc::ty::subst::Subst;
-use crate::rustc::ty::{self, Ty};
-use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast;
-use crate::syntax::source_map::Span;
-use crate::syntax_pos::BytePos;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{in_macro, sext, sugg};
+use rustc::middle::expr_use_visitor::*;
+use rustc::middle::mem_categorization::cmt_;
+use rustc::middle::mem_categorization::Categorization;
+use rustc::ty::subst::Subst;
+use rustc::ty::{self, Ty};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
 use std::iter::{once, Iterator};
 use std::mem;
+use syntax::ast;
+use syntax::source_map::Span;
+use syntax_pos::BytePos;
 
 use crate::utils::paths;
 use crate::utils::{

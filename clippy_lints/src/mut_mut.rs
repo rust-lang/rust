@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::{higher, span_lint};
+use rustc::hir;
+use rustc::hir::intravisit;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
 
 /// **What it does:** Checks for instances of `mut mut` references.
 ///
@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty) {
-        use crate::rustc::hir::intravisit::Visitor;
+        use rustc::hir::intravisit::Visitor;
 
         MutVisitor { cx }.visit_ty(ty);
     }

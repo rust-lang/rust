@@ -7,16 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashMap;
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::*;
-use crate::syntax::source_map::Span;
-use crate::syntax::visit::{walk_expr, FnKind, Visitor};
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 use if_chain::if_chain;
+use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::Applicability;
 use std::char;
+use syntax::ast::*;
+use syntax::source_map::Span;
+use syntax::visit::{walk_expr, FnKind, Visitor};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///

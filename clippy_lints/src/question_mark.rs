@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ptr::P;
 use crate::utils::sugg::Sugg;
 use if_chain::if_chain;
+use rustc::hir::def::Def;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ptr::P;
 
-use crate::rustc_errors::Applicability;
 use crate::utils::paths::*;
 use crate::utils::{match_def_path, match_type, span_lint_and_then, SpanlessEq};
+use rustc_errors::Applicability;
 
 /// **What it does:** Checks for expressions that could be replaced by the question mark operator
 ///

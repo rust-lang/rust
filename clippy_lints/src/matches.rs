@@ -8,13 +8,6 @@
 // except according to those terms.
 
 use crate::consts::{constant, Constant};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::LitKind;
-use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
@@ -22,8 +15,15 @@ use crate::utils::{
     snippet_with_applicability, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty,
 };
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::ty::{self, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::cmp::Ordering;
 use std::collections::Bound;
+use syntax::ast::LitKind;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
 /// will usually suffice.

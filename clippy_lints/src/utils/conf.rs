@@ -11,12 +11,12 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::syntax::{ast, source_map};
 use lazy_static::lazy_static;
 use std::default::Default;
 use std::io::Read;
 use std::sync::Mutex;
 use std::{env, fmt, fs, io, path};
+use syntax::{ast, source_map};
 use toml;
 
 /// Get the configuration file from arguments.

@@ -7,13 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::source_map::Spanned;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::source_map::Spanned;
 
 /// **What it does:** Checks for string appends of the form `x = x + y` (without
 /// `let`!).
@@ -164,8 +164,8 @@ impl LintPass for StringLitAsBytes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        use crate::syntax::ast::{LitKind, StrStyle};
         use crate::utils::{in_macro, snippet, snippet_with_applicability};
+        use syntax::ast::{LitKind, StrStyle};
 
         if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
             if path.ident.name == "as_bytes" {

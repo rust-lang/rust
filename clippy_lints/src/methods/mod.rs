@@ -7,15 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::def::Def;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
-use crate::rustc::ty::{self, Predicate, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast;
-use crate::syntax::source_map::{BytePos, Span};
-use crate::syntax::symbol::LocalInternedString;
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
@@ -27,9 +18,18 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
+use rustc::ty::{self, Predicate, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::borrow::Cow;
 use std::fmt;
 use std::iter;
+use syntax::ast;
+use syntax::source_map::{BytePos, Span};
+use syntax::symbol::LocalInternedString;
 
 mod unnecessary_filter_map;
 

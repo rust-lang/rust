@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::intravisit::*;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::thin_vec::ThinVec;
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
-use crate::syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 use crate::utils::{
     get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_then, SpanlessEq,
 };
+use rustc::hir::intravisit::*;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::Applicability;
+use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
+use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.

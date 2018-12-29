@@ -12,11 +12,11 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::rustc::lint::LateContext;
-use crate::rustc::{hir, ty};
-use crate::syntax::ast;
 use crate::utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
 use if_chain::if_chain;
+use rustc::lint::LateContext;
+use rustc::{hir, ty};
+use syntax::ast;
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {

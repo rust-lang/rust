@@ -7,15 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast;
 use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
 use crate::utils::{higher, sugg};
 use if_chain::if_chain;
+use rustc::hir;
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast;
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
@@ -240,7 +240,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
 }
 
 fn is_commutative(op: hir::BinOpKind) -> bool {
-    use crate::rustc::hir::BinOpKind::*;
+    use rustc::hir::BinOpKind::*;
     match op {
         Add | Mul | And | Or | BitXor | BitAnd | BitOr | Eq | Ne => true,
         Sub | Div | Rem | Shl | Shr | Lt | Le | Ge | Gt => false,

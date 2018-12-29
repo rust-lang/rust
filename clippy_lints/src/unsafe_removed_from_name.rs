@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::*;
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::LocalInternedString;
 use crate::utils::span_lint;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast::*;
+use syntax::source_map::Span;
+use syntax::symbol::LocalInternedString;
 
 /// **What it does:** Checks for imports that remove "unsafe" from an item's
 /// name.

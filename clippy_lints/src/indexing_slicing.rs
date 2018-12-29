@@ -10,14 +10,14 @@
 //! lint on indexing and slicing operations
 
 use crate::consts::{constant, Constant};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::RangeLimits;
 use crate::utils;
 use crate::utils::higher;
 use crate::utils::higher::Range;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast::RangeLimits;
 
 /// **What it does:** Checks for out of bounds array indexing with a constant
 /// index.

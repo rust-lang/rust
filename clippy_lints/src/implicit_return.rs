@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::{ast::NodeId, source_map::Span};
 use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
+use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::{ast::NodeId, source_map::Span};
 
 /// **What it does:** Checks for missing return statements at the end of a block.
 ///

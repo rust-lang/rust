@@ -7,9 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::{declare_tool_lint, hir, lint, lint_array};
-use crate::rustc_errors::Applicability;
 use crate::utils;
+use rustc::{declare_tool_lint, hir, lint, lint_array};
+use rustc_errors::Applicability;
 use std::fmt;
 
 /// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an

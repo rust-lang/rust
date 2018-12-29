@@ -21,14 +21,14 @@
 //!
 //! This lint is **warn** by default
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
 use if_chain::if_chain;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast;
 
-use crate::rustc_errors::Applicability;
 use crate::utils::sugg::Sugg;
 use crate::utils::{in_macro, snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then};
+use rustc_errors::Applicability;
 
 /// **What it does:** Checks for nested `if` statements which can be collapsed
 /// by `&&`-combining their conditions and for `else { if ... }` expressions

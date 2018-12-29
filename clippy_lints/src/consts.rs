@@ -10,20 +10,20 @@
 
 #![allow(clippy::float_cmp)]
 
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::*;
-use crate::rustc::lint::LateContext;
-use crate::rustc::ty::subst::{Subst, Substs};
-use crate::rustc::ty::{self, Instance, Ty, TyCtxt};
-use crate::rustc::{bug, span_bug};
-use crate::syntax::ast::{FloatTy, LitKind};
-use crate::syntax::ptr::P;
 use crate::utils::{clip, sext, unsext};
+use rustc::hir::def::Def;
+use rustc::hir::*;
+use rustc::lint::LateContext;
+use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::{self, Instance, Ty, TyCtxt};
+use rustc::{bug, span_bug};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+use syntax::ast::{FloatTy, LitKind};
+use syntax::ptr::P;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -151,7 +151,7 @@ impl Constant {
 
 /// parse a `LitKind` to a `Constant`
 pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
-    use crate::syntax::ast::*;
+    use syntax::ast::*;
 
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
@@ -286,7 +286,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// lookup a possibly constant expression from a ExprKind::Path
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
-        use crate::rustc::mir::interpret::GlobalId;
+        use rustc::mir::interpret::GlobalId;
 
         let def = self.tables.qpath_def(qpath, id);
         match def {
@@ -430,7 +430,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
-    use crate::rustc::mir::interpret::{ConstValue, Scalar};
+    use rustc::mir::interpret::{ConstValue, Scalar};
     match result.val {
         ConstValue::Scalar(Scalar::Bits { bits: b, .. }) => match result.ty.sty {
             ty::Bool => Some(Constant::Bool(b == 1)),

@@ -36,11 +36,11 @@
 //! ```
 //!
 //! This lint is **warn** by default.
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
-use crate::syntax::source_map::{original_sp, DUMMY_SP};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use std::borrow::Cow;
+use syntax::ast;
+use syntax::source_map::{original_sp, DUMMY_SP};
 
 use crate::utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline};
 

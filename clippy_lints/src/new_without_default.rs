@@ -7,18 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::def_id::DefId;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::util::nodemap::NodeSet;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::sugg::DiagnosticBuilderExt;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_node_and_then};
 use if_chain::if_chain;
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::ty::{self, Ty};
+use rustc::util::nodemap::NodeSet;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for types with a `fn new() -> Self` method and no
 /// implementation of

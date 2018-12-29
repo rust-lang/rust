@@ -7,14 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::*;
-use crate::syntax::attr;
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::LocalInternedString;
-use crate::syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use crate::utils::{span_lint, span_lint_and_then};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast::*;
+use syntax::attr;
+use syntax::source_map::Span;
+use syntax::symbol::LocalInternedString;
+use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 
 /// **What it does:** Checks for names that are very similar and thus confusing.
 ///

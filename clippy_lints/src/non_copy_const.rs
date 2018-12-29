@@ -11,17 +11,17 @@
 //!
 //! This lint is **deny** by default.
 
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
-use crate::rustc::ty::adjustment::Adjust;
-use crate::rustc::ty::{self, TypeFlags};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::rustc_typeck::hir_ty_to_ty;
-use crate::syntax_pos::{Span, DUMMY_SP};
 use crate::utils::{in_constant, in_macro, is_copy, span_lint_and_then};
+use rustc::hir::def::Def;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
+use rustc::ty::adjustment::Adjust;
+use rustc::ty::{self, TypeFlags};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use rustc_typeck::hir_ty_to_ty;
 use std::ptr;
+use syntax_pos::{Span, DUMMY_SP};
 
 /// **What it does:** Checks for declaration of `const` items which is interior
 /// mutable (e.g. contains a `Cell`, `Mutex`, `AtomicXxxx` etc).

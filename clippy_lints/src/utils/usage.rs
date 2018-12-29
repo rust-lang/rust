@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::LateContext;
+use rustc::lint::LateContext;
 
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::*;
-use crate::rustc::middle::expr_use_visitor::*;
-use crate::rustc::middle::mem_categorization::cmt_;
-use crate::rustc::middle::mem_categorization::Categorization;
-use crate::rustc::ty;
-use crate::rustc_data_structures::fx::FxHashSet;
-use crate::syntax::ast::NodeId;
-use crate::syntax::source_map::Span;
+use rustc::hir::def::Def;
+use rustc::hir::*;
+use rustc::middle::expr_use_visitor::*;
+use rustc::middle::mem_categorization::cmt_;
+use rustc::middle::mem_categorization::Categorization;
+use rustc::ty;
+use rustc_data_structures::fx::FxHashSet;
+use syntax::ast::NodeId;
+use syntax::source_map::Span;
 
 /// Returns a set of mutated local variable ids or None if mutations could not be determined.
 pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<NodeId>> {

@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::{Expr, ExprKind, MutMutable, QPath};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
 use crate::utils::{match_def_path, match_qpath, opt_def_id, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc::hir::{Expr, ExprKind, MutMutable, QPath};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 
 /// **What it does:** Checks for `mem::replace()` on an `Option` with
 /// `None`.

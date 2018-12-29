@@ -7,21 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{
     match_def_path, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::*;
+use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
+use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
+use syntax::source_map::Span;
+use syntax::symbol::LocalInternedString;
 
 /// **What it does:** Checks for various things we like to keep tidy in clippy.
 ///
