@@ -1014,11 +1014,11 @@ enum ModuleOrUniformRoot<'a> {
     CurrentScope,
 }
 
-impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        match (*self, *other) {
+impl ModuleOrUniformRoot<'_> {
+    fn same_def(lhs: Self, rhs: Self) -> bool {
+        match (lhs, rhs) {
             (ModuleOrUniformRoot::Module(lhs),
-             ModuleOrUniformRoot::Module(rhs)) => ptr::eq(lhs, rhs),
+             ModuleOrUniformRoot::Module(rhs)) => lhs.def() == rhs.def(),
             (ModuleOrUniformRoot::CrateRootAndExternPrelude,
              ModuleOrUniformRoot::CrateRootAndExternPrelude) |
             (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude) |
