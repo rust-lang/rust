@@ -217,6 +217,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "errno"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -532,6 +544,7 @@ dependencies = [
  "cranelift-faerie 0.26.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.26.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-simplejit 0.26.0 (git+https://github.com/CraneStation/cranelift.git)",
+ "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "faerie 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -805,6 +818,7 @@ dependencies = [
 "checksum cranelift-native 0.26.0 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
 "checksum cranelift-simplejit 0.26.0 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
 "checksum env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)" = "15b0a4d2e39f8420210be8b27eeda28029729e2fd4291019455016c348240c38"
+"checksum env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "afb070faf94c85d17d50ca44f6ad076bce18ae92f0037d350947240a36e9d42e"
 "checksum errno 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2a071601ed01b988f896ab14b95e67335d1eeb50190932a1320f7fe3cadc84e"
 "checksum errno-dragonfly 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "14ca354e36190500e1e1fb267c647932382b54053c50b14970856c0b00a35067"
 "checksum faerie 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7f869e12bcad2b4ff6ac60e01c2354957312fbf0c10dc938f340d58932b3db52"

@@ -184,6 +184,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any> {
+        env_logger::init();
         if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
             && std::env::var("SHOULD_RUN").is_ok()
         {

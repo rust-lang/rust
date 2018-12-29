@@ -27,6 +27,7 @@ bitflags = "1.0.3"
 byteorder = "1.2.6"
 libc = "0.2.45"
 tempfile = "3.0.4"
+env_logger = "0.6"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
