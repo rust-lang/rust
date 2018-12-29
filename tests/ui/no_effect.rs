@@ -74,9 +74,13 @@ struct B {
 struct C {
     b: B,
 }
+struct D {
+    arr: [i32; 1],
+}
 const A_CONST: A = A(1);
 const B: B = B { field: 1 };
 const C: C = C { b: B { field: 1 } };
+const D: D = D { arr: [1] };
 
 fn main() {
     let s = get_struct();
@@ -113,6 +117,7 @@ fn main() {
     A_CONST.0 = 2;
     B.field = 2;
     C.b.field = 2;
+    D.arr[0] = 2;
 
     // Do not warn
     get_number();
@@ -128,4 +133,6 @@ fn main() {
     b_mut.field = 2;
     let mut c_mut = C { b: B { field: 1 } };
     c_mut.b.field = 2;
+    let mut d_mut = D { arr: [1] };
+    d_mut.arr[0] = 2;
 }

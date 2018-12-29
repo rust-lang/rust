@@ -101,7 +101,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         ExprKind::Assign(ref left, ref right) => {
             if has_no_effect(cx, left) {
                 let mut left = left;
-                while let ExprKind::Field(f, _) = &left.node {
+                while let ExprKind::Field(f, _) | ExprKind::Index(f, _) = &left.node {
                     left = f;
                 }
                 if let ExprKind::Path(qpath) = &left.node {
