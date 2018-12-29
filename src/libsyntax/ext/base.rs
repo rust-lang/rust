@@ -995,7 +995,7 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt,
     expr: P<ast::Expr>,
     err_msg: &str,
-) -> Result<Spanned<(Symbol, ast::StrStyle)>, DiagnosticBuilder<'a>> {
+) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
         expr.span = expr.span.apply_mark(cx.current_expansion.mark);
@@ -1007,16 +1007,17 @@ pub fn expr_to_spanned_string<'a>(
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
-            _ => cx.struct_span_err(l.span, err_msg)
+            _ => Some(cx.struct_span_err(l.span, err_msg))
         },
-        _ => cx.struct_span_err(expr.span, err_msg)
+        ast::ExprKind::Err => None,
+        _ => Some(cx.struct_span_err(expr.span, err_msg))
     })
 }
 
 pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
                       -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
-        .map_err(|mut err| err.emit())
+        .map_err(|err| err.map(|mut err| err.emit()))
         .ok()
         .map(|s| s.node)
 }

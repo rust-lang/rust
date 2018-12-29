@@ -24,7 +24,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
 
     if tts.is_empty() {
         cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
-        return DummyResult::expr(sp);
+        return DummyResult::any(sp);
     }
 
     let mut res_str = String::new();
@@ -34,7 +34,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                 TokenTree::Token(_, token::Comma) => {}
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
-                    return DummyResult::expr(sp);
+                    return DummyResult::any(sp);
                 }
             }
         } else {
@@ -43,7 +43,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                     res_str.push_str(&ident.as_str()),
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
-                    return DummyResult::expr(sp);
+                    return DummyResult::any(sp);
                 }
             }
         }
