@@ -17,7 +17,7 @@ use util::common::ProfileQueriesMsg;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
-    self, Lrc, Lock, OneThread, Once, RwLock, AtomicU64, AtomicUsize, AtomicBool, Ordering,
+    self, Lrc, Lock, OneThread, Once, RwLock, AtomicU64, AtomicUsize, Ordering,
     Ordering::SeqCst,
 };
 
@@ -49,6 +49,13 @@ mod code_stats;
 pub mod config;
 pub mod filesearch;
 pub mod search_paths;
+
+pub struct OptimizationFuel {
+    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
+    remaining: u64,
+    /// We're rejecting all further optimizations.
+    out_of_fuel: bool,
+}
 
 /// Represents the data associated with a compilation
 /// session for a single crate.
@@ -139,10 +146,9 @@ pub struct Session {
 
     /// If -zfuel=crate=n is specified, Some(crate).
     optimization_fuel_crate: Option<String>,
-    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
-    optimization_fuel_limit: AtomicU64,
-    /// We're rejecting all further optimizations.
-    out_of_fuel: AtomicBool,
+
+    /// Tracks fuel info if If -zfuel=crate=n is specified
+    optimization_fuel: Lock<OptimizationFuel>,
 
     // The next two are public because the driver needs to read them.
     /// If -zprint-fuel=crate, Some(crate).
@@ -859,41 +865,30 @@ impl Session {
                  self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed));
     }
 
-    #[inline(never)]
-    #[cold]
-    pub fn consider_optimizing_cold<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
+    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
+    /// This expends fuel if applicable, and records fuel if applicable.
+    pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
         let mut ret = true;
         if let Some(ref c) = self.optimization_fuel_crate {
             if c == crate_name {
                 assert_eq!(self.query_threads(), 1);
-                let fuel = self.optimization_fuel_limit.load(SeqCst);
-                ret = fuel != 0;
-                if fuel == 0 && !self.out_of_fuel.load(SeqCst) {
+                let mut fuel = self.optimization_fuel.lock();
+                ret = fuel.remaining != 0;
+                if fuel.remaining == 0 && !fuel.out_of_fuel {
                     eprintln!("optimization-fuel-exhausted: {}", msg());
-                    self.out_of_fuel.store(true, SeqCst);
-                } else if fuel > 0 {
-                    self.optimization_fuel_limit.store(fuel - 1, SeqCst);
+                    fuel.out_of_fuel = true;
+                } else if fuel.remaining > 0 {
+                    fuel.remaining -= 1;
                 }
             }
         }
         if let Some(ref c) = self.print_fuel_crate {
             if c == crate_name {
                 assert_eq!(self.query_threads(), 1);
-                self.print_fuel.store(self.print_fuel.load(SeqCst) + 1, SeqCst);
+                self.print_fuel.fetch_add(1, SeqCst);
             }
         }
         ret
-    }
-
-    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
-    /// This expends fuel if applicable, and records fuel if applicable.
-    #[inline(always)]
-    pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
-        if likely!(self.optimization_fuel_crate.is_none() && self.print_fuel_crate.is_none()) {
-            true
-        } else {
-            self.consider_optimizing_cold(crate_name, msg)
-        }
     }
 
     /// Returns the number of query threads that should be used for this
@@ -1140,8 +1135,10 @@ pub fn build_session_(
         local_crate_source_file.map(|path| file_path_mapping.map_prefix(path).0);
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
-    let optimization_fuel_limit =
-        AtomicU64::new(sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0));
+    let optimization_fuel = Lock::new(OptimizationFuel {
+        remaining: sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0),
+        out_of_fuel: false,
+    });
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = AtomicU64::new(0);
 
@@ -1205,10 +1202,9 @@ pub fn build_session_(
         },
         code_stats: Default::default(),
         optimization_fuel_crate,
-        optimization_fuel_limit,
+        optimization_fuel,
         print_fuel_crate,
         print_fuel,
-        out_of_fuel: AtomicBool::new(false),
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near
         // the beginning of the process though to ensure we don't get false
