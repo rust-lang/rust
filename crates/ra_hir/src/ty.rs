@@ -918,22 +918,46 @@ pub fn infer(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<InferenceRe
     let node = syntax.borrowed();
 
     if let Some(param_list) = node.param_list() {
+        if let Some(self_param) = param_list.self_param() {
+            let self_type = if let Some(impl_block) = function.impl_block(db)? {
+                if let Some(type_ref) = self_param.type_ref() {
+                    let ty = Ty::from_ast(db, &ctx.module, type_ref)?;
+                    ctx.insert_type_vars(ty)
+                } else {
+                    let ty = Ty::from_hir(db, &ctx.module, impl_block.target())?;
+                    let ty = match self_param.flavor() {
+                        ast::SelfParamFlavor::Owned => ty,
+                        ast::SelfParamFlavor::Ref => Ty::Ref(Arc::new(ty), Mutability::Shared),
+                        ast::SelfParamFlavor::MutRef => Ty::Ref(Arc::new(ty), Mutability::Mut),
+                    };
+                    ctx.insert_type_vars(ty)
+                }
+            } else {
+                log::debug!(
+                    "No impl block found, but self param for function {:?}",
+                    def_id
+                );
+                ctx.new_type_var()
+            };
+            if let Some(self_kw) = self_param.self_kw() {
+                ctx.type_of
+                    .insert(LocalSyntaxPtr::new(self_kw.syntax()), self_type);
+            }
+        }
         for param in param_list.params() {
             let pat = if let Some(pat) = param.pat() {
                 pat
             } else {
                 continue;
             };
-            if let Some(type_ref) = param.type_ref() {
+            let ty = if let Some(type_ref) = param.type_ref() {
                 let ty = Ty::from_ast(db, &ctx.module, type_ref)?;
-                let ty = ctx.insert_type_vars(ty);
-                ctx.type_of.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
+                ctx.insert_type_vars(ty)
             } else {
-                // TODO self param
-                let type_var = ctx.new_type_var();
-                ctx.type_of
-                    .insert(LocalSyntaxPtr::new(pat.syntax()), type_var);
+                // missing type annotation
+                ctx.new_type_var()
             };
+            ctx.type_of.insert(LocalSyntaxPtr::new(pat.syntax()), ty);
         }
     }
 

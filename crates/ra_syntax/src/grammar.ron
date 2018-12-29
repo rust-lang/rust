@@ -534,7 +534,8 @@ Grammar(
                 ["params", "Param"]
             ]
         ),
-        "SelfParam": (),
+        "SelfParam": (options: ["TypeRef", "SelfKw"]),
+        "SelfKw": (),
         "Param": (
             options: [ "Pat", "TypeRef" ],
         ),

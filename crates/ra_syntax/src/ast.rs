@@ -482,6 +482,37 @@ impl<'a> PrefixExpr<'a> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SelfParamFlavor {
+    /// self
+    Owned,
+    /// &self
+    Ref,
+    /// &mut self
+    MutRef,
+}
+
+impl<'a> SelfParam<'a> {
+    pub fn flavor(&self) -> SelfParamFlavor {
+        let borrowed = self.syntax().children().any(|n| n.kind() == AMP);
+        if borrowed {
+            // check for a `mut` coming after the & -- `mut &self` != `&mut self`
+            if self
+                .syntax()
+                .children()
+                .skip_while(|n| n.kind() != AMP)
+                .any(|n| n.kind() == MUT_KW)
+            {
+                SelfParamFlavor::MutRef
+            } else {
+                SelfParamFlavor::Ref
+            }
+        } else {
+            SelfParamFlavor::Owned
+        }
+    }
+}
+
 #[test]
 fn test_doc_comment_of_items() {
     let file = SourceFileNode::parse(
