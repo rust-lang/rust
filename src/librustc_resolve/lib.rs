@@ -1191,6 +1191,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
+    ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
     expansion: Mark,
     span: Span,
     vis: ty::Visibility,
@@ -1215,11 +1216,6 @@ enum NameBindingKind<'a> {
         directive: &'a ImportDirective<'a>,
         used: Cell<bool>,
     },
-    Ambiguity {
-        kind: AmbiguityKind,
-        b1: &'a NameBinding<'a>,
-        b2: &'a NameBinding<'a>,
-    }
 }
 
 struct PrivacyError<'a>(Span, Ident, &'a NameBinding<'a>);
@@ -1309,15 +1305,13 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Def(def, _) => def,
             NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
-            NameBindingKind::Ambiguity { .. } => Def::Err,
         }
     }
 
-    fn def_ignoring_ambiguity(&self) -> Def {
-        match self.kind {
-            NameBindingKind::Import { binding, .. } => binding.def_ignoring_ambiguity(),
-            NameBindingKind::Ambiguity { b1, .. } => b1.def_ignoring_ambiguity(),
-            _ => self.def(),
+    fn is_ambiguity(&self) -> bool {
+        self.ambiguity.is_some() || match self.kind {
+            NameBindingKind::Import { binding, .. } => binding.is_ambiguity(),
+            _ => false,
         }
     }
 
@@ -1362,7 +1356,6 @@ impl<'a> NameBinding<'a> {
     fn is_glob_import(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { directive, .. } => directive.is_glob(),
-            NameBindingKind::Ambiguity { b1, .. } => b1.is_glob_import(),
             _ => false,
         }
     }
@@ -1382,7 +1375,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
-        match self.def_ignoring_ambiguity() {
+        match self.def() {
             Def::Macro(_, kind) => Some(kind),
             Def::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
@@ -1893,6 +1886,7 @@ impl<'a> Resolver<'a> {
             arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err, false),
+                ambiguity: None,
                 expansion: Mark::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
@@ -1963,33 +1957,30 @@ impl<'a> Resolver<'a> {
 
     fn record_use(&mut self, ident: Ident, ns: Namespace,
                   used_binding: &'a NameBinding<'a>, is_lexical_scope: bool) {
-        match used_binding.kind {
-            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
-                // Avoid marking `extern crate` items that refer to a name from extern prelude,
-                // but not introduce it, as used if they are accessed from lexical scope.
-                if is_lexical_scope {
-                    if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
-                        if let Some(crate_item) = entry.extern_crate_item {
-                            if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
-                                return;
-                            }
+        if let Some((b2, kind)) = used_binding.ambiguity {
+            self.ambiguity_errors.push(AmbiguityError {
+                kind, ident, b1: used_binding, b2,
+                misc1: AmbiguityErrorMisc::None,
+                misc2: AmbiguityErrorMisc::None,
+            });
+        }
+        if let NameBindingKind::Import { directive, binding, ref used } = used_binding.kind {
+            // Avoid marking `extern crate` items that refer to a name from extern prelude,
+            // but not introduce it, as used if they are accessed from lexical scope.
+            if is_lexical_scope {
+                if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                    if let Some(crate_item) = entry.extern_crate_item {
+                        if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
+                            return;
                         }
                     }
                 }
-                used.set(true);
-                directive.used.set(true);
-                self.used_imports.insert((directive.id, ns));
-                self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding, false);
             }
-            NameBindingKind::Ambiguity { kind, b1, b2 } => {
-                self.ambiguity_errors.push(AmbiguityError {
-                    kind, ident, b1, b2,
-                    misc1: AmbiguityErrorMisc::None,
-                    misc2: AmbiguityErrorMisc::None,
-                });
-            }
-            _ => {}
+            used.set(true);
+            directive.used.set(true);
+            self.used_imports.insert((directive.id, ns));
+            self.add_to_glob_map(directive.id, ident);
+            self.record_use(ident, ns, binding, false);
         }
     }
 
