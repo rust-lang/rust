@@ -12,6 +12,7 @@ use itertools::Itertools;
 use pulldown_cmark;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashSet;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
 use syntax_pos::Pos;
@@ -43,11 +44,11 @@ declare_clippy_lint! {
 
 #[derive(Clone)]
 pub struct Doc {
-    valid_idents: Vec<String>,
+    valid_idents: FxHashSet<String>,
 }
 
 impl Doc {
-    pub fn new(valid_idents: Vec<String>) -> Self {
+    pub fn new(valid_idents: FxHashSet<String>) -> Self {
         Self { valid_idents }
     }
 }
@@ -144,7 +145,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
     panic!("not a doc-comment: {}", comment);
 }
 
-pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &[String], attrs: &'a [ast::Attribute]) {
+pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [ast::Attribute]) {
     let mut doc = String::new();
     let mut spans = vec![];
 
@@ -192,7 +193,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &[String], attrs: &'
 
 fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
     cx: &EarlyContext<'_>,
-    valid_idents: &[String],
+    valid_idents: &FxHashSet<String>,
     docs: Events,
     spans: &[(usize, Span)],
 ) {
@@ -237,14 +238,14 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
     }
 }
 
-fn check_text(cx: &EarlyContext<'_>, valid_idents: &[String], text: &str, span: Span) {
+fn check_text(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
     for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
         // Or even as in `_foo bar_` which is emphasized.
         let word = word.trim_matches(|c: char| !c.is_alphanumeric());
 
-        if valid_idents.iter().any(|i| i == word) {
+        if valid_idents.contains(word) {
             continue;
         }
 
