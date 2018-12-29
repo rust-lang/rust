@@ -79,7 +79,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
     let e = match env::var(&*var.as_str()) {
         Err(_) => {
             cx.span_err(sp, &msg.as_str());
-            cx.expr_usize(sp, 0)
+            return DummyResult::expr(sp);
         }
         Ok(s) => cx.expr_str(sp, Symbol::intern(&s)),
     };

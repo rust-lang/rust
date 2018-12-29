@@ -1,16 +1,8 @@
-error: expected a literal
-  --> $DIR/issue-11692-2.rs:2:13
-   |
-LL |     concat!(test!()); //~ ERROR cannot find macro `test!` in this scope
-   |             ^^^^^^^
-   |
-   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
-
 error: cannot find macro `test!` in this scope
   --> $DIR/issue-11692-2.rs:2:13
    |
 LL |     concat!(test!()); //~ ERROR cannot find macro `test!` in this scope
    |             ^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

@@ -748,18 +748,20 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             fmt
         }
         Ok(fmt) => fmt,
-        Err(mut err) => {
-            let sugg_fmt = match args.len() {
-                0 => "{}".to_string(),
-                _ => format!("{}{{}}", "{} ".repeat(args.len())),
-            };
-            err.span_suggestion_with_applicability(
-                fmt_sp.shrink_to_lo(),
-                "you might be missing a string literal to format with",
-                format!("\"{}\", ", sugg_fmt),
-                Applicability::MaybeIncorrect,
-            );
-            err.emit();
+        Err(err) => {
+            if let Some(mut err) = err {
+                let sugg_fmt = match args.len() {
+                    0 => "{}".to_string(),
+                    _ => format!("{}{{}}", "{} ".repeat(args.len())),
+                };
+                err.span_suggestion_with_applicability(
+                    fmt_sp.shrink_to_lo(),
+                    "you might be missing a string literal to format with",
+                    format!("\"{}\", ", sugg_fmt),
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+            }
             return DummyResult::raw_expr(sp, true);
         }
     };
