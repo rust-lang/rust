@@ -8,9 +8,8 @@ const ALIGN_INDEX: usize = 2;
 
 pub fn size_of_obj<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    val: CValue<'tcx>,
+    vtable: Value,
 ) -> Value {
-    let (_ptr, vtable) = val.load_value_pair(fx);
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -22,9 +21,8 @@ pub fn size_of_obj<'a, 'tcx: 'a>(
 
 pub fn min_align_of_obj<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    val: CValue<'tcx>,
+    vtable: Value,
 ) -> Value {
-    let (_ptr, vtable) = val.load_value_pair(fx);
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),

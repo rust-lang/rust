@@ -151,6 +151,10 @@ fn main() {
             pointer: 0 as *const &str,
             _marker: PhantomData,
         } as Unique<dyn SomeTrait>;
+
+        struct MyDst<T: ?Sized>(T);
+
+        intrinsics::size_of_val(&MyDst([0u8; 4]) as &MyDst<[u8]>);
     }
 
     let _ = NoisyDrop {

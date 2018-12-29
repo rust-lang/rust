@@ -51,6 +51,7 @@ mod metadata;
 mod pretty_clif;
 mod trap;
 mod unimpl;
+mod unsize;
 mod vtable;
 
 mod prelude {

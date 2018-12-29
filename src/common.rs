@@ -221,69 +221,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
-        if self.layout().ty == dest.layout().ty {
-            dest.write_cvalue(fx, self); // FIXME this shouldn't happen (rust-lang/rust#53602)
-            return;
-        }
-        match &self.layout().ty.sty {
-            ty::Ref(_, ty, _) | ty::RawPtr(TypeAndMut { ty, mutbl: _ }) => {
-                let (ptr, extra) = match dest.layout().ty.builtin_deref(true).unwrap().ty.sty {
-                    ty::Slice(slice_elem_ty) => match ty.sty {
-                        ty::Array(array_elem_ty, size) => {
-                            assert_eq!(slice_elem_ty, array_elem_ty);
-                            let ptr = self.load_value(fx);
-                            let extra = fx
-                                .bcx
-                                .ins()
-                                .iconst(fx.pointer_type, size.unwrap_usize(fx.tcx) as i64);
-                            (ptr, extra)
-                        }
-                        _ => bug!("unsize non array {:?} to slice", ty),
-                    },
-                    ty::Dynamic(data, _) => match ty.sty {
-                        ty::Dynamic(_, _) => self.load_value_pair(fx),
-                        _ => {
-                            let ptr = self.load_value(fx);
-                            let vtable = crate::vtable::get_vtable(fx, ty, data.principal());
-                            (ptr, vtable)
-                        }
-                    },
-                    _ => bug!(
-                        "unsize of type {:?} to {:?}",
-                        self.layout().ty,
-                        dest.layout().ty
-                    ),
-                };
-                dest.write_cvalue(fx, CValue::ByValPair(ptr, extra, dest.layout()));
-            }
-            _ => {
-                assert!(!self.layout().ty.is_enum(), "Tried to unsize enum");
-                let field_count = self.layout().fields.count();
-                let mut found_unsize_field = false;
-                for idx in 0..field_count {
-                    let field_dest = dest.place_field(fx, mir::Field::new(idx));
-                    let field_src = self.value_field(fx, mir::Field::new(idx));
-                    if field_src.layout().ty.is_phantom_data() {
-                        // Ignore PhantomData so for example `Unique<()>` can coerce to `Unique<Debug>`
-                        //
-                        // ```rust
-                        // struct Unique<T: ?Sized> {
-                        //     pointer: NonZero<*const T>,
-                        //     _marker: PhantomData<T>,
-                        // }
-                        // ```
-                        continue;
-                    }
-                    if field_src.layout().ty != field_dest.layout().ty {
-                        assert!(!found_unsize_field);
-                        found_unsize_field = true;
-                        field_src.unsize_value(fx, field_dest);
-                    } else {
-                        field_dest.write_cvalue(fx, field_src);
-                    }
-                }
-            }
-        }
+        crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 
     pub fn const_val<'a>(

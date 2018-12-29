@@ -153,18 +153,15 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         size_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
-            let size = match &layout.ty.sty {
-                _ if !layout.is_unsized() => fx
+            let size = if layout.is_unsized() {
+                let (_ptr, info) = ptr.load_value_pair(fx);
+                let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout.ty, info);
+                size
+            } else {
+                fx
                     .bcx
                     .ins()
-                    .iconst(fx.pointer_type, layout.size.bytes() as i64),
-                ty::Slice(elem) => {
-                    let len = ptr.load_value_pair(fx).1;
-                    let elem_size = fx.layout_of(elem).size.bytes();
-                    fx.bcx.ins().imul_imm(len, elem_size as i64)
-                }
-                ty::Dynamic(..) => crate::vtable::size_of_obj(fx, ptr),
-                ty => bug!("size_of_val for unknown unsized type {:?}", ty),
+                    .iconst(fx.pointer_type, layout.size.bytes() as i64)
             };
             ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
         };
@@ -175,17 +172,15 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         min_align_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
-            let align = match &layout.ty.sty {
-                _ if !layout.is_unsized() => fx
+            let align = if layout.is_unsized() {
+                let (_ptr, info) = ptr.load_value_pair(fx);
+                let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout.ty, info);
+                align
+            } else {
+                fx
                     .bcx
                     .ins()
-                    .iconst(fx.pointer_type, layout.align.abi.bytes() as i64),
-                ty::Slice(elem) => {
-                    let align = fx.layout_of(elem).align.abi.bytes() as i64;
-                    fx.bcx.ins().iconst(fx.pointer_type, align)
-                }
-                ty::Dynamic(..) => crate::vtable::min_align_of_obj(fx, ptr),
-                ty => unimplemented!("min_align_of_val for {:?}", ty),
+                    .iconst(fx.pointer_type, layout.align.abi.bytes() as i64)
             };
             ret.write_cvalue(fx, CValue::ByVal(align, usize_layout));
         };
