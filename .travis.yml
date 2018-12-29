@@ -1,47 +1,47 @@
 cache: cargo
 before_cache:
-  - find ./target/debug -type f -maxdepth 1 -delete
-  - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*,*tools*,*gen_lsp*,*thread_worker*}
-  - rm -f  ./target/.rustc_info.json
+    - find ./target/debug -type f -maxdepth 1 -delete
+    - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*,*tools*,*gen_lsp*,*thread_worker*}
+    - rm -f  ./target/.rustc_info.json
 
 env:
-  - CARGO_INCREMENTAL=0
+    - CARGO_INCREMENTAL=0
 
 build: &rust_build
-  language: rust
-  rust: 1.31.1
-  script:
-    - cargo gen-tests --verify
-    - cargo gen-syntax --verify
-    - RUSTFLAGS='-D warnings' cargo test
-  env:
-    RUSTFLAGS: '-D warnings'
+    language: rust
+    rust: 1.31.1
+    script:
+        - cargo gen-tests --verify
+        - cargo gen-syntax --verify
+        - RUSTFLAGS='-D warnings' cargo test
+    env:
+        RUSTFLAGS: -D warnings
 
 matrix:
-  include:
-    - os: linux
-      <<: *rust_build
-    - language: node_js
-      node_js: node
-      before_script: false
-      script:
-        - cd editors/code && npm ci && npm run travis
+    include:
+        - os: linux
+          <<: *rust_build
+        - language: node_js
+          node_js: node
+          before_script: false
+          script:
+              - cd editors/code && npm ci && npm run travis
 
-    - os: windows
-      if: branch = master
-      before_script:
-        - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.txt
-        - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.rs
-      <<: *rust_build
+        - os: windows
+          if: branch = master
+          before_script:
+              - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.txt
+              - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.rs
+          <<: *rust_build
 
-  allow_failures:
-    # Because Travis-Windows-Rust can be flaky
-    # We still support Windows and want the tests to be succeeding,
-    # but there are too many spurious failures
-    - os: windows
+    allow_failures:
+        # Because Travis-Windows-Rust can be flaky
+        # We still support Windows and want the tests to be succeeding,
+        # but there are too many spurious failures
+        - os: windows
 
 branches:
-  only:
-    - staging
-    - master
-    - trying
+    only:
+        - staging
+        - master
+        - trying
