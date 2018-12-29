@@ -9,7 +9,7 @@
 
 #![feature(test)]
 
-extern crate compiletest_rs as compiletest;
+use compiletest_rs as compiletest;
 extern crate test;
 
 use std::env::{set_var, var};

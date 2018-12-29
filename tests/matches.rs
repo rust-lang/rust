@@ -9,7 +9,7 @@
 
 #![feature(rustc_private)]
 
-extern crate clippy_lints;
+use clippy_lints;
 extern crate syntax;
 use std::collections::Bound;
 
