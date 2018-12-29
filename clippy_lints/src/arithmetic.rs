@@ -73,8 +73,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                 return;
             }
         }
-        match expr.node {
-            hir::ExprKind::Binary(ref op, ref l, ref r) => {
+        match &expr.node {
+            hir::ExprKind::Binary(op, l, r) => {
                 match op.node {
                     hir::BinOpKind::And
                     | hir::BinOpKind::Or
@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                     self.expr_span = Some(expr.span);
                 }
             },
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref arg) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, arg) => {
                 let ty = cx.tables.expr_ty(arg);
                 if ty.is_integral() {
                     span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
