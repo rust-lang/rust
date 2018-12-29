@@ -9,11 +9,11 @@
 
 //! Lint on unnecessary double comparisons. Some examples:
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::source_map::Span;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::source_map::Span;
 
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 

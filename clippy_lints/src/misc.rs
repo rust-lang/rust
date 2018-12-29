@@ -9,14 +9,6 @@
 
 use crate::consts::{constant, Constant};
 use crate::reexport::*;
-use crate::rustc::hir::intravisit::FnKind;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::LitKind;
-use crate::syntax::source_map::{ExpnFormat, Span};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal, iter_input_pats,
@@ -25,6 +17,14 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::LitKind;
+use syntax::source_map::{ExpnFormat, Span};
 
 /// **What it does:** Checks for function arguments and let bindings denoted as
 /// `ref`.

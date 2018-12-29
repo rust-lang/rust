@@ -7,28 +7,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::intravisit::FnKind;
-use crate::rustc::hir::{def_id, Body, FnDecl};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::mir::{
-    self, traversal,
-    visit::{MutatingUseContext, PlaceContext, Visitor},
-    TerminatorKind,
-};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::{
-    ast::NodeId,
-    source_map::{BytePos, Span},
-};
 use crate::utils::{
     has_drop, in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_node,
     span_lint_node_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use matches::matches;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::{def_id, Body, FnDecl};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::mir::{
+    self, traversal,
+    visit::{MutatingUseContext, PlaceContext, Visitor},
+    TerminatorKind,
+};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::convert::TryFrom;
+use syntax::{
+    ast::NodeId,
+    source_map::{BytePos, Span},
+};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {

@@ -15,8 +15,8 @@ use std::collections::Bound;
 
 #[test]
 fn test_overlapping() {
-    use crate::syntax::source_map::DUMMY_SP;
     use clippy_lints::matches::overlapping;
+    use syntax::source_map::DUMMY_SP;
 
     let sp = |s, e| clippy_lints::matches::SpannedRange {
         span: DUMMY_SP,

@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::Ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashMap;
-use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 use crate::utils::{SpanlessEq, SpanlessHash};
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::Ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashMap;
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
+use syntax::symbol::LocalInternedString;
 
 /// **What it does:** Checks for consecutive `if`s with the same condition.
 ///

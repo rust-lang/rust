@@ -7,15 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashMap;
-use crate::syntax::ast;
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{in_macro, span_lint};
+use rustc::hir;
+use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashMap;
+use syntax::ast;
+use syntax::source_map::Span;
+use syntax::symbol::LocalInternedString;
 
 /// **What it does:** Checks for unused labels.
 ///

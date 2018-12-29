@@ -7,14 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
-use crate::syntax::source_map::{BytePos, Span};
-use crate::syntax_pos::Pos;
 use crate::utils::span_lint;
 use itertools::Itertools;
 use pulldown_cmark;
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast;
+use syntax::source_map::{BytePos, Span};
+use syntax_pos::Pos;
 use url::Url;
 
 /// **What it does:** Checks for the presence of `_`, `::` or camel-case words

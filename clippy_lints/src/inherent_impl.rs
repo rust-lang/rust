@@ -9,13 +9,13 @@
 
 //! lint on inherent implementations
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashMap;
-use crate::syntax_pos::Span;
 use crate::utils::span_lint_and_then;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashMap;
 use std::default::Default;
+use syntax_pos::Span;
 
 /// **What it does:** Checks for multiple inherent implementations of a struct
 ///

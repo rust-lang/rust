@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::{Name, UintTy};
 use crate::utils::{
     contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability,
     span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::{Name, UintTy};
 
 /// **What it does:** Checks for naive byte counts
 ///

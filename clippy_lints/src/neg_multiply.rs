@@ -7,11 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::source_map::{Span, Spanned};
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::source_map::{Span, Spanned};
 
 use crate::consts::{self, Constant};
 use crate::utils::span_lint;

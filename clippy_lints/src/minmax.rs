@@ -8,10 +8,10 @@
 // except according to those terms.
 
 use crate::consts::{constant_simple, Constant};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 use std::cmp::Ordering;
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are

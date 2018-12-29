@@ -11,15 +11,15 @@
 //! don't fit into an `i32`
 
 use crate::consts::{miri_to_const, Constant};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::mir::interpret::GlobalId;
-use crate::rustc::ty;
-use crate::rustc::ty::subst::Substs;
-use crate::rustc::ty::util::IntTypeExt;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::{IntTy, UintTy};
 use crate::utils::span_lint;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::mir::interpret::GlobalId;
+use rustc::ty;
+use rustc::ty::subst::Substs;
+use rustc::ty::util::IntTypeExt;
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast::{IntTy, UintTy};
 
 /// **What it does:** Checks for C-like enumerations that are
 /// `repr(isize/usize)` and have values that don't fit into an `i32`.

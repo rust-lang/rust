@@ -9,21 +9,21 @@
 
 use std::cmp;
 
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit::FnKind;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::session::config::Config as SessionConfig;
-use crate::rustc::ty::{self, FnSig};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::rustc_target::abi::LayoutOf;
-use crate::rustc_target::spec::abi::Abi;
-use crate::syntax::ast::NodeId;
-use crate::syntax_pos::Span;
 use crate::utils::{in_macro, is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use matches::matches;
+use rustc::hir;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::session::config::Config as SessionConfig;
+use rustc::ty::{self, FnSig};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use rustc_target::abi::LayoutOf;
+use rustc_target::spec::abi::Abi;
+use syntax::ast::NodeId;
+use syntax_pos::Span;
 
 /// **What it does:** Checks for functions taking arguments by reference, where
 /// the argument type is `Copy` and small enough to be more efficient to always

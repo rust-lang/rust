@@ -7,18 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::LitKind;
 use crate::utils::paths;
 use crate::utils::{
     in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet,
     span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::LitKind;
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.

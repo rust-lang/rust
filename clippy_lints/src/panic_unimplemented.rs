@@ -7,14 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::LitKind;
-use crate::syntax::ext::quote::rt::Span;
-use crate::syntax::ptr::P;
 use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast::LitKind;
+use syntax::ext::quote::rt::Span;
+use syntax::ptr::P;
 
 /// **What it does:** Checks for missing parameters in `panic!`.
 ///

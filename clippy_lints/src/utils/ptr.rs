@@ -7,13 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::hir::*;
-use crate::rustc::lint::LateContext;
-use crate::syntax::ast::Name;
-use crate::syntax::source_map::Span;
 use crate::utils::{get_pat_name, match_var, snippet};
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::hir::*;
+use rustc::lint::LateContext;
 use std::borrow::Cow;
+use syntax::ast::Name;
+use syntax::source_map::Span;
 
 pub fn get_spans(
     cx: &LateContext<'_, '_>,

@@ -7,15 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast;
-use crate::syntax::source_map::Span;
-use crate::syntax::visit::FnKind;
-use crate::syntax_pos::BytePos;
 use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 use if_chain::if_chain;
+use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast;
+use syntax::source_map::Span;
+use syntax::visit::FnKind;
+use syntax_pos::BytePos;
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///

@@ -7,13 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
 use crate::utils::{
     implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq,
 };
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 
 /// **What it does:** Checks for equal operands to comparison, logical and
 /// bitwise, difference and division binary operators (`==`, `>`, etc., `&&`,

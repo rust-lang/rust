@@ -11,12 +11,12 @@
 //!
 //! This lint is **warn** by default
 
-use crate::rustc::hir::Expr;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
 use crate::utils::{match_type, paths, span_lint};
+use rustc::hir::Expr;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::{self, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast;
 
 /// **What it does:** Checks for usages of `Mutex<X>` where an atomic will do.
 ///

@@ -7,18 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::*;
-use crate::syntax_pos::symbol::Symbol;
 use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
+use rustc::hir;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::f32;
 use std::f64;
 use std::fmt;
+use syntax::ast::*;
+use syntax_pos::symbol::Symbol;
 
 /// **What it does:** Checks for float literals with a precision greater
 /// than that supported by the underlying type

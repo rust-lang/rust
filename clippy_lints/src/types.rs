@@ -12,19 +12,6 @@
 
 use crate::consts::{constant, Constant};
 use crate::reexport::*;
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
-use crate::rustc::hir::*;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::ty::layout::LayoutOf;
-use crate::rustc::ty::{self, Ty, TyCtxt, TypeckTables};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::rustc_target::spec::abi::Abi;
-use crate::rustc_typeck::hir_ty_to_ty;
-use crate::syntax::ast::{FloatTy, IntTy, UintTy};
-use crate::syntax::errors::DiagnosticBuilder;
-use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
@@ -33,9 +20,22 @@ use crate::utils::{
     AbsolutePathBuffer,
 };
 use if_chain::if_chain;
+use rustc::hir;
+use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
+use rustc::hir::*;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::ty::layout::LayoutOf;
+use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use rustc_target::spec::abi::Abi;
+use rustc_typeck::hir_ty_to_ty;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use syntax::ast::{FloatTy, IntTy, UintTy};
+use syntax::errors::DiagnosticBuilder;
+use syntax::source_map::Span;
 
 /// Handles all the linting of funky types
 pub struct TypePass;
@@ -646,7 +646,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 }
 
 fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
-    use crate::syntax_pos::hygiene::CompilerDesugaringKind;
+    use syntax_pos::hygiene::CompilerDesugaringKind;
     if let ExprKind::Call(ref callee, _) = expr.node {
         callee.span.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
     } else {
@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
             if let ExprKind::Lit(ref lit) = ex.node {
-                use crate::syntax::ast::{LitIntType, LitKind};
+                use syntax::ast::{LitIntType, LitKind};
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::FloatUnsuffixed(_) => {},
                     _ => {
@@ -1460,7 +1460,7 @@ impl LintPass for CharLitAsU8 {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        use crate::syntax::ast::{LitKind, UintTy};
+        use syntax::ast::{LitKind, UintTy};
 
         if let ExprKind::Cast(ref e, _) = expr.node {
             if let ExprKind::Lit(ref l) = e.node {
@@ -1734,8 +1734,8 @@ impl Ord for FullInt {
 }
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
-    use crate::syntax::ast::{IntTy, UintTy};
     use std::*;
+    use syntax::ast::{IntTy, UintTy};
 
     if let ExprKind::Cast(ref cast_exp, _) = expr.node {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
@@ -1937,7 +1937,7 @@ impl LintPass for ImplicitHasher {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
     #[allow(clippy::cast_possible_truncation)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        use crate::syntax_pos::BytePos;
+        use syntax_pos::BytePos;
 
         fn suggestion<'a, 'tcx>(
             cx: &LateContext<'a, 'tcx>,

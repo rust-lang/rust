@@ -7,18 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::intravisit;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashSet;
-use crate::rustc_target::spec::abi::Abi;
-use crate::syntax::ast;
-use crate::syntax::source_map::Span;
 use crate::utils::{iter_input_pats, span_lint, type_is_unsafe_function};
 use matches::matches;
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::hir::intravisit;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_target::spec::abi::Abi;
+use syntax::ast;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for functions with too many parameters.
 ///

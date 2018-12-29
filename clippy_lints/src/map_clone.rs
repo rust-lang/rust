@@ -7,17 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::Ident;
-use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{
     in_macro, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
 };
 use if_chain::if_chain;
+use rustc::hir;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::Ident;
+use syntax::source_map::Span;
 
 #[derive(Clone)]
 pub struct Pass;

@@ -7,13 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::LitKind;
 use crate::utils::{is_expn_of, match_def_path, opt_def_id, resolve_node, span_lint, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::LitKind;
 
 /// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
 /// replaced with `(e)print!()` / `(e)println!()`

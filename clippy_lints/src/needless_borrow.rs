@@ -11,15 +11,15 @@
 //!
 //! This lint is **warn** by default
 
-use crate::rustc::hir::{BindingAnnotation, Expr, ExprKind, Item, MutImmutable, Pat, PatKind};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::ty::adjustment::{Adjust, Adjustment};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::NodeId;
 use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
+use rustc::hir::{BindingAnnotation, Expr, ExprKind, Item, MutImmutable, Pat, PatKind};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::ty::adjustment::{Adjust, Adjustment};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::NodeId;
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
 /// be dereferenced immediately by the compiler.

@@ -8,14 +8,14 @@
 // except according to those terms.
 
 use crate::consts::constant;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::source_map::Span;
 use crate::utils::{higher, is_copy, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::{self, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
 /// be possible.

@@ -9,19 +9,19 @@
 
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use crate::rustc::hir::QPath;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::NodeId;
-use crate::syntax::source_map::Span;
-use crate::syntax_pos::MultiSpan;
 use crate::utils::ptr::get_spans;
 use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use if_chain::if_chain;
+use rustc::hir::QPath;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::borrow::Cow;
+use syntax::ast::NodeId;
+use syntax::source_map::Span;
+use syntax_pos::MultiSpan;
 
 /// **What it does:** This lint checks for function arguments of type `&String`
 /// or `&Vec` unless the references are mutable. It will also suggest you

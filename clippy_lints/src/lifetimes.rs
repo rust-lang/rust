@@ -8,16 +8,16 @@
 // except according to those terms.
 
 use crate::reexport::*;
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::intravisit::*;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::keywords;
 use crate::utils::{last_path_segment, span_lint};
 use matches::matches;
+use rustc::hir::def::Def;
+use rustc::hir::intravisit::*;
+use rustc::hir::*;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use syntax::source_map::Span;
+use syntax::symbol::keywords;
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
 /// relying on lifetime elision.

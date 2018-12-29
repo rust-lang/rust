@@ -9,13 +9,13 @@
 
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, Lint, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::*;
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{camel_case, in_macro};
 use crate::utils::{span_help_and_lint, span_lint};
+use rustc::lint::{EarlyContext, EarlyLintPass, Lint, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast::*;
+use syntax::source_map::Span;
+use syntax::symbol::LocalInternedString;
 
 /// **What it does:** Detects enumeration variants that are prefixed or suffixed
 /// by the same characters.

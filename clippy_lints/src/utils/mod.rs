@@ -8,35 +8,35 @@
 // except according to those terms.
 
 use crate::reexport::*;
-use crate::rustc::hir;
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use crate::rustc::hir::Node;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, Level, Lint, LintContext};
-use crate::rustc::session::Session;
-use crate::rustc::traits;
-use crate::rustc::ty::{
+use if_chain::if_chain;
+use matches::matches;
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::Node;
+use rustc::hir::*;
+use rustc::lint::{LateContext, Level, Lint, LintContext};
+use rustc::session::Session;
+use rustc::traits;
+use rustc::ty::{
     self,
     layout::{self, IntegerExt},
     subst::Kind,
     Binder, Ty, TyCtxt,
 };
-use crate::rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
-use crate::syntax::ast::{self, LitKind};
-use crate::syntax::attr;
-use crate::syntax::errors::DiagnosticBuilder;
-use crate::syntax::source_map::{Span, DUMMY_SP};
-use crate::syntax::symbol;
-use crate::syntax::symbol::{keywords, Symbol};
-use if_chain::if_chain;
-use matches::matches;
+use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
 use std::borrow::Cow;
 use std::env;
 use std::mem;
 use std::rc::Rc;
 use std::str::FromStr;
+use syntax::ast::{self, LitKind};
+use syntax::attr;
+use syntax::errors::DiagnosticBuilder;
+use syntax::source_map::{Span, DUMMY_SP};
+use syntax::symbol;
+use syntax::symbol::{keywords, Symbol};
 
 pub mod camel_case;
 

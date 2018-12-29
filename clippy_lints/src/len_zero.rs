@@ -7,16 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::def_id::DefId;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashSet;
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::{Lit, LitKind, Name};
-use crate::syntax::source_map::{Span, Spanned};
 use crate::utils::{get_item_name, in_macro, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use rustc::hir::def_id::DefId;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
+use syntax::ast::{Lit, LitKind, Name};
+use syntax::source_map::{Span, Spanned};
 
 /// **What it does:** Checks for getting the length of something via `.len()`
 /// just to compare to zero, and suggests using `.is_empty()` where applicable.
@@ -148,7 +148,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut FxHashSet<DefId>, cx: &LateContext<'_, '_>) {
         if set.insert(traitt) {
-            for supertrait in crate::rustc::traits::supertrait_def_ids(cx.tcx, traitt) {
+            for supertrait in rustc::traits::supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }

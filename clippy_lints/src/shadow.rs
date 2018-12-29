@@ -8,13 +8,13 @@
 // except according to those terms.
 
 use crate::reexport::*;
-use crate::rustc::hir::intravisit::FnKind;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::source_map::Span;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::*;
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
 /// scope, while just changing reference level or mutability.

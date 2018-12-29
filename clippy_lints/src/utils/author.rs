@@ -10,14 +10,14 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use crate::rustc::hir::{BindingAnnotation, DeclKind, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::FxHashMap;
-use crate::syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 use crate::utils::get_attr;
+use rustc::hir;
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc::hir::{BindingAnnotation, DeclKind, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::FxHashMap;
+use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 
 /// **What it does:** Generates clippy code that detects the offending pattern
 ///

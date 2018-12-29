@@ -11,14 +11,14 @@
 //!
 //! This lint is **warn** by default
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::LitKind;
-use crate::syntax::source_map::Spanned;
 use crate::utils::sugg::Sugg;
 use crate::utils::{in_macro, span_lint, span_lint_and_sugg};
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
+use syntax::ast::LitKind;
+use syntax::source_map::Spanned;
 
 /// **What it does:** Checks for expressions of the form `if c { true } else {
 /// false }`

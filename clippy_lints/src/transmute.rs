@@ -7,16 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast;
 use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
 use crate::utils::{opt_def_id, sugg};
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::{self, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use std::borrow::Cow;
+use syntax::ast;
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
 /// architecture.

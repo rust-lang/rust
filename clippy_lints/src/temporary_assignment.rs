@@ -7,11 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::{Expr, ExprKind};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::is_adjusted;
 use crate::utils::span_lint;
+use rustc::hir::{Expr, ExprKind};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_tool_lint, lint_array};
 
 /// **What it does:** Checks for construction of a structure or tuple just to
 /// assign a value in it.

@@ -7,20 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::intravisit::FnKind;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::middle::expr_use_visitor as euv;
-use crate::rustc::middle::mem_categorization as mc;
-use crate::rustc::traits;
-use crate::rustc::ty::{self, RegionKind, TypeFoldable};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::rustc_errors::Applicability;
-use crate::rustc_target::spec::abi::Abi;
-use crate::syntax::ast::NodeId;
-use crate::syntax::errors::DiagnosticBuilder;
-use crate::syntax_pos::Span;
 use crate::utils::ptr::get_spans;
 use crate::utils::{
     get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths, snippet,
@@ -28,7 +14,21 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
+use rustc::hir::intravisit::FnKind;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::mem_categorization as mc;
+use rustc::traits;
+use rustc::ty::{self, RegionKind, TypeFoldable};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
+use rustc_target::spec::abi::Abi;
 use std::borrow::Cow;
+use syntax::ast::NodeId;
+use syntax::errors::DiagnosticBuilder;
+use syntax_pos::Span;
 
 /// **What it does:** Checks for functions taking arguments by value, but not
 /// consuming them in its

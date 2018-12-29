@@ -7,14 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::{self, Ty};
+use rustc::{declare_tool_lint, lint_array};
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly or vice versa.

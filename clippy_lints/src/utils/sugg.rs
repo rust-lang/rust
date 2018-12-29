@@ -10,22 +10,22 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::rustc::hir;
-use crate::rustc::lint::{EarlyContext, LateContext, LintContext};
-use crate::rustc_errors;
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast;
-use crate::syntax::parse::token;
-use crate::syntax::print::pprust::token_to_string;
-use crate::syntax::source_map::{CharPos, Span};
-use crate::syntax::util::parser::AssocOp;
-use crate::syntax_pos::{BytePos, Pos};
 use crate::utils::{higher, in_macro, snippet, snippet_opt};
 use matches::matches;
+use rustc::hir;
+use rustc::lint::{EarlyContext, LateContext, LintContext};
+use rustc_errors;
+use rustc_errors::Applicability;
 use std;
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
+use syntax::ast;
+use syntax::parse::token;
+use syntax::print::pprust::token_to_string;
+use syntax::source_map::{CharPos, Span};
+use syntax::util::parser::AssocOp;
+use syntax_pos::{BytePos, Pos};
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -122,7 +122,7 @@ impl<'a> Sugg<'a> {
 
     /// Prepare a suggestion from an expression.
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
-        use crate::syntax::ast::RangeLimits;
+        use syntax::ast::RangeLimits;
 
         let snippet = snippet(cx, expr.span, default);
 
@@ -407,7 +407,7 @@ enum Associativity {
 /// they are considered
 /// associative.
 fn associativity(op: &AssocOp) -> Associativity {
-    use crate::syntax::util::parser::AssocOp::*;
+    use syntax::util::parser::AssocOp::*;
 
     match *op {
         ObsoleteInPlace | Assign | AssignOp(_) => Associativity::Right,
@@ -420,7 +420,7 @@ fn associativity(op: &AssocOp) -> Associativity {
 
 /// Convert a `hir::BinOp` to the corresponding assigning binary operator.
 fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
-    use crate::syntax::parse::token::BinOpToken::*;
+    use syntax::parse::token::BinOpToken::*;
 
     AssocOp::AssignOp(match op.node {
         hir::BinOpKind::Add => Plus,
@@ -447,8 +447,8 @@ fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
 
 /// Convert an `ast::BinOp` to the corresponding assigning binary operator.
 fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
-    use crate::syntax::ast::BinOpKind::*;
-    use crate::syntax::parse::token::BinOpToken;
+    use syntax::ast::BinOpKind::*;
+    use syntax::parse::token::BinOpToken;
 
     AssocOp::AssignOp(match op.node {
         Add => BinOpToken::Plus,

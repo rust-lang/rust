@@ -10,21 +10,21 @@
 //! checks for attributes
 
 use crate::reexport::*;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{
-    CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
-};
-use crate::rustc::ty::{self, TyCtxt};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use crate::syntax::source_map::Span;
 use crate::utils::{
     in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{
+    CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
+};
+use rustc::ty::{self, TyCtxt};
+use rustc::{declare_tool_lint, lint_array};
+use rustc_errors::Applicability;
 use semver::Version;
+use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use syntax::source_map::Span;
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.

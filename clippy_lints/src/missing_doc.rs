@@ -27,14 +27,14 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.rs#L246
 //
 
-use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use crate::rustc::ty;
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast;
-use crate::syntax::attr;
-use crate::syntax::source_map::Span;
 use crate::utils::{in_macro, span_lint};
+use rustc::hir;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use rustc::ty;
+use rustc::{declare_tool_lint, lint_array};
+use syntax::ast;
+use syntax::attr;
+use syntax::source_map::Span;
 
 /// **What it does:** Warns if there is missing doc for any documentable item
 /// (public or private).

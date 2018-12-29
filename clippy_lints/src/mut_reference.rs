@@ -7,12 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::ty::subst::Subst;
-use crate::rustc::ty::{self, Ty};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::span_lint;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::subst::Subst;
+use rustc::ty::{self, Ty};
+use rustc::{declare_tool_lint, lint_array};
 
 /// **What it does:** Detects giving a mutable reference to a function that only
 /// requires an immutable reference.

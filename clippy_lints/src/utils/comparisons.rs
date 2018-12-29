@@ -11,7 +11,7 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::rustc::hir::{BinOpKind, Expr};
+use rustc::hir::{BinOpKind, Expr};
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 /// Represent a normalized comparison operator.

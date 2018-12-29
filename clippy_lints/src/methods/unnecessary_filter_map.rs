@@ -7,14 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir;
-use crate::rustc::hir::def::Def;
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::lint::LateContext;
-use crate::syntax::ast;
 use crate::utils::paths;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{match_qpath, match_trait_method, span_lint};
+use rustc::hir;
+use rustc::hir::def::Def;
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc::lint::LateContext;
+use syntax::ast;
 
 use if_chain::if_chain;
 
