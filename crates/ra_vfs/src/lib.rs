@@ -59,12 +59,8 @@ impl RootFilter {
         if !(self.file_filter)(path) {
             return None;
         }
-        if !(path.starts_with(&self.root)) {
-            return None;
-        }
-        let path = path.strip_prefix(&self.root).unwrap();
-        let path = RelativePathBuf::from_path(path).unwrap();
-        Some(path)
+        let path = path.strip_prefix(&self.root).ok()?;
+        RelativePathBuf::from_path(path).ok()
     }
 }
 
