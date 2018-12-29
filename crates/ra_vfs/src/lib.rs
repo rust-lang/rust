@@ -2,8 +2,8 @@
 //!
 //! When doing analysis, we don't want to do any IO, we want to keep all source
 //! code in memory. However, the actual source code is stored on disk, so you
-//! component which does this.
 //! need to get it into the memory in the first place somehow. VFS is the
+//! component which does this.
 //!
 //! It also is responsible for watching the disk for changes, and for merging
 //! editor state (modified, unsaved files) with disk state.
