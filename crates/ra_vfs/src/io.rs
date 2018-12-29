@@ -8,7 +8,7 @@ use walkdir::{DirEntry, WalkDir};
 use thread_worker::{WorkerHandle};
 use relative_path::RelativePathBuf;
 
-use crate::VfsRoot;
+use crate::{VfsRoot, has_rs_extension};
 
 pub(crate) struct Task {
     pub(crate) root: VfsRoot,
@@ -59,7 +59,7 @@ fn load_root(root: &Path, filter: &dyn Fn(&DirEntry) -> bool) -> Vec<(RelativePa
             continue;
         }
         let path = entry.path();
-        if path.extension().and_then(|os| os.to_str()) != Some("rs") {
+        if !has_rs_extension(path) {
             continue;
         }
         let text = match fs::read_to_string(path) {
