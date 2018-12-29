@@ -1,0 +1,14 @@
+error[E0592]: duplicate definitions with name `dummy`
+  --> $DIR/coherence-overlap-issue-23516-inherent.rs:13:25
+   |
+LL | impl<T:Sugar> Cake<T> { fn dummy(&self) { } }
+   |                         ^^^^^^^^^^^^^^^^^^^ duplicate definitions for `dummy`
+...
+LL | impl<U:Sugar> Cake<Box<U>> { fn dummy(&self) { } }
+   |                              ------------------- other definition for `dummy`
+   |
+   = note: downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0592`.

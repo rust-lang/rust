@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Sweet` for type `std::boxed::Box<_>`:
+  --> $DIR/coherence-overlap-issue-23516.rs:12:1
+   |
+LL | impl<T:Sugar> Sweet for T { }
+   | ------------------------- first implementation here
+LL | impl<U:Sugar> Sweet for Box<U> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::boxed::Box<_>`
+   |
+   = note: downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.
