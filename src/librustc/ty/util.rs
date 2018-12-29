@@ -658,6 +658,19 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx.needs_drop_raw(param_env.and(self))
     }
 
+    pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+        match (&a.sty, &b.sty) {
+            (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
+                if did_a != did_b {
+                    return false;
+                }
+
+                substs_a.types().zip(substs_b.types()).all(|(a, b)| Self::same_type(a, b))
+            }
+            _ => a == b,
+        }
+    }
+
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
     pub fn is_representable(&'tcx self,
@@ -730,19 +743,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
 
-        fn same_type<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-            match (&a.sty, &b.sty) {
-                (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
-                    if did_a != did_b {
-                        return false;
-                    }
-
-                    substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type(a, b))
-                }
-                _ => a == b,
-            }
-        }
-
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
         fn is_type_structurally_recursive<'a, 'tcx>(
@@ -807,7 +807,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         // struct Foo { Option<Option<Foo>> }
 
                         for &seen_type in iter {
-                            if same_type(ty, seen_type) {
+                            if ty::TyS::same_type(ty, seen_type) {
                                 debug!("ContainsRecursive: {:?} contains {:?}",
                                        seen_type,
                                        ty);
