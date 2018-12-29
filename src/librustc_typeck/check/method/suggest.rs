@@ -6,7 +6,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use middle::lang_items::FnOnceTraitLangItem;
 use namespace::Namespace;
 use rustc_data_structures::sync::Lrc;
-use rustc::hir::{self, Node};
+use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::map as hir_map;
@@ -60,13 +60,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_method_error(&self,
-                               span: Span,
-                               rcvr_ty: Ty<'tcx>,
-                               item_name: ast::Ident,
-                               rcvr_expr: Option<&hir::Expr>,
-                               error: MethodError<'tcx>,
-                               args: Option<&'gcx [hir::Expr]>) {
+    pub fn report_method_error<'b>(&self,
+                                   span: Span,
+                                   rcvr_ty: Ty<'tcx>,
+                                   item_name: ast::Ident,
+                                   source: SelfSource<'b>,
+                                   error: MethodError<'tcx>,
+                                   args: Option<&'gcx [hir::Expr]>) {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;
@@ -185,7 +185,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     "method"
                 } else if actual.is_enum() {
                     if let Adt(ref adt_def, _) = actual.sty {
-                        let names = adt_def.variants.iter().map(|s| &s.name);
+                        let names = adt_def.variants.iter().map(|s| &s.ident.name);
                         suggestion = find_best_match_for_name(names,
                                                               &item_name.as_str(),
                                                               None);
@@ -212,10 +212,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .filter_map(|info|
                             self.associated_item(info.def_id, item_name, Namespace::Value)
                         );
-                    if let (true, false, Some(expr), Some(_)) = (actual.is_numeric(),
-                                                                 actual.has_concrete_skeleton(),
-                                                                 rcvr_expr,
-                                                                 candidates.next()) {
+                    if let (true, false, SelfSource::MethodCall(expr), Some(_)) =
+                           (actual.is_numeric(),
+                            actual.has_concrete_skeleton(),
+                            source,
+                            candidates.next()) {
                         let mut err = struct_span_err!(
                             tcx.sess,
                             span,
@@ -231,7 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "f32"
                         };
                         match expr.node {
-                            hir::ExprKind::Lit(ref lit) => {
+                            ExprKind::Lit(ref lit) => {
                                 // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
                                     .unwrap_or_else(|_| "<numeric literal>".to_owned());
@@ -247,9 +248,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            hir::ExprKind::Path(ref qpath) => {
+                            ExprKind::Path(ref qpath) => {
                                 // local binding
-                                if let &hir::QPath::Resolved(_, ref path) = &qpath {
+                                if let &QPath::Resolved(_, ref path) = &qpath {
                                     if let hir::def::Def::Local(node_id) = path.def {
                                         let span = tcx.hir().span(node_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span)
@@ -294,7 +295,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         let mut err = struct_span_err!(
                             tcx.sess,
-                            span,
+                            item_name.span,
                             E0599,
                             "no {} named `{}` found for type `{}` in the current scope",
                             item_kind,
@@ -302,7 +303,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             ty_str
                         );
                         if let Some(suggestion) = suggestion {
-                            err.note(&format!("did you mean `{}::{}`?", ty_str, suggestion));
+                            // enum variant
+                            err.help(&format!("did you mean `{}`?", suggestion));
                         }
                         err
                     }
@@ -326,7 +328,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // If the method name is the name of a field with a function or closure type,
                 // give a helping note that it has to be called as `(x.f)(...)`.
-                if let Some(expr) = rcvr_expr {
+                if let SelfSource::MethodCall(expr) = source {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
                         if let ty::Adt(def, substs) = ty.sty {
                             if !def.is_enum() {
@@ -377,10 +379,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    if let Some(expr) = rcvr_expr {
+                    if let SelfSource::MethodCall(expr) = source {
                         if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
-                        } else if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) =
+                        } else if let ExprKind::Path(QPath::Resolved(_, ref path)) =
                             expr.node
                         {
                             if let Some(segment) = path.segments.last() {
@@ -396,7 +398,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_label(span, "this is an associated function, not a method");
                 }
                 if static_sources.len() == 1 {
-                    if let Some(expr) = rcvr_expr {
+                    if let SelfSource::MethodCall(expr) = source {
                         err.span_suggestion_with_applicability(expr.span.to(span),
                                             "use associated function syntax instead",
                                             format!("{}::{}",
@@ -433,7 +435,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                   span,
                                                   rcvr_ty,
                                                   item_name,
-                                                  rcvr_expr,
+                                                  source,
                                                   out_of_scope_traits);
                 }
 
@@ -571,18 +573,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn suggest_traits_to_import(&self,
-                                err: &mut DiagnosticBuilder,
-                                span: Span,
-                                rcvr_ty: Ty<'tcx>,
-                                item_name: ast::Ident,
-                                rcvr_expr: Option<&hir::Expr>,
-                                valid_out_of_scope_traits: Vec<DefId>) {
+    fn suggest_traits_to_import<'b>(&self,
+                                    err: &mut DiagnosticBuilder,
+                                    span: Span,
+                                    rcvr_ty: Ty<'tcx>,
+                                    item_name: ast::Ident,
+                                    source: SelfSource<'b>,
+                                    valid_out_of_scope_traits: Vec<DefId>) {
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
         }
 
-        let type_is_local = self.type_derefs_to_local(span, rcvr_ty, rcvr_expr);
+        let type_is_local = self.type_derefs_to_local(span, rcvr_ty, source);
 
         // There are no traits implemented, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
@@ -643,7 +645,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_derefs_to_local(&self,
                             span: Span,
                             rcvr_ty: Ty<'tcx>,
-                            rcvr_expr: Option<&hir::Expr>) -> bool {
+                            source: SelfSource) -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
                 ty::Adt(def, _) => def.did.is_local(),
@@ -663,12 +665,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // This occurs for UFCS desugaring of `T::method`, where there is no
         // receiver expression for the method call, and thus no autoderef.
-        if rcvr_expr.is_none() {
+        if let SelfSource::QPath(_) = source {
             return is_local(self.resolve_type_vars_with_obligations(rcvr_ty));
         }
 
         self.autoderef(span, rcvr_ty).any(|(ty, _)| is_local(ty))
     }
+}
+
+#[derive(Copy, Clone)]
+pub enum SelfSource<'a> {
+    QPath(&'a hir::Ty),
+    MethodCall(&'a hir::Expr /* rcvr */),
 }
 
 #[derive(Copy, Clone)]

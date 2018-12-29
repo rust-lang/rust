@@ -111,6 +111,7 @@ use rustc::infer::InferOk;
 use rustc::lint;
 use rustc::middle;
 use rustc::session;
+use rustc::session::config::nightly_options;
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -127,6 +128,22 @@ use std::iter;
 pub struct TypeAndSubsts<'tcx> {
     substs: &'tcx Substs<'tcx>,
     ty: Ty<'tcx>,
+}
+
+fn check_type_alias_enum_variants_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                          span: Span) {
+    if !tcx.features().type_alias_enum_variants {
+        let mut err = tcx.sess.struct_span_err(
+            span,
+            "enum variants on type aliases are experimental"
+        );
+        if nightly_options::is_nightly_build() {
+            help!(&mut err,
+                "add `#![feature(type_alias_enum_variants)]` to the \
+                crate attributes to enable");
+        }
+        err.emit();
+    }
 }
 
 fn require_c_abi_if_variadic(tcx: TyCtxt,

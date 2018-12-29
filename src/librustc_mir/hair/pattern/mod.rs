@@ -280,7 +280,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 let mut start_or_continue = || if first { first = false; "" } else { ", " };
 
                 if let Some(variant) = variant {
-                    write!(f, "{}", variant.name)?;
+                    write!(f, "{}", variant.ident)?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.

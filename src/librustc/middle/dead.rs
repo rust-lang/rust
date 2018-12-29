@@ -557,7 +557,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(
                 item.id,
                 span,
-                item.name,
+                item.ident.name,
                 item.node.descriptive_variant(),
                 participle,
             );
@@ -572,7 +572,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                      g: &'tcx hir::Generics,
                      id: ast::NodeId) {
         if self.should_warn_about_variant(&variant.node) {
-            self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.name,
+            self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.ident.name,
                                 "variant", "constructed");
         } else {
             intravisit::walk_variant(self, variant, g, id);
@@ -581,7 +581,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.id, fi.span, fi.name,
+            self.warn_dead_code(fi.id, fi.span, fi.ident.name,
                                 fi.node.descriptive_variant(), "used");
         }
         intravisit::walk_foreign_item(self, fi);

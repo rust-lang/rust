@@ -4,29 +4,29 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/pointer_family.rs:37:21
    |
 LL |     bar: P::Pointer<String>,
-   |                     ^^^^^^ type parameter not allowed
+   |                     ^^^^^^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/pointer_family.rs:12:42
    |
 LL |     fn new<T>(value: T) -> Self::Pointer<T>;
-   |                                          ^ type parameter not allowed
+   |                                          ^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/pointer_family.rs:20:42
    |
 LL |     fn new<T>(value: T) -> Self::Pointer<T> {
-   |                                          ^ type parameter not allowed
+   |                                          ^ type argument not allowed
 
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/pointer_family.rs:30:42
    |
 LL |     fn new<T>(value: T) -> Self::Pointer<T> {
-   |                                          ^ type parameter not allowed
+   |                                          ^ type argument not allowed
 
 error: aborting due to 4 previous errors
 

@@ -1,8 +1,8 @@
-error[E0109]: type parameters are not allowed on this type
+error[E0109]: type arguments are not allowed on this entity
   --> $DIR/issue-22706.rs:1:29
    |
 LL | fn is_copy<T: ::std::marker<i32>::Copy>() {}
-   |                             ^^^ type parameter not allowed
+   |                             ^^^ type argument not allowed
 
 error: aborting due to previous error
 

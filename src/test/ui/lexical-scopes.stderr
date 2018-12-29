@@ -9,10 +9,12 @@ LL | use T;
    |
 
 error[E0599]: no function or associated item named `f` found for type `Foo` in the current scope
-  --> $DIR/lexical-scopes.rs:10:5
+  --> $DIR/lexical-scopes.rs:10:10
    |
 LL |     Foo::f(); //~ ERROR no function or associated item named `f`
-   |     ^^^^^^ function or associated item not found in `Foo`
+   |     -----^
+   |     |
+   |     function or associated item not found in `Foo`
 
 error: aborting due to 2 previous errors
 

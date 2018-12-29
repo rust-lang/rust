@@ -278,7 +278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if let hir::ItemKind::Mod(_) = it.node {
-            self.check_snake_case(cx, "module", &it.name.as_str(), Some(it.span));
+            self.check_snake_case(cx, "module", &it.ident.as_str(), Some(it.span));
         }
     }
 
@@ -354,10 +354,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
                 if attr::find_by_name(&it.attrs, "no_mangle").is_some() {
                     return;
                 }
-                NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.name, it.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.ident.name,
+                                                      it.span);
             }
             hir::ItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.name, it.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.ident.name,
+                                                      it.span);
             }
             _ => {}
         }

@@ -818,7 +818,7 @@ impl_stable_hash_for!(struct hir::EnumDef {
 });
 
 impl_stable_hash_for!(struct hir::VariantKind {
-    name,
+    ident -> (ident.name),
     attrs,
     data,
     disr_expr
@@ -852,7 +852,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::Item {
-            name,
+            ident,
             ref attrs,
             id: _,
             hir_id: _,
@@ -862,7 +862,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
         } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
-            name.hash_stable(hcx, hasher);
+            ident.name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
@@ -926,7 +926,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::AssociatedItemKind {
 }
 
 impl_stable_hash_for!(struct hir::ForeignItem {
-    name,
+    ident -> (ident.name),
     attrs,
     node,
     id,

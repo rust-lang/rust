@@ -1360,7 +1360,7 @@ impl<'a> LoweringContext<'a> {
             let exist_ty_item = hir::Item {
                 id: exist_ty_id.node_id,
                 hir_id: exist_ty_id.hir_id,
-                name: keywords::Invalid.name(),
+                ident: keywords::Invalid.ident(),
                 attrs: Default::default(),
                 node: exist_ty_item_kind,
                 vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
@@ -1563,7 +1563,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
         Spanned {
             node: hir::VariantKind {
-                name: v.node.ident.name,
+                ident: v.node.ident,
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
                 disr_expr: v.node.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
@@ -2737,7 +2737,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_item_kind(
         &mut self,
         id: NodeId,
-        name: &mut Name,
+        ident: &mut Ident,
         attrs: &hir::HirVec<Attribute>,
         vis: &mut hir::Visibility,
         i: &ItemKind,
@@ -2751,7 +2751,7 @@ impl<'a> LoweringContext<'a> {
                     span: use_tree.span,
                 };
 
-                self.lower_use_tree(use_tree, &prefix, id, vis, name, attrs)
+                self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
             ItemKind::Static(ref t, m, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
@@ -2943,7 +2943,7 @@ impl<'a> LoweringContext<'a> {
         prefix: &Path,
         id: NodeId,
         vis: &mut hir::Visibility,
-        name: &mut Name,
+        ident: &mut Ident,
         attrs: &hir::HirVec<Attribute>,
     ) -> hir::ItemKind {
         debug!("lower_use_tree(tree={:?})", tree);
@@ -2959,28 +2959,28 @@ impl<'a> LoweringContext<'a> {
 
         match tree.kind {
             UseTreeKind::Simple(rename, id1, id2) => {
-                *name = tree.ident().name;
+                *ident = tree.ident();
 
-                // First apply the prefix to the path
+                // First, apply the prefix to the path.
                 let mut path = Path {
                     segments,
                     span: path.span,
                 };
 
-                // Correctly resolve `self` imports
+                // Correctly resolve `self` imports.
                 if path.segments.len() > 1
                     && path.segments.last().unwrap().ident.name == keywords::SelfLower.name()
                 {
                     let _ = path.segments.pop();
                     if rename.is_none() {
-                        *name = path.segments.last().unwrap().ident.name;
+                        *ident = path.segments.last().unwrap().ident;
                     }
                 }
 
                 let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
                 let mut defs = self.expect_full_def_from_use(id);
-                // we want to return *something* from this function, so hang onto the first item
-                // for later
+                // We want to return *something* from this function, so hold onto the first item
+                // for later.
                 let ret_def = defs.next().unwrap_or(Def::Err);
 
                 // Here, we are looping over namespaces, if they exist for the definition
@@ -2990,7 +2990,7 @@ impl<'a> LoweringContext<'a> {
                 // two imports.
                 for (def, &new_node_id) in defs.zip([id1, id2].iter()) {
                     let vis = vis.clone();
-                    let name = name.clone();
+                    let ident = ident.clone();
                     let mut path = path.clone();
                     for seg in &mut path.segments {
                         seg.id = self.sess.next_node_id();
@@ -3031,7 +3031,7 @@ impl<'a> LoweringContext<'a> {
                             hir::Item {
                                 id: new_id.node_id,
                                 hir_id: new_id.hir_id,
-                                name: name,
+                                ident,
                                 attrs: attrs.clone(),
                                 node: item,
                                 vis,
@@ -3057,8 +3057,8 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
-                // Nested imports are desugared into simple
-                // imports. So if we start with
+                // Nested imports are desugared into simple imports.
+                // So, if we start with
                 //
                 // ```
                 // pub(x) use foo::{a, b};
@@ -3079,14 +3079,14 @@ impl<'a> LoweringContext<'a> {
                 // `self.items`. However, the structure of this
                 // function also requires us to return one item, and
                 // for that we return the `{}` import (called the
-                // "`ListStem`").
+                // `ListStem`).
 
                 let prefix = Path {
                     segments,
                     span: prefix.span.to(path.span),
                 };
 
-                // Add all the nested PathListItems to the HIR.
+                // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
                     self.allocate_hir_id_counter(id, &use_tree);
 
@@ -3096,10 +3096,10 @@ impl<'a> LoweringContext<'a> {
                     } = self.lower_node_id(id);
 
                     let mut vis = vis.clone();
-                    let mut name = name.clone();
+                    let mut ident = ident.clone();
                     let mut prefix = prefix.clone();
 
-                    // Give the segments new ids since they are being cloned.
+                    // Give the segments new node-ids since they are being cloned.
                     for seg in &mut prefix.segments {
                         seg.id = self.sess.next_node_id();
                     }
@@ -3114,7 +3114,7 @@ impl<'a> LoweringContext<'a> {
                                                        &prefix,
                                                        new_id,
                                                        &mut vis,
-                                                       &mut name,
+                                                       &mut ident,
                                                        attrs);
 
                         let vis_kind = match vis.node {
@@ -3138,7 +3138,7 @@ impl<'a> LoweringContext<'a> {
                             hir::Item {
                                 id: new_id,
                                 hir_id: new_hir_id,
-                                name,
+                                ident,
                                 attrs: attrs.clone(),
                                 node: item,
                                 vis,
@@ -3165,7 +3165,7 @@ impl<'a> LoweringContext<'a> {
                         *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
                     }
                     hir::VisibilityKind::Restricted { .. } => {
-                        // do nothing here, as described in the comment on the match
+                        // Do nothing here, as described in the comment on the match.
                     }
                 }
 
@@ -3413,7 +3413,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
-        let mut name = i.ident.name;
+        let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
@@ -3421,7 +3421,7 @@ impl<'a> LoweringContext<'a> {
                               attr::contains_name(&i.attrs, "rustc_doc_only_macro") {
                 let body = self.lower_token_stream(def.stream());
                 self.exported_macros.push(hir::MacroDef {
-                    name,
+                    name: ident.name,
                     vis,
                     attrs,
                     id: i.id,
@@ -3433,14 +3433,14 @@ impl<'a> LoweringContext<'a> {
             return None;
         }
 
-        let node = self.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node);
+        let node = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.node);
 
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
 
         Some(hir::Item {
             id: node_id,
             hir_id,
-            name,
+            ident,
             attrs,
             node,
             vis,
@@ -3453,7 +3453,7 @@ impl<'a> LoweringContext<'a> {
         let def_id = self.resolver.definitions().local_def_id(node_id);
         hir::ForeignItem {
             id: node_id,
-            name: i.ident.name,
+            ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             node: match i.node {
                 ForeignItemKind::Fn(ref fdec, ref generics) => {

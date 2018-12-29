@@ -1,4 +1,4 @@
-//! Method lookup: the secret sauce of Rust. See the [rustc guide] chapter.
+//! Method lookup: the secret sauce of Rust. See the [rustc guide] for more information.
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
 
@@ -8,7 +8,7 @@ mod suggest;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
-pub use self::suggest::TraitInfo;
+pub use self::suggest::{SelfSource, TraitInfo};
 
 use check::FnCtxt;
 use namespace::Namespace;
@@ -25,6 +25,7 @@ use rustc::infer::{self, InferOk};
 use syntax::ast;
 use syntax_pos::Span;
 
+use crate::{check_type_alias_enum_variants_enabled};
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers) {
@@ -362,21 +363,51 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self_ty: Ty<'tcx>,
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
+        debug!("resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",
+            method_name,
+            self_ty,
+            expr_id
+        );
+
+        let tcx = self.tcx;
+
         let mode = probe::Mode::Path;
-        let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
-                                       self_ty, expr_id, ProbeScope::TraitsInScope)?;
+        match self.probe_for_name(span, mode, method_name, IsSuggestion(false),
+                                  self_ty, expr_id, ProbeScope::TraitsInScope) {
+            Ok(pick) => {
+                if let Some(import_id) = pick.import_id {
+                    let import_def_id = tcx.hir().local_def_id(import_id);
+                    debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
+                    Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
+                                                .unwrap().insert(import_def_id);
+                }
 
-        if let Some(import_id) = pick.import_id {
-            let import_def_id = self.tcx.hir().local_def_id(import_id);
-            debug!("used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
-                                        .unwrap().insert(import_def_id);
+                let def = pick.item.def();
+                tcx.check_stability(def.def_id(), Some(expr_id), span);
+
+                Ok(def)
+            }
+            Err(err) => {
+                // Check if we have an enum variant.
+                match self_ty.sty {
+                    ty::Adt(adt_def, _) if adt_def.is_enum() => {
+                        let variant_def = adt_def.variants.iter().find(|vd| {
+                            tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
+                        });
+                        if let Some(variant_def) = variant_def {
+                            check_type_alias_enum_variants_enabled(tcx, span);
+
+                            let def = Def::VariantCtor(variant_def.did, variant_def.ctor_kind);
+                            tcx.check_stability(def.def_id(), Some(expr_id), span);
+                            return Ok(def);
+                        }
+                    },
+                    _ => (),
+                }
+
+                Err(err)
+            }
         }
-
-        let def = pick.item.def();
-        self.tcx.check_stability(def.def_id(), Some(expr_id), span);
-
-        Ok(def)
     }
 
     /// Find item with name `item_name` defined in impl/trait `def_id`

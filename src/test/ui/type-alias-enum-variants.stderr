@@ -1,0 +1,9 @@
+error[E0109]: type arguments are not allowed on this entity
+  --> $DIR/type-alias-enum-variants.rs:9:27
+   |
+LL |     let _ = Alias::None::<u8>; // Error
+   |                           ^^ type argument not allowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0109`.

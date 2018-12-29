@@ -246,7 +246,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx> {
-        let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].name;
+        let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].ident.name;
         self.visit_elem(new_op, PathElem::Variant(name))
     }
 

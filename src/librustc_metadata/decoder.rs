@@ -553,7 +553,7 @@ impl<'a, 'tcx> CrateMetadata {
         ty::VariantDef::new(
             tcx,
             def_id,
-            self.item_name(index).as_symbol(),
+            Ident::from_interned_str(self.item_name(index)),
             data.discr,
             item.children.decode(self).map(|index| {
                 let f = self.entry(index);
