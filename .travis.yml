@@ -37,7 +37,7 @@ matrix:
   allow_failures:
     # Because Travis-Windows-Rust can be flaky
     # We still support Windows and want the tests to be succeeding,
-    # but there are too few spurious failures
+    # but there are too many spurious failures
     - os: windows
 
 branches:
