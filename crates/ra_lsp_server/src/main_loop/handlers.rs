@@ -625,10 +625,11 @@ pub fn handle_formatting(
     let output = rustfmt.wait_with_output()?;
     let captured_stdout = String::from_utf8(output.stdout)?;
     if !output.status.success() {
-        return Err(failure::err_msg(format!(
+        failure::bail!(
             "rustfmt exited with error code {}: {}.",
-            output.status, captured_stdout
-        )));
+            output.status,
+            captured_stdout,
+        );
     }
 
     Ok(Some(vec![TextEdit {
