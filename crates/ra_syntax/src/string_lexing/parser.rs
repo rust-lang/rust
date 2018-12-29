@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
 
     fn parse_escape(&mut self, start: TextUnit) -> StringComponent {
         if self.peek().is_none() {
-            return StringComponent::new(TextRange::from_to(start, start), AsciiEscape);
+            return StringComponent::new(TextRange::from_to(start, self.get_pos()), AsciiEscape);
         }
 
         let next = self.advance();
