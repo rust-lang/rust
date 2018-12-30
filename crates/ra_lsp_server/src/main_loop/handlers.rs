@@ -557,24 +557,19 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
         .into());
     }
 
-    let refs = world
+    let renames = world
         .analysis()
-        .find_all_refs(FilePosition { file_id, offset })?;
-    if refs.is_empty() {
+        .rename(FilePosition { file_id, offset }, &*params.new_name)?;
+    if renames.is_empty() {
         return Ok(None);
     }
 
     let mut changes = HashMap::new();
-    for r in refs {
-        if let Ok(loc) = to_location(r.0, r.1, &world, &line_index) {
-            changes
-                .entry(loc.uri)
-                .or_insert_with(Vec::new)
-                .push(TextEdit {
-                    range: loc.range,
-                    new_text: params.new_name.clone(),
-                });
-        }
+    for edit in renames {
+        changes
+            .entry(file_id.try_conv_with(&world)?)
+            .or_insert_with(Vec::new)
+            .extend(edit.edit.conv_with(&line_index));
     }
 
     Ok(Some(WorkspaceEdit {

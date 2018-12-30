@@ -367,6 +367,13 @@ impl Analysis {
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
         self.imp.type_of(frange)
     }
+    pub fn rename(
+        &self,
+        position: FilePosition,
+        new_name: &str,
+    ) -> Cancelable<Vec<SourceFileEdit>> {
+        self.imp.rename(position, new_name)
+    }
 }
 
 pub struct LibraryData {

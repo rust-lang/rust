@@ -288,7 +288,11 @@ impl AnalysisImpl {
             Some(it) => it,
         };
 
-        let mut ret = vec![(position.file_id, binding.syntax().range())];
+        let mut ret = binding
+            .name()
+            .into_iter()
+            .map(|name| (position.file_id, name.syntax().range()))
+            .collect::<Vec<_>>();
         ret.extend(
             descr
                 .scopes(&*self.db)
@@ -505,7 +509,25 @@ impl AnalysisImpl {
         let infer = function.infer(&*self.db)?;
         Ok(infer.type_of_node(node).map(|t| t.to_string()))
     }
-
+    pub fn rename(
+        &self,
+        position: FilePosition,
+        new_name: &str,
+    ) -> Cancelable<Vec<SourceFileEdit>> {
+        let res = self
+            .find_all_refs(position)?
+            .iter()
+            .map(|(file_id, text_range)| SourceFileEdit {
+                file_id: *file_id,
+                edit: {
+                    let mut builder = ra_text_edit::TextEditBuilder::new();
+                    builder.replace(*text_range, new_name.into());
+                    builder.finish()
+                },
+            })
+            .collect::<Vec<_>>();
+        Ok(res)
+    }
     fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
