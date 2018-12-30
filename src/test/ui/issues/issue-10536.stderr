@@ -17,10 +17,10 @@ LL |     assert!({one! two()});
    |              ^^^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-10536.rs:14:13
+  --> $DIR/issue-10536.rs:11:15
    |
-LL |     assert!({one! two()});
-   |             ^^^^^^^^^^^^ expected bool, found ()
+LL | pub fn main() {
+   |               ^ expected bool, found ()
    |
    = note: expected type `bool`
               found type `()`

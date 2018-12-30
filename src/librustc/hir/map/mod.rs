@@ -667,6 +667,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(_) |
                 Node::ForeignItem(_) |
                 Node::TraitItem(_) |
+                Node::Expr(Expr { node: ExprKind::Closure(..), ..}) |
                 Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -675,7 +676,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 Node::Expr(ref expr) => {
                     match expr.node {
-                        ExprKind::While(..) | ExprKind::Loop(..) => true,
+                        ExprKind::While(..) | ExprKind::Loop(..) | ExprKind::Ret(..) => true,
                         _ => false,
                     }
                 }

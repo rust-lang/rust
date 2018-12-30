@@ -4791,7 +4791,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // #41425 -- label the implicit `()` as being the
                 // "found type" here, rather than the "expected type".
                 if !self.diverges.get().always() {
-                    coerce.coerce_forced_unit(self, &self.misc(blk.span), &mut |err| {
+                    // #50009 -- Do not point at the entire fn block span, point at the return type
+                    // span, as it is the cause of the requirement, and
+                    // `consider_hint_about_removing_semicolon` will point at the last expression
+                    // if it were a relevant part of the error. This improves usability in editors
+                    // that highlight errors inline.
+                    let sp = if let Some((decl, _)) = self.get_fn_decl(blk.id) {
+                        decl.output.span()
+                    } else {
+                        blk.span
+                    };
+                    coerce.coerce_forced_unit(self, &self.misc(sp), &mut |err| {
                         if let Some(expected_ty) = expected.only_has_type(self) {
                             self.consider_hint_about_removing_semicolon(blk,
                                                                         expected_ty,
