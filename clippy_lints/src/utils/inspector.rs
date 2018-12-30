@@ -355,7 +355,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
 
 fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
     let did = cx.tcx.hir().local_def_id(item.id);
-    println!("item `{}`", item.name);
+    println!("item `{}`", item.ident.name);
     match item.vis.node {
         hir::VisibilityKind::Public => println!("public"),
         hir::VisibilityKind::Crate(_) => println!("visible crate wide"),

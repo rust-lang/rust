@@ -176,7 +176,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
                 visited_trait.span,
                 &format!(
                     "trait `{}` has a `len` method but no (possibly inherited) `is_empty` method",
-                    visited_trait.name
+                    visited_trait.ident.name
                 ),
             );
         }
