@@ -11,16 +11,16 @@ LL |     s.foo(3); //~ ERROR references in constants may only refer to immutable
    |     ^ constants require immutable values
 
 error[E0017]: references in constants may only refer to immutable values
-  --> $DIR/const_let_assign3.rs:20:45
+  --> $DIR/const_let_assign3.rs:22:13
    |
-LL | type Array = [u32; { let mut x = 2; let y = &mut x; *y = 42; *y}];
-   |                                             ^^^^^^ constants require immutable values
+LL |     let y = &mut x;
+   |             ^^^^^^ constants require immutable values
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const_let_assign3.rs:20:53
+  --> $DIR/const_let_assign3.rs:24:5
    |
-LL | type Array = [u32; { let mut x = 2; let y = &mut x; *y = 42; *y}];
-   |                                                     ^^^^^^^
+LL |     *y = 42;
+   |     ^^^^^^^
 
 error: aborting due to 4 previous errors
 

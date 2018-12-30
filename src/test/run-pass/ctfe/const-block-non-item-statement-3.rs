@@ -3,4 +3,6 @@
 
 type Array = [u32; {  let x = 2; 5 }];
 
-pub fn main() {}
+pub fn main() {
+    let _: Array = [0; 5];
+}

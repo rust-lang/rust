@@ -1,7 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(const_fn)]
-
 const bad : u32 = {
     {
         5;

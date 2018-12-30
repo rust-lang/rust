@@ -17,9 +17,14 @@ const FOO: S = {
     s
 };
 
-type Array = [u32; { let mut x = 2; let y = &mut x; *y = 42; *y}];
+type Array = [u32; {
+    let mut x = 2;
+    let y = &mut x;
 //~^ ERROR references in constants may only refer to immutable values
-//~| ERROR constant contains unimplemented expression type
+    *y = 42;
+//~^ ERROR constant contains unimplemented expression type
+    *y
+}];
 
 fn main() {
     assert_eq!(FOO.state, 3);

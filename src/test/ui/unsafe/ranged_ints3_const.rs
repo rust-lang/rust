@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, const_fn)]
+#![feature(rustc_attrs)]
 
 use std::cell::Cell;
 
