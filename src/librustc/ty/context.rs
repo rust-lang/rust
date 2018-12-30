@@ -82,6 +82,7 @@ use crate::hir;
 pub struct AllArenas<'tcx> {
     pub global: WorkerLocal<GlobalArenas<'tcx>>,
     pub interner: SyncDroplessArena,
+    pub local_interner: SyncDroplessArena,
 }
 
 impl<'tcx> AllArenas<'tcx> {
@@ -89,6 +90,7 @@ impl<'tcx> AllArenas<'tcx> {
         AllArenas {
             global: WorkerLocal::new(|_| GlobalArenas::default()),
             interner: SyncDroplessArena::default(),
+            local_interner: SyncDroplessArena::default(),
         }
     }
 }
@@ -154,7 +156,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     /// Intern a type
     #[inline(never)]
     fn intern_ty(
-        local: &CtxtInterners<'tcx>,
+        local: &CtxtInterners<'gcx>,
         global: &CtxtInterners<'gcx>,
         st: TyKind<'tcx>
     ) -> Ty<'tcx> {
@@ -178,6 +180,12 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                         inference types/regions in the global type context",
                         &ty_struct);
                 }
+
+                // This is safe because all the types the ty_struct can point to
+                // already is in the local arena or the global arena
+                let ty_struct: TyS<'gcx> = unsafe {
+                    mem::transmute(ty_struct)
+                };
 
                 Interned(local.arena.alloc(ty_struct))
             }).0
@@ -1029,8 +1037,8 @@ pub struct FreeRegionInfo {
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
     gcx: &'gcx GlobalCtxt<'gcx>,
-    interners: &'tcx CtxtInterners<'tcx>,
-    dummy: PhantomData<&'a ()>,
+    interners: &'gcx CtxtInterners<'gcx>,
+    dummy: PhantomData<(&'a (), &'tcx ())>,
 }
 
 impl<'gcx> Deref for TyCtxt<'_, 'gcx, '_> {
@@ -1045,6 +1053,7 @@ pub struct GlobalCtxt<'tcx> {
     pub arena: WorkerLocal<Arena<'tcx>>,
     global_arenas: &'tcx WorkerLocal<GlobalArenas<'tcx>>,
     global_interners: CtxtInterners<'tcx>,
+    local_interners: CtxtInterners<'tcx>,
 
     cstore: &'tcx CrateStoreDyn,
 
@@ -1262,6 +1271,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(&arenas.interner);
+        let local_interners = CtxtInterners::new(&arenas.local_interner);
         let common = Common {
             empty_predicates: ty::GenericPredicates {
                 parent: None,
@@ -1321,6 +1331,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             arena: WorkerLocal::new(|_| Arena::default()),
             global_arenas: &arenas.global,
             global_interners: interners,
+            local_interners: local_interners,
             dep_graph,
             common,
             types: common_types,
@@ -1716,18 +1727,15 @@ impl<'gcx> GlobalCtxt<'gcx> {
     /// with the same lifetime as `arena`.
     pub fn enter_local<'tcx, F, R>(
         &'gcx self,
-        arena: &'tcx SyncDroplessArena,
-        interners: &'tcx mut Option<CtxtInterners<'tcx>>,
         f: F
     ) -> R
     where
         F: FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R,
         'gcx: 'tcx,
     {
-        *interners = Some(CtxtInterners::new(&arena));
         let tcx = TyCtxt {
             gcx: self,
-            interners: interners.as_ref().unwrap(),
+            interners: &self.local_interners,
             dummy: PhantomData,
         };
         ty::tls::with_related_context(tcx.global_tcx(), |icx| {
@@ -2333,6 +2341,17 @@ macro_rules! intern_method {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
                 let key = ($alloc_to_key)(&v);
 
+                let alloc = |v, interners: &'gcx CtxtInterners<'gcx>| {
+                    // This transmutes $alloc<'tcx> to $alloc<'gcx>
+                    let v = unsafe {
+                        mem::transmute(v)
+                    };
+                    let i: &$lt_tcx $ty = $alloc_method(&interners.arena, v);
+                    // Cast to 'gcx
+                    let i = unsafe { mem::transmute(i) };
+                    Interned(i)
+                };
+
                 // HACK(eddyb) Depend on flags being accurate to
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
@@ -2346,18 +2365,11 @@ macro_rules! intern_method {
                                 v);
                         }
 
-                        Interned($alloc_method(&self.interners.arena, v))
+                        alloc(v, &self.interners)
                     }).0
                 } else {
                     self.global_interners.$name.borrow_mut().intern_ref(key, || {
-                        // This transmutes $alloc<'tcx> to $alloc<'gcx>
-                        let v = unsafe {
-                            mem::transmute(v)
-                        };
-                        let i: &$lt_tcx $ty = $alloc_method(&self.global_interners.arena, v);
-                        // Cast to 'gcx
-                        let i = unsafe { mem::transmute(i) };
-                        Interned(i)
+                        alloc(v, &self.global_interners)
                     }).0
                 }
             }
