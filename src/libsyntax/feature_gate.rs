@@ -685,7 +685,9 @@ declare_features! (
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607), None),
     // `#[cfg_attr(predicate, multiple, attributes, here)]`
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
-    // Allows let bindings and destructuring in `const` functions and constants.
+    // Allows let bindings, assignments and destructuring in `const` functions and constants.
+    // As long as control flow is not implemented in const eval, `&&` and `||` may not be used
+    // at the same time as let bindings.
     (accepted, const_let, "1.33.0", Some(48821), None),
 );
 
