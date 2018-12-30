@@ -35,7 +35,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         acc.add(keyword("continue", "continue"));
         acc.add(keyword("break", "break"));
     }
-    acc.add_all(complete_return(fn_def, ctx.is_stmt));
+    acc.add_all(complete_return(fn_def, ctx.can_be_stmt));
 }
 
 fn is_in_loop_body(leaf: SyntaxNodeRef) -> bool {
@@ -57,8 +57,8 @@ fn is_in_loop_body(leaf: SyntaxNodeRef) -> bool {
     false
 }
 
-fn complete_return(fn_def: ast::FnDef, is_stmt: bool) -> Option<CompletionItem> {
-    let snip = match (is_stmt, fn_def.ret_type().is_some()) {
+fn complete_return(fn_def: ast::FnDef, can_be_stmt: bool) -> Option<CompletionItem> {
+    let snip = match (can_be_stmt, fn_def.ret_type().is_some()) {
         (true, true) => "return $0;",
         (true, false) => "return;",
         (false, true) => "return $0",
@@ -75,7 +75,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_kewords() {
+    fn completes_various_keywords_in_function() {
         check_keyword_completion(
             r"
             fn quux() {
@@ -87,13 +87,13 @@ mod tests {
             match "match $0 {}"
             while "while $0 {}"
             loop "loop {$0}"
-            return "return"
+            return "return;"
             "#,
         );
     }
 
     #[test]
-    fn test_completion_else() {
+    fn completes_else_after_if() {
         check_keyword_completion(
             r"
             fn quux() {
@@ -109,7 +109,7 @@ mod tests {
             loop "loop {$0}"
             else "else {$0}"
             else if "else if $0 {}"
-            return "return"
+            return "return;"
             "#,
         );
     }
@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn test_completion_return_no_stmt() {
+    fn dont_add_semi_after_return_if_not_a_statement() {
         check_keyword_completion(
             r"
             fn quux() -> i32 {
@@ -169,7 +169,27 @@ mod tests {
     }
 
     #[test]
-    fn test_continue_break_completion() {
+    fn last_return_in_block_has_semi() {
+        check_keyword_completion(
+            r"
+            fn quux() -> i32 {
+                if condition {
+                    <|>
+                }
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return $0;"
+            "#,
+        );
+    }
+
+    #[test]
+    fn completes_break_and_continue_in_loops() {
         check_keyword_completion(
             r"
             fn quux() -> i32 {
@@ -183,9 +203,10 @@ mod tests {
             loop "loop {$0}"
             continue "continue"
             break "break"
-            return "return $0"
+            return "return $0;"
             "#,
         );
+        // No completion: lambda isolates control flow
         check_keyword_completion(
             r"
             fn quux() -> i32 {
@@ -197,7 +218,7 @@ mod tests {
             match "match $0 {}"
             while "while $0 {}"
             loop "loop {$0}"
-            return "return $0"
+            return "return $0;"
             "#,
         );
     }

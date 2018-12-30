@@ -31,7 +31,8 @@ pub(super) struct CompletionContext<'a> {
     /// If not a trivial, path, the prefix (qualifier).
     pub(super) path_prefix: Option<hir::Path>,
     pub(super) after_if: bool,
-    pub(super) is_stmt: bool,
+    /// `true` if we are a statement or a last expr in the block.
+    pub(super) can_be_stmt: bool,
     /// Something is typed at the "top" level, in module or impl/trait.
     pub(super) is_new_item: bool,
     /// The receiver if this is a field or method access, i.e. writing something.<|>
@@ -61,7 +62,7 @@ impl<'a> CompletionContext<'a> {
             is_trivial_path: false,
             path_prefix: None,
             after_if: false,
-            is_stmt: false,
+            can_be_stmt: false,
             is_new_item: false,
             dot_receiver: None,
             is_method_call: false,
@@ -147,13 +148,22 @@ impl<'a> CompletionContext<'a> {
             if path.qualifier().is_none() {
                 self.is_trivial_path = true;
 
-                self.is_stmt = match name_ref
+                self.can_be_stmt = match name_ref
                     .syntax()
                     .ancestors()
                     .filter_map(ast::ExprStmt::cast)
                     .next()
                 {
-                    None => false,
+                    None => {
+                        name_ref
+                            .syntax()
+                            .ancestors()
+                            .filter_map(ast::Block::cast)
+                            .next()
+                            .and_then(|block| block.expr())
+                            .map(|e| e.syntax().range())
+                            == Some(name_ref.syntax().range())
+                    }
                     Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range(),
                 };
 
