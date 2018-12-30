@@ -16,7 +16,7 @@ fn type_param<T>() {
 }
 
 fn self_import<T>() {
-    use T; // FIXME Should be an error, but future-proofing fails due to `T` being "self-shadowed"
+    use T; //~ ERROR imports cannot refer to type parameters
 }
 
 fn let_binding() {

@@ -223,6 +223,11 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
+            if let Some(blacklisted_binding) = this.blacklisted_binding {
+                if ptr::eq(binding, blacklisted_binding) {
+                    return Err((Determined, Weak::No));
+                }
+            }
             // `extern crate` are always usable for backwards compatibility, see issue #37020,
             // remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`.
             let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();

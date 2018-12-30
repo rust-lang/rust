@@ -16,6 +16,12 @@ error: imports cannot refer to type parameters
 LL |     use T::*; //~ ERROR imports cannot refer to type parameters
    |         ^
 
+error: imports cannot refer to type parameters
+  --> $DIR/future-proofing-locals.rs:19:9
+   |
+LL |     use T; //~ ERROR imports cannot refer to type parameters
+   |         ^
+
 error: imports cannot refer to local variables
   --> $DIR/future-proofing-locals.rs:25:9
    |
@@ -46,5 +52,5 @@ error: imports cannot refer to local variables
 LL |     use {T as _, x}; //~ ERROR imports cannot refer to type parameters
    |                  ^
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
