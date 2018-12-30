@@ -9,11 +9,13 @@ use failure::bail;
 use crate::{RawMessage, Result};
 
 pub fn stdio_transport() -> (Receiver<RawMessage>, Sender<RawMessage>, Threads) {
-    let (writer_sender, mut writer_receiver) = bounded::<RawMessage>(16);
+    let (writer_sender, writer_receiver) = bounded::<RawMessage>(16);
     let writer = thread::spawn(move || {
         let stdout = stdout();
         let mut stdout = stdout.lock();
-        writer_receiver.try_for_each(|it| it.write(&mut stdout))?;
+        writer_receiver
+            .into_iter()
+            .try_for_each(|it| it.write(&mut stdout))?;
         Ok(())
     });
     let (reader_sender, reader_receiver) = bounded::<RawMessage>(16);
@@ -21,7 +23,9 @@ pub fn stdio_transport() -> (Receiver<RawMessage>, Sender<RawMessage>, Threads) 
         let stdin = stdin();
         let mut stdin = stdin.lock();
         while let Some(msg) = RawMessage::read(&mut stdin)? {
-            reader_sender.send(msg);
+            if let Err(_) = reader_sender.send(msg) {
+                break;
+            }
         }
         Ok(())
     });
