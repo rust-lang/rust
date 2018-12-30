@@ -117,7 +117,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
     Ok(())
 }
 
-fn install_rustfmt() -> Result<()> {
+pub fn install_rustfmt() -> Result<()> {
     run(&format!("rustup install {}", TOOLCHAIN), ".")?;
     run(
         &format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN),

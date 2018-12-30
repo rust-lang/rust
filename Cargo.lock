@@ -790,6 +790,7 @@ dependencies = [
  "text_unit 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "thread_worker 0.1.0",
  "threadpool 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tools 0.1.0",
  "url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

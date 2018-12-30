@@ -295,6 +295,7 @@ fn on_request(
         .on::<req::PrepareRenameRequest>(handlers::handle_prepare_rename)?
         .on::<req::Rename>(handlers::handle_rename)?
         .on::<req::References>(handlers::handle_references)?
+        .on::<req::Formatting>(handlers::handle_formatting)?
         .finish();
     match req {
         Ok(id) => {

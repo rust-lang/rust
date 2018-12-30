@@ -140,6 +140,9 @@ impl fmt::Debug for AnalysisImpl {
 }
 
 impl AnalysisImpl {
+    pub fn file_text(&self, file_id: FileId) -> Arc<String> {
+        self.db.file_text(file_id)
+    }
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
         self.db.source_file(file_id)
     }

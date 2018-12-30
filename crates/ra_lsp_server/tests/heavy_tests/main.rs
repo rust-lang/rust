@@ -1,8 +1,8 @@
 mod support;
 
 use serde_json::json;
-use ra_lsp_server::req::{Runnables, RunnablesParams, CodeActionRequest, CodeActionParams};
-use languageserver_types::{Position, Range, CodeActionContext};
+use ra_lsp_server::req::{Runnables, RunnablesParams, CodeActionRequest, CodeActionParams, Formatting};
+use languageserver_types::{Position, Range, CodeActionContext, DocumentFormattingParams, FormattingOptions};
 
 use crate::support::project;
 
@@ -115,6 +115,60 @@ fn test_eggs() {}
             }
           }
         ])
+    );
+}
+
+use std::collections::HashMap;
+#[test]
+fn test_format_document() {
+    tools::install_rustfmt().unwrap();
+
+    let server = project(
+        r#"
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+mod bar;
+
+fn main() {
+}
+
+pub use std::collections::HashMap;
+"#,
+    );
+    server.wait_for_feedback("workspace loaded");
+
+    server.request::<Formatting>(
+        DocumentFormattingParams {
+            text_document: server.doc_id("src/lib.rs"),
+            options: FormattingOptions {
+                tab_size: 4,
+                insert_spaces: false,
+                properties: HashMap::new(),
+            },
+        },
+        json!([
+            {
+                "newText": r#"mod bar;
+
+fn main() {}
+
+pub use std::collections::HashMap;
+"#,
+                "range": {
+                    "end": {
+                        "character": 0,
+                        "line": 6
+                    },
+                    "start": {
+                        "character": 0,
+                        "line": 0
+                    }
+                }
+            }
+        ]),
     );
 }
 

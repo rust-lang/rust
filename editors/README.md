@@ -45,6 +45,8 @@ It's better to remove existing Rust plugins to avoid interference.
     `#[test]`, this action runs this specific test. If the cursor is
     outside of the test function, this re-runs the last test. Do bind
     this to a shortcut!
+  - **Format document**. Formats the current file with rustfmt.
+    Rustfmt must be installed separately with `rustup component add rustfmt`.
 
 * Typing assists
   - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression.

@@ -4,3 +4,4 @@ crates/*/target
 .idea/*
 .vscode/*
 *.log
+*.iml

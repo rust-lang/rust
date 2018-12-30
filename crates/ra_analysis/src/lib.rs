@@ -274,6 +274,9 @@ pub struct Analysis {
 }
 
 impl Analysis {
+    pub fn file_text(&self, file_id: FileId) -> Arc<String> {
+        self.imp.file_text(file_id)
+    }
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
         self.imp.file_syntax(file_id).clone()
     }
