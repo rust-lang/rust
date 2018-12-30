@@ -86,7 +86,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
                            -> Box<dyn base::MacResult+'cx> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
         Some(f) => f,
-        None => return DummyResult::expr(sp),
+        None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
     let path = res_rel_file(cx, sp, file);
