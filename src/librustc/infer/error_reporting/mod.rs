@@ -956,6 +956,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 diag.span_label(span, message);
                             }
                         }
+                        self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
                     }
 
                     diag.note_expected_found(&"type", expected, found);
@@ -970,6 +971,72 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // It reads better to have the error origin as the final
         // thing.
         self.note_error_origin(diag, &cause);
+    }
+
+    /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,
+    /// suggest it.
+    fn suggest_as_ref_where_appropriate(
+        &self,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut DiagnosticBuilder<'tcx>,
+    ) {
+        match (&exp_found.expected.sty, &exp_found.found.sty) {
+            (TyKind::Adt(exp_def, exp_substs), TyKind::Ref(_, found_ty, _)) => {
+                if let TyKind::Adt(found_def, found_substs) = found_ty.sty {
+                    let path_str = format!("{:?}", exp_def);
+                    if exp_def == &found_def {
+                        let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
+                                       `.as_ref()`";
+                        let result_msg = "you can convert from `&Result<T, E>` to \
+                                          `Result<&T, &E>` using `.as_ref()`";
+                        let have_as_ref = &[
+                            ("std::option::Option", opt_msg),
+                            ("core::option::Option", opt_msg),
+                            ("std::result::Result", result_msg),
+                            ("core::result::Result", result_msg),
+                        ];
+                        if let Some(msg) = have_as_ref.iter()
+                            .filter_map(|(path, msg)| if &path_str == path {
+                                Some(msg)
+                            } else {
+                                None
+                            }).next()
+                        {
+                            let mut show_suggestion = true;
+                            for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
+                                match exp_ty.sty {
+                                    TyKind::Ref(_, exp_ty, _) => {
+                                        match (&exp_ty.sty, &found_ty.sty) {
+                                            (_, TyKind::Param(_)) |
+                                            (_, TyKind::Infer(_)) |
+                                            (TyKind::Param(_), _) |
+                                            (TyKind::Infer(_), _) => {}
+                                            _ if ty::TyS::same_type(exp_ty, found_ty) => {}
+                                            _ => show_suggestion = false,
+                                        };
+                                    }
+                                    TyKind::Param(_) | TyKind::Infer(_) => {}
+                                    _ => show_suggestion = false,
+                                }
+                            }
+                            if let (Ok(snippet), true) = (
+                                self.tcx.sess.source_map().span_to_snippet(span),
+                                show_suggestion,
+                            ) {
+                                diag.span_suggestion_with_applicability(
+                                    span,
+                                    msg,
+                                    format!("{}.as_ref()", snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     pub fn report_and_explain_type_error(
