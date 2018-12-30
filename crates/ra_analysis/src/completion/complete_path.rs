@@ -113,4 +113,16 @@ mod tests {
             "Foo;Bar",
         );
     }
+
+    #[test]
+    fn dont_render_function_parens_in_use_item() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            mod m { pub fn foo() {} }
+            use crate::m::f<|>;
+            ",
+            "foo",
+        )
+    }
 }

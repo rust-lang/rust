@@ -24,6 +24,7 @@ pub(super) struct CompletionContext<'a> {
     pub(super) module: Option<hir::Module>,
     pub(super) function: Option<hir::Function>,
     pub(super) function_syntax: Option<ast::FnDef<'a>>,
+    pub(super) use_item_syntax: Option<ast::UseItem<'a>>,
     pub(super) is_param: bool,
     /// A single-indent path, like `foo`.
     pub(super) is_trivial_path: bool,
@@ -55,6 +56,7 @@ impl<'a> CompletionContext<'a> {
             module,
             function: None,
             function_syntax: None,
+            use_item_syntax: None,
             is_param: false,
             is_trivial_path: false,
             path_prefix: None,
@@ -113,6 +115,8 @@ impl<'a> CompletionContext<'a> {
             }
             _ => (),
         }
+
+        self.use_item_syntax = self.leaf.ancestors().find_map(ast::UseItem::cast);
 
         self.function_syntax = self
             .leaf
