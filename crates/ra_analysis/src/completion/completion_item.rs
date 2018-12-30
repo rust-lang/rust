@@ -1,6 +1,6 @@
-use crate::db;
-
 use hir::PerNs;
+
+use crate::completion::CompletionContext;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -118,12 +118,12 @@ impl Builder {
         self.kind = Some(kind);
         self
     }
-    pub(crate) fn from_resolution(
+    pub(super) fn from_resolution(
         mut self,
-        db: &db::RootDatabase,
+        ctx: &CompletionContext,
         resolution: &hir::Resolution,
     ) -> Builder {
-        let resolved = resolution.def_id.and_then(|d| d.resolve(db).ok());
+        let resolved = resolution.def_id.and_then(|d| d.resolve(ctx.db).ok());
         let kind = match resolved {
             PerNs {
                 types: Some(hir::Def::Module(..)),
@@ -141,7 +141,7 @@ impl Builder {
                 values: Some(hir::Def::Function(function)),
                 ..
             } => {
-                if let Some(sig_info) = function.signature_info(db) {
+                if let Some(sig_info) = function.signature_info(ctx.db) {
                     if sig_info.params.is_empty() {
                         self.snippet = Some(format!("{}()$0", self.label));
                     } else {
