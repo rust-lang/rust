@@ -7,6 +7,7 @@ mod symbols;
 #[cfg(test)]
 mod test_utils;
 mod typing;
+mod diagnostics;
 
 pub use self::{
     code_actions::{add_derive, add_impl, flip_comma, introduce_variable, make_pub_crate, LocalEdit},
@@ -16,17 +17,16 @@ pub use self::{
     line_index_utils::translate_offset_with_edit,
     symbols::{file_structure, file_symbols, FileSymbol, StructureNode},
     typing::{join_lines, on_enter, on_eq_typed},
+    diagnostics::diagnostics
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode, NameOwner},
     SourceFileNode,
-    Location,
     SyntaxKind::{self, *},
     SyntaxNodeRef, TextRange, TextUnit, Direction,
 };
-use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 #[derive(Debug)]
@@ -129,87 +129,6 @@ pub fn highlight(file: &SourceFileNode) -> Vec<HighlightedRange> {
     res
 }
 
-pub fn diagnostics(file: &SourceFileNode) -> Vec<Diagnostic> {
-    fn location_to_range(location: Location) -> TextRange {
-        match location {
-            Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
-            Location::Range(range) => range,
-        }
-    }
-
-    let mut errors: Vec<Diagnostic> = file
-        .errors()
-        .into_iter()
-        .map(|err| Diagnostic {
-            range: location_to_range(err.location()),
-            msg: format!("Syntax Error: {}", err),
-            severity: Severity::Error,
-            fix: None,
-        })
-        .collect();
-
-    let warnings = check_unnecessary_braces_in_use_statement(file);
-
-    errors.extend(warnings);
-    errors
-}
-
-fn check_unnecessary_braces_in_use_statement(file: &SourceFileNode) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-    for node in file.syntax().descendants() {
-        if let Some(use_tree_list) = ast::UseTreeList::cast(node) {
-            if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
-                let range = use_tree_list.syntax().range();
-                let edit = text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
-                    single_use_tree,
-                )
-                .unwrap_or_else(|| {
-                    let to_replace = single_use_tree.syntax().text().to_string();
-                    let mut edit_builder = TextEditBuilder::new();
-                    edit_builder.delete(range);
-                    edit_builder.insert(range.start(), to_replace);
-                    edit_builder.finish()
-                });
-
-                diagnostics.push(Diagnostic {
-                    range: range,
-                    msg: format!("Unnecessary braces in use statement"),
-                    severity: Severity::WeakWarning,
-                    fix: Some(LocalEdit {
-                        label: "Remove unnecessary braces".to_string(),
-                        edit: edit,
-                        cursor_position: None,
-                    }),
-                })
-            }
-        }
-    }
-
-    diagnostics
-}
-
-fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
-    single_use_tree: ast::UseTree,
-) -> Option<TextEdit> {
-    let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree
-        .path()?
-        .segment()?
-        .syntax()
-        .first_child()?
-        .kind()
-        == SyntaxKind::SELF_KW
-    {
-        let start = use_tree_list_node.prev_sibling()?.range().start();
-        let end = use_tree_list_node.range().end();
-        let range = TextRange::from_to(start, end);
-        let mut edit_builder = TextEditBuilder::new();
-        edit_builder.delete(range);
-        return Some(edit_builder.finish());
-    }
-    None
-}
-
 pub fn syntax_tree(file: &SourceFileNode) -> String {
     ::ra_syntax::utils::dump_tree(file.syntax())
 }
@@ -310,33 +229,4 @@ fn test_foo() {}
         do_check("struct Foo { a: i32, }<|>", "struct Foo <|>{ a: i32, }");
     }
 
-    #[test]
-    fn test_check_unnecessary_braces_in_use_statement() {
-        fn check_not_applicable(code: &str) {
-            let file = SourceFileNode::parse(code);
-            let diagnostics = check_unnecessary_braces_in_use_statement(&file);
-            assert!(diagnostics.is_empty());
-        }
-
-        fn check_apply(before: &str, after: &str) {
-            let file = SourceFileNode::parse(before);
-            let diagnostic = check_unnecessary_braces_in_use_statement(&file)
-                .pop()
-                .unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));
-            let fix = diagnostic.fix.unwrap();
-            let actual = fix.edit.apply(&before);
-            assert_eq_text!(after, &actual);
-        }
-
-        check_not_applicable(
-            "
-            use a;
-            use a::{c, d::e};
-        ",
-        );
-        check_apply("use {b};", "use b;");
-        check_apply("use a::{c};", "use a::c;");
-        check_apply("use a::{self};", "use a;");
-        check_apply("use a::{c, d::{e}};", "use a::{c, d::e};");
-    }
 }
