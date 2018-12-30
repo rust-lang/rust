@@ -367,39 +367,13 @@ error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both fa
 LL |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/methods.rs:396:13
-   |
-LL |     let _ = some_vec.iter().skip(42).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
-
-error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/methods.rs:397:13
-   |
-LL |     let _ = some_vec.iter().cycle().skip(42).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/methods.rs:398:13
-   |
-LL |     let _ = (1..10).skip(10).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/methods.rs:399:14
-   |
-LL |     let _ = &some_vec[..].iter().skip(3).next();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:408:13
+  --> $DIR/methods.rs:396:13
    |
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
    = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 50 previous errors
+error: aborting due to 46 previous errors
 
