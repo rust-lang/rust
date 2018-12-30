@@ -151,7 +151,7 @@ pub(super) fn maybe_item(p: &mut Parser, flavor: ItemFlavor) -> MaybeItem {
         // test unsafe_default_impl
         // unsafe default impl Foo {}
         IMPL_KW => {
-            traits::impl_item(p);
+            traits::impl_block(p);
             IMPL_BLOCK
         }
         _ => {
