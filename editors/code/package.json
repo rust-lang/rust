@@ -145,6 +145,25 @@
                 }
             }
         },
+        "problemPatterns": [
+            {
+                "name": "rustc",
+                "patterns": [
+                    {
+                        "regexp": "^(warning|warn|error)(?:\\[(.*?)\\])?: (.*)$",
+                        "severity": 1,
+                        "code": 2,
+                        "message": 3
+                    },
+                    {
+                        "regexp": "^[\\s->=]*(.*?):(\\d*):(\\d*)\\s*$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3
+                    }
+                ]
+            }
+        ],
         "problemMatchers": [
             {
                 "name": "rustc",
@@ -152,29 +171,19 @@
                     "relative",
                     "${workspaceRoot}"
                 ],
-                "pattern": [
-                    {
-                        "regexp": "^(warning|warn|error)(\\[(.*)\\])?: (.*)$",
-                        "severity": 1,
-                        "message": 4,
-                        "code": 3
-                    },
-                    {
-                        "regexp": "^([\\s->=]*(.*):(\\d*):(\\d*)|.*)$",
-                        "file": 2,
-                        "line": 3,
-                        "column": 4
-                    },
-                    {
-                        "regexp": "^.*$"
-                    },
-                    {
-                        "regexp": "^([\\s->=]*(.*):(\\d*):(\\d*)|.*)$",
-                        "file": 2,
-                        "line": 3,
-                        "column": 4
-                    }
-                ]
+                "pattern": "$rustc"
+            },
+            {
+                "name": "rustc-watch",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "background": {
+                    "beginsPattern": "^\\[Running ",
+                    "endsPattern": "^(\\[Finished running\\]|To learn more, run the command again with --verbose\\.)$"
+                },
+                "pattern": "$rustc"
             }
         ]
     }
