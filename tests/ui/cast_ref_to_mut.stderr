@@ -5,18 +5,23 @@ LL |         (*(a as *const _ as *mut String)).push_str(" world");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::cast-ref-to-mut` implied by `-D warnings`
+   = note: consider implementing `UnsafeCell` instead
 
 error: casting immutable reference to a mutable reference
   --> $DIR/cast_ref_to_mut.rs:19:9
    |
 LL |         *(a as *const _ as *mut _) = String::from("Replaced");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider implementing `UnsafeCell` instead
 
 error: casting immutable reference to a mutable reference
   --> $DIR/cast_ref_to_mut.rs:20:9
    |
 LL |         *(a as *const _ as *mut String) += " world";
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider implementing `UnsafeCell` instead
 
 error: aborting due to 3 previous errors
 

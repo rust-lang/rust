@@ -16,8 +16,8 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
     match_def_path, match_path, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
-    snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
-    AbsolutePathBuffer,
+    snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then,
+    span_note_and_lint, unsext, AbsolutePathBuffer,
 };
 use if_chain::if_chain;
 use rustc::hir;
@@ -2291,11 +2291,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
             if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.node;
             if let Ref(..) = cx.tables.node_id_to_type(e.hir_id).sty;
             then {
-                span_lint(
+                span_note_and_lint(
                     cx,
                     CAST_REF_TO_MUT,
                     expr.span,
-                    "casting immutable reference to a mutable reference"
+                    "casting immutable reference to a mutable reference",
+                    expr.span,
+                    "consider implementing `UnsafeCell` instead",
                 );
             }
         }
