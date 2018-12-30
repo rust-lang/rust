@@ -48,11 +48,16 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     // test literal_pattern
     // fn main() {
     //     match () {
+    //         -1 => (),
     //         92 => (),
     //         'c' => (),
     //         "hello" => (),
     //     }
     // }
+    if p.at(MINUS) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER) {
+        p.bump();
+    }
+
     if let Some(m) = expressions::literal(p) {
         return Some(m);
     }
