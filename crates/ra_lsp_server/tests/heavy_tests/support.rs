@@ -16,7 +16,7 @@ use languageserver_types::{
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
-use tempdir::TempDir;
+use tempfile::TempDir;
 use thread_worker::{WorkerHandle, Worker};
 use test_utils::{parse_fixture, find_mismatch};
 
@@ -28,7 +28,7 @@ pub fn project(fixture: &str) -> Server {
     static INIT: Once = Once::new();
     INIT.call_once(|| Logger::with_env_or_str(crate::LOG).start().unwrap());
 
-    let tmp_dir = TempDir::new("test-project").unwrap();
+    let tmp_dir = TempDir::new().unwrap();
     let mut paths = vec![];
 
     for entry in parse_fixture(fixture) {
