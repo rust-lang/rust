@@ -32,8 +32,13 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         acc.add(keyword("else if", "else if $0 {}"));
     }
     if is_in_loop_body(ctx.leaf) {
-        acc.add(keyword("continue", "continue"));
-        acc.add(keyword("break", "break"));
+        if ctx.can_be_stmt {
+            acc.add(keyword("continue", "continue;"));
+            acc.add(keyword("break", "break;"));
+        } else {
+            acc.add(keyword("continue", "continue"));
+            acc.add(keyword("break", "break"));
+        }
     }
     acc.add_all(complete_return(fn_def, ctx.can_be_stmt));
 }
@@ -201,8 +206,8 @@ mod tests {
             match "match $0 {}"
             while "while $0 {}"
             loop "loop {$0}"
-            continue "continue"
-            break "break"
+            continue "continue;"
+            break "break;"
             return "return $0;"
             "#,
         );
@@ -221,5 +226,29 @@ mod tests {
             return "return $0;"
             "#,
         );
+    }
+
+    #[test]
+    fn no_semi_after_break_continue_in_expr() {
+        check_keyword_completion(
+            r"
+            fn f() {
+                loop {
+                    match () {
+                        () => br<|>
+                    }
+                }
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            continue "continue"
+            break "break"
+            return "return"
+            "#,
+        )
     }
 }
