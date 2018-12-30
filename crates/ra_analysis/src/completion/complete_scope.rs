@@ -74,7 +74,7 @@ mod tests {
                 let z = ();
             }
             ",
-            "y;x;quux",
+            r#"y;x;quux "quux($0)""#,
         );
     }
 
@@ -92,7 +92,7 @@ mod tests {
                 }
             }
             ",
-            "b;a;quux",
+            r#"b;a;quux "quux()$0""#,
         );
     }
 
@@ -106,7 +106,7 @@ mod tests {
                 }
             }
             ",
-            "x;quux",
+            r#"x;quux "quux()$0""#,
         );
     }
 
@@ -120,7 +120,7 @@ mod tests {
                 <|>
             }
             ",
-            "quux;Foo;Baz",
+            r#"quux "quux()$0";Foo;Baz"#,
         );
     }
 
@@ -134,7 +134,7 @@ mod tests {
                 fn quux() { <|> }
             }
             ",
-            "quux;Bar",
+            r#"quux "quux()$0";Bar"#,
         );
     }
 
@@ -145,12 +145,12 @@ mod tests {
             struct Foo;
             fn x() -> <|>
             ",
-            "Foo;x",
+            r#"Foo;x "x()$0""#,
         )
     }
 
     #[test]
-    fn dont_show_to_completions_for_shadowing() {
+    fn dont_show_both_completions_for_shadowing() {
         check_reference_completion(
             r"
             fn foo() -> {
@@ -161,12 +161,32 @@ mod tests {
                 }
             }
             ",
-            "bar;foo",
+            r#"bar;foo "foo()$0""#,
         )
     }
 
     #[test]
     fn completes_self_in_methods() {
         check_reference_completion(r"impl S { fn foo(&self) { <|> } }", "self")
+    }
+
+    #[test]
+    fn inserts_parens_for_function_calls() {
+        check_reference_completion(
+            r"
+            fn no_args() {}
+            fn main() { no_<|> }
+            ",
+            r#"no_args "no_args()$0"
+               main "main()$0""#,
+        );
+        check_reference_completion(
+            r"
+            fn with_args(x: i32, y: String) {}
+            fn main() { with_<|> }
+            ",
+            r#"main "main()$0"
+               with_args "with_args($0)""#,
+        );
     }
 }
