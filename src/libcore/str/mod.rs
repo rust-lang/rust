@@ -631,6 +631,26 @@ impl<'a> Chars<'a> {
     pub fn as_str(&self) -> &'a str {
         unsafe { from_utf8_unchecked(self.iter.as_slice()) }
     }
+
+    /// Checks that two strings are a case-insensitive match.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!("Ferris".chars().eq_ignore_case("FERRIS".chars()));
+    /// assert!("Ferrös".chars().eq_ignore_case("FERRöS".chars()));
+    /// assert!("Ferrös".chars().eq_ignore_case("FERRÖS".chars()));
+    /// ```
+    #[unstable(feature = "eq_ignore_case", issue = "57221")]
+    pub fn eq_ignore_case(self, other: Chars) -> bool {
+        let mut this = self;
+        let mut other = other;
+        match (this.next(), other.next()) {
+            (Some(t), Some(o)) if t.eq_ignore_case(o) => (),
+            (None, None) => (),
+            _ => return false,
+        }
+    }
 }
 
 /// An iterator over the [`char`]s of a string slice, and their positions.
@@ -4007,6 +4027,24 @@ impl str {
     pub fn make_ascii_lowercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
+    }
+
+    /// Checks that two strings are a case-insensitive match.
+    ///
+    /// Same as `to_lowercase(a) == to_lowercase(b)`, but without allocating and
+    /// copying temporaries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!("Ferris".eq_ignore_case("FERRIS"));
+    /// assert!("Ferrös".eq_ignore_case("FERRöS"));
+    /// assert!("Ferrös".eq_ignore_case("FERRÖS"));
+    /// ```
+    #[unstable(feature = "eq_ignore_case", issue = "57221")]
+    #[inline]
+    pub fn eq_ignore_case(&self, other: &str) -> bool {
+        self.chars().eq_ignore_case(other.chars())
     }
 }
 

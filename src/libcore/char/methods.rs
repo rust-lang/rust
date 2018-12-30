@@ -889,6 +889,25 @@ impl char {
         ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
     }
 
+    /// Checks that two values are a case-insensitive match.
+    ///
+    /// Equivalent to `to_lowercase(a) == to_lowercase(b)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!('A'.eq_ignore_case(&'a'));
+    /// assert!('A'.eq_ignore_case(&'A'));
+    /// assert!(!'A'.eq_ignore_case(&'z'));
+    /// assert!('ö'.eq_ignore_case(&'ö'));
+    /// assert!('ö'.eq_ignore_case(&'Ö'));
+    /// ```
+    #[unstable(feature = "eq_ignore_case", issue = "57221")]
+    #[inline]
+    pub fn eq_ignore_case(&self, other: &char) -> bool {
+        self.to_lowercase() == other.to_lowercase()
+    }
+
     /// Checks if the value is within the ASCII range.
     ///
     /// # Examples
