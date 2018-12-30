@@ -2,7 +2,7 @@
 
 use std::collections::hash_map::RandomState;
 use std::collections::hash_map::{DefaultHasher, HashMap};
-use std::hash::{BuildHasherDefault};
+use std::hash::BuildHasherDefault;
 
 fn main() {
     // Should warn
