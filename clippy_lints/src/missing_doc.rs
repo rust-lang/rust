@@ -141,7 +141,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Enum(..) => "an enum",
             hir::ItemKind::Fn(..) => {
                 // ignore main()
-                if it.name == "main" {
+                if it.ident.name == "main" {
                     let def_id = cx.tcx.hir().local_def_id(it.id);
                     let def_key = cx.tcx.hir().def_key(def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {

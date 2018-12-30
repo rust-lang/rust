@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let hir::ItemKind::Static(ref ty, MutImmutable, _) = item.node {
             if is_lint_ref_type(cx, ty) {
-                self.declared_lints.insert(item.name, item.span);
+                self.declared_lints.insert(item.ident.name, item.span);
             }
         } else if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             if_chain! {

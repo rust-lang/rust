@@ -237,7 +237,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if is_relevant_item(cx.tcx, item) {
-            check_attrs(cx, item.span, item.name, &item.attrs)
+            check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
         match item.node {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
