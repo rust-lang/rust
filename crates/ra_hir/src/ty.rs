@@ -306,7 +306,7 @@ impl Ty {
             } else if let Some(float_ty) = primitive::FloatTy::from_name(name) {
                 return Ok(Ty::Float(float_ty));
             } else if name.as_known_name() == Some(KnownName::Self_) {
-                return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target()));
+                return Ty::from_hir_opt(db, module, None, impl_block.map(|i| i.target_type()));
             }
         }
 
@@ -972,7 +972,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     self.insert_type_vars(ty)
                 } else {
                     // TODO this should be handled by desugaring during HIR conversion
-                    let ty = self.make_ty_opt(self.impl_block.as_ref().map(|i| i.target()))?;
+                    let ty = self.make_ty_opt(self.impl_block.as_ref().map(|i| i.target_type()))?;
                     let ty = match self_param.flavor() {
                         ast::SelfParamFlavor::Owned => ty,
                         ast::SelfParamFlavor::Ref => Ty::Ref(Arc::new(ty), Mutability::Shared),

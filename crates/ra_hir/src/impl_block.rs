@@ -35,8 +35,12 @@ impl ImplBlock {
         &self.crate_impl_blocks.impls[self.impl_id]
     }
 
-    pub fn target(&self) -> &TypeRef {
-        &self.impl_data().impl_for
+    pub fn target_trait(&self) -> Option<&TypeRef> {
+        self.impl_data().target_trait.as_ref()
+    }
+
+    pub fn target_type(&self) -> &TypeRef {
+        &self.impl_data().target_type
     }
 
     pub fn items(&self) -> &[ImplItem] {
@@ -46,7 +50,8 @@ impl ImplBlock {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplData {
-    impl_for: TypeRef,
+    target_trait: Option<TypeRef>,
+    target_type: TypeRef,
     items: Vec<ImplItem>,
 }
 
@@ -57,7 +62,8 @@ impl ImplData {
         module: &Module,
         node: ast::ImplBlock,
     ) -> Self {
-        let impl_for = TypeRef::from_ast_opt(node.target_type());
+        let target_trait = node.target_type().map(TypeRef::from_ast);
+        let target_type = TypeRef::from_ast_opt(node.target_type());
         let file_id = module.source().file_id();
         let items = if let Some(item_list) = node.item_list() {
             item_list
@@ -89,7 +95,11 @@ impl ImplData {
         } else {
             Vec::new()
         };
-        ImplData { impl_for, items }
+        ImplData {
+            target_trait,
+            target_type,
+            items,
+        }
     }
 }
 
