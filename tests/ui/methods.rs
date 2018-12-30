@@ -390,18 +390,6 @@ fn iter_nth() {
     let ok_mut = false_positive.iter_mut().nth(3);
 }
 
-/// Checks implementation of `ITER_SKIP_NEXT` lint
-fn iter_skip_next() {
-    let mut some_vec = vec![0, 1, 2, 3];
-    let _ = some_vec.iter().skip(42).next();
-    let _ = some_vec.iter().cycle().skip(42).next();
-    let _ = (1..10).skip(10).next();
-    let _ = &some_vec[..].iter().skip(3).next();
-    let foo = IteratorFalsePositives { foo : 0 };
-    let _ = foo.skip(42).next();
-    let _ = foo.filter().skip(42).next();
-}
-
 #[allow(clippy::similar_names)]
 fn main() {
     let opt = Some(0);
