@@ -1034,8 +1034,6 @@ enum PathResult<'a> {
     NonModule(PathResolution),
     Indeterminate,
     Failed(Span, String, bool /* is the error from the last segment? */),
-    /// Encountered an error that is reported elsewhere
-    Ignore,
 }
 
 enum ModuleKind {
@@ -1768,7 +1766,6 @@ impl<'a> Resolver<'a> {
                 error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 Def::Err
             }
-            PathResult::Ignore => Def::Err,
         };
 
         let segments: Vec<_> = segments.iter().map(|seg| {
@@ -3696,7 +3693,7 @@ impl<'a> Resolver<'a> {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 err_path_resolution()
             }
-            PathResult::Module(..) | PathResult::Failed(..) | PathResult::Ignore => return None,
+            PathResult::Module(..) | PathResult::Failed(..) => return None,
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
@@ -3928,11 +3925,11 @@ impl<'a> Resolver<'a> {
                         });
                         if let Some(candidate) = candidates.get(0) {
                             format!("did you mean `{}`?", candidate.path)
-                        } else if !ident.is_used_keyword() {
+                        } else if !ident.is_reserved() {
                             format!("maybe a missing `extern crate {};`?", ident)
                         } else {
                             // the parser will already have complained about the keyword being used
-                            return PathResult::Ignore;
+                            return PathResult::NonModule(err_path_resolution());
                         }
                     } else if i == 0 {
                         format!("use of undeclared type or module `{}`", ident)

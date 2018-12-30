@@ -364,8 +364,7 @@ impl<'a> Resolver<'a> {
                     Ok(path_res.base_def())
                 }
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
-                PathResult::NonModule(..) | PathResult::Indeterminate |
-                PathResult::Failed(..) | PathResult::Ignore => {
+                PathResult::NonModule(..) | PathResult::Indeterminate | PathResult::Failed(..) => {
                     Err(Determinacy::Determined)
                 }
                 PathResult::Module(..) => unreachable!(),
@@ -930,8 +929,7 @@ impl<'a> Resolver<'a> {
                     let def = path_res.base_def();
                     check_consistency(self, &path, path_span, kind, initial_def, def);
                 }
-                path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed(..) |
-                path_res @ PathResult::Ignore => {
+                path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed(..) => {
                     let (span, msg) = if let PathResult::Failed(span, msg, ..) = path_res {
                         (span, msg)
                     } else {
