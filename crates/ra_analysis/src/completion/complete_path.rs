@@ -17,7 +17,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) -> C
             let module_scope = module.scope(ctx.db)?;
             module_scope.entries().for_each(|(name, res)| {
                 CompletionItem::new(CompletionKind::Reference, name.to_string())
-                    .from_resolution(ctx.db, res)
+                    .from_resolution(ctx, res)
                     .add_to(acc)
             });
         }
@@ -112,5 +112,17 @@ mod tests {
             ",
             "Foo;Bar",
         );
+    }
+
+    #[test]
+    fn dont_render_function_parens_in_use_item() {
+        check_reference_completion(
+            "
+            //- /lib.rs
+            mod m { pub fn foo() {} }
+            use crate::m::f<|>;
+            ",
+            "foo",
+        )
     }
 }
