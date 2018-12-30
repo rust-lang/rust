@@ -4,9 +4,6 @@ before_cache:
     - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*,*tools*,*gen_lsp*,*thread_worker*}
     - rm -f  ./target/.rustc_info.json
 
-env:
-    - CARGO_INCREMENTAL=0
-
 build: &rust_build
     language: rust
     rust: 1.31.1
@@ -15,7 +12,7 @@ build: &rust_build
         - cargo gen-syntax --verify
         - cargo test
     env:
-        - RUSTFLAGS="-D warnings"
+        - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
 
 matrix:
     include:
