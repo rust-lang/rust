@@ -34,7 +34,7 @@ index 74b3ce4..9617ed1 100644
 +++ b/src/libcore/clone.rs
 @@ -162,8 +162,8 @@ mod impls {
      }
- 
+
      impl_clone! {
 -        usize u8 u16 u32 u64 u128
 -        isize i8 i16 i32 i64 i128
@@ -49,29 +49,29 @@ index 9336b13..8faa03f 100644
 +++ b/src/libcore/cmp.rs
 @@ -873,7 +873,7 @@ mod impls {
      }
- 
+
      partial_eq_impl! {
 -        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64
 +        bool char usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64
      }
- 
+
      macro_rules! eq_impl {
 @@ -883,7 +883,7 @@ mod impls {
          )*)
      }
- 
+
 -    eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +    eq_impl! { () bool char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
      macro_rules! partial_ord_impl {
          ($($t:ty)*) => ($(
 @@ -972,7 +972,7 @@ mod impls {
          }
      }
- 
+
 -    ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +    ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
      #[unstable(feature = "never_type", issue = "35121")]
      impl PartialEq for ! {
 diff --git a/src/libcore/default.rs b/src/libcore/default.rs
@@ -83,14 +83,14 @@ index 0e47c2f..570b949 100644
  default_impl! { u32, 0, "Returns the default value of `0`" }
  default_impl! { u64, 0, "Returns the default value of `0`" }
 -default_impl! { u128, 0, "Returns the default value of `0`" }
- 
+
  default_impl! { isize, 0, "Returns the default value of `0`" }
  default_impl! { i8, 0, "Returns the default value of `0`" }
  default_impl! { i16, 0, "Returns the default value of `0`" }
  default_impl! { i32, 0, "Returns the default value of `0`" }
  default_impl! { i64, 0, "Returns the default value of `0`" }
 -default_impl! { i128, 0, "Returns the default value of `0`" }
- 
+
  default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
  default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
 diff --git a/src/libcore/fmt/num.rs b/src/libcore/fmt/num.rs
@@ -103,7 +103,7 @@ index c7c8fc5..689d611 100644
      fn to_u64(&self) -> u64;
 -    fn to_u128(&self) -> u128;
  }
- 
+
  macro_rules! doit {
 @@ -30,10 +29,9 @@ macro_rules! doit {
          fn to_u16(&self) -> u16 { *self as u16 }
@@ -114,7 +114,7 @@ index c7c8fc5..689d611 100644
  }
 -doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 +doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
- 
+
  /// A type that represents a specific radix
  #[doc(hidden)]
 @@ -174,7 +172,6 @@ integer! { i8, u8 }
@@ -122,11 +122,11 @@ index c7c8fc5..689d611 100644
  integer! { i32, u32 }
  integer! { i64, u64 }
 -integer! { i128, u128 }
- 
+
  const DEC_DIGITS_LUT: &'static[u8] =
      b"0001020304050607080910111213141516171819\
 @@ -250,7 +247,6 @@ macro_rules! impl_Display {
- 
+
  impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
  impl_Display!(i64, u64: to_u64);
 -impl_Display!(i128, u128: to_u128);
@@ -190,7 +190,7 @@ index d5d29c9..f98f382 100644
 -        (u128, write_u128),
 -        (i128, write_i128),
      }
- 
+
      #[stable(feature = "rust1", since = "1.0.0")]
 diff --git a/src/libcore/iter/range.rs b/src/libcore/iter/range.rs
 index 66c09a0..1b8c5c9 100644
@@ -201,7 +201,7 @@ index 66c09a0..1b8c5c9 100644
  #[cfg(not(target_pointer_width = "64"))]
  step_impl_no_between!(u64 i64);
 -step_impl_no_between!(u128 i128);
- 
+
  macro_rules! range_exact_iter_impl {
      ($($t:ty)*) => ($(
 diff --git a/src/libcore/iter/traits.rs b/src/libcore/iter/traits.rs
@@ -211,11 +211,11 @@ index e8c6cd8..f58b446 100644
 @@ -901,7 +901,7 @@ macro_rules! float_sum_product {
      )*)
  }
- 
+
 -integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 +integer_sum_product! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
  float_sum_product! { f32 f64 }
- 
+
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
 index 252d7da..3c13282 100644
@@ -226,14 +226,14 @@ index 252d7da..3c13282 100644
  #[path = "num/i32.rs"]   pub mod i32;
  #[path = "num/i64.rs"]   pub mod i64;
 -#[path = "num/i128.rs"]  pub mod i128;
- 
+
  #[path = "num/usize.rs"] pub mod usize;
  #[path = "num/u8.rs"]    pub mod u8;
  #[path = "num/u16.rs"]   pub mod u16;
  #[path = "num/u32.rs"]   pub mod u32;
  #[path = "num/u64.rs"]   pub mod u64;
 -#[path = "num/u128.rs"]  pub mod u128;
- 
+
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
@@ -242,7 +242,7 @@ index 53af924..243a4f3 100644
 +++ b/src/libcore/marker.rs
 @@ -663,8 +663,8 @@ mod copy_impls {
      }
- 
+
      impl_copy! {
 -        usize u8 u16 u32 u64 u128
 -        isize i8 i16 i32 i64 i128
@@ -279,11 +279,11 @@ index e776513..6018aea 100644
 -    NonZeroU128(u128);
      NonZeroUsize(usize);
  }
- 
+
 @@ -2110,18 +2109,6 @@ impl i64 {
           "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
- 
+
 -#[lang = "i128"]
 -impl i128 {
 -    int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
@@ -302,7 +302,7 @@ index e776513..6018aea 100644
 @@ -4393,17 +4380,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
- 
+
 -#[lang = "u128"]
 -impl u128 {
 -    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
@@ -323,7 +323,7 @@ index e776513..6018aea 100644
  }
 -from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 +from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
- 
+
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
 @@ -4603,30 +4579,25 @@ macro_rules! rev {
@@ -331,19 +331,19 @@ index e776513..6018aea 100644
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
 -try_from_upper_bounded!(u128, u64, u32, u16, u8);
- 
+
  try_from_both_bounded!(i16, i8);
  try_from_both_bounded!(i32, i16, i8);
  try_from_both_bounded!(i64, i32, i16, i8);
 -try_from_both_bounded!(i128, i64, i32, i16, i8);
- 
+
  // unsigned-to-signed
  try_from_upper_bounded!(u8, i8);
  try_from_upper_bounded!(u16, i8, i16);
  try_from_upper_bounded!(u32, i8, i16, i32);
  try_from_upper_bounded!(u64, i8, i16, i32, i64);
 -try_from_upper_bounded!(u128, i8, i16, i32, i64, i128);
- 
+
  // signed-to-unsigned
 -try_from_lower_bounded!(i8, u8, u16, u32, u64, u128);
 -try_from_lower_bounded!(i16, u16, u32, u64, u128);
@@ -358,63 +358,63 @@ index e776513..6018aea 100644
  try_from_both_bounded!(i32, u16, u8);
  try_from_both_bounded!(i64, u32, u16, u8);
 -try_from_both_bounded!(i128, u64, u32, u16, u8);
- 
+
  // usize/isize
  try_from_upper_bounded!(usize, isize);
 @@ -4638,21 +4609,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
- 
+
      try_from_upper_bounded!(usize, u8);
 -    try_from_unbounded!(usize, u16, u32, u64, u128);
 +    try_from_unbounded!(usize, u16, u32, u64);
      try_from_upper_bounded!(usize, i8, i16);
 -    try_from_unbounded!(usize, i32, i64, i128);
 +    try_from_unbounded!(usize, i32, i64);
- 
+
      try_from_both_bounded!(isize, u8);
 -    try_from_lower_bounded!(isize, u16, u32, u64, u128);
 +    try_from_lower_bounded!(isize, u16, u32, u64);
      try_from_both_bounded!(isize, i8);
 -    try_from_unbounded!(isize, i16, i32, i64, i128);
 +    try_from_unbounded!(isize, i16, i32, i64);
- 
+
 -    rev!(try_from_upper_bounded, usize, u32, u64, u128);
 +    rev!(try_from_upper_bounded, usize, u32, u64);
      rev!(try_from_lower_bounded, usize, i8, i16);
 -    rev!(try_from_both_bounded, usize, i32, i64, i128);
 +    rev!(try_from_both_bounded, usize, i32, i64);
- 
+
 -    rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
 -    rev!(try_from_both_bounded, isize, i32, i64, i128);
 +    rev!(try_from_upper_bounded, isize, u16, u32, u64);
 +    rev!(try_from_both_bounded, isize, i32, i64);
  }
- 
+
  #[cfg(target_pointer_width = "32")]
 @@ -4661,24 +4632,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
- 
+
      try_from_upper_bounded!(usize, u8, u16);
 -    try_from_unbounded!(usize, u32, u64, u128);
 +    try_from_unbounded!(usize, u32, u64);
      try_from_upper_bounded!(usize, i8, i16, i32);
 -    try_from_unbounded!(usize, i64, i128);
 +    try_from_unbounded!(usize, i64);
- 
+
      try_from_both_bounded!(isize, u8, u16);
 -    try_from_lower_bounded!(isize, u32, u64, u128);
 +    try_from_lower_bounded!(isize, u32, u64);
      try_from_both_bounded!(isize, i8, i16);
 -    try_from_unbounded!(isize, i32, i64, i128);
 +    try_from_unbounded!(isize, i32, i64);
- 
+
      rev!(try_from_unbounded, usize, u32);
 -    rev!(try_from_upper_bounded, usize, u64, u128);
 +    rev!(try_from_upper_bounded, usize, u64);
      rev!(try_from_lower_bounded, usize, i8, i16, i32);
 -    rev!(try_from_both_bounded, usize, i64, i128);
 +    rev!(try_from_both_bounded, usize, i64);
- 
+
      rev!(try_from_unbounded, isize, u16);
 -    rev!(try_from_upper_bounded, isize, u32, u64, u128);
 +    rev!(try_from_upper_bounded, isize, u32, u64);
@@ -422,36 +422,36 @@ index e776513..6018aea 100644
 -    rev!(try_from_both_bounded, isize, i64, i128);
 +    rev!(try_from_both_bounded, isize, i64);
  }
- 
+
  #[cfg(target_pointer_width = "64")]
 @@ -4687,24 +4658,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
- 
+
      try_from_upper_bounded!(usize, u8, u16, u32);
 -    try_from_unbounded!(usize, u64, u128);
 +    try_from_unbounded!(usize, u64);
      try_from_upper_bounded!(usize, i8, i16, i32, i64);
 -    try_from_unbounded!(usize, i128);
- 
+
      try_from_both_bounded!(isize, u8, u16, u32);
 -    try_from_lower_bounded!(isize, u64, u128);
 +    try_from_lower_bounded!(isize, u64);
      try_from_both_bounded!(isize, i8, i16, i32);
 -    try_from_unbounded!(isize, i64, i128);
 +    try_from_unbounded!(isize, i64);
- 
+
      rev!(try_from_unbounded, usize, u32, u64);
 -    rev!(try_from_upper_bounded, usize, u128);
      rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
 -    rev!(try_from_both_bounded, usize, i128);
- 
+
      rev!(try_from_unbounded, isize, u16, u32);
 -    rev!(try_from_upper_bounded, isize, u64, u128);
 +    rev!(try_from_upper_bounded, isize, u64);
      rev!(try_from_unbounded, isize, i32, i64);
 -    rev!(try_from_both_bounded, isize, i128);
  }
- 
+
  #[doc(hidden)]
 @@ -4739,7 +4706,7 @@ macro_rules! doit {
          }
@@ -459,7 +459,7 @@ index e776513..6018aea 100644
  }
 -doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 +doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
- 
+
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
 @@ -4930,52 +4897,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -474,7 +474,7 @@ index e776513..6018aea 100644
  impl_from_bool! { i64, #[stable(feature = "from_bool", since = "1.28.0")] }
 -impl_from_bool! { i128, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { isize, #[stable(feature = "from_bool", since = "1.28.0")] }
- 
+
  // Unsigned -> Unsigned
  impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
  impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
@@ -487,7 +487,7 @@ index e776513..6018aea 100644
  impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 -impl_from! { u32, u128, #[stable(feature = "i128", since = "1.26.0")] }
 -impl_from! { u64, u128, #[stable(feature = "i128", since = "1.26.0")] }
- 
+
  // Signed -> Signed
  impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
  impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
@@ -500,7 +500,7 @@ index e776513..6018aea 100644
  impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 -impl_from! { i32, i128, #[stable(feature = "i128", since = "1.26.0")] }
 -impl_from! { i64, i128, #[stable(feature = "i128", since = "1.26.0")] }
- 
+
  // Unsigned -> Signed
  impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
  impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
@@ -512,7 +512,7 @@ index e776513..6018aea 100644
  impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 -impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
 -impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
- 
+
  // The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
  // which imply that pointer-sized integers must be at least 16 bits:
 diff --git a/src/libcore/num/wrapping.rs b/src/libcore/num/wrapping.rs
@@ -525,7 +525,7 @@ index 50e189c..2da3b35 100644
          //sh_impl_unsigned! { $t, u64 }
 -        //sh_impl_unsigned! { $t, u128 }
          sh_impl_unsigned! { $t, usize }
- 
+
          //sh_impl_signed! { $t, i8 }
          //sh_impl_signed! { $t, i16 }
          //sh_impl_signed! { $t, i32 }
@@ -534,46 +534,46 @@ index 50e189c..2da3b35 100644
          //sh_impl_signed! { $t, isize }
      )*)
  }
- 
+
 -sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +sh_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
- 
+
  // FIXME(30524): impl Op<T> for Wrapping<T>, impl OpAssign<T> for Wrapping<T>
  macro_rules! wrapping_impl {
 @@ -313,7 +311,7 @@ macro_rules! wrapping_impl {
      )*)
  }
- 
+
 -wrapping_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  macro_rules! wrapping_int_impl {
      ($($t:ty)*) => ($(
 @@ -675,7 +673,7 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
      )*)
  }
- 
+
 -wrapping_int_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +wrapping_int_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  macro_rules! wrapping_int_impl_signed {
      ($($t:ty)*) => ($(
 @@ -804,7 +802,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
      )*)
  }
- 
+
 -wrapping_int_impl_signed! { isize i8 i16 i32 i64 i128 }
 +wrapping_int_impl_signed! { isize i8 i16 i32 i64 }
- 
+
  macro_rules! wrapping_int_impl_unsigned {
      ($($t:ty)*) => ($(
 @@ -881,7 +879,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
      )*)
  }
- 
+
 -wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
 +wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 }
- 
+
  mod shift_max {
      #![allow(non_upper_case_globals)]
 @@ -908,13 +906,11 @@ mod shift_max {
@@ -582,7 +582,7 @@ index 50e189c..2da3b35 100644
      pub const i64: u32 = (1 << 6) - 1;
 -    pub const i128: u32 = (1 << 7) - 1;
      pub use self::platform::isize;
- 
+
      pub const u8: u32 = i8;
      pub const u16: u32 = i16;
      pub const u32: u32 = i32;
@@ -597,97 +597,97 @@ index 7d8bf18..91fd879 100644
 @@ -104,7 +104,7 @@ macro_rules! add_impl {
      )*)
  }
- 
+
 -add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The subtraction operator `-`.
  ///
 @@ -202,7 +202,7 @@ macro_rules! sub_impl {
      )*)
  }
- 
+
 -sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The multiplication operator `*`.
  ///
 @@ -322,7 +322,7 @@ macro_rules! mul_impl {
      )*)
  }
- 
+
 -mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The division operator `/`.
  ///
 @@ -447,7 +447,7 @@ macro_rules! div_impl_integer {
      )*)
  }
- 
+
 -div_impl_integer! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +div_impl_integer! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  macro_rules! div_impl_float {
      ($($t:ty)*) => ($(
 @@ -532,7 +532,7 @@ macro_rules! rem_impl_integer {
      )*)
  }
- 
+
 -rem_impl_integer! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +rem_impl_integer! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
- 
+
+
  macro_rules! rem_impl_float {
 @@ -631,7 +631,7 @@ macro_rules! neg_impl_unsigned {
  }
- 
+
  // neg_impl_unsigned! { usize u8 u16 u32 u64 }
 -neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 +neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The addition assignment operator `+=`.
  ///
 @@ -687,7 +687,7 @@ macro_rules! add_assign_impl {
      )+)
  }
- 
+
 -add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +add_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The subtraction assignment operator `-=`.
  ///
 @@ -743,7 +743,7 @@ macro_rules! sub_assign_impl {
      )+)
  }
- 
+
 -sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +sub_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The multiplication assignment operator `*=`.
  ///
 @@ -790,7 +790,7 @@ macro_rules! mul_assign_impl {
      )+)
  }
- 
+
 -mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +mul_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The division assignment operator `/=`.
  ///
 @@ -836,7 +836,7 @@ macro_rules! div_assign_impl {
      )+)
  }
- 
+
 -div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +div_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
- 
+
  /// The remainder assignment operator `%=`.
  ///
 @@ -886,4 +886,4 @@ macro_rules! rem_assign_impl {
      )+)
  }
- 
+
 -rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 +rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 diff --git a/src/libcore/ops/bit.rs b/src/libcore/ops/bit.rs
@@ -697,37 +697,37 @@ index 2c9bf24..af2ab6f 100644
 @@ -55,7 +55,7 @@ macro_rules! not_impl {
      )*)
  }
- 
+
 -not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The bitwise AND operator `&`.
  ///
 @@ -139,7 +139,7 @@ macro_rules! bitand_impl {
      )*)
  }
- 
+
 -bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The bitwise OR operator `|`.
  ///
 @@ -223,7 +223,7 @@ macro_rules! bitor_impl {
      )*)
  }
- 
+
 -bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The bitwise XOR operator `^`.
  ///
 @@ -310,7 +310,7 @@ macro_rules! bitxor_impl {
      )*)
  }
- 
+
 -bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The left shift operator `<<`. Note that because this trait is implemented
  /// for all integer types with multiple right-hand-side types, Rust's type
 @@ -407,19 +407,17 @@ macro_rules! shl_impl_all {
@@ -736,7 +736,7 @@ index 2c9bf24..af2ab6f 100644
          shl_impl! { $t, u64 }
 -        shl_impl! { $t, u128 }
          shl_impl! { $t, usize }
- 
+
          shl_impl! { $t, i8 }
          shl_impl! { $t, i16 }
          shl_impl! { $t, i32 }
@@ -745,10 +745,10 @@ index 2c9bf24..af2ab6f 100644
          shl_impl! { $t, isize }
      )*)
  }
- 
+
 -shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 +shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
- 
+
  /// The right shift operator `>>`. Note that because this trait is implemented
  /// for all integer types with multiple right-hand-side types, Rust's type
 @@ -516,19 +514,17 @@ macro_rules! shr_impl_all {
@@ -757,7 +757,7 @@ index 2c9bf24..af2ab6f 100644
          shr_impl! { $t, u64 }
 -        shr_impl! { $t, u128 }
          shr_impl! { $t, usize }
- 
+
          shr_impl! { $t, i8 }
          shr_impl! { $t, i16 }
          shr_impl! { $t, i32 }
@@ -766,37 +766,37 @@ index 2c9bf24..af2ab6f 100644
          shr_impl! { $t, isize }
      )*)
  }
- 
+
 -shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
- 
+
  /// The bitwise AND assignment operator `&=`.
  ///
 @@ -616,7 +612,7 @@ macro_rules! bitand_assign_impl {
      )+)
  }
- 
+
 -bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +bitand_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The bitwise OR assignment operator `|=`.
  ///
 @@ -665,7 +661,7 @@ macro_rules! bitor_assign_impl {
      )+)
  }
- 
+
 -bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +bitor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The bitwise XOR assignment operator `^=`.
  ///
 @@ -714,7 +710,7 @@ macro_rules! bitxor_assign_impl {
      )+)
  }
- 
+
 -bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 +bitxor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
- 
+
  /// The left shift assignment operator `<<=`.
  ///
 @@ -770,19 +766,17 @@ macro_rules! shl_assign_impl_all {
@@ -805,7 +805,7 @@ index 2c9bf24..af2ab6f 100644
          shl_assign_impl! { $t, u64 }
 -        shl_assign_impl! { $t, u128 }
          shl_assign_impl! { $t, usize }
- 
+
          shl_assign_impl! { $t, i8 }
          shl_assign_impl! { $t, i16 }
          shl_assign_impl! { $t, i32 }
@@ -814,10 +814,10 @@ index 2c9bf24..af2ab6f 100644
          shl_assign_impl! { $t, isize }
      )*)
  }
- 
+
 -shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shl_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
- 
+
  /// The right shift assignment operator `>>=`.
  ///
 @@ -838,16 +832,14 @@ macro_rules! shr_assign_impl_all {
@@ -826,7 +826,7 @@ index 2c9bf24..af2ab6f 100644
          shr_assign_impl! { $t, u64 }
 -        shr_assign_impl! { $t, u128 }
          shr_assign_impl! { $t, usize }
- 
+
          shr_assign_impl! { $t, i8 }
          shr_assign_impl! { $t, i16 }
          shr_assign_impl! { $t, i32 }
@@ -835,7 +835,7 @@ index 2c9bf24..af2ab6f 100644
          shr_assign_impl! { $t, isize }
      )*)
  }
- 
+
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
@@ -887,13 +887,13 @@ index cf19851..6b4a72b 100644
      type Bigger = u64;
 -    #[cfg(target_pointer_width = "64")]
 -    type Bigger = u128;
- 
+
      #[derive(Clone)]
      struct Test(Bigger);
 @@ -1950,19 +1948,6 @@ fn test_step_replace_signed() {
      assert_eq!(y, 5);
  }
- 
+
 -#[test]
 -fn test_step_replace_no_between() {
 -    let mut x = 4u128;
@@ -924,7 +924,7 @@ index a17c094..3c36d10 100644
  test_impl_from! { test_booli32, bool, i32 }
  test_impl_from! { test_booli64, bool, i64 }
 -test_impl_from! { test_booli128, bool, i128 }
- 
+
  // Signed -> Float
  test_impl_from! { test_i8f32, i8, f32 }
 @@ -265,51 +263,35 @@ test_impl_try_from_always_ok! { test_try_u8u8, u8, u8 }
@@ -936,7 +936,7 @@ index a17c094..3c36d10 100644
  test_impl_try_from_always_ok! { test_try_u8i32, u8, i32 }
  test_impl_try_from_always_ok! { test_try_u8i64, u8, i64 }
 -test_impl_try_from_always_ok! { test_try_u8i128, u8, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_u16u16, u16, u16 }
  test_impl_try_from_always_ok! { test_try_u16u32, u16, u32 }
  test_impl_try_from_always_ok! { test_try_u16u64, u16, u64 }
@@ -944,39 +944,39 @@ index a17c094..3c36d10 100644
  test_impl_try_from_always_ok! { test_try_u16i32, u16, i32 }
  test_impl_try_from_always_ok! { test_try_u16i64, u16, i64 }
 -test_impl_try_from_always_ok! { test_try_u16i128, u16, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_u32u32, u32, u32 }
  test_impl_try_from_always_ok! { test_try_u32u64, u32, u64 }
 -test_impl_try_from_always_ok! { test_try_u32u128, u32, u128 }
  test_impl_try_from_always_ok! { test_try_u32i64, u32, i64 }
 -test_impl_try_from_always_ok! { test_try_u32i128, u32, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_u64u64, u64, u64 }
 -test_impl_try_from_always_ok! { test_try_u64u128, u64, u128 }
 -test_impl_try_from_always_ok! { test_try_u64i128, u64, i128 }
 -
 -test_impl_try_from_always_ok! { test_try_u128u128, u128, u128 }
- 
+
  test_impl_try_from_always_ok! { test_try_i8i8, i8, i8 }
  test_impl_try_from_always_ok! { test_try_i8i16, i8, i16 }
  test_impl_try_from_always_ok! { test_try_i8i32, i8, i32 }
  test_impl_try_from_always_ok! { test_try_i8i64, i8, i64 }
 -test_impl_try_from_always_ok! { test_try_i8i128, i8, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_i16i16, i16, i16 }
  test_impl_try_from_always_ok! { test_try_i16i32, i16, i32 }
  test_impl_try_from_always_ok! { test_try_i16i64, i16, i64 }
 -test_impl_try_from_always_ok! { test_try_i16i128, i16, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_i32i32, i32, i32 }
  test_impl_try_from_always_ok! { test_try_i32i64, i32, i64 }
 -test_impl_try_from_always_ok! { test_try_i32i128, i32, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_i64i64, i64, i64 }
 -test_impl_try_from_always_ok! { test_try_i64i128, i64, i128 }
 -
 -test_impl_try_from_always_ok! { test_try_i128i128, i128, i128 }
- 
+
  test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
  test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
 diff --git a/src/libcore/time.rs b/src/libcore/time.rs
@@ -988,13 +988,13 @@ index b12ee04..fe0faad 100644
  const MILLIS_PER_SEC: u64 = 1_000;
  const MICROS_PER_SEC: u64 = 1_000_000;
 -const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
- 
+
  /// A `Duration` type to represent a span of time, typically used for system
  /// timeouts.
 @@ -260,54 +259,6 @@ impl Duration {
      #[inline]
      pub const fn subsec_nanos(&self) -> u32 { self.nanos }
- 
+
 -    /// Returns the total number of whole milliseconds contained by this `Duration`.
 -    ///
 -    /// # Examples
@@ -1049,7 +1049,7 @@ index b12ee04..fe0faad 100644
 @@ -466,80 +417,6 @@ impl Duration {
          (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
      }
- 
+
 -    /// Creates a new `Duration` from the specified number of seconds.
 -    ///
 -    /// # Panics
@@ -1131,14 +1131,6 @@ diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
 index 3051100..61001a4 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -248,7 +248,6 @@
- #![feature(const_cstr_unchecked)]
- #![feature(core_intrinsics)]
- #![feature(dropck_eyepatch)]
--#![cfg_attr(stage0, feature(duration_as_u128))]
- #![feature(exact_size_is_empty)]
- #![feature(external_doc)]
- #![feature(fixed_size_array)]
 @@ -404,8 +403,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
@@ -1156,7 +1148,7 @@ index 3051100..61001a4 100644
 -pub use core::u128;
  #[stable(feature = "core_hint", since = "1.27.0")]
  pub use core::hint;
- 
+
 diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
 index 52a29f4..cafe50e 100644
 --- a/src/libstd/net/ip.rs
@@ -1164,7 +1156,7 @@ index 52a29f4..cafe50e 100644
 @@ -1382,26 +1382,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
      }
  }
- 
+
 -#[stable(feature = "i128", since = "1.26.0")]
 -impl From<Ipv6Addr> for u128 {
 -    fn from(ip: Ipv6Addr) -> u128 {
@@ -1194,11 +1186,11 @@ index c80b9a5..e32a6b3 100644
 +++ b/src/libstd/num.rs
 @@ -12,7 +12,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
  pub use core::num::Wrapping;
- 
+
  #[stable(feature = "nonzero", since = "1.28.0")]
 -pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
 +pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
- 
+
  #[cfg(test)] use fmt;
  #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
@@ -1212,7 +1204,7 @@ index d27f6ca..8ac2a44 100644
 -#[cfg(target_has_atomic = "128")]
 -#[unstable(feature = "integer_atomics", issue = "32976")]
 -impl RefUnwindSafe for atomic::AtomicI128 {}
- 
+
  #[cfg(target_has_atomic = "ptr")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 @@ -273,9 +270,6 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
@@ -1222,9 +1214,8 @@ index d27f6ca..8ac2a44 100644
 -#[cfg(target_has_atomic = "128")]
 -#[unstable(feature = "integer_atomics", issue = "32976")]
 -impl RefUnwindSafe for atomic::AtomicU128 {}
- 
+
  #[cfg(target_has_atomic = "8")]
  #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
--- 
+--
 2.17.2 (Apple Git-113)
-
