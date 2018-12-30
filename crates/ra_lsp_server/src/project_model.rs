@@ -204,8 +204,10 @@ pub fn workspace_loader() -> (Worker<PathBuf, Result<CargoWorkspace>>, WorkerHan
         1,
         |input_receiver, output_sender| {
             input_receiver
+                .into_iter()
                 .map(|path| CargoWorkspace::from_cargo_metadata(path.as_path()))
-                .for_each(|it| output_sender.send(it))
+                .try_for_each(|it| output_sender.send(it))
+                .unwrap()
         },
     )
 }

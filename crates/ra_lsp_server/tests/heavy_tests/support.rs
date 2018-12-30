@@ -118,7 +118,11 @@ impl Server {
     }
     fn send_request_(&self, r: RawRequest) -> Value {
         let id = r.id;
-        self.worker.as_ref().unwrap().send(RawMessage::Request(r));
+        self.worker
+            .as_ref()
+            .unwrap()
+            .send(RawMessage::Request(r))
+            .unwrap();
         while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
@@ -167,7 +171,8 @@ impl Server {
         self.worker
             .as_ref()
             .unwrap()
-            .send(RawMessage::Notification(not));
+            .send(RawMessage::Notification(not))
+            .unwrap();
     }
 }
 
@@ -185,7 +190,7 @@ impl Drop for Server {
 fn recv_timeout(receiver: &Receiver<RawMessage>) -> Option<RawMessage> {
     let timeout = Duration::from_secs(5);
     select! {
-        recv(receiver, msg) => msg,
-        recv(after(timeout)) => panic!("timed out"),
+        recv(receiver) -> msg => msg.ok(),
+        recv(after(timeout)) -> _ => panic!("timed out"),
     }
 }
