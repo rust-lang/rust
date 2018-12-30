@@ -191,6 +191,24 @@ mod tests {
             return "return $0;"
             "#,
         );
+        check_keyword_completion(
+            r"
+            fn quux() -> i32 {
+                if condition {
+                    <|>
+                }
+                let x = 92;
+                x
+            }
+            ",
+            r#"
+            if "if $0 {}"
+            match "match $0 {}"
+            while "while $0 {}"
+            loop "loop {$0}"
+            return "return $0;"
+            "#,
+        );
     }
 
     #[test]

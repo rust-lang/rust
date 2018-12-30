@@ -148,24 +148,24 @@ impl<'a> CompletionContext<'a> {
             if path.qualifier().is_none() {
                 self.is_trivial_path = true;
 
-                self.can_be_stmt = match name_ref
+                // Find either enclosing expr statement (thing with `;`) or a
+                // block. If block, check that we are the last expr.
+                self.can_be_stmt = name_ref
                     .syntax()
                     .ancestors()
-                    .filter_map(ast::ExprStmt::cast)
-                    .next()
-                {
-                    None => {
-                        name_ref
-                            .syntax()
-                            .ancestors()
-                            .filter_map(ast::Block::cast)
-                            .next()
-                            .and_then(|block| block.expr())
-                            .map(|e| e.syntax().range())
-                            == Some(name_ref.syntax().range())
-                    }
-                    Some(expr_stmt) => expr_stmt.syntax().range() == name_ref.syntax().range(),
-                };
+                    .find_map(|node| {
+                        if let Some(stmt) = ast::ExprStmt::cast(node) {
+                            return Some(stmt.syntax().range() == name_ref.syntax().range());
+                        }
+                        if let Some(block) = ast::Block::cast(node) {
+                            return Some(
+                                block.expr().map(|e| e.syntax().range())
+                                    == Some(name_ref.syntax().range()),
+                            );
+                        }
+                        None
+                    })
+                    .unwrap_or(false);
 
                 if let Some(off) = name_ref.syntax().range().start().checked_sub(2.into()) {
                     if let Some(if_expr) =
