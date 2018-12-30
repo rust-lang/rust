@@ -474,8 +474,9 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must*
 /// agree with each other. That is, `a.cmp(b) == Ordering::Equal` if
-/// and only if `a == b`. It's easy to accidentally make them disagree
-/// by deriving some of the traits and manually implementing others.
+/// and only if `a == b` and `Some(a.cmp(b)) == a.partial_cmp(b)` for
+/// all `a` and `b`. It's easy to accidentally make them disagree by
+/// deriving some of the traits and manually implementing others.
 ///
 /// Here's an example where you want to sort people by height only, disregarding `id`
 /// and `name`:
