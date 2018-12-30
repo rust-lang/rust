@@ -148,7 +148,7 @@ impl Vfs {
                 path: path.clone(),
                 filter: Box::new(filter),
             };
-            res.worker.inp.send(task);
+            res.worker.inp.send(task).unwrap();
         }
         let roots = res.roots.iter().map(|(id, _)| id).collect();
         (res, roots)

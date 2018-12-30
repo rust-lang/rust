@@ -95,7 +95,7 @@ pub fn run_server(
     server(params, &receiver, &sender)?;
     log::info!("lsp server waiting for exit notification");
     match receiver.recv() {
-        Some(RawMessage::Notification(n)) => n
+        Ok(RawMessage::Notification(n)) => n
             .cast::<Exit>()
             .map_err(|n| format_err!("unexpected notification during shutdown: {:?}", n))?,
         m => bail!("unexpected message during shutdown: {:?}", m),
@@ -109,7 +109,7 @@ pub fn handle_shutdown(req: RawRequest, sender: &Sender<RawMessage>) -> Option<R
     match req.cast::<Shutdown>() {
         Ok((id, ())) => {
             let resp = RawResponse::ok::<Shutdown>(id, &());
-            sender.send(RawMessage::Response(resp));
+            let _ = sender.send(RawMessage::Response(resp));
             None
         }
         Err(req) => Some(req),
@@ -122,16 +122,16 @@ fn initialize(
     caps: ServerCapabilities,
 ) -> Result<InitializeParams> {
     let (id, params) = match receiver.recv() {
-        Some(RawMessage::Request(req)) => match req.cast::<Initialize>() {
+        Ok(RawMessage::Request(req)) => match req.cast::<Initialize>() {
             Err(req) => bail!("expected initialize request, got {:?}", req),
             Ok(req) => req,
         },
         msg => bail!("expected initialize request, got {:?}", msg),
     };
     let resp = RawResponse::ok::<Initialize>(id, &InitializeResult { capabilities: caps });
-    sender.send(RawMessage::Response(resp));
+    sender.send(RawMessage::Response(resp)).unwrap();
     match receiver.recv() {
-        Some(RawMessage::Notification(n)) => {
+        Ok(RawMessage::Notification(n)) => {
             n.cast::<Initialized>()
                 .map_err(|_| format_err!("expected initialized notification"))?;
         }

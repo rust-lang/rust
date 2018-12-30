@@ -2,7 +2,7 @@
 
 use std::thread;
 
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use crossbeam_channel::{bounded, unbounded, Receiver, Sender, RecvError, SendError};
 use drop_bomb::DropBomb;
 
 pub struct Worker<I, O> {
@@ -34,10 +34,10 @@ impl<I, O> Worker<I, O> {
         self.out
     }
 
-    pub fn send(&self, item: I) {
+    pub fn send(&self, item: I) -> Result<(), SendError<I>> {
         self.inp.send(item)
     }
-    pub fn recv(&self) -> Option<O> {
+    pub fn recv(&self) -> Result<O, RecvError> {
         self.out.recv()
     }
 }

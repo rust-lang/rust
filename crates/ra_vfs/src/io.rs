@@ -32,8 +32,10 @@ pub(crate) type Worker = thread_worker::Worker<Task, TaskResult>;
 pub(crate) fn start() -> (Worker, WorkerHandle) {
     thread_worker::spawn("vfs", 128, |input_receiver, output_sender| {
         input_receiver
+            .into_iter()
             .map(handle_task)
-            .for_each(|it| output_sender.send(it))
+            .try_for_each(|it| output_sender.send(it))
+            .unwrap()
     })
 }
 

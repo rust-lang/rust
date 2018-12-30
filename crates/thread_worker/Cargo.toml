@@ -6,6 +6,6 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
 drop_bomb = "0.1.0"
-crossbeam-channel = "0.2.4"
+crossbeam-channel = "0.3.5"
 log = "0.4.3"
 

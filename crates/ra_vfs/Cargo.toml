@@ -8,7 +8,7 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 walkdir = "2.2.7"
 relative-path = "0.4.0"
 rustc-hash = "1.0"
-crossbeam-channel = "0.2.4"
+crossbeam-channel = "0.3.5"
 log = "0.4.6"
 
 thread_worker = { path = "../thread_worker" }
