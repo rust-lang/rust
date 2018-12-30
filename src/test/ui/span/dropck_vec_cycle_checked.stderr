@@ -1,5 +1,5 @@
 error[E0597]: `c2` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:103:25
+  --> $DIR/dropck_vec_cycle_checked.rs:98:25
    |
 LL |     c1.v[0].v.set(Some(&c2));
    |                         ^^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c3` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:105:25
+  --> $DIR/dropck_vec_cycle_checked.rs:100:25
    |
 LL |     c1.v[1].v.set(Some(&c3));
    |                         ^^ borrowed value does not live long enough
@@ -21,7 +21,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c2` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:107:25
+  --> $DIR/dropck_vec_cycle_checked.rs:102:25
    |
 LL |     c2.v[0].v.set(Some(&c2));
    |                         ^^ borrowed value does not live long enough
@@ -32,7 +32,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c3` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:109:25
+  --> $DIR/dropck_vec_cycle_checked.rs:104:25
    |
 LL |     c2.v[1].v.set(Some(&c3));
    |                         ^^ borrowed value does not live long enough
@@ -43,7 +43,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c1` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:111:25
+  --> $DIR/dropck_vec_cycle_checked.rs:106:25
    |
 LL |     c3.v[0].v.set(Some(&c1));
    |                         ^^ borrowed value does not live long enough
@@ -54,7 +54,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c2` does not live long enough
-  --> $DIR/dropck_vec_cycle_checked.rs:113:25
+  --> $DIR/dropck_vec_cycle_checked.rs:108:25
    |
 LL |     c3.v[1].v.set(Some(&c2));
    |                         ^^ borrowed value does not live long enough
