@@ -425,7 +425,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault::default());
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names.clone()));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
-    reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents.clone()));
+    reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents.iter().cloned().collect()));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_discriminant::MemDiscriminant);
