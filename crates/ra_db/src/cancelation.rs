@@ -15,29 +15,17 @@
 //! any background processing (this bit is handled by salsa, see
 //! `BaseDatabase::check_canceled` method).
 
-use std::{
-    cmp,
-    hash::{Hash, Hasher},
-    sync::Arc,
-};
-
-use backtrace::Backtrace;
-use parking_lot::Mutex;
-
 /// An "error" signifing that the operation was canceled.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Canceled {
-    backtrace: Arc<Mutex<Backtrace>>,
+    _private: (),
 }
 
 pub type Cancelable<T> = Result<T, Canceled>;
 
 impl Canceled {
     pub(crate) fn new() -> Canceled {
-        let bt = Backtrace::new_unresolved();
-        Canceled {
-            backtrace: Arc::new(Mutex::new(bt)),
-        }
+        Canceled { _private: () }
     }
 }
 
@@ -49,37 +37,8 @@ impl std::fmt::Display for Canceled {
 
 impl std::fmt::Debug for Canceled {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut bt = self.backtrace.lock();
-        let bt: &mut Backtrace = &mut *bt;
-        bt.resolve();
-        write!(fmt, "canceled at:\n{:?}", bt)
+        write!(fmt, "Canceled")
     }
 }
 
 impl std::error::Error for Canceled {}
-
-impl PartialEq for Canceled {
-    fn eq(&self, _: &Canceled) -> bool {
-        true
-    }
-}
-
-impl Eq for Canceled {}
-
-impl Hash for Canceled {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        ().hash(hasher)
-    }
-}
-
-impl cmp::Ord for Canceled {
-    fn cmp(&self, _: &Canceled) -> cmp::Ordering {
-        cmp::Ordering::Equal
-    }
-}
-
-impl cmp::PartialOrd for Canceled {
-    fn partial_cmp(&self, other: &Canceled) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
