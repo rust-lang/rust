@@ -798,7 +798,18 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(self.span,
                                            &format!("expected identifier, found {}",
                                                     self.this_token_descr()));
-        if let Some(token_descr) = self.token_descr() {
+        if let (true, token::Ident(ref s, false), true) = (
+            self.span.rust_2018(),
+            &self.token,
+            self.token.is_used_keyword() || self.token.is_unused_keyword(),
+        ) {
+            err.span_suggestion_with_applicability(
+                self.span,
+                "you can escape reserved keywords to use them as identifiers",
+                format!("r#{}", s.to_string()),
+                Applicability::MaybeIncorrect,
+            );
+        } else if let Some(token_descr) = self.token_descr() {
             err.span_label(self.span, format!("expected identifier, found {}", token_descr));
         } else {
             err.span_label(self.span, "expected identifier");
