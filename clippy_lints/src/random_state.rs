@@ -35,11 +35,13 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &Ty) {
-        if let TyKind::Adt(_, substs) = cx.tables.node_id_to_type(ty.hir_id).sty {
-            for subst in substs {
-                if let UnpackedKind::Type(build_hasher) = subst.unpack() {
-                    if match_type(cx, build_hasher, &paths::RANDOM_STATE) {
-                        span_lint(cx, RANDOM_STATE, ty.span, "usage of RandomState");
+        if let Some(tys) = cx.tables.node_id_to_type_opt(ty.hir_id) {
+            if let TyKind::Adt(_, substs) = tys.sty {
+                for subst in substs {
+                    if let UnpackedKind::Type(build_hasher) = subst.unpack() {
+                        if match_type(cx, build_hasher, &paths::RANDOM_STATE) {
+                            span_lint(cx, RANDOM_STATE, ty.span, "usage of RandomState");
+                        }
                     }
                 }
             }
