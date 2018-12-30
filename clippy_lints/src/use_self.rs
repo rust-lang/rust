@@ -9,6 +9,7 @@
 
 use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -25,7 +26,10 @@ use syntax_pos::symbol::keywords::SelfUpper;
 /// name
 /// feels inconsistent.
 ///
-/// **Known problems:** None.
+/// **Known problems:**
+/// - False positive when using associated types (#2843)
+/// - False positives in some situations when using generics (#3410)
+/// - False positive when type from outer function can't be used (#3463)
 ///
 /// **Example:**
 /// ```rust
@@ -226,10 +230,15 @@ struct UseSelfVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if self.item_path.def == path.def && path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
-            span_use_self_lint(self.cx, path);
+        if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
+            if self.item_path.def == path.def {
+                span_use_self_lint(self.cx, path);
+            } else if let Def::StructCtor(ctor_did, CtorKind::Fn) = path.def {
+                if self.item_path.def.opt_def_id() == self.cx.tcx.parent_def_id(ctor_did) {
+                    span_use_self_lint(self.cx, path);
+                }
+            }
         }
-
         walk_path(self, path);
     }
 

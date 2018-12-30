@@ -51,8 +51,6 @@ mod better {
     }
 }
 
-//todo the lint does not handle lifetimed struct
-//the following module should trigger the lint on the third method only
 mod lifetimes {
     struct Foo<'a> {
         foo_str: &'a str,
@@ -69,7 +67,8 @@ mod lifetimes {
             Foo { foo_str: "foo" }
         }
 
-        // `Self` is applicable here
+        // FIXME: the lint does not handle lifetimed struct
+        // `Self` should be applicable here
         fn clone(&self) -> Foo<'a> {
             Foo { foo_str: self.foo_str }
         }
@@ -213,6 +212,16 @@ mod existential {
 
         fn good(foos: &[Self]) -> impl Iterator<Item = &Self> {
             foos.iter()
+        }
+    }
+}
+
+mod tuple_structs {
+    pub struct TS(i32);
+
+    impl TS {
+        pub fn ts() -> Self {
+            TS(0)
         }
     }
 }
