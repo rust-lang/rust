@@ -767,7 +767,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             match path_res {
                 PathResult::Module(module) => module,
                 PathResult::Indeterminate => return false,
-                PathResult::NonModule(..) | PathResult::Failed(..) => return true,
+                PathResult::NonModule(..) | PathResult::Failed(..) |
+                PathResult::Ignore => return true,
             }
         };
 
@@ -860,6 +861,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
 
                 module
+            }
+            PathResult::Ignore => {
+                return None;
             }
             PathResult::Failed(span, msg, false) => {
                 if no_ambiguity {
