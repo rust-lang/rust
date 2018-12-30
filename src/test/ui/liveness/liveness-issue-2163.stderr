@@ -1,11 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/liveness-issue-2163.rs:5:30
+  --> $DIR/liveness-issue-2163.rs:3:11
    |
-LL |       a.iter().all(|_| -> bool {
-   |  ______________________________^
-LL | |         //~^ ERROR mismatched types
-LL | |     });
-   | |_____^ expected bool, found ()
+LL | fn main() {
+   |    ----   ^ expected bool, found ()
+   |    |
+   |    this function's body doesn't return the expected type
    |
    = note: expected type `bool`
               found type `()`
