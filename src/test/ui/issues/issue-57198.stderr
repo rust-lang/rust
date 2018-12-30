@@ -1,0 +1,8 @@
+error: expected identifier, found keyword `for`
+  --> $DIR/issue-57198.rs:6:8
+   |
+LL |     m::for();
+   |        ^^^ expected identifier, found keyword
+
+error: aborting due to previous error
+
