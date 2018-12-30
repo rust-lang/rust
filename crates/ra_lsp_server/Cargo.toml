@@ -35,6 +35,6 @@ gen_lsp_server = { path = "../gen_lsp_server" }
 ra_vfs = { path = "../ra_vfs" }
 
 [dev-dependencies]
-tempdir = "0.3.7"
+tempfile = "3"
 test_utils = { path = "../test_utils" }
 tools = { path = "../tools" }
