@@ -138,9 +138,18 @@ impl Builder {
                 ..
             } => CompletionItemKind::Enum,
             PerNs {
-                values: Some(hir::Def::Function(..)),
+                values: Some(hir::Def::Function(function)),
                 ..
-            } => CompletionItemKind::Function,
+            } => {
+                if let Some(sig_info) = function.signature_info(db) {
+                    if sig_info.params.is_empty() {
+                        self.snippet = Some(format!("{}()$0", self.label));
+                    } else {
+                        self.snippet = Some(format!("{}($0)", self.label));
+                    }
+                }
+                CompletionItemKind::Function
+            }
             _ => return self,
         };
         self.kind = Some(kind);
