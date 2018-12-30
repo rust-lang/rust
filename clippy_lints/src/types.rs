@@ -25,7 +25,7 @@ use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisito
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
+use rustc::ty::{self, Ref, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
@@ -2289,7 +2289,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
             if let TyKind::Ptr(MutTy { mutbl: Mutability::MutMutable, .. }) = t.node;
             if let ExprKind::Cast(e, t) = &e.node;
             if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.node;
-            if let ty::TyKind::Ref(..) = cx.tables.node_id_to_type(e.hir_id).sty;
+            if let Ref(..) = cx.tables.node_id_to_type(e.hir_id).sty;
             then {
                 span_lint(
                     cx,
