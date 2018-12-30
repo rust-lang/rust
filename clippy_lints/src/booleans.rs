@@ -96,7 +96,7 @@ struct Hir2Qmm<'a, 'tcx: 'a, 'v> {
 impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     fn extract(&mut self, op: BinOpKind, a: &[&'v Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
-            if let ExprKind::Binary(binop, ref lhs, ref rhs) = a.node {
+            if let ExprKind::Binary(binop, lhs, rhs) = &a.node {
                 if binop.node == op {
                     v = self.extract(op, &[lhs, rhs], v)?;
                     continue;
@@ -110,14 +110,14 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
         // prevent folding of `cfg!` macros and the like
         if !in_macro(e.span) {
-            match e.node {
-                ExprKind::Unary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
-                ExprKind::Binary(binop, ref lhs, ref rhs) => match binop.node {
+            match &e.node {
+                ExprKind::Unary(UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
+                ExprKind::Binary(binop, lhs, rhs) => match &binop.node {
                     BinOpKind::Or => return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?)),
                     BinOpKind::And => return Ok(Bool::And(self.extract(BinOpKind::And, &[lhs, rhs], Vec::new())?)),
                     _ => (),
                 },
-                ExprKind::Lit(ref lit) => match lit.node {
+                ExprKind::Lit(lit) => match lit.node {
                     LitKind::Bool(true) => return Ok(Bool::True),
                     LitKind::Bool(false) => return Ok(Bool::False),
                     _ => (),
@@ -130,8 +130,8 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 #[allow(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
-            let negated = match e.node {
-                ExprKind::Binary(binop, ref lhs, ref rhs) => {
+            let negated = match &e.node {
+                ExprKind::Binary(binop, lhs, rhs) => {
                     if !implements_ord(self.cx, lhs) {
                         continue;
                     }
@@ -184,8 +184,8 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
     }
 
     fn simplify_not(&self, expr: &Expr) -> Option<String> {
-        match expr.node {
-            ExprKind::Binary(binop, ref lhs, ref rhs) => {
+        match &expr.node {
+            ExprKind::Binary(binop, lhs, rhs) => {
                 if !implements_ord(self.cx, lhs) {
                     return None;
                 }
@@ -201,7 +201,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
                 .and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
             },
-            ExprKind::MethodCall(ref path, _, ref args) if args.len() == 1 => {
+            ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
                 let type_of_receiver = self.cx.tables.expr_ty(&args[0]);
                 if !match_type(self.cx, type_of_receiver, &paths::OPTION)
                     && !match_type(self.cx, type_of_receiver, &paths::RESULT)
@@ -221,14 +221,14 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
 
     fn recurse(&mut self, suggestion: &Bool) -> Option<()> {
         use quine_mc_cluskey::Bool::*;
-        match *suggestion {
+        match suggestion {
             True => {
                 self.output.push_str("true");
             },
             False => {
                 self.output.push_str("false");
             },
-            Not(ref inner) => match **inner {
+            Not(inner) => match **inner {
                 And(_) | Or(_) => {
                     self.output.push('!');
                     self.output.push('(');
@@ -251,7 +251,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                     self.recurse(inner)?;
                 },
             },
-            And(ref v) => {
+            And(v) => {
                 for (index, inner) in v.iter().enumerate() {
                     if index > 0 {
                         self.output.push_str(" && ");
@@ -265,7 +265,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                     }
                 }
             },
-            Or(ref v) => {
+            Or(v) => {
                 for (index, inner) in v.iter().enumerate() {
                     if index > 0 {
                         self.output.push_str(" || ");
@@ -273,7 +273,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                     self.recurse(inner);
                 }
             },
-            Term(n) => {
+            &Term(n) => {
                 let snip = self.snip(self.terminals[n as usize])?;
                 self.output.push_str(&snip);
             },
@@ -325,22 +325,22 @@ struct Stats {
 
 fn terminal_stats(b: &Bool) -> Stats {
     fn recurse(b: &Bool, stats: &mut Stats) {
-        match *b {
+        match b {
             True | False => stats.ops += 1,
-            Not(ref inner) => {
+            Not(inner) => {
                 match **inner {
                     And(_) | Or(_) => stats.ops += 1, // brackets are also operations
                     _ => stats.negations += 1,
                 }
                 recurse(inner, stats);
             },
-            And(ref v) | Or(ref v) => {
+            And(v) | Or(v) => {
                 stats.ops += v.len() - 1;
                 for inner in v {
                     recurse(inner, stats);
                 }
             },
-            Term(n) => stats.terminals[n as usize] += 1,
+            &Term(n) => stats.terminals[n as usize] += 1,
         }
     }
     use quine_mc_cluskey::Bool::*;
@@ -461,11 +461,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         if in_macro(e.span) {
             return;
         }
-        match e.node {
+        match &e.node {
             ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
                 self.bool_expr(e)
             },
-            ExprKind::Unary(UnNot, ref inner) => {
+            ExprKind::Unary(UnNot, inner) => {
                 if self.cx.tables.node_types()[inner.hir_id].is_bool() {
                     self.bool_expr(e);
                 } else {
