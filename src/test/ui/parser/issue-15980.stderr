@@ -6,6 +6,10 @@ LL |         Err(ref e) if e.kind == io::EndOfFile {
 LL |             //~^ NOTE while parsing this struct
 LL |             return
    |             ^^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |             r#return
+   |
 
 error: expected one of `.`, `=>`, `?`, or an operator, found `_`
   --> $DIR/issue-15980.rs:15:9
