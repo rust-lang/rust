@@ -352,38 +352,38 @@ LL | |     } else {
    | |_____^
 
 error: this `if` has the same condition as a previous if
-  --> $DIR/copies.rs:347:15
+  --> $DIR/copies.rs:358:15
    |
 LL |     } else if b {
    |               ^
    |
    = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
 note: same as this
-  --> $DIR/copies.rs:346:8
+  --> $DIR/copies.rs:357:8
    |
 LL |     if b {
    |        ^
 
 error: this `if` has the same condition as a previous if
-  --> $DIR/copies.rs:352:15
+  --> $DIR/copies.rs:363:15
    |
 LL |     } else if a == 1 {
    |               ^^^^^^
    |
 note: same as this
-  --> $DIR/copies.rs:351:8
+  --> $DIR/copies.rs:362:8
    |
 LL |     if a == 1 {
    |        ^^^^^^
 
 error: this `if` has the same condition as a previous if
-  --> $DIR/copies.rs:358:15
+  --> $DIR/copies.rs:369:15
    |
 LL |     } else if 2 * a == 1 {
    |               ^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/copies.rs:356:8
+  --> $DIR/copies.rs:367:8
    |
 LL |     if 2 * a == 1 {
    |        ^^^^^^^^^^
