@@ -9,5 +9,5 @@ mod m {
 
 fn main() {
     m::leak_dyn_nonprincipal();
-    //~^ ERROR type `(dyn m::PubPrincipal + m::PrivNonPrincipal + 'static)` is private
+    //~^ ERROR trait `m::PrivNonPrincipal` is private
 }

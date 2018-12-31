@@ -4,7 +4,7 @@ pub trait PubPrincipal {}
 auto trait PrivNonPrincipal {}
 
 pub fn leak_dyn_nonprincipal() -> Box<PubPrincipal + PrivNonPrincipal> { loop {} }
-//~^ WARN private type `(dyn PubPrincipal + PrivNonPrincipal + 'static)` in public interface
+//~^ WARN private trait `PrivNonPrincipal` in public interface
 //~| WARN this was previously accepted
 
 #[deny(missing_docs)]

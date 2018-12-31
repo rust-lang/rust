@@ -1,4 +1,4 @@
-warning: private type `(dyn PubPrincipal + PrivNonPrincipal + 'static)` in public interface (error E0446)
+warning: private trait `PrivNonPrincipal` in public interface (error E0445)
   --> $DIR/private-in-public-non-principal.rs:6:1
    |
 LL | pub fn leak_dyn_nonprincipal() -> Box<PubPrincipal + PrivNonPrincipal> { loop {} }

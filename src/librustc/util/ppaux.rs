@@ -709,6 +709,9 @@ define_print! {
 
 define_print! {
     ('tcx) ty::ExistentialTraitRef<'tcx>, (self, f, cx) {
+        display {
+            cx.parameterized(f, self.substs, self.def_id, &[])
+        }
         debug {
             ty::tls::with(|tcx| {
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
