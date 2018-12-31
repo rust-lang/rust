@@ -2090,6 +2090,15 @@ impl VisibilityKind {
             VisibilityKind::Restricted { .. } => true,
         }
     }
+
+    pub fn descr(&self) -> &'static str {
+        match *self {
+            VisibilityKind::Public => "public",
+            VisibilityKind::Inherited => "private",
+            VisibilityKind::Crate(..) => "crate-visible",
+            VisibilityKind::Restricted { .. } => "restricted",
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

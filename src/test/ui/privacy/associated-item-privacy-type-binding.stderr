@@ -1,4 +1,4 @@
-error: type `(dyn priv_trait::PubTr<AssocTy=u8> + '<empty>)` is private
+error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:11:13
    |
 LL |         let _: Box<PubTr<AssocTy = u8>>;
@@ -7,7 +7,7 @@ LL |         let _: Box<PubTr<AssocTy = u8>>;
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
 
-error: type `(dyn priv_trait::PubTr<AssocTy=u8> + '<empty>)` is private
+error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:11:16
    |
 LL |         let _: Box<PubTr<AssocTy = u8>>;
@@ -16,7 +16,7 @@ LL |         let _: Box<PubTr<AssocTy = u8>>;
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
 
-error: type `(dyn priv_trait::PubTr<AssocTy=u8> + 'static)` is private
+error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:14:31
    |
 LL |         type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
@@ -34,7 +34,7 @@ LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
 LL |     priv_trait::mac1!();
    |     -------------------- in this macro invocation
 
-error: type `(dyn priv_trait::PrivTr<AssocTy=u8> + '<empty>)` is private
+error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:20:13
    |
 LL |         let _: Box<PrivTr<AssocTy = u8>>;
@@ -43,7 +43,7 @@ LL |         let _: Box<PrivTr<AssocTy = u8>>;
 LL |     priv_trait::mac2!();
    |     -------------------- in this macro invocation
 
-error: type `(dyn priv_trait::PrivTr<AssocTy=u8> + '<empty>)` is private
+error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:20:16
    |
 LL |         let _: Box<PrivTr<AssocTy = u8>>;
@@ -52,7 +52,7 @@ LL |         let _: Box<PrivTr<AssocTy = u8>>;
 LL |     priv_trait::mac2!();
    |     -------------------- in this macro invocation
 
-error: type `(dyn priv_trait::PrivTr<AssocTy=u8> + 'static)` is private
+error: trait `priv_trait::PrivTr` is private
   --> $DIR/associated-item-privacy-type-binding.rs:23:31
    |
 LL |         type InSignatureTy1 = Box<PrivTr<AssocTy = u8>>;
