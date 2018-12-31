@@ -328,7 +328,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_ip")]
+    #[cfg_attr(stage0, rustc_const_unstable(feature = "const_ip"))]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
             inner: c::in_addr {
