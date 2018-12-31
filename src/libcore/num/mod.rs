@@ -997,9 +997,12 @@ $EndFeature, "
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 unsafe {
                     intrinsics::overflowing_add(self, rhs)
                 }
+                #[cfg(not(stage0))]
+                intrinsics::overflowing_add(self, rhs)
             }
         }
 
@@ -1021,9 +1024,12 @@ $EndFeature, "
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 unsafe {
                     intrinsics::overflowing_sub(self, rhs)
                 }
+                #[cfg(not(stage0))]
+                intrinsics::overflowing_sub(self, rhs)
             }
         }
 
@@ -1044,9 +1050,12 @@ $EndFeature, "
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 unsafe {
                     intrinsics::overflowing_mul(self, rhs)
                 }
+                #[cfg(not(stage0))]
+                intrinsics::overflowing_mul(self, rhs)
             }
         }
 
@@ -2311,7 +2320,10 @@ assert_eq!(n.rotate_left(", $rot, "), m);
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_rotate"))]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
+                #[cfg(stage0)]
                 unsafe { intrinsics::rotate_left(self, n as $SelfT) }
+                #[cfg(not(stage0))]
+                intrinsics::rotate_left(self, n as $SelfT)
             }
         }
 
@@ -2336,7 +2348,10 @@ assert_eq!(n.rotate_right(", $rot, "), m);
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_rotate"))]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
+                #[cfg(stage0)]
                 unsafe { intrinsics::rotate_right(self, n as $SelfT) }
+                #[cfg(not(stage0))]
+                intrinsics::rotate_right(self, n as $SelfT)
             }
         }
 
@@ -2885,9 +2900,12 @@ $EndFeature, "
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 unsafe {
                     intrinsics::overflowing_add(self, rhs)
                 }
+                #[cfg(not(stage0))]
+                intrinsics::overflowing_add(self, rhs)
             }
         }
 
@@ -2908,9 +2926,12 @@ $EndFeature, "
             #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
+                #[cfg(stage0)]
                 unsafe {
                     intrinsics::overflowing_sub(self, rhs)
                 }
+                #[cfg(not(stage0))]
+                intrinsics::overflowing_sub(self, rhs)
             }
         }
 
@@ -2932,9 +2953,12 @@ $EndFeature, "
         #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_wrapping"))]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
+            #[cfg(stage0)]
             unsafe {
                 intrinsics::overflowing_mul(self, rhs)
             }
+                #[cfg(not(stage0))]
+                intrinsics::overflowing_mul(self, rhs)
         }
 
         doc_comment! {
