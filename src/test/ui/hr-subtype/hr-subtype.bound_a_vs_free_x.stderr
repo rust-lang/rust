@@ -11,8 +11,8 @@ LL | |                              fn(&'x u32)) }
    = note: expected type `std::option::Option<for<'a> fn(&'a u32)>`
               found type `std::option::Option<fn(&'x u32)>`
    = note: lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:23), 'a) })...
-note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 48:22
-  --> $DIR/hr-subtype.rs:48:22
+note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 38:22
+  --> $DIR/hr-subtype.rs:38:22
    |
 LL |           fn supertype<'x,'y:'x,'z:'y>() {
    |                        ^^
