@@ -64,7 +64,6 @@ pub(crate) fn parse_with<S: Sink>(
 /// the public API of the `Parser`.
 pub(crate) struct ParserImpl<'t> {
     inp: &'t ParserInput<'t>,
-
     pos: InputPosition,
     events: Vec<Event>,
     steps: Cell<u32>,
@@ -74,7 +73,6 @@ impl<'t> ParserImpl<'t> {
     pub(crate) fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
         ParserImpl {
             inp,
-
             pos: InputPosition::new(),
             events: Vec::new(),
             steps: Cell::new(0),
@@ -89,7 +87,9 @@ impl<'t> ParserImpl<'t> {
     pub(super) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
         let c1 = self.inp.kind(self.pos);
         let c2 = self.inp.kind(self.pos + 1);
-        if self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos) {
+        if self.inp.token_start_at(self.pos + 1)
+            == self.inp.token_start_at(self.pos) + self.inp.len(self.pos)
+        {
             Some((c1, c2))
         } else {
             None
@@ -100,9 +100,10 @@ impl<'t> ParserImpl<'t> {
         let c1 = self.inp.kind(self.pos);
         let c2 = self.inp.kind(self.pos + 1);
         let c3 = self.inp.kind(self.pos + 2);
-        if self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
-            && self.inp.start(self.pos + 2)
-                == self.inp.start(self.pos + 1) + self.inp.len(self.pos + 1)
+        if self.inp.token_start_at(self.pos + 1)
+            == self.inp.token_start_at(self.pos) + self.inp.len(self.pos)
+            && self.inp.token_start_at(self.pos + 2)
+                == self.inp.token_start_at(self.pos + 1) + self.inp.len(self.pos + 1)
         {
             Some((c1, c2, c3))
         } else {
