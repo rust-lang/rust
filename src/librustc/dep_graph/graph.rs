@@ -189,7 +189,7 @@ impl DepGraph {
                 reads: SmallVec::new(),
                 read_set: Default::default(),
             })),
-            |data, key, f, task| data.borrow_mut().complete_task(key, task, f))
+            |data, key, fingerprint, task| data.borrow_mut().complete_task(key, task, fingerprint))
     }
 
     /// Creates a new dep-graph input with value `input`
@@ -207,7 +207,9 @@ impl DepGraph {
 
         self.with_task_impl(key, cx, input, true, identity_fn,
             |_| OpenTask::Ignore,
-            |data, key, f, _| data.borrow_mut().alloc_node(key, SmallVec::new(), f))
+            |data, key, fingerprint, _| {
+                data.borrow_mut().alloc_node(key, SmallVec::new(), fingerprint)
+            })
     }
 
     fn with_task_impl<'gcx, C, A, R>(
@@ -343,7 +345,9 @@ impl DepGraph {
     {
         self.with_task_impl(key, cx, arg, false, task,
             |key| OpenTask::EvalAlways { node: key },
-            |data, key, f, task| data.borrow_mut().complete_eval_always_task(key, task, f))
+            |data, key, fingerprint, task| {
+                data.borrow_mut().complete_eval_always_task(key, task, fingerprint)
+            })
     }
 
     #[inline]
