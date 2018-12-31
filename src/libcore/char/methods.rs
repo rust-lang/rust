@@ -5,6 +5,7 @@ use str::from_utf8_unchecked_mut;
 use super::*;
 use unicode::printable::is_printable;
 use unicode::tables::{conversions, derived_property, general_category, property};
+use borrow::Borrow;
 
 #[lang = "char"]
 impl char {
