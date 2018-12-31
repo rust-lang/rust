@@ -5,6 +5,8 @@
 // *ANY* lifetime and returns a reference with the 'static lifetime.
 // This can safely be considered to be an instance of `F` because all
 // lifetimes are sublifetimes of 'static.
+//
+// compile-pass
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -37,8 +39,7 @@ fn baz(x: &S) -> &S {
 fn supply_F() {
     want_F(foo);
 
-    // FIXME(#33684) -- this should be a subtype, but current alg. rejects it incorrectly
-    want_F(bar); //~ ERROR E0308
+    want_F(bar);
 
     want_F(baz);
 }
