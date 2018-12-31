@@ -82,7 +82,6 @@ impl Conv for CompletionItem {
             InsertText::Snippet { text } => {
                 res.insert_text = Some(text);
                 res.insert_text_format = Some(InsertTextFormat::Snippet);
-                res.kind = Some(languageserver_types::CompletionItemKind::Keyword);
             }
         }
         res
