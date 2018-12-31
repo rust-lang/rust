@@ -9,14 +9,14 @@ use crate::{
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
     let source_file = db.source_file(file_id);
-    let mut res = ra_editor::highlight(&source_file);
+    let mut res = ra_editor::highlight(source_file.syntax());
     for macro_call in source_file
         .syntax()
         .descendants()
         .filter_map(ast::MacroCall::cast)
     {
         if let Some(exp) = crate::macros::expand(db, file_id, macro_call) {
-            let mapped_ranges = ra_editor::highlight(exp.source_file())
+            let mapped_ranges = ra_editor::highlight(exp.source_file().syntax())
                 .into_iter()
                 .filter_map(|r| {
                     let mapped_range = exp.map_range_back(r.range)?;

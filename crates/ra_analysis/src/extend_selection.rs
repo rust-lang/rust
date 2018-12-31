@@ -1,6 +1,6 @@
 use ra_db::SyntaxDatabase;
 use ra_syntax::{
-    SyntaxNodeRef, AstNode,
+    SyntaxNodeRef, AstNode, SourceFileNode,
     ast, algo::find_covering_node,
 };
 
@@ -11,18 +11,23 @@ use crate::{
 
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let source_file = db.source_file(frange.file_id);
-    if let Some(macro_call) = find_macro_call(source_file.syntax(), frange.range) {
-        if let Some(exp) = crate::macros::expand(db, frange.file_id, macro_call) {
-            if let Some(dst_range) = exp.map_range_forward(frange.range) {
-                if let Some(dst_range) = ra_editor::extend_selection(exp.source_file(), dst_range) {
-                    if let Some(src_range) = exp.map_range_back(dst_range) {
-                        return src_range;
-                    }
-                }
-            }
-        }
+    if let Some(range) = extend_selection_in_macro(db, &source_file, frange) {
+        return range;
     }
-    ra_editor::extend_selection(&source_file, frange.range).unwrap_or(frange.range)
+    ra_editor::extend_selection(source_file.syntax(), frange.range).unwrap_or(frange.range)
+}
+
+fn extend_selection_in_macro(
+    db: &RootDatabase,
+    source_file: &SourceFileNode,
+    frange: FileRange,
+) -> Option<TextRange> {
+    let macro_call = find_macro_call(source_file.syntax(), frange.range)?;
+    let exp = crate::macros::expand(db, frange.file_id, macro_call)?;
+    let dst_range = exp.map_range_forward(frange.range)?;
+    let dst_range = ra_editor::extend_selection(exp.source_file().syntax(), dst_range)?;
+    let src_range = exp.map_range_back(dst_range)?;
+    Some(src_range)
 }
 
 fn find_macro_call(node: SyntaxNodeRef, range: TextRange) -> Option<ast::MacroCall> {
