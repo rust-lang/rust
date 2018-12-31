@@ -503,6 +503,9 @@ impl Session {
     pub fn profile_queries_and_keys(&self) -> bool {
         self.opts.debugging_opts.profile_queries_and_keys
     }
+    pub fn instrument_mcount(&self) -> bool {
+        self.opts.debugging_opts.instrument_mcount
+    }
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
     }
@@ -667,7 +670,11 @@ impl Session {
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
-        if let Some(x) = self.opts.cg.force_frame_pointers {
+        // "mcount" function relies on stack pointer.
+        // See https://sourceware.org/binutils/docs/gprof/Implementation.html
+        if self.instrument_mcount() {
+            true
+        } else if let Some(x) = self.opts.cg.force_frame_pointers {
             x
         } else {
             !self.target.target.options.eliminate_frame_pointer
