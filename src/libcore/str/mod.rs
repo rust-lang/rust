@@ -646,7 +646,7 @@ impl<'a> Chars<'a> {
         let mut this = self;
         let mut other = other;
         match (this.next(), other.next()) {
-            (Some(t), Some(o)) if t.eq_ignore_case(o) => (),
+            (Some(t), Some(o)) if t.eq_ignore_case(&o) => (),
             (None, None) => (),
             _ => return false,
         }
