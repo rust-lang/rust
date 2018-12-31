@@ -89,12 +89,18 @@ pub(super) fn is_ascii_escape(code: char) -> bool {
 
 fn validate_ascii_code_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxError>) {
     // An AsciiCodeEscape has 4 chars, example: `\xDD`
+    if !text.is_ascii() {
+        // TODO: Give a more precise error message (say what the invalid character was)
+        errors.push(SyntaxError::new(AsciiCodeEscapeOutOfRange, range));
+    }
     if text.len() < 4 {
         errors.push(SyntaxError::new(TooShortAsciiCodeEscape, range));
     } else {
-        assert!(
-            text.chars().count() == 4,
-            "AsciiCodeEscape cannot be longer than 4 chars"
+        assert_eq!(
+            text.len(),
+            4,
+            "AsciiCodeEscape cannot be longer than 4 chars, but text '{}' is",
+            text,
         );
 
         match u8::from_str_radix(&text[2..], 16) {
