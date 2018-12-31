@@ -119,7 +119,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
 /// then an `Err` result is returned.
 pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                         value: &T) -> FixupResult<T>
-    where T : TypeFoldable<'tcx>
+    where T: TypeFoldable<'tcx>
 {
     let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
     let result = value.fold_with(&mut full_resolver);

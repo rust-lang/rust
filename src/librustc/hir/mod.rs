@@ -10,6 +10,7 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
+use errors::FatalError;
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
@@ -607,7 +608,7 @@ pub enum SyntheticTyParamKind {
     ImplTrait
 }
 
-/// A `where` clause in a definition
+/// A `where` clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
     pub id: NodeId,
@@ -626,7 +627,7 @@ impl WhereClause {
     }
 }
 
-/// A single predicate in a `where` clause
+/// A single predicate in a `where` clause.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum WherePredicate {
     /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
@@ -2053,6 +2054,20 @@ pub struct TraitRef {
     pub hir_ref_id: HirId,
 }
 
+impl TraitRef {
+    /// Get the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
+    pub fn trait_def_id(&self) -> DefId {
+        match self.path.def {
+            Def::Trait(did) => did,
+            Def::TraitAlias(did) => did,
+            Def::Err => {
+                FatalError.raise();
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `<'a> Foo<&'a T>`.
@@ -2484,7 +2499,7 @@ impl CodegenFnAttrs {
         }
     }
 
-    /// True if `#[inline]` or `#[inline(always)]` is present.
+    /// Returns whether `#[inline]` or `#[inline(always)]` is present.
     pub fn requests_inline(&self) -> bool {
         match self.inline {
             InlineAttr::Hint | InlineAttr::Always => true,
@@ -2492,17 +2507,17 @@ impl CodegenFnAttrs {
         }
     }
 
-    /// True if it looks like this symbol needs to be exported, for example:
+    /// Returns whether it looks like this symbol needs to be exported, for example:
     ///
-    /// * `#[no_mangle]` is present
-    /// * `#[export_name(...)]` is present
-    /// * `#[linkage]` is present
+    /// * `#[no_mangle]` is present.
+    /// * `#[export_name(...)]` is present.
+    /// * `#[linkage]` is present.
     pub fn contains_extern_indicator(&self) -> bool {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) ||
             self.export_name.is_some() ||
             match self.linkage {
-                // these are private, make sure we don't try to consider
-                // them external
+                // These are private, so make sure we don't try to consider
+                // them external.
                 None |
                 Some(Linkage::Internal) |
                 Some(Linkage::Private) => false,

@@ -13,10 +13,13 @@
 //! `LintPass` (also, note that such lints will need to be defined in
 //! `rustc::lint::builtin`, not here).
 //!
-//! If you define a new `LintPass`, you will also need to add it to the
-//! `add_builtin!` or `add_builtin_with_new!` invocation in `lib.rs`.
-//! Use the former for unit-like structs and the latter for structs with
-//! a `pub fn new()`.
+//! If you define a new `EarlyLintPass`, you will also need to add it to the
+//! `add_early_builtin!` or `add_early_builtin_with_new!` invocation in
+//! `lib.rs`. Use the former for unit-like structs and the latter for structs
+//! with a `pub fn new()`.
+//!
+//! If you define a new `LateLintPass`, you will also need to add it to the
+//! `late_lint_methods!` invocation in `lib.rs`.
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -46,7 +49,7 @@ use rustc::hir::intravisit::FnKind;
 
 use nonstandard_style::{MethodLateContext, method_context};
 
-// hardwired lints from librustc
+// Hardwired lints from librustc
 pub use lint::builtin::*;
 
 declare_lint! {
@@ -217,7 +220,7 @@ impl LintPass for UnsafeCode {
 
 impl UnsafeCode {
     fn report_unsafe(&self, cx: &LateContext, span: Span, desc: &'static str) {
-        // This comes from a macro that has #[allow_internal_unsafe].
+        // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
             return;
         }
@@ -229,7 +232,7 @@ impl UnsafeCode {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprKind::Block(ref blk, _) = e.node {
-            // Don't warn about generated blocks, that'll just pollute the output.
+            // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) {
                 self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
             }
@@ -289,7 +292,7 @@ declare_lint! {
 }
 
 pub struct MissingDoc {
-    /// Stack of whether #[doc(hidden)] is set
+    /// Stack of whether `#[doc(hidden)]` is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
 
@@ -328,7 +331,7 @@ impl MissingDoc {
 
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
-        // have a NodeId).
+        // have a `NodeId`).
         if let Some(id) = id {
             if !cx.access_levels.is_exported(id) {
                 return;
@@ -399,7 +402,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Struct(..) => "a struct",
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
-                // Issue #11592, traits are always considered exported, even when private.
+                // Issue #11592: traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.id);
                     for trait_item_ref in trait_item_refs {
@@ -411,7 +414,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             }
             hir::ItemKind::Ty(..) => "a type alias",
             hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
-                // If the trait is private, add the impl items to private_traits so they don't get
+                // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.def.def_id();
                 if let Some(node_id) = cx.tcx.hir().as_local_node_id(real_trait) {
@@ -1320,7 +1323,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         use rustc::ty::fold::TypeFoldable;
         use rustc::ty::Predicate::*;
 
-
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.id);
             let predicates = cx.tcx.predicates_of(def_id);
@@ -1590,7 +1592,7 @@ impl EarlyLintPass for KeywordIdents {
             },
         };
 
-        // don't lint `r#foo`
+        // Don't lint `r#foo`.
         if is_raw_ident(ident) {
             return;
         }
@@ -1837,8 +1839,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 );
                 err.emit();
             }
-
         }
     }
-
 }

@@ -14,7 +14,7 @@ use syntax_pos::Span;
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
-/// A Visitor that walks over the HIR and collects Nodes into a HIR map
+/// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
     krate: &'hir Crate,

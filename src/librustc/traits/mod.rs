@@ -898,7 +898,7 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     value: &T)
     -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx>
+    where T: TypeFoldable<'tcx>
 {
     debug!("fully_normalize_with_fulfillcx(value={:?})", value);
     let selcx = &mut SelectionContext::new(infcx);

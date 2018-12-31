@@ -362,7 +362,7 @@ pub trait Subst<'tcx>: Sized {
                                -> Self;
 }
 
-impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
+impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
     fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                substs: &[Kind<'tcx>],
                                span: Option<Span>)

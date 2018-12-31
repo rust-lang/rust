@@ -1,29 +1,16 @@
-warning: duplicate auto trait `std::marker::Send` found in trait object
-  --> $DIR/trait-object-auto-dedup-in-impl.rs:13:22
-   |
-LL | type Send2 = Trait + Send + Send;
-   |                      ^^^^   ^^^^ subsequent use of auto trait
-   |                      |
-   |                      first use of auto trait
-   |
-   = note: #[warn(duplicate_auto_traits_in_trait_objects)] on by default
-
-warning: duplicate auto trait `std::marker::Send` found in trait object
-  --> $DIR/trait-object-auto-dedup-in-impl.rs:22:14
-   |
-LL | impl Trait + Send + Send {
-   |              ^^^^   ^^^^ subsequent use of auto trait
-   |              |
-   |              first use of auto trait
-
 error[E0592]: duplicate definitions with name `test`
-  --> $DIR/trait-object-auto-dedup-in-impl.rs:19:5
+  --> $DIR/trait-object-auto-dedup-in-impl.rs:16:5
    |
-LL |     fn test(&self) { println!("one"); } //~ ERROR duplicate definitions with name `test`
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definitions for `test`
+LL | /     fn test(&self) {
+LL | |     //~^ ERROR duplicate definitions with name `test`
+LL | |         println!("one");
+LL | |     }
+   | |_____^ duplicate definitions for `test`
 ...
-LL |     fn test(&self) { println!("two"); }
-   |     ----------------------------------- other definition for `test`
+LL | /     fn test(&self) {
+LL | |         println!("two");
+LL | |     }
+   | |_____- other definition for `test`
 
 error: aborting due to previous error
 

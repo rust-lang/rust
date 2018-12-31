@@ -78,10 +78,10 @@ pub type ProjectionTyObligation<'tcx> =
 /// When attempting to resolve `<T as TraitRef>::Name` ...
 #[derive(Debug)]
 pub enum ProjectionTyError<'tcx> {
-    /// ...we found multiple sources of information and couldn't resolve the ambiguity.
+    /// ... we found multiple sources of information and couldn't resolve the ambiguity.
     TooManyCandidates,
 
-    /// ...an error occurred matching `T : TraitRef`
+    /// ... an error occurred matching `T: TraitRef`.
     TraitSelectionError(SelectionError<'tcx>),
 }
 
@@ -92,13 +92,13 @@ pub struct MismatchedProjectionTypes<'tcx> {
 
 #[derive(PartialEq, Eq, Debug)]
 enum ProjectionTyCandidate<'tcx> {
-    // from a where-clause in the env or object type
+    // From a where-clause in the env or object type.
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
 
-    // from the definition of `Trait` when you have something like <<A as Trait>::B as Trait2>::C
+    // From the definition of `Trait` when you have something like `<<A as Trait>::B as Trait2>::C`.
     TraitDef(ty::PolyProjectionPredicate<'tcx>),
 
-    // from a "impl" (or a "pseudo-impl" returned by select)
+    // From a "impl" (or a "pseudo-impl" returned by select).
     Select(Selection<'tcx>),
 }
 
@@ -270,7 +270,7 @@ pub fn normalize<'a, 'b, 'gcx, 'tcx, T>(selcx: &'a mut SelectionContext<'b, 'gcx
                                         cause: ObligationCause<'tcx>,
                                         value: &T)
                                         -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx>
+    where T: TypeFoldable<'tcx>
 {
     normalize_with_depth(selcx, param_env, cause, 0, value)
 }
@@ -284,7 +284,7 @@ pub fn normalize_with_depth<'a, 'b, 'gcx, 'tcx, T>(
     value: &T)
     -> Normalized<'tcx, T>
 
-    where T : TypeFoldable<'tcx>
+    where T: TypeFoldable<'tcx>
 {
     debug!("normalize_with_depth(depth={}, value={:?})", depth, value);
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, param_env, cause, depth);
@@ -386,7 +386,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                 // handle normalization within binders because
                 // otherwise we wind up a need to normalize when doing
                 // trait matching (since you can have a trait
-                // obligation like `for<'a> T::B : Fn(&'a int)`), but
+                // obligation like `for<'a> T::B: Fn(&'a int)`), but
                 // we can't normalize with bound regions in scope. So
                 // far now we just ignore binders but only normalize
                 // if all bound regions are gone (and then we still
@@ -948,7 +948,7 @@ fn assemble_candidates_from_param_env<'cx, 'gcx, 'tcx>(
 ///
 /// ```
 /// trait Foo {
-///     type FooT : Bar<BarT=i32>
+///     type FooT: Bar<BarT = i32>
 /// }
 /// ```
 ///
@@ -1139,8 +1139,8 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // fn foo<T:SomeTrait>(...) { }
                 // ```
                 //
-                // If the user writes `<T as SomeTrait>::Foo`, then the `T
-                // : SomeTrait` binding does not help us decide what the
+                // If the user writes `<T as SomeTrait>::Foo`, then the
+                // `T: SomeTrait` binding does not help us decide what the
                 // type `Foo` is (at least, not more specifically than
                 // what we already knew).
                 //
@@ -1150,10 +1150,10 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
                 // ```
                 //
-                // Doesn't the `T : Sometrait<Foo=usize>` predicate help
+                // Doesn't the `T: Sometrait<Foo = usize>` predicate help
                 // resolve `T::Foo`? And of course it does, but in fact
                 // that single predicate is desugared into two predicates
-                // in the compiler: a trait predicate (`T : SomeTrait`) and a
+                // in the compiler: a trait predicate (`T: SomeTrait`) and a
                 // projection. And the projection where clause is handled
                 // in `assemble_candidates_from_param_env`.
                 false

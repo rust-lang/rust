@@ -2,7 +2,7 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is is parameterized by
 //! an instance of `AstConv`.
 
-use errors::{Applicability, FatalError, DiagnosticId};
+use errors::{Applicability, DiagnosticId};
 use hir::{self, GenericArg, GenericArgs};
 use hir::def::Def;
 use hir::def_id::DefId;
@@ -29,7 +29,6 @@ use util::nodemap::FxHashMap;
 
 use std::collections::BTreeSet;
 use std::iter;
-use std::ops::Range;
 use std::slice;
 
 use super::{check_type_alias_enum_variants_enabled};
@@ -690,24 +689,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
-        let trait_def_id = self.trait_def_id(trait_ref);
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
-                                        trait_def_id,
+                                        trait_ref.trait_def_id(),
                                         self_ty,
                                         trait_ref.path.segments.last().unwrap())
-    }
-
-    /// Get the `DefId` of the given trait ref. It _must_ actually be a trait or trait alias.
-    fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
-        let path = &trait_ref.path;
-        match path.def {
-            Def::Trait(trait_def_id) => trait_def_id,
-            Def::TraitAlias(alias_def_id) => alias_def_id,
-            Def::Err => {
-                FatalError.raise();
-            }
-            _ => unreachable!(),
-        }
     }
 
     /// The given trait-ref must actually be a trait.
@@ -718,7 +703,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         speculative: bool)
         -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
     {
-        let trait_def_id = self.trait_def_id(trait_ref);
+        let trait_def_id = trait_ref.trait_def_id();
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
@@ -955,7 +940,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     fn conv_object_ty_poly_trait_ref(&self,
-        node_id: ast::NodeId,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
         lifetime: &hir::Lifetime)
@@ -1143,33 +1127,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let extra_principal_trait = auto_traits.iter().skip(1).any(
             |tr| tr.trait_ref().def_id() == principal.def_id());
 
-        // Lint duplicate auto traits, and then remove duplicates.
+        // Remove duplicate auto traits.
         auto_traits.sort_by_key(|i| i.trait_ref().def_id());
-        let emit_dup_traits_err = |range: Range<usize>| {
-            let mut err = tcx.struct_span_lint_node(
-                lint::builtin::DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS,
-                node_id,
-                auto_traits[range.clone()].iter().map(|i| i.bottom().1).collect::<Vec<_>>(),
-                &format!("duplicate auto trait `{}` found in trait object",
-                         auto_traits[range.start].trait_ref()));
-            err.label_with_exp_info(&auto_traits[range.start], "first use of auto trait");
-            for i in (range.start + 1)..range.end {
-                err.label_with_exp_info(&auto_traits[i], "subsequent use of auto trait");
-            }
-            err.emit();
-        };
-        let mut seq_start = 0;
-        for i in 1..auto_traits.len() {
-            if auto_traits[i].trait_ref().def_id() != auto_traits[i - 1].trait_ref().def_id() {
-                if i - seq_start > 1 {
-                    emit_dup_traits_err(seq_start..i);
-                }
-                seq_start = i;
-            }
-        }
-        if auto_traits.len() - seq_start > 1 {
-            emit_dup_traits_err(seq_start..auto_traits.len());
-        }
         auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
 
         // If principal is auto trait, remove it from list of auto traits.
@@ -1794,7 +1753,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
-                self.conv_object_ty_poly_trait_ref(ast_ty.id, ast_ty.span, bounds, lifetime)
+                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
@@ -2026,7 +1985,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
                       -> Vec<(ty::Predicate<'tcx>, Span)>
     {
-        // If it could be sized, and is, add the sized predicate.
+        // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {
                 let trait_ref = ty::TraitRef {

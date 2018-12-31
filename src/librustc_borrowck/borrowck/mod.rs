@@ -1352,7 +1352,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         match *region {
             ty::ReScope(scope) => {
                 Some(self.tcx.sess.source_map().end_point(
-                        scope.span(self.tcx, &self.region_scope_tree)))
+                         scope.span(self.tcx, &self.region_scope_tree)))
             }
             _ => None
         }

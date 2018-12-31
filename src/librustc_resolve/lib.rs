@@ -2742,7 +2742,7 @@ impl<'a> Resolver<'a> {
     fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
         where F: FnOnce(Name, &str) -> ResolutionError
     {
-        // If there is a TraitRef in scope for an impl, then the method must be in the
+        // If there is a `TraitRef` in scope for an impl, then the method must be in the
         // trait.
         if let Some((module, _)) = self.current_trait_ref {
             if self.resolve_ident_in_module(

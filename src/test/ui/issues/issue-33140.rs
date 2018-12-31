@@ -27,14 +27,14 @@ impl Trait2 for dyn Send + Sync {
 impl Trait2 for dyn Sync + Send + Sync {
 //~^ ERROR conflicting implementations
 //~| hard error
-//~^^^ WARNING duplicate auto trait `std::marker::Sync` found in trait object [duplicate_auto_traits_in_trait_objects]
     fn uvw() -> bool { true }
 }
 
 struct Foo<T: ?Sized>(T);
 impl Foo<dyn Send + Sync> {
-    fn abc() -> bool { //~ ERROR duplicate definitions with name `abc`
-                       //~| hard error
+    fn abc() -> bool {
+    //~^ ERROR duplicate definitions with name `abc`
+    //~| hard error
         false
     }
 }

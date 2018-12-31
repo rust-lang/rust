@@ -353,9 +353,10 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS,
-    Warn,
-    "duplicate auto traits in trait object bounds"
+    pub DEPRECATED_IN_FUTURE,
+    Allow,
+    "detects use of items that will be deprecated in a future version",
+    report_in_external_macro: true
 }
 
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
@@ -365,13 +366,6 @@ pub mod parser {
         Allow,
         "detects the use of `?` as a macro separator"
     }
-}
-
-declare_lint! {
-    pub DEPRECATED_IN_FUTURE,
-    Allow,
-    "detects use of items that will be deprecated in a future version",
-    report_in_external_macro: true
 }
 
 /// Does nothing as a lint pass, but registers some `Lint`s
@@ -436,9 +430,8 @@ impl LintPass for HardwiredLints {
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-            DUPLICATE_AUTO_TRAITS_IN_TRAIT_OBJECTS,
-            parser::QUESTION_MARK_MACRO_SEP,
             DEPRECATED_IN_FUTURE,
+            parser::QUESTION_MARK_MACRO_SEP,
         )
     }
 }

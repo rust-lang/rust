@@ -107,7 +107,6 @@ pub fn encode_predicates<'tcx, E, C>(encoder: &mut E,
 }
 
 pub trait TyDecoder<'a, 'tcx: 'a>: Decoder {
-
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
 
     fn peek_byte(&self) -> u8;
@@ -168,8 +167,8 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
     Ok(ty::GenericPredicates {
         parent: Decodable::decode(decoder)?,
         predicates: (0..decoder.read_usize()?).map(|_| {
-            // Handle shorthands first, if we have an usize > 0x80.
-            let predicate = if decoder.positioned_at_shorthand() {
+            // Handle shorthands first, if we have an usize greater than `0x80`.
+            let pred = if decoder.positioned_at_shorthand() {
                 let pos = decoder.read_usize()?;
                 assert!(pos >= SHORTHAND_OFFSET);
                 let shorthand = pos - SHORTHAND_OFFSET;
@@ -178,7 +177,7 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
             } else {
                 ty::Predicate::decode(decoder)
             }?;
-            Ok((predicate, Decodable::decode(decoder)?))
+            Ok((pred, Decodable::decode(decoder)?))
         })
         .collect::<Result<Vec<_>, _>>()?,
     })

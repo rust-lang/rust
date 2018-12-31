@@ -173,9 +173,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         predicates
             .predicates
             .iter()
-            .map(|(predicate, _)| predicate.subst_supertrait(self, &trait_ref))
-            .any(|predicate| {
-                match predicate {
+            .map(|(pred, _)| pred.subst_supertrait(self, &trait_ref))
+            .any(|pred| {
+                match pred {
                     ty::Predicate::Trait(ref data) => {
                         // In the case of a trait predicate, we can skip the "self" type.
                         data.skip_binder().input_types().skip(1).any(|t| t.has_self_ty())
