@@ -154,7 +154,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                     self.finish(last);
                 }
                 Event::Token { kind, n_raw_tokens } => {
-                    self.eat_ws();
+                    self.eat_trivias();
                     let n_raw_tokens = n_raw_tokens as usize;
                     let len = self.tokens[self.token_pos..self.token_pos + n_raw_tokens]
                         .iter()
@@ -173,7 +173,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
 
     fn start(&mut self, kind: SyntaxKind) {
         if kind == SOURCE_FILE {
-            self.sink.start_internal(kind);
+            self.sink.start_branch(kind);
             return;
         }
         let n_trivias = self.tokens[self.token_pos..]
@@ -194,18 +194,18 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
             n_attached_trivias(kind, leading_trivias)
         };
         self.eat_n_trivias(n_trivias - n_attached_trivias);
-        self.sink.start_internal(kind);
+        self.sink.start_branch(kind);
         self.eat_n_trivias(n_attached_trivias);
     }
 
     fn finish(&mut self, last: bool) {
         if last {
-            self.eat_ws()
+            self.eat_trivias()
         }
-        self.sink.finish_internal();
+        self.sink.finish_branch();
     }
 
-    fn eat_ws(&mut self) {
+    fn eat_trivias(&mut self) {
         while let Some(&token) = self.tokens.get(self.token_pos) {
             if !token.kind.is_trivia() {
                 break;

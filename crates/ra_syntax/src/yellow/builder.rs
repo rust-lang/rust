@@ -26,11 +26,11 @@ impl Sink for GreenBuilder {
         self.inner.leaf(kind, text);
     }
 
-    fn start_internal(&mut self, kind: SyntaxKind) {
+    fn start_branch(&mut self, kind: SyntaxKind) {
         self.inner.start_internal(kind)
     }
 
-    fn finish_internal(&mut self) {
+    fn finish_branch(&mut self) {
         self.inner.finish_internal();
     }
 

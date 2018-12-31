@@ -22,10 +22,21 @@ use crate::SyntaxKind::{self, EOF, TOMBSTONE};
 pub(crate) trait Sink {
     type Tree;
 
+    /// Adds new leaf to the current branch.
     fn leaf(&mut self, kind: SyntaxKind, text: SmolStr);
-    fn start_internal(&mut self, kind: SyntaxKind);
-    fn finish_internal(&mut self);
+
+    /// Start new branch and make it current.
+    fn start_branch(&mut self, kind: SyntaxKind);
+
+    /// Finish current branch and restore previous
+    /// branch as current.
+    fn finish_branch(&mut self);
+
     fn error(&mut self, error: SyntaxError);
+
+    /// Complete tree building. Make sure that
+    /// `start_branch` and `finish_branch` calls
+    /// are paired!
     fn finish(self) -> Self::Tree;
 }
 

@@ -61,7 +61,7 @@ impl<'t> Parser<'t> {
         Marker::new(self.0.start())
     }
 
-    /// Advances the parser by one token.
+    /// Advances the parser by one token unconditionally.
     pub(crate) fn bump(&mut self) {
         self.0.bump();
     }
@@ -91,7 +91,7 @@ impl<'t> Parser<'t> {
         self.0.error(message.into())
     }
 
-    /// Consume the next token if it is `kind`.
+    /// Consume the next token if `kind` matches.
     pub(crate) fn eat(&mut self, kind: SyntaxKind) -> bool {
         if !self.at(kind) {
             return false;
