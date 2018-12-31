@@ -15,13 +15,13 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Hi
         .descendants()
         .filter_map(ast::MacroCall::cast)
     {
-        if let Some(exp) = crate::macros::expand(db, file_id, macro_call) {
-            let mapped_ranges = ra_editor::highlight(exp.source_file().syntax())
+        if let Some((off, exp)) = crate::macros::expand(db, file_id, macro_call) {
+            let mapped_ranges = ra_editor::highlight(exp.syntax().borrowed())
                 .into_iter()
                 .filter_map(|r| {
                     let mapped_range = exp.map_range_back(r.range)?;
                     let res = HighlightedRange {
-                        range: mapped_range,
+                        range: mapped_range + off,
                         tag: r.tag,
                     };
                     Some(res)

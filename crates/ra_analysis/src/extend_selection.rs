@@ -23,10 +23,10 @@ fn extend_selection_in_macro(
     frange: FileRange,
 ) -> Option<TextRange> {
     let macro_call = find_macro_call(source_file.syntax(), frange.range)?;
-    let exp = crate::macros::expand(db, frange.file_id, macro_call)?;
-    let dst_range = exp.map_range_forward(frange.range)?;
-    let dst_range = ra_editor::extend_selection(exp.source_file().syntax(), dst_range)?;
-    let src_range = exp.map_range_back(dst_range)?;
+    let (off, exp) = crate::macros::expand(db, frange.file_id, macro_call)?;
+    let dst_range = exp.map_range_forward(frange.range - off)?;
+    let dst_range = ra_editor::extend_selection(exp.syntax().borrowed(), dst_range)?;
+    let src_range = exp.map_range_back(dst_range)? + off;
     Some(src_range)
 }
 

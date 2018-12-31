@@ -98,5 +98,8 @@ salsa::database_storage! {
             fn struct_data() for hir::db::StructDataQuery;
             fn enum_data() for hir::db::EnumDataQuery;
         }
+        impl hir::MacroDatabase {
+            fn expand_macro() for hir::ExpandMacroQuery;
+        }
     }
 }
