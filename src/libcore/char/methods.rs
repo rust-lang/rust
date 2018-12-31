@@ -981,14 +981,14 @@ impl char {
     /// let lower_a = 'a';
     /// let lower_z = 'z';
     ///
-    /// assert!(upper_a.eq_ignore_ascii_case(&lower_a));
-    /// assert!(upper_a.eq_ignore_ascii_case(&upper_a));
-    /// assert!(!upper_a.eq_ignore_ascii_case(&lower_z));
+    /// assert!(upper_a.eq_ignore_ascii_case(lower_a));
+    /// assert!(upper_a.eq_ignore_ascii_case(upper_a));
+    /// assert!(!upper_a.eq_ignore_ascii_case(lower_z));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &char) -> bool {
-        self.to_ascii_lowercase() == other.to_ascii_lowercase()
+    pub fn eq_ignore_ascii_case<C: Borrow<char>>(&self, other: C) -> bool {
+        self.to_ascii_lowercase() == other.borrow().to_ascii_lowercase()
     }
 
     /// Converts this type to its ASCII upper case equivalent in-place.
