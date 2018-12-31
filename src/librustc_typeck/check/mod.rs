@@ -3422,8 +3422,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(suggested_field_name) =
                             Self::suggest_field_name(def.non_enum_variant(),
                                                      &field.as_str(), vec![]) {
-                                err.span_label(field.span,
-                                               format!("did you mean `{}`?", suggested_field_name));
+                                err.span_suggestion_with_applicability(
+                                    field.span,
+                                    "a field with a similar name exists",
+                                    suggested_field_name.to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             } else {
                                 err.span_label(field.span, "unknown field");
                                 let struct_variant_def = def.non_enum_variant();
@@ -3550,8 +3554,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(field_name) = Self::suggest_field_name(variant,
                                                            &field.ident.as_str(),
                                                            skip_fields.collect()) {
-            err.span_label(field.ident.span,
-                           format!("field does not exist - did you mean `{}`?", field_name));
+            err.span_suggestion_with_applicability(
+                    field.ident.span,
+                    "a field with a similar name exists",
+                    field_name.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
         } else {
             match ty.sty {
                 ty::Adt(adt, ..) => {
@@ -5195,13 +5203,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(adt_def) = adt_def {
                             match adt_def.adt_kind() {
                                 AdtKind::Enum => {
-                                    err.note("did you mean to use one of the enum's variants?");
+                                    err.help("did you mean to use one of the enum's variants?");
                                 },
                                 AdtKind::Struct |
                                 AdtKind::Union => {
-                                    err.span_label(
+                                    err.span_suggestion_with_applicability(
                                         span,
-                                        format!("did you mean `Self {{ /* fields */ }}`?"),
+                                        "use curly brackets",
+                                        String::from("Self { /* fields */ }"),
+                                        Applicability::HasPlaceholders,
                                     );
                                 }
                             }
