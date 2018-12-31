@@ -929,7 +929,7 @@ impl<'a> Resolver<'a> {
                     let def = path_res.base_def();
                     check_consistency(self, &path, path_span, kind, initial_def, def);
                 }
-                path_res @ PathResult::NonModule(..) | path_res @  PathResult::Failed(..) => {
+                path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed(..) => {
                     let (span, msg) = if let PathResult::Failed(span, msg, ..) = path_res {
                         (span, msg)
                     } else {

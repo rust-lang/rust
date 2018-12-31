@@ -3925,8 +3925,11 @@ impl<'a> Resolver<'a> {
                         });
                         if let Some(candidate) = candidates.get(0) {
                             format!("did you mean `{}`?", candidate.path)
-                        } else {
+                        } else if !ident.is_reserved() {
                             format!("maybe a missing `extern crate {};`?", ident)
+                        } else {
+                            // the parser will already have complained about the keyword being used
+                            return PathResult::NonModule(err_path_resolution());
                         }
                     } else if i == 0 {
                         format!("use of undeclared type or module `{}`", ident)
