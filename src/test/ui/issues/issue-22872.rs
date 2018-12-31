@@ -19,7 +19,6 @@ pub trait Process<'a> {
 fn push_process<P>(process: P) where P: Process<'static> {
     let _: Box<for<'b> Wrap<'b>> = Box::new(Wrapper(process));
 //~^ ERROR is not an iterator
-//~| ERROR is not satisfied
 }
 
 fn main() {}
