@@ -4796,20 +4796,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // `consider_hint_about_removing_semicolon` will point at the last expression
                     // if it were a relevant part of the error. This improves usability in editors
                     // that highlight errors inline.
-                    let (sp, fn_span) = if let Some((decl, ident)) = self.get_parent_fn_decl(blk.id) {
-                        (decl.output.span(), Some(ident.span))
-                    } else {
-                        (blk.span, None)
-                    };
+                    let mut sp = blk.span;
+                    let mut fn_span = None;
+                    if let Some((decl, ident)) = self.get_parent_fn_decl(blk.id) {
+                        let ret_sp = decl.output.span();
+                        if let Some(block_sp) = self.parent_item_span(blk.id) {
+                            // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
+                            // output would otherwise be incorrect and even misleading. Make sure
+                            // the span we're aiming at correspond to a `fn` body.
+                            if block_sp == blk.span {
+                                sp = ret_sp;
+                                fn_span = Some(ident.span);
+                            }
+                        }
+                    }
                     coerce.coerce_forced_unit(self, &self.misc(sp), &mut |err| {
                         if let Some(expected_ty) = expected.only_has_type(self) {
                             self.consider_hint_about_removing_semicolon(blk, expected_ty, err);
                         }
                         if let Some(fn_span) = fn_span {
-                            err.span_label(
-                                fn_span,
-                                "this function's body doesn't return the expected type",
-                            );
+                            err.span_label(fn_span, "this function's body doesn't return");
                         }
                     }, false);
                 }
@@ -4834,6 +4840,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
+    fn parent_item_span(&self, id: ast::NodeId) -> Option<Span> {
+        let node = self.tcx.hir().get(self.tcx.hir().get_parent(id));
+        match node {
+            Node::Item(&hir::Item {
+                node: hir::ItemKind::Fn(_, _, _, body_id), ..
+            }) |
+            Node::ImplItem(&hir::ImplItem {
+                node: hir::ImplItemKind::Method(_, body_id), ..
+            }) => {
+                let body = self.tcx.hir().body(body_id);
+                if let ExprKind::Block(block, _) = &body.value.node {
+                    return Some(block.span);
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
     /// Given a function block's `NodeId`, return its `FnDecl` , `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, ast::Ident)> {
         let parent = self.tcx.hir().get(self.tcx.hir().get_parent(blk_id));
@@ -4842,33 +4867,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Given a function `Node`, return its `FnDecl` , `None` otherwise.
     fn get_node_fn_decl(&self, node: Node) -> Option<(hir::FnDecl, ast::Ident, bool)> {
-        if let Node::Item(&hir::Item {
-            ident, node: hir::ItemKind::Fn(ref decl, ..), ..
-        }) = node {
-            decl.clone().and_then(|decl| {
+        match node {
+            Node::Item(&hir::Item {
+                ident, node: hir::ItemKind::Fn(ref decl, ..), ..
+            }) => decl.clone().and_then(|decl| {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
                 Some((decl, ident, ident.name != Symbol::intern("main")))
-            })
-        } else if let Node::TraitItem(&hir::TraitItem {
-            ident, node: hir::TraitItemKind::Method(hir::MethodSig {
-                ref decl, ..
-            }, ..), ..
-        }) = node {
-            decl.clone().and_then(|decl| {
-                Some((decl, ident, true))
-            })
-        } else if let Node::ImplItem(&hir::ImplItem {
-            ident, node: hir::ImplItemKind::Method(hir::MethodSig {
-                ref decl, ..
-            }, ..), ..
-        }) = node {
-            decl.clone().and_then(|decl| {
-                Some((decl, ident, false))
-            })
-        } else {
-            None
+            }),
+            Node::TraitItem(&hir::TraitItem {
+                ident, node: hir::TraitItemKind::Method(hir::MethodSig {
+                    ref decl, ..
+                }, ..), ..
+            }) => decl.clone().and_then(|decl| Some((decl, ident, true))),
+            Node::ImplItem(&hir::ImplItem {
+                ident, node: hir::ImplItemKind::Method(hir::MethodSig {
+                    ref decl, ..
+                }, ..), ..
+            }) => decl.clone().and_then(|decl| Some((decl, ident, false))),
+            _ => None,
         }
     }
 

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn f() -> String {  //~ ERROR mismatched types
    |    -      ^^^^^^ expected struct `std::string::String`, found ()
    |    |
-   |    this function's body doesn't return the expected type
+   |    this function's body doesn't return
 LL |     0u8;
 LL |     "bla".to_string();
    |                      - help: consider removing this semicolon
@@ -18,7 +18,7 @@ error[E0308]: mismatched types
 LL | fn g() -> String {  //~ ERROR mismatched types
    |    -      ^^^^^^ expected struct `std::string::String`, found ()
    |    |
-   |    this function's body doesn't return the expected type
+   |    this function's body doesn't return
 LL |     "this won't work".to_string();
 LL |     "removeme".to_string();
    |                           - help: consider removing this semicolon
