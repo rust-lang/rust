@@ -6,9 +6,8 @@ use languageserver_types::{
     DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
     FoldingRangeParams, Location, MarkupContent, MarkupKind, MarkedString, Position,
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    Range,
-    WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover, HoverContents,
-    DocumentFormattingParams,
+    Range, WorkspaceEdit, ParameterInformation, ParameterLabel, SignatureInformation, Hover,
+    HoverContents, DocumentFormattingParams, DocumentHighlight,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FileRange, FilePosition, Severity};
 use ra_syntax::{TextUnit, text_utils::intersect};
@@ -671,6 +670,28 @@ pub fn handle_code_action(
     }
 
     Ok(Some(CodeActionResponse::Commands(res)))
+}
+
+pub fn handle_document_highlight(
+    world: ServerWorld,
+    params: req::TextDocumentPositionParams,
+) -> Result<Option<Vec<DocumentHighlight>>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let offset = params.position.conv_with(&line_index);
+
+    let refs = world
+        .analysis()
+        .find_all_refs(FilePosition { file_id, offset })?;
+
+    Ok(Some(
+        refs.into_iter()
+            .map(|r| DocumentHighlight {
+                range: r.1.conv_with(&line_index),
+                kind: None,
+            })
+            .collect(),
+    ))
 }
 
 pub fn publish_diagnostics(
