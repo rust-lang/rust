@@ -1,16 +1,11 @@
 use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
-    Direction, SourceFileNode,
+    Direction,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
-pub fn extend_selection(file: &SourceFileNode, range: TextRange) -> Option<TextRange> {
-    let syntax = file.syntax();
-    extend(syntax.borrowed(), range)
-}
-
-pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
+pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
     if range.is_empty() {
         let offset = range.start();
         let mut leaves = find_leaf_at_offset(root, offset);
@@ -126,6 +121,7 @@ fn adj_comments(node: SyntaxNodeRef, dir: Direction) -> SyntaxNodeRef {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ra_syntax::SourceFileNode;
     use test_utils::extract_offset;
 
     fn do_check(before: &str, afters: &[&str]) {
@@ -133,7 +129,7 @@ mod tests {
         let file = SourceFileNode::parse(&before);
         let mut range = TextRange::offset_len(cursor, 0.into());
         for &after in afters {
-            range = extend_selection(&file, range).unwrap();
+            range = extend_selection(file.syntax(), range).unwrap();
             let actual = &before[range];
             assert_eq!(after, actual);
         }

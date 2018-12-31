@@ -102,7 +102,7 @@ fn selections(file: &SourceFileNode, start: u32, end: u32) -> String {
     let mut cur = Some(TextRange::from_to((start - 1).into(), (end - 1).into()));
     while let Some(r) = cur {
         ranges.push(r);
-        cur = extend_selection(&file, r);
+        cur = extend_selection(file.syntax(), r);
     }
     let ranges = ranges
         .iter()
