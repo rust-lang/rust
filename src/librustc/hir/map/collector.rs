@@ -41,21 +41,69 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     // We are collecting DepNode::HirBody hashes here so we can compute the
     // crate hash from then later on.
-    hir_body_nodes: Vec<(DefPathHash, DepNodeIndex)>,
+    hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
+}
+
+fn input_dep_node_and_hash<'a, I>(
+    dep_graph: &DepGraph,
+    hcx: &mut StableHashingContext<'a>,
+    dep_node: DepNode,
+    input: I,
+) -> (DepNodeIndex, Fingerprint)
+where
+    I: HashStable<StableHashingContext<'a>>,
+{
+    let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
+
+    let hash = if dep_graph.is_fully_enabled() {
+        dep_graph.fingerprint_of(dep_node_index)
+    } else {
+        let mut stable_hasher = StableHasher::new();
+        input.hash_stable(hcx, &mut stable_hasher);
+        stable_hasher.finish()
+    };
+
+    (dep_node_index, hash)
+}
+
+fn alloc_hir_dep_nodes<'a, I>(
+    dep_graph: &DepGraph,
+    hcx: &mut StableHashingContext<'a>,
+    def_path_hash: DefPathHash,
+    item_like: I,
+    hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
+) -> (DepNodeIndex, DepNodeIndex)
+where
+    I: HashStable<StableHashingContext<'a>>,
+{
+    let sig = dep_graph.input_task(
+        def_path_hash.to_dep_node(DepKind::Hir),
+        &mut *hcx,
+        HirItemLike { item_like: &item_like, hash_bodies: false },
+    ).1;
+    let (full, hash) = input_dep_node_and_hash(
+        dep_graph,
+        hcx,
+        def_path_hash.to_dep_node(DepKind::HirBody),
+        HirItemLike { item_like: &item_like, hash_bodies: true },
+    );
+    hir_body_nodes.push((def_path_hash, hash));
+    (sig, full)
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn root(krate: &'hir Crate,
                        dep_graph: &'a DepGraph,
                        definitions: &'a definitions::Definitions,
-                       hcx: StableHashingContext<'a>,
+                       mut hcx: StableHashingContext<'a>,
                        source_map: &'a SourceMap)
                 -> NodeCollector<'a, 'hir> {
         let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
 
+        let mut hir_body_nodes = Vec::new();
+
         // Allocate DepNodes for the root module
-        let (root_mod_sig_dep_index, root_mod_full_dep_index);
-        {
+        let (root_mod_sig_dep_index, root_mod_full_dep_index) = {
             let Crate {
                 ref module,
                 // Crate attributes are not copied over to the root `Mod`, so hash
@@ -73,27 +121,22 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 body_ids: _,
             } = *krate;
 
-            root_mod_sig_dep_index = dep_graph.input_task(
-                root_mod_def_path_hash.to_dep_node(DepKind::Hir),
-                &hcx,
-                HirItemLike { item_like: (module, attrs, span), hash_bodies: false },
-            ).1;
-            root_mod_full_dep_index = dep_graph.input_task(
-                root_mod_def_path_hash.to_dep_node(DepKind::HirBody),
-                &hcx,
-                HirItemLike { item_like: (module, attrs, span), hash_bodies: true },
-            ).1;
-        }
+            alloc_hir_dep_nodes(
+                dep_graph,
+                &mut hcx,
+                root_mod_def_path_hash,
+                (module, attrs, span),
+                &mut hir_body_nodes,
+            )
+        };
 
         {
             dep_graph.input_task(
                 DepNode::new_no_params(DepKind::AllLocalTraitImpls),
-                &hcx,
+                &mut hcx,
                 &krate.trait_impls,
             );
         }
-
-        let hir_body_nodes = vec![(root_mod_def_path_hash, root_mod_full_dep_index)];
 
         let mut collector = NodeCollector {
             krate,
@@ -129,10 +172,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let node_hashes = self
             .hir_body_nodes
             .iter()
-            .fold(Fingerprint::ZERO, |fingerprint, &(def_path_hash, dep_node_index)| {
-                fingerprint.combine(
-                    def_path_hash.0.combine(self.dep_graph.fingerprint_of(dep_node_index))
-                )
+            .fold(Fingerprint::ZERO, |combined_fingerprint, &(def_path_hash, fingerprint)| {
+                combined_fingerprint.combine(def_path_hash.0.combine(fingerprint))
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
@@ -159,17 +200,19 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         source_file_names.sort_unstable();
 
-        let (_, crate_dep_node_index) = self
-            .dep_graph
-            .input_task(DepNode::new_no_params(DepKind::Krate),
-                       &self.hcx,
-                       (((node_hashes, upstream_crates), source_file_names),
-                        (commandline_args_hash,
-                         crate_disambiguator.to_fingerprint())));
+        let crate_hash_input = (
+            ((node_hashes, upstream_crates), source_file_names),
+            (commandline_args_hash, crate_disambiguator.to_fingerprint())
+        );
 
-        let svh = Svh::new(self.dep_graph
-                               .fingerprint_of(crate_dep_node_index)
-                               .to_smaller_hash());
+        let (_, crate_hash) = input_dep_node_and_hash(
+            self.dep_graph,
+            &mut self.hcx,
+            DepNode::new_no_params(DepKind::Krate),
+            crate_hash_input,
+        );
+
+        let svh = Svh::new(crate_hash.to_smaller_hash());
         (self.map, svh)
     }
 
@@ -251,19 +294,15 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
-        self.current_signature_dep_index = self.dep_graph.input_task(
-            def_path_hash.to_dep_node(DepKind::Hir),
-            &self.hcx,
-            HirItemLike { item_like, hash_bodies: false },
-        ).1;
-
-        self.current_full_dep_index = self.dep_graph.input_task(
-            def_path_hash.to_dep_node(DepKind::HirBody),
-            &self.hcx,
-            HirItemLike { item_like, hash_bodies: true },
-        ).1;
-
-        self.hir_body_nodes.push((def_path_hash, self.current_full_dep_index));
+        let (signature_dep_index, full_dep_index) = alloc_hir_dep_nodes(
+            self.dep_graph,
+            &mut self.hcx,
+            def_path_hash,
+            item_like,
+            &mut self.hir_body_nodes,
+        );
+        self.current_signature_dep_index = signature_dep_index;
+        self.current_full_dep_index = full_dep_index;
 
         self.current_dep_node_owner = dep_node_owner;
         self.currently_in_body = false;

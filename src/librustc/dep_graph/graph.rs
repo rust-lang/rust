@@ -6,6 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::env;
 use std::hash::Hash;
+use std::collections::hash_map::Entry;
 use ty::{self, TyCtxt};
 use util::common::{ProfileQueriesMsg, profq_msg};
 
@@ -21,12 +22,6 @@ use super::prev::PreviousDepGraph;
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Lrc<DepGraphData>>,
-
-    // A vector mapping depnodes from the current graph to their associated
-    // result value fingerprints. Do not rely on the length of this vector
-    // being the same as the number of nodes in the graph. The vector can
-    // contain an arbitrary number of zero-entries at the end.
-    fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
 newtype_index! {
@@ -81,30 +76,23 @@ impl DepGraph {
 
     pub fn new(prev_graph: PreviousDepGraph,
                prev_work_products: FxHashMap<WorkProductId, WorkProduct>) -> DepGraph {
-        // Pre-allocate the fingerprints array. We over-allocate a little so
-        // that we hopefully don't have to re-allocate during this compilation
-        // session.
         let prev_graph_node_count = prev_graph.node_count();
 
-        let fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO,
-                                                 (prev_graph_node_count * 115) / 100);
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
-                current: Lock::new(CurrentDepGraph::new()),
+                current: Lock::new(CurrentDepGraph::new(prev_graph_node_count)),
                 previous: prev_graph,
                 colors: Lock::new(DepNodeColorMap::new(prev_graph_node_count)),
                 loaded_from_cache: Default::default(),
             })),
-            fingerprints: Lrc::new(Lock::new(fingerprints)),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
         DepGraph {
             data: None,
-            fingerprints: Lrc::new(Lock::new(IndexVec::new())),
         }
     }
 
@@ -116,12 +104,12 @@ impl DepGraph {
 
     pub fn query(&self) -> DepGraphQuery {
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
-        let nodes: Vec<_> = current_dep_graph.nodes.iter().cloned().collect();
+        let nodes: Vec<_> = current_dep_graph.data.iter().map(|n| n.node).collect();
         let mut edges = Vec::new();
-        for (index, edge_targets) in current_dep_graph.edges.iter_enumerated() {
-            let from = current_dep_graph.nodes[index];
+        for (from, edge_targets) in current_dep_graph.data.iter()
+                                                           .map(|d| (d.node, &d.edges)) {
             for &edge_target in edge_targets.iter() {
-                let to = current_dep_graph.nodes[edge_target];
+                let to = current_dep_graph.data[edge_target].node;
                 edges.push((from, to));
             }
         }
@@ -201,7 +189,7 @@ impl DepGraph {
                 reads: SmallVec::new(),
                 read_set: Default::default(),
             })),
-            |data, key, task| data.borrow_mut().complete_task(key, task))
+            |data, key, fingerprint, task| data.borrow_mut().complete_task(key, task, fingerprint))
     }
 
     /// Creates a new dep-graph input with value `input`
@@ -219,7 +207,9 @@ impl DepGraph {
 
         self.with_task_impl(key, cx, input, true, identity_fn,
             |_| OpenTask::Ignore,
-            |data, key, _| data.borrow_mut().alloc_node(key, SmallVec::new()))
+            |data, key, fingerprint, _| {
+                data.borrow_mut().alloc_node(key, SmallVec::new(), fingerprint)
+            })
     }
 
     fn with_task_impl<'gcx, C, A, R>(
@@ -232,6 +222,7 @@ impl DepGraph {
         create_task: fn(DepNode) -> OpenTask,
         finish_task_and_alloc_depnode: fn(&Lock<CurrentDepGraph>,
                                           DepNode,
+                                          Fingerprint,
                                           OpenTask) -> DepNodeIndex
     ) -> (R, DepNodeIndex)
     where
@@ -271,26 +262,17 @@ impl DepGraph {
                 profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
-            let dep_node_index = finish_task_and_alloc_depnode(&data.current, key, open_task);
-
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
 
             let current_fingerprint = stable_hasher.finish();
 
-            // Store the current fingerprint
-            {
-                let mut fingerprints = self.fingerprints.borrow_mut();
-
-                if dep_node_index.index() >= fingerprints.len() {
-                    fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
-                }
-
-                debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
-                              "DepGraph::with_task() - Duplicate fingerprint \
-                               insertion for {:?}", key);
-                fingerprints[dep_node_index] = current_fingerprint;
-            }
+            let dep_node_index = finish_task_and_alloc_depnode(
+                &data.current,
+                key,
+                current_fingerprint,
+                open_task
+            );
 
             // Determine the color of the new DepNode.
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -312,25 +294,7 @@ impl DepGraph {
 
             (result, dep_node_index)
         } else {
-            if key.kind.fingerprint_needed_for_crate_hash() {
-                let mut hcx = cx.get_stable_hashing_context();
-                let result = task(cx, arg);
-                let mut stable_hasher = StableHasher::new();
-                result.hash_stable(&mut hcx, &mut stable_hasher);
-                let fingerprint = stable_hasher.finish();
-
-                let mut fingerprints = self.fingerprints.borrow_mut();
-                let dep_node_index = DepNodeIndex::new(fingerprints.len());
-                fingerprints.push(fingerprint);
-
-                debug_assert!(fingerprints[dep_node_index] == fingerprint,
-                              "DepGraph::with_task() - Assigned fingerprint to \
-                               unexpected index for {:?}", key);
-
-                (result, dep_node_index)
-            } else {
-                (task(cx, arg), DepNodeIndex::INVALID)
-            }
+            (task(cx, arg), DepNodeIndex::INVALID)
         }
     }
 
@@ -381,7 +345,9 @@ impl DepGraph {
     {
         self.with_task_impl(key, cx, arg, false, task,
             |key| OpenTask::EvalAlways { node: key },
-            |data, key, task| data.borrow_mut().complete_eval_always_task(key, task))
+            |data, key, fingerprint, task| {
+                data.borrow_mut().complete_eval_always_task(key, task, fingerprint)
+            })
     }
 
     #[inline]
@@ -427,17 +393,8 @@ impl DepGraph {
 
     #[inline]
     pub fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
-        match self.fingerprints.borrow().get(dep_node_index) {
-            Some(&fingerprint) => fingerprint,
-            None => {
-                if let Some(ref data) = self.data {
-                    let dep_node = data.current.borrow().nodes[dep_node_index];
-                    bug!("Could not find current fingerprint for {:?}", dep_node)
-                } else {
-                    bug!("Could not find current fingerprint for {:?}", dep_node_index)
-                }
-            }
-        }
+        let current = self.data.as_ref().expect("dep graph enabled").current.borrow_mut();
+        current.data[dep_node_index].fingerprint
     }
 
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
@@ -498,17 +455,20 @@ impl DepGraph {
     pub fn serialize(&self) -> SerializedDepGraph {
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
 
-        let fingerprints = self.fingerprints.borrow().clone().convert_index_type();
-        let nodes = current_dep_graph.nodes.clone().convert_index_type();
+        let fingerprints: IndexVec<SerializedDepNodeIndex, _> =
+            current_dep_graph.data.iter().map(|d| d.fingerprint).collect();
+        let nodes: IndexVec<SerializedDepNodeIndex, _> =
+            current_dep_graph.data.iter().map(|d| d.node).collect();
 
-        let total_edge_count: usize = current_dep_graph.edges.iter()
-                                                             .map(|v| v.len())
-                                                             .sum();
+        let total_edge_count: usize = current_dep_graph.data.iter()
+                                                            .map(|d| d.edges.len())
+                                                            .sum();
 
         let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
         let mut edge_list_data = Vec::with_capacity(total_edge_count);
 
-        for (current_dep_node_index, edges) in current_dep_graph.edges.iter_enumerated() {
+        for (current_dep_node_index, edges) in current_dep_graph.data.iter_enumerated()
+                                                                .map(|(i, d)| (i, &d.edges)) {
             let start = edge_list_data.len() as u32;
             // This should really just be a memcpy :/
             edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex::new(i.index())));
@@ -700,34 +660,14 @@ impl DepGraph {
         let (dep_node_index, did_allocation) = {
             let mut current = data.current.borrow_mut();
 
-            if let Some(&dep_node_index) = current.node_to_node_index.get(&dep_node) {
-                // Someone else allocated it before us
-                (dep_node_index, false)
-            } else {
-                // We allocating an entry for the node in the current dependency graph and
-                // adding all the appropriate edges imported from the previous graph
-                (current.alloc_node(*dep_node, current_deps), true)
-            }
-        };
-
-        // ... copying the fingerprint from the previous graph too, so we don't
-        // have to recompute it ...
-        {
+            // Copy the fingerprint from the previous graph,
+            // so we don't have to recompute it
             let fingerprint = data.previous.fingerprint_by_index(prev_dep_node_index);
-            let mut fingerprints = self.fingerprints.borrow_mut();
 
-            if dep_node_index.index() >= fingerprints.len() {
-                fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
-            }
-
-            // Multiple threads can all write the same fingerprint here
-            #[cfg(not(parallel_queries))]
-            debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
-                "DepGraph::try_mark_green() - Duplicate fingerprint \
-                insertion for {:?}", dep_node);
-
-            fingerprints[dep_node_index] = fingerprint;
-        }
+            // We allocating an entry for the node in the current dependency graph and
+            // adding all the appropriate edges imported from the previous graph
+            current.intern_node(*dep_node, current_deps, fingerprint)
+        };
 
         // ... emitting any stored diagnostic ...
         if did_allocation {
@@ -814,7 +754,7 @@ impl DepGraph {
 
     pub fn mark_loaded_from_cache(&self, dep_node_index: DepNodeIndex, state: bool) {
         debug!("mark_loaded_from_cache({:?}, {})",
-               self.data.as_ref().unwrap().current.borrow().nodes[dep_node_index],
+               self.data.as_ref().unwrap().current.borrow().data[dep_node_index].node,
                state);
 
         self.data
@@ -877,9 +817,15 @@ pub enum WorkProductFileKind {
     BytecodeCompressed,
 }
 
+#[derive(Clone)]
+struct DepNodeData {
+    node: DepNode,
+    edges: SmallVec<[DepNodeIndex; 8]>,
+    fingerprint: Fingerprint,
+}
+
 pub(super) struct CurrentDepGraph {
-    nodes: IndexVec<DepNodeIndex, DepNode>,
-    edges: IndexVec<DepNodeIndex, SmallVec<[DepNodeIndex; 8]>>,
+    data: IndexVec<DepNodeIndex, DepNodeData>,
     node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
     forbidden_edge: Option<EdgeFilter>,
 
@@ -901,7 +847,7 @@ pub(super) struct CurrentDepGraph {
 }
 
 impl CurrentDepGraph {
-    fn new() -> CurrentDepGraph {
+    fn new(prev_graph_node_count: usize) -> CurrentDepGraph {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -924,10 +870,17 @@ impl CurrentDepGraph {
             None
         };
 
+        // Pre-allocate the dep node structures. We over-allocate a little so
+        // that we hopefully don't have to re-allocate during this compilation
+        // session.
+        let new_node_count_estimate = (prev_graph_node_count * 115) / 100;
+
         CurrentDepGraph {
-            nodes: IndexVec::new(),
-            edges: IndexVec::new(),
-            node_to_node_index: Default::default(),
+            data: IndexVec::with_capacity(new_node_count_estimate),
+            node_to_node_index: FxHashMap::with_capacity_and_hasher(
+                new_node_count_estimate,
+                Default::default(),
+            ),
             anon_id_seed: stable_hasher.finish(),
             forbidden_edge,
             total_read_count: 0,
@@ -935,7 +888,12 @@ impl CurrentDepGraph {
         }
     }
 
-    fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
+    fn complete_task(
+        &mut self,
+        key: DepNode,
+        task: OpenTask,
+        fingerprint: Fingerprint
+    ) -> DepNodeIndex {
         if let OpenTask::Regular(task) = task {
             let RegularOpenTask {
                 node,
@@ -956,17 +914,17 @@ impl CurrentDepGraph {
                    //            better in general.
                    node.kind != DepKind::DefSpan &&
                     reads.iter().any(|&i| {
-                        !(self.nodes[i].kind == DepKind::CrateMetadata ||
-                          self.nodes[i].kind == DepKind::Krate)
+                        !(self.data[i].node.kind == DepKind::CrateMetadata ||
+                          self.data[i].node.kind == DepKind::Krate)
                     })
                 {
                     bug!("Input node {:?} with unexpected reads: {:?}",
                         node,
-                        reads.iter().map(|&i| self.nodes[i]).collect::<Vec<_>>())
+                        reads.iter().map(|&i| self.data[i].node).collect::<Vec<_>>())
                 }
             }
 
-            self.alloc_node(node, reads)
+            self.alloc_node(node, reads, fingerprint)
         } else {
             bug!("complete_task() - Expected regular task to be popped")
         }
@@ -984,7 +942,7 @@ impl CurrentDepGraph {
             let mut hasher = StableHasher::new();
 
             for &read in reads.iter() {
-                let read_dep_node = self.nodes[read];
+                let read_dep_node = self.data[read].node;
 
                 ::std::mem::discriminant(&read_dep_node.kind).hash(&mut hasher);
 
@@ -1001,23 +959,24 @@ impl CurrentDepGraph {
                 hash: fingerprint,
             };
 
-            if let Some(&index) = self.node_to_node_index.get(&target_dep_node) {
-                index
-            } else {
-                self.alloc_node(target_dep_node, reads)
-            }
+            self.intern_node(target_dep_node, reads, Fingerprint::ZERO).0
         } else {
             bug!("pop_anon_task() - Expected anonymous task to be popped")
         }
     }
 
-    fn complete_eval_always_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
+    fn complete_eval_always_task(
+        &mut self,
+        key: DepNode,
+        task: OpenTask,
+        fingerprint: Fingerprint
+    ) -> DepNodeIndex {
         if let OpenTask::EvalAlways {
             node,
         } = task {
             debug_assert_eq!(node, key);
             let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
-            self.alloc_node(node, smallvec![krate_idx])
+            self.alloc_node(node, smallvec![krate_idx], fingerprint)
         } else {
             bug!("complete_eval_always_task() - Expected eval always task to be popped");
         }
@@ -1036,7 +995,7 @@ impl CurrentDepGraph {
                         if cfg!(debug_assertions) {
                             if let Some(ref forbidden_edge) = self.forbidden_edge {
                                 let target = &task.node;
-                                let source = self.nodes[source];
+                                let source = self.data[source].node;
                                 if forbidden_edge.test(&source, &target) {
                                     bug!("forbidden edge {:?} -> {:?} created",
                                         source,
@@ -1061,18 +1020,37 @@ impl CurrentDepGraph {
         })
     }
 
-    fn alloc_node(&mut self,
-                  dep_node: DepNode,
-                  edges: SmallVec<[DepNodeIndex; 8]>)
-                  -> DepNodeIndex {
-        debug_assert_eq!(self.edges.len(), self.nodes.len());
-        debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
+    fn alloc_node(
+        &mut self,
+        dep_node: DepNode,
+        edges: SmallVec<[DepNodeIndex; 8]>,
+        fingerprint: Fingerprint
+    ) -> DepNodeIndex {
         debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
-        let dep_node_index = DepNodeIndex::new(self.nodes.len());
-        self.nodes.push(dep_node);
-        self.node_to_node_index.insert(dep_node, dep_node_index);
-        self.edges.push(edges);
-        dep_node_index
+        self.intern_node(dep_node, edges, fingerprint).0
+    }
+
+    fn intern_node(
+        &mut self,
+        dep_node: DepNode,
+        edges: SmallVec<[DepNodeIndex; 8]>,
+        fingerprint: Fingerprint
+    ) -> (DepNodeIndex, bool) {
+        debug_assert_eq!(self.node_to_node_index.len(), self.data.len());
+
+        match self.node_to_node_index.entry(dep_node) {
+            Entry::Occupied(entry) => (*entry.get(), false),
+            Entry::Vacant(entry) => {
+                let dep_node_index = DepNodeIndex::new(self.data.len());
+                self.data.push(DepNodeData {
+                    node: dep_node,
+                    edges,
+                    fingerprint
+                });
+                entry.insert(dep_node_index);
+                (dep_node_index, true)
+            }
+        }
     }
 }
 
