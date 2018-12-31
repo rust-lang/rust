@@ -62,6 +62,15 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.ctxt() != lhs.ctxt()
 }
 
+/// Returns `true` if the given `NodeId` is inside a constant context
+///
+/// # Example
+///
+/// ```rust,ignore
+/// if in_constant(cx, expr.id) {
+///     // Do something
+/// }
+/// ```
 pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir().get_parent(id);
     match cx.tcx.hir().body_owner_kind(parent_id) {
@@ -377,6 +386,9 @@ pub fn contains_name(name: Name, expr: &Expr) -> bool {
 
 /// Convert a span to a code snippet if available, otherwise use default.
 ///
+/// This is useful if you want to provide suggestions for your lint or more generally, if you want
+/// to convert a given `Span` to a `str`.
+///
 /// # Example
 /// ```rust,ignore
 /// snippet(cx, expr.span, "..")
@@ -430,7 +442,7 @@ pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String>
 ///
 /// # Example
 /// ```rust,ignore
-/// snippet(cx, expr.span, "..")
+/// snippet_block(cx, expr.span, "..")
 /// ```
 pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
@@ -741,6 +753,13 @@ pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
     false
 }
 
+/// Returns `true` if the given `Expr` has been coerced before.
+///
+/// Examples of coercions can be found in the Nomicon at
+/// <https://doc.rust-lang.org/nomicon/coercions.html>.
+///
+/// See `rustc::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
+/// information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     cx.tables.adjustments().get(e.hir_id).is_some()
 }
