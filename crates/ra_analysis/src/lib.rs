@@ -15,6 +15,7 @@ mod imp;
 mod completion;
 mod symbol_index;
 pub mod mock_analysis;
+mod runnables;
 
 mod extend_selection;
 mod syntax_highlighting;
@@ -33,10 +34,12 @@ use crate::{
     symbol_index::SymbolIndex,
 };
 
-pub use crate::completion::{CompletionItem, CompletionItemKind, InsertText};
+pub use crate::{
+    completion::{CompletionItem, CompletionItemKind, InsertText},
+    runnables::{Runnable, RunnableKind}
+};
 pub use ra_editor::{
-    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,
-    Severity
+    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity
 };
 pub use hir::FnSignatureInfo;
 
@@ -336,6 +339,9 @@ impl Analysis {
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         self.imp.parent_module(position)
     }
+    pub fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
+        self.imp.module_path(position)
+    }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         self.imp.crate_for(file_id)
     }
@@ -344,7 +350,7 @@ impl Analysis {
     }
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
         let file = self.imp.file_syntax(file_id);
-        Ok(ra_editor::runnables(&file))
+        Ok(runnables::runnables(self, &file, file_id))
     }
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
         syntax_highlighting::highlight(&*self.imp.db, file_id)
