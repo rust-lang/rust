@@ -47,13 +47,13 @@ pub(super) struct NodeCollector<'a, 'hir> {
 fn input_dep_node_and_hash<'a, I>(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'a>,
-    def_node: DepNode,
+    dep_node: DepNode,
     input: I,
 ) -> (DepNodeIndex, Fingerprint)
 where
     I: HashStable<StableHashingContext<'a>>,
 {
-    let dep_node_index = dep_graph.input_task(def_node, &mut *hcx, &input).1;
+    let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
     let hash = if dep_graph.is_fully_enabled() {
         dep_graph.fingerprint_of(dep_node_index)
@@ -66,7 +66,7 @@ where
     (dep_node_index, hash)
 }
 
-fn hir_dep_nodes<'a, I>(
+fn alloc_hir_dep_nodes<'a, I>(
     dep_graph: &DepGraph,
     hcx: &mut StableHashingContext<'a>,
     def_path_hash: DefPathHash,
@@ -121,7 +121,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 body_ids: _,
             } = *krate;
 
-            hir_dep_nodes(
+            alloc_hir_dep_nodes(
                 dep_graph,
                 &mut hcx,
                 root_mod_def_path_hash,
@@ -172,10 +172,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let node_hashes = self
             .hir_body_nodes
             .iter()
-            .fold(Fingerprint::ZERO, |fingerprint, &(def_path_hash, hash)| {
-                fingerprint.combine(
-                    def_path_hash.0.combine(hash)
-                )
+            .fold(Fingerprint::ZERO, |combined_fingerprint, &(def_path_hash, fingerprint)| {
+                combined_fingerprint.combine(def_path_hash.0.combine(fingerprint))
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
@@ -296,7 +294,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
-        let (signature_dep_index, full_dep_index) = hir_dep_nodes(
+        let (signature_dep_index, full_dep_index) = alloc_hir_dep_nodes(
             self.dep_graph,
             &mut self.hcx,
             def_path_hash,
