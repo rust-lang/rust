@@ -38,7 +38,7 @@ cfg_if! {
     } else if #[cfg(target_arch = "wasm32")] {
         mod wasm;
         pub use self::wasm::*;
-    } else if #[cfg(target_env = "sgx")] {
+    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
         mod sgx;
         pub use self::sgx::*;
     } else {
@@ -55,7 +55,9 @@ cfg_if! {
     if #[cfg(any(unix, target_os = "redox"))] {
         // On unix we'll document what's already available
         pub use self::ext as unix_ext;
-    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32", target_env = "sgx"))] {
+    } else if #[cfg(any(target_os = "cloudabi",
+                        target_arch = "wasm32",
+                        all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the module below doesn't compile
         // (missing things in `libc` which is empty) so just omit everything
         // with an empty module
@@ -76,7 +78,9 @@ cfg_if! {
         // On windows we'll just be documenting what's already available
         #[allow(missing_docs)]
         pub use self::ext as windows_ext;
-    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32", target_env = "sgx"))] {
+    } else if #[cfg(any(target_os = "cloudabi",
+                        target_arch = "wasm32",
+                        all(target_vendor = "fortanix", target_env = "sgx")))] {
         // On CloudABI and wasm right now the shim below doesn't compile, so
         // just omit it
         #[unstable(issue = "0", feature = "std_internals")]

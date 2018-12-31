@@ -51,7 +51,7 @@ cfg_if! {
                  target_os = "l4re",
                  target_os = "redox",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
-                 target_env = "sgx"))] {
+                 all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use sys::net;
     } else {
         pub mod net;
