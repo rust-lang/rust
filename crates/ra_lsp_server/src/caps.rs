@@ -28,7 +28,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         type_definition_provider: None,
         implementation_provider: None,
         references_provider: Some(true),
-        document_highlight_provider: None,
+        document_highlight_provider: Some(true),
         document_symbol_provider: Some(true),
         workspace_symbol_provider: Some(true),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
