@@ -22,6 +22,7 @@ mod path;
 mod arena;
 pub mod source_binder;
 
+mod macros;
 mod name;
 mod krate;
 mod module;
