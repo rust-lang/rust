@@ -160,10 +160,10 @@ error: type `m::Priv` is private
 LL |     m::leak_anon3(); //~ ERROR type `m::Priv` is private
    |     ^^^^^^^^^^^^^^^
 
-error: type `(dyn m::Trait + 'static)` is private
+error: trait `m::Trait` is private
   --> $DIR/private-inferred-type.rs:122:5
    |
-LL |     m::leak_dyn1(); //~ ERROR type `(dyn m::Trait + 'static)` is private
+LL |     m::leak_dyn1(); //~ ERROR trait `m::Trait` is private
    |     ^^^^^^^^^^^^^^
 
 error: type `m::Priv` is private

@@ -119,7 +119,7 @@ fn main() {
     m::leak_anon2(); //~ ERROR type `m::Priv` is private
     m::leak_anon3(); //~ ERROR type `m::Priv` is private
 
-    m::leak_dyn1(); //~ ERROR type `(dyn m::Trait + 'static)` is private
+    m::leak_dyn1(); //~ ERROR trait `m::Trait` is private
     m::leak_dyn2(); //~ ERROR type `m::Priv` is private
     m::leak_dyn3(); //~ ERROR type `m::Priv` is private
 

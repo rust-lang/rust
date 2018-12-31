@@ -1,4 +1,4 @@
-error: type `(dyn m::PubPrincipal + m::PrivNonPrincipal + 'static)` is private
+error: trait `m::PrivNonPrincipal` is private
   --> $DIR/private-in-public-non-principal-2.rs:11:5
    |
 LL |     m::leak_dyn_nonprincipal();
