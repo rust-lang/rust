@@ -79,11 +79,11 @@ pub fn matching_brace(file: &SourceFileNode, offset: TextUnit) -> Option<TextUni
     Some(matching_node.range().start())
 }
 
-pub fn highlight(file: &SourceFileNode) -> Vec<HighlightedRange> {
+pub fn highlight(root: SyntaxNodeRef) -> Vec<HighlightedRange> {
     // Visited nodes to handle highlighting priorities
     let mut highlighted = FxHashSet::default();
     let mut res = Vec::new();
-    for node in file.syntax().descendants() {
+    for node in root.descendants() {
         if highlighted.contains(&node) {
             continue;
         }
@@ -178,7 +178,7 @@ fn main() {}
     println!("Hello, {}!", 92);
 "#,
         );
-        let hls = highlight(&file);
+        let hls = highlight(file.syntax());
         assert_eq_dbg(
             r#"[HighlightedRange { range: [1; 11), tag: "comment" },
                 HighlightedRange { range: [12; 14), tag: "keyword" },
