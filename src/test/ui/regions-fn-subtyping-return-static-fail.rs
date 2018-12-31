@@ -37,8 +37,7 @@ fn baz(x: &S) -> &S {
 fn supply_F() {
     want_F(foo);
 
-    // FIXME(#33684) -- this should be a subtype, but current alg. rejects it incorrectly
-    want_F(bar); //~ ERROR E0308
+    want_F(bar);
 
     want_F(baz);
 }
@@ -46,11 +45,7 @@ fn supply_F() {
 fn supply_G() {
     want_G(foo);
     want_G(bar);
-    want_G(baz);
-    //~^ ERROR mismatched types
-    //~| expected type `for<'cx> fn(&'cx S) -> &'static S`
-    //~| found type `for<'r> fn(&'r S) -> &'r S {baz}`
-    //~| expected concrete lifetime, found bound lifetime parameter 'cx
+    want_G(baz); //~ ERROR
 }
 
 pub fn main() {
