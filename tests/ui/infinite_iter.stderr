@@ -105,5 +105,13 @@ error: possible infinite iteration detected
 LL |     (0..).all(|x| x == 24); // maybe infinite iter
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:74:31
+   |
+LL |         let _: HashSet<i32> = (0..).collect(); // Infinite iter
+   |                               ^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(clippy::infinite_iter)] on by default
+
+error: aborting due to 15 previous errors
 

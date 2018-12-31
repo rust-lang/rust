@@ -58,3 +58,22 @@ fn main() {
     infinite_iters();
     potential_infinite_iters();
 }
+
+mod finite_collect {
+    use std::collections::HashSet;
+    use std::iter::FromIterator;
+
+    struct C;
+    impl FromIterator<i32> for C {
+        fn from_iter<I: IntoIterator<Item = i32>>(iter: I) -> Self {
+            C
+        }
+    }
+
+    fn check_collect() {
+        let _: HashSet<i32> = (0..).collect(); // Infinite iter
+
+        // Some data structures don't collect infinitely, such as `ArrayVec`
+        let _: C = (0..).collect();
+    }
+}
