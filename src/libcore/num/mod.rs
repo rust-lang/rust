@@ -2957,8 +2957,8 @@ $EndFeature, "
             unsafe {
                 intrinsics::overflowing_mul(self, rhs)
             }
-                #[cfg(not(stage0))]
-                intrinsics::overflowing_mul(self, rhs)
+            #[cfg(not(stage0))]
+            intrinsics::overflowing_mul(self, rhs)
         }
 
         doc_comment! {
