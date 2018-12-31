@@ -971,7 +971,7 @@ impl<'a> StringReader<'a> {
                                     } else {
                                         err.span_help(
                                             span,
-                                            "format of unicode escape sequences is `\\u{…}`",
+                                            "format of unicode escape sequences is `\\u{...}`",
                                         );
                                     }
                                     err.emit();
