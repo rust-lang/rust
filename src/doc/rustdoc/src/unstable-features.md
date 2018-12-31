@@ -417,3 +417,7 @@ JavaScript, and font files in a single location, rather than duplicating it once
 (grouping of crate docs generated into the same output directory, like with `cargo doc`). Per-crate
 files like the search index will still load from the documentation root, but anything that gets
 renamed with `--resource-suffix` will load from the given path.
+
+### `--persist-doctests`: persist doctest executables after running
+
+This feature allows the persistence of the doctest executables to the specified path.

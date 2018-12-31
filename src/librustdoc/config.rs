@@ -68,7 +68,8 @@ pub struct Options {
     pub should_test: bool,
     /// List of arguments to pass to the test harness, if running tests.
     pub test_args: Vec<String>,
-    /// Otional path to persist the doctest executables to.
+    /// Optional path to persist the doctest executables to, defaults to a
+    /// temporary directory if not set.
     pub persist_doctests: Option<PathBuf>,
 
     // Options that affect the documentation process
