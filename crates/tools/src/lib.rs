@@ -139,3 +139,20 @@ pub fn install_format_hook() -> Result<()> {
     }
     Ok(())
 }
+
+pub fn run_fuzzer() -> Result<()> {
+    match Command::new("cargo")
+        .args(&["fuzz", "--help"])
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+    {
+        Ok(status) if status.success() => (),
+        _ => run("cargo install cargo-fuzz", ".")?,
+    };
+
+    run(
+        "rustup run nightly -- cargo fuzz run parser",
+        "./crates/ra_syntax",
+    )
+}

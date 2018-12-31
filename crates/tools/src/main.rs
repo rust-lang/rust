@@ -7,7 +7,10 @@ use std::{
 use clap::{App, Arg, SubCommand};
 use failure::bail;
 
-use tools::{collect_tests, generate, install_format_hook, run, run_rustfmt, Mode, Overwrite, Result, Test, Verify, project_root};
+use tools::{
+    collect_tests, generate,install_format_hook, run, run_rustfmt,
+    Mode, Overwrite, Result, Test, Verify, project_root, run_fuzzer
+};
 
 const GRAMMAR_DIR: &str = "crates/ra_syntax/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/tests/data/parser/inline/ok";
@@ -27,6 +30,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("install-code"))
         .subcommand(SubCommand::with_name("format"))
         .subcommand(SubCommand::with_name("format-hook"))
+        .subcommand(SubCommand::with_name("fuzz-tests"))
         .get_matches();
     let mode = if matches.is_present("verify") {
         Verify
@@ -42,6 +46,7 @@ fn main() -> Result<()> {
         "gen-syntax" => generate(Overwrite)?,
         "format" => run_rustfmt(mode)?,
         "format-hook" => install_format_hook()?,
+        "fuzz-tests" => run_fuzzer()?,
         _ => unreachable!(),
     }
     Ok(())

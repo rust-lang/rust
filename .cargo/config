@@ -1,10 +1,16 @@
 [alias]
 # Automatically generates the ast and syntax kinds files
-gen-syntax =   "run --package tools --bin tools -- gen-syntax"
-gen-tests =    "run --package tools --bin tools -- gen-tests"
+gen-syntax   = "run --package tools --bin tools -- gen-syntax"
+# Extracts the tests from 
+gen-tests    = "run --package tools --bin tools -- gen-tests"
+# Installs the visual studio code extension
 install-code = "run --package tools --bin tools -- install-code"
-format =       "run --package tools --bin tools -- format"
-format-hook =  "run --package tools --bin tools -- format-hook"
+# Formats the full repository or installs the git hook to do it automatically.
+format       = "run --package tools --bin tools -- format"
+format-hook  = "run --package tools --bin tools -- format-hook"
+# Runs the fuzzing test suite (currently only parser)
+fuzz-tests   = "run --package tools --bin tools -- fuzz-tests"
 
-render-test =  "run --package ra_cli -- render-test"
-parse =        "run --package ra_cli -- parse"
+render-test  = "run --package ra_cli -- render-test"
+# Parse a file. This should be piped the file contents
+parse        = "run --package ra_cli -- parse"
