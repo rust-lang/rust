@@ -71,7 +71,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
-#![feature(const_int_ops)]
+#![cfg_attr(stage0, feature(const_int_ops))]
 #![feature(const_fn_union)]
 #![feature(custom_attribute)]
 #![feature(doc_cfg)]

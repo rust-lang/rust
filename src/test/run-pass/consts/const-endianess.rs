@@ -1,5 +1,4 @@
 // run-pass
-#![feature(const_int_ops)]
 #![feature(test)]
 
 extern crate test;
@@ -7,7 +6,6 @@ use test::black_box as b;
 
 const BE_U32: u32 = 55u32.to_be();
 const LE_U32: u32 = 55u32.to_le();
-
 
 fn main() {
     assert_eq!(BE_U32, b(55u32).to_be());

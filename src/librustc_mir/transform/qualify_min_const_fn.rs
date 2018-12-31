@@ -404,6 +404,11 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool 
         | "unchecked_shr" // ~> .wrapping_shr
         | "rotate_left" // ~> .rotate_left
         | "rotate_right" // ~> .rotate_right
+        | "ctpop" // ~> .count_ones
+        | "ctlz" // ~> .leading_zeros
+        | "cttz" // ~> .trailing_zeros
+        | "bswap" // ~> .swap_bytes
+        | "bitreverse" // ~> .reverse_bits
         => true,
         _ => false,
     }

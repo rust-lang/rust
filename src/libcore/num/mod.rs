@@ -275,7 +275,7 @@ $EndFeature, "
 ```
 "),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
         }
@@ -291,7 +291,7 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn count_zeros(self) -> u32 {
                 (!self).count_ones()
@@ -312,7 +312,7 @@ assert_eq!(n.leading_zeros(), 0);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn leading_zeros(self) -> u32 {
                 (self as $UnsignedT).leading_zeros()
@@ -333,7 +333,7 @@ assert_eq!(n.trailing_zeros(), 2);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
                 (self as $UnsignedT).trailing_zeros()
@@ -404,7 +404,7 @@ let m = n.swap_bytes();
 assert_eq!(m, ", $swapped, ");
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn swap_bytes(self) -> Self {
                 (self as $UnsignedT).swap_bytes() as Self
@@ -454,7 +454,7 @@ if cfg!(target_endian = \"big\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn from_be(x: Self) -> Self {
                 #[cfg(target_endian = "big")]
@@ -488,7 +488,7 @@ if cfg!(target_endian = \"little\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn from_le(x: Self) -> Self {
                 #[cfg(target_endian = "little")]
@@ -522,7 +522,7 @@ if cfg!(target_endian = \"big\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn to_be(self) -> Self { // or not to be?
                 #[cfg(target_endian = "big")]
@@ -556,7 +556,7 @@ if cfg!(target_endian = \"little\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn to_le(self) -> Self {
                 #[cfg(target_endian = "little")]
@@ -2234,10 +2234,13 @@ Basic usage:
 assert_eq!(n.count_ones(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn count_ones(self) -> u32 {
+                #[cfg(stage0)]
                 unsafe { intrinsics::ctpop(self as $ActualT) as u32 }
+                #[cfg(not(stage0))]
+                { intrinsics::ctpop(self as $ActualT) as u32 }
             }
         }
 
@@ -2252,7 +2255,7 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn count_zeros(self) -> u32 {
                 (!self).count_ones()
@@ -2272,10 +2275,13 @@ Basic usage:
 assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn leading_zeros(self) -> u32 {
+                #[cfg(stage0)]
                 unsafe { intrinsics::ctlz(self as $ActualT) as u32 }
+                #[cfg(not(stage0))]
+                { intrinsics::ctlz(self as $ActualT) as u32 }
             }
         }
 
@@ -2293,10 +2299,13 @@ Basic usage:
 assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
+                #[cfg(stage0)]
                 unsafe { intrinsics::cttz(self) as u32 }
+                #[cfg(not(stage0))]
+                { intrinsics::cttz(self) as u32 }
             }
         }
 
@@ -2370,10 +2379,13 @@ let m = n.swap_bytes();
 assert_eq!(m, ", $swapped, ");
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn swap_bytes(self) -> Self {
+                #[cfg(stage0)]
                 unsafe { intrinsics::bswap(self as $ActualT) as Self }
+                #[cfg(not(stage0))]
+                { intrinsics::bswap(self as $ActualT) as Self }
             }
         }
 
@@ -2393,10 +2405,13 @@ let m = n.reverse_bits();
 assert_eq!(m, ", $reversed, ");
 ```"),
             #[unstable(feature = "reverse_bits", issue = "48763")]
-            #[rustc_const_unstable(feature = "const_int_conversion")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_conversion"))]
             #[inline]
             pub const fn reverse_bits(self) -> Self {
+                #[cfg(stage0)]
                 unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
+                #[cfg(not(stage0))]
+                { intrinsics::bitreverse(self as $ActualT) as Self }
             }
         }
 
@@ -2420,7 +2435,7 @@ if cfg!(target_endian = \"big\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn from_be(x: Self) -> Self {
                 #[cfg(target_endian = "big")]
@@ -2454,7 +2469,7 @@ if cfg!(target_endian = \"little\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn from_le(x: Self) -> Self {
                 #[cfg(target_endian = "little")]
@@ -2488,7 +2503,7 @@ if cfg!(target_endian = \"big\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn to_be(self) -> Self { // or not to be?
                 #[cfg(target_endian = "big")]
@@ -2522,7 +2537,7 @@ if cfg!(target_endian = \"little\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[cfg_attr(stage0, rustc_const_unstable(feature = "const_int_ops"))]
             #[inline]
             pub const fn to_le(self) -> Self {
                 #[cfg(target_endian = "little")]
@@ -2957,8 +2972,8 @@ $EndFeature, "
             unsafe {
                 intrinsics::overflowing_mul(self, rhs)
             }
-                #[cfg(not(stage0))]
-                intrinsics::overflowing_mul(self, rhs)
+            #[cfg(not(stage0))]
+            intrinsics::overflowing_mul(self, rhs)
         }
 
         doc_comment! {

@@ -4,9 +4,9 @@
 
 use std::intrinsics;
 
-const SWAPPED_U8: u8 = unsafe { intrinsics::bswap(0x12_u8) };
-const SWAPPED_U16: u16 = unsafe { intrinsics::bswap(0x12_34_u16) };
-const SWAPPED_I32: i32 = unsafe { intrinsics::bswap(0x12_34_56_78_i32) };
+const SWAPPED_U8: u8 = intrinsics::bswap(0x12_u8);
+const SWAPPED_U16: u16 = intrinsics::bswap(0x12_34_u16);
+const SWAPPED_I32: i32 = intrinsics::bswap(0x12_34_56_78_i32);
 
 fn main() {
     assert_eq!(SWAPPED_U8, 0x12);

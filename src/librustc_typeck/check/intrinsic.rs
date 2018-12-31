@@ -71,7 +71,8 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
         "size_of" | "min_align_of" | "needs_drop" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
-        "rotate_left" | "rotate_right"
+        "rotate_left" | "rotate_right" |
+        "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse"
         => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
