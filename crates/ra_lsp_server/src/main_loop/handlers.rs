@@ -678,11 +678,10 @@ pub fn handle_document_highlight(
 ) -> Result<Option<Vec<DocumentHighlight>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
 
     let refs = world
         .analysis()
-        .find_all_refs(FilePosition { file_id, offset })?;
+        .find_all_refs(params.try_conv_with(&world)?)?;
 
     Ok(Some(
         refs.into_iter()
