@@ -97,11 +97,11 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
                     format!("{} bits", size.bits())
                 }
                 Ok(SizeSkeleton::Pointer { tail, .. }) => {
-                    format!("pointer to {}", tail)
+                    format!("pointer to `{}`", tail)
                 }
                 Err(LayoutError::Unknown(bad)) => {
                     if bad == ty {
-                        "this type's size can vary".to_owned()
+                        "this type does not have a fixed size".to_owned()
                     } else {
                         format!("size can vary because of {}", bad)
                     }
@@ -110,11 +110,16 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
             }
         };
 
-        struct_span_err!(self.tcx.sess, span, E0512,
-                         "transmute called with types of different sizes")
-            .note(&format!("source type: {} ({})", from, skeleton_string(from, sk_from)))
-            .note(&format!("target type: {} ({})", to, skeleton_string(to, sk_to)))
-            .emit();
+        let mut err = struct_span_err!(self.tcx.sess, span, E0512,
+                                       "cannot transmute between types of different sizes, \
+                                        or dependently-sized types");
+        if from == to {
+            err.note(&format!("`{}` does not have a fixed size", from));
+        } else {
+            err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
+                .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
+        }
+        err.emit()
     }
 }
 
