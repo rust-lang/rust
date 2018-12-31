@@ -650,6 +650,7 @@ impl<'a> Chars<'a> {
             (None, None) => (),
             _ => return false,
         }
+        true
     }
 }
 

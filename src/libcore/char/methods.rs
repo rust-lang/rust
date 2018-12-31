@@ -891,7 +891,7 @@ impl char {
 
     /// Checks that two values are a case-insensitive match.
     ///
-    /// Equivalent to `to_lowercase(a) == to_lowercase(b)`.
+    /// Equivalent to comparing `to_lowercase(a)` with `to_lowercase(b)`.
     ///
     /// # Examples
     ///
@@ -905,7 +905,14 @@ impl char {
     #[unstable(feature = "eq_ignore_case", issue = "57221")]
     #[inline]
     pub fn eq_ignore_case(&self, other: &char) -> bool {
-        self.to_lowercase() == other.to_lowercase()
+        let mut this = self.to_lowercase();
+        let mut other = other.to_lowercase();
+        match (this.next(), other.next()) {
+            (Some(t), Some(o)) if t == o => (),
+            (None, None) => (),
+            _ => return false,
+        }
+        true
     }
 
     /// Checks if the value is within the ASCII range.
