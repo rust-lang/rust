@@ -88,37 +88,11 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i + 1)..] {
-                // First, check if the impl was forbidden under the
-                // old rules. In that case, just have an error.
-                let used_to_be_allowed = traits::overlapping_impls(
+                let mut used_to_be_allowed = traits::overlapping_impls(
                     self.tcx,
                     impl1_def_id,
                     impl2_def_id,
                     IntercrateMode::Issue43355,
-                    TraitObjectMode::NoSquash,
-                    |overlap| {
-                        self.check_for_common_items_in_impls(
-                            impl1_def_id,
-                            impl2_def_id,
-                            overlap,
-                            None,
-                        );
-                        false
-                    },
-                    || true,
-                );
-
-                if !used_to_be_allowed {
-                    continue;
-                }
-
-                // Then, check if the impl was forbidden under only
-                // #43355. In that case, emit an #43355 error.
-                let used_to_be_allowed = traits::overlapping_impls(
-                    self.tcx,
-                    impl1_def_id,
-                    impl2_def_id,
-                    IntercrateMode::Fixed,
                     TraitObjectMode::NoSquash,
                     |overlap| {
                         self.check_for_common_items_in_impls(
@@ -132,29 +106,45 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
                     || true,
                 );
 
-                if !used_to_be_allowed {
-                    continue;
+                if used_to_be_allowed {
+                    used_to_be_allowed = traits::overlapping_impls(
+                        self.tcx,
+                        impl1_def_id,
+                        impl2_def_id,
+                        IntercrateMode::Fixed,
+                        TraitObjectMode::NoSquash,
+                        |overlap| {
+                            self.check_for_common_items_in_impls(
+                                impl1_def_id,
+                                impl2_def_id,
+                                overlap,
+                                None,
+                            );
+                            false
+                        },
+                        || true,
+                    );
                 }
 
-                // Then, check if the impl was forbidden under
-                // #33140. In that case, emit a #33140 error.
-                traits::overlapping_impls(
-                    self.tcx,
-                    impl1_def_id,
-                    impl2_def_id,
-                    IntercrateMode::Fixed,
-                    TraitObjectMode::SquashAutoTraitsIssue33140,
-                    |overlap| {
-                        self.check_for_common_items_in_impls(
-                            impl1_def_id,
-                            impl2_def_id,
-                            overlap,
-                            Some(FutureCompatOverlapErrorKind::Issue33140),
-                        );
-                        false
-                    },
-                    || true,
-                );
+                if used_to_be_allowed {
+                    traits::overlapping_impls(
+                        self.tcx,
+                        impl1_def_id,
+                        impl2_def_id,
+                        IntercrateMode::Fixed,
+                        TraitObjectMode::SquashAutoTraitsIssue33140,
+                        |overlap| {
+                            self.check_for_common_items_in_impls(
+                                impl1_def_id,
+                                impl2_def_id,
+                                overlap,
+                                Some(FutureCompatOverlapErrorKind::Issue33140),
+                            );
+                            false
+                        },
+                        || true,
+                    );
+                }
             }
         }
     }
