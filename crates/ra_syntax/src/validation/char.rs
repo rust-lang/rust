@@ -92,12 +92,11 @@ fn validate_ascii_code_escape(text: &str, range: TextRange, errors: &mut Vec<Syn
     if !text.is_ascii() {
         // TODO: Give a more precise error message (say what the invalid character was)
         errors.push(SyntaxError::new(AsciiCodeEscapeOutOfRange, range));
-    }
-    if text.len() < 4 {
+    } else if text.chars().count() < 4 {
         errors.push(SyntaxError::new(TooShortAsciiCodeEscape, range));
     } else {
         assert_eq!(
-            text.len(),
+            text.chars().count(),
             4,
             "AsciiCodeEscape cannot be longer than 4 chars, but text '{}' is",
             text,
