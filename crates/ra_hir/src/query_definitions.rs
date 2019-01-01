@@ -48,17 +48,9 @@ pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {
-    let mut res = SourceFileItems::new(file_id);
     let source_file = db.source_file(file_id);
     let source_file = source_file.borrowed();
-    source_file
-        .syntax()
-        .descendants()
-        .filter_map(ast::ModuleItem::cast)
-        .map(|it| it.syntax().owned())
-        .for_each(|it| {
-            res.alloc(it);
-        });
+    let res = SourceFileItems::new(file_id, source_file);
     Arc::new(res)
 }
 

@@ -33,7 +33,7 @@ mod ty;
 
 use std::ops::Index;
 
-use ra_syntax::{SyntaxNodeRef, SyntaxNode, SyntaxKind};
+use ra_syntax::{SyntaxNodeRef, SyntaxNode, SyntaxKind, SourceFile, AstNode, ast};
 use ra_db::{LocationIntener, SourceRootId, FileId, Cancelable};
 
 use crate::{
@@ -169,11 +169,23 @@ pub struct SourceFileItems {
 }
 
 impl SourceFileItems {
-    fn new(file_id: FileId) -> SourceFileItems {
-        SourceFileItems {
+    fn new(file_id: FileId, source_file: SourceFile) -> SourceFileItems {
+        let mut res = SourceFileItems {
             file_id,
             arena: Arena::default(),
-        }
+        };
+        res.init(source_file);
+        res
+    }
+
+    fn init(&mut self, source_file: SourceFile) {
+        source_file.syntax().descendants().for_each(|it| {
+            if let Some(module_item) = ast::ModuleItem::cast(it) {
+                self.alloc(module_item.syntax().owned());
+            } else if let Some(macro_call) = ast::MacroCall::cast(it) {
+                self.alloc(macro_call.syntax().owned());
+            }
+        });
     }
 
     fn alloc(&mut self, item: SyntaxNode) -> SourceFileItemId {
