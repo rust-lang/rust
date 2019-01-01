@@ -2,7 +2,7 @@ use ra_db::{SourceRootId, LocationIntener, Cancelable, FileId};
 use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, SourceFile, AstNode, ast};
 
 use crate::{
-    MacroCallId, HirDatabase, PerNs, ModuleId, Module, Def, Function, Struct, Enum,
+    HirDatabase, PerNs, ModuleId, Module, Def, Function, Struct, Enum,
     arena::{Arena, Id},
 };
 
@@ -74,6 +74,38 @@ impl From<FileId> for HirFileId {
 impl From<MacroCallId> for HirFileId {
     fn from(macro_call_id: MacroCallId) -> HirFileId {
         HirFileId(HirFileIdRepr::Macro(macro_call_id))
+    }
+}
+
+/// `MacroCallId` identifies a particular macro invocation, like
+/// `println!("Hello, {}", world)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroCallId(u32);
+ra_db::impl_numeric_id!(MacroCallId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroCallLoc {
+    pub(crate) source_root_id: SourceRootId,
+    pub(crate) module_id: ModuleId,
+    pub(crate) source_item_id: SourceItemId,
+}
+
+impl MacroCallId {
+    pub(crate) fn loc(
+        self,
+        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
+    ) -> MacroCallLoc {
+        db.as_ref().id2loc(self)
+    }
+}
+
+impl MacroCallLoc {
+    #[allow(unused)]
+    pub(crate) fn id(
+        &self,
+        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
+    ) -> MacroCallId {
+        db.as_ref().loc2id(&self)
     }
 }
 

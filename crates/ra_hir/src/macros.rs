@@ -1,44 +1,12 @@
 use std::sync::Arc;
 
-use ra_db::{SourceRootId, LocalSyntaxPtr, LocationIntener};
+use ra_db::LocalSyntaxPtr;
 use ra_syntax::{
     TextRange, TextUnit, SourceFileNode, AstNode, SyntaxNode,
     ast::{self, NameOwner},
 };
 
-use crate::{module::ModuleId, SourceItemId, HirDatabase};
-
-/// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
-/// in a specific module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroCallId(u32);
-ra_db::impl_numeric_id!(MacroCallId);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroCallLoc {
-    pub(crate) source_root_id: SourceRootId,
-    pub(crate) module_id: ModuleId,
-    pub(crate) source_item_id: SourceItemId,
-}
-
-impl MacroCallId {
-    pub(crate) fn loc(
-        self,
-        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
-    ) -> MacroCallLoc {
-        db.as_ref().id2loc(self)
-    }
-}
-
-impl MacroCallLoc {
-    #[allow(unused)]
-    pub(crate) fn id(
-        &self,
-        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
-    ) -> MacroCallId {
-        db.as_ref().loc2id(&self)
-    }
-}
+use crate::{HirDatabase, MacroCallId};
 
 // Hard-coded defs for now :-(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

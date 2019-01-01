@@ -12,7 +12,7 @@ use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
     SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName, HirFileId,
-    macros::MacroCallLoc,
+    MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
     module::{

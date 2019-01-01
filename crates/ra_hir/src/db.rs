@@ -4,11 +4,11 @@ use ra_syntax::{SyntaxNode, SourceFileNode};
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
-    DefLoc, DefId, Name, HirFileId,
+    DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
-    macros::{MacroCallLoc, MacroCallId, MacroExpansion},
+    macros::MacroExpansion,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
