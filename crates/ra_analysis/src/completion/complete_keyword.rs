@@ -18,6 +18,16 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if !ctx.is_trivial_path {
         return;
     }
+
+    // complete keyword "crate" in use stmt
+    if let (Some(use_item), None) = (&ctx.use_item_syntax, &ctx.path_prefix) {
+        if use_item.use_tree().is_none() {
+            CompletionItem::new(CompletionKind::Keyword, "crate")
+                .kind(CompletionItemKind::Keyword)
+                .add_to(acc);
+        }
+    }
+
     let fn_def = match ctx.function_syntax {
         Some(it) => it,
         None => return,
@@ -268,5 +278,24 @@ mod tests {
             return "return"
             "#,
         )
+    }
+
+    fn completes_crate_in_use_stmt() {
+        check_keyword_completion(
+            r"
+            use <|>
+            ",
+            r#"
+            crate
+            "#,
+        );
+        // No completion: lambda isolates control flow
+        check_keyword_completion(
+            r"
+            use a<|>
+            ",
+            r#"
+            "#,
+        );
     }
 }
