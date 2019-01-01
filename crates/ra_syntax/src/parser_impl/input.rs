@@ -70,7 +70,7 @@ impl<'t> ParserInput<'t> {
         self.start_offsets[idx]
     }
 
-    /// Get the raw text of a toen at given input position.
+    /// Get the raw text of a token at given input position.
     pub fn token_text(&self, pos: InputPosition) -> &'t str {
         let idx = pos.0 as usize;
         if !(idx < self.tokens.len()) {

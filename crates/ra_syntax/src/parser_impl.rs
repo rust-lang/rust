@@ -63,7 +63,7 @@ pub(crate) fn parse_with<S: Sink>(
 /// to a separate struct in order not to pollute
 /// the public API of the `Parser`.
 pub(crate) struct ParserImpl<'t> {
-    inp: &'t ParserInput<'t>,
+    parser_input: &'t ParserInput<'t>,
     pos: InputPosition,
     events: Vec<Event>,
     steps: Cell<u32>,
@@ -72,7 +72,7 @@ pub(crate) struct ParserImpl<'t> {
 impl<'t> ParserImpl<'t> {
     pub(crate) fn new(inp: &'t ParserInput<'t>) -> ParserImpl<'t> {
         ParserImpl {
-            inp,
+            parser_input: inp,
             pos: InputPosition::new(),
             events: Vec::new(),
             steps: Cell::new(0),
@@ -85,10 +85,10 @@ impl<'t> ParserImpl<'t> {
     }
 
     pub(super) fn next2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
-        let c1 = self.inp.kind(self.pos);
-        let c2 = self.inp.kind(self.pos + 1);
-        if self.inp.token_start_at(self.pos + 1)
-            == self.inp.token_start_at(self.pos) + self.inp.len(self.pos)
+        let c1 = self.parser_input.kind(self.pos);
+        let c2 = self.parser_input.kind(self.pos + 1);
+        if self.parser_input.token_start_at(self.pos + 1)
+            == self.parser_input.token_start_at(self.pos) + self.parser_input.token_len(self.pos)
         {
             Some((c1, c2))
         } else {
@@ -97,13 +97,14 @@ impl<'t> ParserImpl<'t> {
     }
 
     pub(super) fn next3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
-        let c1 = self.inp.kind(self.pos);
-        let c2 = self.inp.kind(self.pos + 1);
-        let c3 = self.inp.kind(self.pos + 2);
-        if self.inp.token_start_at(self.pos + 1)
-            == self.inp.token_start_at(self.pos) + self.inp.len(self.pos)
-            && self.inp.token_start_at(self.pos + 2)
-                == self.inp.token_start_at(self.pos + 1) + self.inp.len(self.pos + 1)
+        let c1 = self.parser_input.kind(self.pos);
+        let c2 = self.parser_input.kind(self.pos + 1);
+        let c3 = self.parser_input.kind(self.pos + 2);
+        if self.parser_input.token_start_at(self.pos + 1)
+            == self.parser_input.token_start_at(self.pos) + self.parser_input.token_len(self.pos)
+            && self.parser_input.token_start_at(self.pos + 2)
+                == self.parser_input.token_start_at(self.pos + 1)
+                    + self.parser_input.token_len(self.pos + 1)
         {
             Some((c1, c2, c3))
         } else {
@@ -111,29 +112,27 @@ impl<'t> ParserImpl<'t> {
         }
     }
 
+    /// Get the syntax kind of the nth token.
     pub(super) fn nth(&self, n: u32) -> SyntaxKind {
         let steps = self.steps.get();
-        if steps > 10_000_000 {
-            panic!("the parser seems stuck");
-        }
+        assert!(steps <= 10_000_000, "the parser seems stuck");
         self.steps.set(steps + 1);
 
-        self.inp.kind(self.pos + n)
+        self.parser_input.kind(self.pos + n)
     }
 
     pub(super) fn at_kw(&self, t: &str) -> bool {
-        self.inp.text(self.pos) == t
+        self.parser_input.token_text(self.pos) == t
     }
 
+    /// Start parsing right behind the last event.
     pub(super) fn start(&mut self) -> u32 {
         let pos = self.events.len() as u32;
-        self.event(Event::Start {
-            kind: TOMBSTONE,
-            forward_parent: None,
-        });
+        self.push_event(Event::tombstone());
         pos
     }
 
+    /// Advances the parser by one token unconditionally.
     pub(super) fn bump(&mut self) {
         let kind = self.nth(0);
         if kind == EOF {
@@ -156,15 +155,17 @@ impl<'t> ParserImpl<'t> {
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
         self.pos += u32::from(n_raw_tokens);
-        self.event(Event::Token { kind, n_raw_tokens });
+        self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
+    /// Append one Error event to the back of events.
     pub(super) fn error(&mut self, msg: String) {
-        self.event(Event::Error {
+        self.push_event(Event::Error {
             msg: ParseError(msg),
         })
     }
 
+    /// Complete an event with appending a `Finish` event.
     pub(super) fn complete(&mut self, pos: u32, kind: SyntaxKind) {
         match self.events[pos as usize] {
             Event::Start {
@@ -174,9 +175,10 @@ impl<'t> ParserImpl<'t> {
             }
             _ => unreachable!(),
         }
-        self.event(Event::Finish);
+        self.push_event(Event::Finish);
     }
 
+    /// Ignore the dummy `Start` event.
     pub(super) fn abandon(&mut self, pos: u32) {
         let idx = pos as usize;
         if idx == self.events.len() - 1 {
@@ -190,6 +192,7 @@ impl<'t> ParserImpl<'t> {
         }
     }
 
+    /// Save the relative distance of a completed event to its forward_parent.
     pub(super) fn precede(&mut self, pos: u32) -> u32 {
         let new_pos = self.start();
         match self.events[pos as usize] {
@@ -204,7 +207,7 @@ impl<'t> ParserImpl<'t> {
         new_pos
     }
 
-    fn event(&mut self, event: Event) {
+    fn push_event(&mut self, event: Event) {
         self.events.push(event)
     }
 }
