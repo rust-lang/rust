@@ -29,10 +29,6 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
-    fn trait_object_mode(&self) -> relate::TraitObjectMode {
-        self.fields.infcx.trait_object_mode()
-    }
-
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_item_substs(&mut self,

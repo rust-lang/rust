@@ -7,7 +7,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
-use ty::relate::TraitObjectMode;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
 use util::captures::Captures;
@@ -59,22 +58,10 @@ struct Children {
     blanket_impls: Vec<DefId>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum FutureCompatOverlapErrorKind {
-    Issue43355,
-    Issue33140,
-}
-
-#[derive(Debug)]
-pub struct FutureCompatOverlapError {
-    pub error: OverlapError,
-    pub kind: FutureCompatOverlapErrorKind
-}
-
 /// The result of attempting to insert an impl into a group of children.
 enum Inserted {
     /// The impl was inserted as a new child in this group of children.
-    BecameNewSibling(Option<FutureCompatOverlapError>),
+    BecameNewSibling(Option<OverlapError>),
 
     /// The impl should replace existing impls [X1, ..], because the impl specializes X1, X2, etc.
     ReplaceChildren(Vec<DefId>),
@@ -174,7 +161,6 @@ impl<'a, 'gcx, 'tcx> Children {
                 possible_sibling,
                 impl_def_id,
                 traits::IntercrateMode::Issue43355,
-                TraitObjectMode::NoSquash,
                 |overlap| {
                     if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
                         return Ok((false, false));
@@ -205,36 +191,12 @@ impl<'a, 'gcx, 'tcx> Children {
                 replace_children.push(possible_sibling);
             } else {
                 if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
-                    // do future-compat checks for overlap. Have issue #43355
-                    // errors overwrite issue #33140 errors when both are present.
-
                     traits::overlapping_impls(
                         tcx,
                         possible_sibling,
                         impl_def_id,
                         traits::IntercrateMode::Fixed,
-                        TraitObjectMode::SquashAutoTraitsIssue33140,
-                        |overlap| {
-                            last_lint = Some(FutureCompatOverlapError {
-                                error: overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::Issue33140
-                            });
-                        },
-                        || (),
-                    );
-
-                    traits::overlapping_impls(
-                        tcx,
-                        possible_sibling,
-                        impl_def_id,
-                        traits::IntercrateMode::Fixed,
-                        TraitObjectMode::NoSquash,
-                        |overlap| {
-                            last_lint = Some(FutureCompatOverlapError {
-                                error: overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::Issue43355
-                            });
-                        },
+                        |overlap| last_lint = Some(overlap_error(overlap)),
                         || (),
                     );
                 }
@@ -301,7 +263,7 @@ impl<'a, 'gcx, 'tcx> Graph {
     pub fn insert(&mut self,
                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                   impl_def_id: DefId)
-                  -> Result<Option<FutureCompatOverlapError>, OverlapError> {
+                  -> Result<Option<OverlapError>, OverlapError> {
         assert!(impl_def_id.is_local());
 
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();

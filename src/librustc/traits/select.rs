@@ -33,7 +33,7 @@ use infer::{InferCtxt, InferOk, TypeFreshener};
 use middle::lang_items;
 use mir::interpret::GlobalId;
 use ty::fast_reject;
-use ty::relate::{TypeRelation, TraitObjectMode};
+use ty::relate::TypeRelation;
 use ty::subst::{Subst, Substs};
 use ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
@@ -1414,13 +1414,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // hit-rate I don't think.
         if self.intercrate.is_some() {
             return false;
-        }
-
-        // Same idea as the above, but for alt trait object modes. These
-        // should only be used in intercrate mode - better safe than sorry.
-        if self.infcx.trait_object_mode() != TraitObjectMode::NoSquash {
-            bug!("using squashing TraitObjectMode outside of intercrate mode? param_env={:?}",
-                 param_env);
         }
 
         // Otherwise, we can use the global cache.
@@ -3580,8 +3573,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         previous: &ty::PolyTraitRef<'tcx>,
         current: &ty::PolyTraitRef<'tcx>,
     ) -> bool {
-        let mut matcher = ty::_match::Match::new(
-            self.tcx(), self.infcx.trait_object_mode());
+        let mut matcher = ty::_match::Match::new(self.tcx());
         matcher.relate(previous, current).is_ok()
     }
 
