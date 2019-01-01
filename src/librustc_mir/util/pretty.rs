@@ -142,6 +142,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         }
         writeln!(file, "")?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
+        write_user_type_annotations(mir, &mut file)?;
         write_mir_fn(tcx, source, mir, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
@@ -615,6 +616,19 @@ fn write_temp_decls(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
         )?;
     }
 
+    Ok(())
+}
+
+fn write_user_type_annotations(mir: &Mir, w: &mut dyn Write) -> io::Result<()> {
+    if !mir.user_type_annotations.is_empty() {
+        writeln!(w, "| User Type Annotations")?;
+    }
+    for (index, (span, annotation)) in mir.user_type_annotations.iter_enumerated() {
+        writeln!(w, "| {:?}: {:?} at {:?}", index.index(), annotation, span)?;
+    }
+    if !mir.user_type_annotations.is_empty() {
+        writeln!(w, "|")?;
+    }
     Ok(())
 }
 

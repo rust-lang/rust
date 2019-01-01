@@ -2,12 +2,11 @@
 
 use hir::def_id::DefId;
 use infer::canonical::Canonical;
-use ty::{self, BoundVar, Lift, List, Ty, TyCtxt};
+use ty::{self, Lift, List, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
-use rustc_data_structures::indexed_vec::Idx;
 use smallvec::SmallVec;
 
 use core::intrinsics;
@@ -558,43 +557,6 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
 }
 
 pub type CanonicalUserSubsts<'tcx> = Canonical<'tcx, UserSubsts<'tcx>>;
-
-impl CanonicalUserSubsts<'tcx> {
-    /// True if this represents a substitution like
-    ///
-    /// ```text
-    /// [?0, ?1, ?2]
-    /// ```
-    ///
-    /// i.e., each thing is mapped to a canonical variable with the same index.
-    pub fn is_identity(&self) -> bool {
-        if self.value.user_self_ty.is_some() {
-            return false;
-        }
-
-        self.value.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
-            match kind.unpack() {
-                UnpackedKind::Type(ty) => match ty.sty {
-                    ty::Bound(debruijn, b) => {
-                        // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(debruijn, ty::INNERMOST);
-                        cvar == b.var
-                    }
-                    _ => false,
-                },
-
-                UnpackedKind::Lifetime(r) => match r {
-                    ty::ReLateBound(debruijn, br) => {
-                        // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(*debruijn, ty::INNERMOST);
-                        cvar == br.assert_bound_var()
-                    }
-                    _ => false,
-                },
-            }
-        })
-    }
-}
 
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).

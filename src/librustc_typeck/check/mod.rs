@@ -102,13 +102,14 @@ use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, AdtKind, Ty, TyCtxt, GenericParamDefKind, RegionKind, Visibility,
-                ToPolyTraitRef, ToPredicate};
+use rustc::ty::{
+    self, AdtKind, CanonicalUserTypeAnnotation, Ty, TyCtxt, GenericParamDefKind, Visibility,
+    ToPolyTraitRef, ToPredicate, RegionKind, UserTypeAnnotation
+};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
-                       UserSelfTy, UserSubsts};
+use rustc::ty::subst::{UnpackedKind, Subst, Substs, UserSelfTy, UserSubsts};
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
@@ -974,10 +975,12 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                     o_ty
                 };
 
-                let c_ty = self.fcx.inh.infcx.canonicalize_user_type_annotation(&revealed_ty);
+                let c_ty = self.fcx.inh.infcx.canonicalize_user_type_annotation(
+                    &UserTypeAnnotation::Ty(revealed_ty)
+                );
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
                        ty.hir_id, o_ty, revealed_ty, c_ty);
-                self.fcx.tables.borrow_mut().user_provided_tys_mut().insert(ty.hir_id, c_ty);
+                self.fcx.tables.borrow_mut().user_provided_types_mut().insert(ty.hir_id, c_ty);
 
                 Some(LocalTy { decl_ty: o_ty, revealed_ty })
             },
@@ -2108,8 +2111,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow_mut().field_indices_mut().insert(hir_id, index);
     }
 
-    // The NodeId and the ItemLocalId must identify the same item. We just pass
-    // both of them for consistency checking.
     pub fn write_method_call(&self,
                              hir_id: hir::HirId,
                              method: MethodCallee<'tcx>) {
@@ -2138,23 +2139,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if !method.substs.is_noop() {
             let method_generics = self.tcx.generics_of(method.def_id);
             if !method_generics.params.is_empty() {
-                let user_substs = self.infcx.probe(|_| {
-                    let just_method_substs = Substs::for_item(self.tcx, method.def_id, |param, _| {
-                        let i = param.index as usize;
-                        if i < method_generics.parent_count {
-                            self.infcx.var_for_def(DUMMY_SP, param)
-                        } else {
-                            method.substs[i]
-                        }
-                    });
-                    self.infcx.canonicalize_user_type_annotation(&UserSubsts {
-                        substs: just_method_substs,
+                let user_type_annotation = self.infcx.probe(|_| {
+                    let user_substs = UserSubsts {
+                        substs: Substs::for_item(self.tcx, method.def_id, |param, _| {
+                            let i = param.index as usize;
+                            if i < method_generics.parent_count {
+                                self.infcx.var_for_def(DUMMY_SP, param)
+                            } else {
+                                method.substs[i]
+                            }
+                        }),
                         user_self_ty: None, // not relevant here
-                    })
+                    };
+
+                    self.infcx.canonicalize_user_type_annotation(&UserTypeAnnotation::TypeOf(
+                        method.def_id,
+                        user_substs,
+                    ))
                 });
 
-                debug!("write_method_call: user_substs = {:?}", user_substs);
-                self.write_user_substs(hir_id, user_substs);
+                debug!("write_method_call: user_type_annotation={:?}", user_type_annotation);
+                self.write_user_type_annotation(hir_id, user_type_annotation);
             }
         }
     }
@@ -2177,41 +2182,47 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// This should be invoked **before any unifications have
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
-    pub fn write_user_substs_from_substs(
+    pub fn write_user_type_annotation_from_substs(
         &self,
         hir_id: hir::HirId,
+        def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
         debug!(
-            "write_user_substs_from_substs({:?}, {:?}) in fcx {}",
-            hir_id,
-            substs,
-            self.tag(),
+            "write_user_type_annotation_from_substs: hir_id={:?} def_id={:?} substs={:?} \
+             user_self_ty={:?} in fcx {}",
+            hir_id, def_id, substs, user_self_ty, self.tag(),
         );
 
         if !substs.is_noop() {
-            let user_substs = self.infcx.canonicalize_user_type_annotation(&UserSubsts {
-                substs,
-                user_self_ty,
-            });
-            debug!("instantiate_value_path: user_substs = {:?}", user_substs);
-            self.write_user_substs(hir_id, user_substs);
+            let canonicalized = self.infcx.canonicalize_user_type_annotation(
+                &UserTypeAnnotation::TypeOf(def_id, UserSubsts {
+                    substs,
+                    user_self_ty,
+                })
+            );
+            debug!("write_user_type_annotation_from_substs: canonicalized={:?}", canonicalized);
+            self.write_user_type_annotation(hir_id, canonicalized);
         }
     }
 
-    pub fn write_user_substs(&self, hir_id: hir::HirId, substs: CanonicalUserSubsts<'tcx>) {
+    pub fn write_user_type_annotation(
+        &self,
+        hir_id: hir::HirId,
+        canonical_user_type_annotation: CanonicalUserTypeAnnotation<'tcx>,
+    ) {
         debug!(
-            "write_user_substs({:?}, {:?}) in fcx {}",
-            hir_id,
-            substs,
-            self.tag(),
+            "write_user_type_annotation: hir_id={:?} canonical_user_type_annotation={:?} tag={}",
+            hir_id, canonical_user_type_annotation, self.tag(),
         );
 
-        if !substs.is_identity() {
-            self.tables.borrow_mut().user_substs_mut().insert(hir_id, substs);
+        if !canonical_user_type_annotation.is_identity() {
+            self.tables.borrow_mut().user_provided_types_mut().insert(
+                hir_id, canonical_user_type_annotation
+            );
         } else {
-            debug!("write_user_substs: skipping identity substs");
+            debug!("write_user_type_annotation: skipping identity substs");
         }
     }
 
@@ -2377,6 +2388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
+        debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         // If the type given by the user has free regions, save it for
         // later, since NLL would like to enforce those. Also pass in
@@ -2386,8 +2398,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // although I have my doubts). Other sorts of things are
         // already sufficiently enforced with erased regions. =)
         if ty.has_free_regions() || ty.has_projections() {
-            let c_ty = self.infcx.canonicalize_response(&ty);
-            self.tables.borrow_mut().user_provided_tys_mut().insert(ast_ty.hir_id, c_ty);
+            let c_ty = self.infcx.canonicalize_response(&UserTypeAnnotation::Ty(ty));
+            debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
+            self.tables.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
 
         ty
@@ -3742,7 +3755,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some((variant, did, substs)) = variant {
             debug!("check_struct_path: did={:?} substs={:?}", did, substs);
             let hir_id = self.tcx.hir().node_to_hir_id(node_id);
-            self.write_user_substs_from_substs(hir_id, substs, None);
+            self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
 
             // Check bounds on type arguments used in the path.
             let bounds = self.instantiate_bounds(path_span, did, substs);
@@ -4581,6 +4594,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
+        debug!("resolve_ty_and_def_ufcs: qpath={:?} node_id={:?} span={:?}", qpath, node_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
                 return (path.def,
@@ -5101,6 +5115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
                 let container = tcx.associated_item(def_id).container;
+                debug!("instantiate_value_path: def={:?} container={:?}", def, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(tcx, span, trait_did)
@@ -5300,7 +5315,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // First, store the "user substs" for later.
         let hir_id = tcx.hir().node_to_hir_id(node_id);
-        self.write_user_substs_from_substs(hir_id, substs, user_self_ty);
+        self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.

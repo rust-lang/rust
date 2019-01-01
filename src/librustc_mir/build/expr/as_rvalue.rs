@@ -331,6 +331,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .collect()
                 };
 
+                let user_ty = user_ty.map(|ty| {
+                    this.canonical_user_type_annotations.push((expr_span, ty))
+                });
                 let adt = box AggregateKind::Adt(
                     adt_def,
                     variant_index,

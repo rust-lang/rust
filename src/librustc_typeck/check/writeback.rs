@@ -3,6 +3,7 @@
 // substitutions.
 
 use check::FnCtxt;
+use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -357,7 +358,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
-        for (&local_id, c_ty) in fcx_tables.user_provided_tys().iter() {
+        let mut errors_buffer = Vec::new();
+        for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,
                 local_id,
@@ -374,8 +376,30 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             };
 
             self.tables
-                .user_provided_tys_mut()
+                .user_provided_types_mut()
                 .insert(hir_id, c_ty.clone());
+
+            if let ty::UserTypeAnnotation::TypeOf(_, user_substs) = c_ty.value {
+                if self.rustc_dump_user_substs {
+                    // This is a unit-testing mechanism.
+                    let node_id = self.tcx().hir().hir_to_node_id(hir_id);
+                    let span = self.tcx().hir().span(node_id);
+                    // We need to buffer the errors in order to guarantee a consistent
+                    // order when emitting them.
+                    let err = self.tcx().sess.struct_span_err(
+                        span,
+                        &format!("user substs: {:?}", user_substs)
+                    );
+                    err.buffer(&mut errors_buffer);
+                }
+            }
+        }
+
+        if !errors_buffer.is_empty() {
+            errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+            for diag in errors_buffer.drain(..) {
+                DiagnosticBuilder::new_diagnostic(self.tcx().sess.diagnostic(), diag).emit();
+            }
         }
     }
 
@@ -572,22 +596,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
             assert!(!substs.needs_infer() && !substs.has_placeholders());
             self.tables.node_substs_mut().insert(hir_id, substs);
-        }
-
-        // Copy over any user-substs
-        if let Some(user_substs) = self.fcx.tables.borrow().user_substs(hir_id) {
-            let user_substs = self.tcx().lift_to_global(&user_substs).unwrap();
-            self.tables.user_substs_mut().insert(hir_id, user_substs);
-
-            // Unit-testing mechanism:
-            if self.rustc_dump_user_substs {
-                let node_id = self.tcx().hir().hir_to_node_id(hir_id);
-                let span = self.tcx().hir().span(node_id);
-                self.tcx().sess.span_err(
-                    span,
-                    &format!("user substs: {:?}", user_substs),
-                );
-            }
         }
     }
 

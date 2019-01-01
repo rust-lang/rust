@@ -230,13 +230,14 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 // Before the CFG, dump out the values for each region variable.
                 PassWhere::BeforeCFG => {
                     regioncx.dump_mir(out)?;
+                    writeln!(out, "|")?;
 
                     if let Some(closure_region_requirements) = closure_region_requirements {
-                        writeln!(out, "|")?;
                         writeln!(out, "| Free Region Constraints")?;
                         for_each_region_constraint(closure_region_requirements, &mut |msg| {
                             writeln!(out, "| {}", msg)
                         })?;
+                        writeln!(out, "|")?;
                     }
                 }
 
