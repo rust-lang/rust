@@ -44,7 +44,7 @@ mod tests {
             fn main() {
                 ctry!({ let x = 92; x});
             }
-        ",
+            ",
         );
         let highlights = analysis.highlight(file_id).unwrap();
         assert_eq_dbg(
@@ -57,6 +57,28 @@ mod tests {
                 HighlightedRange { range: [53; 54), tag: "function" },
                 HighlightedRange { range: [57; 59), tag: "literal" },
                 HighlightedRange { range: [61; 62), tag: "text" }]"#,
+            &highlights,
+        )
+    }
+
+    // FIXME: this test is not really necessary: artifact of the inital hacky
+    // macros implementation.
+    #[test]
+    fn highlight_query_group_macro() {
+        let (analysis, file_id) = single_file(
+            "
+            salsa::query_group! {
+                pub trait HirDatabase: SyntaxDatabase {}
+            }
+            ",
+        );
+        let highlights = analysis.highlight(file_id).unwrap();
+        assert_eq_dbg(
+            r#"[HighlightedRange { range: [20; 32), tag: "macro" },
+                HighlightedRange { range: [13; 18), tag: "text" },
+                HighlightedRange { range: [51; 54), tag: "keyword" },
+                HighlightedRange { range: [55; 60), tag: "keyword" },
+                HighlightedRange { range: [61; 72), tag: "function" }]"#,
             &highlights,
         )
     }

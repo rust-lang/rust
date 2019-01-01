@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ra_db::{LocalSyntaxPtr, LocationIntener};
 use ra_syntax::{
     TextRange, TextUnit, SourceFileNode, AstNode, SyntaxNode,
-    ast,
+    ast::{self, NameOwner},
 };
 
 use crate::{SourceRootId, module::ModuleId, SourceItemId, HirDatabase};
@@ -44,6 +44,7 @@ impl MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroDef {
     CTry,
+    QueryGroup,
 }
 
 impl MacroDef {
@@ -57,14 +58,14 @@ impl MacroDef {
     fn from_call(macro_call: ast::MacroCall) -> Option<(MacroDef, MacroInput)> {
         let def = {
             let path = macro_call.path()?;
-            if path.qualifier().is_some() {
-                return None;
-            }
             let name_ref = path.segment()?.name_ref()?;
-            if name_ref.text() != "ctry" {
+            if name_ref.text() == "ctry" {
+                MacroDef::CTry
+            } else if name_ref.text() == "query_group" {
+                MacroDef::QueryGroup
+            } else {
                 return None;
             }
-            MacroDef::CTry
         };
 
         let input = {
@@ -77,7 +78,12 @@ impl MacroDef {
     }
 
     fn expand(self, input: MacroInput) -> Option<MacroExpansion> {
-        let MacroDef::CTry = self;
+        match self {
+            MacroDef::CTry => self.expand_ctry(input),
+            MacroDef::QueryGroup => self.expand_query_group(input),
+        }
+    }
+    fn expand_ctry(self, input: MacroInput) -> Option<MacroExpansion> {
         let text = format!(
             r"
                 fn dummy() {{
@@ -94,6 +100,30 @@ impl MacroDef {
         let ptr = LocalSyntaxPtr::new(match_arg.syntax());
         let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
         let ranges_map = vec![(src_range, match_arg.syntax().range())];
+        let res = MacroExpansion {
+            text,
+            ranges_map,
+            ptr,
+        };
+        Some(res)
+    }
+    fn expand_query_group(self, input: MacroInput) -> Option<MacroExpansion> {
+        let anchor = "trait ";
+        let pos = input.text.find(anchor)? + anchor.len();
+        let trait_name = input.text[pos..]
+            .chars()
+            .take_while(|c| c.is_alphabetic())
+            .collect::<String>();
+        if trait_name.is_empty() {
+            return None;
+        }
+        let src_range = TextRange::offset_len((pos as u32).into(), TextUnit::of_str(&trait_name));
+        let text = format!(r"trait {} {{ }}", trait_name);
+        let file = SourceFileNode::parse(&text);
+        let trait_def = file.syntax().descendants().find_map(ast::TraitDef::cast)?;
+        let name = trait_def.name()?;
+        let ptr = LocalSyntaxPtr::new(trait_def.syntax());
+        let ranges_map = vec![(src_range, name.syntax().range())];
         let res = MacroExpansion {
             text,
             ranges_map,
