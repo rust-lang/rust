@@ -448,13 +448,6 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     }
 
     #[inline]
-    fn position<P>(&mut self, predicate: P) -> Option<usize> where
-        P: FnMut(<I as Iterator>::Item) -> bool
-    {
-        self.iter.rposition(predicate)
-    }
-
-    #[inline]
     fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
         P: FnMut(<I as Iterator>::Item) -> bool
     {
