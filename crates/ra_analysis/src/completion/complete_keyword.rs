@@ -15,28 +15,38 @@ fn keyword(kw: &str, snippet: &str) -> CompletionItem {
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
-        return;
-    }
-
     // complete keyword "crate" in use stmt
-    if let (Some(use_item), None) = (&ctx.use_item_syntax, &ctx.path_prefix) {
-        let mut complete_crate = false;
-        let use_tree = use_item.use_tree();
-        if let Some(use_tree) = use_tree {
-            let tree_str = use_tree.syntax().text().to_string();
-            if tree_str != "crate" && "crate".starts_with(&tree_str) {
-                complete_crate = true;
-            }
-        } else {
-            complete_crate = true;
-        }
-        if complete_crate {
+    match (ctx.use_item_syntax.as_ref(), ctx.path_prefix.as_ref()) {
+        (Some(_), None) => {
             CompletionItem::new(CompletionKind::Keyword, "crate")
                 .kind(CompletionItemKind::Keyword)
                 .lookup_by("crate")
+                .snippet("crate::")
+                .add_to(acc);
+            CompletionItem::new(CompletionKind::Keyword, "self")
+                .kind(CompletionItemKind::Keyword)
+                .lookup_by("self")
+                .add_to(acc);
+            CompletionItem::new(CompletionKind::Keyword, "super")
+                .kind(CompletionItemKind::Keyword)
+                .lookup_by("super")
                 .add_to(acc);
         }
+        (Some(_), Some(_)) => {
+            CompletionItem::new(CompletionKind::Keyword, "self")
+                .kind(CompletionItemKind::Keyword)
+                .lookup_by("self")
+                .add_to(acc);
+            CompletionItem::new(CompletionKind::Keyword, "super")
+                .kind(CompletionItemKind::Keyword)
+                .lookup_by("super")
+                .add_to(acc);
+        }
+        _ => {}
+    }
+
+    if !ctx.is_trivial_path {
+        return;
     }
 
     let fn_def = match ctx.function_syntax {
@@ -292,21 +302,35 @@ mod tests {
     }
 
     #[test]
-    fn completes_crate_in_use_stmt() {
+    fn completes_keywords_in_use_stmt() {
         check_keyword_completion(
             r"
             use <|>
             ",
             r#"
-            crate "crate"
+            crate "crate" "crate::"
+            self "self"
+            super "super"
             "#,
         );
-        // No completion: lambda isolates control flow
+
         check_keyword_completion(
             r"
-            use a<|>
+            use a::<|>
             ",
             r#"
+            self "self"
+            super "super"
+            "#,
+        );
+
+        check_keyword_completion(
+            r"
+            use a::{b, <|>}
+            ",
+            r#"
+            self "self"
+            super "super"
             "#,
         );
     }
