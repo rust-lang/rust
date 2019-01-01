@@ -98,7 +98,7 @@ pub struct NamedImport {
 impl NamedImport {
     pub fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
         let source_item_id = SourceItemId {
-            file_id,
+            mfile_id: file_id.into(),
             item_id: Some(self.file_item_id),
         };
         let syntax = db.file_item(source_item_id);
@@ -360,7 +360,7 @@ where
                     source_root_id: self.source_root,
                     module_id,
                     source_item_id: SourceItemId {
-                        file_id,
+                        mfile_id: file_id.into(),
                         item_id: Some(item.id),
                     },
                 };
@@ -376,7 +376,7 @@ where
                     source_root_id: self.source_root,
                     module_id,
                     source_item_id: SourceItemId {
-                        file_id,
+                        mfile_id: file_id.into(),
                         item_id: Some(item.id),
                     },
                 };

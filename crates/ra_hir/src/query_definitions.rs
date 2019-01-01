@@ -5,13 +5,13 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
-    AstNode, SyntaxNode,
+    AstNode, SyntaxNode, SourceFileNode,
     ast::{self, NameOwner, ModuleItemOwner}
 };
 use ra_db::{SourceRootId, FileId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName,
+    SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName, MFileId,
     db::HirDatabase,
     function::FnScopes,
     module::{
@@ -47,17 +47,29 @@ pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<
     Ok(Arc::new(EnumData::new(enum_def.borrowed())))
 }
 
-pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {
-    let source_file = db.source_file(file_id);
+pub(super) fn m_source_file(db: &impl HirDatabase, mfile_id: MFileId) -> SourceFileNode {
+    match mfile_id {
+        MFileId::File(file_id) => db.source_file(file_id),
+        MFileId::Macro(m) => {
+            if let Some(exp) = db.expand_macro_invocation(m) {
+                return exp.file();
+            }
+            SourceFileNode::parse("")
+        }
+    }
+}
+
+pub(super) fn file_items(db: &impl HirDatabase, mfile_id: MFileId) -> Arc<SourceFileItems> {
+    let source_file = db.m_source_file(mfile_id);
     let source_file = source_file.borrowed();
-    let res = SourceFileItems::new(file_id, source_file);
+    let res = SourceFileItems::new(mfile_id, source_file);
     Arc::new(res)
 }
 
 pub(super) fn file_item(db: &impl HirDatabase, source_item_id: SourceItemId) -> SyntaxNode {
     match source_item_id.item_id {
-        Some(id) => db.file_items(source_item_id.file_id)[id].clone(),
-        None => db.source_file(source_item_id.file_id).syntax().owned(),
+        Some(id) => db.file_items(source_item_id.mfile_id)[id].clone(),
+        None => db.m_source_file(source_item_id.mfile_id).syntax().owned(),
     }
 }
 
@@ -116,7 +128,7 @@ pub(super) fn input_module_items(
 ) -> Cancelable<Arc<InputModuleItems>> {
     let module_tree = db.module_tree(source_root)?;
     let source = module_id.source(&module_tree);
-    let file_items = db.file_items(source.file_id());
+    let file_items = db.file_items(source.file_id().into());
     let res = match source.resolve(db) {
         ModuleSourceNode::SourceFile(it) => {
             let items = it.borrowed().items();

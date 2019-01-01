@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use ra_syntax::SyntaxNode;
+use ra_syntax::{SyntaxNode, SourceFileNode};
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, FileId, Cancelable};
 
 use crate::{
-    DefLoc, DefId, Name,
+    DefLoc, DefId, Name, MFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
@@ -21,6 +21,10 @@ pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
     + AsRef<LocationIntener<MacroCallLoc, MacroCallId>>
 {
+    fn m_source_file(mfile_id: MFileId) -> SourceFileNode {
+        type MSourceFileQuery;
+        use fn crate::query_definitions::m_source_file;
+    }
     fn expand_macro_invocation(invoc: MacroCallId) -> Option<Arc<MacroExpansion>> {
         type ExpandMacroCallQuery;
         use fn crate::macros::expand_macro_invocation;
@@ -56,7 +60,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::ty::type_for_field;
     }
 
-    fn file_items(file_id: FileId) -> Arc<SourceFileItems> {
+    fn file_items(mfile_id: MFileId) -> Arc<SourceFileItems> {
         type SourceFileItemsQuery;
         use fn query_definitions::file_items;
     }

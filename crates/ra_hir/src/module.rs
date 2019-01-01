@@ -15,6 +15,7 @@ use relative_path::RelativePathBuf;
 use crate::{
     Def, DefKind, DefLoc, DefId,
     Name, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
+    MFileId,
     arena::{Arena, Id},
 };
 
@@ -292,7 +293,10 @@ pub struct ModuleData {
 impl ModuleSource {
     // precondition: item_id **must** point to module
     fn new(file_id: FileId, item_id: Option<SourceFileItemId>) -> ModuleSource {
-        let source_item_id = SourceItemId { file_id, item_id };
+        let source_item_id = SourceItemId {
+            mfile_id: file_id.into(),
+            item_id,
+        };
         ModuleSource(source_item_id)
     }
 
@@ -306,13 +310,16 @@ impl ModuleSource {
         m: ast::Module,
     ) -> ModuleSource {
         assert!(!m.has_semi());
-        let file_items = db.file_items(file_id);
-        let item_id = file_items.id_of(file_id, m.syntax());
+        let file_items = db.file_items(file_id.into());
+        let item_id = file_items.id_of(file_id.into(), m.syntax());
         ModuleSource::new(file_id, Some(item_id))
     }
 
     pub fn file_id(self) -> FileId {
-        self.0.file_id
+        match self.0.mfile_id {
+            MFileId::File(file_id) => file_id,
+            MFileId::Macro(_) => unreachable!(),
+        }
     }
 
     pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {

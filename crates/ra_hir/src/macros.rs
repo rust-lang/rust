@@ -147,7 +147,9 @@ pub struct MacroExpansion {
 }
 
 impl MacroExpansion {
-    pub fn file(&self) -> SourceFileNode {
+    //FIXME: does not really make sense, macro expansion is not neccessary a
+    //whole file.
+    pub(crate) fn file(&self) -> SourceFileNode {
         SourceFileNode::parse(&self.text)
     }
 

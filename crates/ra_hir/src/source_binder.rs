@@ -102,11 +102,11 @@ pub fn function_from_module(
     module: &Module,
     fn_def: ast::FnDef,
 ) -> Function {
-    let file_id = module.source().file_id();
-    let file_items = db.file_items(file_id);
-    let item_id = file_items.id_of(file_id, fn_def.syntax());
+    let mfile_id = module.source().file_id().into();
+    let file_items = db.file_items(mfile_id);
+    let item_id = file_items.id_of(mfile_id, fn_def.syntax());
     let source_item_id = SourceItemId {
-        file_id,
+        mfile_id,
         item_id: Some(item_id),
     };
     let def_loc = DefLoc {
