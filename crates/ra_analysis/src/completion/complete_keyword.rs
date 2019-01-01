@@ -21,9 +21,20 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     // complete keyword "crate" in use stmt
     if let (Some(use_item), None) = (&ctx.use_item_syntax, &ctx.path_prefix) {
-        if use_item.use_tree().is_none() {
+        let mut complete_crate = false;
+        let use_tree = use_item.use_tree();
+        if let Some(use_tree) = use_tree {
+            let tree_str = use_tree.syntax().text().to_string();
+            if tree_str != "crate" && "crate".starts_with(&tree_str) {
+                complete_crate = true;
+            }
+        } else {
+            complete_crate = true;
+        }
+        if complete_crate {
             CompletionItem::new(CompletionKind::Keyword, "crate")
                 .kind(CompletionItemKind::Keyword)
+                .lookup_by("crate")
                 .add_to(acc);
         }
     }
@@ -280,13 +291,14 @@ mod tests {
         )
     }
 
+    #[test]
     fn completes_crate_in_use_stmt() {
         check_keyword_completion(
             r"
             use <|>
             ",
             r#"
-            crate
+            crate "crate"
             "#,
         );
         // No completion: lambda isolates control flow
