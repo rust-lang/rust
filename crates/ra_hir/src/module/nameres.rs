@@ -25,13 +25,12 @@ use ra_syntax::{
 use ra_db::SourceRootId;
 
 use crate::{
-    Cancelable, FileId,
+    Cancelable, MFileId, FileId,
     DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
     HirDatabase, Crate,
     Name, AsName,
-    macros::MacroCallLoc,
     module::{Module, ModuleId, ModuleTree},
 };
 
@@ -71,7 +70,7 @@ pub struct InputModuleItems {
 
 #[derive(Debug, PartialEq, Eq)]
 struct ModuleItem {
-    id: SourceFileItemId,
+    id: SourceItemId,
     name: Name,
     kind: SyntaxKind,
     vis: Vis,
@@ -210,24 +209,28 @@ impl<T> PerNs<T> {
 }
 
 impl InputModuleItems {
-    pub(crate) fn new<'a>(
+    pub(crate) fn add_item(
+        &mut self,
+        mfile_id: MFileId,
         file_items: &SourceFileItems,
-        items: impl Iterator<Item = ast::ModuleItem<'a>>,
-    ) -> InputModuleItems {
-        let mut res = InputModuleItems::default();
-        for item in items {
-            res.add_item(file_items, item);
-        }
-        res
-    }
-
-    fn add_item(&mut self, file_items: &SourceFileItems, item: ast::ModuleItem) -> Option<()> {
+        item: ast::ModuleItem,
+    ) -> Option<()> {
         match item {
-            ast::ModuleItem::StructDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::EnumDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::FnDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::TraitDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::TypeDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
+            ast::ModuleItem::StructDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
+            ast::ModuleItem::EnumDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
+            ast::ModuleItem::FnDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
+            ast::ModuleItem::TraitDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
+            ast::ModuleItem::TypeDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
             ast::ModuleItem::ImplItem(_) => {
                 // impls don't define items
             }
@@ -235,9 +238,15 @@ impl InputModuleItems {
             ast::ModuleItem::ExternCrateItem(_) => {
                 // TODO
             }
-            ast::ModuleItem::ConstDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::StaticDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::Module(it) => self.items.push(ModuleItem::new(file_items, it)?),
+            ast::ModuleItem::ConstDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
+            ast::ModuleItem::StaticDef(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
+            ast::ModuleItem::Module(it) => {
+                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+            }
         }
         Some(())
     }
@@ -259,11 +268,16 @@ impl InputModuleItems {
 }
 
 impl ModuleItem {
-    fn new<'a>(file_items: &SourceFileItems, item: impl ast::NameOwner<'a>) -> Option<ModuleItem> {
+    fn new<'a>(
+        mfile_id: MFileId,
+        file_items: &SourceFileItems,
+        item: impl ast::NameOwner<'a>,
+    ) -> Option<ModuleItem> {
         let name = item.name()?.as_name();
         let kind = item.syntax().kind();
         let vis = Vis::Other;
-        let id = file_items.id_of_unchecked(item.syntax());
+        let item_id = Some(file_items.id_of_unchecked(item.syntax()));
+        let id = SourceItemId { mfile_id, item_id };
         let res = ModuleItem {
             id,
             name,
@@ -303,7 +317,7 @@ where
 
     pub(crate) fn resolve(mut self) -> Cancelable<ItemMap> {
         for (&module_id, items) in self.input.iter() {
-            self.populate_module(module_id, items)?;
+            self.populate_module(module_id, Arc::clone(items))?;
         }
 
         for &module_id in self.input.keys() {
@@ -313,9 +327,11 @@ where
         Ok(self.result)
     }
 
-    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) -> Cancelable<()> {
-        let file_id = module_id.source(&self.module_tree).file_id();
-
+    fn populate_module(
+        &mut self,
+        module_id: ModuleId,
+        input: Arc<InputModuleItems>,
+    ) -> Cancelable<()> {
         let mut module_items = ModuleScope::default();
 
         // Populate extern crates prelude
@@ -355,18 +371,6 @@ where
             if item.kind == MODULE {
                 continue;
             }
-            if item.kind == MACRO_CALL {
-                let loc = MacroCallLoc {
-                    source_root_id: self.source_root,
-                    module_id,
-                    source_item_id: SourceItemId {
-                        mfile_id: file_id.into(),
-                        item_id: Some(item.id),
-                    },
-                };
-                let id = loc.id(self.db);
-                continue;
-            }
             // depending on the item kind, the location can define something in
             // the values namespace, the types namespace, or both
             let kind = DefKind::for_syntax_kind(item.kind);
@@ -375,10 +379,7 @@ where
                     kind: k,
                     source_root_id: self.source_root,
                     module_id,
-                    source_item_id: SourceItemId {
-                        mfile_id: file_id.into(),
-                        item_id: Some(item.id),
-                    },
+                    source_item_id: item.id,
                 };
                 def_loc.id(self.db)
             });

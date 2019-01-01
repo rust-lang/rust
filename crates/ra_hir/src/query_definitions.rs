@@ -128,11 +128,12 @@ pub(super) fn input_module_items(
 ) -> Cancelable<Arc<InputModuleItems>> {
     let module_tree = db.module_tree(source_root)?;
     let source = module_id.source(&module_tree);
-    let file_items = db.file_items(source.file_id().into());
+    let mfile_id = source.file_id().into();
+    let file_items = db.file_items(mfile_id);
     let res = match source.resolve(db) {
         ModuleSourceNode::SourceFile(it) => {
             let items = it.borrowed().items();
-            InputModuleItems::new(&file_items, items)
+            InputModuleItems::new(mfile_id, &file_items, items)
         }
         ModuleSourceNode::Module(it) => {
             let items = it
@@ -140,7 +141,7 @@ pub(super) fn input_module_items(
                 .item_list()
                 .into_iter()
                 .flat_map(|it| it.items());
-            InputModuleItems::new(&file_items, items)
+            InputModuleItems::new(mfile_id, &file_items, items)
         }
     };
     Ok(Arc::new(res))
