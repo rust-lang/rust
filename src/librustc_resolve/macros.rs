@@ -175,6 +175,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
+            ambiguity: None,
             span: DUMMY_SP,
             vis: ty::Visibility::Public,
             expansion: Mark::root(),
@@ -389,7 +390,7 @@ impl<'a> Resolver<'a> {
                     .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
 
-            binding.map(|binding| binding.def_ignoring_ambiguity())
+            binding.map(|binding| binding.def())
         }
     }
 
@@ -950,9 +951,9 @@ impl<'a> Resolver<'a> {
                 Ok(binding) => {
                     let initial_def = initial_binding.map(|initial_binding| {
                         self.record_use(ident, MacroNS, initial_binding, false);
-                        initial_binding.def_ignoring_ambiguity()
+                        initial_binding.def()
                     });
-                    let def = binding.def_ignoring_ambiguity();
+                    let def = binding.def();
                     let seg = Segment::from_ident(ident);
                     check_consistency(self, &[seg], ident.span, kind, initial_def, def);
                 }

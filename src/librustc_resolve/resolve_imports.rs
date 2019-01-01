@@ -445,6 +445,7 @@ impl<'a> Resolver<'a> {
                 directive,
                 used: Cell::new(false),
             },
+            ambiguity: None,
             span: directive.span,
             vis,
             expansion: directive.parent_scope.expansion,
@@ -498,8 +499,8 @@ impl<'a> Resolver<'a> {
                                                                     nonglob_binding, glob_binding));
                         } else {
                             resolution.binding = Some(nonglob_binding);
-                            resolution.shadowed_glob = Some(glob_binding);
                         }
+                        resolution.shadowed_glob = Some(glob_binding);
                     }
                     (false, false) => {
                         if let (&NameBindingKind::Def(_, true), &NameBindingKind::Def(_, true)) =
@@ -527,13 +528,15 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    fn ambiguity(&self, kind: AmbiguityKind, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
-                     -> &'a NameBinding<'a> {
+    fn ambiguity(&self, kind: AmbiguityKind,
+                 primary_binding: &'a NameBinding<'a>, secondary_binding: &'a NameBinding<'a>)
+                 -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Ambiguity { kind, b1, b2 },
-            vis: if b1.vis.is_at_least(b2.vis, self) { b1.vis } else { b2.vis },
-            span: b1.span,
-            expansion: Mark::root(),
+            kind: primary_binding.kind.clone(),
+            ambiguity: Some((secondary_binding, kind)),
+            vis: primary_binding.vis,
+            span: primary_binding.span,
+            expansion: primary_binding.expansion,
         })
     }
 
@@ -962,9 +965,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                                 directive.module_path.is_empty());
                             }
                         }
-                        initial_binding.def_ignoring_ambiguity()
+                        initial_binding.def()
                     });
-                    let def = binding.def_ignoring_ambiguity();
+                    let def = binding.def();
                     if let Ok(initial_def) = initial_def {
                         if def != initial_def && this.ambiguity_errors.is_empty() {
                             span_bug!(directive.span, "inconsistent resolution for an import");
@@ -1201,10 +1204,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 None => continue,
             };
 
-            // Filter away "empty import canaries".
-            let is_non_canary_import =
-                binding.is_import() && binding.vis != ty::Visibility::Invisible;
-            if is_non_canary_import || binding.is_macro_def() {
+            // Filter away "empty import canaries" and ambiguous imports.
+            let is_good_import = binding.is_import() && !binding.is_ambiguity() &&
+                                 binding.vis != ty::Visibility::Invisible;
+            if is_good_import || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
                     if let Some(def_id) = def.opt_def_id() {
