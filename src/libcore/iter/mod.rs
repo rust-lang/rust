@@ -470,18 +470,21 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> { self.iter.nth(n) }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
         self.iter.try_fold(init, f)
     }
 
+    #[inline]
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
         where F: FnMut(Acc, Self::Item) -> Acc,
     {
         self.iter.fold(init, f)
     }
 
+    #[inline]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
         where P: FnMut(&Self::Item) -> bool
     {
@@ -493,10 +496,12 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
 impl<I> ExactSizeIterator for Rev<I>
     where I: ExactSizeIterator + DoubleEndedIterator
 {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
