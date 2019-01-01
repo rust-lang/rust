@@ -1,15 +1,106 @@
 use std::sync::Arc;
 
-use ra_db::{SyntaxDatabase, LocalSyntaxPtr};
+use ra_db::{LocalSyntaxPtr, LocationIntener};
 use ra_syntax::{
     TextRange, TextUnit, SourceFileNode, AstNode, SyntaxNode,
     ast,
 };
 
+use crate::{SourceRootId, module::ModuleId, SourceItemId, HirDatabase};
+
+/// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
+/// in a specific module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroInvocationId(u32);
+ra_db::impl_numeric_id!(MacroInvocationId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroInvocationLoc {
+    source_root_id: SourceRootId,
+    module_id: ModuleId,
+    source_item_id: SourceItemId,
+}
+
+impl MacroInvocationId {
+    pub(crate) fn loc(
+        self,
+        db: &impl AsRef<LocationIntener<MacroInvocationLoc, MacroInvocationId>>,
+    ) -> MacroInvocationLoc {
+        db.as_ref().id2loc(self)
+    }
+}
+
+impl MacroInvocationLoc {
+    #[allow(unused)]
+    pub(crate) fn id(
+        &self,
+        db: &impl AsRef<LocationIntener<MacroInvocationLoc, MacroInvocationId>>,
+    ) -> MacroInvocationId {
+        db.as_ref().loc2id(&self)
+    }
+}
+
 // Hard-coded defs for now :-(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroDef {
     CTry,
+}
+
+impl MacroDef {
+    pub fn ast_expand(macro_call: ast::MacroCall) -> Option<(TextUnit, MacroExpansion)> {
+        let (def, input) = MacroDef::from_call(macro_call)?;
+        let exp = def.expand(input)?;
+        let off = macro_call.token_tree()?.syntax().range().start();
+        Some((off, exp))
+    }
+
+    fn from_call(macro_call: ast::MacroCall) -> Option<(MacroDef, MacroInput)> {
+        let def = {
+            let path = macro_call.path()?;
+            if path.qualifier().is_some() {
+                return None;
+            }
+            let name_ref = path.segment()?.name_ref()?;
+            if name_ref.text() != "ctry" {
+                return None;
+            }
+            MacroDef::CTry
+        };
+
+        let input = {
+            let arg = macro_call.token_tree()?.syntax();
+            MacroInput {
+                text: arg.text().to_string(),
+            }
+        };
+        Some((def, input))
+    }
+
+    fn expand(self, input: MacroInput) -> Option<MacroExpansion> {
+        let MacroDef::CTry = self;
+        let text = format!(
+            r"
+                fn dummy() {{
+                    match {} {{
+                        None => return Ok(None),
+                        Some(it) => it,
+                    }}
+                }}",
+            input.text
+        );
+        let file = SourceFileNode::parse(&text);
+        let match_expr = file.syntax().descendants().find_map(ast::MatchExpr::cast)?;
+        let match_arg = match_expr.expr()?;
+        let ptr = LocalSyntaxPtr::new(match_arg.syntax());
+        let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
+        let ranges_map = vec![(src_range, match_arg.syntax().range())];
+        let res = MacroExpansion {
+            text,
+            ranges_map,
+            ptr,
+        };
+        Some(res)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -23,46 +114,6 @@ pub struct MacroExpansion {
     text: String,
     ranges_map: Vec<(TextRange, TextRange)>,
     ptr: LocalSyntaxPtr,
-}
-
-salsa::query_group! {
-
-pub trait MacroDatabase: SyntaxDatabase {
-    fn expand_macro(def: MacroDef, input: MacroInput) -> Option<Arc<MacroExpansion>> {
-        type ExpandMacroQuery;
-    }
-}
-
-}
-
-fn expand_macro(
-    _db: &impl MacroDatabase,
-    def: MacroDef,
-    input: MacroInput,
-) -> Option<Arc<MacroExpansion>> {
-    let MacroDef::CTry = def;
-    let text = format!(
-        r"
-        fn dummy() {{
-            match {} {{
-                None => return Ok(None),
-                Some(it) => it,
-            }}
-        }}",
-        input.text
-    );
-    let file = SourceFileNode::parse(&text);
-    let match_expr = file.syntax().descendants().find_map(ast::MatchExpr::cast)?;
-    let match_arg = match_expr.expr()?;
-    let ptr = LocalSyntaxPtr::new(match_arg.syntax());
-    let src_range = TextRange::offset_len(0.into(), TextUnit::of_str(&input.text));
-    let ranges_map = vec![(src_range, match_arg.syntax().range())];
-    let res = MacroExpansion {
-        text,
-        ranges_map,
-        ptr,
-    };
-    Some(Arc::new(res))
 }
 
 impl MacroExpansion {
@@ -95,4 +146,17 @@ impl MacroExpansion {
         }
         None
     }
+}
+
+pub(crate) fn expand_macro_invocation(
+    db: &impl HirDatabase,
+    invoc: MacroInvocationId,
+) -> Option<Arc<MacroExpansion>> {
+    let loc = invoc.loc(db);
+    let syntax = db.file_item(loc.source_item_id);
+    let syntax = syntax.borrowed();
+    let macro_call = ast::MacroCall::cast(syntax).unwrap();
+
+    let (def, input) = MacroDef::from_call(macro_call)?;
+    def.expand(input).map(Arc::new)
 }

@@ -18,12 +18,12 @@ pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRang
 }
 
 fn extend_selection_in_macro(
-    db: &RootDatabase,
+    _db: &RootDatabase,
     source_file: &SourceFileNode,
     frange: FileRange,
 ) -> Option<TextRange> {
     let macro_call = find_macro_call(source_file.syntax(), frange.range)?;
-    let (off, exp) = crate::macros::expand(db, frange.file_id, macro_call)?;
+    let (off, exp) = hir::MacroDef::ast_expand(macro_call)?;
     let dst_range = exp.map_range_forward(frange.range - off)?;
     let dst_range = ra_editor::extend_selection(exp.syntax().borrowed(), dst_range)?;
     let src_range = exp.map_range_back(dst_range)? + off;

@@ -46,7 +46,7 @@ pub use self::{
     path::{Path, PathKind},
     name::Name,
     krate::Crate,
-    macros::{MacroDef, MacroInput, MacroExpansion, MacroDatabase, ExpandMacroQuery},
+    macros::{MacroDef, MacroInput, MacroExpansion, MacroInvocationId, MacroInvocationLoc},
     module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
     function::{Function, FnScopes},
     adt::{Struct, Enum},
