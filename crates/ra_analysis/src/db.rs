@@ -91,6 +91,7 @@ salsa::database_storage! {
             fn library_symbols() for symbol_index::LibrarySymbolsQuery;
         }
         impl hir::db::HirDatabase {
+            fn m_source_file() for hir::db::MSourceFileQuery;
             fn expand_macro_invocation() for hir::db::ExpandMacroCallQuery;
             fn module_tree() for hir::db::ModuleTreeQuery;
             fn fn_scopes() for hir::db::FnScopesQuery;

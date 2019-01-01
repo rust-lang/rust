@@ -12,6 +12,7 @@ use ra_db::{SourceRootId, FileId, Cancelable,};
 
 use crate::{
     SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName, MFileId,
+    macros::MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
     module::{
@@ -123,25 +124,48 @@ pub(crate) fn modules<'a>(
 
 pub(super) fn input_module_items(
     db: &impl HirDatabase,
-    source_root: SourceRootId,
+    source_root_id: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<InputModuleItems>> {
-    let module_tree = db.module_tree(source_root)?;
+    let module_tree = db.module_tree(source_root_id)?;
     let source = module_id.source(&module_tree);
     let mfile_id = source.file_id().into();
     let file_items = db.file_items(mfile_id);
-    let res = match source.resolve(db) {
-        ModuleSourceNode::SourceFile(it) => {
-            let items = it.borrowed().items();
-            InputModuleItems::new(mfile_id, &file_items, items)
+    let fill = |acc: &mut InputModuleItems, items: &mut Iterator<Item = ast::ItemOrMacro>| {
+        for item in items {
+            match item {
+                ast::ItemOrMacro::Item(it) => {
+                    acc.add_item(mfile_id, &file_items, it);
+                }
+                ast::ItemOrMacro::Macro(macro_call) => {
+                    let item_id = file_items.id_of_unchecked(macro_call.syntax());
+                    let loc = MacroCallLoc {
+                        source_root_id,
+                        module_id,
+                        source_item_id: SourceItemId {
+                            mfile_id,
+                            item_id: Some(item_id),
+                        },
+                    };
+                    let id = loc.id(db);
+                    let mfile_id = MFileId::Macro(id);
+                    let file_items = db.file_items(mfile_id);
+                    //FIXME: expand recursively
+                    for item in db.m_source_file(mfile_id).borrowed().items() {
+                        acc.add_item(mfile_id, &file_items, item);
+                    }
+                }
+            }
         }
+    };
+
+    let mut res = InputModuleItems::default();
+    match source.resolve(db) {
+        ModuleSourceNode::SourceFile(it) => fill(&mut res, &mut it.borrowed().items_with_macros()),
         ModuleSourceNode::Module(it) => {
-            let items = it
-                .borrowed()
-                .item_list()
-                .into_iter()
-                .flat_map(|it| it.items());
-            InputModuleItems::new(mfile_id, &file_items, items)
+            if let Some(item_list) = it.borrowed().item_list() {
+                fill(&mut res, &mut item_list.items_with_macros())
+            }
         }
     };
     Ok(Arc::new(res))
