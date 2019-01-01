@@ -11,6 +11,7 @@ use syntax_pos::MultiSpan;
 pub enum BufferedEarlyLintId {
     /// Usage of `?` as a macro separator is deprecated.
     QuestionMarkMacroSep,
+    IllFormedAttributeInput,
 }
 
 /// Stores buffered lint info which can later be passed to `librustc`.

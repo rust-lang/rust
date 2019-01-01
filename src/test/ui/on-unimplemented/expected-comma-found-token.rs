@@ -4,7 +4,7 @@
 
 #![feature(on_unimplemented)]
 
-#[rustc_on_unimplemented( //~ ERROR `#[rustc_on_unimplemented]` requires a value
+#[rustc_on_unimplemented(
     message="the message"
     label="the label" //~ ERROR expected one of `)` or `,`, found `label`
 )]

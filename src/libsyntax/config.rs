@@ -166,12 +166,9 @@ impl<'a> StripUnconfigured<'a> {
                 true
             };
 
-            let meta_item = if let Some(meta_item) = attr.meta() {
-                meta_item
-            } else {
-                // Not a well-formed meta-item. Why? We don't know.
-                return error(attr.span, "`cfg` is not a well-formed meta-item",
-                                        "#[cfg(/* predicate */)]");
+            let meta_item = match attr.parse_meta(self.sess) {
+                Ok(meta_item) => meta_item,
+                Err(mut err) => { err.emit(); return true; }
             };
             let nested_meta_items = if let Some(nested_meta_items) = meta_item.meta_item_list() {
                 nested_meta_items

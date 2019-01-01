@@ -481,28 +481,33 @@ impl MetaItem {
     {
         // FIXME: Share code with `parse_path`.
         let ident = match tokens.next() {
-            Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
-                if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
-                    let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
-                    tokens.next();
-                    loop {
-                        if let Some(TokenTree::Token(span,
-                                                     Token::Ident(ident, _))) = tokens.next() {
-                            segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
-                        } else {
-                            return None;
-                        }
-                        if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
-                            tokens.next();
-                        } else {
-                            break;
-                        }
+            Some(TokenTree::Token(span, token @ Token::Ident(..))) |
+            Some(TokenTree::Token(span, token @ Token::ModSep)) => 'arm: {
+                let mut segments = if let Token::Ident(ident, _) = token {
+                    if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+                        tokens.next();
+                        vec![PathSegment::from_ident(ident.with_span_pos(span))]
+                    } else {
+                        break 'arm Path::from_ident(ident.with_span_pos(span));
                     }
-                    let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                    Path { span, segments }
                 } else {
-                    Path::from_ident(ident.with_span_pos(span))
+                    vec![PathSegment::path_root(span)]
+                };
+                loop {
+                    if let Some(TokenTree::Token(span,
+                                                    Token::Ident(ident, _))) = tokens.next() {
+                        segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
+                    } else {
+                        return None;
+                    }
+                    if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+                        tokens.next();
+                    } else {
+                        break;
+                    }
                 }
+                let span = span.with_hi(segments.last().unwrap().ident.span.hi());
+                Path { span, segments }
             }
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
                 token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),

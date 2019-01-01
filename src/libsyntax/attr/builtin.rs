@@ -436,9 +436,6 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                 }
                 _ => unreachable!()
             }
-        } else {
-            span_err!(diagnostic, attr.span(), E0548, "incorrect stability attribute type");
-            continue
         }
     }
 

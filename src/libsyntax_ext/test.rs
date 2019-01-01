@@ -214,20 +214,8 @@ fn should_panic(cx: &ExtCtxt, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, "should_panic") {
         Some(attr) => {
             let ref sd = cx.parse_sess.span_diagnostic;
-            if attr.is_value_str() {
-                sd.struct_span_warn(
-                    attr.span(),
-                    "attribute must be of the form: \
-                     `#[should_panic]` or \
-                     `#[should_panic(expected = \"error message\")]`"
-                ).note("Errors in this attribute were erroneously allowed \
-                        and will become a hard error in a future release.")
-                .emit();
-                return ShouldPanic::Yes(None);
-            }
+
             match attr.meta_item_list() {
-                // Handle #[should_panic]
-                None => ShouldPanic::Yes(None),
                 // Handle #[should_panic(expected = "foo")]
                 Some(list) => {
                     let msg = list.iter()
@@ -247,6 +235,8 @@ fn should_panic(cx: &ExtCtxt, i: &ast::Item) -> ShouldPanic {
                         ShouldPanic::Yes(msg)
                     }
                 },
+                // Handle #[should_panic] and #[should_panic = "expected"]
+                None => ShouldPanic::Yes(attr.value_str())
             }
         }
         None => ShouldPanic::No,

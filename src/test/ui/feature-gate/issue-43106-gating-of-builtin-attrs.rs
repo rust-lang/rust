@@ -30,75 +30,71 @@
 // inputs are handled by each, and (2.) to ease searching for related
 // occurrences in the source text.
 
-// skip-codegen
 #![warn(unused_attributes, unknown_lints)]
-#![allow(dead_code)]
 #![allow(stable_features)]
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
-#![warn                        (x5400)] //~ WARN unknown lint: `x5400`
-#![allow                       (x5300)] //~ WARN unknown lint: `x5300`
-#![forbid                      (x5200)] //~ WARN unknown lint: `x5200`
-#![deny                        (x5100)] //~ WARN unknown lint: `x5100`
+#![warn(x5400)] //~ WARN unknown lint: `x5400`
+#![allow(x5300)] //~ WARN unknown lint: `x5300`
+#![forbid(x5200)] //~ WARN unknown lint: `x5200`
+#![deny(x5100)] //~ WARN unknown lint: `x5100`
 #![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
-#![macro_export               = "4800"] //~ WARN unused attribute
-#![plugin_registrar           = "4700"] //~ WARN unused attribute
+#![macro_export] //~ WARN unused attribute
+#![plugin_registrar] //~ WARN unused attribute
 // skipping testing of cfg
 // skipping testing of cfg_attr
-#![main                      = "x4400"] //~ WARN unused attribute
-#![start                     = "x4300"] //~ WARN unused attribute
+#![main] //~ WARN unused attribute
+#![start] //~ WARN unused attribute
 // see issue-43106-gating-of-test.rs for crate-level; but non crate-level is below at "4200"
 // see issue-43106-gating-of-bench.rs for crate-level; but non crate-level is below at "4100"
-#![repr                       = "3900"]
+#![repr()]
 //~^ WARN unused attribute
-//~| WARN `repr` attribute isn't configurable with a literal
-#![path                       = "3800"] //~ WARN unused attribute
-#![abi                        = "3700"] //~ WARN unused attribute
-#![automatically_derived      = "3600"] //~ WARN unused attribute
-#![no_mangle                  = "3500"]
-#![no_link                    = "3400"] //~ WARN unused attribute
+#![path = "3800"] //~ WARN unused attribute
+#![automatically_derived] //~ WARN unused attribute
+#![no_mangle]
+#![no_link] //~ WARN unused attribute
 // see issue-43106-gating-of-derive.rs
-#![should_panic               = "3200"] //~ WARN unused attribute
-#![ignore                     = "3100"] //~ WARN unused attribute
-#![no_implicit_prelude        = "3000"]
+#![should_panic] //~ WARN unused attribute
+#![ignore] //~ WARN unused attribute
+#![no_implicit_prelude]
 #![reexport_test_harness_main = "2900"]
 // see gated-link-args.rs
 // see issue-43106-gating-of-macro_escape.rs for crate-level; but non crate-level is below at "2700"
 // (cannot easily test gating of crate-level #[no_std]; but non crate-level is below at "2600")
-#![proc_macro_derive          = "2500"] //~ WARN unused attribute
-#![doc                        = "2400"]
-#![cold                       = "2300"]
-#![export_name                = "2200"]
+#![proc_macro_derive()] //~ WARN unused attribute
+#![doc = "2400"]
+#![cold]
+#![export_name = "2200"]
 // see issue-43106-gating-of-inline.rs
-#![link                       = "2000"]
-#![link_name                  = "1900"]
-#![link_section               = "1800"]
-#![no_builtins                = "1700"] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "0300")
-#![no_mangle                  = "1600"] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "3500")
+#![link()]
+#![link_name = "1900"]
+#![link_section = "1800"]
+#![no_builtins] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "0300")
+#![no_mangle] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "3500")
 // see issue-43106-gating-of-rustc_deprecated.rs
-#![must_use                   = "1400"]
+#![must_use]
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
 // see issue-43106-gating-of-deprecated.rs
-#![windows_subsystem          = "1000"]
+#![windows_subsystem = "1000"]
 
 // UNGATED CRATE-LEVEL BUILT-IN ATTRIBUTES
 
-#![crate_name                 = "0900"]
-#![crate_type                 = "bin"] // cannot pass "0800" here
+#![crate_name = "0900"]
+#![crate_type = "bin"] // cannot pass "0800" here
 
 // For #![crate_id], see issue #43142. (I cannot bear to enshrine current behavior in a test)
 
 // FIXME(#44232) we should warn that this isn't used.
-#![feature                    ( rust1)]
+#![feature(rust1)]
 
 // For #![no_start], see issue #43144. (I cannot bear to enshrine current behavior in a test)
 
 // (cannot easily gating state of crate-level #[no_main]; but non crate-level is below at "0400")
-#![no_builtins                = "0300"]
-#![recursion_limit            = "0200"]
-#![type_length_limit          = "0100"]
+#![no_builtins]
+#![recursion_limit = "0200"]
+#![type_length_limit = "0100"]
 
 // USES OF BUILT-IN ATTRIBUTES IN OTHER ("UNUSUAL") PLACES
 
@@ -195,84 +191,84 @@ mod macro_use {
     //~^ WARN unused attribute
 }
 
-#[macro_export = "4800"]
+#[macro_export]
 //~^ WARN unused attribute
 mod macro_export {
-    mod inner { #![macro_export="4800"] }
+    mod inner { #![macro_export] }
     //~^ WARN unused attribute
 
-    #[macro_export = "4800"] fn f() { }
+    #[macro_export] fn f() { }
     //~^ WARN unused attribute
 
-    #[macro_export = "4800"] struct S;
+    #[macro_export] struct S;
     //~^ WARN unused attribute
 
-    #[macro_export = "4800"] type T = S;
+    #[macro_export] type T = S;
     //~^ WARN unused attribute
 
-    #[macro_export = "4800"] impl S { }
+    #[macro_export] impl S { }
     //~^ WARN unused attribute
 }
 
-#[plugin_registrar = "4700"]
+#[plugin_registrar]
 //~^ WARN unused attribute
 mod plugin_registrar {
-    mod inner { #![plugin_registrar="4700"] }
+    mod inner { #![plugin_registrar] }
     //~^ WARN unused attribute
 
     // for `fn f()` case, see gated-plugin_registrar.rs
 
-    #[plugin_registrar = "4700"] struct S;
+    #[plugin_registrar] struct S;
     //~^ WARN unused attribute
 
-    #[plugin_registrar = "4700"] type T = S;
+    #[plugin_registrar] type T = S;
     //~^ WARN unused attribute
 
-    #[plugin_registrar = "4700"] impl S { }
+    #[plugin_registrar] impl S { }
     //~^ WARN unused attribute
 }
 
-#[main = "4400"]
+#[main]
 //~^ WARN unused attribute
 mod main {
-    mod inner { #![main="4300"] }
+    mod inner { #![main] }
     //~^ WARN unused attribute
 
     // for `fn f()` case, see feature-gate-main.rs
 
-    #[main = "4400"] struct S;
+    #[main] struct S;
     //~^ WARN unused attribute
 
-    #[main = "4400"] type T = S;
+    #[main] type T = S;
     //~^ WARN unused attribute
 
-    #[main = "4400"] impl S { }
+    #[main] impl S { }
     //~^ WARN unused attribute
 }
 
-#[start = "4300"]
+#[start]
 //~^ WARN unused attribute
 mod start {
-    mod inner { #![start="4300"] }
+    mod inner { #![start] }
     //~^ WARN unused attribute
 
     // for `fn f()` case, see feature-gate-start.rs
 
-    #[start = "4300"] struct S;
+    #[start] struct S;
     //~^ WARN unused attribute
 
-    #[start = "4300"] type T = S;
+    #[start] type T = S;
     //~^ WARN unused attribute
 
-    #[start = "4300"] impl S { }
+    #[start] impl S { }
     //~^ WARN unused attribute
 }
 
 // At time of unit test authorship, if compiling without `--test` then
 // non-crate-level #[test] attributes seem to be ignored.
 
-#[test = "4200"]
-mod test { mod inner { #![test="4200"] }
+#[test]
+mod test { mod inner { #![test] }
 
     fn f() { }
 
@@ -286,41 +282,31 @@ mod test { mod inner { #![test="4200"] }
 // At time of unit test authorship, if compiling without `--test` then
 // non-crate-level #[bench] attributes seem to be ignored.
 
-#[bench = "4100"]
+#[bench]
 mod bench {
-    mod inner { #![bench="4100"] }
+    mod inner { #![bench] }
 
-    #[bench = "4100"]
+    #[bench]
     struct S;
 
-    #[bench = "4100"]
+    #[bench]
     type T = S;
 
-    #[bench = "4100"]
+    #[bench]
     impl S { }
 }
 
-#[repr = "3900"]
-//~^ WARN unused attribute
-//~| WARN `repr` attribute isn't configurable with a literal
+#[repr()]
 mod repr {
-    mod inner { #![repr="3900"] }
-    //~^ WARN unused attribute
-    //~| WARN `repr` attribute isn't configurable with a literal
+    mod inner { #![repr()] }
 
-    #[repr = "3900"] fn f() { }
-    //~^ WARN unused attribute
-    //~| WARN `repr` attribute isn't configurable with a literal
+    #[repr()] fn f() { }
 
     struct S;
 
-    #[repr = "3900"] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN `repr` attribute isn't configurable with a literal
+    #[repr()] type T = S;
 
-    #[repr = "3900"] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN `repr` attribute isn't configurable with a literal
+    #[repr()] impl S { }
 }
 
 #[path = "3800"]
@@ -340,130 +326,111 @@ mod path {
     //~^ WARN unused attribute
 }
 
-#[abi = "3700"]
-//~^ WARN unused attribute
-mod abi {
-    mod inner { #![abi="3700"] }
-    //~^ WARN unused attribute
-
-    #[abi = "3700"] fn f() { }
-    //~^ WARN unused attribute
-
-    #[abi = "3700"] struct S;
-    //~^ WARN unused attribute
-
-    #[abi = "3700"] type T = S;
-    //~^ WARN unused attribute
-
-    #[abi = "3700"] impl S { }
-    //~^ WARN unused attribute
-}
-
-#[automatically_derived = "3600"]
+#[automatically_derived]
 //~^ WARN unused attribute
 mod automatically_derived {
-    mod inner { #![automatically_derived="3600"] }
+    mod inner { #![automatically_derived] }
     //~^ WARN unused attribute
 
-    #[automatically_derived = "3600"] fn f() { }
+    #[automatically_derived] fn f() { }
     //~^ WARN unused attribute
 
-    #[automatically_derived = "3600"] struct S;
+    #[automatically_derived] struct S;
     //~^ WARN unused attribute
 
-    #[automatically_derived = "3600"] type T = S;
+    #[automatically_derived] type T = S;
     //~^ WARN unused attribute
 
-    #[automatically_derived = "3600"] impl S { }
+    #[automatically_derived] impl S { }
     //~^ WARN unused attribute
 }
 
-#[no_mangle = "3500"]
+#[no_mangle]
 mod no_mangle {
-    mod inner { #![no_mangle="3500"] }
+    mod inner { #![no_mangle] }
 
-    #[no_mangle = "3500"] fn f() { }
+    #[no_mangle] fn f() { }
 
-    #[no_mangle = "3500"] struct S;
+    #[no_mangle] struct S;
 
-    #[no_mangle = "3500"] type T = S;
+    #[no_mangle] type T = S;
 
-    #[no_mangle = "3500"] impl S { }
+    #[no_mangle] impl S { }
 }
 
-#[no_link = "3400"]
+#[no_link]
 //~^ WARN unused attribute
 mod no_link {
-    mod inner { #![no_link="3400"] }
+    mod inner { #![no_link] }
     //~^ WARN unused attribute
 
-    #[no_link = "3400"] fn f() { }
+    #[no_link] fn f() { }
     //~^ WARN unused attribute
 
-    #[no_link = "3400"] struct S;
+    #[no_link] struct S;
     //~^ WARN unused attribute
 
-    #[no_link = "3400"]type T = S;
+    #[no_link]type T = S;
     //~^ WARN unused attribute
 
-    #[no_link = "3400"] impl S { }
+    #[no_link] impl S { }
     //~^ WARN unused attribute
 }
 
-#[should_panic = "3200"]
+#[should_panic]
 //~^ WARN unused attribute
 mod should_panic {
-    mod inner { #![should_panic="3200"] }
+    mod inner { #![should_panic] }
     //~^ WARN unused attribute
 
-    #[should_panic = "3200"] fn f() { }
+    #[should_panic] fn f() { }
     //~^ WARN unused attribute
 
-    #[should_panic = "3200"] struct S;
+    #[should_panic] struct S;
     //~^ WARN unused attribute
 
-    #[should_panic = "3200"] type T = S;
+    #[should_panic] type T = S;
     //~^ WARN unused attribute
 
-    #[should_panic = "3200"] impl S { }
+    #[should_panic] impl S { }
     //~^ WARN unused attribute
 }
 
-#[ignore = "3100"]
+#[ignore]
 //~^ WARN unused attribute
 mod ignore {
-    mod inner { #![ignore="3100"] }
+    mod inner { #![ignore] }
     //~^ WARN unused attribute
 
-    #[ignore = "3100"] fn f() { }
+    #[ignore] fn f() { }
     //~^ WARN unused attribute
 
-    #[ignore = "3100"] struct S;
+    #[ignore] struct S;
     //~^ WARN unused attribute
 
-    #[ignore = "3100"] type T = S;
+    #[ignore] type T = S;
     //~^ WARN unused attribute
 
-    #[ignore = "3100"] impl S { }
+    #[ignore] impl S { }
     //~^ WARN unused attribute
 }
 
-#[no_implicit_prelude = "3000"]
+#[no_implicit_prelude]
 //~^ WARN unused attribute
 mod no_implicit_prelude {
-    mod inner { #![no_implicit_prelude="3000"] }
+    mod inner { #![no_implicit_prelude] }
     //~^ WARN unused attribute
 
-    #[no_implicit_prelude = "3000"] fn f() { }
+    #[no_implicit_prelude] fn f() { }
     //~^ WARN unused attribute
 
-    #[no_implicit_prelude = "3000"] struct S;
+    #[no_implicit_prelude] struct S;
     //~^ WARN unused attribute
 
-    #[no_implicit_prelude = "3000"] type T = S;
+    #[no_implicit_prelude] type T = S;
     //~^ WARN unused attribute
 
-    #[no_implicit_prelude = "3000"] impl S { }
+    #[no_implicit_prelude] impl S { }
     //~^ WARN unused attribute
 }
 
@@ -506,27 +473,27 @@ mod macro_escape {
     //~^ WARN unused attribute
 }
 
-#[no_std = "2600"]
+#[no_std]
 //~^ WARN unused attribute
 //~| WARN crate-level attribute should be an inner attribute
 mod no_std {
-    mod inner { #![no_std="2600"] }
+    mod inner { #![no_std] }
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be in the root module
 
-    #[no_std = "2600"] fn f() { }
+    #[no_std] fn f() { }
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 
-    #[no_std = "2600"] struct S;
+    #[no_std] struct S;
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 
-    #[no_std = "2600"] type T = S;
+    #[no_std] type T = S;
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 
-    #[no_std = "2600"] impl S { }
+    #[no_std] impl S { }
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 }
@@ -548,17 +515,17 @@ mod doc {
     #[doc = "2400"] impl S { }
 }
 
-#[cold = "2300"]
+#[cold]
 mod cold {
-    mod inner { #![cold="2300"] }
+    mod inner { #![cold] }
 
-    #[cold = "2300"] fn f() { }
+    #[cold] fn f() { }
 
-    #[cold = "2300"] struct S;
+    #[cold] struct S;
 
-    #[cold = "2300"] type T = S;
+    #[cold] type T = S;
 
-    #[cold = "2300"] impl S { }
+    #[cold] impl S { }
 }
 
 #[export_name = "2200"]
@@ -579,17 +546,17 @@ mod export_name {
 // out that we allow them at non-crate-level (though I do not know
 // whether they have the same effect here as at crate-level).
 
-#[link = "2000"]
+#[link()]
 mod link {
-    mod inner { #![link="2000"] }
+    mod inner { #![link()] }
 
-    #[link = "2000"] fn f() { }
+    #[link()] fn f() { }
 
-    #[link = "2000"] struct S;
+    #[link()] struct S;
 
-    #[link = "2000"] type T = S;
+    #[link()] type T = S;
 
-    #[link = "2000"] impl S { }
+    #[link()] impl S { }
 }
 
 #[link_name = "1900"]
@@ -620,30 +587,30 @@ mod link_section {
 
 struct StructForDeprecated;
 
-#[deprecated = "1500"]
+#[deprecated]
 mod deprecated {
-    mod inner { #![deprecated="1500"] }
+    mod inner { #![deprecated] }
 
-    #[deprecated = "1500"] fn f() { }
+    #[deprecated] fn f() { }
 
-    #[deprecated = "1500"] struct S1;
+    #[deprecated] struct S1;
 
-    #[deprecated = "1500"] type T = super::StructForDeprecated;
+    #[deprecated] type T = super::StructForDeprecated;
 
-    #[deprecated = "1500"] impl super::StructForDeprecated { }
+    #[deprecated] impl super::StructForDeprecated { }
 }
 
-#[must_use = "1400"]
+#[must_use]
 mod must_use {
-    mod inner { #![must_use="1400"] }
+    mod inner { #![must_use] }
 
-    #[must_use = "1400"] fn f() { }
+    #[must_use] fn f() { }
 
-    #[must_use = "1400"] struct S;
+    #[must_use] struct S;
 
-    #[must_use = "1400"] type T = S;
+    #[must_use] type T = S;
 
-    #[must_use = "1400"] impl S { }
+    #[must_use] impl S { }
 }
 
 #[windows_subsystem = "1000"]
@@ -737,42 +704,42 @@ mod feature {
 }
 
 
-#[no_main = "0400"]
+#[no_main]
 //~^ WARN unused attribute
 //~| WARN crate-level attribute should be an inner attribute
 mod no_main_1 {
-    mod inner { #![no_main="0400"] }
+    mod inner { #![no_main] }
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be in the root module
 
-    #[no_main = "0400"] fn f() { }
+    #[no_main] fn f() { }
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 
-    #[no_main = "0400"] struct S;
+    #[no_main] struct S;
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 
-    #[no_main = "0400"] type T = S;
+    #[no_main] type T = S;
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 
-    #[no_main = "0400"] impl S { }
+    #[no_main] impl S { }
     //~^ WARN unused attribute
     //~| WARN crate-level attribute should be an inner attribute
 }
 
-#[no_builtins = "0300"]
+#[no_builtins]
 mod no_builtins {
-    mod inner { #![no_builtins="0200"] }
+    mod inner { #![no_builtins] }
 
-    #[no_builtins = "0300"] fn f() { }
+    #[no_builtins] fn f() { }
 
-    #[no_builtins = "0300"] struct S;
+    #[no_builtins] struct S;
 
-    #[no_builtins = "0300"] type T = S;
+    #[no_builtins] type T = S;
 
-    #[no_builtins = "0300"] impl S { }
+    #[no_builtins] impl S { }
 }
 
 #[recursion_limit="0200"]
@@ -825,12 +792,4 @@ mod type_length_limit {
     //~| WARN crate-level attribute should be an inner attribute
 }
 
-
-
-
-
-
-
-fn main() {
-    println!("Hello World");
-}
+fn main() {}

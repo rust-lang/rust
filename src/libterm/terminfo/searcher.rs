@@ -66,7 +66,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
 }
 
 #[test]
-#[ignore(reason = "buildbots don't have ncurses installed and I can't mock everything I need")]
+#[ignore = "buildbots don't have ncurses installed and I can't mock everything I need"]
 fn test_get_dbpath_for_term() {
     // woefully inadequate test coverage
     // note: current tests won't work with non-standard terminfo hierarchies (e.g., macOS's)

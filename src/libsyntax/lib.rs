@@ -10,6 +10,7 @@
        test(attr(deny(warnings))))]
 
 #![feature(crate_visibility_modifier)]
+#![feature(label_break_value)]
 #![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]

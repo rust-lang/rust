@@ -2,7 +2,6 @@
 // after normalization.
 
 #![feature(nll)]
-#![ignore(unused)]
 
 trait Foo { type Out; }
 impl Foo for () { type Out = &'static u32; }

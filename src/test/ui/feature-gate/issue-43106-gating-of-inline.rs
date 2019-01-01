@@ -6,23 +6,25 @@
 // issue-43106-gating-of-builtin-attrs.rs)
 
 // Crate-level is accepted, though it is almost certainly unused?
-#![inline                     = "2100"]
+#![inline]
 
-#[inline = "2100"]
+#[inline]
 //~^ ERROR attribute should be applied to function or closure
 mod inline {
-    mod inner { #![inline="2100"] }
+    mod inner { #![inline] }
     //~^ ERROR attribute should be applied to function or closure
 
     #[inline = "2100"] fn f() { }
+    //~^ WARN attribute must be of the form
+    //~| WARN this was previously accepted
 
-    #[inline = "2100"] struct S;
+    #[inline] struct S;
     //~^ ERROR attribute should be applied to function or closure
 
-    #[inline = "2100"] type T = S;
+    #[inline] type T = S;
     //~^ ERROR attribute should be applied to function or closure
 
-    #[inline = "2100"] impl S { }
+    #[inline] impl S { }
     //~^ ERROR attribute should be applied to function or closure
 }
 

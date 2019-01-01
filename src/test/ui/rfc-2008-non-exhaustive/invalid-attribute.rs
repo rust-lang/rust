@@ -1,7 +1,7 @@
 #![feature(non_exhaustive)]
 
 #[non_exhaustive(anything)]
-//~^ ERROR attribute should be empty [E0702]
+//~^ ERROR attribute must be of the form
 struct Foo;
 
 #[non_exhaustive]

@@ -205,12 +205,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub BAD_REPR,
-    Warn,
-    "detects incorrect use of `repr` attribute"
-}
-
-declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
@@ -359,6 +353,12 @@ pub mod parser {
         Allow,
         "detects the use of `?` as a macro separator"
     }
+
+    declare_lint! {
+        pub ILL_FORMED_ATTRIBUTE_INPUT,
+        Warn,
+        "ill-formed attribute inputs that were previously accepted and used in practice"
+    }
 }
 
 declare_lint! {
@@ -431,6 +431,7 @@ impl LintPass for HardwiredLints {
             MACRO_USE_EXTERN_CRATE,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             parser::QUESTION_MARK_MACRO_SEP,
+            parser::ILL_FORMED_ATTRIBUTE_INPUT,
             DEPRECATED_IN_FUTURE,
         )
     }

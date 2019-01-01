@@ -1,9 +1,0 @@
-error[E0558]: `export_name` attribute has invalid format
-  --> $DIR/E0558.rs:1:1
-   |
-LL | #[export_name]
-   | ^^^^^^^^^^^^^^ did you mean #[export_name="*"]?
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0558`.

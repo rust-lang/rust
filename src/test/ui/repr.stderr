@@ -1,25 +1,20 @@
-warning: `repr` attribute must have a hint
-  --> $DIR/repr.rs:3:1
+error: attribute must be of the form `#[repr(C, packed, ...)]`
+  --> $DIR/repr.rs:1:1
    |
 LL | #[repr]
-   | ^^^^^^^ needs a hint
-   |
-   = note: #[warn(bad_repr)] on by default
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
+   | ^^^^^^^
 
-warning: `repr` attribute isn't configurable with a literal
-  --> $DIR/repr.rs:7:1
+error: attribute must be of the form `#[repr(C, packed, ...)]`
+  --> $DIR/repr.rs:5:1
    |
 LL | #[repr = "B"]
-   | ^^^^^^^^^^^^^ needs a hint
-   |
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
+   | ^^^^^^^^^^^^^
 
-warning: `repr` attribute isn't configurable with a literal
-  --> $DIR/repr.rs:11:1
+error: attribute must be of the form `#[repr(C, packed, ...)]`
+  --> $DIR/repr.rs:9:1
    |
 LL | #[repr = "C"]
-   | ^^^^^^^^^^^^^ help: give `repr` a hint: `#[repr(C)]`
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

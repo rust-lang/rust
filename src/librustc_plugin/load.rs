@@ -50,10 +50,7 @@ pub fn load_plugins(sess: &Session,
 
             let plugins = match attr.meta_item_list() {
                 Some(xs) => xs,
-                None => {
-                    call_malformed_plugin_attribute(sess, attr.span);
-                    continue;
-                }
+                None => continue,
             };
 
             for plugin in plugins {
