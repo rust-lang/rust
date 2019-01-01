@@ -7,6 +7,7 @@ mod complete_keyword;
 mod complete_snippet;
 mod complete_path;
 mod complete_scope;
+mod complete_use_tree;
 
 use ra_db::SyntaxDatabase;
 
@@ -45,6 +46,7 @@ pub(crate) fn completions(
     complete_path::complete_path(&mut acc, &ctx)?;
     complete_scope::complete_scope(&mut acc, &ctx)?;
     complete_dot::complete_dot(&mut acc, &ctx)?;
+    complete_use_tree::complete_use_tree_keyword(&mut acc, &ctx);
 
     Ok(Some(acc))
 }
