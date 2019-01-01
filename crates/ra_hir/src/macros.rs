@@ -16,9 +16,9 @@ ra_db::impl_numeric_id!(MacroCallId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
-    source_root_id: SourceRootId,
-    module_id: ModuleId,
-    source_item_id: SourceItemId,
+    pub(crate) source_root_id: SourceRootId,
+    pub(crate) module_id: ModuleId,
+    pub(crate) source_item_id: SourceItemId,
 }
 
 impl MacroCallId {

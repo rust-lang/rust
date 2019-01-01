@@ -31,6 +31,7 @@ use crate::{
     Path, PathKind,
     HirDatabase, Crate,
     Name, AsName,
+    macros::{MacroCallId, MacroCallLoc},
     module::{Module, ModuleId, ModuleTree},
 };
 
@@ -352,6 +353,18 @@ where
         // Populate explicitly declared items, except modules
         for item in input.items.iter() {
             if item.kind == MODULE {
+                continue;
+            }
+            if item.kind == MACRO_CALL {
+                let loc = MacroCallLoc {
+                    source_root_id: self.source_root,
+                    module_id,
+                    source_item_id: SourceItemId {
+                        file_id,
+                        item_id: Some(item.id),
+                    },
+                };
+                let id = loc.id(self.db);
                 continue;
             }
             // depending on the item kind, the location can define something in
