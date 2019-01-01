@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{SyntaxNode, SourceFileNode};
-use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, FileId, Cancelable};
+use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
     DefLoc, DefId, Name, MFileId,

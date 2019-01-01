@@ -31,7 +31,7 @@ use crate::{
     Path, PathKind,
     HirDatabase, Crate,
     Name, AsName,
-    macros::{MacroCallId, MacroCallLoc},
+    macros::MacroCallLoc,
     module::{Module, ModuleId, ModuleTree},
 };
 

@@ -189,6 +189,7 @@ salsa::database_storage! {
             fn file_lines() for ra_db::FileLinesQuery;
         }
         impl db::HirDatabase {
+            fn m_source_file() for db::MSourceFileQuery;
             fn expand_macro_invocation() for db::ExpandMacroCallQuery;
             fn module_tree() for db::ModuleTreeQuery;
             fn fn_scopes() for db::FnScopesQuery;
