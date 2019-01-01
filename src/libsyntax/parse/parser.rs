@@ -1878,7 +1878,8 @@ impl<'a> Parser<'a> {
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment("a method argument's type");
             let mut ty = self.parse_ty();
-            if ty.is_ok() && self.token == token::Colon {
+            if ty.is_ok() && self.token != token::Comma &&
+               self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,
                 // so we are going to rollback and re-parse for recovery.
                 ty = self.unexpected();
