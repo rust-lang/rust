@@ -945,12 +945,36 @@ impl<'a> StringReader<'a> {
                                     self.scan_unicode_escape(delim) && !ascii_only
                                 } else {
                                     let span = self.mk_sp(start, self.pos);
-                                    self.sess.span_diagnostic
-                                        .struct_span_err(span, "incorrect unicode escape sequence")
-                                        .span_help(span,
-                                                   "format of unicode escape sequences is \
-                                                    `\\u{…}`")
-                                        .emit();
+                                    let mut suggestion = "\\u{".to_owned();
+                                    let mut err = self.sess.span_diagnostic.struct_span_err(
+                                        span,
+                                        "incorrect unicode escape sequence",
+                                    );
+                                    let mut i = 0;
+                                    while let (Some(ch), true) = (self.ch, i < 6) {
+                                        if ch.is_digit(16) {
+                                            suggestion.push(ch);
+                                            self.bump();
+                                            i += 1;
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                    if i != 0 {
+                                        suggestion.push('}');
+                                        err.span_suggestion_with_applicability(
+                                            self.mk_sp(start, self.pos),
+                                            "format of unicode escape sequences uses braces",
+                                            suggestion,
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    } else {
+                                        err.span_help(
+                                            span,
+                                            "format of unicode escape sequences is `\\u{...}`",
+                                        );
+                                    }
+                                    err.emit();
                                     false
                                 };
                                 if ascii_only {

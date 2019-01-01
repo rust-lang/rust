@@ -1,3 +1,11 @@
+error: incorrect unicode escape sequence
+  --> $DIR/format-string-error-2.rs:77:20
+   |
+LL |     println!("/x7B}/u8 {", 1);
+   |                    ^^-
+   |                    |
+   |                    help: format of unicode escape sequences uses braces: `/u{8}`
+
 error: invalid format string: expected `'}'`, found `'a'`
   --> $DIR/format-string-error-2.rs:5:5
    |
@@ -139,5 +147,39 @@ error: 1 positional argument in format string, but no arguments were given
 LL |     println!("/t{}");
    |                 ^^
 
-error: aborting due to 14 previous errors
+error: invalid format string: expected `'}'` but string was terminated
+  --> $DIR/format-string-error-2.rs:74:27
+   |
+LL |     println!("/x7B}/u{8} {", 1);
+   |                          -^ expected `'}'` in format string
+   |                          |
+   |                          because of this opening brace
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: argument never used
+  --> $DIR/format-string-error-2.rs:77:28
+   |
+LL |     println!("/x7B}/u8 {", 1);
+   |              ------------  ^ argument never used
+   |              |
+   |              formatting specifier missing
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/format-string-error-2.rs:82:21
+   |
+LL |     println!(r#"/x7B}/u{8} {"#, 1);
+   |                     ^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/format-string-error-2.rs:85:21
+   |
+LL |     println!(r#"/x7B}/u8 {"#, 1);
+   |                     ^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: aborting due to 19 previous errors
 
