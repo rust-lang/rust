@@ -5,6 +5,14 @@ LL | type X = Vec<X>;
    |              ^
    |
    = note: ...which again requires processing `X`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/infinite-vec-type-recursion.rs:1:1
+   |
+LL | / type X = Vec<X>;
+LL | | //~^ ERROR cycle detected
+LL | |
+LL | | fn main() { let b: X = Vec::new(); }
+   | |____________________________________^
 
 error: aborting due to previous error
 
