@@ -8,7 +8,7 @@ use crate::{
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
-    macros::{MacroInvocationLoc, MacroInvocationId, MacroInput, MacroDef, MacroExpansion},
+    macros::{MacroCallLoc, MacroCallId, MacroInput, MacroDef, MacroExpansion},
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
@@ -19,10 +19,10 @@ salsa::query_group! {
 
 pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
-    + AsRef<LocationIntener<MacroInvocationLoc, MacroInvocationId>>
+    + AsRef<LocationIntener<MacroCallLoc, MacroCallId>>
 {
-    fn expand_macro_invocation(invoc: MacroInvocationId) -> Option<Arc<MacroExpansion>> {
-        type ExpandMacroInvocationQuery;
+    fn expand_macro_invocation(invoc: MacroCallId) -> Option<Arc<MacroExpansion>> {
+        type ExpandMacroCallQuery;
         use fn crate::macros::expand_macro_invocation;
     }
 

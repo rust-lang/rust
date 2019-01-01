@@ -11,31 +11,31 @@ use crate::{SourceRootId, module::ModuleId, SourceItemId, HirDatabase};
 /// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
 /// in a specific module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroInvocationId(u32);
-ra_db::impl_numeric_id!(MacroInvocationId);
+pub struct MacroCallId(u32);
+ra_db::impl_numeric_id!(MacroCallId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroInvocationLoc {
+pub struct MacroCallLoc {
     source_root_id: SourceRootId,
     module_id: ModuleId,
     source_item_id: SourceItemId,
 }
 
-impl MacroInvocationId {
+impl MacroCallId {
     pub(crate) fn loc(
         self,
-        db: &impl AsRef<LocationIntener<MacroInvocationLoc, MacroInvocationId>>,
-    ) -> MacroInvocationLoc {
+        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
+    ) -> MacroCallLoc {
         db.as_ref().id2loc(self)
     }
 }
 
-impl MacroInvocationLoc {
+impl MacroCallLoc {
     #[allow(unused)]
     pub(crate) fn id(
         &self,
-        db: &impl AsRef<LocationIntener<MacroInvocationLoc, MacroInvocationId>>,
-    ) -> MacroInvocationId {
+        db: &impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>>,
+    ) -> MacroCallId {
         db.as_ref().loc2id(&self)
     }
 }
@@ -150,7 +150,7 @@ impl MacroExpansion {
 
 pub(crate) fn expand_macro_invocation(
     db: &impl HirDatabase,
-    invoc: MacroInvocationId,
+    invoc: MacroCallId,
 ) -> Option<Arc<MacroExpansion>> {
     let loc = invoc.loc(db);
     let syntax = db.file_item(loc.source_item_id);

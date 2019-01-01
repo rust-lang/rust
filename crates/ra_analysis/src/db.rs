@@ -15,7 +15,7 @@ pub(crate) struct RootDatabase {
 #[derive(Default)]
 struct IdMaps {
     defs: LocationIntener<hir::DefLoc, hir::DefId>,
-    macros: LocationIntener<hir::MacroInvocationLoc, hir::MacroInvocationId>,
+    macros: LocationIntener<hir::MacroCallLoc, hir::MacroCallId>,
 }
 
 impl fmt::Debug for IdMaps {
@@ -65,8 +65,8 @@ impl AsRef<LocationIntener<hir::DefLoc, hir::DefId>> for RootDatabase {
     }
 }
 
-impl AsRef<LocationIntener<hir::MacroInvocationLoc, hir::MacroInvocationId>> for RootDatabase {
-    fn as_ref(&self) -> &LocationIntener<hir::MacroInvocationLoc, hir::MacroInvocationId> {
+impl AsRef<LocationIntener<hir::MacroCallLoc, hir::MacroCallId>> for RootDatabase {
+    fn as_ref(&self) -> &LocationIntener<hir::MacroCallLoc, hir::MacroCallId> {
         &self.id_maps.macros
     }
 }
@@ -91,7 +91,7 @@ salsa::database_storage! {
             fn library_symbols() for symbol_index::LibrarySymbolsQuery;
         }
         impl hir::db::HirDatabase {
-            fn expand_macro_invocation() for hir::db::ExpandMacroInvocationQuery;
+            fn expand_macro_invocation() for hir::db::ExpandMacroCallQuery;
             fn module_tree() for hir::db::ModuleTreeQuery;
             fn fn_scopes() for hir::db::FnScopesQuery;
             fn file_items() for hir::db::SourceFileItemsQuery;
