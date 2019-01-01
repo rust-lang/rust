@@ -8,7 +8,7 @@ use crate::{
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
-    macros::{MacroCallLoc, MacroCallId, MacroInput, MacroDef, MacroExpansion},
+    macros::{MacroCallLoc, MacroCallId, MacroExpansion},
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
