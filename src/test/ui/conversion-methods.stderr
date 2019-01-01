@@ -28,7 +28,7 @@ error[E0308]: mismatched types
 LL |     let _but_should_the_play: String = 2; // Perhaps surprisingly, we suggest .to_string() here
    |                                        ^
    |                                        |
-   |                                        expected struct `std::string::String`, found integral variable
+   |                                        expected struct `std::string::String`, found integer
    |                                        help: try using a conversion method: `2.to_string()`
    |
    = note: expected type `std::string::String`

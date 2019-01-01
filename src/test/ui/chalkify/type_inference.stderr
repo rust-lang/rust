@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/type_inference.rs:21:14
    |
 LL |     only_foo(x); //~ ERROR mismatched types
-   |              ^ expected i32, found floating-point variable
+   |              ^ expected i32, found floating-point number
    |
    = note: expected type `i32`
               found type `{float}`

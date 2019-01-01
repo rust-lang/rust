@@ -5,7 +5,7 @@ fn main() {
 //~^ ERROR if may be missing an else clause
 //~| expected type `()`
 //~| found type `{integer}`
-//~| expected (), found integral variable
+//~| expected (), found integer
         1
     };
 }

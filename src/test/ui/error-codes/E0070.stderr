@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/E0070.rs:8:25
    |
 LL |     some_other_func() = 4; //~ ERROR E0070
-   |                         ^ expected (), found integral variable
+   |                         ^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`
