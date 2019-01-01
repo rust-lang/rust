@@ -517,8 +517,8 @@ impl Step for Clippy {
 }
 
 fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
-    // Configure PATH to find the right rustc. NB. we have to use PATH
-    // and not RUSTC because the Cargo test suite has tests that will
+    // Configure `PATH` to find the right rustc. N.B., we have to use PATH
+    // and not `RUSTC` because the Cargo test suite has tests that will
     // fail if rustc is not spelled `rustc`.
     let path = builder.sysroot(compiler).join("bin");
     let old_path = env::var_os("PATH").unwrap_or_default();
@@ -971,7 +971,7 @@ impl Step for Compiletest {
         }
 
         if suite.ends_with("fulldeps") ||
-            // FIXME: Does pretty need librustc compiled? Note that there are
+            // FIXME: does pretty need librustc compiled? Note that there are
             // fulldeps test suites with mode = pretty as well.
             mode == "pretty"
         {
@@ -1966,7 +1966,7 @@ impl Step for Bootstrap {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    /// Test the build system itself
+    /// Test the build system itself.
     fn run(self, builder: &Builder) {
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
@@ -1977,8 +1977,8 @@ impl Step for Bootstrap {
             .env("RUSTC", &builder.initial_rustc);
         if let Some(flags) = option_env!("RUSTFLAGS") {
             // Use the same rustc flags for testing as for "normal" compilation,
-            // so that Cargo doesn’t recompile the entire dependency graph every time:
-            // https://github.com/rust-lang/rust/issues/49215
+            // so that Cargo doesn’t recompile the entire dependency graph every time
+            // (issue #49215).
             cmd.env("RUSTFLAGS", flags);
         }
         if !builder.fail_fast {

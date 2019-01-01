@@ -12,12 +12,12 @@ impl<T> Mirror for T {
 
 #[cfg(bad)]
 fn foo<U, T>(_t: T)
-    where for<'a> &'a T: Mirror<Image=U>
+    where for<'a> &'a T: Mirror<Image = U>
 {}
 
 #[cfg(good)]
 fn foo<U, T>(_t: T)
-    where for<'a> &'a T: Mirror<Image=&'a U>
+    where for<'a> &'a T: Mirror<Image = &'a U>
 {}
 
 #[rustc_error]

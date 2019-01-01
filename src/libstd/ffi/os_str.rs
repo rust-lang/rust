@@ -834,7 +834,7 @@ impl PartialOrd<str> for OsStr {
     }
 }
 
-// FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
+// FIXME(#19470): cannot provide PartialOrd<OsStr> for str until we
 // have more flexible coherence rules.
 
 #[stable(feature = "rust1", since = "1.0.0")]

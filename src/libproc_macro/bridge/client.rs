@@ -288,7 +288,7 @@ impl BridgeState<'_> {
 impl Bridge<'_> {
     fn enter<R>(self, f: impl FnOnce() -> R) -> R {
         // Hide the default panic output within `proc_macro` expansions.
-        // NB. the server can't do this because it may use a different libstd.
+        // N.B., the server can't do this because it may use a different libstd.
         static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
         HIDE_PANICS_DURING_EXPANSION.call_once(|| {
             let prev = panic::take_hook();

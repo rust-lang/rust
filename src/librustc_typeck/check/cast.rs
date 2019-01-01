@@ -140,7 +140,7 @@ enum CastError {
     CastToBool,
     CastToChar,
     DifferingKinds,
-    /// Cast of thin to fat raw ptr (eg. `*const () as *const [u8]`)
+    /// Cast of thin to fat raw ptr (e.g., `*const () as *const [u8]`).
     SizedUnsizedCast,
     IllegalCast,
     NeedDeref,

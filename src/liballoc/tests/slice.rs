@@ -508,7 +508,7 @@ fn test_rotate_left() {
     let expected: Vec<_> = (0..13).collect();
     let mut v = Vec::new();
 
-    // no-ops
+    // noops
     v.clone_from(&expected);
     v.rotate_left(0);
     assert_eq!(v, expected);
@@ -543,7 +543,7 @@ fn test_rotate_right() {
     let expected: Vec<_> = (0..13).collect();
     let mut v = Vec::new();
 
-    // no-ops
+    // noops
     v.clone_from(&expected);
     v.rotate_right(0);
     assert_eq!(v, expected);

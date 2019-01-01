@@ -783,7 +783,7 @@ fn check_matcher_core(sess: &ParseSess,
                 // case, we make a temp copy of suffix and stuff
                 // delimiter in there.
                 //
-                // FIXME: Should I first scan suffix_first to see if
+                // FIXME: should I first scan suffix_first to see if
                 // delimiter is already in it before I go through the
                 // work of cloning it? But then again, this way I may
                 // get a "tighter" span?

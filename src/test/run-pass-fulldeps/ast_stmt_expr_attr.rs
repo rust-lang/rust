@@ -272,7 +272,7 @@ fn run() {
     reject_stmt_parse("#[attr] #![attr] foo![]");
     reject_stmt_parse("#[attr] #![attr] foo!{}");
 
-    // FIXME: Allow attributes in pattern constexprs?
+    // FIXME: allow attributes in pattern constexprs?
     // note: requires parens in patterns to allow disambiguation
 
     reject_expr_parse("match 0 {

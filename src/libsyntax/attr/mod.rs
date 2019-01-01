@@ -81,7 +81,7 @@ impl NestedMetaItem {
         self.span
     }
 
-    /// Returns true if this list item is a MetaItem with a name of `name`.
+    /// Returns whether this list item is a MetaItem with a name of `name`.
     pub fn check_name(&self, name: &str) -> bool {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
@@ -130,27 +130,27 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
-    /// Returns `true` if the variant is MetaItem.
+    /// Returns whether the variant is MetaItem.
     pub fn is_meta_item(&self) -> bool {
         self.meta_item().is_some()
     }
 
-    /// Returns `true` if the variant is Literal.
+    /// Returns whether the variant is Literal.
     pub fn is_literal(&self) -> bool {
         self.literal().is_some()
     }
 
-    /// Returns `true` if self is a MetaItem and the meta item is a word.
+    /// Returns whether self is a MetaItem and the meta item is a word.
     pub fn is_word(&self) -> bool {
         self.word().is_some()
     }
 
-    /// Returns `true` if self is a MetaItem and the meta item is a ValueString.
+    /// Returns whether self is a MetaItem and the meta item is a ValueString.
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
     }
 
-    /// Returns `true` if self is a MetaItem and the meta item is a list.
+    /// Returns whether self is a MetaItem and the meta item is a list.
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
     }
@@ -479,7 +479,7 @@ impl MetaItem {
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
         where I: Iterator<Item = TokenTree>,
     {
-        // FIXME: Share code with `parse_path`.
+        // FIXME: share code with `parse_path`.
         let ident = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
                 if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {

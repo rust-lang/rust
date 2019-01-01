@@ -389,7 +389,7 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             timeline.record(&name);
         }
 
-        // FIXME: All upstream crates are deserialized internally in the
+        // FIXME: all upstream crates are deserialized internally in the
         //        function below to extract their summary and modules. Note that
         //        unlike the loop above we *must* decode and/or read something
         //        here as these are all just serialized files on disk. An

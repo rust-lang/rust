@@ -357,7 +357,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![lhs.to_ref(), rhs.to_ref()])
             } else {
-                // FIXME overflow
+                // FIXME: overflow
                 match (op.node, cx.constness) {
                     // FIXME(eddyb) use logical ops in constants when
                     // they can handle that kind of control-flow.
@@ -646,7 +646,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             );
 
             // Check to see if this cast is a "coercion cast", where the cast is actually done
-            // using a coercion (or is a no-op).
+            // using a coercion (or is a noop).
             let cast = if let Some(&TyCastKind::CoercionCast) =
                 cx.tables()
                 .cast_kinds()
@@ -973,11 +973,11 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let var_hir_id = cx.tcx.hir().node_to_hir_id(var_id);
             let var_ty = cx.tables().node_id_to_type(var_hir_id);
 
-            // FIXME free regions in closures are not right
+            // FIXME: free regions in closures are not right
             let closure_ty = cx.tables()
                                .node_id_to_type(cx.tcx.hir().node_to_hir_id(closure_expr_id));
 
-            // FIXME we're just hard-coding the idea that the
+            // FIXME: we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
             let closure_def_id = cx.tcx.hir().local_def_id(closure_expr_id);

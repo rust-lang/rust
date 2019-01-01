@@ -251,7 +251,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             .map(move |r| r.subst(tcx, projection_ty.substs))
     }
 
-    /// Given the def-id of an associated item, returns any region
+    /// Given the def-ID of an associated item, returns any region
     /// bounds attached to that associated item from the trait definition.
     ///
     /// For example:
@@ -262,7 +262,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     /// }
     /// ```
     ///
-    /// If we were given the def-id of `Foo::Bar`, we would return
+    /// If we were given the def-ID of `Foo::Bar`, we would return
     /// `'a`. You could then apply the substitutions from the
     /// projection to convert this into your namespace. This also
     /// works if the user writes `where <Self as Foo<'a>>::Bar: 'a` on

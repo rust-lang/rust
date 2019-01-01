@@ -33,7 +33,7 @@ fn f() where i32: Foo //~ ERROR
     generic_function(5i32);
 }
 
-fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> { //~ ERROR
+fn use_op(s: String) -> String where String: ::std::ops::Neg<Output = String> { //~ ERROR
     -s
 }
 

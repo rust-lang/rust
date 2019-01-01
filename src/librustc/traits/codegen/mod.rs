@@ -1,5 +1,5 @@
 // This file contains various trait resolution methods used by codegen.
-// They all assume regions can be erased and monomorphic types.  It
+// They all assume regions can be erased and monomorphic types. It
 // seems likely that they should eventually be merged into more
 // general routines.
 
@@ -14,8 +14,8 @@ use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
 use ty::fold::TypeFoldable;
 
-/// Attempts to resolve an obligation to a vtable.. The result is
-/// a shallow vtable resolution -- meaning that we do not
+/// Attempts to resolve an obligation to a vtable. The result is
+/// a shallow vtable resolution, meaning that we do not
 /// (necessarily) resolve all nested obligations on the impl. Note
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
@@ -45,8 +45,8 @@ pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
             Ok(Some(selection)) => selection,
             Ok(None) => {
                 // Ambiguity can happen when monomorphizing during trans
-                // expands to some humongo type that never occurred
-                // statically -- this humongo type can then overflow,
+                // expands to some huge type that never occurred
+                // statically -- this huge type can then overflow,
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.

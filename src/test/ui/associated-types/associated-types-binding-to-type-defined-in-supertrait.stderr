@@ -9,8 +9,8 @@ LL | fn b() { blue_car(ModelT); } //~ ERROR type mismatch
 note: required by `blue_car`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:33:1
    |
-LL | fn blue_car<C:Car<Color=Blue>>(c: C) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn blue_car<C:Car<Color = Blue>>(c: C) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `<ModelU as Vehicle>::Color == Black`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:38:10
@@ -23,8 +23,8 @@ LL | fn c() { black_car(ModelU); } //~ ERROR type mismatch
 note: required by `black_car`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:30:1
    |
-LL | fn black_car<C:Car<Color=Black>>(c: C) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn black_car<C:Car<Color = Black>>(c: C) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

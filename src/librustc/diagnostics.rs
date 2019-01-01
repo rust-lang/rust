@@ -642,7 +642,7 @@ attributes:
 #![no_std]
 ```
 
-See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
+See also <https://doc.rust-lang.org/book/first-edition/no-stdlib.html>.
 "##,
 
 E0214: r##"

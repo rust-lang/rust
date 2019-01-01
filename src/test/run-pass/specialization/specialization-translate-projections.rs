@@ -15,7 +15,7 @@ trait WithAssoc {
     fn to_item(&self) -> Self::Item;
 }
 
-impl<T, U> Trait for T where T: WithAssoc<Item=U>, U: Into<u8> {
+impl<T, U> Trait for T where T: WithAssoc<Item = U>, U: Into<u8> {
     fn to_u8(&self) -> u8 {
         self.to_item().into()
     }

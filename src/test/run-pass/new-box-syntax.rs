@@ -1,7 +1,4 @@
-// pretty-expanded FIXME #23616
-
-/* Any copyright is dedicated to the Public Domain.
- * http://creativecommons.org/publicdomain/zero/1.0/ */
+// pretty-expanded FIXME(#23616)
 
 #![allow(dead_code, unused_variables)]
 #![feature(box_syntax)]

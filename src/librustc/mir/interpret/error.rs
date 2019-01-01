@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             struct_error(tcx, message)
         };
         err.span_label(self.span, self.error.to_string());
-        // Skip the last, which is just the environment of the constant.  The stacktrace
+        // Skip the last, which is just the environment of the constant. The stacktrace
         // is sometimes empty because we create "fake" eval contexts in CTFE to do work
         // on constant values.
         if self.stacktrace.len() > 0 {

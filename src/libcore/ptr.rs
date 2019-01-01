@@ -135,7 +135,7 @@ pub use intrinsics::write_bytes;
 /// unsafe {
 ///     // Get a raw pointer to the last element in `v`.
 ///     let ptr = &mut v[1] as *mut _;
-///     // Shorten `v` to prevent the last item from being dropped.  We do that first,
+///     // Shorten `v` to prevent the last item from being dropped. We do that first,
 ///     // to prevent issues if the `drop_in_place` below panics.
 ///     v.set_len(1);
 ///     // Without a call `drop_in_place`, the last item would never be dropped,
@@ -185,7 +185,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 
 // The real `drop_in_place` -- the one that gets called implicitly when variables go
 // out of scope -- should have a safe reference and not a raw pointer as argument
-// type.  When we drop a local variable, we access it with a pointer that behaves
+// type. When we drop a local variable, we access it with a pointer that behaves
 // like a safe reference; transmuting that to a raw pointer does not mean we can
 // actually access it with raw pointers.
 #[lang = "drop_in_place"]
@@ -366,13 +366,13 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
 
 #[inline]
 unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
-    // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
+    // The approach here is to utilize simd to swap `x` and `y` efficiently. Testing reveals
     // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
     // Haswell E processors. LLVM is more able to optimize if we give a struct a
-    // #[repr(simd)], even if we don't actually use this struct directly.
+    // `#[repr(simd)]`, even if we don't actually use this struct directly.
     //
-    // FIXME repr(simd) broken on emscripten and redox
-    // It's also broken on big-endian powerpc64 and s390x.  #42778
+    // FIXME: `repr(simd)` broken on emscripten and redox
+    // It's also broken on big-endian powerpc64 and s390x (see issue #42778).
     #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox",
                        target_endian = "big")),
                repr(simd))]
@@ -825,7 +825,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g., if a zero-sized type is passed to `read_volatile`) are no-ops
+/// (e.g., if a zero-sized type is passed to `read_volatile`) are noops
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
@@ -902,7 +902,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g., if a zero-sized type is passed to `write_volatile`) are no-ops
+/// (e.g., if a zero-sized type is passed to `write_volatile`) are noops
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
@@ -947,7 +947,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
-    /// Returns `true` if the pointer is null.
+    /// Returns whether the pointer is null.
     ///
     /// Note that unsized types have many possible null pointers, as only the
     /// raw data pointer is considered, not their length, vtable, etc.
@@ -1567,7 +1567,7 @@ impl<T: ?Sized> *const T {
 
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
-    /// Returns `true` if the pointer is null.
+    /// Returns whether the pointer is null.
     ///
     /// Note that unsized types have many possible null pointers, as only the
     /// raw data pointer is considered, not their length, vtable, etc.

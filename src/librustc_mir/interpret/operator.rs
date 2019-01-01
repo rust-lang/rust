@@ -320,7 +320,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.binary_float_op(bin_op, fty, left, right)
             }
             _ => {
-                // Must be integer(-like) types.  Don't forget about == on fn pointers.
+                // Must be integer(-like) types. Don't forget about == on fn pointers.
                 assert!(left_layout.ty.is_integral() || left_layout.ty.is_unsafe_ptr() ||
                     left_layout.ty.is_fn());
                 assert!(right_layout.ty.is_integral() || right_layout.ty.is_unsafe_ptr() ||

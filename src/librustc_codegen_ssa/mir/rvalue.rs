@@ -227,7 +227,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::UnsafeFnPointer => {
-                        // this is a no-op at the LLVM level
+                        // this is a noop at the LLVM level
                         operand.val
                     }
                     mir::CastKind::Unsize => {

@@ -93,7 +93,7 @@ impl<'a, 'gcx, 'tcx> Children {
             debug!("insert_blindly: impl_def_id={:?} sty={:?}", impl_def_id, sty);
             self.nonblanket_impls.entry(sty).or_default().push(impl_def_id)
         } else {
-            debug!("insert_blindly: impl_def_id={:?} sty=None", impl_def_id);
+            debug!("insert_blindly: impl_def_id={:?} sty = None", impl_def_id);
             self.blanket_impls.push(impl_def_id)
         }
     }
@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> Children {
             debug!("remove_existing: impl_def_id={:?} sty={:?}", impl_def_id, sty);
             vec = self.nonblanket_impls.get_mut(&sty).unwrap();
         } else {
-            debug!("remove_existing: impl_def_id={:?} sty=None", impl_def_id);
+            debug!("remove_existing: impl_def_id={:?} sty = None", impl_def_id);
             vec = &mut self.blanket_impls;
         }
 
@@ -402,7 +402,7 @@ impl<'a, 'gcx, 'tcx> Graph {
         self.children.entry(parent).or_default().insert_blindly(tcx, child);
     }
 
-    /// The parent of a given impl, which is the def id of the trait when the
+    /// The parent of a given impl, which is the def-ID of the trait when the
     /// impl is a "specialization root".
     pub fn parent(&self, child: DefId) -> DefId {
         *self.parent.get(&child).unwrap()

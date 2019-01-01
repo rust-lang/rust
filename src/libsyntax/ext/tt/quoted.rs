@@ -106,7 +106,7 @@ impl TokenTree {
         }
     }
 
-    /// Returns true if the given token tree contains no other tokens. This is vacuously true for
+    /// Returns whether the given token tree contains no other tokens. This is vacuously true for
     /// single tokens or metavar/decls, but may be false for delimited trees or sequences.
     pub fn is_empty(&self) -> bool {
         match *self {

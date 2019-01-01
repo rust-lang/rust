@@ -79,10 +79,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn need_type_info_err(&self,
-                            body_id: Option<hir::BodyId>,
-                            span: Span,
-                            ty: Ty<'tcx>)
-                            -> DiagnosticBuilder<'gcx> {
+                              body_id: Option<hir::BodyId>,
+                              span: Span,
+                              ty: Ty<'tcx>)
+                              -> DiagnosticBuilder<'gcx> {
         let ty = self.resolve_type_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty);
 

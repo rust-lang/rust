@@ -980,7 +980,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         if args_used < args_unused {
             use super::format_foreign as foreign;
 
-            // The set of foreign substitutions we've explained.  This prevents spamming the user
+            // The set of foreign substitutions we've explained. This prevents spamming the user
             // with `%d should be written as {}` over and over again.
             let mut explained = FxHashSet::default();
 

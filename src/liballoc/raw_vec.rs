@@ -336,7 +336,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// enough to want to do that it's easiest to just have a dedicated method. Slightly
     /// more efficient logic can be provided for this than the general case.
     ///
-    /// Returns true if the reallocation attempt has succeeded, or false otherwise.
+    /// Returns whether the reallocation attempt has succeeded.
     ///
     /// # Panics
     ///
@@ -505,7 +505,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// the requested space. This is not really unsafe, but the unsafe
     /// code *you* write that relies on the behavior of this function may break.
     ///
-    /// Returns true if the reallocation attempt has succeeded, or false otherwise.
+    /// Returns whether the reallocation attempt has succeeded.
     ///
     /// # Panics
     ///
@@ -567,21 +567,21 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn shrink_to_fit(&mut self, amount: usize) {
         let elem_size = mem::size_of::<T>();
 
-        // Set the `cap` because they might be about to promote to a `Box<[T]>`
+        // Set the `cap` because they might be about to promote to a `Box<[T]>`.
         if elem_size == 0 {
             self.cap = amount;
             return;
         }
 
-        // This check is my waterloo; it's the only thing Vec wouldn't have to do.
+        // This check is my waterloo; it's the only thing `Vec` wouldn't have to do.
         assert!(self.cap >= amount, "Tried to shrink to a larger capacity");
 
         if amount == 0 {
             // We want to create a new zero-length vector within the
-            // same allocator.  We use ptr::write to avoid an
+            // same allocator. We use `ptr::write` to avoid an
             // erroneous attempt to drop the contents, and we use
-            // ptr::read to sidestep condition against destructuring
-            // types that implement Drop.
+            // `ptr::read` to sidestep condition against destructuring
+            // types that implement `Drop`.
 
             unsafe {
                 let a = ptr::read(&self.a as *const A);

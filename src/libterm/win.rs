@@ -1,6 +1,6 @@
 //! Windows console handling
 
-// FIXME (#13400): this is only a tiny fraction of the Windows console api
+// FIXME(#13400): this is only a tiny fraction of the Windows console api
 
 extern crate libc;
 

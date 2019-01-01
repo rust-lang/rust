@@ -34,14 +34,14 @@ impl<'x, 'a: 'x> Foo2<'x, i32> for &'a i32
 
 // example 3 - fails due to issue #XYZ + Leak-check
 impl<'x, T> Foo2<'x, u64> for T
-    where T: Mirror<Image=&'x u64>
+    where T: Mirror<Image = &'x u64>
 {
     fn foo2(self) -> &'x u64 { self.coerce() }
 }
 
 // example 4 - fails due to issue #XYZ
 impl<'x, 'a: 'x, T> Foo2<'x, i64> for T
-    where T: Mirror<Image=&'a i64>
+    where T: Mirror<Image = &'a i64>
 {
     fn foo2(self) -> &'x i64 { self.coerce() }
 }

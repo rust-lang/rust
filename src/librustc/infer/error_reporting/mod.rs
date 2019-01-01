@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let new_string;
                 let unknown_scope = || {
                     format!(
-                        "{}unknown scope: {:?}{}.  Please report a bug.",
+                        "{}unknown scope: {:?}{}. Please report a bug.",
                         prefix, scope, suffix
                     )
                 };
@@ -882,8 +882,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
     ) {
-        // For some types of errors, expected-found does not make
-        // sense, so just ignore the values we were given.
+        // For some types of errors, the expected-found message format does not
+        // make sense, so just ignore the values we were given.
         match terr {
             TypeError::CyclicTy(_) => {
                 values = None;
@@ -906,7 +906,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let vals = match self.values_str(&values) {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
-                        // Derived error. Cancel the emitter.
+                        // Derived error; cancel the emitter.
                         self.tcx.sess.diagnostic().cancel(diag);
                         return;
                     }

@@ -61,7 +61,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
             .tcx
             .hir()
             .as_local_node_id(item_did)
-            .expect("expected local def-id");
+            .expect("expected local def-ID");
         let item = match self.tcx.hir().get(node_id) {
             Node::Item(item) => item,
             _ => bug!(),
@@ -162,7 +162,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did) {
                     for unsubstituted_predicate in unsubstituted_predicates {
                         // `unsubstituted_predicate` is `U: 'b` in the
-                        // example above.  So apply the substitution to
+                        // example above. So apply the substitution to
                         // get `T: 'a` (or `predicate`):
                         let predicate = unsubstituted_predicate.subst(tcx, substs);
                         insert_outlives_predicate(

@@ -138,7 +138,7 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
 
         let ty = tcx.type_of(def_id);
         let ty = self.subst(ty, substs);
-        debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
+        debug!("relate_type_and_user_type: ty of def-ID is {:?}", ty);
         let ty = self.normalize(ty);
 
         // We need to follow any provided projetions into the type.

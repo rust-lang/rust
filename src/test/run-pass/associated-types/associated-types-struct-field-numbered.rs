@@ -11,7 +11,7 @@ pub trait UnifyKey {
 
 pub struct Node<K:UnifyKey>(K, K::Value);
 
-fn foo<K : UnifyKey<Value=Option<V>>,V : Clone>(node: &Node<K>) -> Option<V> {
+fn foo<K : UnifyKey<Value = Option<V>>,V : Clone>(node: &Node<K>) -> Option<V> {
     node.1.clone()
 }
 

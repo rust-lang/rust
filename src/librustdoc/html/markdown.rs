@@ -96,7 +96,7 @@ impl<'a> Line<'a> {
     }
 }
 
-// FIXME: There is a minor inconsistency here. For lines that start with ##, we
+// FIXME: there is a minor inconsistency here. For lines that start with ##, we
 // have no easy way of removing a potential single space after the hashes, which
 // is done in the single # case. This inconsistency seems okay, if non-ideal. In
 // order to fix it we'd have to iterate to find the first non-# character, and
@@ -929,7 +929,7 @@ impl IdMap {
         IdMap::default()
     }
 
-    pub fn populate<I: IntoIterator<Item=String>>(&mut self, ids: I) {
+    pub fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
         for id in ids {
             let _ = self.derive(id);
         }

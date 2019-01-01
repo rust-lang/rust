@@ -224,7 +224,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
-    /// an obligation for a particular trait with the given self-type and checks
+    /// an obligation for a particular trait with the given self type and checks
     /// whether that trait is implemented.
     ///
     /// FIXME(#18741): it seems likely that we can consolidate some of this
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
-        // so this also effectively registers `obligation` as well.  (We
+        // so this also effectively registers `obligation` as well. (We
         // used to register `obligation` explicitly, but that resulted in
         // double error messages being reported.)
         //

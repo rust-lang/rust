@@ -66,7 +66,7 @@ impl fmt::Debug for llvm::Metadata {
 }
 
 // From DWARF 5.
-// See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1
+// See <http://www.dwarfstd.org/ShowIssue.php?issue=140129.1>.
 const DW_LANG_RUST: c_uint = 0x1c;
 #[allow(non_upper_case_globals)]
 const DW_ATE_boolean: c_uint = 0x02;
@@ -1157,7 +1157,7 @@ fn prepare_union_metadata(
 // Although the earlier enum debug info output did not work properly
 // in all situations, it is better for the time being to continue to
 // sometimes emit the old style rather than emit something completely
-// useless when rust is compiled against LLVM 6 or older.  This
+// useless when rust is compiled against LLVM 6 or older. This
 // function decides which representation will be emitted.
 fn use_enum_fallback(cx: &CodegenCx) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
@@ -1514,7 +1514,7 @@ fn prepare_enum_metadata(
     let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
 
     let containing_scope = get_namespace_for_item(cx, enum_def_id);
-    // FIXME: This should emit actual file metadata for the enum, but we
+    // FIXME: this should emit actual file metadata for the enum, but we
     // currently can't get the necessary information when it comes to types
     // imported from other crates. Formerly we violated the ODR when performing
     // LTO because we emitted debuginfo for the same type with varying file
@@ -2032,7 +2032,7 @@ pub fn create_vtable_metadata(
 
         let name = const_cstr!("vtable");
 
-        // Create a new one each time.  We don't want metadata caching
+        // Create a new one each time. We don't want metadata caching
         // here, because each vtable will refer to a unique containing
         // type.
         let vtable_type = llvm::LLVMRustDIBuilderCreateStructType(

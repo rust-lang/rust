@@ -260,7 +260,7 @@ mod extern_keyword { }
 /// }
 ///
 /// fn generic_where<T>(x: T) -> T
-///     where T: std::ops::Add<Output=T> + Copy
+///     where T: std::ops::Add<Output = T> + Copy
 /// {
 ///     x + x + x
 /// }

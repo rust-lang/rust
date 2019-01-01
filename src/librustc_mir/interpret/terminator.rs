@@ -203,7 +203,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     fn pass_argument(
         &mut self,
         rust_abi: bool,
-        caller_arg: &mut impl Iterator<Item=OpTy<'tcx, M::PointerTag>>,
+        caller_arg: &mut impl Iterator<Item = OpTy<'tcx, M::PointerTag>>,
         callee_arg: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         if rust_abi && callee_arg.layout.is_zst() {
@@ -294,7 +294,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 )?;
 
                 // We want to pop this frame again in case there was an error, to put
-                // the blame in the right location.  Until the 2018 edition is used in
+                // the blame in the right location. Until the 2018 edition is used in
                 // the compiler, we have to do this with an immediately invoked function.
                 let res = (||{
                     trace!(
@@ -323,7 +323,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     };
 
                     // For where they come from: If the ABI is RustCall, we untuple the
-                    // last incoming argument.  These two iterators do not have the same type,
+                    // last incoming argument. These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
                     let caller_args : Cow<[OpTy<'tcx, M::PointerTag>]> =
@@ -346,7 +346,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         .map(|op| *op);
 
                     // Now we have to spread them out across the callee's locals,
-                    // taking into account the `spread_arg`.  If we could write
+                    // taking into account the `spread_arg`. If we could write
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
@@ -435,8 +435,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
-        // We take the address of the object.  This may well be unaligned, which is fine
-        // for us here.  However, unaligned accesses will probably make the actual drop
+        // We take the address of the object. This may well be unaligned, which is fine
+        // for us here. However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 

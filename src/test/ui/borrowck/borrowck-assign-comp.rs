@@ -9,14 +9,14 @@ fn a() {
 
     // This assignment is illegal because the field x is not
     // inherently mutable; since `p` was made immutable, `p.x` is now
-    // immutable.  Otherwise the type of &_q.x (&isize) would be wrong.
+    // immutable. Otherwise the type of &_q.x (&isize) would be wrong.
     p.x = 5; //[ast]~ ERROR cannot assign to `p.x`
              //[mir]~^ ERROR cannot assign to `p.x` because it is borrowed
     q.x;
 }
 
 fn c() {
-    // this is sort of the opposite.  We take a loan to the interior of `p`
+    // this is sort of the opposite. We take a loan to the interior of `p`
     // and then try to overwrite `p` as a whole.
 
     let mut p = Point {x: 3, y: 4};

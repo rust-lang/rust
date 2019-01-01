@@ -1,4 +1,4 @@
-//compile-flags: -Zborrowck=mir
+// compile-flags: -Zborrowck=mir
 
 #![allow(warnings)]
 
@@ -20,5 +20,5 @@ fn main() {
     std::mem::drop(foo.a);
     std::mem::drop(foo.b);
     x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
-    // FIXME ^ This currently errors and it should not.
+    // FIXME: ^ This currently errors and it should not.
 }

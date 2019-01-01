@@ -1,10 +1,10 @@
 ///////////////////////////////////////////////////////////////////////////
 // # Type combining
 //
-// There are four type combiners: equate, sub, lub, and glb.  Each
+// There are four type combiners: equate, sub, lub, and glb. Each
 // implements the trait `Combine` and contains methods for combining
-// two instances of various things and yielding a new instance.  These
-// combiner methods always yield a `Result<T>`.  There is a lot of
+// two instances of various things and yielding a new instance. These
+// combiner methods always yield a `Result<T>`. There is a lot of
 // common code for these operations, implemented as default methods on
 // the `Combine` trait.
 //
@@ -18,7 +18,7 @@
 // When you are relating two things which have a contravariant
 // relationship, you should use `contratys()` or `contraregions()`,
 // rather than inversing the order of arguments!  This is necessary
-// because the order of arguments is not relevant for LUB and GLB.  It
+// because the order of arguments is not relevant for LUB and GLB. It
 // is also useful to track which value is the "expected" value in
 // terms of error reporting.
 
@@ -189,7 +189,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
 
         // Generalize type of `a_ty` appropriately depending on the
-        // direction.  As an example, assume:
+        // direction. As an example, assume:
         //
         // - `a_ty == &'x ?1`, where `'x` is some free region and `?1` is an
         //   inference variable,
@@ -310,7 +310,7 @@ struct Generalization<'tcx> {
     /// particular around 'bivariant' type parameters that are only
     /// constrained by a where-clause. As an example, imagine a type:
     ///
-    ///     struct Foo<A, B> where A: Iterator<Item=B> {
+    ///     struct Foo<A, B> where A: Iterator<Item = B> {
     ///         data: A
     ///     }
     ///
@@ -488,7 +488,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
             }
         }
 
-        // FIXME: This is non-ideal because we don't give a
+        // FIXME: this is non-ideal because we don't give a
         // very descriptive origin for this region variable.
         Ok(self.infcx.next_region_var(MiscVariable(self.span)))
     }

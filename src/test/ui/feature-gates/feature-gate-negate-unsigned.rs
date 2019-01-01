@@ -14,5 +14,5 @@ fn main() {
     let _y = -x;
     //~^ ERROR cannot apply unary operator `-` to type `u8`
 
-    -S; // should not trigger the gate; issue 26840
+    -S; // should not trigger the gate; issue #26840
 }

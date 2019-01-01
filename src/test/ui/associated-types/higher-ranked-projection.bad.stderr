@@ -8,7 +8,7 @@ note: required by `foo`
   --> $DIR/higher-ranked-projection.rs:14:1
    |
 LL | / fn foo<U, T>(_t: T)
-LL | |     where for<'a> &'a T: Mirror<Image=U>
+LL | |     where for<'a> &'a T: Mirror<Image = U>
 LL | | {}
    | |__^
 

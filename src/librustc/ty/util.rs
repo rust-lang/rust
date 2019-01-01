@@ -178,7 +178,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>)
                                        -> Result<(), CopyImplementationError<'tcx>> {
-        // FIXME: (@jroesch) float this code up
+        // FIXME(jroesch): float this code up.
         tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 // These types used to have a builtin impl.
@@ -232,7 +232,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let mut hcx = self.create_stable_hashing_context();
 
         // We want the type_id be independent of the types free regions, so we
-        // erase them. The erase_regions() call will also anonymize bound
+        // erase them. The `erase_regions()` call will also anonymize bound
         // regions, which is desirable too.
         let ty = self.erase_regions(&ty);
 
@@ -343,7 +343,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Requires that trait definitions have been processed so that we can
     /// elaborate predicates and walk supertraits.
     ///
-    /// FIXME callers may only have a &[Predicate], not a Vec, so that's
+    /// FIXME: callers may only have a `&[Predicate]`, not a `Vec`, so that's
     /// what this code should accept.
     pub fn required_region_bounds(self,
                                   erased_self_ty: Ty<'tcx>,
@@ -369,9 +369,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         None
                     }
                     ty::Predicate::TypeOutlives(predicate) => {
-                        // Search for a bound of the form `erased_self_ty
-                        // : 'a`, but be wary of something like `for<'a>
-                        // erased_self_ty : 'a` (we interpret a
+                        // Search for a bound of the form `erased_self_ty: 'a`,
+                        // but be wary of something like `for<'a>
+                        // erased_self_ty: 'a` (we interpret a
                         // higher-ranked bound like that as 'static,
                         // though at present the code in `fulfill.rs`
                         // considers such bounds to be unsatisfiable, so
@@ -452,8 +452,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let impl_def_id = self.associated_item(dtor).container.id();
         let impl_generics = self.generics_of(impl_def_id);
 
-        // We have a destructor - all the parameters that are not
-        // pure_wrt_drop (i.e, don't have a #[may_dangle] attribute)
+        // We have a destructor -- all the parameters that are not
+        // pure_wrt_drop (i.e, don't have a `#[may_dangle]` attribute)
         // must be live.
 
         // We need to return the list of parameters from the ADTs
@@ -495,7 +495,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
                     UnpackedKind::Lifetime(_) | UnpackedKind::Type(_) => {
-                        // not a type or region param - this should be reported
+                        // Not a type or region param; this should be reported
                         // as an error.
                         false
                     }
@@ -508,11 +508,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// True if `def_id` refers to a closure (e.g., `|x| x * 2`). Note
-    /// that closures have a def-id, but the closure *expression* also
+    /// that closures have a def-ID, but the closure *expression* also
     /// has a `HirId` that is located within the context where the
     /// closure appears (and, sadly, a corresponding `NodeId`, since
     /// those are not yet phased out). The parent of the closure's
-    /// def-id will also be the context where it appears.
+    /// def-ID will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
         self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
     }
@@ -526,17 +526,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// True if this def-id refers to the implicit constructor for
-    /// a tuple struct like `struct Foo(u32)`.
+    /// True if this def-ID refers to the implicit constructor for
+    /// a tuple struct (e.g., `struct Foo(u32)`).
     pub fn is_struct_constructor(self, def_id: DefId) -> bool {
         self.def_key(def_id).disambiguated_data.data == DefPathData::StructCtor
     }
 
     /// Given the `DefId` of a fn or closure, returns the `DefId` of
     /// the innermost fn item that the closure is contained within.
-    /// This is a significant def-id because, when we do
+    /// This is a significant def-ID because, when we do
     /// type-checking, we type-check this fn item and all of its
-    /// (transitive) closures together.  Therefore, when we fetch the
+    /// (transitive) closures together. Therefore, when we fetch the
     /// `typeck_tables_of` the closure, for example, we really wind up
     /// fetching the `typeck_tables_of` the enclosing fn item.
     pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
@@ -549,10 +549,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         def_id
     }
 
-    /// Given the def-id and substs a closure, creates the type of
+    /// Given the def-ID and substs a closure, creates the type of
     /// `self` argument that the closure expects. For example, for a
     /// `Fn` closure, this would return a reference type `&T` where
-    /// `T=closure_ty`.
+    /// `T = closure_ty`.
     ///
     /// Returns `None` if this closure's kind has not yet been inferred.
     /// This should only be possible during type checking.
@@ -576,7 +576,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         Some(ty::Binder::bind(env_ty))
     }
 
-    /// Given the def-id of some item that has no type parameters, make
+    /// Given the def-ID of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
         Substs::for_item(self, item_def_id, |param, _| {
@@ -589,7 +589,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Return whether the node pointed to by def_id is a static item, and its mutability
+    /// Return whether the node pointed to by `def_id` is a static item, and its mutability.
     pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
         if let Some(node) = self.hir().get_if_local(def_id) {
             match node {
@@ -679,7 +679,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                             -> Representability
     {
         // Iterate until something non-representable is found
-        fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
+        fn fold_repr<It: Iterator<Item = Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| {
                 match (r1, r2) {
                     (Representability::SelfRecursive(v1),
@@ -700,7 +700,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         {
             match ty.sty {
                 Tuple(ref ts) => {
-                    // Find non representable
+                    // Find non-representable.
                     fold_repr(ts.iter().map(|ty| {
                         is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                     }))
@@ -711,7 +711,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                 }
                 Adt(def, substs) => {
-                    // Find non representable fields with their spans
+                    // Find non-representable fields with their spans.
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
                         let span = tcx.hir().span_if_local(field.did).unwrap_or(sp);
@@ -726,8 +726,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     }))
                 }
                 Closure(..) => {
-                    // this check is run on type definitions, so we don't expect
-                    // to see closure types
+                    // This check is run on type definitions, so we don't expect
+                    // to see closure types.
                     bug!("requires check invoked on inapplicable type: {:?}", ty)
                 }
                 _ => Representability::Representable,
@@ -909,19 +909,19 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(!ty.needs_infer());
 
     match ty.sty {
-        // Fast-path for primitive types
+        // Fast-path for primitive types.
         ty::Infer(ty::FreshIntTy(_)) | ty::Infer(ty::FreshFloatTy(_)) |
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never |
         ty::FnDef(..) | ty::FnPtr(_) | ty::Char | ty::GeneratorWitness(..) |
         ty::RawPtr(_) | ty::Ref(..) | ty::Str => false,
 
-        // Foreign types can never have destructors
+        // Foreign types can never have destructors.
         ty::Foreign(..) => false,
 
         // `ManuallyDrop` doesn't have a destructor regardless of field types.
         ty::Adt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
 
-        // Issue #22536: We first query type_moves_by_default.  It sees a
+        // Issue #22536: we first query type_moves_by_default. It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
         // cleanup/drop/zeroing) ...
@@ -930,7 +930,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // ... (issue #22536 continued) but as an optimization, still use
         // prior logic of asking for the structural "may drop".
 
-        // FIXME(#22815): Note that this is a conservative heuristic;
+        // FIXME(#22815): note that this is a conservative heuristic;
         // it may report that the type "may drop" when actual type does
         // not actually have a destructor associated with it. But since
         // the type absolutely did not have the `Copy` bound attached
@@ -940,7 +940,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::Adt(def, _) if def.has_dtor(tcx) => true,
 
         // Can refer to a type which may drop.
-        // FIXME(eddyb) check this against a ParamEnv.
+        // FIXME(eddyb): check this against a `ParamEnv`.
         ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) | ty::Bound(..) |
         ty::Placeholder(..) | ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
 
@@ -953,12 +953,12 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Pessimistically assume that all generators will require destructors
         // as we don't know if a destructor is a noop or not until after the MIR
-        // state transformation pass
+        // state transformation pass.
         ty::Generator(..) => true,
 
         ty::Tuple(ref tys) => tys.iter().cloned().any(needs_drop),
 
-        // unions don't have destructors because of the child types,
+        // Unions don't have destructors because of the child types,
         // only if they manually implement `Drop` (handled above).
         ty::Adt(def, _) if def.is_union() => false,
 

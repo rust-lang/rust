@@ -1,5 +1,5 @@
 //! This module provides a simplified abstraction for working with
-//! code blocks identified by their integer node-id.  In particular,
+//! code blocks identified by their integer node-ID.  In particular,
 //! it captures a common set of attributes that all "function-like
 //! things" (represented by `FnLike` instances) share.  For example,
 //! all `FnLike` instances have a type signature (be it explicit or

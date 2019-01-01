@@ -46,7 +46,7 @@ where
         // know we are not registering any subregion relations or
         // other things).
 
-        // FIXME convert to the type expected by the `dropck_outlives`
+        // FIXME: convert to the type expected by the `dropck_outlives`
         // query. This should eventually be fixed by changing the
         // *underlying query*.
         let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {

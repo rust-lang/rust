@@ -96,7 +96,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
                 tcx.sess,
                 span,
                 E0320,
-                "overflow while adding drop-check rules for {}",
+                "overflow while adding drop-check rules for `{}`",
                 ty,
             );
             err.note(&format!("overflowed on {}", overflow_ty));

@@ -66,7 +66,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
 
     /// Table type parameter definition -> substituted type
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
-    /// Table node id of lifetime parameter definition -> substituted lifetime
+    /// Table node-ID of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
@@ -104,9 +104,9 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     // registered after the AST is constructed would require storing the defid mapping in a
     // RefCell, decreasing the performance for normal compilation for very little gain.
     //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId in
+    // Instead, we construct 'fake' def-IDs, which start immediately after the last DefId in
     // DefIndexAddressSpace::Low. In the Debug impl for clean::Item, we explicitly check for fake
-    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
+    // def-IDs, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
     pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
             let next_id = if crate_num == LOCAL_CRATE {
@@ -310,7 +310,7 @@ pub fn new_handler(error_format: ErrorOutputType,
 }
 
 pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions, Vec<String>) {
-    // Parse, resolve, and typecheck the given crate.
+    // Parse, resolve, and type-check the given crate.
 
     let RustdocOptions {
         input,
@@ -546,7 +546,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
                 let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
                                                          considered deprecated", name));
-                msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+                msg.warn("see <https://github.com/rust-lang/rust/issues/44136>");
 
                 if name == "no_default_passes" {
                     msg.help("you may want to use `#![doc(document_private_items)]`");

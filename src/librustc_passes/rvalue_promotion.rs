@@ -54,7 +54,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(def_id.is_local());
 
     let node_id = tcx.hir().as_local_node_id(def_id)
-        .expect("rvalue_promotable_map invoked with non-local def-id");
+        .expect("rvalue_promotable_map invoked with non-local def-ID");
     let body_id = tcx.hir().body_owned_by(node_id);
     let body_hir_id = tcx.hir().node_to_hir_id(body_id.node_id);
     tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
@@ -82,7 +82,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // `def_id` should be a `Body` owner
     let node_id = tcx.hir().as_local_node_id(def_id)
-        .expect("rvalue_promotable_map invoked with non-local def-id");
+        .expect("rvalue_promotable_map invoked with non-local def-ID");
     let body_id = tcx.hir().body_owned_by(node_id);
     let _ = visitor.check_nested_body(body_id);
 
@@ -136,7 +136,7 @@ impl BitOr for Promotability {
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
-    // Returns true iff all the values of the type are promotable.
+    // Returns whetherf all the values of the type are promotable.
     fn type_promotability(&mut self, ty: Ty<'gcx>) -> Promotability {
         debug!("type_promotability({})", ty);
 

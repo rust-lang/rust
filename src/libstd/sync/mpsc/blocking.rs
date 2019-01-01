@@ -72,7 +72,7 @@ impl WaitToken {
         }
     }
 
-    /// Returns true if we wake up normally, false otherwise.
+    /// Returns whether we wake up normally.
     pub fn wait_max_until(self, end: Instant) -> bool {
         while !self.inner.woken.load(Ordering::SeqCst) {
             let now = Instant::now();

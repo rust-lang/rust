@@ -219,7 +219,7 @@ pub mod rt {
     impl ToTokens for ast::Attribute {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let mut r = vec![];
-            // FIXME: The spans could be better
+            // FIXME: the spans could be better
             r.push(TokenTree::Token(self.span, token::Pound));
             if self.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
@@ -260,7 +260,7 @@ pub mod rt {
 
     impl ToTokens for ast::Lit {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            // FIXME: This is wrong
+            // FIXME: this is wrong
             P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ExprKind::Lit(self.clone()),
@@ -771,13 +771,13 @@ fn parse_arguments_to_quote(cx: &ExtCtxt, tts: &[TokenTree])
 }
 
 fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<ast::Stmt> {
-    // We also bind a single value, sp, to ext_cx.call_site()
+    // We also bind a single value, `sp`, to `ext_cx.call_site()`.
     //
     // This causes every span in a token-tree quote to be attributed to the
     // call site of the extension using the quote. We can't really do much
     // better since the source of the quote may well be in a library that
     // was not even parsed by this compilation run, that the user has no
-    // source code for (eg. in libsyntax, which they're just _using_).
+    // source code for (e.g., in libsyntax, which they're just _using_).
     //
     // The old quasiquoter had an elaborate mechanism for denoting input
     // file locations from which quotes originated; unfortunately this
@@ -788,7 +788,7 @@ fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<ast::Stmt> {
     // the site the string literal occurred, which was in a source file
     // _other_ than the one the user has control over. For example, an
     // error in a quote from the protocol compiler, invoked in user code
-    // using macro_rules! for example, will be attributed to the macro_rules.rs
+    // using macro_rules! for example, will be attributed to the `macro_rules.rs`
     // file in libsyntax, which the user might not even have source to (unless
     // they happen to have a compiler on hand). Over all, the phase distinction
     // just makes quotes "hard to attribute". Possibly this could be fixed

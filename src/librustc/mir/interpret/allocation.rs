@@ -1,4 +1,4 @@
-//! The virtual memory representation of the MIR interpreter
+//! The virtual memory representation of the MIR interpreter.
 
 use super::{
     Pointer, EvalResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
@@ -174,7 +174,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         size: Size,
         check_defined_and_ptr: bool,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.check_bounds(cx, ptr, size)?;
@@ -183,7 +183,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
             self.check_defined(ptr, size)?;
             self.check_relocations(cx, ptr, size)?;
         } else {
-            // We still don't want relocations on the *edges*
+            // We still don't want relocations on the *edges*.
             self.check_relocation_edges(cx, ptr, size)?;
         }
 
@@ -202,7 +202,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.get_bytes_internal(cx, ptr, size, true)
@@ -217,7 +217,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.get_bytes_internal(cx, ptr, size, false)
@@ -231,7 +231,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &mut [u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
@@ -258,7 +258,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
@@ -285,7 +285,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         size: Size,
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // Check bounds and relocations on the edges
@@ -307,7 +307,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         src: &[u8],
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
@@ -323,7 +323,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         val: u8,
         count: Size
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let bytes = self.get_bytes_mut(cx, ptr, count)?;
@@ -347,7 +347,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // get_bytes_unchecked tests relocation edges
@@ -384,7 +384,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
@@ -405,7 +405,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         val: ScalarMaybeUndef<Tag>,
         type_size: Size,
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let val = match val {
@@ -452,7 +452,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        // FIXME: working around issue #56209.
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let ptr_size = cx.data_layout().pointer_size;
@@ -580,7 +580,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 
 /// Relocations
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
+pub struct Relocations<Tag=(), Id = AllocId>(SortedMap<Size, (Tag, Id)>);
 
 impl<Tag, Id> Relocations<Tag, Id> {
     pub fn new() -> Self {

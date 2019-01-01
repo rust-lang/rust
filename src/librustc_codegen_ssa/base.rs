@@ -336,7 +336,7 @@ fn cast_shift_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         if lhs_sz < rhs_sz {
             bx.trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If in the future shifting by negative
+            // FIXME(#1877: If in the future shifting by negative
             // values is no longer undefined then this is wrong.
             bx.zext(rhs, lhs_llty)
         } else {
@@ -486,7 +486,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         );
 
         if cx.get_defined_value("main").is_some() {
-            // FIXME: We should be smart and show a better diagnostic here.
+            // FIXME: we should be smart and show a better diagnostic here.
             cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
                      .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
                      .emit();

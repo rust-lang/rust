@@ -494,7 +494,7 @@ impl<T: ?Sized> Rc<T> {
         this.strong()
     }
 
-    /// Returns true if there are no other `Rc` or [`Weak`][weak] pointers to
+    /// Returns whether there are no other `Rc` or [`Weak`][weak] pointers to
     /// this inner value.
     ///
     /// [weak]: struct.Weak.html
@@ -543,7 +543,7 @@ impl<T: ?Sized> Rc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns true if the two `Rc`s point to the same value (not
+    /// Returns whether the two `Rc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
@@ -1204,7 +1204,7 @@ pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
-    // to allocate space on the heap.  That's not a value a real pointer
+    // to allocate space on the heap. That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
     ptr: NonNull<RcBox<T>>,
 }
@@ -1297,7 +1297,7 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns true if the two `Weak`s point to the same value (not just values
+    /// Returns whether the two `Weak`s point to the same value (not just values
     /// that compare as equal).
     ///
     /// # Notes

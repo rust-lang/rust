@@ -1,4 +1,4 @@
-//compile-flags: -Z borrowck=mir
+// compile-flags: -Z borrowck=mir
 
 fn foo(_:String) {}
 

@@ -1,6 +1,6 @@
 // aux-build:issue_23563_a.rs
 
-// Ref: https://github.com/rust-lang/rust/issues/23563#issuecomment-260751672
+// See <https://github.com/rust-lang/rust/issues/23563#issuecomment-260751672>.
 
 extern crate issue_23563_a as a;
 

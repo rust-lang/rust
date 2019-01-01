@@ -56,7 +56,7 @@ fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> boo
     tcx.mir_keys(def_id.krate).contains(&def_id)
 }
 
-/// Finds the full set of def-ids within the current crate that have
+/// Finds the full set of def-IDs within the current crate that have
 /// MIR associated with them.
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                       -> Lrc<DefIdSet> {
@@ -256,7 +256,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         // AddRetag needs to run after ElaborateDrops, and it needs
-        // an AllCallEdges pass right before it.  Otherwise it should
+        // an AllCallEdges pass right before it. Otherwise it should
         // run fairly late, but before optimizations begin.
         &add_call_guards::AllCallEdges,
         &add_retag::AddRetag,

@@ -1,5 +1,5 @@
 // run-pass
-//compile-flags: -Z borrowck=compare
+// compile-flags: -Z borrowck=compare
 
 #![deny(warnings)]
 

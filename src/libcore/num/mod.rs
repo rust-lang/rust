@@ -437,7 +437,7 @@ assert_eq!(m, ", $reversed, ");
         doc_comment! {
             concat!("Converts an integer from big endian to the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are swapped.
+On big endian this is a noop. On little endian the bytes are swapped.
 
 # Examples
 
@@ -471,7 +471,7 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts an integer from little endian to the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are swapped.
+On little endian this is a noop. On big endian the bytes are swapped.
 
 # Examples
 
@@ -505,7 +505,7 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts `self` to big endian from the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are swapped.
+On big endian this is a noop. On little endian the bytes are swapped.
 
 # Examples
 
@@ -539,7 +539,7 @@ $EndFeature, "
         doc_comment! {
             concat!("Converts `self` to little endian from the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are swapped.
+On little endian this is a noop. On big endian the bytes are swapped.
 
 # Examples
 
@@ -1873,7 +1873,7 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Returns `true` if `self` is positive and `false` if the number is zero or
+            concat!("Returns whether `self` is positive and `false` if the number is zero or
 negative.
 
 # Examples
@@ -1892,7 +1892,7 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Returns `true` if `self` is negative and `false` if the number is zero or
+            concat!("Returns whether `self` is negative and `false` if the number is zero or
 positive.
 
 # Examples
@@ -2390,7 +2390,7 @@ assert_eq!(m, ", $reversed, ");
         doc_comment! {
             concat!("Converts an integer from big endian to the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are
+On big endian this is a noop. On little endian the bytes are
 swapped.
 
 # Examples
@@ -2424,7 +2424,7 @@ if cfg!(target_endian = \"big\") {
         doc_comment! {
             concat!("Converts an integer from little endian to the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are
+On little endian this is a noop. On big endian the bytes are
 swapped.
 
 # Examples
@@ -2458,7 +2458,7 @@ if cfg!(target_endian = \"little\") {
         doc_comment! {
             concat!("Converts `self` to big endian from the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are
+On big endian this is a noop. On little endian the bytes are
 swapped.
 
 # Examples
@@ -2492,7 +2492,7 @@ if cfg!(target_endian = \"big\") {
         doc_comment! {
             concat!("Converts `self` to little endian from the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are
+On little endian this is a noop. On big endian the bytes are
 swapped.
 
 # Examples
@@ -3564,7 +3564,7 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
         }
 
         doc_comment! {
-            concat!("Returns `true` if and only if `self == 2^k` for some `k`.
+            concat!("Returns whether `self == 2^k` for some `k`.
 
 # Examples
 

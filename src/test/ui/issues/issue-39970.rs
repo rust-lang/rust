@@ -11,7 +11,7 @@ impl<'a> Array<'a> for () {
 }
 
 impl Visit for () where
-    //(): for<'a> Array<'a, Element=&'a ()>, // No ICE
+    //(): for<'a> Array<'a, Element = &'a ()>, // No ICE
     (): for<'a> Array<'a, Element=()>, // ICE
 {}
 

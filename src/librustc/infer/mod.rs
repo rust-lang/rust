@@ -1,11 +1,25 @@
 //! See the Book for more information.
 
-pub use self::freshen::TypeFreshener;
-pub use self::LateBoundRegionConversionTime::*;
-pub use self::RegionVariableOrigin::*;
-pub use self::SubregionOrigin::*;
-pub use self::ValuePairs::*;
-pub use ty::IntVarValue;
+pub mod at;
+pub mod canonical;
+mod combine;
+mod equate;
+pub mod error_reporting;
+mod freshen;
+mod fudge;
+mod glb;
+mod higher_ranked;
+pub mod lattice;
+mod lexical_region_resolve;
+mod lub;
+pub mod nll_relate;
+pub mod opaque_types;
+pub mod outlives;
+pub mod region_constraints;
+pub mod resolve;
+mod sub;
+pub mod type_variable;
+pub mod unify_key;
 
 use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;
@@ -31,6 +45,13 @@ use ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners};
 use ty::{FloatVid, IntVid, TyVid};
 use util::nodemap::FxHashMap;
 
+pub use self::freshen::TypeFreshener;
+pub use self::LateBoundRegionConversionTime::*;
+pub use self::RegionVariableOrigin::*;
+pub use self::SubregionOrigin::*;
+pub use self::ValuePairs::*;
+pub use ty::IntVarValue;
+
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
 use self::lexical_region_resolve::LexicalRegionResolutions;
@@ -39,27 +60,6 @@ use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, Veri
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
-
-pub mod at;
-pub mod canonical;
-mod combine;
-mod equate;
-pub mod error_reporting;
-mod freshen;
-mod fudge;
-mod glb;
-mod higher_ranked;
-pub mod lattice;
-mod lexical_region_resolve;
-mod lub;
-pub mod nll_relate;
-pub mod opaque_types;
-pub mod outlives;
-pub mod region_constraints;
-pub mod resolve;
-mod sub;
-pub mod type_variable;
-pub mod unify_key;
 
 #[must_use]
 #[derive(Debug)]
@@ -91,11 +91,11 @@ impl SuppressRegionErrors {
     /// enabled.
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_, '_>) -> Self {
         match tcx.borrowck_mode() {
-            // If we're on AST or Migrate mode, report AST region errors
+            // If we're in AST or Migrate mode, report AST region errors.
             BorrowckMode::Ast | BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
 
-            // If we're on MIR or Compare mode, don't report AST region errors as they should
-            // be reported by NLL
+            // If we're in MIR or Compare mode, don't report AST region errors as they should
+            // be reported by NLL.
             BorrowckMode::Compare | BorrowckMode::Mir => SuppressRegionErrors { suppressed: true },
         }
     }
@@ -121,14 +121,14 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // order, represented by its upper and lower bounds.
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
-    // Map from integral variable to the kind of integer it represents
+    // Map from integral variable to the kind of integer it represents.
     int_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::IntVid>>>,
 
-    // Map from floating variable to the kind of float it represents
+    // Map from floating variable to the kind of float it represents.
     float_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::FloatVid>>>,
 
     // Tracks the set of region variables and the constraints between
-    // them.  This is initially `Some(_)` but when
+    // them. This is initially `Some(_)` but when
     // `resolve_regions_and_report_errors` is invoked, this gets set
     // to `None` -- further attempts to perform unification etc may
     // fail if new region constraints would've been added.
@@ -169,7 +169,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // `tained_by_errors`) to avoid reporting certain kinds of errors.
     err_count_on_creation: usize,
 
-    // This flag is true while there is an active snapshot.
+    // This flag is `true` while there is an active snapshot.
     in_snapshot: Cell<bool>,
 
     // The TraitObjectMode used here,
@@ -198,7 +198,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // something more fine-grained, is so that it is easier for
     // regionck to be sure that it has found *all* the region
     // obligations (otherwise, it's easy to fail to walk to a
-    // particular node-id).
+    // particular node-ID).
     //
     // Before running `resolve_regions_and_report_errors`, the creator
     // of the inference context is expected to invoke
@@ -225,7 +225,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 /// replaced with.
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
-/// See `error_reporting` module for more details
+/// See the `error_reporting` module for more details.
 #[derive(Clone, Debug)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
@@ -237,7 +237,7 @@ pub enum ValuePairs<'tcx> {
 /// The trace designates the path through inference that we took to
 /// encounter an error or subtyping constraint.
 ///
-/// See `error_reporting` module for more details.
+/// See the `error_reporting` module for more details.
 #[derive(Clone)]
 pub struct TypeTrace<'tcx> {
     cause: ObligationCause<'tcx>,
@@ -246,30 +246,30 @@ pub struct TypeTrace<'tcx> {
 
 /// The origin of a `r1 <= r2` constraint.
 ///
-/// See `error_reporting` module for more details
+/// See the `error_reporting` module for more details.
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
-    // Arose from a subtyping relation
+    // Arose from a subtyping relation.
     Subtype(TypeTrace<'tcx>),
 
     // Stack-allocated closures cannot outlive innermost loop
-    // or function so as to ensure we only require finite stack
+    // or function so as to ensure we only require finite stack.
     InfStackClosure(Span),
 
-    // Invocation of closure must be within its lifetime
+    // Invocation of closure must be within its lifetime.
     InvokeClosure(Span),
 
-    // Dereference of reference must be within its lifetime
+    // Dereference of reference must be within its lifetime.
     DerefPointer(Span),
 
-    // Closure bound must not outlive captured free variables
+    // Closure bound must not outlive captured free variables.
     FreeVariable(Span, ast::NodeId),
 
-    // Index into slice must be within its lifetime
+    // Index into slice must be within its lifetime.
     IndexSlice(Span),
 
     // When casting `&'a T` to an `&'b Trait` object,
-    // relating `'a` to `'b`
+    // relating `'a` to `'b`.
     RelateObjectBound(Span),
 
     // Some type parameter was instantiated with the given type,
@@ -284,16 +284,16 @@ pub enum SubregionOrigin<'tcx> {
     // the moment of their instantiation.
     RelateDefaultParamBound(Span, Ty<'tcx>),
 
-    // Creating a pointer `b` to contents of another reference
+    // Creating a pointer `b` to contents of another reference.
     Reborrow(Span),
 
-    // Creating a pointer `b` to contents of an upvar
+    // Creating a pointer `b` to contents of an upvar.
     ReborrowUpvar(Span, ty::UpvarId),
 
-    // Data with type `Ty<'tcx>` was borrowed
+    // Data with type `Ty<'tcx>` was borrowed.
     DataBorrowed(Ty<'tcx>, Span),
 
-    // (&'a &'b T) where a >= b
+    // `(&'a &'b T)` where `a >= b`.
     ReferenceOutlivesReferent(Ty<'tcx>, Span),
 
     // Type or region parameters must be in scope.
@@ -302,28 +302,28 @@ pub enum SubregionOrigin<'tcx> {
     // The type T of an expression E must outlive the lifetime for E.
     ExprTypeIsNotInScope(Ty<'tcx>, Span),
 
-    // A `ref b` whose region does not enclose the decl site
+    // A `ref b` whose region does not enclose the declaration site.
     BindingTypeIsNotValidAtDecl(Span),
 
-    // Regions appearing in a method receiver must outlive method call
+    // Regions appearing in a method receiver must outlive method call.
     CallRcvr(Span),
 
-    // Regions appearing in a function argument must outlive func call
+    // Regions appearing in a function argument must outlive func call.
     CallArg(Span),
 
-    // Region in return type of invoked fn must enclose call
+    // Region in return type of invoked fn must enclose call.
     CallReturn(Span),
 
-    // Operands must be in scope
+    // Operands must be in scope.
     Operand(Span),
 
-    // Region resulting from a `&` expr must enclose the `&` expr
+    // Region resulting from a `&` expr must enclose the `&` expr.
     AddrOf(Span),
 
-    // An auto-borrow that does not enclose the expr where it occurs
+    // An auto-borrow that does not enclose the expr where it occurs.
     AutoBorrow(Span),
 
-    // Region constraint arriving from destructor safety
+    // Region constraint arriving from destructor safety.
     SafeDestructor(Span),
 
     // Comparing the signature and requirements of an impl method against
@@ -339,51 +339,51 @@ pub enum SubregionOrigin<'tcx> {
 /// Places that type/region parameters can appear.
 #[derive(Clone, Copy, Debug)]
 pub enum ParameterOrigin {
-    Path,               // foo::bar
-    MethodCall,         // foo.bar() <-- parameters on impl providing bar()
-    OverloadedOperator, // a + b when overloaded
-    OverloadedDeref,    // *a when overloaded
+    Path,               // `foo::bar`
+    MethodCall,         // `foo.bar()` <-- parameters on impl providing `bar()`
+    OverloadedOperator, // `a + b` when overloaded
+    OverloadedDeref,    // `*a` when overloaded
 }
 
-/// Times when we replace late-bound regions with variables:
+/// Times when we replace late-bound regions with variables.
 #[derive(Clone, Copy, Debug)]
 pub enum LateBoundRegionConversionTime {
-    /// when a fn is called
+    /// When a fn is called.
     FnCall,
 
-    /// when two higher-ranked types are compared
+    /// When two higher-ranked types are compared.
     HigherRankedType,
 
-    /// when projecting an associated type
+    /// When projecting an associated type.
     AssocTypeProjection(DefId),
 }
 
 /// Reasons to create a region inference variable
 ///
-/// See `error_reporting` module for more details
+/// See the `error_reporting` module for more details
 #[derive(Copy, Clone, Debug)]
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
-    // mostly indicates places in need of refactoring
+    // mostly indicates places in need of refactoring.
     MiscVariable(Span),
 
-    // Regions created by a `&P` or `[...]` pattern
+    // Regions created by a `&P` or `[...]` pattern.
     PatternRegion(Span),
 
-    // Regions created by `&` operator
+    // Regions created by `&` operator.
     AddrOfRegion(Span),
 
-    // Regions created as part of an autoref of a method receiver
+    // Regions created as part of an autoref of a method receiver.
     Autoref(Span),
 
-    // Regions created as part of an automatic coercion
+    // Regions created as part of an automatic coercion.
     Coercion(Span),
 
-    // Region variables created as the values for early-bound regions
+    // Region variables created as the values for early-bound regions.
     EarlyBoundRegion(Span, InternedString),
 
     // Region variables created for bound regions
-    // in a function or method that is called
+    // in a function or method that is called.
     LateBoundRegion(Span, ty::BoundRegion, LateBoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
@@ -458,9 +458,9 @@ impl fmt::Display for FixupError {
     }
 }
 
-/// Helper type of a temporary returned by tcx.infer_ctxt().
+/// Helper type of a temporary returned by `tcx.infer_ctxt()`.
 /// Necessary because we can't write the following bound:
-/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
+/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
 pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: SyncDroplessArena,
@@ -499,7 +499,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     /// inference context that contains each of the bound values
     /// within instantiated as a fresh variable. The `f` closure is
     /// invoked with the new infcx, along with the instantiated value
-    /// `V` and a substitution `S`.  This substitution `S` maps from
+    /// `V` and a substitution `S`. This substitution `S` maps from
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn enter_with_canonical<T, R>(
@@ -577,7 +577,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
         }
     }
 
-    /// Extract `value`, registering any obligations into `fulfill_cx`
+    /// Extract `value`, registering any obligations into `fulfill_cx`.
     pub fn into_value_registering_obligations(
         self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -712,7 +712,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // register obligations, within a snapshot. Very useful, much
     // better than grovelling through megabytes of RUST_LOG output.
     //
-    // HOWEVER, in some cases the flag is unhelpful. In particular, we
+    // _However_, in some cases the flag is unhelpful. In particular, we
     // sometimes create a "mini-fulfilment-cx" in which we enroll
     // obligations. As long as this fulfillment cx is fully drained
     // before we return, this is not a problem, as there won't be any
@@ -812,7 +812,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .commit(region_constraints_snapshot);
     }
 
-    /// Execute `f` and commit the bindings
+    /// Execute `f` and commit the bindings.
     pub fn commit_unconditionally<R, F>(&self, f: F) -> R
     where
         F: FnOnce() -> R,
@@ -824,7 +824,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`
+    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
@@ -844,7 +844,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    // Execute `f` in a snapshot, and commit the bindings it creates
+    // Execute `f` in a snapshot, and commit the bindings it creates.
     pub fn in_snapshot<T, F>(&self, f: F) -> T
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T,
@@ -856,7 +856,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    /// Execute `f` then unroll any bindings it creates
+    /// Execute `f` then unroll any bindings it creates.
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
@@ -1081,7 +1081,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// True if errors have been reported since this infcx was
-    /// created.  This is sometimes used as a heuristic to skip
+    /// created. This is sometimes used as a heuristic to skip
     /// reporting errors that often occur as a result of earlier
     /// errors, but where it's hard to be 100% sure (e.g., unresolved
     /// inference variables, regionck errors).
@@ -1095,7 +1095,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         );
 
         if self.tcx.sess.err_count() > self.err_count_on_creation {
-            return true; // errors reported since this infcx was made
+            // Errors have been reported since this infcx was made.
+            return true;
         }
         self.tainted_by_errors_flag.get()
     }
@@ -1145,7 +1146,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
-            // this infcx was in use.  This is totally hokey but
+            // this infcx was in use. This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
             self.report_region_errors(region_map, &errors, suppress);
@@ -1210,7 +1211,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.resolve_type_vars_if_possible(t).to_string()
     }
 
-    // We have this force-inlined variant of shallow_resolve() for the one
+    // We have this force-inlined variant of `shallow_resolve()` for the one
     // callsite that is extremely hot. All other callsites use the normal
     // variant.
     #[inline(always)]
@@ -1289,7 +1290,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         value.fold_with(&mut r)
     }
 
-    /// Returns true if `T` contains unresolved type variables. In the
+    /// Returns whether `T` contains unresolved type variables. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
@@ -1325,14 +1326,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     // [Note-Type-error-reporting]
-    // An invariant is that anytime the expected or actual type is Error (the special
-    // error type, meaning that an error occurred when typechecking this expression),
+    // An invariant is that anytime the expected or actual type is `Error` (the special
+    // error type, meaning that an error occurred when type-checking this expression),
     // this is a derived error. The error cascaded from another error (that was already
     // reported), so it's not useful to display it to the user.
     // The following methods implement this logic.
-    // They check if either the actual or expected type is Error, and don't print the error
-    // in this case. The typechecker should only ever report type errors involving mismatched
-    // types using one of these methods, and should not call span_err directly for such
+    // They check if either the actual or expected type is `Error`, and don't print the error
+    // in this case. The type-checker should only ever report type errors involving mismatched
+    // types using one of these methods, and should not call `span_err` directly for such
     // errors.
 
     pub fn type_error_struct_with_diag<M>(
@@ -1393,7 +1394,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// and then return the value (here, `&'a u32`) but with the
     /// substitution applied (hence, `&'x u32`).
     ///
-    /// See `higher_ranked_match` in `higher_ranked/mod.rs` for more
+    /// See the `higher_ranked_match` in `higher_ranked/mod.rs` for more
     /// details.
     pub fn match_poly_projection_predicate(
         &self,
@@ -1420,7 +1421,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// See `verify_generic_bound` method in `region_constraints`
+    /// See the `verify_generic_bound` method in `region_constraints`.
     pub fn verify_generic_bound(
         &self,
         origin: SubregionOrigin<'tcx>,
@@ -1471,7 +1472,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtain the signature of a closure.  For closures, unlike
+    /// Obtain the signature of a closure. For closures, unlike
     /// `tcx.fn_sig(def_id)`, this method will work during the
     /// type-checking of the enclosing function and return the closure
     /// signature in its partially inferred state.

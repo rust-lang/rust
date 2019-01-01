@@ -6,7 +6,7 @@
 // lifetime parameters must be early bound in the type of the
 // associated item.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616):
 
 use std::marker;
 

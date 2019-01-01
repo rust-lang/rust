@@ -250,7 +250,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 };
 
                 let forgot_str = if hir_id == ::hir::DUMMY_HIR_ID {
-                    format!("\nMaybe you forgot to lower the node id {:?}?", id)
+                    format!("\nMaybe you forgot to lower the node-ID {:?}?", id)
                 } else {
                     String::new()
                 };

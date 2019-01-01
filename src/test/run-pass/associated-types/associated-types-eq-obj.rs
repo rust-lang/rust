@@ -1,7 +1,7 @@
 // run-pass
 // Test equality constraints on associated types inside of an object type
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616):
 
 pub trait Foo {
     type A;
@@ -15,7 +15,7 @@ impl Foo for char {
     fn boo(&self) -> Bar { Bar }
 }
 
-fn baz(x: &Foo<A=Bar>) -> Bar {
+fn baz(x: &Foo<A = Bar>) -> Bar {
     x.boo()
 }
 

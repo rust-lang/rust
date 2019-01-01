@@ -2,12 +2,12 @@
 #![allow(unused_imports)]
 #![allow(non_snake_case)]
 
-// ASCII art shape renderer.  Demonstrates traits, impls, operator overloading,
-// non-copyable struct, unit testing.  To run execute: rustc --test shapes.rs &&
+// ASCII art shape renderer. Demonstrates traits, impls, operator overloading,
+// non-copyable struct, unit testing. To run execute: rustc --test shapes.rs &&
 // ./shapes
 
 // Rust's std library is tightly bound to the language itself so it is
-// automatically linked in.  However the extra library is designed to be
+// automatically linked in. However the extra library is designed to be
 // optional (for code that must run on constrained environments like embedded
 // devices or special environments like kernel code) so it must be explicitly
 // linked in.
@@ -99,7 +99,7 @@ impl fmt::Display for AsciiArt {
                               .map(|line| line.iter().cloned().collect())
                               .collect::<Vec<String>>();
 
-        // Concatenate the lines together using a new-line.
+        // Concatenate the lines together using a newline.
         write!(f, "{}", lines.join("\n"))
     }
 }

@@ -1,4 +1,4 @@
-//compile-flags: -Z borrowck=compare
+// compile-flags: -Z borrowck=compare
 
 fn foo(_x: u32) {
     _x = 4;

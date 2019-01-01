@@ -1686,7 +1686,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                             tcx.types.re_static,
                             tcx.mk_array(tcx.types.usize, 3),
                         )
-                        /* FIXME use actual fn pointers
+                        /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
                         all parent traits does not work, because some methods can

@@ -143,9 +143,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
+    // DILocations inherit source file name from the parent DIScope. Due to macro expansions
     // it may so happen that the current span belongs to a different file than the DIScope
-    // corresponding to span's containing source scope.  If so, we need to create a DIScope
+    // corresponding to span's containing source scope. If so, we need to create a DIScope
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
                               -> Option<Bx::DIScope> {

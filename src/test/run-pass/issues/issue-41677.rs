@@ -17,7 +17,7 @@ impl<H> Handle for ResizingHandle<H> {
     type Inner = H;
 }
 
-struct Receiver<T, H: Handle<Inner=T>>(PhantomData<H>);
+struct Receiver<T, H: Handle<Inner = T>>(PhantomData<H>);
 
 fn channel<T>(size: usize) -> Receiver<T, ResizingHandle<T>> {
     let rx = Receiver(PhantomData);

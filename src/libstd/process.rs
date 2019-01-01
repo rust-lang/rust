@@ -427,7 +427,7 @@ impl Command {
     /// The search path to be used may be controlled by setting the
     /// `PATH` environment variable on the Command,
     /// but this has some implementation limitations on Windows
-    /// (see <https://github.com/rust-lang/rust/issues/37519>).
+    /// (see issue #37519).
     ///
     /// # Examples
     ///
@@ -507,7 +507,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<I, S>(&mut self, args: I) -> &mut Command
-        where I: IntoIterator<Item=S>, S: AsRef<OsStr>
+        where I: IntoIterator<Item = S>, S: AsRef<OsStr>
     {
         for arg in args {
             self.arg(arg.as_ref());

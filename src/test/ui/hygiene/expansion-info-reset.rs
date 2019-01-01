@@ -1,4 +1,4 @@
-// FIXME: Investigate why expansion info for a single expansion id is reset from
+// FIXME: investigate why expansion info for a single expansion ID is reset from
 // `MacroBang(format_args)` to `MacroAttribute(derive(Clone))` (issue #52363).
 
 fn main() {

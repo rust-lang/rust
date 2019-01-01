@@ -192,7 +192,7 @@ want to capture values of an orderable type between two end-points, you can use
 a guard.
 
 ```compile_fail,E0029
-let string = "salutations !";
+let string = "salutations!";
 
 // The ordering relation for strings can't be evaluated at compile time,
 // so this doesn't work:
@@ -563,10 +563,10 @@ fn foo<F: Fn()>(f: F) {
 
 E0059: r##"
 The built-in function traits are generic over a tuple of the function arguments.
-If one uses angle-bracket notation (`Fn<(T,), Output=U>`) instead of parentheses
-(`Fn(T) -> U`) to denote the function trait, the type parameter should be a
-tuple. Otherwise function call notation cannot be used and the trait will not be
-implemented by closures.
+If one uses angle-bracket notation (`Fn<(T,), Output = U>`) instead of
+parentheses (`Fn(T) -> U`) to denote the function trait, the type parameter
+should be a tuple. Otherwise, function call notation cannot be used and the
+trait will not be implemented by closures.
 
 The most likely source of this error is using angle-bracket notation without
 wrapping the function argument type into a tuple, for example:
@@ -728,7 +728,7 @@ LinkedList::new() += 1;
 // ...
 
 fn some_func(i: &mut i32) {
-    i += 12; // Error : '+=' operation cannot be applied on a reference !
+    i += 12; // error: '+=' operation cannot be applied on a reference!
 }
 ```
 
@@ -737,12 +737,12 @@ And now some working examples:
 ```
 let mut i : i32 = 0;
 
-i += 12; // Good !
+i += 12; // good!
 
 // ...
 
 fn some_func(i: &mut i32) {
-    *i += 12; // Good !
+    *i += 12; // good!
 }
 ```
 "##,
@@ -785,10 +785,10 @@ const SOME_CONST : i32 = 12;
 fn some_other_func() {}
 
 fn some_function() {
-    SOME_CONST = 14; // error : a constant value cannot be changed!
-    1 = 3; // error : 1 isn't a valid place!
-    some_other_func() = 4; // error : we can't assign value to a function!
-    SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
+    SOME_CONST = 14; // error: a constant value cannot be changed!
+    1 = 3; // error: 1 isn't a valid place!
+    some_other_func() = 4; // error: we can't assign value to a function!
+    SomeStruct.x = 12; // error: SomeStruct a structure name but it is used
                        // like a variable!
 }
 ```
@@ -802,12 +802,12 @@ struct SomeStruct {
 }
 let mut s = SomeStruct {x: 0, y: 0};
 
-s.x = 3; // that's good !
+s.x = 3; // that's good!
 
 // ...
 
 fn some_func(x: &mut i32) {
-    *x = 12; // that's good !
+    *x = 12; // that's good!
 }
 ```
 "##,
@@ -2388,7 +2388,7 @@ impl Foo for isize {
     fn boo(&self) -> usize { 42 }
 }
 
-fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
 // error: associated type bindings are not allowed here
 ```
 
@@ -2398,7 +2398,7 @@ declaration:
 ```
 # struct Bar;
 # trait Foo { type A; }
-fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
+fn baz<I: Foo<A = Bar>>(x: &<I as Foo>::A) {} // ok!
 ```
 
 Or in the `where` clause:
@@ -2406,7 +2406,7 @@ Or in the `where` clause:
 ```
 # struct Bar;
 # trait Foo { type A; }
-fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
+fn baz<I>(x: &<I as Foo>::A) where I: Foo<A = Bar> {}
 ```
 "##,
 
@@ -3230,7 +3230,7 @@ A type parameter which references `Self` in its default value was not specified.
 Example of erroneous code:
 
 ```compile_fail,E0393
-trait A<T=Self> {}
+trait A<T = Self> {}
 
 fn together_we_will_rule_the_galaxy(son: &A) {}
 // error: the type parameter `T` must be explicitly specified in an
@@ -3250,7 +3250,7 @@ disallowed. Making the trait concrete by explicitly specifying the value of the
 defaulted parameter will fix this issue. Fixed example:
 
 ```
-trait A<T=Self> {}
+trait A<T = Self> {}
 
 fn together_we_will_rule_the_galaxy(son: &A<i32>) {} // Ok!
 ```

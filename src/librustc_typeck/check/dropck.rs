@@ -12,7 +12,7 @@ use util::common::ErrorReported;
 use syntax::ast;
 use syntax_pos::Span;
 
-/// check_drop_impl confirms that the Drop implementation identified by
+/// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
 /// attached to (Issue #8142).
 ///
@@ -21,7 +21,7 @@ use syntax_pos::Span;
 /// 1. The self type must be nominal (this is already checked during
 ///    coherence),
 ///
-/// 2. The generic region/type parameters of the impl's self-type must
+/// 2. The generic region/type parameters of the impl's self type must
 ///    all be parameters of the Drop impl itself (i.e., no
 ///    specialization like `impl Drop for Foo<i32>`), and,
 ///
@@ -53,7 +53,7 @@ pub fn check_drop_impl<'a, 'tcx>(
             )
         }
         _ => {
-            // Destructors only work on nominal types.  This was
+            // Destructors only work on nominal types. This was
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
@@ -72,8 +72,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 ) -> Result<(), ErrorReported> {
     let drop_impl_node_id = tcx.hir().as_local_node_id(drop_impl_did).unwrap();
 
-    // check that the impl type can be made to match the trait type.
-
+    // Check that the impl type can be made to match the trait type.
     tcx.infer_ctxt().enter(|ref infcx| {
         let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;
@@ -111,21 +110,21 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         }
 
         if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
-            // this could be reached when we get lazy normalization
+            // This could be reached when we get lazy normalization.
             infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }
 
         let region_scope_tree = region::ScopeTree::default();
 
-        // NB. It seems a bit... suspicious to use an empty param-env
-        // here. The correct thing, I imagine, would be
+        // FIXMKE(nmatsakis): it seems a bit suspicious to use an empty
+        // param-env here. The correct thing, I imagine, would be
         // `OutlivesEnvironment::new(impl_param_env)`, which would
         // allow region solving to take any `a: 'b` relations on the
         // impl into account. But I could not create a test case where
         // it did the wrong thing, so I chose to preserve existing
         // behavior, since it ought to be simply more
-        // conservative. -nmatsakis
+        // conservative.
         let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
 
         infcx.resolve_regions_and_report_errors(
@@ -236,9 +235,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     result
 }
 
-/// check_safety_of_destructor_if_necessary confirms that the type
+/// This function confirms that the type
 /// expression `typ` conforms to the "Drop Check Rule" from the Sound
-/// Generic Drop (RFC 769).
+/// Generic Drop RFC (#769).
 ///
 /// ----
 ///
@@ -287,7 +286,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// this conservative assumption (and thus assume the obligation of
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
-///
 pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: Ty<'tcx>,
@@ -295,7 +293,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     body_id: ast::NodeId,
     scope: region::Scope,
 ) -> Result<(), ErrorReported> {
-    debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
+    debug!("check_safety_of_destructor_if_necessary: typ={:?} scope={:?}",
            ty, scope);
 
     let parent_scope = match rcx.region_scope_tree.opt_encl_scope(scope) {
@@ -308,7 +306,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     let origin = || infer::SubregionOrigin::SafeDestructor(span);
     let cause = &ObligationCause::misc(span, body_id);
     let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
-    debug!("dropck_outlives = {:#?}", infer_ok);
+    debug!("check_safety_of_destructor_if_necessary: dropck_outlives={:#?}", infer_ok);
     let kinds = rcx.fcx.register_infer_ok_obligations(infer_ok);
     for kind in kinds {
         match kind.unpack() {

@@ -219,7 +219,7 @@ pub enum OrphanCheckErr<'tcx> {
 }
 
 /// Checks the coherence orphan rules. `impl_def_id` should be the
-/// def-id of a trait impl. To pass, either the trait must be local, or else
+/// def-ID of a trait impl. To pass, either the trait must be local, or else
 /// two conditions must be satisfied:
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.

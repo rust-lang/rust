@@ -633,7 +633,7 @@ impl fmt::Debug for File {
 
         #[cfg(target_os = "macos")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
-            // FIXME: The use of PATH_MAX is generally not encouraged, but it
+            // FIXME: the use of `PATH_MAX` is generally not encouraged, but it
             // is inevitable in this case because macOS defines `fcntl` with
             // `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
             // alternatives. If a better method is invented, it should be used

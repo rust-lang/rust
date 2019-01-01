@@ -16,7 +16,7 @@ where
     'b: 'a,
     T: 'a,
     U: (FnOnce(T) -> V) + 'static,
-    V: Iterator<Item=T> + Clone,
+    V: Iterator<Item = T> + Clone,
     W: std::ops::Add,
     W::Output: Copy,
 {}

@@ -6,7 +6,7 @@ use borrow_check::borrow_set::LocalsStateAtExit;
 
 /// Extension methods for the `Place` type.
 crate trait PlaceExt<'tcx> {
-    /// Returns true if we can safely ignore borrows of this place.
+    /// Returns whether we can safely ignore borrows of this place.
     /// This is true whenever there is no action that the user can do
     /// to the place `self` that would invalidate the borrow. This is true
     /// for borrows of raw pointer dereferents as well as shared references.
@@ -67,7 +67,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     match ty.sty {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and
-                        // therefore not significant.  In particular,
+                        // therefore not significant. In particular,
                         // there is nothing the user can do to the
                         // original path that would invalidate the
                         // newly created reference -- and if there

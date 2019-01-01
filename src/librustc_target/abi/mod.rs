@@ -786,7 +786,7 @@ pub enum Abi {
 }
 
 impl Abi {
-    /// Returns true if the layout corresponds to an unsized type.
+    /// Returns whether the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
             Abi::Uninhabited |
@@ -797,7 +797,7 @@ impl Abi {
         }
     }
 
-    /// Returns true if this is a single signed integer scalar
+    /// Returns whether this is a single signed integer scalar
     pub fn is_signed(&self) -> bool {
         match *self {
             Abi::Scalar(ref scal) => match scal.value {
@@ -808,7 +808,7 @@ impl Abi {
         }
     }
 
-    /// Returns true if this is an uninhabited type
+    /// Returns whether this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         match *self {
             Abi::Uninhabited => true,
@@ -924,12 +924,12 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
-    /// Returns true if the layout corresponds to an unsized type.
+    /// Returns whether the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()
     }
 
-    /// Returns true if the type is a ZST and not unsized.
+    /// Returns whether the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) |

@@ -4,7 +4,7 @@
 // it would get late bound lifetime parameters.
 // Variant constructors behave in the same way, lifetime parameters are considered
 // belonging to the enum and being early bound.
-// https://github.com/rust-lang/rust/issues/30904
+// See issue #30904.
 
 struct S<'a, 'b>(&'a u8, &'b u8);
 enum E<'a, 'b> {

@@ -145,7 +145,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     /// by the primary drop flag, but only the last rest-field dropped
     /// should clear it (and it must also not clear anything else).
     ///
-    /// FIXME: I think we should just control the flags externally
+    /// FIXME: i think we should just control the flags externally
     /// and then we do not need this machinery.
     pub fn elaborate_drop<'a>(&mut self, bb: BasicBlock) {
         debug!("elaborate_drop({:?})", self);

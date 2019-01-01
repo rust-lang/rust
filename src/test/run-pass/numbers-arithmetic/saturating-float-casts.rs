@@ -88,7 +88,7 @@ macro_rules! fptoui_tests {
 pub fn main() {
     common_fptoi_tests!(f* -> i8 i16 i32 i64 u8 u16 u32 u64);
     fptoui_tests!(f* -> u8 u16 u32 u64);
-    // FIXME emscripten does not support i128
+    // FIXME: emscripten does not support i128
     #[cfg(not(target_os="emscripten"))] {
         common_fptoi_tests!(f* -> i128 u128);
         fptoui_tests!(f* -> u128);

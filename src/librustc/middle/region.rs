@@ -86,7 +86,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// of each range is not really the important thing in the above
 /// picture, but rather the ending point.
 ///
-/// FIXME (pnkfelix): This currently derives `PartialOrd` and `Ord` to
+/// FIXME(pnkfelix): This currently derives `PartialOrd` and `Ord` to
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
@@ -125,7 +125,7 @@ pub enum ScopeData {
     // (they outlive its body).
     Arguments,
 
-    // Scope of destructors for temporaries of node-id.
+    // Scope of destructors for temporaries of node-ID.
     Destruction,
 
     // Scope following a `let id = expr;` binding in a block.
@@ -181,7 +181,7 @@ impl Scope {
     }
 
     /// Returns the span of this Scope.  Note that in general the
-    /// returned span may not correspond to the span of any node id in
+    /// returned span may not correspond to the span of any node-ID in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_, '_, '_>, scope_tree: &ScopeTree) -> Span {
         let node_id = self.node_id(tcx, scope_tree);
@@ -237,7 +237,7 @@ pub struct ScopeTree {
     /// which that variable is declared.
     var_map: FxHashMap<hir::ItemLocalId, Scope>,
 
-    /// maps from a node-id to the associated destruction scope (if any)
+    /// maps from a node-ID to the associated destruction scope (if any)
     destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
 
     /// `rvalue_scopes` includes entries for those expressions whose cleanup scope is
@@ -551,7 +551,7 @@ impl<'tcx> ScopeTree {
         self.is_subscope_of(scope2, scope1)
     }
 
-    /// Returns true if `subscope` is equal to or is lexically nested inside `superscope` and false
+    /// Returns whether `subscope` is equal to or is lexically nested inside `superscope` and false
     /// otherwise.
     pub fn is_subscope_of(&self,
                           subscope: Scope,
@@ -917,7 +917,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                 // The idea is that call.callee_id represents *the time when
                 // the invoked function is actually running* and call.id
                 // represents *the time to prepare the arguments and make the
-                // call*.  See the section "Borrows in Calls" borrowck/README.md
+                // call*. See the section "Borrows in Calls" borrowck/README.md
                 // for an extended explanation of why this distinction is
                 // important.
                 //

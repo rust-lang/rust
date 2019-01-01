@@ -31,7 +31,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
         //
-        // Note: this is a subtle algorithm.  For a full explanation,
+        // Note: this is a subtle algorithm. For a full explanation,
         // please see the large comment at the end of the file in the (inlined) module
         // `doc`.
 
@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     /// This routine is (as of this writing) used in trait matching,
     /// particularly projection.
     ///
-    /// NB. It should not happen that there are LBR appearing in `U`
+    /// N.B., it should not happen that there are LBR appearing in `U`
     /// that do not appear in `T`. If that happens, those regions are
     /// unconstrained, and this routine replaces them with `'static`.
     pub fn higher_ranked_match<T, U>(&mut self,
@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // unlikely to cause an ICE or two. It is intended for use
         // only during a transition period, in which the MIR typeck
         // uses the "universe-style" check, and the rest of typeck
-        // uses the more conservative leak check.  Since the leak
+        // uses the more conservative leak check. Since the leak
         // check is more conservative, we can't test the
         // universe-style check without disabling it.
         if self.tcx.sess.opts.debugging_opts.no_leak_check {

@@ -231,12 +231,12 @@ fn program_clauses_for_trait<'a, 'tcx>(
         .map(|wc| {
             // we move binders to the left
             wc.map_bound(|goal| ProgramClause {
-                // FIXME: As where clauses can only bind lifetimes for now, and that named
-                // bound regions have a def-id, it is safe to just inject `bound_vars` and
+                // FIXME: as where clauses can only bind lifetimes for now, and that named
+                // bound regions have a def-ID, it is safe to just inject `bound_vars` and
                 // `hypotheses` (which contain named vars bound at index `0`) into this
                 // binding level. This may change if we ever allow where clauses to bind
-                // types (e.g. for GATs things), because bound types only use a `BoundVar`
-                // index (no def-id).
+                // types (e.g., for GATs things), because bound types only use a `BoundVar`
+                // index (no def-ID).
                 goal: goal.subst(tcx, bound_vars).into_from_env_goal(),
                 hypotheses,
 
@@ -381,7 +381,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
             // move the binders to the left
             wc.map_bound(|goal| ProgramClause {
                 // FIXME: we inject `bound_vars` and `hypotheses` into this binding
-                // level, which may be incorrect in the future: see the FIXME in
+                // level, which may be incorrect in the future; see the FIXME in
                 // `program_clauses_for_trait`.
                 goal: goal.subst(tcx, bound_vars).into_from_env_goal(),
                 hypotheses,
@@ -545,7 +545,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // }
     // ```
     //
-    // FIXME: For the moment, we don't account for where clauses written on the associated
+    // FIXME: for the moment, we don't account for where clauses written on the associated
     // ty definition (i.e., in the trait def, as in `type AssocType<T> where T: Sized`).
     // ```
     // forall<P0..Pm> {

@@ -425,7 +425,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// for reservations, so that we don't report seemingly duplicate
     /// errors for corresponding activations
     ///
-    /// FIXME: Ideally this would be a set of BorrowIndex, not Places,
+    /// FIXME: ideally this would be a set of BorrowIndex, not Places,
     /// but it is currently inconvenient to track down the BorrowIndex
     /// at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
@@ -519,7 +519,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
                 //
-                // FIXME: Remove check that the place is initialized. This is
+                // FIXME: remove check that the place is initialized. This is
                 // needed for now because matches don't have never patterns yet.
                 // So this is the only place we prevent
                 //      let x: !;
@@ -898,7 +898,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// place is initialized and (b) it is not borrowed in some way that would prevent this
     /// access.
     ///
-    /// Returns true if an error is reported, false otherwise.
+    /// Returns whether an error is reported.
     fn access_place(
         &mut self,
         context: Context,
@@ -1724,15 +1724,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             //
             // and also this:
             //
-            // 3. `let mut s = ...; drop(s); s.x=Val;`
+            // 3. `let mut s = ...; drop(s); s.x = Val;`
             //
-            // This does not use check_if_path_or_subpath_is_moved,
+            // This does not use `check_if_path_or_subpath_is_moved`,
             // because we want to *allow* reinitializations of fields:
             // e.g., want to allow
             //
-            // `let mut s = ...; drop(s.x); s.x=Val;`
+            // `let mut s = ...; drop(s.x); s.x = Val;`
             //
-            // This does not use check_if_full_path_is_moved on
+            // This does not use `check_if_full_path_is_moved` on
             // `base`, because that would report an error about the
             // `base` as a whole, but in this scenario we *really*
             // want to report an error about the actual thing that was
@@ -1743,7 +1743,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let maybe_uninits = &flow_state.uninits;
 
             // Find the shortest uninitialized prefix you can reach
-            // without going over a Deref.
+            // without going over a `Deref`.
             let mut shortest_uninit_seen = None;
             for prefix in this.prefixes(base, PrefixSet::Shallow) {
                 let mpi = match this.move_path_for_place(prefix) {
@@ -1790,7 +1790,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Check the permissions for the given place and read or write kind
     ///
-    /// Returns true if an error is reported, false otherwise.
+    /// Returns whether an error is reported.
     fn check_access_permissions(
         &mut self,
         (place, span): (&Place<'tcx>, Span),
@@ -2107,7 +2107,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // `self.foo` -- we want to double
                                     // check that the context `*self`
                                     // is mutable (i.e., this is not a
-                                    // `Fn` closure).  But if that
+                                    // `Fn` closure). But if that
                                     // check succeeds, we want to
                                     // *blame* the mutability on
                                     // `place` (that is,

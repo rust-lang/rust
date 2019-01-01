@@ -507,7 +507,7 @@ Test Attributes:
     );
 }
 
-// FIXME: Copied from libsyntax until linkage errors are resolved. Issue #47566
+// FIXME: copied from libsyntax until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
     // Whether this is a feature-staged build, i.e., on the beta or stable channel
     let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
@@ -1017,7 +1017,7 @@ fn use_color(opts: &TestOpts) -> bool {
           all(target_arch = "wasm32", not(target_os = "emscripten")),
           target_env = "sgx"))]
 fn stdout_isatty() -> bool {
-    // FIXME: Implement isatty on Redox and SGX
+    // FIXME: implement isatty on Redox and SGX
     false
 }
 #[cfg(unix)]
@@ -1242,7 +1242,7 @@ fn get_concurrency() -> usize {
 
     #[cfg(target_os = "redox")]
     fn num_cpus() -> usize {
-        // FIXME: Implement num_cpus on Redox
+        // FIXME: implement num_cpus on Redox
         1
     }
 
@@ -1547,7 +1547,7 @@ impl MetricMap {
 /// pretend to use outputs to assist in avoiding dead-code
 /// elimination.
 ///
-/// This function is a no-op, and does not even read from `dummy`.
+/// This function is a noop, and does not even read from `dummy`.
 #[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))]
 pub fn black_box<T>(dummy: T) -> T {
     // we need to "use" the argument in some way LLVM can't

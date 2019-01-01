@@ -43,10 +43,10 @@ pub struct DataFlowContext<'a, 'tcx: 'a, O> {
     words_per_id: usize,
 
     // mapping from node to cfg node index
-    // FIXME (#6298): Shouldn't this go with CFG?
+    // FIXME(#6298): Shouldn't this go with CFG?
     local_id_to_index: FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
 
-    // Bit sets per cfg node.  The following three fields (`gens`, `kills`,
+    // Bit sets per cfg node. The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
     // `id_range`, there is a range of words equal to `words_per_id`.
     // So, to access the bits for any given id, you take a slice of
@@ -421,10 +421,10 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                     if (word & bit) != 0 {
                         // N.B., we round up the total number of bits
                         // that we store in any given bit set so that
-                        // it is an even multiple of usize::BITS.  This
+                        // it is an even multiple of usize::BITS. This
                         // means that there may be some stray bits at
                         // the end that do not correspond to any
-                        // actual value.  So before we callback, check
+                        // actual value. So before we callback, check
                         // whether the bit_index is greater than the
                         // actual value the user specified and stop
                         // iterating if so.

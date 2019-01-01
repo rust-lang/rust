@@ -93,7 +93,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Constant { .. } => {
-                // FIXME normalize patterns when possible
+                // FIXME: normalize patterns when possible
                 Err(match_pair)
             }
 

@@ -1,5 +1,5 @@
 // run-pass
-//compile-flags: -Z borrowck=mir
+// compile-flags: -Z borrowck=mir
 
 #![feature(slice_patterns)]
 

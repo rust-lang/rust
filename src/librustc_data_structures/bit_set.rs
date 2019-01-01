@@ -106,7 +106,7 @@ impl<T: Idx> BitSet<T> {
         self.words.iter().all(|a| *a == 0)
     }
 
-    /// Insert `elem`. Returns true if the set has changed.
+    /// Insert `elem`. Returns whether the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
@@ -126,7 +126,7 @@ impl<T: Idx> BitSet<T> {
         self.clear_excess_bits();
     }
 
-    /// Returns true if the set has changed.
+    /// Returns whether the set has changed.
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
@@ -611,7 +611,7 @@ impl<T: Idx> GrowableBitSet<T> {
         GrowableBitSet { bit_set: BitSet::new_empty(bits) }
     }
 
-    /// Returns true if the set has changed.
+    /// Returns whether the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
         self.ensure(elem.index() + 1);
@@ -668,7 +668,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     /// Sets the cell at `(row, column)` to true. Put another way, insert
     /// `column` to the bitset for `row`.
     ///
-    /// Returns true if this changed the matrix, and false otherwise.
+    /// Returns whether this changed the matrix.
     pub fn insert(&mut self, row: R, column: C) -> bool {
         assert!(row.index() < self.num_rows && column.index() < self.num_columns);
         let (start, _) = self.range(row);
@@ -793,7 +793,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Sets the cell at `(row, column)` to true. Put another way, insert
     /// `column` to the bitset for `row`.
     ///
-    /// Returns true if this changed the matrix, and false otherwise.
+    /// Returns whether this changed the matrix.
     pub fn insert(&mut self, row: R, column: C) -> bool {
         self.ensure_row(row).insert(column)
     }

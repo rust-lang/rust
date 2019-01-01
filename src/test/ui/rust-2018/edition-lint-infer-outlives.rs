@@ -193,7 +193,7 @@ struct TeeWhereOutlivesAyBeeYooWhereIsDebug<'a, 'b, T, U> where T: 'a + 'b, U: D
 
 // But outlives inference for 'static lifetimes is under a separate
 // feature-gate for now
-// (https://github.com/rust-lang/rust/issues/44493#issuecomment-407846046).
+// (see <https://github.com/rust-lang/rust/issues/44493#issuecomment-407846046>).
 struct StaticRef<T: 'static> {
     field: &'static T
 }

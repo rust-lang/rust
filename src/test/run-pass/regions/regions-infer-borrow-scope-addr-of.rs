@@ -8,7 +8,7 @@ pub fn main() {
     for i in 0_usize..3 {
         // ensure that the borrow in this alt
         // does not interfere with the swap
-        // below.  note that it would it you
+        // below. note that it would it you
         // naively borrowed &x for the lifetime
         // of the variable x, as we once did
         match i {

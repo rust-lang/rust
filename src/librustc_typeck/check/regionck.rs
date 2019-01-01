@@ -1,6 +1,6 @@
 //! The region check is a final pass that runs over the AST after we have
 //! inferred the type constraints but before we have actually finalized
-//! the types.  Its purpose is to embed a variety of region constraints.
+//! the types. Its purpose is to embed a variety of region constraints.
 //! Inserting these constraints as a separate pass is good because (1) it
 //! localizes the code that has to do with region inference and (2) often
 //! we cannot know what constraints are needed until the basic types have
@@ -34,17 +34,17 @@
 //! #### Reborrows
 //!
 //! Generally speaking, `regionck` does NOT try to ensure that the data
-//! `data` will outlive the pointer `x`. That is the job of borrowck.  The
+//! `data` will outlive the pointer `x`. That is the job of borrowck. The
 //! one exception is when "re-borrowing" the contents of another borrowed
 //! pointer. For example, imagine you have a borrowed pointer `b` with
-//! lifetime L1 and you have an expression `&*b`. The result of this
-//! expression will be another borrowed pointer with lifetime L2 (which is
+//! lifetime `L1` and you have an expression `&*b`. The result of this
+//! expression will be another borrowed pointer with lifetime `L2` (which is
 //! an inference variable). The borrow checker is going to enforce the
-//! constraint that L2 < L1, because otherwise you are re-borrowing data
-//! for a lifetime larger than the original loan.  However, without the
+//! constraint that `L2 < L1`, because otherwise you are re-borrowing data
+//! for a lifetime larger than the original loan. However, without the
 //! routines in this module, the region inferencer would not know of this
-//! dependency and thus it might infer the lifetime of L2 to be greater
-//! than L1 (issue #3148).
+//! dependency and thus it might infer the lifetime of `L2` to be greater
+//! than `L1` (issue #3148).
 //!
 //! There are a number of troublesome scenarios in the tests
 //! `region-dependent-*.rs`, but here is one example:
@@ -62,13 +62,13 @@
 //!
 //! The key point here is that when you are borrowing a value that
 //! is "guaranteed" by a borrowed pointer, you must link the
-//! lifetime of that borrowed pointer (L1, here) to the lifetime of
-//! the borrow itself (L2).  What do I mean by "guaranteed" by a
+//! lifetime of that borrowed pointer (`L1`, here) to the lifetime of
+//! the borrow itself (`L2`). What do I mean by "guaranteed" by a
 //! borrowed pointer? I mean any data that is reached by first
 //! dereferencing a borrowed pointer and then either traversing
-//! interior offsets or boxes.  We say that the guarantor
+//! interior offsets or boxes. We say that the guarantor
 //! of such data is the region of the borrowed pointer that was
-//! traversed.  This is essentially the same as the ownership
+//! traversed. This is essentially the same as the ownership
 //! relation, except that a borrowed pointer never owns its
 //! contents.
 
@@ -121,12 +121,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.param_env,
         );
 
-        // There are no add'l implied bounds when checking a
+        // There are no additional implied bounds when checking a
         // standalone expr (e.g., the `E` in a type like `[u32; E]`).
         rcx.outlives_environment.save_implied_bounds(id);
 
         if self.err_count_since_creation() == 0 {
-            // regionck assumes typeck succeeded
+            // regionck assumes typeck succeeded.
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
@@ -176,7 +176,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         if self.err_count_since_creation() == 0 {
-            // regionck assumes typeck succeeded
+            // regionck assumes typeck succeeded.
             rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
         }
 
@@ -248,11 +248,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         mem::replace(&mut self.repeating_scope, scope)
     }
 
-    /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
+    /// Try to resolve the type for the given node, returning `t_err` if an error results. Note that
     /// we never care about the details of the error, the same error will be detected and reported
     /// in the writeback phase.
     ///
-    /// Note one important point: we do not attempt to resolve *region variables* here.  This is
+    /// Note one important point: we do not attempt to resolve *region variables* here. This is
     /// because regionck is essentially adding constraints to those region variables and so may yet
     /// influence how they are resolved.
     ///
@@ -266,9 +266,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// }
     /// ```
     ///
-    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
-    /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
-    /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
+    /// Here, the region of `b` will be `<R0>`. `<R0>` is constrained to be some subregion of the
+    /// block B and some superregion of the call. If we forced it now, we'd choose the smaller
+    /// region (the call). But that would make the *b illegal. Since we don't resolve, the type
     /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -305,7 +305,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         body: &'gcx hir::Body,
         span: Span,
     ) {
-        // When we enter a function, we can derive
+        // When we enter a function, we can derive.
         debug!("visit_fn_body(id={})", id);
 
         let body_id = body.id();
@@ -322,7 +322,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             match self.tables.borrow().liberated_fn_sigs().get(fn_hir_id) {
                 Some(f) => f.clone(),
                 None => {
-                    bug!("No fn-sig entry for id={}", id);
+                    bug!("no fn-sig entry for id={}", id);
                 }
             }
         };
@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // For the return type, if diverging, substitute `bool` just
         // because it will have no effect.
         //
-        // FIXME(#27579) return types should not be implied bounds
+        // FIXME(#27579): return types should not be implied bounds.
         let fn_sig_tys: Vec<_> = fn_sig
             .inputs()
             .iter()
@@ -359,7 +359,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let call_site_scope = self.call_site_scope.unwrap();
         debug!(
-            "visit_fn_body body.id {:?} call_site_scope: {:?}",
+            "visit_fn_body: body.id={:?} call_site_scope={:?}",
             body.id(),
             call_site_scope
         );
@@ -439,7 +439,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
-    // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
+    // (..) FIXME(#3238): should use `visit_pat`, not `visit_arm`/`visit_local`,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
     // types of arguments that must be inferred. This could be
@@ -468,7 +468,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         );
 
         // Save state of current function before invoking
-        // `visit_fn_body`.  We will restore afterwards.
+        // `visit_fn_body`. We will restore afterwards.
         let old_body_id = self.body_id;
         let old_call_site_scope = self.call_site_scope;
         let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
@@ -477,16 +477,15 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         self.visit_fn_body(id, body, span);
 
         // Restore state from previous function.
-        self.outlives_environment
-            .pop_snapshot_post_closure(env_snapshot);
+        self.outlives_environment.pop_snapshot_post_closure(env_snapshot);
         self.call_site_scope = old_call_site_scope;
         self.body_id = old_body_id;
     }
 
-    //visit_pat: visit_pat, // (..) see above
+    // visit_pat: visit_pat, // (..) see above
 
     fn visit_arm(&mut self, arm: &'gcx hir::Arm) {
-        // see above
+        // See above.
         for p in &arm.pats {
             self.constrain_bindings_in_pat(p);
         }
@@ -494,7 +493,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn visit_local(&mut self, l: &'gcx hir::Local) {
-        // see above
+        // See above.
         self.constrain_bindings_in_pat(&l.pat);
         self.link_local(l);
         intravisit::walk_local(self, l);
@@ -550,7 +549,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 self.check_safety_of_rvalue_destructor_if_necessary(&head_cmt, expr.span);
             }
             Err(..) => {
-                self.tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
+                self.tcx.sess.delay_span_bug(expr.span, "cat_expr errored");
             }
         }
 
@@ -646,7 +645,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprKind::Cast(ref source, _) => {
                 // Determine if we are casting `source` to a trait
-                // instance.  If so, we have to be sure that the type of
+                // instance. If so, we have to be sure that the type of
                 // the source obeys the trait's region bound.
                 self.constrain_cast(expr, &source);
                 intravisit::walk_expr(self, expr);
@@ -997,7 +996,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         hir_id: hir::HirId,
         minimum_lifetime: ty::Region<'tcx>,
     ) {
-        // Try to resolve the type.  If we encounter an error, then typeck
+        // Try to resolve the type. If we encounter an error, then typeck
         // is going to fail anyway, so just stop here and let typeck
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(hir_id);

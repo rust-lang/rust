@@ -6,7 +6,7 @@
 //!   http://www.airs.com/blog/archives/464
 //!
 //! A reference implementation may be found in the GCC source tree
-//! (<root>/libgcc/unwind-c.c as of this writing)
+//! (`<root>/libgcc/unwind-c.c` as of this writing).
 
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
@@ -100,7 +100,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext)
                 }
             }
         }
-        // Ip is not present in the table.  This should not happen... but it does: issue #35011.
+        // Ip is not present in the table. This should not happen... but it does: issue #35011.
         // So rather than returning EHAction::Terminate, we do this.
         Ok(EHAction::None)
     } else {

@@ -40,7 +40,7 @@ pub trait Delegate<'tcx> {
 
     // The value found at `cmt` has been determined to match the
     // pattern binding `matched_pat`, and its subparts are being
-    // copied or moved depending on `mode`.  Note that `matched_pat`
+    // copied or moved depending on `mode`. Note that `matched_pat`
     // is called on all variant/structs in the pattern (i.e., the
     // interior nodes of the pattern's tree structure) while
     // consume_pat is called on the binding identifiers in the pattern
@@ -128,7 +128,7 @@ enum TrackMatchMode {
 
 impl TrackMatchMode {
     // Builds up the whole match mode for a pattern from its constituent
-    // parts.  The lattice looks like this:
+    // parts. The lattice looks like this:
     //
     //          Conflicting
     //            /     \

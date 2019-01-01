@@ -1,6 +1,6 @@
-// ignore-msvc FIXME #31306
+// ignore-msvc FIXME(#31306)
 
-// note that these aux-build directives must be in this order
+// Note that these aux-build directives must be in this order:
 // aux-build:changing-crates-a1.rs
 // aux-build:changing-crates-b.rs
 // aux-build:changing-crates-a2.rs

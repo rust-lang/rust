@@ -150,7 +150,7 @@ impl<'a> Iterator for SplitPaths<'a> {
         // Double quotes are used as a way of introducing literal semicolons
         // (since c:\some;dir is a valid Windows path). Double quotes are not
         // themselves permitted in path names, so there is no way to escape a
-        // double quote.  Quoted regions can appear in arbitrary locations, so
+        // double quote. Quoted regions can appear in arbitrary locations, so
         //
         //   c:\foo;c:\som"e;di"r;c:\bar
         //
@@ -188,7 +188,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+    where I: Iterator<Item = T>, T: AsRef<OsStr>
 {
     let mut joined = Vec::new();
     let sep = b';' as u16;

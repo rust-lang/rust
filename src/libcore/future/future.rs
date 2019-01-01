@@ -60,7 +60,7 @@ pub trait Future {
     /// progress, meaning that each time the current task is woken up, it should
     /// actively re-`poll` pending futures that it still has an interest in.
     ///
-    /// The `poll` function is not called repeatedly in a tight loop-- instead,
+    /// The `poll` function is not called repeatedly in a tight loop -- instead,
     /// it should only be called when the future indicates that it is ready to
     /// make progress (by calling `wake()`). If you're familiar with the
     /// `poll(2)` or `select(2)` syscalls on Unix it's worth noting that futures

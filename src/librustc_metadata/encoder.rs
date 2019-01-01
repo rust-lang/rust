@@ -412,7 +412,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_path_table = self.encode_def_path_table();
         let def_path_table_bytes = self.position() - i;
 
-        // Encode the def IDs of impls, for coherence checking.
+        // Encode the def-IDs of impls, for coherence checking.
         i = self.position();
         let impls = self.tracked(IsolatedEncoder::encode_impls, ());
         let impl_bytes = self.position() - i;
@@ -1443,7 +1443,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         // We're just going to write a list of crate 'name-hash-version's, with
         // the assumption that they are numbered 1 to n.
-        // FIXME (#2166): This is not nearly enough to support correct versioning
+        // FIXME(#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
         self.lazy_seq_ref(deps.iter().map(|&(_, ref dep)| dep))
     }

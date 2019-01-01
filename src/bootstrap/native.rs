@@ -195,7 +195,7 @@ impl Step for Llvm {
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
         } else {
             // LLDB requires libxml2; but otherwise we want it to be disabled.
-            // See https://github.com/rust-lang/rust/pull/50104
+            // See PR #50104.
             cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
         }
 

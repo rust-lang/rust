@@ -467,7 +467,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         ) -> &'ll DIScope {
             // First, let's see if this is a method within an inherent impl. Because
             // if yes, we want to make the result subroutine DIE a child of the
-            // subroutine's self-type.
+            // subroutine's self type.
             let self_type = cx.tcx.impl_of_method(instance.def_id()).and_then(|impl_def_id| {
                 // If the method does *not* belong to a trait, proceed
                 if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {

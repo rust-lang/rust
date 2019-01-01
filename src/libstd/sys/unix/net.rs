@@ -359,17 +359,17 @@ impl IntoInner<c_int> for Socket {
 }
 
 // In versions of glibc prior to 2.26, there's a bug where the DNS resolver
-// will cache the contents of /etc/resolv.conf, so changes to that file on disk
+// will cache the contents of `/etc/resolv.conf`, so changes to that file on disk
 // can be ignored by a long-running program. That can break DNS lookups on e.g.
 // laptops where the network comes and goes. See
-// https://sourceware.org/bugzilla/show_bug.cgi?id=984. Note however that some
+// <https://sourceware.org/bugzilla/show_bug.cgi?id=984>. Note however that some
 // distros including Debian have patched glibc to fix this for a long time.
 //
 // A workaround for this bug is to call the res_init libc function, to clear
 // the cached configs. Unfortunately, while we believe glibc's implementation
 // of res_init is thread-safe, we know that other implementations are not
-// (https://github.com/rust-lang/rust/issues/43592). Code here in libstd could
-// try to synchronize its res_init calls with a Mutex, but that wouldn't
+// (issue #43592). Code here in libstd could
+// try to synchronize its `res_init` calls with a `Mutex`, but that wouldn't
 // protect programs that call into libc in other ways. So instead of calling
 // res_init unconditionally, we call it only when we detect we're linking
 // against glibc version < 2.26. (That is, when we both know its needed and

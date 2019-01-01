@@ -48,7 +48,7 @@ macro_rules! impl_full_ops {
             impl FullOps for $ty {
                 fn full_add(self, other: $ty, carry: bool) -> (bool, $ty) {
                     // this cannot overflow, the output is between 0 and 2*2^nbits - 1
-                    // FIXME will LLVM optimize this into ADC or similar???
+                    // FIXME: will LLVM optimize this into ADC or similar???
                     let (v, carry1) = unsafe { intrinsics::add_with_overflow(self, other) };
                     let (v, carry2) = unsafe {
                         intrinsics::add_with_overflow(v, if carry {1} else {0})
@@ -156,7 +156,7 @@ macro_rules! define_bignum {
                 ((self.base[d] >> b) & 1) as u8
             }
 
-            /// Returns `true` if the bignum is zero.
+            /// Returns whether the bignum is zero.
             pub fn is_zero(&self) -> bool {
                 self.digits().iter().all(|&v| v == 0)
             }
@@ -394,7 +394,7 @@ macro_rules! define_bignum {
 
                 // Stupid slow base-2 long division taken from
                 // https://en.wikipedia.org/wiki/Division_algorithm
-                // FIXME use a greater base ($ty) for the long division.
+                // FIXME: use a greater base ($ty) for the long division.
                 assert!(!d.is_zero());
                 let digitbits = mem::size_of::<$ty>() * 8;
                 for digit in &mut q.base[..] {
@@ -476,7 +476,7 @@ macro_rules! define_bignum {
 /// The digit type for `Big32x40`.
 pub type Digit32 = u32;
 
-define_bignum!(Big32x40: type=Digit32, n=40);
+define_bignum!(Big32x40: type = Digit32, n=40);
 
 // this one is used for testing only.
 #[doc(hidden)]

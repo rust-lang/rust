@@ -1,7 +1,7 @@
 error: `crate_type` requires a value
   --> $DIR/no_crate_type.rs:2:1
    |
-LL | #![crate_type]  //~ ERROR `crate_type` requires a value
+LL | #![crate_type] //~ ERROR `crate_type` requires a value
    | ^^^^^^^^^^^^^^
    |
    = note: for example: `#![crate_type="lib"]`

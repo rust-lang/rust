@@ -2,7 +2,7 @@
 //! during const-evaluation by taking snapshots of the state of the interpreter
 //! at regular intervals.
 
-// This lives in `interpret` because it needs access to all sots of private state.  However,
+// This lives in `interpret` because it needs access to all sots of private state. However,
 // it is not used by the general miri engine, just by CTFE.
 
 use std::hash::{Hash, Hasher};
@@ -417,7 +417,7 @@ impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx>
 impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx>
 {
     fn eq(&self, other: &Self) -> bool {
-        // FIXME: This looks to be a *ridicolously expensive* comparison operation.
+        // FIXME: this looks to be a *ridicolously expensive* comparison operation.
         // Doesn't this make tons of copies?  Either `snapshot` is very badly named,
         // or it does!
         self.snapshot() == other.snapshot()

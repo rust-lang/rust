@@ -47,7 +47,7 @@ pub enum BoundRegion {
 
     /// Named region parameters for functions (a in &'a T)
     ///
-    /// The def-id is needed to distinguish free regions in
+    /// The def-ID is needed to distinguish free regions in
     /// the event of shadowing.
     BrNamed(DefId, InternedString),
 
@@ -335,7 +335,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 
     #[inline]
     pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
+        impl Iterator<Item = Ty<'tcx>> + 'tcx
     {
         let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
@@ -419,7 +419,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
     #[inline]
     pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
+        impl Iterator<Item = Ty<'tcx>> + 'tcx
     {
         let SplitGeneratorSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
@@ -444,7 +444,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// Return the "generator signature", which consists of its yield
     /// and return types.
     ///
-    /// NB. Some bits of the code prefers to see this wrapped in a
+    /// N.B., some bits of the code prefers to see this wrapped in a
     /// binder, but it never contains bound regions. Probably this
     /// function should be removed.
     pub fn poly_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> PolyGenSig<'tcx> {
@@ -469,7 +469,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a {
+    ) -> impl Iterator<Item = Ty<'tcx>> + Captures<'gcx> + 'a {
         let state = tcx.generator_layout(def_id).fields.iter();
         state.map(move |d| d.ty.subst(tcx, self.substs))
     }
@@ -478,7 +478,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// is available before the generator transformation.
     /// It includes the upvars and the state discriminant which is u32.
     pub fn pre_transforms_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'a
+        impl Iterator<Item = Ty<'tcx>> + 'a
     {
         self.upvar_tys(def_id, tcx).chain(iter::once(tcx.types.u32))
     }
@@ -486,7 +486,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// This is the types of all the fields stored in a generator.
     /// It includes the upvars, state types and the state discriminant which is u32.
     pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a
+        impl Iterator<Item = Ty<'tcx>> + Captures<'gcx> + 'a
     {
         self.pre_transforms_tys(def_id, tcx).chain(self.state_tys(def_id, tcx))
     }
@@ -501,7 +501,7 @@ pub enum UpvarSubsts<'tcx> {
 impl<'tcx> UpvarSubsts<'tcx> {
     #[inline]
     pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
+        impl Iterator<Item = Ty<'tcx>> + 'tcx
     {
         let upvar_kinds = match self {
             UpvarSubsts::Closure(substs) => substs.split(def_id, tcx).upvar_kinds,
@@ -578,7 +578,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=ExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = ExistentialProjection<'tcx>> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::Projection(p) => Some(p),
@@ -588,7 +588,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::AutoTrait(d) => Some(d),
@@ -605,17 +605,17 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=PolyExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = PolyExistentialProjection<'tcx>> + 'a {
         self.skip_binder().projection_bounds().map(Binder::bind)
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.skip_binder().auto_traits()
     }
 
     pub fn iter<'a>(&'a self)
-        -> impl DoubleEndedIterator<Item=Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
         self.skip_binder().iter().cloned().map(Binder::bind)
     }
 }
@@ -625,8 +625,8 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 ///
 ///     T: Foo<U>
 ///
-/// This would be represented by a trait-reference where the def-id is the
-/// def-id for the trait `Foo` and the substs define `T` as parameter 0,
+/// This would be represented by a trait-reference where the def-ID is the
+/// def-ID for the trait `Foo` and the substs define `T` as parameter 0,
 /// and `U` as parameter 1.
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
@@ -712,7 +712,7 @@ pub struct ExistentialTraitRef<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'b {
+    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'b {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
@@ -732,9 +732,9 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
         }
     }
 
-    /// Object types don't have a self-type specified. Therefore, when
+    /// Object types don't have a self type specified. Therefore, when
     /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self-type. A common choice is `mk_err()`
+    /// you must give *some* self type. A common choice is `mk_err()`
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>  {
@@ -755,9 +755,9 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
         self.skip_binder().def_id
     }
 
-    /// Object types don't have a self-type specified. Therefore, when
+    /// Object types don't have a self type specified. Therefore, when
     /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self-type. A common choice is `mk_err()`
+    /// you must give *some* self type. A common choice is `mk_err()`
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'_, '_, 'tcx>,
                         self_ty: Ty<'tcx>)
@@ -806,7 +806,7 @@ impl<T> Binder<T> {
     ///
     /// Some examples where `skip_binder` is reasonable:
     ///
-    /// - extracting the def-id from a PolyTraitRef;
+    /// - extracting the def-ID from a PolyTraitRef;
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
     ///   a type parameter `X`, since the type `X` does not reference any regions
     pub fn skip_binder(&self) -> &T {
@@ -1487,7 +1487,7 @@ impl RegionKind {
         flags
     }
 
-    /// Given an early-bound or free region, returns the def-id where it was bound.
+    /// Given an early-bound or free region, returns the def-ID where it was bound.
     /// For example, consider the regions in this snippet of code:
     ///
     /// ```
@@ -1502,10 +1502,10 @@ impl RegionKind {
     /// }
     /// ```
     ///
-    /// Here, `free_region_binding_scope('a)` would return the def-id
+    /// Here, `free_region_binding_scope('a)` would return the def-ID
     /// of the impl, and for all the other highlighted regions, it
-    /// would return the def-id of the function. In other cases (not shown), this
-    /// function might return the def-id of a closure.
+    /// would return the def-ID of the function. In other cases (not shown), this
+    /// function might return the def-ID of a closure.
     pub fn free_region_binding_scope(&self, tcx: TyCtxt<'_, '_, '_>) -> DefId {
         match self {
             ty::ReEarlyBound(br) => {
@@ -1688,7 +1688,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Returns `true` if this type is an `Arc<T>`.
+    /// Returns whether this type is an `Arc<T>`.
     pub fn is_arc(&self) -> bool {
         match self.sty {
             Adt(def, _) => def.is_arc(),
@@ -1696,7 +1696,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Returns `true` if this type is an `Rc<T>`.
+    /// Returns whether this type is an `Rc<T>`.
     pub fn is_rc(&self) -> bool {
         match self.sty {
             Adt(def, _) => def.is_rc(),
@@ -1731,7 +1731,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Returns true if this type is a floating point type and false otherwise.
+    /// Returns whether this type is a floating point type.
     pub fn is_floating_point(&self) -> bool {
         match self.sty {
             Float(_) |

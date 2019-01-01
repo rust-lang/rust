@@ -1,5 +1,5 @@
 // NOTE commented out due to issue #45994
-//pub fn fourway_add(a: i32) -> impl Fn(i32) -> impl Fn(i32) -> impl Fn(i32) -> i32 {
+// pub fn fourway_add(a: i32) -> impl Fn(i32) -> impl Fn(i32) -> impl Fn(i32) -> i32 {
 //    move |b| move |c| move |d| a + b + c + d
 //}
 

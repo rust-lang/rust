@@ -18,5 +18,5 @@ fn main() {
     let foo = Foo { a: s, b: wrap };
     std::mem::drop(foo.b);
     x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
-    // FIXME ^ Should not error in the future with implicit dtors, only manually implemented ones
+    // FIXME: ^ Should not error in the future with implicit dtors, only manually implemented ones
 }

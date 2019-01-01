@@ -88,7 +88,7 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
 
 /// Partially sorts a slice by shifting several out-of-order elements around.
 ///
-/// Returns `true` if the slice is sorted at the end. This function is `O(n)` worst-case.
+/// Returns whether the slice is sorted at the end. This function is `O(n)` worst-case.
 #[cold]
 fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
     where F: FnMut(&T, &T) -> bool
@@ -225,7 +225,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     let mut end_r = ptr::null_mut();
     let mut offsets_r = MaybeUninit::<[u8; BLOCK]>::uninitialized();
 
-    // FIXME: When we get VLAs, try creating one array of length `min(v.len(), 2 * BLOCK)` rather
+    // FIXME: when we get VLAs, try creating one array of length `min(v.len(), 2 * BLOCK)` rather
     // than two fixed-size arrays of length `BLOCK`. VLAs might be more cache-efficient.
 
     // Returns the number of elements between pointers `l` (inclusive) and `r` (exclusive).

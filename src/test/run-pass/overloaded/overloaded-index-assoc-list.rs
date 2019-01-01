@@ -1,5 +1,5 @@
 // run-pass
-// Test overloading of the `[]` operator.  In particular test that it
+// Test overloading of the `[]` operator. In particular test that it
 // takes its argument *by reference*.
 
 use std::ops::Index;

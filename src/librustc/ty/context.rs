@@ -575,10 +575,10 @@ impl<'tcx> TypeckTables<'tcx> {
 
     // Returns the type of an expression as a monotype.
     //
-    // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression. That is, in
     // some cases, we insert `Adjustment` annotations such as auto-deref or
-    // auto-ref.  The type returned by this function does not consider such
-    // adjustments.  See `expr_ty_adjusted()` instead.
+    // auto-ref. The type returned by this function does not consider such
+    // adjustments. See `expr_ty_adjusted()` instead.
     //
     // NB (2): This type doesn't provide type parameter substitutions; e.g., if you
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
@@ -846,7 +846,7 @@ impl<'tcx> CommonTypes<'tcx> {
 // conflict.
 #[derive(Debug)]
 pub struct FreeRegionInfo {
-    // def id corresponding to FreeRegion
+    // def-ID corresponding to FreeRegion
     pub def_id: DefId,
     // the bound region corresponding to FreeRegion
     pub boundregion: ty::BoundRegion,
@@ -1085,7 +1085,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value.lift_to_tcx(self.global_tcx())
     }
 
-    /// Returns true if self is the same as self.global_tcx().
+    /// Returns whether self is the same as self.global_tcx().
     fn is_global(self) -> bool {
         let local = self.interners as *const _;
         let global = &self.global_interners as *const _;
@@ -2461,7 +2461,7 @@ slice_interners!(
 
 // This isn't a perfect fit: CanonicalVarInfo slices are always
 // allocated in the global arena, so this `intern_method!` macro is
-// overly general.  But we just return false for the code that checks
+// overly general. But we just return false for the code that checks
 // whether they belong in the thread-local arena, so no harm done, and
 // seems better than open-coding the rest.
 intern_method! {
@@ -2763,7 +2763,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_predicates(self, preds: &[Predicate<'tcx>])
         -> &'tcx List<Predicate<'tcx>> {
-        // FIXME consider asking the input slice to be sorted to avoid
+        // FIXME: consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
         if preds.len() == 0 {
@@ -3003,7 +3003,7 @@ pub trait InternAs<T: ?Sized, R> {
 
 impl<I, T, R, E> InternAs<[T], R> for I
     where E: InternIteratorElement<T, R>,
-          I: Iterator<Item=E> {
+          I: Iterator<Item = E> {
     type Output = E::Output;
     fn intern_with<F>(self, f: F) -> Self::Output
         where F: FnOnce(&[T]) -> R {
@@ -3013,12 +3013,12 @@ impl<I, T, R, E> InternAs<[T], R> for I
 
 pub trait InternIteratorElement<T, R>: Sized {
     type Output;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
 }
 
 impl<T, R> InternIteratorElement<T, R> for T {
     type Output = R;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         f(&iter.collect::<SmallVec<[_; 8]>>())
     }
 }
@@ -3027,14 +3027,14 @@ impl<'a, T, R> InternIteratorElement<T, R> for &'a T
     where T: Clone + 'a
 {
     type Output = R;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
     }
 }
 
 impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     type Output = Result<R, E>;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         Ok(f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?))
     }
 }

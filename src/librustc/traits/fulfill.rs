@@ -23,7 +23,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     fn as_predicate(&self) -> &Self::Predicate { &self.obligation.predicate }
 }
 
-/// The fulfillment context is used to drive trait resolution.  It
+/// The fulfillment context is used to drive trait resolution. It
 /// consists of a list of obligations that must be (eventually)
 /// satisfied. The job is to track which are satisfied, which yielded
 /// errors, and which are still pending. At any point, users can call
@@ -176,7 +176,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                      infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                      obligation: PredicateObligation<'tcx>)
     {
-        // this helps to reduce duplicate errors, as well as making
+        // This helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
         let obligation = infcx.resolve_type_vars_if_possible(&obligation);
 
@@ -500,7 +500,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
 
     fn process_backedge<'c, I>(&mut self, cycle: I,
                                _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>)
-        where I: Clone + Iterator<Item=&'c PendingPredicateObligation<'tcx>>,
+        where I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
     {
         if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
             debug!("process_child_obligations: coinductive match");

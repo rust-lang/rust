@@ -619,7 +619,7 @@ impl<'a> Resolver<'a> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
         let Export { ident, def, vis, span } = child;
-        // FIXME: We shouldn't create the gensym here, it should come from metadata,
+        // FIXME: we shouldn't create the gensym here, it should come from metadata,
         // but metadata cannot encode gensyms currently, so we create it here.
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();

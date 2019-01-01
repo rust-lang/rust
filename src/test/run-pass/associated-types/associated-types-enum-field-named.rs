@@ -14,7 +14,7 @@ pub enum VarValue<K:UnifyKey> {
     Root { value: K::Value, rank: usize },
 }
 
-fn get<'a,K:UnifyKey<Value=Option<V>>,V>(table: &'a Vec<VarValue<K>>, key: &K) -> &'a Option<V> {
+fn get<'a,K:UnifyKey<Value = Option<V>>,V>(table: &'a Vec<VarValue<K>>, key: &K) -> &'a Option<V> {
     match table[key.to_index()] {
         VarValue::Redirect { to: ref k } => get(table, k),
         VarValue::Root { value: ref v, rank: _ } => v,

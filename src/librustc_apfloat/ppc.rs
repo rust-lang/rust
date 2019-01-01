@@ -27,7 +27,7 @@ pub type DoubleDouble = DoubleFloat<ieee::Double>;
 //   DoubleDouble -> (Double, Double) ->
 //   DoubleDouble's Fallback -> IEEE operations
 //
-// FIXME: Implement all operations in DoubleDouble, and delete these
+// FIXME: implement all operations in DoubleDouble, and delete these
 // semantics.
 // FIXME(eddyb) This shouldn't need to be `pub`, it's only used in bounds.
 pub struct FallbackS<F>(F);

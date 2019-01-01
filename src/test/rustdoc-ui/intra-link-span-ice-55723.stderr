@@ -1,5 +1,5 @@
 error: `[i]` cannot be resolved, ignoring it...
-  --> $DIR/intra-link-span-ice-55723.rs:11:10
+  --> $DIR/intra-link-span-ice-55723.rs:10:10
    |
 LL | /// （arr[i]）
    |           ^ cannot be resolved, ignoring

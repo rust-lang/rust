@@ -1,4 +1,4 @@
-// ignore-windows failing on 64-bit bots FIXME #17638
+// ignore-windows FIXME(#17638): failing on 64-bit bots
 // ignore-lldb
 // ignore-aarch64
 

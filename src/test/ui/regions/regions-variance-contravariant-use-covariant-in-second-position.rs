@@ -18,7 +18,7 @@ fn use_<'short,'long>(c: S<'long, 'short>,
     let _: S<'long, 'short> = c; // OK
     let _: S<'short, 'short> = c; // OK
 
-    // Test whether S<_,'short> <: S<_,'long>.  Since
+    // Test whether S<_,'short> <: S<_,'long>. Since
     // 'short <= 'long, this would be true if the Contravariant type were
     // covariant with respect to its parameter 'a.
 

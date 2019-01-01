@@ -46,7 +46,7 @@ fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
 
 fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
                           -> Lrc<Vec<ty::Variance>> {
-    let id = tcx.hir().as_local_node_id(item_def_id).expect("expected local def-id");
+    let id = tcx.hir().as_local_node_id(item_def_id).expect("expected local def-ID");
     let unsupported = || {
         // Variance not relevant.
         span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")

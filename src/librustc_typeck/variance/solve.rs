@@ -48,7 +48,7 @@ pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariance
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {
     fn solve(&mut self) {
-        // Propagate constraints until a fixed point is reached.  Note
+        // Propagate constraints until a fixed point is reached. Note
         // that the maximum number of iterations is 2C where C is the
         // number of constraints (each variable can change values at most
         // twice). Since number of constraints is linear in size of the

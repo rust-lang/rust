@@ -236,7 +236,7 @@ impl Session {
     ) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
-    // FIXME: This method should be removed (every error should have an associated error code).
+    // FIXME: this method should be removed (every error should have an associated error code).
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err(msg)
     }
@@ -391,7 +391,7 @@ impl Session {
             Some(next) => {
                 self.next_node_id.set(ast::NodeId::from_usize(next));
             }
-            None => bug!("Input too large, ran out of node ids!"),
+            None => bug!("Input too large, ran out of node-IDs!"),
         }
 
         id
@@ -702,7 +702,7 @@ impl Session {
             &self.sysroot,
             self.opts.target_triple.triple(),
             &self.opts.search_paths,
-            // target_tlib_path==None means it's the same as host_tlib_path.
+            // `target_tlib_path == None` means it's the same as `host_tlib_path`.
             self.target_tlib_path.as_ref().unwrap_or(&self.host_tlib_path),
             kind,
         )
@@ -1027,7 +1027,7 @@ pub fn build_session_with_source_map(
     source_map: Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Session {
-    // FIXME: This is not general enough to make the warning lint completely override
+    // FIXME: this is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
     let warnings_allow = sopts

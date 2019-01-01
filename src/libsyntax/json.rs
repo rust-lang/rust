@@ -7,7 +7,7 @@
 //! The format of the JSON output should be considered *unstable*. For now the
 //! structs at the end of this file (Diagnostic*) specify the error format.
 
-// FIXME spec the JSON output properly.
+// FIXME: spec the JSON output properly.
 
 use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};

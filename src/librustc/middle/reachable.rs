@@ -24,7 +24,7 @@ use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir::intravisit;
 
-// Returns true if the given item must be inlined because it may be
+// Returns whether the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
 fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -138,8 +138,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
-    // Returns true if the given def ID represents a local item that is
-    // eligible for inlining and false otherwise.
+    // Returns whether the given def-ID represents a local item that is
+    // eligible for inlining.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
         let node_id = match self.tcx.hir().as_local_node_id(def_id) {
             Some(node_id) => node_id,
@@ -326,7 +326,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // reachable if they are called from inlinable code. Generally, it's not known until
 // monomorphization if a specific trait impl item can be reachable or not. So, we
 // conservatively mark all of them as reachable.
-// FIXME: One possible strategy for pruning the reachable set is to avoid marking impl
+// FIXME: one possible strategy for pruning the reachable set is to avoid marking impl
 // items of non-exported traits (or maybe all local traits?) unless their respective
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.

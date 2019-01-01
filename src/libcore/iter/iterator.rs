@@ -423,7 +423,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
-        Self: Sized, U: IntoIterator<Item=Self::Item>,
+        Self: Sized, U: IntoIterator<Item = Self::Item>,
     {
         Chain{a: self, b: other.into_iter(), state: ChainState::Both}
     }
@@ -1568,7 +1568,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok = B>
     {
         let mut accum = init;
         while let Some(x) = self.next() {
@@ -2278,7 +2278,7 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
-        where Self: Sized + Iterator<Item=&'a T>, T: Clone
+        where Self: Sized + Iterator<Item = &'a T>, T: Clone
     {
         Cloned { it: self }
     }

@@ -1,5 +1,5 @@
 //! Utilities for parsing DWARF-encoded data streams.
-//! See http://www.dwarfstd.org,
+//! See <http://www.dwarfstd.org>,
 //! DWARF-4 standard, Section 7 - "Data Representation"
 
 // This module is used only by x86_64-pc-windows-gnu for now, but we

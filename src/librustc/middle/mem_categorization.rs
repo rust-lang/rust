@@ -3,7 +3,7 @@
 //! The job of the categorization module is to analyze an expression to
 //! determine what kind of memory is used in evaluating it (for example,
 //! where dereferences occur and what kind of pointer is dereferenced;
-//! whether the memory is mutable; etc)
+//! whether the memory is mutable, etc.).
 //!
 //! Categorization effectively transforms all of our expressions into
 //! expressions of the following forms (the actual enum has many more
@@ -16,21 +16,21 @@
 //!       | E.comp    // access to an interior component
 //!
 //! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-//! address where the result is to be found.  If Expr is a place, then this
-//! is the address of the place.  If Expr is an rvalue, this is the address of
+//! address where the result is to be found. If Expr is a place, then this
+//! is the address of the place. If `Expr` is an rvalue, this is the address of
 //! some temporary spot in memory where the result is stored.
 //!
-//! Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
+//! Now, `cat_expr()` classifies the expression `Expr` and the address `A = ToAddr(Expr)`
 //! as follows:
 //!
-//! - cat: what kind of expression was this?  This is a subset of the
+//! - `cat`: what kind of expression was this? This is a subset of the
 //!   full expression forms which only includes those that we care about
 //!   for the purpose of the analysis.
-//! - mutbl: mutability of the address A
-//! - ty: the type of data found at the address A
+//! - `mutbl`: mutability of the address `A`.
+//! - `ty`: the type of data found at the address `A`.
 //!
 //! The resulting categorization tree differs somewhat from the expressions
-//! themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
+//! themselves. For example, auto-derefs are explicit. Also, an index a[b] is
 //! decomposed into two operations: a dereference to reach the array data and
 //! then an index to jump forward to the relevant item.
 //!
@@ -154,10 +154,10 @@ pub enum MutabilityCategory {
     McInherited, // Inherited from the fact that owner is mutable.
 }
 
-// A note about the provenance of a `cmt`.  This is used for
+// A note about the provenance of a `cmt`. This is used for
 // special-case handling of upvars such as mutability inference.
 // Upvar categorization can generate a variable number of nested
-// derefs.  The note allows detecting them without deep pattern
+// derefs. The note allows detecting them without deep pattern
 // matching on the categorization.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Note {
@@ -658,7 +658,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 if self.tables.is_method_call(expr) {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
-                    // The call to index() returns a `&T` value, which
+                    // The call to `index()` returns a `&T` value, which
                     // is an rvalue. That is what we will be
                     // dereferencing.
                     self.cat_overloaded_place(expr, base, NoteIndex)
@@ -766,14 +766,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
         //
-        // `Categorization::Upvar`.  Next, we add a deref through the implicit
+        // `Categorization::Upvar`. Next, we add a deref through the implicit
         // environment pointer with an anonymous free region 'env and
         // appropriate borrow kind for closure kinds that take self by
-        // reference.  Finally, if the upvar was captured
-        // by-reference, we add a deref through that reference.  The
+        // reference. Finally, if the upvar was captured
+        // by-reference, we add a deref through that reference. The
         // region of this reference is an inference variable 'up that
         // was previously generated and recorded in the upvar borrow
-        // map.  The borrow kind bk is inferred by based on how the
+        // map. The borrow kind bk is inferred by based on how the
         // upvar is used.
         //
         // This results in the following table for concrete closure
@@ -892,9 +892,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let var_ty = cmt_result.ty;
 
-        // We need to add the env deref.  This means
+        // We need to add the env deref. This means
         // that the above is actually immutable and
-        // has a ref type.  However, nothing should
+        // has a ref type. However, nothing should
         // actually look at the type, so we can get
         // away with stuffing a `Error` in there
         // instead of bothering to construct a proper
@@ -1180,7 +1180,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // back?
         //
         // In general, the id of the cmt should be the node that
-        // "produces" the value---patterns aren't executable code
+        // "produces" the value -- patterns aren't executable code
         // exactly, but I consider them to "execute" when they match a
         // value, and I consider them to produce the value that was
         // matched. So if you have something like:
@@ -1347,7 +1347,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
                 PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
-                // box p1, &p1, &mut p1.  we can ignore the mutability of
+                // box p1, &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subcmt = Rc::new(self.cat_deref(pat, cmt, NoteNone)?);

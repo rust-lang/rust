@@ -371,7 +371,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.universal_regions.annotate(tcx, err)
     }
 
-    /// Returns true if the region `r` contains the point `p`.
+    /// Returns whether the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
     crate fn region_contains(&self, r: impl ToRegionVid, p: impl ToElementIndex) -> bool {
@@ -753,7 +753,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             //
             // This is needed because -- particularly in the case
             // where `ur` is a local bound -- we are sometimes in a
-            // position to prove things that our caller cannot.  See
+            // position to prove things that our caller cannot. See
             // #53570 for an example.
             if self.eval_verify_bound(tcx, mir, generic_ty, ur, &type_test.verify_bound) {
                 continue;
@@ -988,7 +988,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// different results. (For example, there might be two regions
     /// with the same value that are not in the same SCC).
     ///
-    /// NB. This is not an ideal approach and I would like to revisit
+    /// N.B., this is not an ideal approach and I would like to revisit
     /// it. However, it works pretty well in practice. In particular,
     /// this is needed to deal with projection outlives bounds like
     ///
@@ -1344,7 +1344,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         );
 
         // Extract the values of the free regions in `closure_substs`
-        // into a vector.  These are the regions that we will be
+        // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
             tcx,

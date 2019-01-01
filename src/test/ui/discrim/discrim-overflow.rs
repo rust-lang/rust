@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 
-// Issue 23030: Detect overflowing discriminant
+// Issue #23030: Detect overflowing discriminant
 
 // See also run-pass/discrim-explicit-23030.rs where the suggested
 // workaround is tested.

@@ -24,7 +24,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// the normalized value along with various outlives relations (in
     /// the form of obligations that must be discharged).
     ///
-    /// NB. This will *eventually* be the main means of
+    /// N.B., this will *eventually* be the main means of
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".

@@ -274,10 +274,10 @@ pub trait FileTypeExt {
 
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
-    fn is_block_device(&self) -> bool { false /*FIXME: Implement block device mode*/ }
-    fn is_char_device(&self) -> bool { false /*FIXME: Implement char device mode*/ }
-    fn is_fifo(&self) -> bool { false /*FIXME: Implement fifo mode*/ }
-    fn is_socket(&self) -> bool { false /*FIXME: Implement socket mode*/ }
+    fn is_block_device(&self) -> bool { false /*FIXME: implement block device mode*/ }
+    fn is_char_device(&self) -> bool { false /*FIXME: implement char device mode*/ }
+    fn is_fifo(&self) -> bool { false /*FIXME: implement fifo mode*/ }
+    fn is_socket(&self) -> bool { false /*FIXME: implement socket mode*/ }
 }
 
 /// Creates a new symbolic link on the filesystem.

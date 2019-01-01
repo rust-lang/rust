@@ -393,7 +393,7 @@ pub trait Float
     ///
     /// The *is_exact output tells whether the result is exact, in the sense
     /// that converting it back to the original floating point type produces
-    /// the original value. This is almost equivalent to result==Status::OK,
+    /// the original value. This is almost equivalent to `result == Status::OK`,
     /// except for negative zeroes.
     fn to_i128_r(self, width: usize, round: Round, is_exact: &mut bool) -> StatusAnd<i128> {
         let status;
@@ -463,13 +463,13 @@ pub trait Float
         }
     }
 
-    /// IEEE-754R isSignMinus: Returns true if and only if the current value is
+    /// IEEE-754R isSignMinus: Returns whether the current value is
     /// negative.
     ///
     /// This applies to zeros and NaNs as well.
     fn is_negative(self) -> bool;
 
-    /// IEEE-754R isNormal: Returns true if and only if the current value is normal.
+    /// IEEE-754R isNormal: Returns whether the current value is normal.
     ///
     /// This implies that the current value of the float is not zero, subnormal,
     /// infinite, or NaN following the definition of normality from IEEE-754R.
@@ -477,7 +477,7 @@ pub trait Float
         !self.is_denormal() && self.is_finite_non_zero()
     }
 
-    /// Returns true if and only if the current value is zero, subnormal, or
+    /// Returns whether the current value is zero, subnormal, or
     /// normal.
     ///
     /// This means that the value is not infinite or NaN.
@@ -485,26 +485,26 @@ pub trait Float
         !self.is_nan() && !self.is_infinite()
     }
 
-    /// Returns true if and only if the float is plus or minus zero.
+    /// Returns whether the float is plus or minus zero.
     fn is_zero(self) -> bool {
         self.category() == Category::Zero
     }
 
-    /// IEEE-754R isSubnormal(): Returns true if and only if the float is a
+    /// IEEE-754R isSubnormal(): Returns whether the float is a
     /// denormal.
     fn is_denormal(self) -> bool;
 
-    /// IEEE-754R isInfinite(): Returns true if and only if the float is infinity.
+    /// IEEE-754R isInfinite(): Returns whether the float is infinity.
     fn is_infinite(self) -> bool {
         self.category() == Category::Infinity
     }
 
-    /// Returns true if and only if the float is a quiet or signaling NaN.
+    /// Returns whether the float is a quiet or signaling NaN.
     fn is_nan(self) -> bool {
         self.category() == Category::NaN
     }
 
-    /// Returns true if and only if the float is a signaling NaN.
+    /// Returns whether the float is a signaling NaN.
     fn is_signaling(self) -> bool;
 
     // Simple Queries
@@ -523,19 +523,19 @@ pub trait Float
         self.is_zero() && self.is_negative()
     }
 
-    /// Returns true if and only if the number has the smallest possible non-zero
+    /// Returns whether the number has the smallest possible non-zero
     /// magnitude in the current semantics.
     fn is_smallest(self) -> bool {
         Self::SMALLEST.copy_sign(self).bitwise_eq(self)
     }
 
-    /// Returns true if and only if the number has the largest possible finite
+    /// Returns whether the number has the largest possible finite
     /// magnitude in the current semantics.
     fn is_largest(self) -> bool {
         Self::largest().copy_sign(self).bitwise_eq(self)
     }
 
-    /// Returns true if and only if the number is an exact integer.
+    /// Returns whether the number is an exact integer.
     fn is_integer(self) -> bool {
         // This could be made more efficient; I'm going for obviously correct.
         if !self.is_finite() {
@@ -581,7 +581,7 @@ pub trait FloatConvert<T: Float>: Float {
     /// The return value corresponds to the IEEE754 exceptions. *loses_info
     /// records whether the transformation lost information, i.e., whether
     /// converting the result back to the original type will produce the
-    /// original value (this is almost the same as return value==Status::OK,
+    /// original value (this is almost the same as return `value == Status::OK`,
     /// but there are edge cases where this is not so).
     fn convert_r(self, round: Round, loses_info: &mut bool) -> StatusAnd<T>;
     fn convert(self, loses_info: &mut bool) -> StatusAnd<T> {

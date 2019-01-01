@@ -142,7 +142,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
                 collector::MonoItemCollectionMode::Eager
             ).0.iter()
         );
-        // FIXME: Fix this
+        // FIXME: fix this.
         // ::rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);

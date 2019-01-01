@@ -478,7 +478,7 @@ impl<St: fmt::Debug, F> fmt::Debug for Unfold<St, F> {
 pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {
-    // If this function returned `impl Iterator<Item=T>`
+    // If this function returned `impl Iterator<Item = T>`
     // it could be based on `unfold` and not need a dedicated type.
     // However having a named `Successors<T, F>` type allows it to be `Clone` when `T` and `F` are.
     Successors {

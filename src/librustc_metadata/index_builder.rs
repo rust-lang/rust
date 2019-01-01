@@ -3,7 +3,7 @@
 //!
 //! ```
 //! <common::data> // big list of item-like things...
-//!    <common::data_item> // ...for most def-ids, there is an entry.
+//!    <common::data_item> // ...for most def-IDs, there is an entry.
 //!    </common::data_item>
 //! </common::data>
 //! ```
@@ -85,7 +85,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         }
     }
 
-    /// Emit the data for a def-id to the metadata. The function to
+    /// Emit the data for a def-ID to the metadata. The function to
     /// emit the data is `op`, and it will be given `data` as
     /// arguments. This `record` function will call `op` to generate
     /// the `Entry` (which may point to other encoded information)
@@ -214,7 +214,7 @@ impl<T> DepGraphRead for Untracked<T> {
 /// Newtype that can be used to package up misc data extracted from a
 /// HIR node that doesn't carry its own id. This will allow an
 /// arbitrary `T` to be passed in, but register a read on the given
-/// node-id.
+/// node-ID.
 pub struct FromId<T>(pub ast::NodeId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {

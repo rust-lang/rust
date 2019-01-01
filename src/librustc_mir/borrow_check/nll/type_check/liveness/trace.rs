@@ -280,7 +280,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         debug_assert!(self.drop_live_at.contains(term_point));
 
         // Otherwise, scan backwards through the statements in the
-        // block.  One of them may be either a definition or use
+        // block. One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
         debug_assert_eq!(
@@ -328,7 +328,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
             // would have been a "use-live" transition in the earlier
             // loop, and we'd have returned already.
             //
-            // NB. It's possible that the pred-block ends in a call
+            // N.B., it's possible that the pred-block ends in a call
             // which stores to the variable; in that case, the
             // variable may be uninitialized "at exit" because this
             // call only considers the *unconditional effects* of the

@@ -613,7 +613,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            // FIXME #21673: this help message could be tuned to the case
+            // FIXME(#21673): this help message could be tuned to the case
             // of a type parameter: suggest adding a trait bound rather
             // than implementing.
             err.help("items from traits can only be used if the trait is implemented and in scope");

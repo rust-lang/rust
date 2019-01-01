@@ -613,7 +613,7 @@ pub fn default_options() -> Vec<RenderOption> {
 pub fn render<'a,N,E,G,W>(g: &'a G, w: &mut W) -> io::Result<()>
     where N: Clone + 'a,
           E: Clone + 'a,
-          G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
+          G: Labeller<'a, Node = N, Edge = E> + GraphWalk<'a, Node = N, Edge = E>,
           W: Write
 {
     render_opts(g, w, &[])
@@ -627,7 +627,7 @@ pub fn render_opts<'a, N, E, G, W>(g: &'a G,
                                    -> io::Result<()>
     where N: Clone + 'a,
           E: Clone + 'a,
-          G: Labeller<'a, Node=N, Edge=E> + GraphWalk<'a, Node=N, Edge=E>,
+          G: Labeller<'a, Node = N, Edge = E> + GraphWalk<'a, Node = N, Edge = E>,
           W: Write
 {
     writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;

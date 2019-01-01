@@ -75,7 +75,7 @@ fn write(handle: c::DWORD, data: &[u8]) -> io::Result<usize> {
                          ptr::null_mut())
     })?;
 
-    // FIXME if this only partially writes the utf16 buffer then we need to
+    // FIXME: if this only partially writes the utf16 buffer then we need to
     //       figure out how many bytes of `data` were actually written
     assert_eq!(written as usize, utf16.len());
     Ok(utf8.len())
@@ -127,6 +127,11 @@ impl Stdin {
 
         // MemReader shouldn't error here since we just filled it
         utf8.read(buf)
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
     }
 }
 

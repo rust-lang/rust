@@ -164,11 +164,11 @@ pub struct SelectionCache<'tcx> {
 }
 
 /// The selection process begins by considering all impls, where
-/// clauses, and so forth that might resolve an obligation.  Sometimes
+/// clauses, and so forth that might resolve an obligation. Sometimes
 /// we'll be able to say definitively that (e.g.) an impl does not
 /// apply to the obligation: perhaps it is defined for `usize` but the
 /// obligation is for `int`. In that case, we drop the impl out of the
-/// list.  But the other cases are considered *candidates*.
+/// list. But the other cases are considered *candidates*.
 ///
 /// For selection to succeed, there must be exactly one matching
 /// candidate. If the obligation is fully known, this is guaranteed
@@ -332,7 +332,7 @@ enum BuiltinImplConditions<'tcx> {
 ///     - `EvaluatedToErr` implies `EvaluatedToRecur`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
-///     so they are no-ops when unioned with a definite error, and within
+///     so they are noops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
 pub enum EvaluationResult {
     /// Evaluation successful
@@ -1064,7 +1064,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     /// Further evaluate `candidate` to decide whether all type parameters match and whether nested
-    /// obligations are met. Returns true if `candidate` remains viable after this further
+    /// obligations are met. Returns whether `candidate` remains viable after this further
     /// scrutiny.
     fn evaluate_candidate<'o>(
         &mut self,
@@ -1119,8 +1119,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
-        // Avoid caching results that depend on more than just the trait-ref
-        // - the stack can create recursion.
+        // Avoid caching results that depend on more than just the trait-ref;
+        // the stack can create recursion.
         if result.is_stack_dependent() {
             return;
         }
@@ -1132,9 +1132,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     trait_ref, result,
                 );
                 // This may overwrite the cache with the same value
-                // FIXME: Due to #50507 this overwrites the different values
-                // This should be changed to use HashMapExt::insert_same
-                // when that is fixed
+                // FIXME: due to #50507 this overwrites the different values
+                // This should be changed to use `HashMapExt::insert_same`
+                // when that is fixed.
                 self.tcx()
                     .evaluation_cache
                     .hashmap
@@ -1351,7 +1351,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         //     impl<T:Clone> Vec<T> { fn push_clone(...) { ... } }
         //
         // and we were to see some code `foo.push_clone()` where `boo`
-        // is a `Vec<Bar>` and `Bar` does not implement `Clone`.  If
+        // is a `Vec<Bar>` and `Bar` does not implement `Clone`. If
         // we were to winnow, we'd wind up with zero candidates.
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
@@ -1465,7 +1465,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns true if the global caches can be used.
+    /// Returns whether the global caches can be used.
     /// Do note that if the type itself is not in the
     /// global tcx, the local caches will be used.
     fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
@@ -1694,7 +1694,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("assemble_candidates_for_projected_tys({:?})", obligation);
 
         // before we go into the whole placeholder thing, just
-        // quickly check if the self-type is a projection at all.
+        // quickly check if the self type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().sty {
             ty::Projection(_) | ty::Opaque(..) => {}
             ty::Infer(ty::TyVar(_)) => {
@@ -1895,7 +1895,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 candidates.vec.push(GeneratorCandidate);
             }
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_generator_candidates: ambiguous self-type");
+                debug!("assemble_generator_candidates: ambiguous self type");
                 candidates.ambiguous = true;
             }
             _ => {}
@@ -1951,7 +1951,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
+                debug!("assemble_unboxed_closure_candidates: ambiguous self type");
                 candidates.ambiguous = true;
             }
             _ => {}
@@ -1979,7 +1979,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let self_ty = *obligation.self_ty().skip_binder();
         match self_ty.sty {
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_fn_pointer_candidates: ambiguous self-type");
+                debug!("assemble_fn_pointer_candidates: ambiguous self type");
                 candidates.ambiguous = true; // could wind up being a fn() type
             }
             // provide an impl, but only for suitable `fn` pointers
@@ -2058,7 +2058,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
                 ty::Param(..) | ty::Projection(..) => {
                     // In these cases, we don't know what the actual
-                    // type is.  Therefore, we cannot break it down
+                    // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
                     // consider the `..` impl but instead just add no
                     // candidates: this means that typeck will only
@@ -2198,7 +2198,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // 2. Tightening the region bound, e.g., `Foo+'a` to `Foo+'b` if `'a : 'b`
                 //
                 // Note that neither of these changes requires any
-                // change at runtime.  Eventually this will be
+                // change at runtime. Eventually this will be
                 // generalized.
                 //
                 // We always upcast when we can because of reason
@@ -2266,8 +2266,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // type variables and then we also attempt to evaluate recursive
     // bounds to see if they are satisfied.
 
-    /// Returns true if `victim` should be dropped in favor of
-    /// `other`.  Generally speaking we will drop duplicate
+    /// Returns whether `victim` should be dropped in favor of
+    /// `other`. Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
@@ -2714,7 +2714,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     //
     // Confirmation unifies the output type parameters of the trait
     // with the values found in the obligation, possibly yielding a
-    // type error.  See the [rustc guide] for more details.
+    // type error. See the [rustc guide] for more details.
     //
     // [rustc guide]:
     // https://rust-lang.github.io/rustc-guide/traits/resolution.html#confirmation
@@ -2929,8 +2929,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             )
         });
 
-        // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
-        // predicate as usual.  It won't have any effect since auto traits are coinductive.
+        // Adds the predicates from the trait. Note that this contains a `Self: Trait`
+        // predicate as usual. It won't have any effect since auto traits are coinductive.
         obligations.extend(trait_obligations);
 
         debug!("vtable_auto_impl: obligations={:?}", obligations);
@@ -3000,7 +3000,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // are sufficient to determine the impl substs, without
         // relying on projections in the impl-trait-ref.
         //
-        // e.g., `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
+        // E.g., `impl<U: Tr, V: Iterator<Item = U>> Foo<<U as Tr>::T> for V`.
         impl_obligations.append(&mut substs.obligations);
 
         VtableImplData {
@@ -3263,7 +3263,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// we currently treat the input type parameters on the trait as
     /// outputs. This means that when we have a match we have only
     /// considered the self type, so we have to go back and make sure
-    /// to relate the argument types too.  This is kind of wrong, but
+    /// to relate the argument types too. This is kind of wrong, but
     /// since we control the full set of impls, also not that wrong,
     /// and it DOES yield better error messages (since we don't report
     /// errors as if there is no applicable impl, but rather report
@@ -3277,7 +3277,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ///     impl Fn(int) for Closure { ... }
     ///
     /// Now imagine our obligation is `Fn(usize) for Closure`. So far
-    /// we have matched the self-type `Closure`. At this point we'll
+    /// we have matched the self type `Closure`. At this point we'll
     /// compare the `int` to `usize` and generate an error.
     ///
     /// Note that this checking occurs *after* the impl has selected,
@@ -3536,7 +3536,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // Matching
     //
     // Matching is a common path used for both evaluation and
-    // confirmation.  It basically unifies types that appear in impls
+    // confirmation. It basically unifies types that appear in impls
     // and traits. This does affect the surrounding environment;
     // therefore, when used during evaluation, match routines must be
     // run inside of a `probe()` so that their side-effects are
@@ -3660,7 +3660,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     /// Normalize `where_clause_trait_ref` and try to match it against
-    /// `obligation`.  If successful, return any predicates that
+    /// `obligation`. If successful, return any predicates that
     /// result from the normalization. Normalization is necessary
     /// because where-clauses are stored in the parameter environment
     /// unnormalized.
@@ -3739,7 +3739,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         );
 
         // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an unboxed closure type and hence is
+        // that the self type is an unboxed closure type and hence is
         // in fact unparameterized (or at least does not reference any
         // regions bound in the obligation). Still probably some
         // refactoring could make this nicer.
@@ -3762,7 +3762,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let gen_sig = substs.poly_sig(closure_def_id, self.tcx());
 
         // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an generator type and hence is
+        // that the self type is an generator type and hence is
         // in fact unparameterized (or at least does not reference any
         // regions bound in the obligation). Still probably some
         // refactoring could make this nicer.
@@ -3797,7 +3797,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // each predicate must be preceded by the obligations required
         // to normalize it.
         // for example, if we have:
-        //    impl<U: Iterator, V: Iterator<Item=U>> Foo for V where U::Item: Copy
+        //    impl<U: Iterator, V: Iterator<Item = U>> Foo for V where U::Item: Copy
         // the impl will have the following predicates:
         //    <V as Iterator>::Item = U,
         //    U: Iterator, U: Sized,
@@ -3836,8 +3836,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // types.
         //
         // This code is hot enough that it's worth avoiding the allocation
-        // required for the FxHashSet when possible. Special-casing lengths 0,
-        // 1 and 2 covers roughly 75--80% of the cases.
+        // required for the FxHashSet when possible. Special-casing lengths `0`,
+        // `1` and `2` covers roughly 75 to 80% of the cases.
         if predicates.len() <= 1 {
             // No possibility of duplicates.
         } else if predicates.len() == 2 {

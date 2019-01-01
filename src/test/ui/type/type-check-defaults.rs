@@ -8,13 +8,13 @@ struct WellFormed<Z = Foo<i32, i32>>(Z);
 struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
 //~^ ERROR a collection of type `i32` cannot be built from an iterator over elements of type `i32`
 
-struct Bounds<T:Copy=String>(T);
+struct Bounds<T:Copy = String>(T);
 //~^ ERROR the trait bound `std::string::String: std::marker::Copy` is not satisfied [E0277]
 
-struct WhereClause<T=String>(T) where T: Copy;
+struct WhereClause<T = String>(T) where T: Copy;
 //~^ ERROR the trait bound `std::string::String: std::marker::Copy` is not satisfied [E0277]
 
-trait TraitBound<T:Copy=String> {}
+trait TraitBound<T:Copy = String> {}
 //~^ ERROR the trait bound `std::string::String: std::marker::Copy` is not satisfied [E0277]
 
 trait Super<T: Copy> { }

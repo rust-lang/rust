@@ -3,7 +3,7 @@
 // (To sanity-check the code, uncomment this.)
 // #![feature(quote)]
 
-// FIXME the error message that is current emitted seems pretty bad.
+// FIXME: the error message that is current emitted seems pretty bad.
 
 // gate-test-quote
 

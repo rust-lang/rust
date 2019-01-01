@@ -1356,7 +1356,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Paren(ex) => {
                 let sub_expr = folder.fold_expr(ex);
                 return Expr {
-                    // Nodes that are equal modulo `Paren` sugar no-ops should have the same ids.
+                    // Nodes that are equal modulo `Paren` sugar noops should have the same ids.
                     id: sub_expr.id,
                     node: ExprKind::Paren(sub_expr),
                     span: folder.new_span(span),

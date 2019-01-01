@@ -166,7 +166,7 @@ impl<N: Idx> LivenessValues<N> {
         self.points.rows()
     }
 
-    /// Adds the given element to the value for the given region. Returns true if
+    /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
     crate fn add_element(&mut self, row: N, location: Location) -> bool {
         debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
@@ -175,7 +175,7 @@ impl<N: Idx> LivenessValues<N> {
     }
 
     /// Adds all the elements in the given bit array into the given
-    /// region. Returns true if any of them are newly added.
+    /// region. Returns whether any of them are newly added.
     crate fn add_elements(&mut self, row: N, locations: &HybridBitSet<PointIndex>) -> bool {
         debug!(
             "LivenessValues::add_elements(row={:?}, locations={:?})",
@@ -291,7 +291,7 @@ impl<N: Idx> RegionValues<N> {
         }
     }
 
-    /// Adds the given element to the value for the given region. Returns true if
+    /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
     crate fn add_element(&mut self, r: N, elem: impl ToElementIndex) -> bool {
         debug!("add(r={:?}, elem={:?})", r, elem);

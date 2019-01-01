@@ -687,7 +687,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Iterates over all the stability attributes in the given crate.
     pub fn get_lib_features(&self) -> Vec<(ast::Name, Option<ast::Name>)> {
-        // FIXME: For a proc macro crate, not sure whether we should return the "host"
+        // FIXME: for a proc macro crate, not sure whether we should return the "host"
         // features or an empty Vec. Both don't cause ICEs.
         self.root
             .lib_features

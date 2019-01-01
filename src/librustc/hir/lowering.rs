@@ -15,7 +15,7 @@
 //! 'folding' an existing one), then you create a new id using `next_id()`.
 //!
 //! You must ensure that ids are unique. That means that you should only use the
-//! id from an AST node in a single HIR node (you can assume that AST node ids
+//! id from an AST node in a single HIR node (you can assume that AST node-IDs
 //! are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
 //! If you do, you must then set the new node's id to a fresh one.
 //!
@@ -139,7 +139,7 @@ pub trait Resolver {
         is_value: bool,
     ) -> hir::Path;
 
-    /// Obtain the resolution for a node-id.
+    /// Obtain the resolution for a node-ID.
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution>;
 
     /// Obtain the possible resolutions for the given `use` statement.
@@ -266,10 +266,10 @@ enum ParenthesizedGenericArgs {
 }
 
 /// What to do when we encounter an **anonymous** lifetime
-/// reference. Anonymous lifetime references come in two flavors.  You
+/// reference. Anonymous lifetime references come in two flavors. You
 /// have implicit, or fully elided, references to lifetimes, like the
 /// one in `&T` or `Ref<T>`, and you have `'_` lifetimes, like `&'_ T`
-/// or `Ref<'_, T>`.  These often behave the same, but not always:
+/// or `Ref<'_, T>`. These often behave the same, but not always:
 ///
 /// - certain usages of implicit references are deprecated, like
 ///   `Ref<T>`, and we sometimes just give hard errors in those cases
@@ -600,7 +600,7 @@ impl<'a> LoweringContext<'a> {
                 .resolver
                 .definitions()
                 .opt_def_index(owner)
-                .expect("You forgot to call `create_def_with_parent` or are lowering node ids \
+                .expect("You forgot to call `create_def_with_parent` or are lowering node-IDs \
                          that do not belong to the current owner");
 
             hir::HirId {
@@ -3074,7 +3074,7 @@ impl<'a> LoweringContext<'a> {
                 //
                 // The first two are produced by recursively invoking
                 // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth).  They
+                // like `use foo::{a::{b, c}}` and so forth). They
                 // wind up being directly added to
                 // `self.items`. However, the structure of this
                 // function also requires us to return one item, and
@@ -3155,7 +3155,7 @@ impl<'a> LoweringContext<'a> {
                 // because that affects rustdoc and also the lints
                 // about `pub` items. But we can't *always* make it
                 // private -- particularly not for restricted paths --
-                // because it contains node-ids that would then be
+                // because it contains node-IDs that would then be
                 // unused, failing the check that HirIds are "densely
                 // assigned".
                 match vis.node {
@@ -3178,7 +3178,7 @@ impl<'a> LoweringContext<'a> {
 
     /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
     /// many times in the HIR tree; for each occurrence, we need to assign distinct
-    /// node-ids. (See e.g., #56128.)
+    /// node-IDs. (See e.g., #56128.)
     fn renumber_segment_ids(&mut self, path: &P<hir::Path>) -> P<hir::Path> {
         debug!("renumber_segment_ids(path = {:?})", path);
         let mut path = path.clone();
@@ -4890,7 +4890,7 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    /// Given suffix ["b","c","d"], returns path `::std::b::c::d` when
+    /// Given the suffix `["b", "c", "d"]`, returns the path `::std::b::c::d` when
     /// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
     /// The path is also resolved according to `is_value`.
     fn std_path(
@@ -4903,7 +4903,6 @@ impl<'a> LoweringContext<'a> {
         let mut path = self.resolver
             .resolve_str_path(span, self.crate_root, components, is_value);
         path.segments.last_mut().unwrap().args = params;
-
 
         for seg in path.segments.iter_mut() {
             if let Some(id) = seg.id {
@@ -5031,7 +5030,7 @@ impl<'a> LoweringContext<'a> {
     /// `Box<dyn Debug + '_>`. In those cases, `lower_lifetime` is invoked.
     fn elided_dyn_bound(&mut self, span: Span) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
-            // NB. We intentionally ignore the create-parameter mode here.
+            // N.B., we intentionally ignore the create-parameter mode here.
             // and instead "pass through" to resolve-lifetimes, which will apply
             // the object-lifetime-defaulting rules. Elided object lifetime defaults
             // do not act like other elided lifetimes. In other words, given this:

@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-trait BrokenAdd: Copy + Add<Output=Self> {
+trait BrokenAdd: Copy + Add<Output = Self> {
     fn broken_add<T>(&self, rhs: T) -> Self {
         *self + rhs //~  ERROR mismatched types
                     //~| expected type `Self`
@@ -9,7 +9,7 @@ trait BrokenAdd: Copy + Add<Output=Self> {
     }
 }
 
-impl<T: Copy + Add<Output=T>> BrokenAdd for T {}
+impl<T: Copy + Add<Output = T>> BrokenAdd for T {}
 
 pub fn main() {
     let foo: u8 = 0;

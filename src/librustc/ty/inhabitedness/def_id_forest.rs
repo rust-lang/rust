@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     /// Calculate the intersection of a collection of forests.
     pub fn intersection<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                            iter: I) -> DefIdForest
-            where I: IntoIterator<Item=DefIdForest>
+            where I: IntoIterator<Item = DefIdForest>
     {
         let mut iter = iter.into_iter();
         let mut ret = if let Some(first) = iter.next() {
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     /// Calculate the union of a collection of forests.
     pub fn union<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     iter: I) -> DefIdForest
-            where I: IntoIterator<Item=DefIdForest>
+            where I: IntoIterator<Item = DefIdForest>
     {
         let mut ret = DefIdForest::empty();
         let mut next_ret = SmallVec::new();

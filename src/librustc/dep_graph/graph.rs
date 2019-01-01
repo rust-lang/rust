@@ -673,11 +673,11 @@ impl DepGraph {
         if did_allocation {
             // Only the thread which did the allocation emits the error messages
 
-            // FIXME: Ensure that these are printed before returning for all threads.
+            // FIXME: ensure that these are printed before returning for all threads.
             // Currently threads where did_allocation = false can continue on
             // and emit other diagnostics before these diagnostics are emitted.
             // Such diagnostics should be emitted after these.
-            // See https://github.com/rust-lang/rust/issues/48685
+            // See issue #48685.
             let diagnostics = tcx.queries.on_disk_cache
                                  .load_diagnostics(tcx, prev_dep_node_index);
 
@@ -708,7 +708,7 @@ impl DepGraph {
         Some(dep_node_index)
     }
 
-    // Returns true if the given node has been marked as green during the
+    // Returns whether the given node has been marked as green during the
     // current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode) -> bool {
         self.node_color(dep_node).map(|c| c.is_green()).unwrap_or(false)
@@ -836,7 +836,7 @@ pub(super) struct CurrentDepGraph {
     // problem during red-green marking: The color of an anonymous node from
     // the current session might "shadow" the color of the node with the same
     // ID from the previous session. In order to side-step this problem, we make
-    // sure that anon-node IDs allocated in different sessions don't overlap.
+    // sure that anon-node-IDs allocated in different sessions don't overlap.
     // This is implemented by mixing a session-key into the ID fingerprint of
     // each anon node. The session-key is just a random number generated when
     // the DepGraph is created.

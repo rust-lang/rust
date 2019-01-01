@@ -1,7 +1,7 @@
 use std::fmt;
 
 // This ia file with many multi-byte characters, to try to encourage
-// the compiler to trip on them.  The Drop implementation below will
+// the compiler to trip on them. The Drop implementation below will
 // need to have its source location embedded into the debug info for
 // the output file.
 

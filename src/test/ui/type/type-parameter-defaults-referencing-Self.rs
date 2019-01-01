@@ -3,7 +3,7 @@
 
 #![feature(default_type_params)]
 
-trait Foo<T=Self> {
+trait Foo<T = Self> {
     fn method(&self);
 }
 

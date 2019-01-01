@@ -3,7 +3,7 @@
 #![allow(non_camel_case_types)]
 #![feature(box_syntax)]
 
-//type t = { a: isize };
+// type t = { a: isize };
 // type t = { a: bool };
 type t = bool;
 

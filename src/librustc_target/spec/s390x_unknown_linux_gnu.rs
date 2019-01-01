@@ -4,7 +4,7 @@ pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".to_string();
-    // FIXME: The data_layout string below and the ABI implementation in
+    // FIXME: the data_layout string below and the ABI implementation in
     // cabi_s390x.rs are for now hard-coded to assume the no-vector ABI.
     // Pass the -vector feature string to LLVM to respect this assumption.
     base.features = "-vector".to_string();

@@ -1,7 +1,7 @@
 //! # Type Coercion
 //!
 //! Under certain circumstances we will coerce from one type to another,
-//! for example by auto-borrowing.  This occurs in situations where the
+//! for example by auto-borrowing. This occurs in situations where the
 //! compiler has a firm 'expected type' that was supplied from the user,
 //! and where the actual type is similar to that expected type in purpose
 //! but not in representation (so actual subtyping is inappropriate).
@@ -9,24 +9,24 @@
 //! ## Reborrowing
 //!
 //! Note that if we are expecting a reference, we will *reborrow*
-//! even if the argument provided was already a reference.  This is
+//! even if the argument provided was already a reference. This is
 //! useful for freezing mut/const things (that is, when the expected is &T
 //! but you have &const T or &mut T) and also for avoiding the linearity
-//! of mut things (when the expected is &mut T and you have &mut T).  See
+//! of mut things (when the expected is &mut T and you have &mut T). See
 //! the various `src/test/run-pass/coerce-reborrow-*.rs` tests for
 //! examples of where this is useful.
 //!
 //! ## Subtle note
 //!
 //! When deciding what type coercions to consider, we do not attempt to
-//! resolve any type variables we may encounter.  This is because `b`
+//! resolve any type variables we may encounter. This is because `b`
 //! represents the expected type "as the user wrote it", meaning that if
 //! the user defined a generic function like
 //!
 //!    fn foo<A>(a: A, b: A) { ... }
 //!
 //! and then we wrote `foo(&1, @2)`, we will not auto-borrow
-//! either argument.  In older code we went to some lengths to
+//! either argument. In older code we went to some lengths to
 //! resolve the `b` variable, which could mean that we'd
 //! auto-borrow later arguments but not earlier ones, which
 //! seems very confusing.
@@ -39,15 +39,15 @@
 //!    foo::<&int>(@1, @2)
 //!
 //! then we *will* auto-borrow, because we can't distinguish this from a
-//! function that declared `&int`.  This is inconsistent but it's easiest
+//! function that declared `&int`. This is inconsistent but it's easiest
 //! at the moment. The right thing to do, I think, is to consider the
 //! *unsubstituted* type when deciding whether to auto-borrow, but the
 //! *substituted* type when considering the bounds and so forth. But most
 //! of our methods don't give access to the unsubstituted type, and
-//! rightly so because they'd be error-prone.  So maybe the thing to do is
+//! rightly so because they'd be error-prone. So maybe the thing to do is
 //! to actually determine the kind of coercions that should occur
-//! separately and pass them in.  Or maybe it's ok as is.  Anyway, it's
-//! sort of a minor point so I've opted to leave it for later---after all
+//! separately and pass them in. Or maybe it's ok as is. Anyway, it's
+//! sort of a minor point so I've opted to leave it for later -- after all,
 //! we may want to adjust precisely when coercions occur.
 
 use check::{FnCtxt, Needs};
@@ -249,7 +249,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         // If we have a parameter of type `&M T_a` and the value
         // provided is `expr`, we will be adding an implicit borrow,
-        // meaning that we convert `f(expr)` to `f(&M *expr)`.  Therefore,
+        // meaning that we convert `f(expr)` to `f(&M *expr)`. Therefore,
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
@@ -276,7 +276,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 continue;
             }
 
-            // At this point, we have deref'd `a` to `referent_ty`.  So
+            // At this point, we have deref'd `a` to `referent_ty`. So,
             // imagine we are coercing from `&'a mut Vec<T>` to `&'b mut [T]`.
             // In the autoderef loop for `&'a mut Vec<T>`, we would get
             // three callbacks:
@@ -307,7 +307,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             // - if in sub mode, that means we want to use `'b` (the
             //   region from the target reference) for both
             //   pointers [2]. This is because sub mode (somewhat
-            //   arbitrarily) returns the subtype region.  In the case
+            //   arbitrarily) returns the subtype region. In the case
             //   where we are coercing to a target type, we know we
             //   want to use that target type region (`'b`) because --
             //   for the program to type-check -- it must be the
@@ -319,7 +319,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             //     annotate the region of a borrow), and regionck has
             //     code that adds edges from the region of a borrow
             //     (`'b`, here) into the regions in the borrowed
-            //     expression (`*x`, here).  (Search for "link".)
+            //     expression (`*x`, here). (Search for "link".)
             // - if in lub mode, things can get fairly complicated. The
             //   easiest thing is just to make a fresh
             //   region variable [4], which effectively means we defer
@@ -393,8 +393,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         if ty == a && mt_a.mutbl == hir::MutImmutable && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
-            // a total no-op. We end up with the type `&'a T` just as
-            // we started with.  In that case, just skip it
+            // a total noop. We end up with the type `&'a T` just as
+            // we started with. In that case, just skip it
             // altogether. This is just an optimization.
             //
             // Note that for `&mut`, we DO want to reborrow --
@@ -1032,7 +1032,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     }
 
     /// Return the "expected type" with which this coercion was
-    /// constructed.  This represents the "downward propagated" type
+    /// constructed. This represents the "downward propagated" type
     /// that was given to us at the start of typing whatever construct
     /// we are typing (e.g., the match expression).
     ///
@@ -1153,7 +1153,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             //     if let Some(x) = ... { }
             //
             // we wind up with a second match arm that is like `_ =>
-            // ()`.  That is the case we are considering here. We take
+            // ()`. That is the case we are considering here. We take
             // a different path to get the right "expected, found"
             // message and so forth (and because we know that
             // `expression_ty` will be unit).

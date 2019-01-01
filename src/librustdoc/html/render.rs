@@ -1,4 +1,4 @@
-//! Rustdoc's HTML Rendering module
+//! Rustdoc's HTML rendering module.
 //!
 //! This modules contains the bulk of the logic necessary for rendering a
 //! rustdoc `clean::Crate` instance to a set of static HTML pages. This
@@ -267,7 +267,7 @@ pub struct Cache {
     /// found on that implementation.
     pub impls: FxHashMap<DefId, Vec<Impl>>,
 
-    /// Maintains a mapping of local crate node ids to the fully qualified name
+    /// Maintains a mapping of local crate node-IDs to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
@@ -278,7 +278,7 @@ pub struct Cache {
     /// generating explicit hyperlinks to other crates.
     pub external_paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
 
-    /// Maps local def ids of exported types to fully qualified paths.
+    /// Maps local def-IDs of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
     /// due to 'use' statements.
     ///
@@ -2597,7 +2597,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     //
     // `Double` will appear twice in the generated docs.
     //
-    // FIXME: This code is quite ugly and could be improved. Small issue: DefId
+    // FIXME: this code is quite ugly and could be improved. Small issue: `DefId`
     // can be identical even if the elements are different (mostly in imports).
     // So in case this is an import, we keep everything by adding a "unique id"
     // (which is the position in the vector).
@@ -4356,7 +4356,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                path = relpath)?;
         if parentlen == 0 {
             // There is no sidebar-items.js beyond the crate root path
-            // FIXME maybe dynamic crate loading can be merged here
+            // FIXME: maybe dynamic crate loading can be merged here
         } else {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                    path = relpath)?;

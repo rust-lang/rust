@@ -9,7 +9,7 @@ trait Foo {
 
 struct Wrapper<T>(T);
 
-impl<T> Foo for Wrapper<T> where for<'a> &'a T: IntoIterator<Item=&'a ()> {}
+impl<T> Foo for Wrapper<T> where for<'a> &'a T: IntoIterator<Item = &'a ()> {}
 
 fn f(x: Wrapper<Vec<()>>) {
     x.method(); // This works.

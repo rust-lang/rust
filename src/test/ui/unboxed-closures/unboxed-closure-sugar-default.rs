@@ -4,7 +4,7 @@
 #![feature(unboxed_closures)]
 #![allow(dead_code)]
 
-trait Foo<T,V=T> {
+trait Foo<T,V = T> {
     type Output;
     fn dummy(&self, t: T, v: V);
 }

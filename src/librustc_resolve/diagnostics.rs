@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-// Error messages for EXXXX errors.  Each message should start and end with a
-// new line, and be wrapped to 80 characters.  In vim you can `:set tw=80` and
+// Error messages for EXXXX errors. Each message should start and end with a
+// new line, and be wrapped to 80 characters. In vim you can `:set tw=80` and
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
 
@@ -10,7 +10,7 @@ Type parameter defaults can only use parameters that occur before them.
 Erroneous code example:
 
 ```compile_fail,E0128
-struct Foo<T=U, U=()> {
+struct Foo<T = U, U=()> {
     field1: T,
     filed2: U,
 }
@@ -22,7 +22,7 @@ Since type parameters are evaluated in-order, you may be able to fix this issue
 by doing:
 
 ```
-struct Foo<U=(), T=U> {
+struct Foo<U=(), T = U> {
     field1: T,
     filed2: U,
 }

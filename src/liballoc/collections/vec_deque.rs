@@ -127,7 +127,7 @@ impl<T> VecDeque<T> {
         ptr::write(self.ptr().add(off), value);
     }
 
-    /// Returns `true` if and only if the buffer is at full capacity.
+    /// Returns whether the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
         self.cap() - self.len() == 1
@@ -910,7 +910,7 @@ impl<T> VecDeque<T> {
         count(self.tail, self.head, self.cap())
     }
 
-    /// Returns `true` if the `VecDeque` is empty.
+    /// Returns whether the `VecDeque` is empty.
     ///
     /// # Examples
     ///
@@ -935,7 +935,7 @@ impl<T> VecDeque<T> {
     ///
     /// Note 2: It is unspecified how many elements are removed from the deque,
     /// if the `Drain` value is not dropped, but the borrow it holds expires
-    /// (eg. due to mem::forget).
+    /// (e.g., due to `mem::forget`).
     ///
     /// # Panics
     ///
@@ -1017,7 +1017,7 @@ impl<T> VecDeque<T> {
                 tail: drain_tail,
                 head: drain_head,
                 // Crucially, we only create shared references from `self` here and read from
-                // it.  We do not write to `self` nor reborrow to a mutable reference.
+                // it. We do not write to `self` nor reborrow to a mutable reference.
                 // Hence the raw pointer we created above, for `deque`, remains valid.
                 ring: unsafe { self.buffer_as_slice() },
             },
@@ -1042,7 +1042,7 @@ impl<T> VecDeque<T> {
         self.drain(..);
     }
 
-    /// Returns `true` if the `VecDeque` contains an element equal to the
+    /// Returns whether the `VecDeque` contains an element equal to the
     /// given value.
     ///
     /// # Examples

@@ -9,7 +9,7 @@ pub fn has_closures() -> usize {
     f() + g()
 }
 
-pub fn has_generic_closures<T: Add<Output=T> + Copy>(x: T, y: T) -> T {
+pub fn has_generic_closures<T: Add<Output = T> + Copy>(x: T, y: T) -> T {
     let mut f = move || x;
     let g = || y;
     f() + g()

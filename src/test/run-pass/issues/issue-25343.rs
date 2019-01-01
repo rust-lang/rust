@@ -6,7 +6,7 @@ fn main() {
         }
     };
 
-    // More cases added from issue 31754
+    // More cases added from issue #31754
 
     'label2: loop {
         break;

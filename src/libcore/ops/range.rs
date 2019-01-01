@@ -86,7 +86,7 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 }
 
 impl<Idx: PartialOrd<Idx>> Range<Idx> {
-    /// Returns `true` if `item` is contained in the range.
+    /// Returns whether `item` is contained in the range.
     ///
     /// # Examples
     ///
@@ -117,7 +117,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
-    /// Returns `true` if the range contains no items.
+    /// Returns whether the range contains no items.
     ///
     /// # Examples
     ///
@@ -185,7 +185,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
 }
 
 impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
-    /// Returns `true` if `item` is contained in the range.
+    /// Returns whether `item` is contained in the range.
     ///
     /// # Examples
     ///
@@ -267,7 +267,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 }
 
 impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
-    /// Returns `true` if `item` is contained in the range.
+    /// Returns whether `item` is contained in the range.
     ///
     /// # Examples
     ///
@@ -459,7 +459,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
 }
 
 impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
-    /// Returns `true` if `item` is contained in the range.
+    /// Returns whether `item` is contained in the range.
     ///
     /// # Examples
     ///
@@ -491,7 +491,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
-    /// Returns `true` if the range contains no items.
+    /// Returns whether the range contains no items.
     ///
     /// # Examples
     ///
@@ -593,7 +593,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
 
 #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
-    /// Returns `true` if `item` is contained in the range.
+    /// Returns whether `item` is contained in the range.
     ///
     /// # Examples
     ///
@@ -713,7 +713,7 @@ pub trait RangeBounds<T: ?Sized> {
     fn end_bound(&self) -> Bound<&T>;
 
 
-    /// Returns `true` if `item` is contained in the range.
+    /// Returns whether `item` is contained in the range.
     ///
     /// # Examples
     ///

@@ -122,7 +122,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     /// Thinking of `x R y` as an edge `x -> y` in a graph, this
     /// returns all things reachable from `a`.
     ///
-    /// Really this probably ought to be `impl Iterator<Item=&T>`, but
+    /// Really this probably ought to be `impl Iterator<Item = &T>`, but
     /// I'm too lazy to make that work, and -- given the caching
     /// strategy -- it'd be a touch tricky anyhow.
     pub fn reachable_from(&self, a: &T) -> Vec<&T> {
@@ -231,7 +231,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             // values. So here is what we do:
             //
             // 1. Find the vector `[X | a < X && b < X]` of all values
-            //    `X` where `a < X` and `b < X`.  In terms of the
+            //    `X` where `a < X` and `b < X`. In terms of the
             //    graph, this means all values reachable from both `a`
             //    and `b`. Note that this vector is also a set, but we
             //    use the term vector because the order matters

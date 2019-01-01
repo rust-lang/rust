@@ -41,7 +41,7 @@ pub struct Constraint<'a> {
 ///     }
 ///
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
-/// the def-id and the start of `Foo`'s inferreds.
+/// the def-ID and the start of `Foo`'s inferreds.
 pub struct CurrentItem {
     inferred_start: InferredIndex,
 }
@@ -200,7 +200,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn xform(&mut self, v1: VarianceTermPtr<'a>, v2: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         match (*v1, *v2) {
             (_, ConstantTerm(ty::Covariant)) => {
-                // Applying a "covariant" transform is always a no-op
+                // Applying a "covariant" transform is always a noop
                 v1
             }
 

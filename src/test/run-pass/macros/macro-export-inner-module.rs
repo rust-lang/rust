@@ -1,5 +1,5 @@
 // run-pass
-//aux-build:macro_export_inner_module.rs
+// aux-build:macro_export_inner_module.rs
 
 #[macro_use] #[no_link]
 extern crate macro_export_inner_module;

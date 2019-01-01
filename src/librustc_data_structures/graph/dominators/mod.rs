@@ -126,7 +126,7 @@ impl<Node: Idx> Dominators<Node> {
     }
 
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
-        // FIXME -- could be optimized by using post-order-rank
+        // FIXME: could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
     }
 

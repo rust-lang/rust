@@ -1,4 +1,4 @@
-// FIXME: Change to UI Test
+// FIXME: change to UI test.
 // Check notes are placed on an assignment that can actually precede the current assignment
 // Don't emit a first assignment for assignment in a loop.
 

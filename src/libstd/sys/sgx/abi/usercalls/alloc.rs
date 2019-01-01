@@ -63,44 +63,49 @@ pub unsafe trait UserSafe {
 
     /// Construct a pointer to `Self` given a memory range in user space.
     ///
-    /// NB. This takes a size, not a length!
+    /// N.B., this takes a size, not a length!
     ///
     /// # Safety
+    ///
     /// The caller must ensure the memory range is in user memory, is the
     /// correct size and is correctly aligned and points to the right type.
     unsafe fn from_raw_sized_unchecked(ptr: *mut u8, size: usize) -> *mut Self;
 
     /// Construct a pointer to `Self` given a memory range.
     ///
-    /// NB. This takes a size, not a length!
+    /// N.B., this takes a size, not a length!
     ///
     /// # Safety
+    ///
     /// The caller must ensure the memory range points to the correct type.
     ///
     /// # Panics
+    ///
     /// This function panics if:
     ///
-    /// * The pointer is not aligned
-    /// * The pointer is null
-    /// * The pointed-to range is not in user memory
+    /// * the pointer is not aligned.
+    /// * the pointer is null.
+    /// * the pointed-to range is not in user memory.
     unsafe fn from_raw_sized(ptr: *mut u8, size: usize) -> NonNull<Self> {
         let ret = Self::from_raw_sized_unchecked(ptr, size);
         Self::check_ptr(ret);
         NonNull::new_unchecked(ret as _)
     }
 
-    /// Check if a pointer may point to Self in user memory.
+    /// Check if a pointer may point to `Self` in user memory.
     ///
     /// # Safety
+    ///
     /// The caller must ensure the memory range points to the correct type and
     /// length (if this is a slice).
     ///
     /// # Panics
+    ///
     /// This function panics if:
     ///
-    /// * The pointer is not aligned
-    /// * The pointer is null
-    /// * The pointed-to range is not in user memory
+    /// * the pointer is not aligned.
+    /// * the pointer is null.
+    /// * the pointed-to range is not in user memory.
     unsafe fn check_ptr(ptr: *const Self) {
         let is_aligned = |p| -> bool {
             0 == (p as usize) & (Self::align_of() - 1)

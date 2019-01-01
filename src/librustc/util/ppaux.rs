@@ -289,7 +289,7 @@ impl PrintContext {
                         // to be a value or type-def or something in there
                         // *somewhere*
                         item_def_id.index = key.parent.unwrap_or_else(|| {
-                            bug!("finding type for {:?}, encountered def-id {:?} with no \
+                            bug!("finding type for {:?}, encountered def-ID {:?} with no \
                                  parent", did, item_def_id);
                         });
                     }
@@ -709,9 +709,6 @@ define_print! {
 
 define_print! {
     ('tcx) ty::ExistentialTraitRef<'tcx>, (self, f, cx) {
-        display {
-            cx.parameterized(f, self.substs, self.def_id, &[])
-        }
         debug {
             ty::tls::with(|tcx| {
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
@@ -775,9 +772,9 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
-            // These printouts are concise.  They do not contain all the information
+            // These printouts are concise. They do not contain all the information
             // the user might want to diagnose an error, but there is basically no way
-            // to fit that into a short string.  Hence the recommendation to use
+            // to fit that into a short string. ence the recommendation to use
             // `explain_region()` or `note_and_explain_region()`.
             match *self {
                 ty::ReEarlyBound(ref data) => {

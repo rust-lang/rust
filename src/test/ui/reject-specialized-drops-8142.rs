@@ -1,4 +1,4 @@
-// Issue 8142: Test that Drop impls cannot be specialized beyond the
+// Issue #8142: test that `Drop` impls cannot be specialized beyond the
 // predicates attached to the struct/enum definition itself.
 
 trait Bound { fn foo(&self) { } }
@@ -54,4 +54,4 @@ impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR cannot infer an appropriate lifetime
 
-pub fn main() { }
+pub fn main() {}

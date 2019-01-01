@@ -1378,7 +1378,7 @@ impl String {
         self.vec.len()
     }
 
-    /// Returns `true` if this `String` has a length of zero.
+    /// Returns whether this `String` has a length of zero.
     ///
     /// Returns `false` otherwise.
     ///

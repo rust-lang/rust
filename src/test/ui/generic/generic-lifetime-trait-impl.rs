@@ -1,8 +1,8 @@
-// This code used to produce an ICE on the definition of trait Bar
+// This code used to produce an ICE on the definition of `trait Bar`
 // with the following message:
 //
-// Type parameter out of range when substituting in region 'a (root
-// type=fn(Self) -> 'astr) (space=FnSpace, index=0)
+// Type parameter out of range when substituting in region `'a` (root
+// type `fn(Self) -> &'a str`) (space = `FnSpace`, index = `0`).
 //
 // Regression test for issue #16218.
 
@@ -19,5 +19,4 @@ impl<'a> Foo<'a> for &'a str {
     fn bar<T: Bar<'a>>(self) -> &'a str { panic!() } //~ ERROR lifetime
 }
 
-fn main() {
-}
+fn main() {}

@@ -172,7 +172,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a `Substs` that maps each generic parameter to a higher-ranked
     /// var bound at index `0`. For types, we use a `BoundVar` index equal to
     /// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
-    /// variant (which has a def-id).
+    /// variant (which has a def-ID).
     pub fn bound_vars_for_item(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId
@@ -603,7 +603,7 @@ pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
     pub substs: &'tcx Substs<'tcx>,
 
-    /// The self-type, in the case of a `<T>::Item` path (when applied
+    /// The self type, in the case of a `<T>::Item` path (when applied
     /// to an inherent impl). See `UserSelfTy` below.
     pub user_self_ty: Option<UserSelfTy<'tcx>>,
 }
@@ -623,8 +623,8 @@ BraceStructLiftImpl! {
     }
 }
 
-/// Specifies the user-given self-type. In the case of a path that
-/// refers to a member in an inherent impl, this self-type is
+/// Specifies the user-given self type. In the case of a path that
+/// refers to a member in an inherent impl, this self type is
 /// sometimes needed to constrain the type parameters on the impl. For
 /// example, in this code:
 ///
@@ -634,11 +634,11 @@ BraceStructLiftImpl! {
 /// ```
 ///
 /// when you then have a path like `<Foo<&'static u32>>::method`,
-/// this struct would carry the def-id of the impl along with the
-/// self-type `Foo<u32>`. Then we can instantiate the parameters of
+/// this struct would carry the def-ID of the impl along with the
+/// self type `Foo<u32>`. Then we can instantiate the parameters of
 /// the impl (with the substs from `UserSubsts`) and apply those to
-/// the self-type, giving `Foo<?A>`. Finally, we unify that with
-/// the self-type here, which contains `?A` to be `&'static u32`
+/// the self type, giving `Foo<?A>`. Finally, we unify that with
+/// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,

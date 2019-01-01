@@ -14,7 +14,7 @@ struct NonDefaultedInClause<T, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: 
 struct DefaultedLhs<U, V=i32>(U, V) where V: Trait<U>;
 // Dependent defaults are not checked.
 struct Dependent<T, U = T>(T, U) where U: Copy;
-trait SelfBound<T: Copy=Self> {}
+trait SelfBound<T: Copy = Self> {}
 // Not even for well-formedness.
 struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
 

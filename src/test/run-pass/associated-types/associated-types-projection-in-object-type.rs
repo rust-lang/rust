@@ -6,7 +6,7 @@
 // appear in associated type bindings in object types, which were not
 // being properly flagged.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616):
 
 use std::ops::{Shl, Shr};
 use std::cell::RefCell;
@@ -19,7 +19,7 @@ pub trait Subscriber {
 
 pub trait Publisher<'a> {
     type Output;
-    fn subscribe(&mut self, _: Box<Subscriber<Input=Self::Output> + 'a>);
+    fn subscribe(&mut self, _: Box<Subscriber<Input = Self::Output> + 'a>);
 }
 
 pub trait Processor<'a> : Subscriber + Publisher<'a> { }

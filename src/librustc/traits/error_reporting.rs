@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if let ty::Predicate::Trait(implication) = implication {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();
-                // FIXME: I'm just not taking associated types at all here.
+                // FIXME: i'm just not taking associated types at all here.
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
                 let param_env = ty::ParamEnv::empty();
@@ -1274,7 +1274,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>,
                               body_id: Option<hir::BodyId>) {
-        // Unable to successfully determine, probably means
+        // Unable to successfully determine; probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
         // coherence violation, so we don't report it here.
@@ -1312,16 +1312,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
                 // a bunch of uninteresting errors saying something like "<generic
-                // #0> doesn't implement Sized".  It may even be true that we
+                // #0> doesn't implement Sized". It may even be true that we
                 // could just skip over all checks where the self-ty is an
                 // inference variable, but I was afraid that there might be an
                 // inference variable created, registered as an obligation, and
                 // then never forced by writeback, and hence by skipping here we'd
-                // be ignoring the fact that we don't KNOW the type works
+                // be ignoring the fact that we don't _know_ the type works
                 // out. Though even that would probably be harmless, given that
                 // we're only talking about builtin traits, which are known to be
                 // inhabited. But in any case I just threw in this check for
-                // has_errors() to be sure that compilation isn't happening
+                // `has_errors()` to be sure that compilation isn't happening
                 // anyway. In that case, why inundate the user.
                 if !self.tcx.sess.has_errors() {
                     if
@@ -1351,10 +1351,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             ty::Predicate::Subtype(ref data) => {
                 if data.references_error() || self.tcx.sess.has_errors() {
-                    // no need to overload user in such cases
+                    // No need to overload user in such `cases.need_type_info_err`.
                 } else {
                     let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
-                    // both must be type variables, or the other would've been instantiated
+                    // Both must be type variables, else the other would've been instantiated.
                     assert!(a.is_ty_var() && b.is_ty_var());
                     self.need_type_info_err(body_id,
                                             obligation.cause.span,

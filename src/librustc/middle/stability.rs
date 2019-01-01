@@ -49,7 +49,7 @@ enum AnnotationKind {
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
-    /// The def id where the attr was originally attached. `None` for non-local
+    /// The def-ID where the attr was originally attached. `None` for non-local
     /// `DefId`'s.
     origin: Option<HirId>,
 }
@@ -203,7 +203,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 }
             }
 
-            // Propagate unstability.  This can happen even for non-staged-api crates in case
+            // Propagate unstability. This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
                 if stab.level.is_unstable() {
@@ -565,7 +565,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             self.lint_node(lint, id, span, &msg);
             if id == ast::DUMMY_NODE_ID {
-                span_bug!(span, "emitted a {} lint with dummy node id: {:?}", lint.name, def_id);
+                span_bug!(span, "emitted a {} lint with dummy node-ID: {:?}", lint.name, def_id);
             }
         };
 

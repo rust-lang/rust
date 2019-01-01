@@ -3,7 +3,7 @@
 // Test that we can parse where clauses on various forms of tuple
 // structs.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616):
 
 struct Bar<T>(T) where T: Copy;
 struct Bleh<T, U>(T, U) where T: Copy, U: Sized;

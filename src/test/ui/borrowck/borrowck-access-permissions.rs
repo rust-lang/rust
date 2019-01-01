@@ -55,6 +55,6 @@ fn main() {
         let foo_ref = &foo;
         let _y = &mut *foo_ref.f; //[ast]~ ERROR [E0389]
                                   //[mir]~^ ERROR [E0596]
-                                  // FIXME: Wrong error in MIR
+                                  // FIXME: wrong error in MIR
     }
 }

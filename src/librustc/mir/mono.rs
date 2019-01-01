@@ -268,7 +268,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
                                    components: I,
                                    special_suffix: Option<S>)
                                    -> InternedString
-        where I: IntoIterator<Item=C>,
+        where I: IntoIterator<Item = C>,
               C: fmt::Display,
               S: fmt::Display,
     {
@@ -291,7 +291,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
                                              components: I,
                                              special_suffix: Option<S>)
                                              -> InternedString
-        where I: IntoIterator<Item=C>,
+        where I: IntoIterator<Item = C>,
               C: fmt::Display,
               S: fmt::Display,
     {

@@ -454,21 +454,21 @@ impl Ident {
         self.name <= keywords::Underscore.name()
     }
 
-    /// Returns `true` if the token is a keyword used in the language.
+    /// Returns whether the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
         self.name >= keywords::As.name() && self.name <= keywords::While.name() ||
         self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
-    /// Returns `true` if the token is a keyword reserved for possible future use.
+    /// Returns whether the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
         self.name >= keywords::Abstract.name() && self.name <= keywords::Yield.name() ||
         self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 
-    /// Returns `true` if the token is either a special identifier or a keyword.
+    /// Returns whether the token is either a special identifier or a keyword.
     pub fn is_reserved(self) -> bool {
         self.is_special() || self.is_used_keyword() || self.is_unused_keyword()
     }

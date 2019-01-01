@@ -292,7 +292,7 @@ impl Span {
         self.data().with_ctxt(ctxt)
     }
 
-    /// Returns `true` if this is a dummy span with any hygienic context.
+    /// Returns whether this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
         let span = self.data();
@@ -668,7 +668,7 @@ impl MultiSpan {
         &self.primary_spans
     }
 
-    /// Returns `true` if this contains only a dummy primary span with any hygienic context.
+    /// Returns whether this contains only a dummy primary span with any hygienic context.
     pub fn is_dummy(&self) -> bool {
         let mut is_dummy = true;
         for span in &self.primary_spans {
@@ -680,7 +680,7 @@ impl MultiSpan {
     }
 
     /// Replaces all occurrences of one Span with another. Used to move `Span`s in areas that don't
-    /// display well (like std macros). Returns true if replacements occurred.
+    /// display well (like std macros). Returns whether replacements occurred.
     pub fn replace(&mut self, before: Span, after: Span) -> bool {
         let mut replacements_occurred = false;
         for primary_span in &mut self.primary_spans {

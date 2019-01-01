@@ -102,7 +102,7 @@
 //! When requesting that an argument be formatted with a particular type, you
 //! are actually requesting that an argument ascribes to a particular trait.
 //! This allows multiple actual types to be formatted via `{:x}` (like [`i8`] as
-//! well as [`isize`]).  The current mapping of types to traits is:
+//! well as [`isize`]). The current mapping of types to traits is:
 //!
 //! * *nothing* ⇒ [`Display`]
 //! * `?` ⇒ [`Debug`]
@@ -427,7 +427,7 @@
 //! 3. An asterisk `.*`:
 //!
 //!    `.*` means that this `{...}` is associated with *two* format inputs rather than one: the
-//!    first input holds the `usize` precision, and the second holds the value to print.  Note that
+//!    first input holds the `usize` precision, and the second holds the value to print. Note that
 //!    in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part refers
 //!    to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
 //!

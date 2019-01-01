@@ -1,4 +1,4 @@
-//compile-flags: -Zborrowck=mir
+// compile-flags: -Zborrowck=mir
 
 #![allow(warnings)]
 

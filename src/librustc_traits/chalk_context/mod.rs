@@ -211,9 +211,9 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     /// each bound variable in `arg` to a fresh inference variable
     /// from T. Returns:
     ///
-    /// - the table `T`
-    /// - the substitution `S`
-    /// - the environment and goal found by substitution `S` into `arg`
+    /// - the table `T`,
+    /// - the substitution `S`,
+    /// - the environment and goal found by substitution `S` into `arg`.
     fn instantiate_ucanonical_goal<R>(
         &self,
         arg: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
@@ -241,7 +241,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         })
     }
 
-    /// True if this solution has no region constraints.
+    /// Returns whether this solution has no region constraints.
     fn empty_constraints(ccs: &Canonical<'gcx, ConstrainedSubst<'gcx>>) -> bool {
         ccs.value.constraints.is_empty()
     }
@@ -301,14 +301,16 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         _map: &UniverseMap,
         value: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
     ) -> Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>> {
-        *value // FIXME universe maps not implemented yet
+        // FIXME: universe maps not implemented yet
+        *value
     }
 
     fn map_subst_from_canonical(
         _map: &UniverseMap,
         value: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
     ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
-        value.clone() // FIXME universe maps not implemented yet
+        // FIXME: universe maps not implemented yet
+        value.clone()
     }
 }
 
@@ -363,14 +365,14 @@ impl context::TruncateOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         _subgoal: &InEnvironment<'tcx, Goal<'tcx>>,
     ) -> Option<InEnvironment<'tcx, Goal<'tcx>>> {
-        None // FIXME we should truncate at some point!
+        None // FIXME: we should truncate at some point!
     }
 
     fn truncate_answer(
         &mut self,
         _subst: &CanonicalVarValues<'tcx>,
     ) -> Option<CanonicalVarValues<'tcx>> {
-        None // FIXME we should truncate at some point!
+        None // FIXME: we should truncate at some point!
     }
 }
 

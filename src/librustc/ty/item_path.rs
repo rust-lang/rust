@@ -54,7 +54,7 @@ pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Returns a string identifying this def-id. This string is
+    /// Returns a string identifying this def-ID. This string is
     /// suitable for user output. It is relative to the current crate
     /// root, unless with_forced_absolute_paths was used.
     pub fn item_path_str(self, def_id: DefId) -> String {
@@ -71,12 +71,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         buffer.into_string()
     }
 
-    /// Returns a string identifying this local node-id.
+    /// Returns a string identifying this local node-ID.
     pub fn node_path_str(self, id: ast::NodeId) -> String {
         self.item_path_str(self.hir().local_def_id(id))
     }
 
-    /// Returns a string identifying this def-id. This string is
+    /// Returns a string identifying this def-ID. This string is
     /// suitable for user output. It always begins with a crate identifier.
     pub fn absolute_item_path_str(self, def_id: DefId) -> String {
         let mut buffer = LocalPathBuffer::new(RootMode::Absolute);
@@ -376,7 +376,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Decide whether to print the parent path for the impl.
         // Logically, since impls are global, it's never needed, but
         // users may find it useful. Currently, we omit the parent if
-        // the impl is either in the same module as the self-type or
+        // the impl is either in the same module as the self type or
         // as the trait.
         let self_ty = self.type_of(impl_def_id);
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
@@ -391,7 +391,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
 
         if !in_self_mod && !in_trait_mod {
-            // If the impl is not co-located with either self-type or
+            // If the impl is not co-located with either self type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
             self.push_item_path(buffer, parent_def_id, pushed_prelude_crate);
@@ -413,7 +413,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Inherent impls. Try to print `Foo::bar` for an inherent
-        // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
+        // impl on `Foo`, but fallback to `<Foo>::bar` if self type is
         // anything other than a simple path.
         match self_ty.sty {
             ty::Adt(adt_def, substs) => {
@@ -460,7 +460,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         buffer.push(&format!("<impl at {}>", span_str));
     }
 
-    /// Returns the def-id of `def_id`'s parent in the def tree. If
+    /// Returns the def-ID of `def_id`'s parent in the def tree. If
     /// this returns `None`, then `def_id` represents a crate root or
     /// inlined root.
     pub fn parent_def_id(self, def_id: DefId) -> Option<DefId> {
@@ -470,9 +470,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 /// As a heuristic, when we see an impl, if we see that the
-/// 'self-type' is a type defined in the same module as the impl,
+/// 'self type' is a type defined in the same module as the impl,
 /// we can omit including the path to the impl itself. This
-/// function tries to find a "characteristic def-id" for a
+/// function tries to find a "characteristic def-ID" for a
 /// type. It's just a heuristic so it makes some questionable
 /// decisions and we may want to adjust it later.
 pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
@@ -527,7 +527,7 @@ pub trait ItemPathBuffer {
 
 #[derive(Debug)]
 pub enum RootMode {
-    /// Try to make a path relative to the local crate.  In
+    /// Try to make a path relative to the local crate. In
     /// particular, local paths have no prefix, and if the path comes
     /// from an extern crate, start with the path to the `extern
     /// crate` declaration.

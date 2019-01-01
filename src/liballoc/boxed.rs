@@ -262,7 +262,7 @@ impl<T: ?Sized> Box<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
     fn drop(&mut self) {
-        // FIXME: Do nothing, drop is currently performed by compiler.
+        // FIXME: do nothing; drop is currently performed by compiler.
     }
 }
 
@@ -457,7 +457,7 @@ impl<T> From<Box<T>> for Pin<Box<T>> {
     /// This conversion does not allocate on the heap and happens in place.
     fn from(boxed: Box<T>) -> Self {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
-        // when `T: !Unpin`,  so it's safe to pin it directly without any
+        // when `T: !Unpin`, so it's safe to pin it directly without any
         // additional requirements.
         unsafe { Pin::new_unchecked(boxed) }
     }

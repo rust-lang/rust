@@ -1,4 +1,4 @@
-//buggy.rs
+// buggy.rs
 
 #![feature(box_syntax)]
 

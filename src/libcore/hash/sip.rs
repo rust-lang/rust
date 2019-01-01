@@ -10,7 +10,7 @@ use mem;
 /// An implementation of SipHash 1-3.
 ///
 /// This is currently the default hashing function used by standard library
-/// (eg. `collections::HashMap` uses it by default).
+/// (e.g., `collections::HashMap` uses it by default).
 ///
 /// See: <https://131002.net/siphash>
 #[unstable(feature = "hashmap_internals", issue = "0")]

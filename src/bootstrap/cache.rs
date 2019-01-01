@@ -176,7 +176,7 @@ impl<T: Hash + Clone + Eq> Default for TyIntern<T> {
 impl<T: Hash + Clone + Eq> TyIntern<T> {
     fn intern_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
-        B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
+        B: Eq + Hash + ToOwned<Owned = T> + ?Sized,
         T: Borrow<B>,
     {
         if let Some(i) = self.set.get(&item) {

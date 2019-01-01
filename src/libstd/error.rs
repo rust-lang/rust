@@ -566,7 +566,7 @@ impl Error for char::ParseCharError {
 
 // copied from any.rs
 impl dyn Error + 'static {
-    /// Returns true if the boxed type is the same as `T`
+    /// Returns whether the boxed type is the same as `T`
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {

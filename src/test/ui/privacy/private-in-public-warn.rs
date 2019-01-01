@@ -213,15 +213,6 @@ mod aliases_pub {
     impl PrivUseAliasTr for <Priv as PrivTr>::AssocAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
     }
-    impl PrivUseAliasTr for Option<<Priv as PrivTr>::AssocAlias> {
-        type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
-    }
-    impl PrivUseAliasTr for (<Priv as PrivTr>::AssocAlias, Priv) {
-        type Check = Priv; // OK
-    }
-    impl PrivUseAliasTr for Option<(<Priv as PrivTr>::AssocAlias, Priv)> {
-        type Check = Priv; // OK
-    }
 }
 
 mod aliases_priv {

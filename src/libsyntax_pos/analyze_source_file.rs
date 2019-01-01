@@ -258,7 +258,7 @@ fn analyze_source_file_generic(src: &str,
             }
 
             // Assume control characters are zero width.
-            // FIXME: How can we decide between `width` and `width_cjk`?
+            // FIXME: how can we decide between `width` and `width_cjk`?
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0);
 
             if char_width != 1 {

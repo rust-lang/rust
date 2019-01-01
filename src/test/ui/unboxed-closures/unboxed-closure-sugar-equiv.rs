@@ -36,7 +36,7 @@ fn test<'a,'b>() {
           Foo(&isize,&usize) -> usize                             >();
 
     // lifetime elision
-    eq::< for<'x> Foo<(&'x isize,), Output=&'x isize>,
+    eq::< for<'x> Foo<(&'x isize,), Output = &'x isize>,
           Foo(&isize) -> &isize                                   >();
 
     // Errors expected:

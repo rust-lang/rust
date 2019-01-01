@@ -1,7 +1,7 @@
-// regression test for issue 4366
+// Regression test for issue #4366.
 
-// ensures that 'use foo:*' doesn't import non-public 'use' statements in the
-// module 'foo'
+// Ensures that `use foo:*` doesn't import non-public `use` statements in the
+// module `foo`.
 
 use m1::*;
 

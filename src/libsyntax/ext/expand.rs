@@ -34,7 +34,7 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            // FIXME: HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
+            // HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
             // repetition was removed from 2015 edition in #51587 because of ambiguities.
             $(one fn $fold_ast:ident; fn $visit_ast:ident;)*
             $(many fn $fold_ast_elt:ident; fn $visit_ast_elt:ident;)*
@@ -829,11 +829,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.gate_proc_macro_expansion_kind(span, kind);
                     invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                         call_site: span,
-                        // FIXME procedural macros do not have proper span info
+                        // FIXME: procedural macros do not have proper span info
                         // yet, when they do, we should use it here.
                         def_site: None,
                         format: macro_bang_format(path),
-                        // FIXME probably want to follow macro_rules macros here.
+                        // FIXME: probably want to follow macro_rules macros here.
                         allow_internal_unstable,
                         allow_internal_unsafe: false,
                         local_inner_macros: false,

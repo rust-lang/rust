@@ -12,7 +12,7 @@ pub trait Sized {
 }
 
 #[lang = "add"]
-trait Add<RHS=Self> {
+trait Add<RHS = Self> {
     type Output;
 
     fn add(self, _: RHS) -> Self::Output;

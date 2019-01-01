@@ -604,7 +604,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Returns `true` if the map contains a value for the specified key.
+    /// Returns whether the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
@@ -892,7 +892,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
-        // FIXME(@porglezomp) Avoid allocating if we don't insert
+        // FIXME(porglezomp): avoid allocating if we don't insert.
         self.ensure_root_is_owned();
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => {
@@ -1841,12 +1841,12 @@ fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
         where Q: Ord, K: Borrow<Q>
 {
     match (range.start_bound(), range.end_bound()) {
-        (Excluded(s), Excluded(e)) if s==e =>
+        (Excluded(s), Excluded(e)) if s == e =>
             panic!("range start and end are equal and excluded in BTreeMap"),
         (Included(s), Included(e)) |
         (Included(s), Excluded(e)) |
         (Excluded(s), Included(e)) |
-        (Excluded(s), Excluded(e)) if s>e =>
+        (Excluded(s), Excluded(e)) if s > e =>
             panic!("range start is greater than range end in BTreeMap"),
         _ => {},
     };
@@ -2072,7 +2072,7 @@ impl<K, V> BTreeMap<K, V> {
         self.length
     }
 
-    /// Returns `true` if the map contains no elements.
+    /// Returns whether the map contains no elements.
     ///
     /// # Examples
     ///

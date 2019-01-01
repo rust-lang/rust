@@ -1,5 +1,5 @@
-// Characters and their corresponding confusables were collected from
-// http://www.unicode.org/Public/security/10.0.0/confusables.txt
+// Characters and their corresponding confusables were collected from.
+// See <http://www.unicode.org/Public/security/10.0.0/confusables.txt> for more details.
 
 use syntax_pos::{Span, NO_EXPANSION};
 use errors::{Applicability, DiagnosticBuilder};

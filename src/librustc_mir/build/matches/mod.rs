@@ -623,7 +623,7 @@ struct Binding<'tcx> {
 }
 
 /// Indicates that the type of `source` must be a subtype of the
-/// user-given type `user_ty`; this is basically a no-op but can
+/// user-given type `user_ty`; this is basically a noop but can
 /// influence region inference.
 #[derive(Clone, Debug)]
 struct Ascription<'tcx> {
@@ -1600,10 +1600,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             borrowed_input_temps.push(borrowed_input_temp);
         }
 
-        // FIXME: This could be a lot of reads (#fake borrows * #patterns).
+        // FIXME: this could be a lot of reads (`#fake borrows * #patterns`).
         // The false edges that we currently generate would allow us to only do
-        // this on the last Candidate, but it's possible that there might not be
-        // so many false edges in the future, so we read for all Candidates for
+        // this on the last `Candidate`, but it's possible that there might not be
+        // so many false edges in the future, so we read for all `Candidate`s for
         // now.
         // Another option would be to make our own block and add our own false
         // edges to it.

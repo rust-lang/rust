@@ -140,7 +140,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "runtool",
             "supervisor program to run tests under \
-             (eg. emulator, valgrind)",
+             (e.g., emulator, valgrind)",
             "PROGRAM",
         )
         .optopt(
@@ -644,7 +644,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
     revisions
         .into_iter()
         .map(|revision| {
-            // Debugging emscripten code doesn't make sense today
+            // Debugging Emscripten code doesn't make sense today.
             let ignore = early_props.ignore == Ignore::Ignore
                 || !up_to_date(
                     config,
@@ -798,7 +798,7 @@ fn make_test_closure(
     }))
 }
 
-/// Returns true if the given target is an Android target for the
+/// Returns whether the given target is an Android target for the
 /// purposes of GDB testing.
 fn is_android_gdb_target(target: &String) -> bool {
     match &target[..] {
@@ -939,7 +939,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
     // There doesn't seem to be a way to correlate the Apple version
     // with the upstream version, and since the tests were originally
     // written against Apple versions, we make a fake Apple version by
-    // multiplying the first number by 100.  This is a hack, but
+    // multiplying the first number by 100. This is a hack, but
     // normally fine because the only non-Apple version we test is
     // rust-enabled.
 

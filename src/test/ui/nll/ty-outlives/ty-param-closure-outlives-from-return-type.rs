@@ -17,7 +17,7 @@ where
     T: Debug,
 {
     // Here, the closure winds up being required to prove that `T:
-    // 'a`.  In principle, it could know that, except that it is
+    // 'a`. In principle, it could know that, except that it is
     // type-checked in a fully generic way, and hence it winds up with
     // a propagated requirement that `T: '_#2`, where `'_#2` appears
     // in the return type. The caller makes the mapping from `'_#2` to

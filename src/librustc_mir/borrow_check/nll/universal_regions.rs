@@ -61,14 +61,14 @@ pub struct UniversalRegions<'tcx> {
     /// The return type of this function, with all regions replaced by
     /// their universal `RegionVid` equivalents.
     ///
-    /// NB. Associated types in this type have not been normalized,
+    /// N.B., associated types in this type have not been normalized,
     /// as the name suggests. =)
     pub unnormalized_output_ty: Ty<'tcx>,
 
     /// The fully liberated input types of this function, with all
     /// regions replaced by their universal `RegionVid` equivalents.
     ///
-    /// NB. Associated types in these types have not been normalized,
+    /// N.B., associated types in these types have not been normalized,
     /// as the name suggests. =)
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
@@ -92,7 +92,7 @@ pub enum DefiningTy<'tcx> {
     /// `ClosureSubsts::generator_return_ty`.
     Generator(DefId, ty::GeneratorSubsts<'tcx>, hir::GeneratorMovability),
 
-    /// The MIR is a fn item with the given def-id and substs. The signature
+    /// The MIR is a fn item with the given def-ID and substs. The signature
     /// of the function can be bound then with the `fn_sig` query.
     FnDef(DefId, &'tcx Substs<'tcx>),
 
@@ -317,9 +317,9 @@ impl<'tcx> UniversalRegions<'tcx> {
                     &substs.substs[..]
                 ));
 
-                // FIXME: It'd be nice to print the late-bound regions
+                // FIXME: it'd be nice to print the late-bound regions
                 // here, but unfortunately these wind up stored into
-                // tests, and the resulting print-outs include def-ids
+                // tests, and the resulting print-outs include def-IDs
                 // and other things that are not stable across tests!
                 // So we just include the region-vid. Annoying.
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
@@ -337,7 +337,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                     &substs.substs[..]
                 ));
 
-                // FIXME: As above, we'd like to print out the region
+                // FIXME: as above, we'd like to print out the region
                 // `r` but doing so is not stable across architectures
                 // and so forth.
                 let closure_base_def_id = tcx.closure_base_def_id(def_id);
@@ -572,7 +572,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                     inputs_and_output,
                     |closure_ty, inputs_and_output| {
                         // The "inputs" of the closure in the
-                        // signature appear as a tuple.  The MIR side
+                        // signature appear as a tuple. The MIR side
                         // flattens this tuple.
                         let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
                         assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
@@ -691,7 +691,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     /// indices vector. Typically, we identify late-bound regions as we process the inputs and
     /// outputs of the closure/function. However, sometimes there are late-bound regions which do
     /// not appear in the fn parameters but which are nonetheless in scope. The simplest case of
-    /// this are unused functions, like fn foo<'a>() { } (see eg., #51351). Despite not being used,
+    /// this are unused functions, like fn foo<'a>() { } (see e.g., #51351). Despite not being used,
     /// users can still reference these regions (e.g., let x: &'a u32 = &22;), so we need to create
     /// entries for them and store them in the indices map. This code iterates over the complete
     /// set of late-bound regions and checks for any that we have not yet seen, adding them to the

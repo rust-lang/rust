@@ -106,7 +106,7 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
             // Proper fix would increase the number of FFI imports and introduce
             // significant amount of Windows XP specific code with no clean
             // testing strategy
-            // For more info, see https://github.com/rust-lang/rust/pull/37677.
+            // For more info, see PR #37677.
             if handle == c::INVALID_HANDLE_VALUE {
                 let err = io::Error::last_os_error();
                 let raw_os_err = err.raw_os_error();

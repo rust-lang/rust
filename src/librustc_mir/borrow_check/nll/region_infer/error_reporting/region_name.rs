@@ -428,7 +428,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// to. For example, we might produce an annotation like this:
     ///
     /// ```
-    ///  | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
+    ///  | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item = &T>> {
     ///  |                - let's call the lifetime of this reference `'1`
     /// ```
     ///
@@ -492,7 +492,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     match path.def {
                         // Type parameters of the type alias have no reason to
                         // be the same as those of the ADT.
-                        // FIXME: We should be able to do something similar to
+                        // FIXME: we should be able to do something similar to
                         // match_adt_and_segment in this case.
                         hir::def::Def::TyAlias(_) => (),
                         _ => if let Some(last_segment) = path.segments.last() {
@@ -526,7 +526,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 _ => {
-                    // FIXME there are other cases that we could trace
+                    // FIXME: there are other cases that we could trace
                 }
             }
         }

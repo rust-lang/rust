@@ -64,8 +64,8 @@ impl DefaultResizePolicy {
         // This doesn't have to be checked for overflow since allocation size
         // in bytes will overflow earlier than multiplication by 10.
         //
-        // As per https://github.com/rust-lang/rust/pull/30991 this is updated
-        // to be: (raw_cap * den + den - 1) / num
+        // As per PR #30991, this is updated
+        // to be `(raw_cap * den + den - 1) / num`.
         (raw_cap * 10 + 10 - 1) / 11
     }
 }
@@ -1214,7 +1214,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.table.size()
     }
 
-    /// Returns true if the map contains no elements.
+    /// Returns whether the map contains no elements.
     ///
     /// # Examples
     ///
@@ -1332,7 +1332,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.search(k).map(|bucket| bucket.into_refs())
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns whether the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for

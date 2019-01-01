@@ -457,7 +457,7 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
         match node {
             pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
                 s.s.space()?;
-                // FIXME #16420: this doesn't display the connections
+                // FIXME(#16420): this doesn't display the connections
                 // between syntax contexts
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
@@ -629,7 +629,7 @@ impl UserIdentifiedItem {
 
 // Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
 //
-// FIXME: Currently the `everybody_loops` transformation is not applied to:
+// FIXME: currently the `everybody_loops` transformation is not applied to:
 //  * `const fn`, due to issue #43636 that `loop` is not supported for const evaluation. We are
 //    waiting for miri to fix that.
 //  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
@@ -864,7 +864,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
         }
         blocks::Code::Expr(_) => {
             tcx.sess.err("--pretty flowgraph with -Z flowgraph-print annotations requires \
-                          fn-like node id.");
+                          fn-like node-ID.");
             return Ok(());
         }
         blocks::Code::FnLike(fn_like) => {

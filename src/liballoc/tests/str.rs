@@ -1531,7 +1531,7 @@ fn to_lowercase() {
     assert_eq!("".to_lowercase(), "");
     assert_eq!("AÉǅaé ".to_lowercase(), "aéǆaé ");
 
-    // https://github.com/rust-lang/rust/issues/26035
+    // See issue #26035.
     assert_eq!("ΑΣ".to_lowercase(), "ας");
     assert_eq!("Α'Σ".to_lowercase(), "α'ς");
     assert_eq!("Α''Σ".to_lowercase(), "α''ς");

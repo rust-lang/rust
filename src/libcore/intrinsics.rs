@@ -921,7 +921,7 @@ extern "rust-intrinsic" {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn transmute<T, U>(e: T) -> U;
 
-    /// Returns `true` if the actual type given as `T` requires drop
+    /// Returns whether the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
     /// implements `Copy`.
     ///

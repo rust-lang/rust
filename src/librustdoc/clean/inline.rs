@@ -284,10 +284,10 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     let associated_trait = tcx.impl_trait_ref(did);
 
     // Only inline impl if the implemented trait is
-    // reachable in rustdoc generated documentation
+    // reachable in rustdoc-generated documentation.
     if !did.is_local() {
-        if let Some(traitref) = associated_trait {
-            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(traitref.def_id) {
+        if let Some(tr) = associated_trait {
+            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(tr.def_id) {
                 return
             }
         }
@@ -305,7 +305,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     };
 
     // Only inline impl if the implementing type is
-    // reachable in rustdoc generated documentation
+    // reachable in rustdoc-generated documentation.
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
             if !cx.renderinfo.borrow().access_levels.is_doc_reachable(did) {

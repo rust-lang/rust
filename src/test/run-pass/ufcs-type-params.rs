@@ -1,4 +1,4 @@
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616)
 
 trait Foo<T> {
     fn get(&self) -> T;

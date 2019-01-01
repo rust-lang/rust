@@ -24,7 +24,7 @@ fn main() {
     #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
     let nan = ::std::f32::NAN;
     // MIPS hardware treats f32::NAN as SNAN. Clear the signaling bit.
-    // See https://github.com/rust-lang/rust/issues/52746.
+    // See issue #52746.
     #[cfg(any(target_arch = "mips", target_arch = "mips64"))]
     let nan = f32::from_bits(::std::f32::NAN.to_bits() - 1);
 

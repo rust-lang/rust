@@ -393,7 +393,7 @@ pub struct CompileController<'a> {
     pub after_analysis: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
-    // FIXME we probably want to group the below options together and offer a
+    // FIXME: we probably want to group the below options together and offer a
     // better API, rather than this ad-hoc approach.
     pub make_glob_map: MakeGlobMap,
     // Whether the compiler should keep the ast beyond parsing.
@@ -1184,7 +1184,7 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     cstore::provide_extern(providers);
 }
 
-/// Run the resolution, typechecking, region checking and other
+/// Run the resolution, typec-hecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(

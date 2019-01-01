@@ -1,6 +1,6 @@
 // compile-flags: -Z parse-only
 
-//error-pattern: discriminator values can only be used with a field-less enum
+// error-pattern: discriminator values can only be used with a field-less enum
 
 enum color {
     red = 0xff0000,

@@ -270,7 +270,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 struct InferBorrowKind<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
-    // The def-id of the closure whose kind and upvar accesses are being inferred.
+    // The def-ID of the closure whose kind and upvar accesses are being inferred.
     closure_def_id: DefId,
 
     // The kind that we have inferred that the current closure

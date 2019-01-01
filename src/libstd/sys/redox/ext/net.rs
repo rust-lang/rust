@@ -60,7 +60,7 @@ impl SocketAddr {
         None
     }
 
-    /// Returns true if and only if the address is unnamed.
+    /// Returns whether the address is unnamed.
     ///
     /// # Examples
     ///

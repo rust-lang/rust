@@ -400,8 +400,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// Creates the relevant generic argument substitutions
     /// corresponding to a set of generic parameters. This is a
-    /// rather complex little function. Let me try to explain the
-    /// role of each of its parameters:
+    /// rather complex function. Let us try to explain the role
+    /// of each of its parameters:
     ///
     /// To start, we are given the `def_id` of the thing we are
     /// creating the substitutions for, and a partial set of
@@ -417,9 +417,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// we can append those and move on. Otherwise, it invokes the
     /// three callback functions:
     ///
-    /// - `args_for_def_id`: given the def-id `P`, supplies back the
+    /// - `args_for_def_id`: given the def-ID `P`, supplies back the
     ///   generic arguments that were given to that parent from within
-    ///   the path; so e.g., if you have `<T as Foo>::Bar`, the def-id
+    ///   the path; so e.g., if you have `<T as Foo>::Bar`, the def-ID
     ///   might refer to the trait `Foo`, and the arguments might be
     ///   `[T]`. The boolean value indicates whether to infer values
     ///   for arguments whose values were not explicitly provided.
@@ -564,7 +564,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let tcx = self.tcx();
         let generic_params = tcx.generics_of(def_id);
 
-        // If a self-type was declared, one should be provided.
+        // If a self type was declared, one should be provided.
         assert_eq!(generic_params.has_self, self_ty.is_some());
 
         let has_self = generic_params.has_self;
@@ -584,7 +584,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 if is_object && has_default {
                     if tcx.at(span).type_of(param.def_id).has_self_ty() {
                         // There is no suitable inference default for a type parameter
-                        // that references self, in an object type.
+                        // that references the self type in an object type.
                         return true;
                     }
                 }
@@ -680,7 +680,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// bound to a valid trait type. Returns the def_id for the defining trait.
     /// The type _cannot_ be a type other than a trait type.
     ///
-    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
+    /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
     pub fn instantiate_mono_trait_ref(&self,
         trait_ref: &hir::TraitRef,
@@ -931,6 +931,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }))
     }
 
+    // `item_segment` is used to substitute the generic arguments.
     fn ast_path_to_ty(&self,
         span: Span,
         did: DefId,
@@ -1032,11 +1033,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     //     }
                     // ```
                     //
-                    // Here, the user could theoretically write `dyn MyTrait<Output=X>`,
+                    // Here, the user could theoretically write `dyn MyTrait<Output = X>`,
                     // but actually supporting that would "expand" to an infinitely-long type
-                    // `fix $ τ → dyn MyTrait<MyOutput=X, Output=<τ as MyTrait>::MyOutput`.
+                    // `fix $ τ → dyn MyTrait<MyOutput = X, Output=<τ as MyTrait>::MyOutput`.
                     //
-                    // Instead, we force the user to write `dyn MyTrait<MyOutput=X, Output=X>`,
+                    // Instead, we force the user to write `dyn MyTrait<MyOutput = X, Output = X>`,
                     // which is uglier but works. See the discussion in #56288 for alternatives.
                     if !references_self {
                         // Include projections defined on supertraits,

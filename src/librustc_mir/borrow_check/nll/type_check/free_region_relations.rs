@@ -158,7 +158,7 @@ impl UniversalRegionRelations<'tcx> {
         debug!("non_local_bound: external_parents={:?}", external_parents);
 
         // In case we find more than one, reduce to one for
-        // convenience.  This is to prevent us from generating more
+        // convenience. This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
         let post_dom = relation
             .mutual_immediate_postdominator(external_parents)

@@ -117,7 +117,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                 match self.type_variables.get(&vid) {
                     None => {
                         // This variable was created before the
-                        // "fudging".  Since we refresh all type
+                        // "fudging". Since we refresh all type
                         // variables to their binding anyhow, we know
                         // that it is unbound, so we can just return
                         // it.

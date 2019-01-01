@@ -86,7 +86,7 @@ impl MirPass for AddRetag {
         let (span, arg_count) = (mir.span, mir.arg_count);
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         let needs_retag = |place: &Place<'tcx>| {
-            // FIXME: Instead of giving up for unstable places, we should introduce
+            // FIXME: instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
             is_stable(place) && may_have_reference(place.ty(&*local_decls, tcx).to_ty(tcx), tcx)
         };
@@ -96,7 +96,7 @@ impl MirPass for AddRetag {
         {
             let source_info = SourceInfo {
                 scope: OUTERMOST_SOURCE_SCOPE,
-                span: span, // FIXME: Consider using just the span covering the function
+                span: span, // FIXME: consider using just the span covering the function
                             // argument declaration.
             };
             // Gather all arguments, skip return value.
@@ -114,7 +114,7 @@ impl MirPass for AddRetag {
         }
 
         // PART 2
-        // Retag return values of functions.  Also escape-to-raw the argument of `drop`.
+        // Retag return values of functions. Also escape-to-raw the argument of `drop`.
         // We collect the return destinations because we cannot mutate while iterating.
         let mut returns: Vec<(SourceInfo, Place<'tcx>, BasicBlock)> = Vec::new();
         for block_data in basic_blocks.iter_mut() {
@@ -151,7 +151,7 @@ impl MirPass for AddRetag {
         // PART 3
         // Add retag after assignment.
         for block_data in basic_blocks {
-            // We want to insert statements as we iterate.  To this end, we
+            // We want to insert statements as we iterate. To this end, we
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
@@ -172,7 +172,7 @@ impl MirPass for AddRetag {
                         }
                     }
                     // Assignments of reference or ptr type are the ones where we may have
-                    // to update tags.  This includes `x = &[mut] ...` and hence
+                    // to update tags. This includes `x = &[mut] ...` and hence
                     // we also retag after taking a reference!
                     StatementKind::Assign(ref place, box ref rvalue) if needs_retag(place) => {
                         let kind = match rvalue {

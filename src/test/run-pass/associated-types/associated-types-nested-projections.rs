@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 // Test that we can resolve nested projection types. Issue #20666.
 
-// pretty-expanded FIXME #23616
+// pretty-expanded FIXME(#23616):
 
 use std::slice;
 
@@ -32,8 +32,8 @@ fn foo<X>(x: X) where
 
 fn bar<T, I, X>(x: X) where
     T: Bound,
-    I: Iterator<Item=T>,
-    X: IntoIterator<Iter=I>,
+    I: Iterator<Item = T>,
+    X: IntoIterator<Iter = I>,
 {
 
 }

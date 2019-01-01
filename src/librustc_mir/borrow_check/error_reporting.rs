@@ -921,7 +921,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
 
-        // FIXME use a better heuristic than Spans
+        // FIXME: use a better heuristic than Spans
         let reference_desc = if return_span == self.mir.source_info(borrow.reserve_location).span {
             "reference to"
         } else {
@@ -1638,7 +1638,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
                 ty::Array(ty, _) | ty::Slice(ty) => self.describe_field_from_ty(&ty, field),
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                    // Convert the def-id into a node-id. node-ids are only valid for
+                    // Convert the def-ID into a node-ID. node-IDs are only valid for
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
@@ -1651,7 +1651,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
-                    // (https://github.com/rust-lang/rfcs/pull/1546)
+                    // (RFC #1546).
                     bug!(
                         "End-user description not implemented for field access on `{:?}`",
                         ty.sty

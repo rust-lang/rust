@@ -27,7 +27,7 @@ fn inferred_outlives_of<'a, 'tcx>(
     let id = tcx
         .hir()
         .as_local_node_id(item_def_id)
-        .expect("expected local def-id");
+        .expect("expected local def-ID");
 
     match tcx.hir().get(id) {
         Node::Item(item) => match item.node {
@@ -83,7 +83,7 @@ fn inferred_outlives_crate<'tcx>(
     // predicate is satisfied, so they form a kind of base set of requirements
     // for the type.
 
-    // Compute the inferred predicates
+    // Compute the inferred predicates.
     let mut exp_map = explicit::ExplicitPredicatesMap::new();
 
     let global_inferred_outlives = implicit_infer::infer_predicates(tcx, &mut exp_map);
@@ -91,7 +91,7 @@ fn inferred_outlives_crate<'tcx>(
     // Convert the inferred predicates into the "collected" form the
     // global data structure expects.
     //
-    // FIXME -- consider correcting impedance mismatch in some way,
+    // FIXME: consider correcting impedance mismatch in some way,
     // probably by updating the global data structure.
     let predicates = global_inferred_outlives
         .iter()

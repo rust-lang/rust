@@ -88,7 +88,7 @@ fn main() {
     assert_eq!(b(0xa9008fb6c9d81e42_0e25730562a601c8_u128) /
                b(1u128 << 120),
                169u128);
-    // case "KK/K0" with N >= D (https://github.com/rust-lang/rust/issues/41228).
+    // case "KK/K0" with N >= D (issue #41228).
     assert_eq!(b(0xe4d26e59f0640328_06da5b06efe83a41_u128) /
                b(0x330fcb030ea4447c_u128 << 64),
                4u128);

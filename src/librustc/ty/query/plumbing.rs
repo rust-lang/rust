@@ -669,7 +669,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // FIXME: Try uninlining this
+    // FIXME: try uninlining this
     #[inline(always)]
     pub(super) fn get_query<Q: QueryDescription<'gcx>>(
         self,

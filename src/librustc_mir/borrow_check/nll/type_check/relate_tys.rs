@@ -14,7 +14,7 @@ use rustc::ty::{self, Ty};
 /// - "Invariant" `a == b`
 /// - "Contravariant" `a :> b`
 ///
-/// NB. The type `a` is permitted to have unresolved inference
+/// N.B., the type `a` is permitted to have unresolved inference
 /// variables, but not the type `b`.
 pub(super) fn relate_types<'tcx>(
     infcx: &InferCtxt<'_, '_, 'tcx>,

@@ -158,8 +158,8 @@ impl Forest {
     }
 }
 
-/// Represents a mapping from Node IDs to AST elements and their parent
-/// Node IDs
+/// Represents a mapping from Node-IDs to AST elements and their parent
+/// Node-IDs
 #[derive(Clone)]
 pub struct Map<'hir> {
     /// The backing storage for all the AST nodes.
@@ -420,7 +420,7 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
-    /// Given a node id, returns the `BodyId` associated with it,
+    /// Given a node-ID, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(id) {
@@ -496,7 +496,7 @@ impl<'hir> Map<'hir> {
         self.trait_auto_impl(trait_did).is_some()
     }
 
-    /// Get the attributes on the krate. This is preferable to
+    /// Get the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
@@ -506,15 +506,16 @@ impl<'hir> Map<'hir> {
         &self.forest.krate.attrs
     }
 
-    /// Retrieve the Node corresponding to `id`, panicking if it cannot
+    /// Retrieve the `Node` corresponding to `id`, panicking if it cannot
     /// be found.
     pub fn get(&self, id: NodeId) -> Node<'hir> {
-        // read recorded by `find`
-        self.find(id).unwrap_or_else(|| bug!("couldn't find node id {} in the AST map", id))
+        // Read is recorded by `find`.
+        self.find(id).unwrap_or_else(|| bug!("couldn't find node-ID {} in the AST map", id))
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
+        // Read is recorded by `get`.
+        self.as_local_node_id(id).map(|id| self.get(id))
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
@@ -544,7 +545,7 @@ impl<'hir> Map<'hir> {
         self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
     }
 
-    /// Retrieve the Node corresponding to `id`, returning None if
+    /// Retrieve the `Node` corresponding to `id`, returning `None` if
     /// cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
         let result = self.find_entry(id).and_then(|entry| {
@@ -560,7 +561,7 @@ impl<'hir> Map<'hir> {
         result
     }
 
-    /// Similar to `get_parent`; returns the parent node-id, or own `id` if there is
+    /// Similar to `get_parent`; returns the parent node-ID, or own `id` if there is
     /// no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
     /// present in the map -- so passing the return value of get_parent_node to
     /// get may actually panic.
@@ -603,7 +604,7 @@ impl<'hir> Map<'hir> {
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
-    /// last good node id we found. Note that reaching the crate root (`id == 0`),
+    /// last good node-ID we found. Note that reaching the crate root (`id == 0`),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
     fn walk_parent_nodes<F, F2>(&self,
@@ -827,8 +828,8 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Given a node ID, get a list of attributes associated with the AST
-    /// corresponding to the Node ID
+    /// Given a node-ID, get a list of attributes associated with the AST
+    /// corresponding to the Node-ID
     pub fn attrs(&self, id: NodeId) -> &'hir [ast::Attribute] {
         self.read(id); // reveals attributes on the node
         let attrs = match self.find(id) {
@@ -849,11 +850,11 @@ impl<'hir> Map<'hir> {
         attrs.unwrap_or(&[])
     }
 
-    /// Returns an iterator that yields the node id's with paths that
+    /// Returns an iterator that yields the node-ID's with paths that
     /// match `parts`.  (Requires `parts` is non-empty.)
     ///
     /// For example, if given `parts` equal to `["bar", "quux"]`, then
-    /// the iterator will produce node id's for items with paths
+    /// the iterator will produce node-ID's for items with paths
     /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
     /// any other such items it can find in the map.
     pub fn nodes_matching_suffix<'a>(&'a self, parts: &'a [String])
@@ -947,7 +948,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // that mod's name.
         //
         // If `id` itself is a mod named `m` with parent `p`, then
-        // returns `Some(id, m, p)`.  If `id` has no mod in its parent
+        // returns `Some(id, m, p)`. If `id` has no mod in its parent
         // chain, then returns `None`.
         fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: NodeId) -> Option<(NodeId, Name)> {
             loop {
@@ -1256,7 +1257,7 @@ pub fn describe_def(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<Def> {
     if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
         tcx.hir().describe_def(node_id)
     } else {
-        bug!("Calling local describe_def query provider for upstream DefId: {:?}",
+        bug!("Calling local `describe_def` query provider for upstream `DefId`: {:?}",
              def_id)
     }
 }

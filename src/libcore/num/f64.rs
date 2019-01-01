@@ -144,7 +144,7 @@ pub mod consts {
 #[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
-    /// Returns `true` if this value is `NaN` and false otherwise.
+    /// Returns whether this value is `NaN`.
     ///
     /// ```
     /// use std::f64;
@@ -161,8 +161,7 @@ impl f64 {
         self != self
     }
 
-    /// Returns `true` if this value is positive infinity or negative infinity and
-    /// false otherwise.
+    /// Returns whether this value is positive infinity or negative infinity.
     ///
     /// ```
     /// use std::f64;
@@ -184,7 +183,7 @@ impl f64 {
         self == INFINITY || self == NEG_INFINITY
     }
 
-    /// Returns `true` if this number is neither infinite nor `NaN`.
+    /// Returns whether this number is neither infinite nor `NaN`.
     ///
     /// ```
     /// use std::f64;
@@ -206,7 +205,7 @@ impl f64 {
         !(self.is_nan() || self.is_infinite())
     }
 
-    /// Returns `true` if the number is neither zero, infinite,
+    /// Returns whether the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
@@ -262,7 +261,7 @@ impl f64 {
         }
     }
 
-    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// Returns whether `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     ///
     /// ```
@@ -286,7 +285,7 @@ impl f64 {
         self.is_sign_positive()
     }
 
-    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// Returns whether `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
     ///
     /// ```

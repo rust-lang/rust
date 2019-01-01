@@ -105,7 +105,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     out.push(Component::Projection(*data));
                 } else {
                     // fallback case: hard code
-                    // OutlivesProjectionComponents.  Continue walking
+                    // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
                     let subcomponents = self.capture_components(ty);
                     out.push(Component::EscapingProjection(subcomponents));
@@ -150,7 +150,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::Error => {
                 // (*) Bare functions and traits are both binders. In the
                 // RFC, this means we would add the bound regions to the
-                // "bound regions list".  In our representation, no such
+                // "bound regions list". In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
 

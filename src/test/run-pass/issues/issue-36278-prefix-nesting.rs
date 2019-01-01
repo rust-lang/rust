@@ -1,5 +1,5 @@
 // run-pass
-// Issue 36278: On an unsized struct with >1 level of nontrivial
+// Issue #36278: On an unsized struct with >1 level of nontrivial
 // nesting, ensure we are computing dynamic size of prefix correctly.
 
 use std::mem;

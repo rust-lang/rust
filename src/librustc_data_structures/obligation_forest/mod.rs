@@ -46,7 +46,7 @@ pub trait ObligationProcessor {
     fn process_backedge<'c, I>(&mut self,
                                cycle: I,
                                _marker: PhantomData<&'c Self::Obligation>)
-        where I: Clone + Iterator<Item=&'c Self::Obligation>;
+        where I: Clone + Iterator<Item = &'c Self::Obligation>;
 }
 
 /// The result type used by `process_obligation`.
@@ -88,7 +88,7 @@ pub struct ObligationForest<O: ForestObligation> {
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
 
-    /// Per tree error cache.  This is used to deduplicate errors,
+    /// Per tree error cache. This is used to deduplicate errors,
     /// which is necessary to avoid trait resolution overflow in
     /// some cases.
     ///
@@ -199,7 +199,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.nodes.len()
     }
 
-    /// Registers an obligation
+    /// Registers an obligation.
     ///
     /// This CAN be done in a snapshot
     pub fn register_obligation(&mut self, obligation: O) {
@@ -207,7 +207,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         let _ = self.register_obligation_at(obligation, None);
     }
 
-    // returns Err(()) if we already know this obligation failed.
+    // Returns `Err(())` if we already know this obligation failed.
     fn register_obligation_at(&mut self, obligation: O, parent: Option<NodeIndex>)
                               -> Result<(), ()>
     {
@@ -308,10 +308,10 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Perform a pass through the obligation list. This must
     /// be called in a loop until `outcome.stalled` is false.
     ///
-    /// This CANNOT be unrolled (presently, at least).
+    /// This _cannot_ be unrolled (presently, at least).
     pub fn process_obligations<P>(&mut self, processor: &mut P, do_completed: DoCompleted)
                                   -> Outcome<O, P::Error>
-        where P: ObligationProcessor<Obligation=O>
+        where P: ObligationProcessor<Obligation = O>
     {
         debug!("process_obligations(len={})", self.nodes.len());
 
@@ -386,12 +386,12 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Mark all NodeState::Success nodes as NodeState::Done and
+    /// Mark all `NodeState::Success` nodes as `NodeState::Done` and
     /// report all cycles between them. This should be called
     /// after `mark_as_waiting` marks all nodes with pending
     /// subobligations as NodeState::Waiting.
     fn process_cycles<P>(&mut self, processor: &mut P)
-        where P: ObligationProcessor<Obligation=O>
+        where P: ObligationProcessor<Obligation = O>
     {
         let mut stack = self.scratch.take().unwrap();
         debug_assert!(stack.is_empty());
@@ -401,7 +401,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         for index in 0..self.nodes.len() {
             // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
             // hot and the state is almost always `Pending` or `Waiting`. It's
-            // a win to handle the no-op cases immediately to avoid the cost of
+            // a win to handle the noop cases immediately to avoid the cost of
             // the function call.
             let state = self.nodes[index].state.get();
             match state {
@@ -418,7 +418,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>,
                                 processor: &mut P, index: usize)
-        where P: ObligationProcessor<Obligation=O>
+        where P: ObligationProcessor<Obligation = O>
     {
         let node = &self.nodes[index];
         let state = node.state.get();
@@ -491,7 +491,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
-    /// Marks all nodes that depend on a pending node as NodeState::Waiting.
+    /// Marks all nodes that depend on a pending node as `NodeState::Waiting`.
     fn mark_as_waiting(&self) {
         for node in &self.nodes {
             if node.state.get() == NodeState::Waiting {
@@ -607,7 +607,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             if let Some(index) = node.parent {
                 let new_index = node_rewrites[index.get()];
                 if new_index >= nodes_len {
-                    // parent dead due to error
+                    // Parent is dead due to error.
                     node.parent = None;
                 } else {
                     node.parent = Some(NodeIndex::new(new_index));
@@ -656,7 +656,7 @@ impl<O> Node<O> {
     }
 }
 
-// I need a Clone closure
+// I need a `Clone` closure.
 #[derive(Clone)]
 struct GetObligation<'a, O: 'a>(&'a [Node<O>]);
 

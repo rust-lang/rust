@@ -1262,7 +1262,7 @@ impl<'a> MethodDef<'a> {
                 // we are in.
 
                 // All of the Self args have the same variant in these
-                // cases.  So we transpose the info in self_pats_idents
+                // cases. So we transpose the info in self_pats_idents
                 // to gather the getter expressions together, in the
                 // form that EnumMatching expects.
 
@@ -1341,7 +1341,7 @@ impl<'a> MethodDef<'a> {
 
         // We will usually need the catch-all after matching the
         // tuples `(VariantK, VariantK, ...)` for each VariantK of the
-        // enum.  But:
+        // enum. But:
         //
         // * when there is only one Self arg, the arms above suffice
         // (and the deriving we call back into may not be prepared to
@@ -1358,7 +1358,7 @@ impl<'a> MethodDef<'a> {
             // Build a series of let statements mapping each self_arg
             // to its discriminant value. If this is a C-style enum
             // with a specific repr type, then casts the values to
-            // that type.  Otherwise casts to `i32` (the default repr
+            // that type. Otherwise casts to `i32` (the default repr
             // type).
             //
             // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
@@ -1450,7 +1450,7 @@ impl<'a> MethodDef<'a> {
             // least safely), according to the type system.
             //
             // The most expedient fix for this is to just let the
-            // code fall through to the catch-all.  But even this is
+            // code fall through to the catch-all. But even this is
             // error-prone, since the catch-all as defined above would
             // generate code like this:
             //
@@ -1462,13 +1462,13 @@ impl<'a> MethodDef<'a> {
             // inference cannot resolve to unique types.
             //
             // One option to the above might be to add explicit type
-            // annotations.  But the *only* reason to go down that path
+            // annotations. But the *only* reason to go down that path
             // would be to try to make the expanded output consistent
             // with the case when the number of enum variants >= 1.
             //
-            // That just isn't worth it.  In fact, trying to generate
+            // That just isn't worth it. In fact, trying to generate
             // sensible code for *any* deriving on a zero-variant enum
-            // does not make sense.  But at the same time, for now, we
+            // does not make sense. But at the same time, for now, we
             // do not want to cause a compile failure just because the
             // user happened to attach a deriving to their
             // zero-variant enum.

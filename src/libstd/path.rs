@@ -91,7 +91,7 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 //
 // Parsing in this module is done by directly transmuting OsStr to [u8] slices,
 // taking advantage of the fact that OsStr always encodes ASCII characters
-// as-is.  Eventually, this transmutation should be replaced by direct uses of
+// as-is. Eventually, this transmutation should be replaced by direct uses of
 // OsStr APIs for parsing, but it will take a while for those to become
 // available.
 
@@ -1800,7 +1800,7 @@ impl Path {
         PathBuf::from(self.inner.to_os_string())
     }
 
-    /// Returns `true` if the `Path` is absolute, i.e., if it is independent of
+    /// Returns whether the `Path` is absolute, i.e., if it is independent of
     /// the current directory.
     ///
     /// * On Unix, a path is absolute if it starts with the root, so
@@ -1822,14 +1822,14 @@ impl Path {
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
         if cfg!(target_os = "redox") {
-            // FIXME: Allow Redox prefixes
+            // FIXME: allow Redox prefixes
             self.has_root() || has_redox_scheme(self.as_u8_slice())
         } else {
             self.has_root() && (cfg!(unix) || self.prefix().is_some())
         }
     }
 
-    /// Returns `true` if the `Path` is relative, i.e., not absolute.
+    /// Returns whether the `Path` is relative, i.e., not absolute.
     ///
     /// See [`is_absolute`]'s documentation for more details.
     ///
@@ -1851,7 +1851,7 @@ impl Path {
         self.components().prefix
     }
 
-    /// Returns `true` if the `Path` has a root.
+    /// Returns whether the `Path` has a root.
     ///
     /// * On Unix, a path has a root if it begins with `/`.
     ///

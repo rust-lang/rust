@@ -23,7 +23,7 @@ mod trace;
 /// that indicate which types must be live at which point in the CFG.
 /// This vector is consumed by `constraint_generation`.
 ///
-/// NB. This computation requires normalization; therefore, it must be
+/// N.B., this computation requires normalization; therefore, it must be
 /// performed before
 pub(super) fn generate<'gcx, 'tcx>(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,

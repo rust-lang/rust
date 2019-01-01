@@ -1,7 +1,5 @@
 // run-pass
 
-// https://github.com/rust-lang/rust/issues/48821
-
 #![feature(const_fn, const_let)]
 
 const fn foo(i: usize) -> usize {

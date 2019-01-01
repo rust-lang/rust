@@ -1,5 +1,4 @@
 // compile-pass
-// https://github.com/rust-lang/rust/issues/51300
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Stat {

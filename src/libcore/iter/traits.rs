@@ -121,7 +121,7 @@ pub trait FromIterator<A>: Sized {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> Self;
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
 /// Conversion into an `Iterator`.
@@ -217,7 +217,7 @@ pub trait IntoIterator {
 
     /// Which kind of iterator are we turning this into?
     #[stable(feature = "rust1", since = "1.0.0")]
-    type IntoIter: Iterator<Item=Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item>;
 
     /// Creates an iterator from a value.
     ///
@@ -343,7 +343,7 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
+    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
@@ -512,7 +512,7 @@ pub trait DoubleEndedIterator: Iterator {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok=B>
+        R: Try<Ok = B>
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {
@@ -806,7 +806,7 @@ pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// "summing up" the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
-    fn sum<I: Iterator<Item=A>>(iter: I) -> Self;
+    fn sum<I: Iterator<Item = A>>(iter: I) -> Self;
 }
 
 /// Trait to represent types that can be created by multiplying elements of an
@@ -825,7 +825,7 @@ pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// multiplying the items.
     #[stable(feature = "iter_arith_traits", since = "1.12.0")]
-    fn product<I: Iterator<Item=A>>(iter: I) -> Self;
+    fn product<I: Iterator<Item = A>>(iter: I) -> Self;
 }
 
 // N.B., explicitly use Add and Mul here to inherit overflow checks
@@ -847,14 +847,14 @@ macro_rules! integer_sum_product {
 
         #[$attr]
         impl<'a> Sum<&'a $a> for $a {
-            fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn sum<I: Iterator<Item = &'a $a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
         #[$attr]
         impl<'a> Product<&'a $a> for $a {
-            fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn product<I: Iterator<Item = &'a $a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
             }
         }
@@ -887,14 +887,14 @@ macro_rules! float_sum_product {
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
-            fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn sum<I: Iterator<Item = &'a $a>>(iter: I) -> $a {
                 iter.fold(0.0, |a, b| a + *b)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
-            fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
+            fn product<I: Iterator<Item = &'a $a>>(iter: I) -> $a {
                 iter.fold(1.0, |a, b| a * *b)
             }
         }
@@ -1023,7 +1023,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 /// Note: In general, you should not use `FusedIterator` in generic bounds if
 /// you need a fused iterator. Instead, you should just call [`Iterator::fuse`]
 /// on the iterator. If the iterator is already fused, the additional [`Fuse`]
-/// wrapper will be a no-op with no performance penalty.
+/// wrapper will be a noop with no performance penalty.
 ///
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse

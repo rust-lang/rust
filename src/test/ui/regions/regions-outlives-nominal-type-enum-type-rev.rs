@@ -3,7 +3,7 @@
 //
 // Rule OutlivesNominalType from RFC 1214.
 
-//compile-pass
+// compile-pass
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

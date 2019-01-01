@@ -1,7 +1,7 @@
 // This test case tests whether we can handle code bases that contain a high
 // number of closures, something that needs special handling in the MingGW
 // toolchain.
-// See https://github.com/rust-lang/rust/issues/34793 for more information.
+// See issue #34793 for more information.
 
 // Make sure we don't optimize anything away:
 // compile-flags: -C no-prepopulate-passes -Cpasses=name-anon-globals

@@ -69,7 +69,7 @@
 //! ## Copying stage0 {std,test,rustc}
 //!
 //! This copies the build output from Cargo into
-//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: This step's
+//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: this step's
 //! documentation should be expanded -- the information already here may be
 //! incorrect.
 //!
@@ -606,7 +606,7 @@ impl Build {
         self.out.join(&*target).join("crate-docs")
     }
 
-    /// Returns true if no custom `llvm-config` is set for the specified target.
+    /// Returns whether no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: Interned<String>) -> bool {
@@ -853,7 +853,7 @@ impl Build {
             .map(|p| &**p)
     }
 
-    /// Returns true if this is a no-std `target`, if defined
+    /// Returns whether this is a no-std `target`, if defined
     fn no_std(&self, target: Interned<String>) -> Option<bool> {
         self.config.target_config.get(&target)
             .map(|t| t.no_std)

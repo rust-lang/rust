@@ -786,7 +786,7 @@ pub struct M128A {
 #[cfg(target_arch = "x86_64")]
 #[repr(C, align(16))]
 pub struct FLOATING_SAVE_AREA {
-    _Dummy: [u8; 512] // FIXME: Fill this out
+    _Dummy: [u8; 512] // FIXME: fill this out.
 }
 
 #[cfg(target_arch = "arm")]

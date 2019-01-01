@@ -42,7 +42,7 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 
-    /// Returns true if the value `a` is the "expected" type in the
+    /// Returns whether the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 
@@ -271,7 +271,7 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
     {
         // To be compatible, `a` and `b` must be for precisely the
         // same set of traits and item names. We always require that
-        // projection bounds lists are sorted by trait-def-id and item-name,
+        // projection bounds lists are sorted by trait-def-ID and item-name,
         // so we can just iterate through the lists pairwise, so long as they are the
         // same length.
         if a.len() != b.len() {

@@ -48,9 +48,9 @@ pub trait RawFloat
     : Copy
     + Debug
     + LowerExp
-    + Mul<Output=Self>
-    + Div<Output=Self>
-    + Neg<Output=Self>
+    + Mul<Output = Self>
+    + Div<Output = Self>
+    + Neg<Output = Self>
 {
     const INFINITY: Self;
     const NAN: Self;

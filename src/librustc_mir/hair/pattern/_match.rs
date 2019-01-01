@@ -338,7 +338,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 
 impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tcx> {
     fn from_iter<T>(iter: T) -> Self
-        where T: IntoIterator<Item=SmallVec<[&'p Pattern<'tcx>; 2]>>
+        where T: IntoIterator<Item = SmallVec<[&'p Pattern<'tcx>; 2]>>
     {
         Matrix(iter.into_iter().collect())
     }
@@ -349,7 +349,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
-    /// not. eg. `struct Foo { _private: ! }` cannot be seen to be empty
+    /// not. E.g. `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside it's module and should not be matchable with an empty match
     /// statement.
     pub module: DefId,
@@ -699,7 +699,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     patterns: I) -> u64
-    where I: Iterator<Item=&'p Pattern<'tcx>>
+    where I: Iterator<Item = &'p Pattern<'tcx>>
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched
@@ -1020,13 +1020,13 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
     }
 }
 
-/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
+/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
 ///   (0) We don't exit early if the pattern matrix has zero rows. We just
 ///       continue to recurse over columns.
 ///   (1) all_constructors will only return constructors that are statically
-///       possible. eg. it will only return Ok for Result<T, !>
+///       possible. E.g., it will only return `Ok` for `Result<T, !>`.
 ///
 /// This finds whether a (row) vector `v` of patterns is 'useful' in relation
 /// to a set of such vectors `m` - this is defined as there being a set of
@@ -1034,8 +1034,8 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
 ///
 /// All the patterns at each column of the `matrix ++ v` matrix must
 /// have the same type, except that wildcard (PatternKind::Wild) patterns
-/// with type TyErr are also allowed, even if the "type of the column"
-/// is not TyErr. That is used to represent private fields, as using their
+/// with type `TyErr` are also allowed, even if the "type of the column"
+/// is not `TyErr`. That is used to represent private fields, as using their
 /// real type would assert that they are inhabited.
 ///
 /// This is used both for reachability checking (if a pattern isn't useful in
@@ -1050,10 +1050,10 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
-    // The base case. We are pattern-matching on () and the return value is
+    // The base case. We are pattern-matching on `()` and the return value is
     // based on whether our matrix has a row or not.
-    // NOTE: This could potentially be optimized by checking rows.is_empty()
-    // first and then, if v is non-empty, the return value is based on whether
+    // N.B., this could potentially be optimized by checking `rows.is_empty()`
+    // first, and then, if `v` is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
         return if rows.is_empty() {

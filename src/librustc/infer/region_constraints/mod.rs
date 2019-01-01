@@ -565,7 +565,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // the top of this file for more details.
         //
         // This computation is potentially wrong in the face of
-        // rollover.  It's conceivable, if unlikely, that one might
+        // rollover. It's conceivable, if unlikely, that one might
         // wind up with accidental capture for nested functions in
         // that case, if the outer function had bound regions created
         // a very long time before and the inner function somehow
@@ -612,7 +612,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // cannot add verifys once regions are resolved
         debug!("RegionConstraintCollector: add_verify({:?})", verify);
 
-        // skip no-op cases known to be satisfied
+        // skip noop cases known to be satisfied
         if let VerifyBound::AllBounds(ref bs) = verify.bound {
             if bs.len() == 0 {
                 return;
@@ -847,7 +847,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         );
 
         // `result_set` acts as a worklist: we explore all outgoing
-        // edges and add any new regions we find to result_set.  This
+        // edges and add any new regions we find to result_set. This
         // is not a terribly efficient implementation.
         let mut taint_set = taint::TaintSet::new(directions, r0);
         taint_set.fixed_point(tcx, &self.undo_log[mark.length..], &self.data.verifys);

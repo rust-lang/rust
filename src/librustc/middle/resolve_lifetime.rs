@@ -197,7 +197,7 @@ struct NamedRegionMap {
     // `Region` describing how that region is bound
     pub defs: NodeMap<Region>,
 
-    // the set of lifetime def ids that are late-bound; a region can
+    // the set of lifetime def-IDs that are late-bound; a region can
     // be late-bound if (a) it does NOT appear in a where-clause and
     // (b) it DOES appear in the arguments.
     pub late_bound: NodeSet,
@@ -370,7 +370,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         ..*providers
     };
 
-    // (*) FIXME the query should be defined to take a LocalDefId
+    // (*) FIXME: the query should be defined to take a LocalDefId
 }
 
 /// Computes the `ResolveLifetimes` map that contains data for the
@@ -1198,7 +1198,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
         fn visit_expr(&mut self, ex: &hir::Expr) {
             if let Some(label) = expression_label(ex) {
                 for prior_label in &self.labels_in_fn[..] {
-                    // FIXME (#24278): non-hygienic comparison
+                    // FIXME(#24278): non-hygienic comparison
                     if label.name == prior_label.name {
                         signal_shadowing_problem(
                             self.tcx,
@@ -1246,7 +1246,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
                 Scope::Binder {
                     ref lifetimes, s, ..
                 } => {
-                    // FIXME (#24278): non-hygienic comparison
+                    // FIXME(#24278): non-hygienic comparison
                     if let Some(def) = lifetimes.get(&hir::ParamName::Plain(label.modern())) {
                         let node_id = tcx.hir().as_local_node_id(def.id().unwrap()).unwrap();
 
@@ -1581,7 +1581,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             match lifetimeuseset {
                 Some(LifetimeUseSet::One(lifetime)) => {
                     let node_id = self.tcx.hir().as_local_node_id(def_id).unwrap();
-                    debug!("node id first={:?}", node_id);
+                    debug!("node-ID first={:?}", node_id);
                     if let Some((id, span, name)) = match self.tcx.hir().get(node_id) {
                         Node::Lifetime(hir_lifetime) => Some((
                             hir_lifetime.id,
@@ -2565,7 +2565,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         param: &'tcx hir::GenericParam,
     ) {
         for label in &self.labels_in_fn {
-            // FIXME (#24278): non-hygienic comparison
+            // FIXME(#24278): non-hygienic comparison
             if param.name.ident().name == label.name {
                 signal_shadowing_problem(
                     self.tcx,
@@ -2610,7 +2610,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    /// Returns true if, in the current scope, replacing `'_` would be
+    /// Returns whether, in the current scope, replacing `'_` would be
     /// equivalent to a single-use lifetime.
     fn track_lifetime_uses(&self) -> bool {
         let mut scope = self.scope;

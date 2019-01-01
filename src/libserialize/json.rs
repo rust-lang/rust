@@ -327,14 +327,14 @@ fn io_error_to_error(io: io::Error) -> ParserError {
 
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME this should be a nicer error
+        // FIXME: this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
 }
 
 impl fmt::Display for DecoderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME this should be a nicer error
+        // FIXME: this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
 }
@@ -345,7 +345,7 @@ impl std::error::Error for DecoderError {
 
 impl fmt::Display for EncoderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME this should be a nicer error
+        // FIXME: this should be a nicer error
         fmt::Debug::fmt(self, f)
     }
 }
@@ -1073,13 +1073,13 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is an Object. Returns false otherwise.
+    /// Returns whether the Json value is an `Object`.
     pub fn is_object(&self) -> bool {
         self.as_object().is_some()
     }
 
-    /// If the Json value is an Object, returns the associated BTreeMap.
-    /// Returns None otherwise.
+    /// If the Json value is an `Object`, returns the associated `BTreeMap`;
+    /// returns `None` otherwise.
     pub fn as_object(&self) -> Option<&Object> {
         match *self {
             Json::Object(ref map) => Some(map),
@@ -1087,13 +1087,13 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is an Array. Returns false otherwise.
+    /// Returns whether the Json value is an `Array`.
     pub fn is_array(&self) -> bool {
         self.as_array().is_some()
     }
 
-    /// If the Json value is an Array, returns the associated vector.
-    /// Returns None otherwise.
+    /// If the Json value is an `Array`, returns the associated vector;
+    /// returns `None` otherwise.
     pub fn as_array(&self) -> Option<&Array> {
         match *self {
             Json::Array(ref array) => Some(&*array),
@@ -1101,13 +1101,13 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a String. Returns false otherwise.
+    /// Returns whether the Json value is a `String`.
     pub fn is_string(&self) -> bool {
         self.as_string().is_some()
     }
 
-    /// If the Json value is a String, returns the associated str.
-    /// Returns None otherwise.
+    /// If the Json value is a `String`, returns the associated `str`;
+    /// returns `None` otherwise.
     pub fn as_string(&self) -> Option<&str> {
         match *self {
             Json::String(ref s) => Some(&s[..]),
@@ -1115,7 +1115,7 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a Number. Returns false otherwise.
+    /// Returns whether the Json value is a `Number`.
     pub fn is_number(&self) -> bool {
         match *self {
             Json::I64(_) | Json::U64(_) | Json::F64(_) => true,
@@ -1123,7 +1123,7 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a i64. Returns false otherwise.
+    /// Returns whether the Json value is a `i64`.
     pub fn is_i64(&self) -> bool {
         match *self {
             Json::I64(_) => true,
@@ -1131,7 +1131,7 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a u64. Returns false otherwise.
+    /// Returns whether the Json value is a `u64`.
     pub fn is_u64(&self) -> bool {
         match *self {
             Json::U64(_) => true,
@@ -1139,7 +1139,7 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a f64. Returns false otherwise.
+    /// Returns whether the Json value is a `f64`.
     pub fn is_f64(&self) -> bool {
         match *self {
             Json::F64(_) => true,
@@ -1147,8 +1147,8 @@ impl Json {
         }
     }
 
-    /// If the Json value is a number, return or cast it to a i64.
-    /// Returns None otherwise.
+    /// If the Json value is a number, returns or cast it to a `i64`;
+    /// returns `None` otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Json::I64(n) => Some(n),
@@ -1157,8 +1157,8 @@ impl Json {
         }
     }
 
-    /// If the Json value is a number, return or cast it to a u64.
-    /// Returns None otherwise.
+    /// If the Json value is a number, returns or cast it to a `u64`;
+    /// returns `None` otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
             Json::I64(n) => Some(n as u64),
@@ -1167,8 +1167,8 @@ impl Json {
         }
     }
 
-    /// If the Json value is a number, return or cast it to a f64.
-    /// Returns None otherwise.
+    /// If the Json value is a number, returns or cast it to a `f64`;
+    /// returns `None` otherwise.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Json::I64(n) => Some(n as f64),
@@ -1178,13 +1178,13 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a Boolean. Returns false otherwise.
+    /// Returns whether the Json value is a `Boolean`.
     pub fn is_boolean(&self) -> bool {
         self.as_boolean().is_some()
     }
 
-    /// If the Json value is a Boolean, returns the associated bool.
-    /// Returns None otherwise.
+    /// If the Json value is a `Boolean`, returns the associated `bool`;
+    /// returns `None` otherwise.
     pub fn as_boolean(&self) -> Option<bool> {
         match *self {
             Json::Boolean(b) => Some(b),
@@ -1192,13 +1192,13 @@ impl Json {
         }
     }
 
-    /// Returns true if the Json value is a Null. Returns false otherwise.
+    /// Returns whether the Json value is a `Null`.
     pub fn is_null(&self) -> bool {
         self.as_null().is_some()
     }
 
-    /// If the Json value is a Null, returns ().
-    /// Returns None otherwise.
+    /// If the Json value is a `Null`, returns `()`;
+    /// returns `None` otherwise.
     pub fn as_null(&self) -> Option<()> {
         match *self {
             Json::Null => Some(()),
@@ -1294,7 +1294,7 @@ impl Stack {
     /// Returns The number of elements in the Stack.
     pub fn len(&self) -> usize { self.stack.len() }
 
-    /// Returns true if the stack is empty.
+    /// Returns whether the stack is empty.
     pub fn is_empty(&self) -> bool { self.stack.is_empty() }
 
     /// Provides access to the StackElement at a given index.
@@ -1320,7 +1320,7 @@ impl Stack {
         true
     }
 
-    /// Returns true if the bottom-most elements of this stack are the same as
+    /// Returns whether the bottom-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
@@ -1330,7 +1330,7 @@ impl Stack {
         true
     }
 
-    /// Returns true if the top-most elements of this stack are the same as
+    /// Returns whether the top-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn ends_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }

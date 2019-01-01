@@ -95,7 +95,7 @@ macro_rules! sh_impl_unsigned {
     )
 }
 
-// FIXME (#23545): uncomment the remaining impls
+// FIXME(#23545): uncomment the remaining impls
 macro_rules! sh_impl_all {
     ($($t:ident)*) => ($(
         //sh_impl_unsigned! { $t, u8 }
@@ -529,7 +529,7 @@ assert_eq!(n.trailing_zeros(), 3);
             doc_comment! {
                 concat!("Converts an integer from big endian to the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are
+On big endian this is a noop. On little endian the bytes are
 swapped.
 
 # Examples
@@ -558,7 +558,7 @@ if cfg!(target_endian = \"big\") {
             doc_comment! {
                 concat!("Converts an integer from little endian to the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are
+On little endian this is a noop. On big endian the bytes are
 swapped.
 
 # Examples
@@ -587,7 +587,7 @@ if cfg!(target_endian = \"little\") {
             doc_comment! {
                 concat!("Converts `self` to big endian from the target's endianness.
 
-On big endian this is a no-op. On little endian the bytes are
+On big endian this is a noop. On little endian the bytes are
 swapped.
 
 # Examples
@@ -616,7 +616,7 @@ if cfg!(target_endian = \"big\") {
             doc_comment! {
                 concat!("Converts `self` to little endian from the target's endianness.
 
-On little endian this is a no-op. On big endian the bytes are
+On little endian this is a noop. On big endian the bytes are
 swapped.
 
 # Examples
@@ -758,7 +758,7 @@ assert_eq!(Wrapping(-10", stringify!($t), ").signum(), Wrapping(-1));
             }
 
             doc_comment! {
-                concat!("Returns `true` if `self` is positive and `false` if the number is zero or
+                concat!("Returns whether `self` is positive and `false` if the number is zero or
 negative.
 
 # Examples
@@ -780,7 +780,7 @@ assert!(!Wrapping(-10", stringify!($t), ").is_positive());
             }
 
             doc_comment! {
-                concat!("Returns `true` if `self` is negative and `false` if the number is zero or
+                concat!("Returns whether `self` is negative and `false` if the number is zero or
 positive.
 
 # Examples
@@ -832,7 +832,7 @@ assert_eq!(n.leading_zeros(), 2);
             }
 
             doc_comment! {
-                concat!("Returns `true` if and only if `self == 2^k` for some `k`.
+                concat!("Returns whether `self == 2^k` for some `k`.
 
 # Examples
 

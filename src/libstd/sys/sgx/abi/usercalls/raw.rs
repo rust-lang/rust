@@ -15,11 +15,13 @@ extern "C" {
 /// Perform the raw usercall operation as defined in the ABI calling convention.
 ///
 /// # Safety
+///
 /// The caller must ensure to pass parameters appropriate for the usercall `nr`
 /// and to observe all requirements specified in the ABI.
 ///
 /// # Panics
-/// Panics if `nr` is 0.
+///
+/// Panics if `nr` is `0`.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub unsafe fn do_usercall(nr: u64, p1: u64, p2: u64, p3: u64, p4: u64) -> (u64, u64) {
     if nr==0 { panic!("Invalid usercall number {}",nr) }

@@ -115,7 +115,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             }
         });
 
-        // If an explicit impl exists, it always takes priority over an auto impl
+        // If an explicit impl exists, it always takes priority over an auto impl.
         if bail_out {
             return AutoTraitResult::ExplicitImpl;
         }

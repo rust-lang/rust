@@ -161,7 +161,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         debug!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
-            // FIXME -- we don't indicate *why* we failed to solve
+            // FIXME: we don't indicate *why* we failed to solve
             debug!("make_query_response: true_errors={:#?}", true_errors);
             return Err(NoSolution);
         }
@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
     /// Given a "guess" at the values for the canonical variables in
     /// the input, try to unify with the *actual* values found in the
-    /// query result.  Often, but not always, this is a no-op, because
+    /// query result.  Often, but not always, this is a noop, because
     /// we already found the mapping in the "guessing" step.
     ///
     /// See also: `query_response_substitution_guess`

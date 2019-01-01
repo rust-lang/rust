@@ -36,7 +36,7 @@ fn c() {
     let y = Foo { a: 10, b: 10isize }; //~ ERROR has no field named `b`
 }
 
-// FIXME: This doesn't work at the moment. See the one below. The pretty-printer
+// FIXME: this doesn't work at the moment. See the one below. The pretty-printer
 // injects a "C" between `extern` and `fn` which causes a "probably_eq"
 // `TokenStream` mismatch. The lack of `"C"` should be preserved in the AST.
 #[foo]

@@ -486,7 +486,7 @@ impl Step for Std {
                  .arg("-p").arg(package);
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
-            // FIXME: Cargo should probably do this itself.
+            // FIXME: cargo should probably do this itself.
             t!(fs::create_dir_all(out_dir.join(package)));
             cargo.arg("--")
                  .arg("--markdown-css").arg("rust.css")
@@ -711,7 +711,7 @@ impl Step for Rustc {
         for krate in &compiler_crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
-            // FIXME: Cargo should probably do this itself.
+            // FIXME: cargo should probably do this itself.
             t!(fs::create_dir_all(out_dir.join(krate)));
             cargo.arg("-p").arg(krate);
         }

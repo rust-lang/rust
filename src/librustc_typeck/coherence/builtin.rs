@@ -47,7 +47,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
 fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
     if let ty::Adt(..) = tcx.type_of(impl_did).sty {
-        /* do nothing */
+        // Do nothing.
     } else {
         // Destructors only work on nominal types.
         if let Some(impl_node_id) = tcx.hir().as_local_node_id(impl_did) {
@@ -331,9 +331,9 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
         gcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
     });
 
-    // this provider should only get invoked for local def-ids
+    // This provider should only get invoked for local def-IDs.
     let impl_node_id = gcx.hir().as_local_node_id(impl_did).unwrap_or_else(|| {
-        bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
+        bug!("coerce_unsized_info: invoked for non-local def-ID {:?}", impl_did)
     });
 
     let source = gcx.type_of(impl_did);
@@ -419,7 +419,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                 // when this coercion occurs, we would be changing the
                 // field `ptr` from a thin pointer of type `*mut [i32;
                 // 3]` to a fat pointer of type `*mut [i32]` (with
-                // extra data `3`).  **The purpose of this check is to
+                // extra data `3`). **The purpose of this check is to
                 // make sure that we know how to do this conversion.**
                 //
                 // To check if this impl is legal, we would walk down
@@ -467,7 +467,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                         }
 
                         // Collect up all fields that were significantly changed
-                        // i.e., those that contain T in coerce_unsized T -> U
+                        // i.e., those that contain `T` in `coerce_unsized T -> U`.
                         Some((i, a, b))
                     })
                     .collect::<Vec<_>>();

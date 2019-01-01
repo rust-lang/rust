@@ -81,7 +81,7 @@ impl<T> [T] {
         }
     }
 
-    /// Returns `true` if the slice has a length of 0.
+    /// Returns whether the slice has a length of 0.
     ///
     /// # Examples
     ///
@@ -452,13 +452,13 @@ impl<T> [T] {
         let ln = self.len();
 
         // For very small types, all the individual reads in the normal
-        // path perform poorly.  We can do better, given efficient unaligned
+        // path perform poorly. We can do better, given efficient unaligned
         // load/store, by loading a larger chunk and reversing a register.
 
         // Ideally LLVM would do this for us, as it knows better than we do
         // whether unaligned reads are efficient (since that changes between
         // different ARM versions, for example) and what the best chunk size
-        // would be.  Unfortunately, as of LLVM 4.0 (2017-05) it only unrolls
+        // would be. Unfortunately, as of LLVM 4.0 (2017-05) it only unrolls
         // the loop, so we need to do this ourselves.  (Hypothesis: reverse
         // is troublesome because the sides can be aligned differently --
         // will be, when the length is odd -- so there's no way of emitting
@@ -1260,7 +1260,7 @@ impl<T> [T] {
         }
     }
 
-    /// Returns `true` if the slice contains an element with the given value.
+    /// Returns whether the slice contains an element with the given value.
     ///
     /// # Examples
     ///
@@ -1276,7 +1276,7 @@ impl<T> [T] {
         x.slice_contains(self)
     }
 
-    /// Returns `true` if `needle` is a prefix of the slice.
+    /// Returns whether `needle` is a prefix of the slice.
     ///
     /// # Examples
     ///
@@ -1304,7 +1304,7 @@ impl<T> [T] {
         self.len() >= n && needle == &self[..n]
     }
 
-    /// Returns `true` if `needle` is a suffix of the slice.
+    /// Returns whether `needle` is a suffix of the slice.
     ///
     /// # Examples
     ///
@@ -1648,7 +1648,7 @@ impl<T> [T] {
         // over all the elements, swapping as we go so that at the end
         // the elements we wish to keep are in the front, and those we
         // wish to reject are at the back. We can then split the slice.
-        // This operation is still O(n).
+        // This operation is still `O(n)`.
         //
         // Example: We start in this state, where `r` represents "next
         // read" and `w` represents "next_write`.
@@ -1659,9 +1659,9 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //           w
         //
-        // Comparing self[r] against self[w-1], this is not a duplicate, so
-        // we swap self[r] and self[w] (no effect as r==w) and then increment both
-        // r and w, leaving us with:
+        // Comparing `self[r]` against `self[w - 1]`, this is not a duplicate, so
+        // we swap `self[r]` and `self[w]` (no effect as `r == w`) and then increment both
+        // `r` and `w`, leaving us with:
         //
         //               r
         //     +---+---+---+---+---+---+
@@ -1669,7 +1669,7 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //               w
         //
-        // Comparing self[r] against self[w-1], this value is a duplicate,
+        // Comparing `self[r]` against `self[w - 1]`, this value is a duplicate,
         // so we increment `r` but leave everything else unchanged:
         //
         //                   r
@@ -1678,8 +1678,8 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //               w
         //
-        // Comparing self[r] against self[w-1], this is not a duplicate,
-        // so swap self[r] and self[w] and advance r and w:
+        // Comparing `self[r]` against `self[w - 1]`, this is not a duplicate,
+        // so swap `self[r]` and `self[w]` and advance `r` and `w`:
         //
         //                       r
         //     +---+---+---+---+---+---+
@@ -1695,7 +1695,7 @@ impl<T> [T] {
         //     +---+---+---+---+---+---+
         //                       w
         //
-        // Duplicate, advance r. End of slice. Split at w.
+        // Duplicate, advance `r`. End of slice. Split at `w`.
 
         let len = self.len();
         if len <= 1 {
@@ -1762,7 +1762,7 @@ impl<T> [T] {
     /// # Panics
     ///
     /// This function will panic if `mid` is greater than the length of the
-    /// slice. Note that `mid == self.len()` does _not_ panic and is a no-op
+    /// slice. Note that `mid == self.len()` does _not_ panic and is a noop
     /// rotation.
     ///
     /// # Complexity
@@ -1803,7 +1803,7 @@ impl<T> [T] {
     /// # Panics
     ///
     /// This function will panic if `k` is greater than the length of the
-    /// slice. Note that `k == self.len()` does _not_ panic and is a no-op
+    /// slice. Note that `k == self.len()` does _not_ panic and is a noop
     /// rotation.
     ///
     /// # Complexity
@@ -2884,7 +2884,7 @@ macro_rules! iterator {
 
             #[inline]
             fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok = B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
@@ -2972,7 +2972,7 @@ macro_rules! iterator {
 
             #[inline]
             fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok = B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
@@ -3036,7 +3036,7 @@ macro_rules! iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: *const T,
-    end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
                    // ptr == end is a quick test for the Iterator being empty, that works
                    // for both ZST and non-ZST.
     _marker: marker::PhantomData<&'a T>,
@@ -3128,7 +3128,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
-    end: *mut T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
                  // ptr == end is a quick test for the Iterator being empty, that works
                  // for both ZST and non-ZST.
     _marker: marker::PhantomData<&'a mut T>,
@@ -3512,7 +3512,7 @@ struct GenericSplitN<I> {
     count: usize,
 }
 
-impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
+impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
     type Item = T;
 
     #[inline]

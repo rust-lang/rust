@@ -17,13 +17,13 @@ impl<'a> WithAssoc for &'a () {
 struct Cloned<I>(I);
 
 impl<'a, I, T: 'a> Iterator for Cloned<I>
-    where I: WithAssoc<Item=&'a T>, T: Clone
+    where I: WithAssoc<Item = &'a T>, T: Clone
 {
     fn next(&self) {}
 }
 
 impl<'a, I, T: 'a> Iterator for Cloned<I>
-    where I: WithAssoc<Item=&'a T>, T: Copy
+    where I: WithAssoc<Item = &'a T>, T: Copy
 {
 
 }

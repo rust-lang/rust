@@ -244,7 +244,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
                 return;
             }
-            // Effectively no-ops
+            // Effectively noops
             "uninit" | "forget" => {
                 return;
             }
@@ -368,7 +368,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             ),
                             "bswap" => {
                                 if width == 8 {
-                                    args[0].immediate() // byte swap a u8/i8 is just a no-op
+                                    args[0].immediate() // byte swap a u8/i8 is just a noop
                                 } else {
                                     self.call(
                                         self.get_intrinsic(
@@ -1034,7 +1034,7 @@ fn codegen_gnu_try(
         // Type indicator for the exception being thrown.
         //
         // The first value in this tuple is a pointer to the exception object
-        // being thrown.  The second value is a "selector" indicating which of
+        // being thrown. The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);

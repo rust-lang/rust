@@ -655,7 +655,7 @@ fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr>
         // possibly due to the use of NonZeroUsize. This little hack allows it
         // to generate optimal code.
         //
-        // See https://github.com/rust-lang/rust/issues/51346 for more details.
+        // See issue #51346 for more details.
         (
             layout,
             hashes.size() + hashes.padding_needed_for(mem::align_of::<(K, V)>()),

@@ -278,7 +278,7 @@ impl<'a> Linker for GccLinker<'a> {
         // link times negatively.
         //
         // -dead_strip can't be part of the pre_link_args because it's also used
-        // for partial linking when using multiple codegen units (-r).  So we
+        // for partial linking when using multiple codegen units (-r). So we
         // insert it here.
         if self.sess.target.target.options.is_like_osx {
             self.linker_arg("-dead_strip");
@@ -599,7 +599,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
             // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
-            // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore
+            // on, the /NATVIS:... flags. LLVM 6 (or earlier) should at worst ignore
             // them, eventually mooting this workaround, per this landed patch:
             // https://github.com/llvm-mirror/lld/commit/27b9c4285364d8d76bb43839daa100
             if let Some(ref linker_path) = self.sess.opts.cg.linker {
@@ -781,11 +781,11 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
-        // noop
+        // No-op.
     }
 
     fn optimize(&mut self) {
-        // Emscripten performs own optimizations
+        // Emscripten performs own optimizations.
         self.cmd.arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
@@ -794,16 +794,16 @@ impl<'a> Linker for EmLinker<'a> {
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz"
         });
-        // Unusable until https://github.com/rust-lang/rust/issues/38454 is resolved
+        // Unusable until issue #38454 is resolved.
         self.cmd.args(&["--memory-init-file", "0"]);
     }
 
     fn pgo_gen(&mut self) {
-        // noop, but maybe we need something like the gnu linker?
+        // No-op, but maybe we need something like the GNU linker?
     }
 
     fn debuginfo(&mut self) {
-        // Preserve names or generate source maps depending on debug info
+        // Preserve names or generate source maps depending on debug info.
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
             DebugInfo::Limited => "-g3",
@@ -820,7 +820,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn build_static_executable(&mut self) {
-        // noop
+        // No-op.
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
@@ -1009,7 +1009,7 @@ impl<'a> Linker for WasmLd<'a> {
         // corrupting static data.
         self.cmd.arg("--stack-first");
 
-        // FIXME we probably shouldn't pass this but instead pass an explicit
+        // FIXME: we probably shouldn't pass this but instead pass an explicit
         // whitelist of symbols we'll allow to be undefined. Unfortunately
         // though we can't handle symbols like `log10` that LLVM injects at a
         // super late date without actually parsing object files. For now let's

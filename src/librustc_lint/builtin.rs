@@ -18,16 +18,14 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
-use rustc::ty::{self, Ty};
-use hir::Node;
-use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
-
-use rustc::util::nodemap::FxHashSet;
-
+use rustc::hir::{self, GenericParamKind, Node, PatKind};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::FnKind;
+use rustc::ty::{self, Ty};
+use rustc::util::nodemap::{FxHashSet, NodeSet};
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
 use syntax::ptr::P;
@@ -41,12 +39,9 @@ use syntax::symbol::keywords;
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
 
-use rustc::hir::{self, GenericParamKind, PatKind};
-use rustc::hir::intravisit::FnKind;
-
 use nonstandard_style::{MethodLateContext, method_context};
 
-// hardwired lints from librustc
+// Hardwired lints from librustc.
 pub use lint::builtin::*;
 
 declare_lint! {
@@ -173,17 +168,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     continue;
                 }
                 if fieldpat.span.ctxt().outer().expn_info().is_some() {
-                    // Don't lint if this is a macro expansion: macro authors
+                    // Don't lint if this is a macro expansion; macro authors
                     // shouldn't have to worry about this kind of style issue
-                    // (Issue #49588)
+                    // (issue #49588).
                     continue;
                 }
                 if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
                     if cx.tcx.find_field_index(ident, &variant) ==
                        Some(cx.tcx.field_index(fieldpat.node.id, cx.tables)) {
-                        let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
-                                     fieldpat.span,
-                                     &format!("the `{}:` in this pattern is redundant", ident));
+                        let mut err = cx.struct_span_lint(
+                            NON_SHORTHAND_FIELD_PATTERNS,
+                            fieldpat.span,
+                            &format!("the `{}:` in this pattern is redundant", ident));
                         let subspan = cx.tcx.sess.source_map().span_through_char(fieldpat.span,
                                                                                  ':');
                         err.span_suggestion_short_with_applicability(
@@ -288,6 +284,7 @@ declare_lint! {
     report_in_external_macro: true
 }
 
+#[derive(Clone)]
 pub struct MissingDoc {
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
@@ -558,6 +555,7 @@ declare_lint! {
     "detects missing implementations of fmt::Debug"
 }
 
+#[derive(Clone)]
 pub struct MissingDebugImplementations {
     impling_types: Option<NodeSet>,
 }
@@ -621,8 +619,8 @@ declare_lint! {
     "detects anonymous parameters"
 }
 
-/// Checks for use of anonymous parameters (RFC 1685)
-#[derive(Clone)]
+/// Checks for use of anonymous parameters (RFC 1685).
+#[derive(Copy, Clone)]
 pub struct AnonymousParameters;
 
 impl LintPass for AnonymousParameters {
@@ -674,7 +672,7 @@ impl EarlyLintPass for AnonymousParameters {
 }
 
 /// Checks for incorrect use use of `repr` attributes.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct BadRepr;
 
 impl LintPass for BadRepr {
@@ -811,7 +809,7 @@ impl LintPass for UnusedDocComment {
 
 impl UnusedDocComment {
     fn warn_if_doc<'a, 'tcx,
-                   I: Iterator<Item=&'a ast::Attribute>,
+                   I: Iterator<Item = &'a ast::Attribute>,
                    C: LintContext<'tcx>>(&self, mut attrs: I, cx: &C) {
         if let Some(attr) = attrs.find(|a| a.is_value_str() && a.check_name("doc")) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, attr.span, "doc comment not used by rustdoc")
@@ -1016,14 +1014,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
     }
 }
 
-/// Forbids using the `#[feature(...)]` attribute
+/// Forbids using the `#[feature(...)]` attribute.
 #[derive(Copy, Clone)]
 pub struct UnstableFeatures;
 
 declare_lint! {
     UNSTABLE_FEATURES,
     Allow,
-    "enabling unstable features (deprecated. do not use)"
+    "enabling unstable features (deprecated, do not use)"
 }
 
 impl LintPass for UnstableFeatures {
@@ -1045,6 +1043,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
 }
 
 /// Lint for unions that contain fields with possibly non-trivial destructors.
+#[derive(Copy, Clone)]
 pub struct UnionsWithDropFields;
 
 declare_lint! {
@@ -1077,6 +1076,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
 }
 
 /// Lint for items marked `pub` that aren't reachable from other crates
+#[derive(Copy, Clone)]
 pub struct UnreachablePub;
 
 declare_lint! {
@@ -1146,7 +1146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
 /// Lint for trait and lifetime bounds in type aliases being mostly ignored:
 /// They are relevant when using associated types, but otherwise neither checked
 /// at definition site nor enforced at use site.
-
+#[derive(Copy, Clone)]
 pub struct TypeAliasBounds;
 
 declare_lint! {
@@ -1182,7 +1182,7 @@ impl TypeAliasBounds {
 
     fn suggest_changing_assoc_types(ty: &hir::Ty, err: &mut DiagnosticBuilder) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
-        // bound.  Let's see if this type does that.
+        // bound. Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc::hir::intravisit::{self, Visitor};
@@ -1257,6 +1257,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
 /// Without this lint, we might not get any diagnostic if the constant is
 /// unused within this crate, even though downstream crates can't use it
 /// without producing an error.
+#[derive(Copy, Clone)]
 pub struct UnusedBrokenConst;
 
 impl LintPass for UnusedBrokenConst {
@@ -1264,6 +1265,7 @@ impl LintPass for UnusedBrokenConst {
         lint_array!()
     }
 }
+
 fn check_const(cx: &LateContext, body_id: hir::BodyId) {
     let def_id = cx.tcx.hir().body_owner_def_id(body_id);
     let is_static = cx.tcx.is_static(def_id).is_some();
@@ -1297,6 +1299,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
 
 /// Lint for trait and lifetime bounds that don't depend on type parameters
 /// which either do nothing, or stop the item from being used.
+#[derive(Copy, Clone)]
 pub struct TrivialConstraints;
 
 declare_lint! {
@@ -1379,7 +1382,7 @@ impl LintPass for SoftLints {
             UNIONS_WITH_DROP_FIELDS,
             UNREACHABLE_PUB,
             TYPE_ALIAS_BOUNDS,
-            TRIVIAL_BOUNDS
+            TRIVIAL_BOUNDS,
         )
     }
 }
@@ -1390,7 +1393,7 @@ declare_lint! {
     "`...` range patterns are deprecated"
 }
 
-
+#[derive(Copy, Clone)]
 pub struct EllipsisInclusiveRangePatterns;
 
 impl LintPass for EllipsisInclusiveRangePatterns {
@@ -1453,8 +1456,10 @@ declare_lint! {
     report_in_external_macro: true
 }
 
+#[derive(Copy, Clone)]
 pub struct UnnameableTestItems {
-    boundary: ast::NodeId, // NodeId of the item under which things are not nameable
+    // `NodeId` of the item under which things are not nameable.
+    boundary: ast::NodeId,
     items_nameable: bool,
 }
 
@@ -1506,8 +1511,8 @@ declare_lint! {
     "detects edition keywords being used as an identifier"
 }
 
-/// Checks for uses of edition keywords used as an identifier
-#[derive(Clone)]
+/// Checks for uses of edition keywords used as an identifier.
+#[derive(Copy, Clone)]
 pub struct KeywordIdents;
 
 impl LintPass for KeywordIdents {
@@ -1521,7 +1526,7 @@ impl KeywordIdents {
         for tt in tokens.into_trees() {
             match tt {
                 TokenTree::Token(span, tok) => match tok.ident() {
-                    // only report non-raw idents
+                    // Only report non-raw idents.
                     Some((ident, false)) => {
                         self.check_ident(cx, ast::Ident {
                             span: span.substitute_dummy(ident.span),
@@ -1612,7 +1617,7 @@ impl EarlyLintPass for KeywordIdents {
     }
 }
 
-
+#[derive(Copy, Clone)]
 pub struct ExplicitOutlivesRequirements;
 
 impl LintPass for ExplicitOutlivesRequirements {
@@ -1631,9 +1636,9 @@ impl ExplicitOutlivesRequirements {
         infer_static: bool
     ) -> Vec<(usize, Span)> {
         // For lack of a more elegant strategy for comparing the `ty::Predicate`s
-        // returned by this query with the params/bounds grabbed from the HIR—and
-        // with some regrets—we're going to covert the param/lifetime names to
-        // strings
+        // returned by this query with the params/bounds grabbed from the HIR (and
+        // with some regrets), we're going to covert the param/lifetime names to
+        // strings.
         let inferred_outlives = cx.tcx.inferred_outlives_of(item_def_id);
 
         let ty_lt_names = inferred_outlives.iter().filter_map(|pred| {
@@ -1663,7 +1668,8 @@ impl ExplicitOutlivesRequirements {
                     _ => false
                 };
                 if is_static && !infer_static {
-                    // infer-outlives for 'static is still feature-gated (tracking issue #44493)
+                    // `infer-outlives` for `'static` is still feature-gated
+                    // (tracking issue #44493).
                     continue;
                 }
 
@@ -1686,9 +1692,9 @@ impl ExplicitOutlivesRequirements {
             return Vec::new();
         }
         if bound_spans.len() == bounds.len() {
-            let (_, last_bound_span) = bound_spans[bound_spans.len()-1];
+            let (_, last_bound_span) = bound_spans[bound_spans.len() - 1];
             // If all bounds are inferable, we want to delete the colon, so
-            // start from just after the parameter (span passed as argument)
+            // start from just after the parameter (span passed as argument).
             vec![lo.to(last_bound_span)]
         } else {
             let mut merged = Vec::new();
@@ -1697,18 +1703,18 @@ impl ExplicitOutlivesRequirements {
             let mut from_start = true;
             for (i, bound_span) in bound_spans {
                 match last_merged_i {
-                    // If the first bound is inferable, our span should also eat the trailing `+`
+                    // If the first bound is inferable, our span should also eat the trailing `+`.
                     None if i == 0 => {
                         merged.push(bound_span.to(bounds[1].span().shrink_to_lo()));
                         last_merged_i = Some(0);
                     },
-                    // If consecutive bounds are inferable, merge their spans
-                    Some(h) if i == h+1 => {
+                    // If consecutive bounds are inferable, merge their spans.
+                    Some(h) if i == h + 1 => {
                         if let Some(tail) = merged.last_mut() {
                             // Also eat the trailing `+` if the first
-                            // more-than-one bound is inferable
+                            // more-than-one bound is inferable.
                             let to_span = if from_start && i < bounds.len() {
-                                bounds[i+1].span().shrink_to_lo()
+                                bounds[i + 1].span().shrink_to_lo()
                             } else {
                                 bound_span
                             };
@@ -1721,9 +1727,9 @@ impl ExplicitOutlivesRequirements {
                     _ => {
                         // When we find a non-inferable bound, subsequent inferable bounds
                         // won't be consecutive from the start (and we'll eat the leading
-                        // `+` rather than the trailing one)
+                        // `+` rather than the trailing one).
                         from_start = false;
-                        merged.push(bounds[i-1].span().shrink_to_hi().to(bound_span));
+                        merged.push(bounds[i - 1].span().shrink_to_hi().to(bound_span));
                         last_merged_i = Some(i);
                     }
                 }

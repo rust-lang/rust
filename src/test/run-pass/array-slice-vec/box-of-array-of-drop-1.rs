@@ -32,11 +32,11 @@ fn main() {
     assert!(g.join().is_err());
 
     // When the panic occurs, we will be in the midst of constructing
-    // the input to `_b3`.  Therefore, we drop the elements of the
+    // the input to `_b3`. Therefore, we drop the elements of the
     // partially filled array first, before we get around to dropping
     // the elements of `_b1` and _b2`.
 
-    // Issue 23222: The order in which the elements actually get
+    // Issue #23222: The order in which the elements actually get
     // dropped is a little funky. See similar notes in nested-vec-3;
     // in essence, I would not be surprised if we change the ordering
     // given in `expect` in the future.

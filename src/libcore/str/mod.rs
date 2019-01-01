@@ -1407,7 +1407,7 @@ Section: UTF-8 validation
 // use truncation to fit u64 into usize
 const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
 
-/// Returns `true` if any byte in the word `x` is nonascii (>= 128).
+/// Returns whether any byte in the word `x` is nonascii (>= 128).
 #[inline]
 fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
@@ -2125,7 +2125,7 @@ impl str {
         self.as_bytes().len()
     }
 
-    /// Returns `true` if `self` has a length of zero bytes.
+    /// Returns whether `self` has a length of zero bytes.
     ///
     /// # Examples
     ///
@@ -2858,7 +2858,7 @@ impl str {
         EncodeUtf16 { chars: self.chars(), extra: 0 }
     }
 
-    /// Returns `true` if the given pattern matches a sub-slice of
+    /// Returns whether the given pattern matches a sub-slice of
     /// this string slice.
     ///
     /// Returns `false` if it does not.
@@ -2879,7 +2879,7 @@ impl str {
         pat.is_contained_in(self)
     }
 
-    /// Returns `true` if the given pattern matches a prefix of this
+    /// Returns whether the given pattern matches a prefix of this
     /// string slice.
     ///
     /// Returns `false` if it does not.
@@ -2899,7 +2899,7 @@ impl str {
         pat.is_prefix_of(self)
     }
 
-    /// Returns `true` if the given pattern matches a suffix of this
+    /// Returns whether the given pattern matches a suffix of this
     /// string slice.
     ///
     /// Returns `false` if it does not.

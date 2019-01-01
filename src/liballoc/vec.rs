@@ -691,11 +691,10 @@ impl<T> Vec<T> {
             let mut ptr = self.as_mut_ptr().add(self.len);
             // Set the final length at the end, keeping in mind that
             // dropping an element might panic. Works around a missed
-            // optimization, as seen in the following issue:
-            // https://github.com/rust-lang/rust/issues/51802
+            // optimization, as seen in issue #51802.
             let mut local_len = SetLenOnDrop::new(&mut self.len);
 
-            // drop any extra elements
+            // Drop any extra elements.
             for _ in len..current_len {
                 local_len.decrement_len(1);
                 ptr = ptr.offset(-1);
@@ -1159,7 +1158,7 @@ impl<T> Vec<T> {
         self.len
     }
 
-    /// Returns `true` if the vector contains no elements.
+    /// Returns whether the vector contains no elements.
     ///
     /// # Examples
     ///
@@ -1765,7 +1764,7 @@ trait SpecExtend<T, I> {
 }
 
 impl<T, I> SpecExtend<T, I> for Vec<T>
-    where I: Iterator<Item=T>,
+    where I: Iterator<Item = T>,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
@@ -1795,7 +1794,7 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
 }
 
 impl<T, I> SpecExtend<T, I> for Vec<T>
-    where I: TrustedLen<Item=T>,
+    where I: TrustedLen<Item = T>,
 {
     default fn from_iter(iterator: I) -> Self {
         let mut vector = Vec::new();
@@ -1858,7 +1857,7 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
 }
 
 impl<'a, T: 'a, I> SpecExtend<&'a T, I> for Vec<T>
-    where I: Iterator<Item=&'a T>,
+    where I: Iterator<Item = &'a T>,
           T: Clone,
 {
     default fn from_iter(iterator: I) -> Self {
@@ -1945,7 +1944,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "vec_splice", since = "1.21.0")]
     pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<I::IntoIter>
-        where R: RangeBounds<usize>, I: IntoIterator<Item=T>
+        where R: RangeBounds<usize>, I: IntoIterator<Item = T>
     {
         Splice {
             drain: self.drain(range),
@@ -2173,7 +2172,7 @@ impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
 }
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
-impl<'a, T> From<Cow<'a, [T]>> for Vec<T> where [T]: ToOwned<Owned=Vec<T>> {
+impl<'a, T> From<Cow<'a, [T]>> for Vec<T> where [T]: ToOwned<Owned = Vec<T>> {
     fn from(s: Cow<'a, [T]>) -> Vec<T> {
         s.into_owned()
     }
@@ -2551,7 +2550,7 @@ impl<'a, I: Iterator> Drop for Splice<'a, I> {
             }
 
             // There may be more elements. Use the lower bound as an estimate.
-            // FIXME: Is the upper bound a better guess? Or something else?
+            // FIXME: is the upper bound a better guess? Or something else?
             let (lower_bound, _upper_bound) = self.replace_with.size_hint();
             if lower_bound > 0  {
                 self.drain.move_tail(lower_bound);
@@ -2581,7 +2580,7 @@ impl<'a, T> Drain<'a, T> {
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Return whether we filled the entire range. (`replace_with.next()` didn’t return `None`.)
-    unsafe fn fill<I: Iterator<Item=T>>(&mut self, replace_with: &mut I) -> bool {
+    unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {
         let vec = self.vec.as_mut();
         let range_start = vec.len;
         let range_end = self.tail_start;

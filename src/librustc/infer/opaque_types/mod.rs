@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// # Parameters
     ///
-    /// - `parent_def_id` -- the def-id of the function in which the opaque type
+    /// - `parent_def_id` -- the def-ID of the function in which the opaque type
     ///   is defined
     /// - `body_id` -- the body-id with which the resulting obligations should
     ///   be associated
@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let span = self.tcx.def_span(def_id);
 
         // If there are required region bounds, we can just skip
-        // ahead.  There will already be a registered region
+        // ahead. There will already be a registered region
         // obligation related `concrete_ty` to those regions.
         if opaque_defn.has_required_region_bounds {
             return;
@@ -649,7 +649,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                 if let ty::Opaque(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
-                    // value we are inferring.  At present, this is
+                    // value we are inferring. At present, this is
                     // always true during the first phase of
                     // type-check, but not always true later on during
                     // NLL. Once we support named abstract types more fully,

@@ -1,5 +1,5 @@
-// This test was derived from the wasm and parsell crates.  They
-// stopped compiling when #32330 is fixed.
+// This test was derived from the *wasm* and *parsell* crates. They
+// stopped compiling when issue #32330 was fixed.
 
 #![allow(dead_code, unused_variables)]
 
@@ -33,10 +33,9 @@ fn bar<F>(t: F)
 fn baz<F>(t: F)
     // No type can satisfy this requirement, since `'a` does not
     // appear in any of the input types:
-    where F: for<'a> Iterator<Item=&'a i32>
+    where F: for<'a> Iterator<Item = &'a i32>
     //~^ ERROR E0582
 {
 }
 
-fn main() {
-}
+fn main() {}

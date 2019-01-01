@@ -52,7 +52,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+    where I: Iterator<Item = T>, T: AsRef<OsStr>
 {
     Err(JoinPathsError)
 }

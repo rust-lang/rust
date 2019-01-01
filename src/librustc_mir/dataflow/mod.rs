@@ -579,7 +579,7 @@ pub trait BitDenotation<'tcx>: BitSetOperator {
     /// is that the `statement_effect` and `terminator_effect` methods
     /// mutate only the gen/kill sets.
     ///
-    /// FIXME: We should consider enforcing the intention described in
+    /// FIXME: we should consider enforcing the intention described in
     /// the previous paragraph by passing the three sets in separate
     /// parameters to encode their distinct mutabilities.
     fn accumulates_intrablock_state() -> bool { false }
@@ -677,7 +677,7 @@ pub trait BitDenotation<'tcx>: BitSetOperator {
     /// GEN and KILL sets attached to the block, and so instead we add
     /// this extra machinery to represent the flow-dependent effect.
     ///
-    /// FIXME: Right now this is a bit of a wart in the API. It might
+    /// FIXME: right now this is a bit of a wart in the API. It might
     /// be better to represent this as an additional gen- and
     /// kill-sets associated with each edge coming out of the basic
     /// block.

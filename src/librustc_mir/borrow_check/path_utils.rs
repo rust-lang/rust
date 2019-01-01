@@ -8,7 +8,7 @@ use rustc::mir::{ProjectionElem, BorrowKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
-/// Returns true if the borrow represented by `kind` is
+/// Returns whether the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and
 /// Activation phases.
 pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(
@@ -39,15 +39,15 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     mut op: F,
 ) where
     F: FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> Control,
-    I: Iterator<Item=BorrowIndex>
+    I: Iterator<Item = BorrowIndex>
 {
     let (access, place) = access_place;
 
-    // FIXME: analogous code in check_loans first maps `place` to
-    // its base_path.
+    // FIXME: analogous code in `check_loans` first maps `place` to
+    // its `base_path`.
 
-    // check for loan restricting path P being used. Accounts for
-    // borrows of P, P.a.b, etc.
+    // Check for loan restricting path `P` being used. Accounts for
+    // borrows of `P`, `P.a.b`, etc.
     for i in candidates {
         let borrowed = &borrow_set[i];
 

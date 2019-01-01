@@ -489,9 +489,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-// Bans nested `impl Trait`, e.g., `impl Into<impl Debug>`.
-// Nested `impl Trait` _is_ allowed in associated type position,
-// e.g `impl Iterator<Item=impl Debug>`
+// Bans nested `impl Trait` (e.g., `impl Into<impl Debug>`).
+// Nested `impl Trait` _is_ allowed in associated type position
+// (e.g., `impl Iterator<Item = impl Debug>`).
 struct NestedImplTraitVisitor<'a> {
     session: &'a Session,
     outer_impl_trait: Option<Span>,
@@ -532,7 +532,7 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
                     self.visit_generic_arg(arg)
                 }
                 for type_binding in &data.bindings {
-                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                    // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                     // are allowed to contain nested `impl Trait`.
                     self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
                 }

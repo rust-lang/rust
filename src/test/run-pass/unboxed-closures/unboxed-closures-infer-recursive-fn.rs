@@ -4,7 +4,7 @@
 use std::marker::PhantomData;
 
 // Test that we are able to infer a suitable kind for a "recursive"
-// closure.  As far as I can tell, coding up a recursive closure
+// closure. As far as I can tell, coding up a recursive closure
 // requires the good ol' [Y Combinator].
 //
 // [Y Combinator]: http://en.wikipedia.org/wiki/Fixed-point_combinator#Y_combinator

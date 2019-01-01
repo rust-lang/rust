@@ -1300,7 +1300,7 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.0 == feature) {
         let issue = info.2;
-        // FIXME (#28244): enforce that active features have issue numbers
+        // FIXME(#28244): enforce that active features have issue numbers
         // assert!(issue.is_some())
         issue
     } else {

@@ -102,7 +102,7 @@ impl<T> Packet<T> {
             // up and rather only wake them up at the appropriate time. This
             // implementation of shared channels assumes that any blocking
             // recv() will undo the increment of steals performed in try_recv()
-            // once the recv is complete.  This thread that we're inheriting,
+            // once the recv is complete. This thread that we're inheriting,
             // however, is not in the middle of recv. Hence, the first time we
             // wake them up, they're going to wake up from their old port, move
             // on to the upgraded port, and then call the block recv() function.
@@ -237,7 +237,7 @@ impl<T> Packet<T> {
     }
 
     // Essentially the exact same thing as the stream decrement function.
-    // Returns true if blocking should proceed.
+    // Returns whether blocking should proceed.
     fn decrement(&self, token: SignalToken) -> StartResult {
         unsafe {
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
@@ -269,7 +269,7 @@ impl<T> Packet<T> {
 
             // This is a bit of an interesting case. The channel is reported as
             // having data available, but our pop() has failed due to the queue
-            // being in an inconsistent state.  This means that there is some
+            // being in an inconsistent state. This means that there is some
             // pusher somewhere which has yet to complete, but we are guaranteed
             // that a pop will eventually succeed. In this case, we spin in a
             // yield loop because the remote sender should finish their enqueue

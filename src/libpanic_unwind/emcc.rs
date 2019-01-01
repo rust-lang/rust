@@ -1,9 +1,9 @@
-//! Unwinding for emscripten
+//! Unwinding for *emscripten* target.
 //!
 //! Whereas Rust's usual unwinding implementation for Unix platforms
-//! calls into the libunwind APIs directly, on emscripten we instead
+//! calls into the libunwind APIs directly, on Emscripten we instead
 //! call into the C++ unwinding APIs. This is just an expedience since
-//! emscripten's runtime always implements those APIs and does not
+//! Emscripten's runtime always implements those APIs and does not
 //! implement libunwind.
 
 #![allow(private_no_mangle_fns)]

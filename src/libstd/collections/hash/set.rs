@@ -456,7 +456,7 @@ impl<T, S> HashSet<T, S>
         self.map.len()
     }
 
-    /// Returns true if the set contains no elements.
+    /// Returns whether the set contains no elements.
     ///
     /// # Examples
     ///
@@ -513,7 +513,7 @@ impl<T, S> HashSet<T, S>
         self.map.clear()
     }
 
-    /// Returns `true` if the set contains a value.
+    /// Returns whether the set contains a value.
     ///
     /// The value may be any borrowed form of the set's value type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -565,7 +565,7 @@ impl<T, S> HashSet<T, S>
         Recover::get(&self.map, value)
     }
 
-    /// Returns `true` if `self` has no elements in common with `other`.
+    /// Returns whether `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
     /// # Examples
@@ -587,7 +587,7 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| !other.contains(v))
     }
 
-    /// Returns `true` if the set is a subset of another,
+    /// Returns whether the set is a subset of another,
     /// i.e., `other` contains at least all the values in `self`.
     ///
     /// # Examples
@@ -609,7 +609,7 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| other.contains(v))
     }
 
-    /// Returns `true` if the set is a superset of another,
+    /// Returns whether the set is a superset of another,
     /// i.e., `self` contains at least all the values in `other`.
     ///
     /// # Examples
@@ -677,7 +677,7 @@ impl<T, S> HashSet<T, S>
         Recover::replace(&mut self.map, value)
     }
 
-    /// Removes a value from the set. Returns `true` if the value was
+    /// Removes a value from the set. Returns whether the value was
     /// present in the set.
     ///
     /// The value may be any borrowed form of the set's value type, but

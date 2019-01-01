@@ -28,7 +28,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ImpliedOutlivesBounds<
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
-        // FIXME this `unchecked_map` is only necessary because the
+        // FIXME: this `unchecked_map` is only necessary because the
         // query is defined as taking a `ParamEnvAnd<Ty>`; it should
         // take a `ImpliedOutlivesBounds` instead
         let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {

@@ -145,8 +145,8 @@ pub fn main() {
         assert_eq!(cttz_nonzero(100u64), 2); assert_eq!(cttz_nonzero(100i64), 2);
         assert_eq!(cttz_nonzero(100u128), 2); assert_eq!(cttz_nonzero(100i128), 2);
 
-        assert_eq!(bswap(0x0Au8), 0x0A); // no-op
-        assert_eq!(bswap(0x0Ai8), 0x0A); // no-op
+        assert_eq!(bswap(0x0Au8), 0x0A); // noop
+        assert_eq!(bswap(0x0Ai8), 0x0A); // noop
         assert_eq!(bswap(0x0A0Bu16), 0x0B0A);
         assert_eq!(bswap(0x0A0Bi16), 0x0B0A);
         assert_eq!(bswap(0x0ABBCC0Du32), 0x0DCCBB0A);

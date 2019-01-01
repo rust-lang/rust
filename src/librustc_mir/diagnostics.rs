@@ -534,7 +534,7 @@ match Some("hi".to_string()) {
 
 The `op_string_ref` binding has type `&Option<&String>` in both cases.
 
-See also https://github.com/rust-lang/rust/issues/14587
+See also <https://github.com/rust-lang/rust/issues/14587>.
 "##,
 
 E0010: r##"
@@ -686,7 +686,7 @@ fn main() {
 }
 ```
 
-See also https://doc.rust-lang.org/book/first-edition/unsafe.html
+See also <https://doc.rust-lang.org/book/first-edition/unsafe.html>.
 "##,
 
 E0373: r##"
@@ -977,7 +977,7 @@ fn mutable() {
     foo(|| x = 2);
 }
 
-// Attempts to take a mutable reference to closed-over data.  Error message
+// Attempts to take a mutable reference to closed-over data. Error message
 // reads: `cannot borrow data mutably in a captured outer variable...`
 fn mut_addr() {
     let mut x = 0u32;

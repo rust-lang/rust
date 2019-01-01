@@ -186,7 +186,7 @@ impl Semantics for X87DoubleExtendedS {
     ///  exponent = all 1's, integer bit 0, significand 0 ("pseudoinfinity")
     ///  exponent = all 1's, integer bit 0, significand nonzero ("pseudoNaN")
     ///  exponent = 0, integer bit 1 ("pseudodenormal")
-    ///  exponent!=0 nor all 1's, integer bit 0 ("unnormal")
+    ///  exponent != 0 nor all 1's, integer bit 0 ("unnormal")
     /// At the moment, the first two are treated as NaNs, the second two as Normal.
     fn from_bits(bits: u128) -> IeeeFloat<Self> {
         let sign = bits & (1 << (Self::BITS - 1));
@@ -373,7 +373,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
         // We use enough digits so the number can be round-tripped back to an
         // APFloat. The formula comes from "How to Print Floating-Point Numbers
         // Accurately" by Steele and White.
-        // FIXME: Using a formula based purely on the precision is conservative;
+        // FIXME: using a formula based purely on the precision is conservative;
         // we can print fewer digits depending on the actual value being printed.
 
         // precision = 2 + floor(S::PRECISION / lg_2(10))
@@ -2421,7 +2421,7 @@ mod sig {
         let _: Loss = shift_right(&mut dst[..dst_limbs], &mut 0, shift);
 
         // We now have (dst_limbs * LIMB_BITS - shift) bits from `src`
-        // in `dst`.  If this is less that src_bits, append the rest, else
+        // in `dst`. If this is less that src_bits, append the rest, else
         // clear the high bits.
         let n = dst_limbs * LIMB_BITS - shift;
         if n < src_bits {

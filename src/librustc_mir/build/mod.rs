@@ -26,7 +26,7 @@ use util as mir_util;
 
 use super::lints;
 
-/// Construct the MIR for a given def-id.
+/// Construct the MIR for a given def-ID.
 pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
     let id = tcx.hir().as_local_node_id(def_id).unwrap();
 
@@ -76,8 +76,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if let hir::BodyOwnerKind::Fn = cx.body_owner_kind {
-            // fetch the fully liberated fn signature (that is, all bound
-            // types/lifetimes replaced)
+            // Fetch the fully liberated fn signature (that is, all bound
+            // types/lifetimes replaced).
             let fn_hir_id = tcx.hir().node_to_hir_id(id);
             let fn_sig = cx.tables().liberated_fn_sigs()[fn_hir_id].clone();
             let fn_def_id = tcx.hir().local_def_id(id);
@@ -86,7 +86,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.sty {
                 ty::Closure(..) => {
-                    // HACK(eddyb) Avoid having RustCall on closures,
+                    // HACK(eddyb): avoid having `RustCall` on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
                     Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
@@ -154,7 +154,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             build::construct_const(cx, body_id, return_ty_span)
         };
 
-        // Convert the Mir to global types.
+        // Convert the MIR to global types.
         let mut globalizer = GlobalizeMir {
             tcx,
             span: mir.span
@@ -173,9 +173,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     })
 }
 
-/// A pass to lift all the types and substitutions in a Mir
+/// A pass to lift all the types and substitutions in a MIR
 /// to the global tcx. Sadly, we don't have a "folder" that
-/// can change 'tcx so we have to transmute afterwards.
+/// can change `'tcx` so we have to transmute afterwards.
 struct GlobalizeMir<'a, 'gcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
     span: Span
@@ -233,7 +233,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
-            // Convert the Mir to global types.
+            // Convert the MIR to global types.
             let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
                 tcx,
@@ -335,11 +335,11 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fn_span: Span,
     arg_count: usize,
 
-    /// the current set of scopes, updated as we traverse;
-    /// see the `scope` module for more details
+    /// The current set of scopes, updated as we traverse;
+    /// see the `scope` module for more details.
     scopes: Vec<scope::Scope<'tcx>>,
 
-    /// the block-context: each time we build the code within an hair::Block,
+    /// The block-context: each time we build the code within an hair::Block,
     /// we push a frame here tracking whether we are building a statement or
     /// if we are pushing the tail expression of the block. This is used to
     /// embed information in generated temps about whether they were created
@@ -350,44 +350,44 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// the code generation in ways that we cannot (or should not)
     /// start just throwing new entries onto that vector in order to
     /// distinguish the context of EXPR1 from the context of EXPR2 in
-    /// `{ STMTS; EXPR1 } + EXPR2`
+    /// `{ STMTS; EXPR1 } + EXPR2`.
     block_context: BlockContext,
 
     /// The current unsafe block in scope, even if it is hidden by
-    /// a PushUnsafeBlock
+    /// a `PushUnsafeBlock`.
     unpushed_unsafe: Safety,
 
-    /// The number of `push_unsafe_block` levels in scope
+    /// The number of `push_unsafe_block` levels in scope.
     push_unsafe_count: usize,
 
-    /// the current set of breakables; see the `scope` module for more
-    /// details
+    /// The current set of breakables; see the `scope` module for more
+    /// details.
     breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
-    /// the vector of all scopes that we have created thus far;
-    /// we track this for debuginfo later
+    /// The vector of all scopes that we have created thus far;
+    /// we track this for debuginfo later.
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
     source_scope_local_data: IndexVec<SourceScope, SourceScopeLocalData>,
     source_scope: SourceScope,
 
-    /// the guard-context: each time we build the guard expression for
+    /// The guard-context: each time we build the guard expression for
     /// a match arm, we push onto this stack, and then pop when we
     /// finish building it.
     guard_context: Vec<GuardFrame>,
 
-    /// Maps node ids of variable bindings to the `Local`s created for them.
+    /// Maps node-IDs of variable bindings to the `Local`s created for them.
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: NodeMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     upvar_decls: Vec<UpvarDecl>,
     unit_temp: Option<Place<'tcx>>,
 
-    /// cached block with the RESUME terminator; this is created
+    /// Cached block with the `RESUME` terminator; this is created
     /// when first set of cleanups are built.
     cached_resume_block: Option<BasicBlock>,
-    /// cached block with the RETURN terminator
+    /// Cached block with the `RETURN` terminator.
     cached_return_block: Option<BasicBlock>,
-    /// cached block with the UNREACHABLE terminator
+    /// Cached block with the `UNREACHABLE` terminator.
     cached_unreachable_block: Option<BasicBlock>,
 }
 
@@ -406,7 +406,7 @@ impl BlockContext {
     fn push(&mut self, bf: BlockFrame) { self.0.push(bf); }
     fn pop(&mut self) -> Option<BlockFrame> { self.0.pop() }
 
-    /// Traverses the frames on the BlockContext, searching for either
+    /// Traverses the frames on the `BlockContext`, searching for either
     /// the first block-tail expression frame with no intervening
     /// statement frame.
     ///
@@ -452,13 +452,13 @@ impl BlockContext {
 
 #[derive(Debug)]
 enum LocalsForNode {
-    /// In the usual case, a node-id for an identifier maps to at most
-    /// one Local declaration.
+    /// In the usual case, a node-ID for an identifier maps to at most
+    /// one `Local` declaration.
     One(Local),
 
     /// The exceptional case is identifiers in a match arm's pattern
     /// that are referenced in a guard of that match arm. For these,
-    /// we can have `2+k` Locals, where `k` is the number of candidate
+    /// we can have `2 + k` Locals, where `k` is the number of candidate
     /// patterns (separated by `|`) in the arm.
     ///
     /// * `for_arm_body` is the Local used in the arm body (which is
@@ -504,11 +504,11 @@ struct GuardFrame {
     ///      P1(id1) if (... (match E2 { P2(id2) if ... => B2 })) => B1,
     /// }
     ///
-    /// here, when building for FIXME
+    /// here, when building for FIXME.
     locals: Vec<GuardFrameLocal>,
 }
 
-/// ForGuard indicates whether we are talking about:
+/// `ForGuard` indicates whether we are talking about:
 ///   1. the temp for a local binding used solely within guard expressions,
 ///   2. the temp that holds reference to (1.), which is actually what the
 ///      guard expressions see, or
@@ -597,16 +597,16 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                          fn_def_id: DefId,
                                          abi: Abi)
                                          -> bool {
-    // Not callable from C, so we can safely unwind through these
+    // Not callable from C, so we can safely unwind through these.
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
-    // We never unwind, so it's not relevant to stop an unwind
+    // We never unwind, so it's not relevant to stop an unwind.
     if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
 
-    // We cannot add landing pads, so don't add one
+    // We cannot add landing pads, so don't add one.
     if tcx.sess.no_landing_pads() { return false; }
 
-    // This is a special case: some functions have a C abi but are meant to
+    // This is a special case: some functions have a C ABI but are meant to
     // unwind anyway. Don't stop them.
     let attrs = &tcx.get_attrs(fn_def_id);
     match attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs) {
@@ -634,7 +634,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    return_ty_span: Span,
                                    body: &'gcx hir::Body)
                                    -> Mir<'tcx>
-    where A: Iterator<Item=ArgInfo<'gcx>>
+    where A: Iterator<Item = ArgInfo<'gcx>>
 {
     let arguments: Vec<_> = arguments.collect();
 
@@ -709,7 +709,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
-        // Attribute epilogue to function's closing brace
+        // Attribute epilogue to function's closing brace.
         let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
@@ -717,7 +717,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                               TerminatorKind::Goto { target: return_block });
         builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
-        // Attribute any unreachable codepaths to the function's closing brace
+        // Attribute any unreachable codepaths to the function's closing brace.
         if let Some(unreachable_block) = builder.cached_unreachable_block {
             builder.cfg.terminate(unreachable_block, source_info,
                                   TerminatorKind::Unreachable);
@@ -859,7 +859,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
-        // Allocate locals for the function arguments
+        // Allocate locals for the function arguments.
         for &ArgInfo(ty, _, pattern, _) in arguments.iter() {
             // If this is a simple binding pattern, give the local a name for
             // debuginfo and so that error reporting knows that this is a user
@@ -894,9 +894,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let mut scope = None;
-        // Bind the argument patterns
+        // Bind the argument patterns.
         for (index, arg_info) in arguments.iter().enumerate() {
-            // Function arguments always get the first Local indices after the return place
+            // Function arguments always get the first Local indices after the return place.
             let local = Local::new(index + 1);
             let place = Place::Local(local);
             let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
@@ -906,7 +906,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let span = pattern.span;
 
                 match *pattern.kind {
-                    // Don't introduce extra copies for simple bindings
+                    // Don't introduce extra copies for simple bindings.
                     PatternKind::Binding { mutability, var, mode: BindingMode::ByValue, .. } => {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].is_user_variable =

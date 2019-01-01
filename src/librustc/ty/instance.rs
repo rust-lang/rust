@@ -23,7 +23,7 @@ pub enum InstanceDef<'tcx> {
     VtableShim(DefId),
 
     /// \<fn() as FnTrait>::call_*
-    /// def-id is FnTrait::call_*
+    /// def-ID is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
 
     /// <Trait as Trait>::fn
@@ -406,7 +406,7 @@ fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
                 Ok(false)
             }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // The closure fn `llfn` is a `fn(&self, ...)`. We want a
             // `fn(&mut self, ...)`. In fact, at codegen time, these are
             // basically the same thing, so we can just return llfn.
             Ok(false)
@@ -414,7 +414,7 @@ fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
         (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
             (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-                // self, ...)`.  We want a `fn(self, ...)`. We can produce
+                // self, ...)`. We want a `fn(self, ...)`. We can produce
                 // this by doing something like:
                 //
                 //     fn call_once(self, ...) { call_mut(&self, ...) }

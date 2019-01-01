@@ -877,7 +877,7 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
-    /// Returns true if local is definitely not a `ref ident` or
+    /// Returns whether local is definitely not a `ref ident` or
     /// `ref mut ident` binding. (Such bindings cannot be made into
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
@@ -961,7 +961,7 @@ impl<'tcx> LocalDecl<'tcx> {
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_block_tail: None,
-            name: None, // FIXME maybe we do want some name here?
+            name: None, // FIXME: maybe we do want some name here?
             is_user_variable: None,
         }
     }
@@ -1010,7 +1010,7 @@ pub struct BasicBlockData<'tcx> {
 
     /// Terminator for this block.
     ///
-    /// NB. This should generally ONLY be `None` during construction.
+    /// N.B., this should generally ONLY be `None` during construction.
     /// Therefore, you should generally access it via the
     /// `terminator()` or `terminator_mut()` methods. The only
     /// exception is that certain passes, such as `simplify_cfg`, swap
@@ -1895,7 +1895,7 @@ pub enum Place<'tcx> {
     Projection(Box<PlaceProjection<'tcx>>),
 }
 
-/// The def-id of a static, along with its normalized type (which is
+/// The def-ID of a static, along with its normalized type (which is
 /// stored to avoid requiring normalization when reading MIR).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
@@ -2132,7 +2132,7 @@ impl<'tcx> Debug for Operand<'tcx> {
 
 impl<'tcx> Operand<'tcx> {
     /// Convenience helper to make a constant that refers to the fn
-    /// with given def-id and substs. Since this is used to synthesize
+    /// with given def-ID and substs. Since this is used to synthesize
     /// MIR, assumes `user_ty` is None.
     pub fn function_handle<'a>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -2530,11 +2530,11 @@ impl<'tcx> UserTypeProjections<'tcx> {
         UserTypeProjections { contents: projs.collect() }
     }
 
-    pub fn projections_and_spans(&self) -> impl Iterator<Item=&(UserTypeProjection<'tcx>, Span)> {
+    pub fn projections_and_spans(&self) -> impl Iterator<Item = &(UserTypeProjection<'tcx>, Span)> {
         self.contents.iter()
     }
 
-    pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection<'tcx>> {
+    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection<'tcx>> {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 }
@@ -2740,7 +2740,7 @@ impl Location {
         }
     }
 
-    /// Returns `true` if `other` is earlier in the control flow graph than `self`.
+    /// Returns whether `other` is earlier in the control flow graph than `self`.
     pub fn is_predecessor_of<'tcx>(&self, other: Location, mir: &Mir<'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.

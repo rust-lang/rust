@@ -173,7 +173,7 @@ impl<F> MultiItemDecorator for F
 }
 
 // `meta_item` is the annotation, and `item` is the item being modified.
-// FIXME Decorators should follow the same pattern too.
+// FIXME: Decorators should follow the same pattern too.
 pub trait MultiItemModifier {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -219,7 +219,7 @@ impl<F> ProcMacro for F
                    _span: Span,
                    ts: TokenStream)
                    -> TokenStream {
-        // FIXME setup implicit context in TLS before calling self.
+        // FIXME: setup implicit context in TLS before calling self.
         (*self)(ts)
     }
 }
@@ -242,7 +242,7 @@ impl<F> AttrProcMacro for F
                    annotation: TokenStream,
                    annotated: TokenStream)
                    -> TokenStream {
-        // FIXME setup implicit context in TLS before calling self.
+        // FIXME: setup implicit context in TLS before calling self.
         (*self)(annotation, annotated)
     }
 }
@@ -847,8 +847,8 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, false)
     }
 
-    /// Returns a `Folder` that deeply expands all macros and assigns all node ids in an AST node.
-    /// Once node ids are assigned, the node may not be expanded, removed, or otherwise modified.
+    /// Returns a `Folder` that deeply expands all macros and assigns all node-IDs in an AST node.
+    /// Once node-IDs are assigned, the node may not be expanded, removed, or otherwise modified.
     pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self, true)
     }

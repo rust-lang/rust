@@ -13,7 +13,7 @@ fn use_<'short,'long>(c: Invariant<'long>,
                       l: &'long isize,
                       _where:Option<&'short &'long ()>) {
 
-    // Test whether Invariant<'long> <: Invariant<'short>.  Since
+    // Test whether Invariant<'long> <: Invariant<'short>. Since
     // 'short <= 'long, this would be true if the Invariant type were
     // contravariant with respect to its parameter 'a.
 

@@ -262,7 +262,7 @@ impl<T, E> Result<T, E> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns `true` if the result is [`Ok`].
+    /// Returns whether the result is [`Ok`].
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
     ///
@@ -286,7 +286,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns `true` if the result is [`Err`].
+    /// Returns whether the result is [`Err`].
     ///
     /// [`Err`]: enum.Result.html#variant.Err
     ///
@@ -1205,7 +1205,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// assert!(res == Ok(vec![2, 3]));
     /// ```
     #[inline]
-    fn from_iter<I: IntoIterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
+    fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -1214,7 +1214,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             err: Option<E>,
         }
 
-        impl<T, E, Iter: Iterator<Item=Result<T, E>>> Iterator for Adapter<Iter, E> {
+        impl<T, E, Iter: Iterator<Item = Result<T, E>>> Iterator for Adapter<Iter, E> {
             type Item = T;
 
             #[inline]

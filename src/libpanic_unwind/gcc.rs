@@ -1,4 +1,4 @@
-//! Implementation of panics backed by libgcc/libunwind (in some form)
+//! Implementation of panics backed by libgcc/libunwind (in some form).
 //!
 //! For background on exception handling and stack unwinding please see
 //! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
@@ -23,14 +23,14 @@
 //!
 //! In the search phase, the job of a personality routine is to examine
 //! exception object being thrown, and to decide whether it should be caught at
-//! that stack frame.  Once the handler frame has been identified, cleanup phase
+//! that stack frame. Once the handler frame has been identified, cleanup phase
 //! begins.
 //!
 //! In the cleanup phase, the unwinder invokes each personality routine again.
 //! This time it decides which (if any) cleanup code needs to be run for
-//! the current stack frame.  If so, the control is transferred to a special
+//! the current stack frame. If so, the control is transferred to a special
 //! branch in the function body, the "landing pad", which invokes destructors,
-//! frees memory, etc.  At the end of the landing pad, control is transferred
+//! frees memory, etc. At the end of the landing pad, control is transferred
 //! back to the unwinder and unwinding resumes.
 //!
 //! Once stack has been unwound down to the handler frame level, unwinding stops
@@ -39,7 +39,7 @@
 //! ## `eh_personality` and `eh_unwind_resume`
 //!
 //! These language items are used by the compiler when generating unwind info.
-//! The first one is the personality routine described above.  The second one
+//! The first one is the personality routine described above. The second one
 //! allows compilation target to customize the process of resuming unwind at the
 //! end of the landing pads. `eh_unwind_resume` is used only if
 //! `custom_unwind_resume` flag in the target options is set.
@@ -91,7 +91,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     cause.unwrap()
 }
 
-// Rust's exception class identifier.  This is used by personality routines to
+// Rust's exception class identifier. This is used by personality routines to
 // determine whether the exception was thrown by their own runtime.
 fn rust_exception_class() -> uw::_Unwind_Exception_Class {
     // M O Z \0  R U S T -- vendor, language
@@ -103,7 +103,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 // and TargetLowering::getExceptionSelectorRegister() for each architecture,
 // then mapped to DWARF register numbers via register definition tables
 // (typically <arch>RegisterInfo.td, search for "DwarfRegNum").
-// See also http://llvm.org/docs/WritingAnLLVMBackend.html#defining-a-register.
+// See also <http://llvm.org/docs/WritingAnLLVMBackend.html#defining-a-register>.
 
 #[cfg(target_arch = "x86")]
 const UNWIND_DATA_REG: (i32, i32) = (0, 2); // EAX, EDX
@@ -126,12 +126,12 @@ const UNWIND_DATA_REG: (i32, i32) = (6, 7); // R6, R7
 #[cfg(target_arch = "sparc64")]
 const UNWIND_DATA_REG: (i32, i32) = (24, 25); // I0, I1
 
-// The following code is based on GCC's C and C++ personality routines.  For reference, see:
+// The following code is based on GCC's C and C++ personality routines. For reference, see:
 // https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/libsupc++/eh_personality.cc
 // https://github.com/gcc-mirror/gcc/blob/trunk/libgcc/unwind-c.c
 
 // The personality routine for most of our targets, except ARM, which has a slightly different ABI
-// (however, iOS goes here as it uses SjLj unwinding).  Also, the 64-bit Windows implementation
+// (however, iOS goes here as it uses SjLj unwinding). Also, the 64-bit Windows implementation
 // lives in seh64_gnu.rs
 #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm"))))]
 #[lang = "eh_personality"]
@@ -281,12 +281,12 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
     uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
 }
 
-// Frame unwind info registration
+// Frame unwind info registration.
 //
 // Each module's image contains a frame unwind info section (usually
-// ".eh_frame").  When a module is loaded/unloaded into the process, the
+// ".eh_frame"). When a module is loaded/unloaded into the process, the
 // unwinder must be informed about the location of this section in memory. The
-// methods of achieving that vary by the platform.  On some (e.g., Linux), the
+// methods of achieving that vary by the platform. On some (e.g., Linux), the
 // unwinder can discover unwind info sections on its own (by dynamically
 // enumerating currently loaded modules via the dl_iterate_phdr() API and
 // finding their ".eh_frame" sections); Others, like Windows, require modules

@@ -1,4 +1,4 @@
-// FIXME: This needs an audit for correctness and completeness.
+// FIXME: this needs an audit for correctness and completeness.
 
 use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};

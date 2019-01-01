@@ -3,7 +3,6 @@ use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 
-
 /// Represents coercing a value to a different type of value.
 ///
 /// We transform values by following a number of `Adjust` steps in order.
@@ -15,7 +14,7 @@ use ty::subst::Substs;
 ///    Here the pointer will be dereferenced N times (where a dereference can
 ///    happen to raw or borrowed pointers or any smart pointer which implements
 ///    Deref, including Box<_>). The types of dereferences is given by
-///    `autoderefs`.  It can then be auto-referenced zero or one times, indicated
+///    `autoderefs`. It can then be auto-referenced zero or one times, indicated
 ///    by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
 ///    `false`.
 ///
@@ -38,7 +37,7 @@ use ty::subst::Substs;
 ///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
 ///    the underlying conversions from `[i32; 4]` to `[i32]`.
 ///
-/// 3. Coercing a `Box<T>` to `Box<dyn Trait>` is an interesting special case.  In
+/// 3. Coercing a `Box<T>` to `Box<dyn Trait>` is an interesting special case. In
 ///    that case, we have the pointer we need coming in, so there are no
 ///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
 ///    At some point, of course, `Box` should move out of the compiler, in which
@@ -78,7 +77,7 @@ pub enum Adjust<'tcx> {
     /// This will do things like convert thin pointers to fat
     /// pointers, or convert structs containing thin pointers to
     /// structs containing fat pointers, or convert between fat
-    /// pointers.  We don't store the details of how the transform is
+    /// pointers. We don't store the details of how the transform is
     /// done (in fact, we don't know that, because it might depend on
     /// the precise type parameters). We just store the target
     /// type. Codegen backends and miri figure out what has to be done

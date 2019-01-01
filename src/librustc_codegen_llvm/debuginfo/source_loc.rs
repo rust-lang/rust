@@ -65,7 +65,7 @@ pub fn set_debug_location(
         KnownLocation { scope, line, col } => {
             // For MSVC, set the column number to zero.
             // Otherwise, emit it. This mimics clang behaviour.
-            // See discussion in https://github.com/rust-lang/rust/issues/42921
+            // See discussion in issue #42921.
             let col_used =  if bx.sess().target.target.options.is_like_msvc {
                 UNKNOWN_COLUMN_NUMBER
             } else {

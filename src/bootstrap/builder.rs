@@ -794,12 +794,12 @@ impl<'a> Builder<'a> {
         }
 
         cargo.arg("-j").arg(self.jobs().to_string());
-        // Remove make-related flags to ensure Cargo can correctly set things up
+        // Remove make-related flags to ensure Cargo can correctly set things up.
         cargo.env_remove("MAKEFLAGS");
         cargo.env_remove("MFLAGS");
 
-        // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
-        // Force cargo to output binaries with disambiguating hashes in the name
+        // FIXME: temporary fix for Cargo issue #3005.
+        // Force cargo to output binaries with disambiguating hashes in the name.
         let metadata = if compiler.stage == 0 {
             // Treat stage0 like special channel, whether it's a normal prior-
             // release rustc or a local rebuild with the same version, so we
@@ -901,7 +901,7 @@ impl<'a> Builder<'a> {
 
         if mode.is_tool() {
             // Tools like cargo and rls don't get debuginfo by default right now, but this can be
-            // enabled in the config.  Adding debuginfo makes them several times larger.
+            // enabled in the config. Adding debuginfo makes them several times larger.
             if self.config.rust_debuginfo_tools {
                 cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
                 cargo.env(
@@ -1007,7 +1007,7 @@ impl<'a> Builder<'a> {
         // Build scripts use either the `cc` crate or `configure/make` so we pass
         // the options through environment variables that are fetched and understood by both.
         //
-        // FIXME: the guard against msvc shouldn't need to be here
+        // FIXME: the guard against `msvc` shouldn't need to be here.
         if target.contains("msvc") {
             if let Some(ref cl) = self.config.llvm_clang_cl {
                 cargo.env("CC", cl).env("CXX", cl);
@@ -1019,7 +1019,7 @@ impl<'a> Builder<'a> {
                     Some(ref s) => s,
                     None => return s.display().to_string(),
                 };
-                // FIXME: the cc-rs crate only recognizes the literal strings
+                // FIXME: the cc-rs crate only recognizes the literal strings.
                 // `ccache` and `sccache` when doing caching compilations, so we
                 // mirror that here. It should probably be fixed upstream to
                 // accept a new env var or otherwise work with custom ccache
@@ -1064,12 +1064,12 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
-        // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
+        // For `cargo doc` invocations, make rustdoc print the Rust version into the docs.
         cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
 
-        // Environment variables *required* throughout the build
+        // Environment variables *required* throughout the build.
         //
-        // FIXME: should update code to not require this env var
+        // FIXME: should update code to not require this env var.
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
         // Set this for all builds to make sure doc builds also get it.
@@ -1460,7 +1460,7 @@ mod __test {
     #[test]
     fn dist_with_target_flag() {
         let mut config = configure(&["B"], &["C"]);
-        config.run_host_only = false; // as-if --target=C was passed
+        config.run_host_only = false; // as if `--target=C` were passed
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);

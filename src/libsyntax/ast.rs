@@ -163,7 +163,7 @@ pub struct AngleBracketedArgs {
     pub args: Vec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
-    /// E.g., `Foo<A=Bar>`.
+    /// E.g., `Foo<A = Bar>`.
     pub bindings: Vec<TypeBinding>,
 }
 
@@ -179,7 +179,7 @@ impl Into<Option<P<GenericArgs>>> for ParenthesisedArgs {
     }
 }
 
-/// A path like `Foo(A,B) -> C`
+/// A path like `Foo(A, B) -> C`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ParenthesisedArgs {
     /// Overall span
@@ -233,7 +233,7 @@ impl serialize::UseSpecializedDecodable for NodeId {
     }
 }
 
-/// Node id used to represent the root of the crate.
+/// Node-ID used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
@@ -696,7 +696,7 @@ impl BinOpKind {
         }
     }
 
-    /// Returns `true` if the binary operator takes its arguments by value
+    /// Returns whether the binary operator takes its arguments by value
     pub fn is_by_value(&self) -> bool {
         !self.is_comparison()
     }
@@ -715,7 +715,7 @@ pub enum UnOp {
 }
 
 impl UnOp {
-    /// Returns `true` if the unary operator takes its argument by value
+    /// Returns whether the unary operator takes its argument by value
     pub fn is_by_value(u: UnOp) -> bool {
         match u {
             UnOp::Neg | UnOp::Not => true,
@@ -1288,7 +1288,7 @@ pub enum LitKind {
 }
 
 impl LitKind {
-    /// Returns `true` if this literal is a string.
+    /// Returns whether this literal is a string.
     pub fn is_str(&self) -> bool {
         match *self {
             LitKind::Str(..) => true,
@@ -1296,7 +1296,7 @@ impl LitKind {
         }
     }
 
-    /// Returns `true` if this literal is byte literal string.
+    /// Returns whether this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
         match self {
             LitKind::ByteStr(_) => true,
@@ -1304,7 +1304,7 @@ impl LitKind {
         }
     }
 
-    /// Returns `true` if this is a numeric literal.
+    /// Returns whether this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {
             LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => true,
@@ -1312,7 +1312,7 @@ impl LitKind {
         }
     }
 
-    /// Returns `true` if this literal has no suffix.
+    /// Returns whether this literal has no suffix.
     /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
     pub fn is_unsuffixed(&self) -> bool {
         match *self {
@@ -1331,7 +1331,7 @@ impl LitKind {
         }
     }
 
-    /// Returns `true` if this literal has a suffix.
+    /// Returns whether this literal has a suffix.
     pub fn is_suffixed(&self) -> bool {
         !self.is_unsuffixed()
     }
@@ -1980,7 +1980,7 @@ pub struct Attribute {
 /// Resolve maps each `TraitRef`'s `ref_id` to its defining trait; that's all
 /// that the `ref_id` is for. The `impl_id` maps to the "self type" of this impl.
 /// If this impl is an `ItemKind::Impl`, the `impl_id` is redundant (it could be the
-/// same as the impl's node-id).
+/// same as the impl's node-ID).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,

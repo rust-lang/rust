@@ -132,7 +132,7 @@ impl<'a> StripUnconfigured<'a> {
         // along the compilation.
         match (expanded_attrs.len(), gate_cfg_attr_multi) {
             (0, false) => {
-                // FIXME: Emit unused attribute lint here.
+                // FIXME: emit unused attribute lint here.
             },
             (1, _) => {},
             (_, true) => {

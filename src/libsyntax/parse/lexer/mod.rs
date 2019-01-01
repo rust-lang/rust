@@ -561,8 +561,8 @@ impl<'a> StringReader<'a> {
                     .warn("this was previously accepted by the compiler but is \
                           being phased out; it will become a hard error in \
                           a future release!")
-                    .note("for more information, see issue #42326 \
-                          <https://github.com/rust-lang/rust/issues/42326>")
+                    .note("for more information, see \
+                           <https://github.com/rust-lang/rust/issues/42326>")
                     .emit();
                 None
             } else {
@@ -652,7 +652,7 @@ impl<'a> StringReader<'a> {
                 let loc = smap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
                 if loc.line == 1 && loc.col == CharPos(0) {
-                    // FIXME: Add shebang "token", return it
+                    // FIXME: add shebang "token", return it
                     let start = self.pos;
                     while !self.ch_is('\n') && !self.is_eof() {
                         self.bump();
@@ -920,7 +920,7 @@ impl<'a> StringReader<'a> {
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
     ///
-    /// Returns true if there was a valid char/byte, false otherwise.
+    /// Returns whether there was a valid char/byte.
     fn scan_char_or_byte(&mut self,
                          start: BytePos,
                          first_source_char: char,

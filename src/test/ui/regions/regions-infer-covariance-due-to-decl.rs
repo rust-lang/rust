@@ -15,7 +15,7 @@ fn use_<'short,'long>(c: Covariant<'long>,
                       l: &'long isize,
                       _where:Option<&'short &'long ()>) {
 
-    // Test whether Covariant<'long> <: Covariant<'short>.  Since
+    // Test whether Covariant<'long> <: Covariant<'short>. Since
     // 'short <= 'long, this would be true if the Covariant type were
     // contravariant with respect to its parameter 'a.
 

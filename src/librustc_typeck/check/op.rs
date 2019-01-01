@@ -672,7 +672,7 @@ enum Op {
     Unary(hir::UnOp, Span),
 }
 
-/// Returns true if this is a built-in arithmetic operation (e.g., u32
+/// Returns whether this is a built-in arithmetic operation (e.g., u32
 /// + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
 /// builtin operations from overloaded ones (vs trying to drive
@@ -681,7 +681,7 @@ enum Op {
 ///
 /// 1. Builtin operations can trivially be evaluated in constants.
 /// 2. For comparison operators applied to SIMD types the result is
-///    not of type `bool`. For example, `i16x4==i16x4` yields a
+///    not of type `bool`. For example, `i16x4 == i16x4` yields a
 ///    type like `i16x4`. This means that the overloaded trait
 ///    `PartialEq` is not applicable.
 ///

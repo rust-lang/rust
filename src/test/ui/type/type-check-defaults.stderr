@@ -27,38 +27,38 @@ LL | struct Foo<T, U: FromIterator<T>>(T, U);
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:11:1
    |
-LL | struct Bounds<T:Copy=String>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+LL | struct Bounds<T:Copy = String>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
 note: required by `Bounds`
   --> $DIR/type-check-defaults.rs:11:1
    |
-LL | struct Bounds<T:Copy=String>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Bounds<T:Copy = String>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:14:1
    |
-LL | struct WhereClause<T=String>(T) where T: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+LL | struct WhereClause<T = String>(T) where T: Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
 note: required by `WhereClause`
   --> $DIR/type-check-defaults.rs:14:1
    |
-LL | struct WhereClause<T=String>(T) where T: Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct WhereClause<T = String>(T) where T: Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:17:1
    |
-LL | trait TraitBound<T:Copy=String> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+LL | trait TraitBound<T:Copy = String> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
 note: required by `TraitBound`
   --> $DIR/type-check-defaults.rs:17:1
    |
-LL | trait TraitBound<T:Copy=String> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait TraitBound<T:Copy = String> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:21:1

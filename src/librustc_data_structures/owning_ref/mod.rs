@@ -509,13 +509,13 @@ impl<O, T: ?Sized> OwningRef<O, T> {
 
     // TODO: wrap_owner
 
-    // FIXME: Naming convention?
+    // FIXME: naming convention?
     /// A getter for the underlying owner.
     pub fn owner(&self) -> &O {
         &self.owner
     }
 
-    // FIXME: Naming convention?
+    // FIXME: naming convention?
     /// Discards the reference and retrieves the owner.
     pub fn into_inner(self) -> O {
         self.owner
@@ -755,13 +755,13 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
 
     // TODO: wrap_owner
 
-    // FIXME: Naming convention?
+    // FIXME: naming convention?
     /// A getter for the underlying owner.
     pub fn owner(&self) -> &O {
         &self.owner
     }
 
-    // FIXME: Naming convention?
+    // FIXME: naming convention?
     /// Discards the reference and retrieves the owner.
     pub fn into_inner(self) -> O {
         self.owner
@@ -996,7 +996,7 @@ impl<O, T: ?Sized> From<OwningRefMut<O, T>> for OwningRef<O, T>
     }
 }
 
-// ^ FIXME: Is a Into impl for calling into_inner() possible as well?
+// ^ FIXME: is a Into impl for calling into_inner() possible as well?
 
 impl<O, T: ?Sized> Debug for OwningRef<O, T>
     where O: Debug,

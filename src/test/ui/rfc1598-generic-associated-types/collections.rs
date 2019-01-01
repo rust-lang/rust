@@ -10,7 +10,7 @@
 // associated-type-constructors-part-2-family-traits/
 
 trait Collection<T> {
-    type Iter<'iter>: Iterator<Item=&'iter T>;
+    type Iter<'iter>: Iterator<Item = &'iter T>;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
     type Sibling<U>: Collection<U> =

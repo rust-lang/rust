@@ -1310,7 +1310,7 @@ impl MirPass for QualifyAndPromoteConstants {
 
         debug!("run_pass: mode={:?}", mode);
         if mode == Mode::Fn || mode == Mode::ConstFn {
-            // This is ugly because Qualifier holds onto mir,
+            // This is ugly because `Qualifier` holds onto MIR,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
                 let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
@@ -1321,7 +1321,7 @@ impl MirPass for QualifyAndPromoteConstants {
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, mir) {
                             tcx.sess.span_err(span, &err);
                         } else {
-                            // this should not produce any errors, but better safe than sorry
+                            // This should not produce any errors, but better safe than sorry.
                             // FIXME(#53819)
                             qualifier.qualify_const();
                         }
@@ -1358,7 +1358,7 @@ impl MirPass for QualifyAndPromoteConstants {
                             *span,
                             &format!("use of {} here does not actually short circuit due to \
                             the const evaluator presently not being able to do control flow. \
-                            See https://github.com/rust-lang/rust/issues/49146 for more \
+                            See <https://github.com/rust-lang/rust/issues/49146> for more \
                             information.", kind),
                         );
                     }
@@ -1406,7 +1406,7 @@ impl MirPass for QualifyAndPromoteConstants {
             }
         }
 
-        // Statics must be Sync.
+        // Statics must be `Sync`.
         if mode == Mode::Static {
             // `#[thread_local]` statics don't have to be `Sync`.
             for attr in &tcx.get_attrs(def_id)[..] {

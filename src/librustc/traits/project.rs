@@ -118,7 +118,7 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
         *self = ProjectionTyCandidateSet::Error(err);
     }
 
-    // Returns true if the push was successful, or false if the candidate
+    // Returns whether the push was successful, or false if the candidate
     // was discarded -- this could be because of ambiguity, or because
     // a higher-priority candidate is already there.
     fn push_candidate(&mut self, candidate: ProjectionTyCandidate<'tcx>) -> bool {
@@ -142,16 +142,16 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
             }
 
             Single(current) => {
-                // Duplicates can happen inside ParamEnv. In the case, we
+                // Duplicates can happen inside `ParamEnv`. In the case, we
                 // perform a lazy deduplication.
                 if current == &candidate {
                     return false;
                 }
 
                 // Prefer where-clauses. As in select, if there are multiple
-                // candidates, we prefer where-clause candidates over impls.  This
+                // candidates, we prefer where-clause candidates over impls. This
                 // may seem a bit surprising, since impls are the source of
-                // "truth" in some sense, but in fact some of the impls that SEEM
+                // "truth" in some sense, but in fact some of the impls that _seem_
                 // applicable are not, because of nested obligations. Where
                 // clauses are the safer choice. See the comment on
                 // `select::SelectionCandidate` and #21974 for more details.
@@ -532,7 +532,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     // means we don't capture the type variables that are created in
     // the case of ambiguity. Which means we may create a large stream
     // of such variables. OTOH, if we move the caching up a level, we
-    // would not benefit from caching when proving `T: Trait<U=Foo>`
+    // would not benefit from caching when proving `T: Trait<U = Foo>`
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
@@ -556,14 +556,14 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             }
         }
         Err(ProjectionCacheEntry::InProgress) => {
-            // If while normalized A::B, we are asked to normalize
-            // A::B, just return A::B itself. This is a conservative
-            // answer, in the sense that A::B *is* clearly equivalent
+            // If while normalized `A::B`, we are asked to normalize
+            // `A::B`, just return `A::B` itself. This is a conservative
+            // answer, in the sense that `A::B` *is* clearly equivalent
             // to A::B, though there may be a better value we can
             // find.
 
             // Under lazy normalization, this can arise when
-            // bootstrapping.  That is, imagine an environment with a
+            // bootstrapping. That is, imagine an environment with a
             // where-clause like `A::B == u32`. Now, if we are asked
             // to normalize `A::B`, we will want to check the
             // where-clauses in scope. So we will try to unify `A::B`
@@ -767,9 +767,9 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
 ///
 /// Concern #2. Even within the snapshot, if those original
 /// obligations are not yet proven, then we are able to do projections
-/// that may yet turn out to be wrong.  This *may* lead to some sort
+/// that may yet turn out to be wrong. This *may* lead to some sort
 /// of trouble, though we don't have a concrete example of how that
-/// can occur yet.  But it seems risky at best.
+/// can occur yet. But it seems risky at best.
 fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -802,7 +802,7 @@ fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
 /// cycles to arise, where you basically had a setup like `<MyType<$0>
 /// as Trait>::Foo == $0`. Here, normalizing `<MyType<$0> as
 /// Trait>::Foo> to `[type error]` would lead to an obligation of
-/// `<MyType<[type error]> as Trait>::Foo`.  We are supposed to report
+/// `<MyType<[type error]> as Trait>::Foo`. We are supposed to report
 /// an error for this obligation, but we legitimately should not,
 /// because it contains `[type error]`. Yuck! (See issue #29857 for
 /// one case where this arose.)
@@ -962,14 +962,14 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     debug!("assemble_candidates_from_trait_def(..)");
 
     let tcx = selcx.tcx();
-    // Check whether the self-type is itself a projection.
+    // Check whether the self type is itself a projection.
     let (def_id, substs) = match obligation_trait_ref.self_ty().sty {
         ty::Projection(ref data) => {
             (data.trait_ref(tcx).def_id, data.substs)
         }
         ty::Opaque(def_id, substs) => (def_id, substs),
         ty::Infer(ty::TyVar(_)) => {
-            // If the self-type is an inference variable, then it MAY wind up
+            // If the self type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
             candidate_set.mark_ambiguous();
             return;
@@ -1548,7 +1548,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     } else {
         // This is saying that neither the trait nor
         // the impl contain a definition for this
-        // associated type.  Normally this situation
+        // associated type. Normally this situation
         // could only arise through a compiler bug --
         // if the user wrote a bad item name, it
         // should have failed in astconv.
@@ -1561,7 +1561,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 // # Cache
 
 /// The projection cache. Unlike the standard caches, this can include
-/// infcx-dependent type variables - therefore, we have to roll the
+/// infcx-dependent type variables, therefore we have to roll the
 /// cache back each time we roll a snapshot back, to avoid assumptions
 /// on yet-unresolved inference variables. Types with placeholder
 /// regions also have to be removed when the respective snapshot ends.

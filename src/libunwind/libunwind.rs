@@ -201,7 +201,7 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
         _Unwind_GetIP(ctx)
     }
 
-    // This function also doesn't exist on Android or ARM/Linux, so make it a no-op
+    // This function also doesn't exist on Android or ARM/Linux, so make it a noop
     pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void {
         pc
     }

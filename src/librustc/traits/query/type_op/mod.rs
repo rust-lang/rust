@@ -74,7 +74,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     /// the generic code, we have a `Lifted<'gcx, Self::QueryResponse>`
     /// and we want to convert that to a `Self::QueryResponse`. This is
     /// not a priori valid, so we can't do it -- but in practice, it
-    /// is always a no-op (e.g., the lifted form of a type,
+    /// is always a noop (e.g., the lifted form of a type,
     /// `Ty<'gcx>`, is a subtype of `Ty<'tcx>`). So we have to push
     /// the operation into the impls that know more specifically what
     /// `QueryResponse` is. This operation would (maybe) be nicer with

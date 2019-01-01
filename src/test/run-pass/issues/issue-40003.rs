@@ -31,7 +31,7 @@ mod future {
         }
 
         fn flatten_stream(self) -> FlattenStream<Self>
-            where <Self as Future>::Item: stream::Stream<Error=Self::Error>,
+            where <Self as Future>::Item: stream::Stream<Error = Self::Error>,
                   Self: Sized
         {
             panic!()
@@ -39,7 +39,7 @@ mod future {
     }
 
     pub trait IntoFuture {
-        type Future: Future<Item=Self::Item, Error=Self::Error>;
+        type Future: Future<Item = Self::Item, Error = Self::Error>;
         type Item;
         type Error;
         fn into_future(self) -> Self::Future;
@@ -83,7 +83,7 @@ mod future {
 
     impl<F> Stream for FlattenStream<F>
         where F: Future,
-              <F as Future>::Item: Stream<Error=F::Error>,
+              <F as Future>::Item: Stream<Error = F::Error>,
     {
         type Item = <F::Item as Stream>::Item;
         type Error = <F::Item as Stream>::Error;
@@ -125,13 +125,13 @@ mod stream {
     }
 
     pub fn iter<J, T, E>(_: J) -> IterStream<J::IntoIter>
-        where J: IntoIterator<Item=Result<T, E>>,
+        where J: IntoIterator<Item = Result<T, E>>,
     {
         panic!()
     }
 
     impl<I, T, E> Stream for IterStream<I>
-        where I: Iterator<Item=Result<T, E>>,
+        where I: Iterator<Item = Result<T, E>>,
     {
         type Item = T;
         type Error = E;

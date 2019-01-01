@@ -633,7 +633,7 @@ pub struct TargetOptions {
     pub crt_static_allows_dylibs: bool,
     /// Whether or not the CRT is statically linked by default.
     pub crt_static_default: bool,
-    /// Whether or not crt-static is respected by the compiler (or is a no-op).
+    /// Whether or not crt-static is respected by the compiler (or is a noop).
     pub crt_static_respected: bool,
 
     /// Whether or not stack probes (__rust_probestack) are enabled
@@ -1119,7 +1119,7 @@ impl Target {
 
                 let target_path = env::var_os("RUST_TARGET_PATH").unwrap_or_default();
 
-                // FIXME 16351: add a sane default search path?
+                // FIXME: 16351: add a sane default search path?
 
                 for dir in env::split_paths(&target_path) {
                     let p =  dir.join(&path);

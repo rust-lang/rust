@@ -1,8 +1,8 @@
+// Test taken from issue #45129.
+
 // run-pass
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
-
-// Test file taken from issue 45129 (https://github.com/rust-lang/rust/issues/45129)
 
 struct Foo { x: [usize; 2] }
 

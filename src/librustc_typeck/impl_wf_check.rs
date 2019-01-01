@@ -19,7 +19,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax_pos::Span;
 
 /// Checks that all the type/lifetime parameters on an impl also
-/// appear in the trait ref or self-type (or are constrained by a
+/// appear in the trait ref or self type (or are constrained by a
 /// where-clause). These rules are needed to ensure that, given a
 /// trait ref like `<T as Trait<U>>`, we can derive the values of all
 /// parameters on the impl (which is needed to make specialization
@@ -39,7 +39,7 @@ use syntax_pos::Span;
 /// impl<T> Trait<Foo<T>> for Bar { ... }
 /// //   ^ T appears in `Foo<T>`, ok.
 ///
-/// impl<T> Trait<Foo> for Bar where Bar: Iterator<Item=T> { ... }
+/// impl<T> Trait<Foo> for Bar where Bar: Iterator<Item = T> { ... }
 /// //   ^ T is bound to `<Bar as Iterator>::Item`, ok.
 ///
 /// impl<'a> Trait<Foo> for Bar { }

@@ -22,7 +22,7 @@ pub struct Mount<I, R: Routing<I>> {
 }
 
 impl<I, R: Routing<I>> Mount<I, R> {
-    pub fn create<T: ToRouting<Routing=R>>(mount: &str, input: T) {
+    pub fn create<T: ToRouting<Routing = R>>(mount: &str, input: T) {
         input.to_routing();
     }
 }

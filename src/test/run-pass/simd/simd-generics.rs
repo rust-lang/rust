@@ -15,7 +15,7 @@ extern "platform-intrinsic" {
     fn simd_add<T>(x: T, y: T) -> T;
 }
 
-fn add<T: ops::Add<Output=T>>(lhs: T, rhs: T) -> T {
+fn add<T: ops::Add<Output = T>>(lhs: T, rhs: T) -> T {
     lhs + rhs
 }
 

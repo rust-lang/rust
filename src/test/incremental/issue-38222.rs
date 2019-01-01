@@ -1,16 +1,13 @@
-// Test that debuginfo does not introduce a dependency edge to the Krate
-// dep-node.
+// Test that debuginfo does not introduce a dependency edge to the crate dep-node.
 
 // revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph
 
-
 #![feature(rustc_attrs)]
-
 
 #![rustc_partition_reused(module="issue_38222-mod1", cfg="rpass2")]
 
-// If codegen had added a dependency edge to the Krate dep-node, nothing would
+// If codegen had added a dependency edge to the crate dep-node, nothing would
 // be re-used, so checking that this module was re-used is sufficient.
 #![rustc_partition_reused(module="issue_38222", cfg="rpass2")]
 

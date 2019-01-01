@@ -1,4 +1,4 @@
-//! An efficient hash map for node IDs
+//! An efficient hash map for node-IDs.
 
 use hir::def_id::DefId;
 use hir::{HirId, ItemLocalId};

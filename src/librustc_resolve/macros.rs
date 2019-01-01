@@ -414,7 +414,7 @@ impl<'a> Resolver<'a> {
         // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
         // Places to search (in order of decreasing priority):
         // (Type NS)
-        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
+        // 1. FIXME: ribs (type parameters), there's no necessary infrastructure yet
         //    (open set, not controlled).
         // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
@@ -423,7 +423,7 @@ impl<'a> Resolver<'a> {
         // 5. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude (closed, controlled).
         // (Value NS)
-        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
+        // 1. FIXME: ribs (local variables), there's no necessary infrastructure yet
         //    (open set, not controlled).
         // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
@@ -921,7 +921,7 @@ impl<'a> Resolver<'a> {
         let macro_resolutions =
             mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
         for (mut path, path_span, kind, parent_scope, initial_def) in macro_resolutions {
-            // FIXME: Path resolution will ICE if segment IDs present.
+            // FIXME: path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
             match self.resolve_path(&path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {

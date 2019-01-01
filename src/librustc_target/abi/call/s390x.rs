@@ -1,5 +1,5 @@
-// FIXME: The assumes we're using the non-vector ABI, i.e., compiling
-// for a pre-z13 machine or using -mno-vx.
+// FIXME: the assumes we're using the non-vector ABI, i.e., compiling
+// for a pre-z13 machine or using `-mno-vx`.
 
 use abi::call::{FnType, ArgType, Reg};
 use abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};

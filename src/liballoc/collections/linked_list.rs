@@ -374,7 +374,7 @@ impl<T> LinkedList<T> {
         }
     }
 
-    /// Returns `true` if the `LinkedList` is empty.
+    /// Returns whether the `LinkedList` is empty.
     ///
     /// This operation should compute in O(1) time.
     ///
@@ -447,7 +447,7 @@ impl<T> LinkedList<T> {
         *self = Self::new();
     }
 
-    /// Returns `true` if the `LinkedList` contains an element equal to the
+    /// Returns whether the `LinkedList` contains an element equal to the
     /// given value.
     ///
     /// # Examples
@@ -1383,7 +1383,7 @@ mod tests {
         // This caused the RHS's dtor to walk up into the LHS at drop and delete all of
         // its nodes.
         //
-        // https://github.com/rust-lang/rust/issues/26021
+        // Issue #26021.
         let mut v1 = LinkedList::new();
         v1.push_front(1);
         v1.push_front(1);

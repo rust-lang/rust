@@ -18,7 +18,7 @@ fn bar(id: #[allow(dead_code)] i32) {}
 //~| NOTE attributes are not allowed here
 
 fn main() {
-    // verify that the parser recovered and properly typechecked the args
+    // Verify that the parser recovered and properly type-checked the args.
     f("", "");
     //~^ ERROR mismatched types
     //~| NOTE expected u8, found reference

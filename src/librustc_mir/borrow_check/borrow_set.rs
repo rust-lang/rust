@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
-    /// Returns true if the borrow represented by `kind` is
+    /// Returns whether the borrow represented by `kind` is
     /// allowed to be split into separate Reservation and
     /// Activation phases.
     fn allow_two_phase_borrow(&self, kind: mir::BorrowKind) -> bool {

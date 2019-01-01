@@ -18,7 +18,7 @@ impl<T,U> MyType1<T> {
     //~^ ERROR  the type parameter `U` is not constrained
 }
 
-impl<T,U> MyType1<T> where T: Bar<Out=U> {
+impl<T,U> MyType1<T> where T: Bar<Out = U> {
     // OK, T is used in `Foo<T>`.
 }
 

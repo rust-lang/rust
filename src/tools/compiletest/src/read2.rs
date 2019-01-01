@@ -1,5 +1,5 @@
-// FIXME: This is a complete copy of `cargo/src/cargo/util/read2.rs`
-// Consider unify the read2() in libstd, cargo and this to prevent further code duplication.
+// FIXME: this is a complete copy of `cargo/src/cargo/util/read2.rs`
+// Consider unifying the `read2()` in libstd, cargo and this to prevent further code duplication.
 
 pub use self::imp::read2;
 
@@ -56,7 +56,7 @@ mod imp {
         let mut errfd = 1;
 
         while nfds > 0 {
-            // wait for either pipe to become readable using `select`
+            // Wait for either pipe to become readable using `select`.
             let r = unsafe { libc::poll(fds.as_mut_ptr(), nfds, -1) };
             if r == -1 {
                 let err = io::Error::last_os_error();

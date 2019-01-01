@@ -89,7 +89,7 @@ pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
 /// parameters so constrained to `input_parameters`. For example,
 /// imagine the following impl:
 ///
-///     impl<T: Debug, U: Iterator<Item=T>> Trait for U
+///     impl<T: Debug, U: Iterator<Item = T>> Trait for U
 ///
 /// The impl's predicates are collected from left to right. Ignoring
 /// the implicit `Sized` bounds, these are
@@ -112,10 +112,10 @@ pub fn identify_constrained_type_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
 /// We *do* have to be somewhat careful when projection targets contain
 /// projections themselves, for example in
 ///     impl<S,U,V,W> Trait for U where
-/// /* 0 */   S: Iterator<Item=U>,
+/// /* 0 */   S: Iterator<Item = U>,
 /// /* - */   U: Iterator,
 /// /* 1 */   <U as Iterator>::Item: ToOwned<Owned=(W,<V as Iterator>::Item)>
-/// /* 2 */   W: Iterator<Item=V>
+/// /* 2 */   W: Iterator<Item = V>
 /// /* 3 */   V: Debug
 /// we have to evaluate the projections in the order I wrote them:
 /// `V: Debug` requires `V` to be evaluated. The only projection that

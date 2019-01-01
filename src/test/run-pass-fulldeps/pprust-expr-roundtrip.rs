@@ -2,19 +2,19 @@
 
 
 // The general idea of this test is to enumerate all "interesting" expressions and check that
-// `parse(print(e)) == e` for all `e`.  Here's what's interesting, for the purposes of this test:
+// `parse(print(e)) == e` for all `e`. Here's what's interesting, for the purposes of this test:
 //
 //  1. The test focuses on expression nesting, because interactions between different expression
 //     types are harder to test manually than single expression types in isolation.
 //
-//  2. The test only considers expressions of at most two nontrivial nodes.  So it will check `x +
-//     x` and `x + (x - x)` but not `(x * x) + (x - x)`.  The assumption here is that the correct
+//  2. The test only considers expressions of at most two nontrivial nodes. So it will check `x +
+//     x` and `x + (x - x)` but not `(x * x) + (x - x)`. The assumption here is that the correct
 //     handling of an expression might depend on the expression's parent, but doesn't depend on its
 //     siblings or any more distant ancestors.
 //
-// 3. The test only checks certain expression kinds.  The assumption is that similar expression
-//    types, such as `if` and `while` or `+` and `-`,  will be handled identically in the printer
-//    and parser.  So if all combinations of exprs involving `if` work correctly, then combinations
+// 3. The test only checks certain expression kinds. The assumption is that similar expression
+//    types, such as `if` and `while` or `+` and `-`, will be handled identically in the printer
+//    and parser. So if all combinations of exprs involving `if` work correctly, then combinations
 //    using `while`, `if let`, and so on will likely work as well.
 
 
@@ -155,7 +155,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
 }
 
 
-// Folders for manipulating the placement of `Paren` nodes.  See below for why this is needed.
+// Folders for manipulating the placement of `Paren` nodes. See below for why this is needed.
 
 /// Folder that removes all `ExprKind::Paren` nodes.
 struct RemoveParens;
@@ -203,8 +203,8 @@ fn run() {
 
         // We want to know if `parsed` is structurally identical to `e`, ignoring trivial
         // differences like placement of `Paren`s or the exact ranges of node spans.
-        // Unfortunately, there is no easy way to make this comparison.  Instead, we add `Paren`s
-        // everywhere we can, then pretty-print.  This should give an unambiguous representation of
+        // Unfortunately, there is no easy way to make this comparison. Instead, we add `Paren`s
+        // everywhere we can, then pretty-print. This should give an unambiguous representation of
         // each `Expr`, and it bypasses nearly all of the parenthesization logic, so we aren't
         // relying on the correctness of the very thing we're testing.
         let e1 = AddParens.fold_expr(RemoveParens.fold_expr(e));

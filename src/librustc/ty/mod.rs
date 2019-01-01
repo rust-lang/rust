@@ -143,8 +143,8 @@ pub enum AssociatedItemContainer {
 }
 
 impl AssociatedItemContainer {
-    /// Asserts that this is the def-id of an associated item declared
-    /// in a trait, and returns the trait def-id.
+    /// Asserts that this is the def-ID of an associated item declared
+    /// in a trait, and returns the trait def-ID.
     pub fn assert_trait(&self) -> DefId {
         match *self {
             TraitContainer(id) => id,
@@ -204,13 +204,13 @@ impl AssociatedItem {
     }
 
     /// Tests whether the associated item admits a non-trivial implementation
-    /// for !
+    /// for `!`.
     pub fn relevant_for_never<'tcx>(&self) -> bool {
         match self.kind {
             AssociatedKind::Existential |
             AssociatedKind::Const |
             AssociatedKind::Type => true,
-            // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
+            // FIXME(canndrew): be more thorough here, check if any argument is uninhabited.
             AssociatedKind::Method => !self.method_has_self_argument,
         }
     }
@@ -220,7 +220,7 @@ impl AssociatedItem {
             ty::AssociatedKind::Method => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
-                // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+                // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
@@ -284,7 +284,7 @@ impl Visibility {
         }
     }
 
-    /// Returns `true` if an item with this visibility is accessible from the given block.
+    /// Returns whether an item with this visibility is accessible from the given block.
     pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
@@ -299,7 +299,7 @@ impl Visibility {
         tree.is_descendant_of(module, restriction)
     }
 
-    /// Returns `true` if this visibility is at least as accessible as the given visibility
+    /// Returns whether this visibility is at least as accessible as the given visibility
     pub fn is_at_least<T: DefIdTree>(self, vis: Visibility, tree: T) -> bool {
         let vis_restriction = match vis {
             Visibility::Public => return self == Visibility::Public,
@@ -310,7 +310,7 @@ impl Visibility {
         self.is_accessible_from(vis_restriction, tree)
     }
 
-    // Returns `true` if this item is visible anywhere in the local crate.
+    // Returns whether this item is visible anywhere in the local crate.
     pub fn is_visible_locally(self) -> bool {
         match self {
             Visibility::Public => true,
@@ -336,7 +336,7 @@ pub enum Variance {
 /// item.
 pub struct CrateVariancesMap {
     /// For each item with generics, maps to a vector of the variance
-    /// of its generics.  If an item has no generics, it will have no
+    /// of its generics. If an item has no generics, it will have no
     /// entry.
     pub variances: FxHashMap<DefId, Lrc<Vec<ty::Variance>>>,
 
@@ -346,7 +346,7 @@ pub struct CrateVariancesMap {
 
 impl Variance {
     /// `a.xform(b)` combines the variance of a context with the
-    /// variance of a type with the following meaning.  If we are in a
+    /// variance of a type with the following meaning. If we are in a
     /// context with variance `a`, and we encounter a type argument in
     /// a position with variance `b`, then `a.xform(b)` is the new
     /// variance with which the argument appears.
@@ -370,10 +370,10 @@ impl Variance {
     /// The ambient variance is covariant. A `fn` type is
     /// contravariant with respect to its parameters, so the variance
     /// within which both pointer types appear is
-    /// `Covariant.xform(Contravariant)`, or `Contravariant`.  `*const
+    /// `Covariant.xform(Contravariant)`, or `Contravariant`. `*const
     /// T` is covariant with respect to `T`, so the variance within
     /// which the first `Vec<i32>` appears is
-    /// `Contravariant.xform(Covariant)` or `Contravariant`.  The same
+    /// `Contravariant.xform(Covariant)` or `Contravariant`. The same
     /// is true for its `i32` argument. In the `*mut T` case, the
     /// variance of `Vec<i32>` is `Contravariant.xform(Invariant)`,
     /// and hence the outermost type is `Invariant` with respect to
@@ -438,7 +438,7 @@ bitflags! {
         const HAS_TY_ERR         = 1 << 7;
         const HAS_PROJECTION     = 1 << 8;
 
-        // FIXME: Rename this to the actual property since it's used for generators too
+        // FIXME: rename this to the actual property since it's used for generators too
         const HAS_TY_CLOSURE     = 1 << 9;
 
         // `true` if there are "names" of types and regions and so forth
@@ -728,7 +728,7 @@ pub struct UpvarPath {
     pub hir_id: hir::HirId,
 }
 
-/// Upvars do not get their own node-id. Instead, we use the pair of
+/// Upvars do not get their own node-ID. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
 /// by the upvar) and the id of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -742,7 +742,7 @@ pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
 
-    /// Data must be immutable but not aliasable.  This kind of borrow
+    /// Data must be immutable but not aliasable. This kind of borrow
     /// cannot currently be expressed by the user and is used only in
     /// implicit closure bindings. It is needed when the closure
     /// is borrowing or mutating a mutable referent, e.g.:
@@ -1103,7 +1103,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
-    /// substitution in terms of what happens with bound regions.  See
+    /// substitution in terms of what happens with bound regions. See
     /// lengthy comment below for details.
     pub fn subst_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                             trait_ref: &ty::PolyTraitRef<'tcx>)
@@ -1125,7 +1125,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         //
         // In terms of why this is sound, the idea is that whenever there
         // is an impl of `T:Foo<'a>`, it must show that `T:Bar<'a,'a>`
-        // holds.  So if there is an impl of `T:Foo<'a>` that applies to
+        // holds. So if there is an impl of `T:Foo<'a>` that applies to
         // all `'a`, then we must know that `T:Bar<'a,'a>` holds for all
         // `'a`.
         //
@@ -1137,7 +1137,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         // Here, if we have `for<'x> T: Foo1<'x>`, then what do we know?
         // The answer is that we know `for<'x,'b> T: Bar1<'x,'b>`. The
         // reason is similar to the previous example: any impl of
-        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`.  So
+        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`. So
         // basically we would want to collapse the bound lifetimes from
         // the input (`trait_ref`) and the supertraits.
         //
@@ -1205,7 +1205,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         self.trait_ref.def_id
     }
 
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
         self.trait_ref.input_types()
     }
 
@@ -1216,7 +1216,7 @@ impl<'tcx> TraitPredicate<'tcx> {
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
-        // ok to skip binder since trait def-id does not care about regions
+        // ok to skip binder since trait def-ID does not care about regions
         self.skip_binder().def_id()
     }
 }
@@ -1242,7 +1242,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
 ///
-/// 1. `T: TraitRef<..., Item=Type>`
+/// 1. `T: TraitRef<..., Item = Type>`
 /// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
 ///
 /// In particular, form #1 is "desugared" to the combination of a
@@ -1284,7 +1284,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
-        // okay to skip binder since trait def-id does not care about regions
+        // okay to skip binder since trait def-ID does not care about regions
         self.skip_binder().projection_ty.item_def_id
     }
 }
@@ -1463,8 +1463,8 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 /// Represents the bounds declared on a particular set of type
-/// parameters.  Should eventually be generalized into a flag list of
-/// where clauses.  You can obtain a `InstantiatedPredicates` list from a
+/// parameters. Should eventually be generalized into a flag list of
+/// where clauses. You can obtain a `InstantiatedPredicates` list from a
 /// `GenericPredicates` by using the `instantiate` method. Note that this method
 /// reflects an important semantic invariant of `InstantiatedPredicates`: while
 /// the `GenericPredicates` are expressed in terms of the bound type
@@ -1478,7 +1478,7 @@ impl<'tcx> Predicate<'tcx> {
 ///     struct Foo<T,U:Bar<T>> { ... }
 ///
 /// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
-/// `[[], [U:Bar<T>]]`.  Now if there were some particular reference
+/// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
 #[derive(Clone)]
@@ -1544,7 +1544,7 @@ impl UniverseIndex {
 
     /// Returns the "next" universe index in order -- this new index
     /// is considered to extend all previous universes. This
-    /// corresponds to entering a `forall` quantifier.  So, for
+    /// corresponds to entering a `forall` quantifier. So, for
     /// example, suppose we have this type in universe `U`:
     ///
     /// ```
@@ -1559,14 +1559,14 @@ impl UniverseIndex {
         UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
     }
 
-    /// Returns `true` if `self` can name a name from `other` -- in other words,
+    /// Returns whether `self` can name a name from `other` -- in other words,
     /// if the set of names in `self` is a superset of those in
     /// `other` (`self >= other`).
     pub fn can_name(self, other: UniverseIndex) -> bool {
         self.private >= other.private
     }
 
-    /// Returns `true` if `self` cannot name some names from `other` -- in other
+    /// Returns whether `self` cannot name some names from `other` -- in other
     /// words, if the set of names in `self` is a strict subset of
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
@@ -1658,7 +1658,7 @@ impl<'tcx> ParamEnv<'tcx> {
 
     /// Returns a new parameter environment with the same clauses, but
     /// which "reveals" the true results of projections in all cases
-    /// (even for associated types that are specializable).  This is
+    /// (even for associated types that are specializable). This is
     /// the desired behavior during codegen and certain other special
     /// contexts; normally though we want to use `Reveal::UserFacing`,
     /// which is the default.
@@ -1743,7 +1743,7 @@ impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for ParamEnvAnd<'gcx, T>
 
 #[derive(Copy, Clone, Debug)]
 pub struct Destructor {
-    /// The def-id of the destructor method
+    /// The def-ID of the destructor method
     pub did: DefId,
 }
 
@@ -1790,18 +1790,19 @@ pub struct VariantDef {
 impl<'a, 'gcx, 'tcx> VariantDef {
     /// Create a new `VariantDef`.
     ///
-    /// - `did` is the DefId used for the variant - for tuple-structs, it is the constructor DefId,
-    /// and for everything else, it is the variant DefId.
+    /// - `did` is the `DefId` used for the variant.
+    /// This is the constructor `DefId` for tuple stucts, and the variant `DefId` for everything
+    /// else.
     /// - `attribute_def_id` is the DefId that has the variant's attributes.
-    /// this is the struct DefId for structs, and the variant DefId for variants.
+    /// This is the struct `DefId` for structs, and the variant `DefId` for variants.
     ///
-    /// Note that we *could* use the constructor DefId, because the constructor attributes
+    /// Note that we *could* use the constructor `DefId`, because the constructor attributes
     /// redirect to the base attributes, but compiling a small crate requires
-    /// loading the AdtDefs for all the structs in the universe (e.g., coherence for any
+    /// loading the `AdtDef`s for all the structs in the universe (e.g., coherence for any
     /// built-in trait), and we do not want to load attributes twice.
     ///
     /// If someone speeds up attribute loading to not be a performance concern, they can
-    /// remove this hack and use the constructor DefId everywhere.
+    /// remove this hack and use the constructor `DefId` everywhere.
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                did: DefId,
                ident: Ident,
@@ -1964,7 +1965,7 @@ bitflags! {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
         const IS_TRANSPARENT     = 1 << 2;
-        // Internal only for now. If true, don't reorder fields.
+        // Internal only for now. If set, then don't reorder fields.
         const IS_LINEAR          = 1 << 3;
 
         // Any of these flags being set prevent field reordering optimisation.
@@ -2048,21 +2049,21 @@ impl ReprOptions {
         self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
     }
 
-    /// Returns `true` if this `#[repr()]` should inhabit "smart enum
+    /// Returns whether this `#[repr()]` should inhabit "smart enum
     /// layout" optimizations, such as representing `Foo<&T>` as a
     /// single pointer.
     pub fn inhibit_enum_layout_opt(&self) -> bool {
         self.c() || self.int.is_some()
     }
 
-    /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
-    /// optimizations, such as with repr(C), repr(packed(1)), or repr(<int>).
+    /// Returns whether this `#[repr()]` should inhibit struct field reordering
+    /// optimizations, such as with `repr(C)`, `repr(packed(1))`, or `repr(<int>)`.
     pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
         self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.pack == 1 ||
             self.int.is_some()
     }
 
-    /// Returns true if this `#[repr()]` should inhibit union abi optimisations
+    /// Returns whether this `#[repr()]` should inhibit union ABI optimisations.
     pub fn inhibit_union_abi_opt(&self) -> bool {
         self.c()
     }
@@ -2184,23 +2185,23 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.contains(AdtFlags::IS_FUNDAMENTAL)
     }
 
-    /// Returns `true` if this is PhantomData<T>.
+    /// Returns whether this is `PhantomData<T>`.
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
         self.flags.contains(AdtFlags::IS_PHANTOM_DATA)
     }
 
-    /// Returns `true` if this is `Arc<T>`.
+    /// Returns whether this is `Arc<T>`.
     pub fn is_arc(&self) -> bool {
         self.flags.contains(AdtFlags::IS_ARC)
     }
 
-    /// Returns `true` if this is `Rc<T>`.
+    /// Returns whether this is `Rc<T>`.
     pub fn is_rc(&self) -> bool {
         self.flags.contains(AdtFlags::IS_RC)
     }
 
-    /// Returns `true` if this is Box<T>.
+    /// Returns whether this is Box<T>.
     #[inline]
     pub fn is_box(&self) -> bool {
         self.flags.contains(AdtFlags::IS_BOX)
@@ -2275,7 +2276,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         };
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => {
-                // FIXME: Find the right type and use it instead of `val.ty` here
+                // FIXME: find the right type and use it instead of `val.ty` here
                 if let Some(b) = val.assert_bits(tcx.global_tcx(), param_env.and(val.ty)) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
                     Some(Discr {
@@ -2343,9 +2344,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         explicit_value.checked_add(tcx, offset as u128).0
     }
 
-    /// Yields a DefId for the discriminant and an offset to add to it
+    /// Yields a `DefId` for the discriminant and an offset to add to it
     /// Alternatively, if there is no explicit discriminant, returns the
-    /// inferred discriminant directly
+    /// inferred discriminant directly.
     pub fn discriminant_def_for_variant(
         &self,
         variant_index: VariantIdx,
@@ -2375,15 +2376,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     /// Returns a list of types such that `Self: Sized` if and only
-    /// if that type is Sized, or `TyErr` if this type is recursive.
+    /// if that type is `Sized`, or `TyErr` if this type is recursive.
     ///
-    /// Oddly enough, checking that the sized-constraint is Sized is
+    /// Oddly enough, checking that the sized-constraint is `Sized` is
     /// actually more expressive than checking all members:
-    /// the Sized trait is inductive, so an associated type that references
-    /// Self would prevent its containing ADT from being Sized.
+    /// the `Sized` trait is inductive, so an associated type that references
+    /// `Self` would prevent its containing ADT from being `Sized`.
     ///
     /// Due to normalization being eager, this applies even if
-    /// the associated type is behind a pointer, e.g., issue #31299.
+    /// the associated type is behind a pointer (e.g., issue #31299).
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
         match tcx.try_adt_sized_constraint(DUMMY_SP, self.did) {
             Ok(tys) => tys,
@@ -2418,7 +2419,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             Foreign(..) |
             Error |
             GeneratorWitness(..) => {
-                // these are never sized - return the target type
+                // These are never sized; return the target type.
                 vec![ty]
             }
 
@@ -2430,7 +2431,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
 
             Adt(adt, substs) => {
-                // recursive case
+                // Recursive case.
                 let adt_tys = adt.sized_constraint(tcx);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_tys);
@@ -2441,7 +2442,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
 
             Projection(..) | Opaque(..) => {
-                // must calculate explicitly.
+                // Must calculate explicitly.
                 // FIXME: consider special-casing always-Sized projections
                 vec![ty]
             }
@@ -2449,7 +2450,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
             Param(..) => {
-                // perf hack: if there is a `T: Sized` bound, then
+                // Performance hack: if there is a `T: Sized` bound, then
                 // we know that `T` is Sized and do not need to check
                 // it on the impl.
 
@@ -2487,7 +2488,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     }
 }
 
-/// Represents the various closure traits in the Rust language. This
+/// Represents the various closure traits in the language. This
 /// will determine the type of the environment (`self`, in the
 /// desugaring) argument that the closure expects.
 ///
@@ -2495,9 +2496,9 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 /// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
-    // Warning: Ordering is significant here! The ordering is chosen
-    // because the trait Fn is a subtrait of FnMut and so in turn, and
-    // hence we order it so that Fn < FnMut < FnOnce.
+    // Warning: ordering is significant here! The ordering is chosen
+    // because the trait `Fn` is a subtrait of `FnMut` and so in turn, and
+    // hence we order it so that `Fn < FnMut < FnOnce`.
     Fn,
     FnMut,
     FnOnce,
@@ -2519,7 +2520,7 @@ impl<'a, 'tcx> ClosureKind {
         }
     }
 
-    /// Returns `true` if this a type that impls this closure kind
+    /// Returns whether this a type that impls this closure kind
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
         match (self, other) {
@@ -2559,7 +2560,7 @@ impl<'tcx> TyS<'tcx> {
         TypeWalker::new(self)
     }
 
-    /// Iterator that walks the immediate children of `self`.  Hence
+    /// Iterator that walks the immediate children of `self`. Hence
     /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
     /// (but not `i32`, like `walk`).
     pub fn walk_shallow(&'tcx self) -> smallvec::IntoIter<walk::TypeWalkerArray<'tcx>> {
@@ -2567,7 +2568,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// Walks `ty` and any types appearing within `ty`, invoking the
-    /// callback `f` on each type. If the callback returns false, then the
+    /// callback `f` on each type. If the callback returns `false`, then the
     /// children of the current type are ignored.
     ///
     /// Note: prefer `ty.walk()` where possible.
@@ -2638,7 +2639,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.typeck_tables_of(self.hir().body_owner_def_id(body))
     }
 
-    /// Returns an iterator of the def-ids for all body-owners in this
+    /// Returns an iterator of the def-IDs for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(
@@ -2662,10 +2663,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 e.span
             }
             Some(f) => {
-                bug!("Node id {} is not an expr: {:?}", id, f);
+                bug!("Node-ID {} is not an expr: {:?}", id, f);
             }
             None => {
-                bug!("Node id {} is not present in the node map", id);
+                bug!("Node-ID {} is not present in the node map", id);
             }
         }
     }
@@ -2689,7 +2690,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 _ => false,
             }
         } else {
-            match self.describe_def(def_id).expect("no def for def-id") {
+            match self.describe_def(def_id).expect("no def for def-ID") {
                 Def::AssociatedConst(_) | Def::Method(_) | Def::AssociatedTy(_) => true,
                 _ => false,
             }
@@ -2782,7 +2783,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns `true` if the impls are the same polarity and the trait either
+    /// Returns whether the impls are the same polarity and the trait either
     /// has no items or is annotated #[marker] and prevents item overrides.
     pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId) -> bool {
         if self.features().overlapping_marker_traits {
@@ -2829,16 +2830,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
+    /// Given a `VariantDef`, returns the def-ID of the `AdtDef` of which it is a part.
     pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
         let def_key = self.def_key(variant_def.did);
         match def_key.disambiguated_data.data {
-            // for enum variants and tuple structs, the def-id of the ADT itself
-            // is the *parent* of the variant
+            // For enum variants and tuple structs, the def-ID of the ADT itself
+            // is the *parent* of the variant.
             DefPathData::EnumVariant(..) | DefPathData::StructCtor =>
                 DefId { krate: variant_def.did.krate, index: def_key.parent.unwrap() },
 
-            // otherwise, for structs and unions, they share a def-id
+            // Otherwise, for structs and unions, they share a def-ID.
             _ => variant_def.did,
         }
     }
@@ -2848,7 +2849,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.original_crate_name(id.krate).as_interned_str()
         } else {
             let def_key = self.def_key(id);
-            // The name of a StructCtor is that of its struct parent.
+            // The name of a `StructCtor` is that of its struct parent.
             if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {
                     krate: id.krate,
@@ -2862,7 +2863,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
+    /// Return the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
                         -> &'gcx Mir<'gcx>
     {
@@ -2882,8 +2883,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given the DefId of an item, returns its MIR, borrowed immutably.
-    /// Returns None if there is no MIR for the DefId
+    /// Given the `DefId` of an item, returns its MIR, borrowed immutably.
+    /// Returns `None` if there is no MIR for the `DefId`.
     pub fn maybe_optimized_mir(self, did: DefId) -> Option<&'gcx Mir<'gcx>> {
         if self.is_mir_available(did) {
             Some(self.optimized_mir(did))
@@ -2906,7 +2907,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         attr::contains_name(&self.get_attrs(did), attr)
     }
 
-    /// Returns `true` if this is an `auto trait`.
+    /// Returns whether this is an `auto trait`.
     pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_auto_impl
     }
@@ -2915,14 +2916,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
     }
 
-    /// Given the def-id of an impl, return the def_id of the trait it implements.
+    /// Given the def-ID of an impl, return the def_id of the trait it implements.
     /// If it implements no trait, return `None`.
     pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
         self.impl_trait_ref(def_id).map(|tr| tr.def_id)
     }
 
     /// If the given defid describes a method belonging to an impl, return the
-    /// def-id of the impl that the method belongs to. Otherwise, return `None`.
+    /// def-ID of the impl that the method belongs to. Otherwise, return `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
             if let Some(Def::Method(_)) = self.describe_def(def_id) {
@@ -3037,7 +3038,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Asso
               parent_item.node)
 }
 
-/// Calculates the Sized-constraint.
+/// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
 ///     - an obviously-unsized type
@@ -3090,9 +3091,9 @@ fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
     tcx.hir().span_if_local(def_id).unwrap()
 }
 
-/// If the given def ID describes an item belonging to a trait,
-/// return the ID of the trait that the trait item belongs to.
-/// Otherwise, return `None`.
+/// If the given def-ID describes an item belonging to a trait,
+/// returns the def-ID of the trait that the trait item belongs to;
+/// otherwise, returns `None`.
 fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
     tcx.opt_associated_item(def_id)
         .and_then(|associated_item| {
@@ -3103,7 +3104,7 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
-/// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
+/// Yields the parent function's def-ID if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefId> {
     if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
         if let Node::Item(item) = tcx.hir().get(node_id) {
@@ -3115,7 +3116,7 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefI
     None
 }
 
-/// Returns `true` if `def_id` is a trait alias.
+/// Returns whether `def_id` is a trait alias.
 pub fn is_trait_alias(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
         if let Node::Item(item) = tcx.hir().get(node_id) {

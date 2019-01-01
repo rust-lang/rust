@@ -1,4 +1,4 @@
-//! The main parser interface
+//! The main parser interface.
 
 use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig, NodeId};
@@ -532,7 +532,7 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
 fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                  -> Option<ast::LitKind> {
     debug!("float_lit: {:?}, {:?}", s, suffix);
-    // FIXME #2252: bounds checking float literals is deferred until trans
+    // FIXME(#2252): bounds checking float literals is deferred until trans
 
     // Strip underscores without allocating a new String unless necessary.
     let s2;

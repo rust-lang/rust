@@ -28,5 +28,5 @@ fn main() {
     let s_2 = foo::S { b: format!("ess two"), ..s_1 }; // FRU ...
     //~^ ERROR field `secret_uid` of struct `foo::S` is private
     println!("main forged an S named: {}", s_2.b);
-    // at end of scope, ... both s_1 *and* s_2 get dropped.  Boom!
+    // at end of scope, ... both s_1 *and* s_2 get dropped. Boom!
 }

@@ -22,7 +22,7 @@ pub use rustc::mir::interpret::ScalarMaybeUndef;
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Immediate<Tag=(), Id=AllocId> {
+pub enum Immediate<Tag=(), Id = AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
@@ -128,7 +128,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// or still in memory.  The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Operand<Tag=(), Id=AllocId> {
+pub enum Operand<Tag=(), Id = AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
 }
@@ -449,7 +449,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
             } else {
                 // The rest should only occur as mplace, we do not use Immediates for types
-                // allowing such operations.  This matches place_projection forcing an allocation.
+                // allowing such operations. This matches place_projection forcing an allocation.
                 let mplace = base.to_mem_place();
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
@@ -472,8 +472,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(OpTy { op, layout })
     }
 
-    // Evaluate a place with the goal of reading from it.  This lets us sometimes
-    // avoid allocations.  If you already know the layout, you can pass it in
+    // Evaluate a place with the goal of reading from it. This lets us sometimes
+    // avoid allocations. If you already know the layout, you can pass it in
     // to avoid looking it up again.
     fn eval_place_to_op(
         &self,
@@ -536,7 +536,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     // Used when miri runs into a constant, and by CTFE.
-    // FIXME: CTFE should use allocations, then we can make this private (embed it into
+    // FIXME: cTFE should use allocations, then we can make this private (embed it into
     // `eval_operand`, ideally).
     pub(crate) fn const_value_to_op(
         &self,

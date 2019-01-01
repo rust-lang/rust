@@ -363,7 +363,7 @@ impl TokenStream {
     }
 
     /// Precondition: `self` consists of a single token tree.
-    /// Returns true if the token tree is a joint operation w.r.t. `proc_macro::TokenNode`.
+    /// Returns whether the token tree is a joint operation w.r.t. `proc_macro::TokenNode`.
     pub fn as_tree(self) -> (TokenTree, bool /* joint? */) {
         match self {
             TokenStream::Tree(tree, is_joint) => (tree, is_joint == Joint),

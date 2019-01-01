@@ -100,11 +100,11 @@ define_queries! { <'tcx>
         /// Records the type of every item.
         [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
-        /// Maps from the def-id of an item (trait/struct/enum/fn) to its
+        /// Maps from the def-ID of an item (trait/struct/enum/fn) to its
         /// associated generics.
         [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
 
-        /// Maps from the def-id of an item (trait/struct/enum/fn) to the
+        /// Maps from the def-ID of an item (trait/struct/enum/fn) to the
         /// predicates (where clauses) that must be proven true in order
         /// to reference it. This is almost always the "predicates query"
         /// that you want.
@@ -121,7 +121,7 @@ define_queries! { <'tcx>
         /// user.)
         [] fn predicates_of: PredicatesOfItem(DefId) -> Lrc<ty::GenericPredicates<'tcx>>,
 
-        /// Maps from the def-id of an item (trait/struct/enum/fn) to the
+        /// Maps from the def-ID of an item (trait/struct/enum/fn) to the
         /// predicates (where clauses) directly defined on it. This is
         /// equal to the `explicit_predicates_of` predicates plus the
         /// `inferred_outlives_of` predicates.
@@ -136,7 +136,7 @@ define_queries! { <'tcx>
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
         [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Lrc<Vec<ty::Predicate<'tcx>>>,
 
-        /// Maps from the def-id of a trait to the list of
+        /// Maps from the def-ID of a trait to the list of
         /// super-predicates. This is a subset of the full list of
         /// predicates. We store these in a separate map because we must
         /// evaluate them even during type conversion, often before the
@@ -157,44 +157,43 @@ define_queries! { <'tcx>
             DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
-        /// True if this is a const fn, use the `is_const_fn` to know whether your crate actually
-        /// sees it as const fn (e.g., the const-fn-ness might be unstable and you might not have
-        /// the feature gate active)
+        /// Returns whether this is a const fn. Use `is_const_fn` to know whether your crate
+        /// actually sees it as const fn (e.g., the const-fn-ness might be unstable and you might
+        /// not have the feature gate active).
         ///
         /// **Do not call this function manually.** It is only meant to cache the base data for the
         /// `is_const_fn` function.
         [] fn is_const_fn_raw: IsConstFn(DefId) -> bool,
 
-
-        /// Returns true if calls to the function may be promoted
+        /// Returns whether calls to the function may be promoted.
         ///
-        /// This is either because the function is e.g., a tuple-struct or tuple-variant
+        /// This is either because the function is e.g., a tuple struct or tuple variant
         /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
         /// be removed in the future in favour of some form of check which figures out whether the
         /// function does not inspect the bits of any of its arguments (so is essentially just a
         /// constructor function).
         [] fn is_promotable_const_fn: IsPromotableConstFn(DefId) -> bool,
 
-        /// True if this is a foreign item (i.e., linked via `extern { ... }`).
+        /// Returns whether this is a foreign item (i.e., linked via `extern { ... }`).
         [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
 
         /// Get a map with the variance of every item; use `item_variance`
         /// instead.
         [] fn crate_variances: crate_variances(CrateNum) -> Lrc<ty::CrateVariancesMap>,
 
-        /// Maps from def-id of a type or region parameter to its
+        /// Maps from def-ID of a type or region parameter to its
         /// (inferred) variance.
         [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
     },
 
     TypeChecking {
-        /// Maps from def-id of a type to its (inferred) outlives.
+        /// Maps from def-ID of a type to its (inferred) outlives.
         [] fn inferred_outlives_crate: InferredOutlivesCrate(CrateNum)
             -> Lrc<ty::CratePredicatesMap<'tcx>>,
     },
 
     Other {
-        /// Maps from an impl/trait def-id to a list of the def-ids of its items
+        /// Maps from an impl/trait def-ID to a list of the def-IDs of its items
         [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<Vec<DefId>>,
 
         /// Maps from a trait item to the trait item "descriptor"
@@ -212,7 +211,7 @@ define_queries! { <'tcx>
     },
 
     Codegen {
-        /// Set of all the def-ids in this crate that have MIR associated with
+        /// Set of all the def-IDs in this crate that have MIR associated with
         /// them. This includes all the body owners, but also things like struct
         /// constructors.
         [] fn mir_keys: mir_keys(CrateNum) -> Lrc<DefIdSet>,
@@ -222,11 +221,11 @@ define_queries! { <'tcx>
         /// the value isn't known except to the pass itself.
         [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<BitSet<mir::Local>>),
 
-        /// Fetch the MIR for a given def-id right after it's built - this includes
+        /// Fetch the MIR for a given def-ID right after it's built - this includes
         /// unreachable code.
         [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
-        /// Fetch the MIR for a given def-id up till the point where it is
+        /// Fetch the MIR for a given def-ID up till the point where it is
         /// ready for const evaluation.
         ///
         /// See the README for the `mir` module for details.
@@ -240,7 +239,7 @@ define_queries! { <'tcx>
     },
 
     TypeChecking {
-        /// The result of unsafety-checking this def-id.
+        /// The result of unsafety-checking this def-ID.
         [] fn unsafety_check_result: UnsafetyCheckResult(DefId) -> mir::UnsafetyCheckResult,
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
@@ -283,13 +282,13 @@ define_queries! { <'tcx>
     TypeChecking {
         /// Gets a complete map from all types to their inherent impls.
         /// Not meant to be used directly outside of coherence.
-        /// (Defined only for LOCAL_CRATE)
+        /// (Defined only for `LOCAL_CRATE`.)
         [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum)
             -> Lrc<CrateInherentImpls>,
 
-        /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
+        /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
         /// Not meant to be used directly outside of coherence.
-        /// (Defined only for LOCAL_CRATE)
+        /// (Defined only for `LOCAL_CRATE`.)
         [] fn crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum)
             -> (),
     },
@@ -297,9 +296,9 @@ define_queries! { <'tcx>
     Other {
         /// Evaluate a constant without running sanity checks
         ///
-        /// DO NOT USE THIS outside const eval. Const eval uses this to break query cycles during
-        /// validation. Please add a comment to every use site explaining why using `const_eval`
-        /// isn't sufficient
+        /// **Do not use this** outside const eval. Const eval uses this to break query cycles
+        /// during validation. Please add a comment to every use site explaining why using
+        /// `const_eval` isn't sufficient
         [] fn const_eval_raw: const_eval_raw_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx>,
 
@@ -320,7 +319,7 @@ define_queries! { <'tcx>
     Other {
         [] fn reachable_set: reachability_dep_node(CrateNum) -> ReachableSet,
 
-        /// Per-body `region::ScopeTree`. The `DefId` should be the owner-def-id for the body;
+        /// Per-body `region::ScopeTree`. The `DefId` should be the owner-def-ID for the body;
         /// in the case of closures, this will be redirected to the enclosing function.
         [] fn region_scope_tree: RegionScopeTree(DefId) -> Lrc<region::ScopeTree>,
 

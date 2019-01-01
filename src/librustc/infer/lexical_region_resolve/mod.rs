@@ -282,7 +282,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             | (&ReFree(_), &ReScope(s_id))
             | (&ReScope(s_id), &ReFree(_)) => {
                 // A "free" region can be interpreted as "some region
-                // at least as big as fr.scope".  So, we can
+                // at least as big as fr.scope". So, we can
                 // reasonably compare free regions and scopes:
                 let fr_scope = match (a, b) {
                     (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => self.region_rels
@@ -443,7 +443,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         // conflicting regions to report to the user. As we walk, we
         // trip the flags from false to true, and if we find that
         // we've already reported an error involving any particular
-        // node we just stop and don't report the current error.  The
+        // node we just stop and don't report the current error. The
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
@@ -457,7 +457,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                        inconsistent constraints.
 
                        I think that in this case we should report an
-                       error now---unlike the case above, we can't
+                       error now -- unlike the case above, we can't
                        wait to see whether the user needs the result
                        of this variable.  The reason is that the mere
                        existence of this variable implies that the

@@ -1,6 +1,6 @@
 // compile-flags: -O
 
-// A drop([...].clone()) sequence on an Rc should be a no-op
+// A drop([...].clone()) sequence on an Rc should be a noop
 // In particular, no call to __rust_dealloc should be emitted
 #![crate_type = "lib"]
 use std::rc::Rc;

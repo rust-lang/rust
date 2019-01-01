@@ -1019,7 +1019,7 @@ fn link_args(cmd: &mut dyn Linker,
         cmd.pgo_gen();
     }
 
-    // FIXME (#2397): At some point we want to rpath our guesses as to
+    // FIXME(#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
@@ -1237,7 +1237,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             // rpath to the library as well (the rpath should be absolute, see
             // PR #41352 for details).
             //
-            // FIXME: Remove this logic into librustc_*san once Cargo supports it
+            // FIXME: remove this logic into librustc_*san once Cargo supports it.
             let rpath = cratepath.parent().unwrap();
             let rpath = rpath.to_str().expect("non-utf8 component in path");
             cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
@@ -1462,7 +1462,7 @@ fn add_upstream_native_libraries(cmd: &mut dyn Linker,
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&name.as_str()),
                 NativeLibraryKind::NativeStaticNobundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
-                    // is being linked statically to the current crate.  If it's linked dynamically
+                    // is being linked statically to the current crate. If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {

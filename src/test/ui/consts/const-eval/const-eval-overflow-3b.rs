@@ -7,7 +7,7 @@
 // types for the left- and right-hand sides of the addition do not
 // match (as well as overflow).
 
-// FIXME (#23926): the error output is not consistent between a
+// FIXME(#23926): the error output is not consistent between a
 // self-hosted and a cross-compiled setup; therefore resorting to
 // error-pattern for now.
 

@@ -112,7 +112,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //    '5: '6 ('6 is the target)
         //
         // Some of those regions are unified with `'6` (in the same
-        // SCC).  We want to screen those out. After that point, the
+        // SCC). We want to screen those out. After that point, the
         // "closest" constraint we have to the end is going to be the
         // most likely to be the point where the value escapes -- but
         // we still want to screen for an "interesting" point to
@@ -584,7 +584,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Check whether or not the impl trait return type is intended to capture
                 // data with the static lifetime.
                 //
-                // eg. check for `impl Trait + 'static` instead of `impl Trait`.
+                // E.g., check for `impl Trait + 'static` instead of `impl Trait`.
                 let has_static_predicate = {
                     let predicates_of = infcx.tcx.predicates_of(*did);
                     let bounds = predicates_of.instantiate(infcx.tcx, substs);
@@ -723,7 +723,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .unwrap_or((constraint.category, false, mir.source_info(loc).span))
     }
 
-    /// Returns `true` if a closure is inferred to be an `FnMut` closure.
+    /// Returns whether a closure is inferred to be an `FnMut` closure.
     crate fn is_closure_fn_mut(&self, infcx: &InferCtxt<'_, '_, 'tcx>, fr: RegionVid) -> bool {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {

@@ -31,7 +31,7 @@ fn bar_hrtb<T>(mut t: T)
     where T : for<'b> Bar<&'b isize>
 {
     // OK -- `T : for<'b> Bar<&'b isize>`, and thus the impl above
-    // ensures that `&mut T : for<'b> Bar<&'b isize>`.  This is an
+    // ensures that `&mut T : for<'b> Bar<&'b isize>`. This is an
     // example of a "perfect forwarding" impl.
     bar_hrtb(&mut t);
 }

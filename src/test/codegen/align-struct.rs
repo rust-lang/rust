@@ -38,7 +38,7 @@ pub fn align64(i : i32) -> Align64 {
     a64
 }
 
-// For issue 54028: make sure that we are specifying the correct alignment for fields of aligned
+// For issue #54028: make sure that we are specifying the correct alignment for fields of aligned
 // structs
 // CHECK-LABEL: @align64_load
 #[no_mangle]

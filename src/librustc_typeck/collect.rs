@@ -20,13 +20,16 @@ use lint;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime as rl;
 use middle::weak_lang_items;
+use rustc::hir::{GenericParamKind, Node};
+use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 use rustc::mir::mono::Linkage;
+use rustc::ty::{self, AdtKind, ReprOptions, ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
-use rustc::ty::util::Discr;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
-use rustc::ty::{ReprOptions, ToPredicate};
+use rustc::ty::util::{Discr, IntTypeExt};
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -39,13 +42,6 @@ use syntax::source_map::Spanned;
 use syntax::feature_gate;
 use syntax::symbol::{keywords, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
-
-use rustc::hir::def::{CtorKind, Def};
-use rustc::hir::Node;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::hir::GenericParamKind;
-use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
 use std::iter;
 
@@ -84,7 +80,7 @@ pub fn provide(providers: &mut Providers) {
 ///////////////////////////////////////////////////////////////////////////
 
 /// Context specific to some particular item. This is what implements
-/// AstConv. It has information about the predicates that are defined
+/// `AstConv`. It has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
 /// process. So we can't just store a pointer to e.g., the AST or the
@@ -218,17 +214,17 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn normalize_ty(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        // types in item signatures are not normalized, to avoid undue
+        // Types in item signatures are not normalized, to avoid undue
         // dependencies.
         ty
     }
 
     fn set_tainted_by_errors(&self) {
-        // no obvious place to track this, just let it go
+        // No obvious place to track this; just let it go.
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
-        // no place to record types from signatures?
+        // No place to record types from signatures?
     }
 }
 
@@ -239,8 +235,8 @@ fn type_param_predicates<'a, 'tcx>(
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
-    // written inline like `<T : Foo>` or in a where clause like
-    // `where T : Foo`.
+    // written inline like `<T: Foo>` or in a where clause like
+    // `where T: Foo`.
 
     let param_id = tcx.hir().as_local_node_id(def_id).unwrap();
     let param_owner = tcx.hir().ty_param_owner(param_id);
@@ -672,7 +668,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
     tcx.alloc_adt_def(def_id, kind, variants, repr)
 }
 
-/// Ensures that the super-predicates of the trait with def-id
+/// Ensures that the super-predicates of the trait with def-ID
 /// trait_def_id are converted and stored. This also ensures that
 /// the transitive super-predicates are converted;
 fn super_predicates_of<'a, 'tcx>(
@@ -695,14 +691,14 @@ fn super_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
-    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo : Bar + Zed`.
+    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.mk_self_type();
     let superbounds1 = compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
     // Convert any explicit superbounds in the where clause,
-    // e.g., `trait Foo where Self : Bar`.
+    // e.g., `trait Foo where Self: Bar`.
     // In the case of trait aliases, however, we include all bounds in the where clause,
     // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
     // as one of its "superpredicates".
@@ -923,8 +919,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                 | ItemKind::TraitAlias(ref generics, ..) => {
                     // Add in the self type parameter.
                     //
-                    // Something of a hack: use the node id for the trait, also as
-                    // the node id for the Self type parameter.
+                    // Something of a hack: use the node-ID for the trait, also as
+                    // the node-ID for the Self type parameter.
                     let param_id = item.id;
 
                     opt_self = Some(ty::GenericParamDef {
@@ -1523,7 +1519,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> hir::I
     }
 }
 
-// Is it marked with ?Sized
+// Returns whether the given bounds include `?Sized`.
 fn is_unsized<'gcx: 'tcx, 'tcx>(
     astconv: &dyn AstConv<'gcx, 'tcx>,
     ast_bounds: &[hir::GenericBound],
@@ -1575,7 +1571,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(
 }
 
 /// Returns the early-bound lifetimes declared in this generics
-/// listing.  For anything other than fns/methods, this is just all
+/// listing. For anything other than fns/methods, this is just all
 /// the lifetimes that are declared. For fns or methods, we have to
 /// screen out those that do not appear in any where-clauses etc using
 /// `resolve_lifetime::early_bound_lifetimes`.
@@ -1595,6 +1591,9 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
         })
 }
 
+/// Returns a list of type predicates for the definition with ID `def_id`, including inferred
+/// lifetime constraints. This includes all predicates returned by `explicit_predicates_of`, plus
+/// inferred constraints concerning which regions outlive other regions.
 fn predicates_defined_on<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -1621,6 +1620,9 @@ fn predicates_defined_on<'a, 'tcx>(
     result
 }
 
+/// Returns a list of all type predicates (explicit and implicit) for the definition with
+/// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
+/// `Self: Trait` predicates for traits.
 fn predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -1633,7 +1635,7 @@ fn predicates_of<'a, 'tcx>(
         // is something that one must prove in order to invoke a
         // method or project an associated type.
         //
-        // In the chalk setup, this predicate is not part of the
+        // In the Chalk setup, this predicate is not part of the
         // "predicates" for a trait item. But it is useful in
         // rustc because if you directly (e.g.) invoke a trait
         // method like `Trait::method(...)`, you must naturally
@@ -1648,6 +1650,8 @@ fn predicates_of<'a, 'tcx>(
     result
 }
 
+/// Returns a list of user-specified type predicates for the definition with ID `def_id`.
+/// N.B., this does not include any implied/inferred constraints.
 fn explicit_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
@@ -1838,7 +1842,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     }
 
     // Collect the predicates that were written inline by the user on each
-    // type parameter (e.g., `<T:Foo>`).
+    // type parameter (e.g., `<T: Foo>`).
     for param in &ast_generics.params {
         if let GenericParamKind::Type { .. } = param.kind {
             let name = param.name.ident().as_interned_str();
@@ -1851,7 +1855,7 @@ fn explicit_predicates_of<'a, 'tcx>(
         }
     }
 
-    // Add in the bounds that appear in the where-clause
+    // Add in the bounds that appear in the where-clause.
     let where_clause = &ast_generics.where_clause;
     for predicate in &where_clause.predicates {
         match predicate {
@@ -1953,8 +1957,8 @@ fn explicit_predicates_of<'a, 'tcx>(
     let mut predicates = predicates.predicates;
 
     // Subtle: before we store the predicates into the tcx, we
-    // sort them so that predicates like `T: Foo<Item=U>` come
-    // before uses of `U`.  This avoids false ambiguity errors
+    // sort them so that predicates like `T: Foo<Item = U>` come
+    // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item {
@@ -2041,9 +2045,9 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
 }
 
 /// Converts a specific `GenericBound` from the AST into a set of
-/// predicates that apply to the self-type. A vector is returned
-/// because this can be anywhere from zero predicates (`T : ?Sized` adds no
-/// predicates) to one (`T : Foo`) to many (`T : Bar<X=i32>` adds `T : Bar`
+/// predicates that apply to the self type. A vector is returned
+/// because this can be anywhere from zero predicates (`T: ?Sized` adds no
+/// predicates) to one (`T: Foo`) to many (`T: Bar<X=i32>` adds `T: Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx, 'tcx>,
@@ -2121,7 +2125,7 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool
     match tcx.hir().get_if_local(def_id) {
         Some(Node::ForeignItem(..)) => true,
         Some(_) => false,
-        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id),
+        _ => bug!("is_foreign_item applied to non-local def-ID {:?}", def_id),
     }
 }
 
@@ -2227,7 +2231,7 @@ fn linkage_by_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, name: &
     // may pop up in the future.
     //
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
+    // and don't have to be, LLVM treats them as noops.
     match name {
         "appending" => Appending,
         "available_externally" => AvailableExternally,

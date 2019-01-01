@@ -309,7 +309,7 @@ pub struct TestProps {
     pub forbid_output: Vec<String>,
     // Revisions to test for incremental compilation.
     pub revisions: Vec<String>,
-    // Directory (if any) to use for incremental compilation.  This is
+    // Directory (if any) to use for incremental compilation. This is
     // not set by end-users; rather it is set by the incremental
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
@@ -671,7 +671,7 @@ impl Config {
 
     fn parse_env(&self, line: &str, name: &str) -> Option<(String, String)> {
         self.parse_name_value_directive(line, name).map(|nv| {
-            // nv is either FOO or FOO=BAR
+            // `nv` is either `"FOO"` or `"FOO=BAR"`.
             let mut strs: Vec<String> = nv.splitn(2, '=').map(str::to_owned).collect();
 
             match strs.len() {
@@ -856,7 +856,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 /// assert_eq!(s, " -> \"something ($WORD bits)\".");
 /// ```
 fn parse_normalization_string(line: &mut &str) -> Option<String> {
-    // FIXME support escapes in strings.
+    // FIXME: support escapes in strings.
     let begin = line.find('"')? + 1;
     let end = line[begin..].find('"')? + begin;
     let result = line[begin..end].to_owned();

@@ -1,5 +1,5 @@
-//prior to fixing `everybody_loops` to preserve items, rustdoc would crash on this file, as it
-//didn't see that `SomeStruct` implemented `Clone`
+// prior to fixing `everybody_loops` to preserve items, rustdoc would crash on this file, as it
+// didn't see that `SomeStruct` implemented `Clone`
 
 pub struct Bounded<T: Clone>(T);
 

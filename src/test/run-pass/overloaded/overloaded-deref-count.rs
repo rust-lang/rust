@@ -44,30 +44,30 @@ pub fn main() {
     let mut n = DerefCounter::new(0);
     let mut v = DerefCounter::new(Vec::new());
 
-    let _ = *n; // Immutable deref + copy a POD.
+    let _ = *n; // Immutable deref and copy a POD.
     assert_eq!(n.counts(), (1, 0));
 
-    let _ = (&*n, &*v); // Immutable deref + borrow.
+    let _ = (&*n, &*v); // Immutable deref and borrow.
     assert_eq!(n.counts(), (2, 0)); assert_eq!(v.counts(), (1, 0));
 
-    let _ = (&mut *n, &mut *v); // Mutable deref + mutable borrow.
+    let _ = (&mut *n, &mut *v); // Mutable deref and mutable borrow.
     assert_eq!(n.counts(), (2, 1)); assert_eq!(v.counts(), (1, 1));
 
     let mut v2 = Vec::new();
     v2.push(1);
 
-    *n = 5; *v = v2; // Mutable deref + assignment.
+    *n = 5; *v = v2; // Mutable deref and assignment.
     assert_eq!(n.counts(), (2, 2)); assert_eq!(v.counts(), (1, 2));
 
-    *n -= 3; // Mutable deref + assignment with binary operation.
+    *n -= 3; // Mutable deref and assignment with binary operation.
     assert_eq!(n.counts(), (2, 3));
 
-    // Immutable deref used for calling a method taking &self. (The
-    // typechecker is smarter now about doing this.)
+    // Immutable deref used for calling a method taking `&self`. (The
+    // type-checker is smarter now about doing this.)
     (*n).to_string();
     assert_eq!(n.counts(), (3, 3));
 
-    // Mutable deref used for calling a method taking &mut self.
+    // Mutable deref used for calling a method taking `&mut self`.
     (*v).push(2);
     assert_eq!(v.counts(), (1, 3));
 

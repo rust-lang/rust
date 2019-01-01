@@ -94,7 +94,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         //
         // SUBTLE: if we want good error messages, because of "guessing" while matching
         // traits, no trait system method can be called before this point because they
-        // could alter our Self-type, except for normalizing the receiver from the
+        // could alter our self type, except for normalizing the receiver from the
         // signature (which is also done during probing).
         let method_sig_rcvr =
             self.normalize_associated_types_in(self.span, &method_sig.inputs()[0]);
@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
                 // consisting entirely of type variables. Later on in
-                // the process we will unify the transformed-self-type
+                // the process we will unify the transformed-self type
                 // of the method with the actual type in order to
                 // unify some of these variables.
                 self.fresh_substs_for_item(self.span, trait_def_id)
@@ -270,7 +270,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                        -> R
     {
         // If we specified that this is an object method, then the
-        // self-type ought to be something that can be dereferenced to
+        // self type ought to be something that can be dereferenced to
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
@@ -287,7 +287,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .next()
             .unwrap_or_else(||
                 span_bug!(self.span,
-                          "self-type `{}` for ObjectPick never dereferenced to an object",
+                          "self type `{}` for ObjectPick never dereferenced to an object",
                           self_ty)
             )
     }

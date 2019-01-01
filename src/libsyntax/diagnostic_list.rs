@@ -358,7 +358,7 @@ The `#[unwind]` attribute should be used as follows:
   should be allowed to unwind. This can easily result in Undefined
   Behavior (UB), so be careful.
 
-NB. The default behavior here is "allowed", but this is unspecified
+N.B., the default behavior here is "allowed", but this is unspecified
 and likely to change in the future.
 
 "##,

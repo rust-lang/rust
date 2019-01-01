@@ -29,15 +29,15 @@ fn print_help_message() {
     println!("\
 -Z print-region-graph by default prints a region constraint graph for every \n\
 function body, to the path `constraints.nodeXXX.dot`, where the XXX is \n\
-replaced with the node id of the function under analysis.                   \n\
+replaced with the node-ID of the function under analysis.                   \n\
                                                                             \n\
 To select one particular function body, set `RUST_REGION_GRAPH_NODE=XXX`,   \n\
-where XXX is the node id desired.                                           \n\
+where XXX is the node-ID desired.                                           \n\
                                                                             \n\
 To generate output to some path other than the default                      \n\
 `constraints.nodeXXX.dot`, set `RUST_REGION_GRAPH=/path/desired.dot`;  \n\
 occurrences of the character `%` in the requested path will be replaced with\n\
-the node id of the function under analysis.                                 \n\
+the node-ID of the function under analysis.                                 \n\
                                                                             \n\
 (Since you requested help via RUST_REGION_GRAPH=help, no region constraint  \n\
 graphs will be printed.                                                     \n\
@@ -175,7 +175,7 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         let name = || format!("node_{}", node_id);
 
         dot::Id::new(name()).unwrap_or_else(|_|
-            bug!("failed to create graphviz node identified by {}", name()))
+            bug!("failed to create graphviz node-IDentified by {}", name()))
     }
     fn node_label(&self, n: &Node) -> dot::LabelText<'_> {
         match *n {

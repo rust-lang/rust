@@ -8,7 +8,7 @@ mod private {
     }
 }
 
-//use private::Future;
+// use private::Future;
 
 fn bar(arg: Box<private::Future>) {
     arg.wait();

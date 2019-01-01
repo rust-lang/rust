@@ -1,6 +1,6 @@
 /*!
 
-# typeck.rs
+# typeck
 
 The type checker is responsible for:
 
@@ -22,7 +22,7 @@ several major phases:
 4. Finally, the check phase then checks function bodies and so forth.
    Within the check phase, we check each function body one at a time
    (bodies of function expressions are checked as part of the
-   containing function).  Inference is used to supply types wherever
+   containing function). Inference is used to supply types wherever
    they are unknown. The actual checking of a function itself has
    several phases (check, regionck, writeback), as discussed in the
    documentation for the `check` module.
@@ -43,10 +43,10 @@ independently:
 - outlives: outlives inference
 
 - check: walks over function bodies and type checks them, inferring types for
-  local variables, type parameters, etc as necessary.
+  local variables, type parameters, etc., as necessary.
 
 - infer: finds the types to use for each type variable such that
-  all subtyping and assignment constraints are met.  In essence, the check
+  all subtyping and assignment constraints are met. In essence, the check
   module specifies the constraints, and the infer module solves them.
 
 ## Note
@@ -374,11 +374,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 }
 
 /// A quasi-deprecated helper used in rustdoc and save-analysis to get
-/// the type from a HIR node.
+/// the type from an HIR node.
 pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
     // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
-    // scope.  This is derived from the enclosing item-like thing.
+    // def-ID that will be used to determine the traits/predicates in
+    // scope. This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent(hir_ty.id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
@@ -389,8 +389,8 @@ pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> 
 pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
         -> (ty::PolyTraitRef<'tcx>, Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>) {
     // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
-    // scope.  This is derived from the enclosing item-like thing.
+    // def-ID that will be used to determine the traits/predicates in
+    // scope. This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent(hir_trait.ref_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);

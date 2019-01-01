@@ -45,7 +45,7 @@ macro_rules! vec {
     ($($x:expr,)*) => (vec![$($x),*])
 }
 
-// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
+// HACK(japaric): with `cfg(test)`, the inherent `[T]::into_vec` method, which is
 // required for this macro definition, is not available. Instead use the
 // `slice::into_vec`  function which is only available with cfg(test)
 // NB see the slice::hack module in slice.rs for more information
@@ -62,8 +62,8 @@ macro_rules! vec {
 
 /// Creates a `String` using interpolation of runtime expressions.
 ///
-/// The first argument `format!` receives is a format string.  This must be a string
-/// literal.  The power of the formatting string is in the `{}`s contained.
+/// The first argument `format!` receives is a format string. This must be a string
+/// literal. The power of the formatting string is in the `{}`s contained.
 ///
 /// Additional parameters passed to `format!` replace the `{}`s within the
 /// formatting string in the order given unless named or positional parameters

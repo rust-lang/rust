@@ -6,7 +6,7 @@ pub fn opts() -> TargetOptions {
     args.insert(LinkerFlavor::Gcc, vec![
         // GNU-style linkers will use this to omit linking to libraries
         // which don't actually fulfill any relocations, but only for
-        // libraries which follow this flag.  Thus, use it before
+        // libraries which follow this flag. Thus, use it before
         // specifying libraries to link to.
         "-Wl,--as-needed".to_string(),
 
@@ -22,7 +22,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: args,
         position_independent_executables: true,
-        eliminate_frame_pointer: false, // FIXME 43575
+        eliminate_frame_pointer: false, // FIXME: 43575
         relro_level: RelroLevel::Full,
         abi_return_struct_as_int: true,
         .. Default::default()

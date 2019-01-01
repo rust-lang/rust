@@ -1,5 +1,5 @@
 // The "projection gap" is particularly "fun" around higher-ranked
-// projections.  This is because the current code is hard-coded to say
+// projections. This is because the current code is hard-coded to say
 // that a projection that contains escaping regions, like `<T as
 // Trait2<'y, 'z>>::Foo` where `'z` is bound, can only be found to
 // outlive a region if all components that appear free (`'y`, where)
