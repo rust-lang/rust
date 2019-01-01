@@ -415,41 +415,41 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     type Item = <I as Iterator>::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next_back() }
+    fn next(&mut self) -> Option<Self::Item> { self.iter.next_back() }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
     #[inline]
     fn count(self) -> usize { self.iter.count() }
     #[inline]
-    fn last(mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
+    fn last(mut self) -> Option<Self::Item> { self.iter.next() }
 
     #[inline]
-    fn nth(&mut self, n: usize) -> Option<<I as Iterator>::Item> { self.iter.nth_back(n) }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> { self.iter.nth_back(n) }
 
     #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R where
-        Self: Sized, F: FnMut(B, <I as Iterator>::Item) -> R, R: Try<Ok=B>
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
         self.iter.try_rfold(init, f)
     }
 
     #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
-        where F: FnMut(Acc, <I as Iterator>::Item) -> Acc,
+        where F: FnMut(Acc, Self::Item) -> Acc,
     {
         self.iter.rfold(init, f)
     }
 
     #[inline]
-    fn find<P>(&mut self, predicate: P) -> Option<<I as Iterator>::Item>
-        where P: FnMut(&<I as Iterator>::Item) -> bool
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
+        where P: FnMut(&Self::Item) -> bool
     {
         self.iter.rfind(predicate)
     }
 
     #[inline]
     fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
-        P: FnMut(<I as Iterator>::Item) -> bool
+        P: FnMut(Self::Item) -> bool
     {
         self.iter.position(predicate)
     }
@@ -458,10 +458,10 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
-    fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
+    fn next_back(&mut self) -> Option<Self::Item> { self.iter.next() }
 
     #[inline]
-    fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> { self.iter.nth(n) }
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> { self.iter.nth(n) }
 
     #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R where
