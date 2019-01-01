@@ -78,6 +78,35 @@ fn item_map_smoke_test() {
 }
 
 #[test]
+fn item_map_contains_items_from_expansions() {
+    let (item_map, module_id) = item_map(
+        "
+        //- /lib.rs
+        mod foo;
+
+        use crate::foo::bar::Baz;
+        <|>
+
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        salsa::query_group! {
+            trait Baz {}
+        }
+    ",
+    );
+    check_module_item_map(
+        &item_map,
+        module_id,
+        "
+            Baz: t
+            foo: t
+        ",
+    );
+}
+
+#[test]
 fn item_map_using_self() {
     let (item_map, module_id) = item_map(
         "
@@ -144,6 +173,59 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
     let (mut db, pos) = MockDatabase::with_position(
         "
         //- /lib.rs
+        mod foo;
+
+        use crate::foo::bar::Baz;
+
+        //- /foo/mod.rs
+        pub mod bar;
+
+        //- /foo/bar.rs
+        <|>
+        salsa::query_group! {
+            trait Baz {
+                fn foo() -> i32 { 1 + 1 }
+            }
+        }
+        ",
+    );
+    let source_root = db.file_source_root(pos.file_id);
+    {
+        let events = db.log_executed(|| {
+            db.item_map(source_root).unwrap();
+        });
+        assert!(format!("{:?}", events).contains("item_map"))
+    }
+
+    let new_text = "
+        salsa::query_group! {
+            trait Baz {
+                fn foo() -> i32 { 92 }
+            }
+        }
+    "
+    .to_string();
+
+    db.query_mut(ra_db::FileTextQuery)
+        .set(pos.file_id, Arc::new(new_text));
+
+    {
+        let events = db.log_executed(|| {
+            db.item_map(source_root).unwrap();
+        });
+        assert!(
+            !format!("{:?}", events).contains("item_map"),
+            "{:#?}",
+            events
+        )
+    }
+}
+
+#[test]
+fn typing_inside_a_function_inside_a_macro_should_not_invalidate_item_map() {
+    let (mut db, pos) = MockDatabase::with_position(
+        "
+        //- /lib.rs
         mod foo;<|>
 
         use crate::foo::bar::Baz;
@@ -183,7 +265,7 @@ fn typing_inside_a_function_should_not_invalidate_item_map() {
             db.item_map(source_root).unwrap();
         });
         assert!(
-            !format!("{:?}", events).contains("_item_map"),
+            !format!("{:?}", events).contains("item_map"),
             "{:#?}",
             events
         )
