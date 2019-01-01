@@ -22,10 +22,10 @@ use ra_syntax::{
     SyntaxKind::{self, *},
     ast::{self, AstNode}
 };
-use ra_db::SourceRootId;
+use ra_db::{SourceRootId, Cancelable, FileId};
 
 use crate::{
-    Cancelable, HirFileId, FileId,
+    HirFileId,
     DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,

@@ -1,6 +1,6 @@
-pub use ra_db::CrateId;
+pub use ra_db::{CrateId, Cancelable};
 
-use crate::{HirDatabase, Module, Cancelable, Name, AsName, HirFileId};
+use crate::{HirDatabase, Module, Name, AsName, HirFileId};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the

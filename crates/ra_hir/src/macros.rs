@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use ra_db::{LocalSyntaxPtr, LocationIntener};
+use ra_db::{SourceRootId, LocalSyntaxPtr, LocationIntener};
 use ra_syntax::{
     TextRange, TextUnit, SourceFileNode, AstNode, SyntaxNode,
     ast::{self, NameOwner},
 };
 
-use crate::{SourceRootId, module::ModuleId, SourceItemId, HirDatabase};
+use crate::{module::ModuleId, SourceItemId, HirDatabase};
 
 /// Def's are a core concept of hir. A `Def` is an Item (function, module, etc)
 /// in a specific module.
