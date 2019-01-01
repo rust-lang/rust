@@ -698,8 +698,37 @@ fn test_into_iter_debug() {
 }
 
 #[test]
+fn test_into_iter_len() {
+    let mut into_iter = vec![1, 2, 3].into_iter();
+    assert_eq!(into_iter.len(), 3);
+    into_iter.next();
+    assert_eq!(into_iter.len(), 2);
+}
+
+#[test]
 fn test_into_iter_count() {
     assert_eq!(vec![1, 2, 3].into_iter().count(), 3);
+}
+
+#[test]
+fn test_into_iter_nth() {
+    let mut into_iter = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].into_iter();
+    assert_eq!(into_iter.nth(0), Some(1));
+    assert_eq!(into_iter.nth(2), Some(4));
+    assert_eq!(into_iter.nth(1), Some(6));
+    assert_eq!(into_iter.nth(3), Some(10));
+    assert_eq!(into_iter.nth(3), None);
+    assert_eq!(into_iter.nth(3), None);
+}
+
+#[test]
+fn test_into_iter_next_back() {
+    let mut into_iter = vec![1, 2, 3].into_iter();
+    assert_eq!(into_iter.next_back(), Some(3));
+    assert_eq!(into_iter.next_back(), Some(2));
+    assert_eq!(into_iter.next_back(), Some(1));
+    assert_eq!(into_iter.next_back(), None);
+    assert_eq!(into_iter.next_back(), None);
 }
 
 #[test]

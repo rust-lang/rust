@@ -2340,17 +2340,18 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = if mem::size_of::<T>() == 0 {
-            (self.end as usize).wrapping_sub(self.ptr as usize)
-        } else {
-            unsafe { self.end.offset_from(self.ptr) as usize }
-        };
+        let exact = self.len();
         (exact, Some(exact))
     }
 
     #[inline]
     fn count(self) -> usize {
         self.len()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<T> {
+        self.next_back()
     }
 }
 
@@ -2380,6 +2381,14 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
+    fn len(&self) -> usize {
+        if mem::size_of::<T>() == 0 {
+            (self.end as usize).wrapping_sub(self.ptr as usize)
+        } else {
+            unsafe { self.end.offset_from(self.ptr) as usize }
+        }
+    }
+
     fn is_empty(&self) -> bool {
         self.ptr == self.end
     }
