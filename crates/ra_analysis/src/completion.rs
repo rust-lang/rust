@@ -40,6 +40,7 @@ pub(crate) fn completions(
 
     complete_fn_param::complete_fn_param(&mut acc, &ctx);
     complete_keyword::complete_expr_keyword(&mut acc, &ctx);
+    complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
     complete_snippet::complete_expr_snippet(&mut acc, &ctx);
     complete_snippet::complete_item_snippet(&mut acc, &ctx);
     complete_path::complete_path(&mut acc, &ctx)?;
