@@ -27,7 +27,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) -> 
             match res.import {
                 None => true,
                 Some(import) => {
-                    let range = import.range(ctx.db, module.source().file_id());
+                    let range = import.range(ctx.db, module.file_id());
                     !range.is_subrange(&ctx.leaf.range())
                 }
             }

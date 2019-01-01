@@ -47,7 +47,7 @@ pub use self::{
     path::{Path, PathKind},
     name::Name,
     krate::Crate,
-    ids::MFileId,
+    ids::HirFileId,
     macros::{MacroDef, MacroInput, MacroExpansion, MacroCallId, MacroCallLoc},
     module::{Module, ModuleId, Problem, nameres::{ItemMap, PerNs, Namespace}, ModuleScope, Resolution},
     function::{Function, FnScopes},
@@ -158,7 +158,7 @@ pub(crate) type SourceFileItemId = Id<SyntaxNode>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceItemId {
-    mfile_id: MFileId,
+    file_id: HirFileId,
     /// None for the whole file.
     item_id: Option<SourceFileItemId>,
 }
@@ -166,14 +166,14 @@ pub struct SourceItemId {
 /// Maps item's `SyntaxNode`s to `SourceFileItemId` and back.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SourceFileItems {
-    mfile_id: MFileId,
+    file_id: HirFileId,
     arena: Arena<SyntaxNode>,
 }
 
 impl SourceFileItems {
-    fn new(mfile_id: MFileId, source_file: SourceFile) -> SourceFileItems {
+    fn new(file_id: HirFileId, source_file: SourceFile) -> SourceFileItems {
         let mut res = SourceFileItems {
-            mfile_id,
+            file_id,
             arena: Arena::default(),
         };
         res.init(source_file);
@@ -193,11 +193,11 @@ impl SourceFileItems {
     fn alloc(&mut self, item: SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(item)
     }
-    pub fn id_of(&self, mfile_id: MFileId, item: SyntaxNodeRef) -> SourceFileItemId {
+    pub fn id_of(&self, file_id: HirFileId, item: SyntaxNodeRef) -> SourceFileItemId {
         assert_eq!(
-            self.mfile_id, mfile_id,
+            self.file_id, file_id,
             "SourceFileItems: wrong file, expected {:?}, got {:?}",
-            self.mfile_id, mfile_id
+            self.file_id, file_id
         );
         self.id_of_unchecked(item)
     }

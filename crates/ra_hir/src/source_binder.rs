@@ -20,7 +20,7 @@ use crate::{
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
 pub fn module_from_file_id(db: &impl HirDatabase, file_id: FileId) -> Cancelable<Option<Module>> {
-    let module_source = ModuleSource::new_file(file_id);
+    let module_source = ModuleSource::new_file(file_id.into());
     module_from_source(db, module_source)
 }
 
@@ -50,8 +50,8 @@ pub fn module_from_position(
 ) -> Cancelable<Option<Module>> {
     let file = db.source_file(position.file_id);
     let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset) {
-        Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
-        _ => ModuleSource::new_file(position.file_id),
+        Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id.into(), m),
+        _ => ModuleSource::new_file(position.file_id.into()),
     };
     module_from_source(db, module_source)
 }
@@ -67,9 +67,9 @@ pub fn module_from_child_node(
         .filter_map(ast::Module::cast)
         .find(|it| !it.has_semi())
     {
-        ModuleSource::new_inline(db, file_id, m)
+        ModuleSource::new_inline(db, file_id.into(), m)
     } else {
-        ModuleSource::new_file(file_id)
+        ModuleSource::new_file(file_id.into())
     };
     module_from_source(db, module_source)
 }
@@ -78,7 +78,7 @@ fn module_from_source(
     db: &impl HirDatabase,
     module_source: ModuleSource,
 ) -> Cancelable<Option<Module>> {
-    let source_root_id = db.file_source_root(module_source.file_id());
+    let source_root_id = db.file_source_root(module_source.file_id().as_original_file());
     let module_tree = db.module_tree(source_root_id)?;
     let m = module_tree
         .modules_with_sources()
@@ -102,11 +102,11 @@ pub fn function_from_module(
     module: &Module,
     fn_def: ast::FnDef,
 ) -> Function {
-    let mfile_id = module.source().file_id().into();
-    let file_items = db.file_items(mfile_id);
-    let item_id = file_items.id_of(mfile_id, fn_def.syntax());
+    let file_id = module.source().file_id();
+    let file_items = db.file_items(file_id);
+    let item_id = file_items.id_of(file_id, fn_def.syntax());
     let source_item_id = SourceItemId {
-        mfile_id,
+        file_id,
         item_id: Some(item_id),
     };
     let def_loc = DefLoc {

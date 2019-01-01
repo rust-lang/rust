@@ -5,13 +5,13 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use ra_syntax::{
-    AstNode, SyntaxNode, SourceFileNode,
+    AstNode, SyntaxNode,
     ast::{self, NameOwner, ModuleItemOwner}
 };
-use ra_db::{SourceRootId, FileId, Cancelable,};
+use ra_db::{SourceRootId, Cancelable,};
 
 use crate::{
-    SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName, MFileId,
+    SourceFileItems, SourceItemId, DefKind, Function, DefId, Name, AsName, HirFileId,
     macros::MacroCallLoc,
     db::HirDatabase,
     function::FnScopes,
@@ -48,29 +48,17 @@ pub(super) fn enum_data(db: &impl HirDatabase, def_id: DefId) -> Cancelable<Arc<
     Ok(Arc::new(EnumData::new(enum_def.borrowed())))
 }
 
-pub(super) fn m_source_file(db: &impl HirDatabase, mfile_id: MFileId) -> SourceFileNode {
-    match mfile_id {
-        MFileId::File(file_id) => db.source_file(file_id),
-        MFileId::Macro(m) => {
-            if let Some(exp) = db.expand_macro_invocation(m) {
-                return exp.file();
-            }
-            SourceFileNode::parse("")
-        }
-    }
-}
-
-pub(super) fn file_items(db: &impl HirDatabase, mfile_id: MFileId) -> Arc<SourceFileItems> {
-    let source_file = db.m_source_file(mfile_id);
+pub(super) fn file_items(db: &impl HirDatabase, file_id: HirFileId) -> Arc<SourceFileItems> {
+    let source_file = db.hir_source_file(file_id);
     let source_file = source_file.borrowed();
-    let res = SourceFileItems::new(mfile_id, source_file);
+    let res = SourceFileItems::new(file_id, source_file);
     Arc::new(res)
 }
 
 pub(super) fn file_item(db: &impl HirDatabase, source_item_id: SourceItemId) -> SyntaxNode {
     match source_item_id.item_id {
-        Some(id) => db.file_items(source_item_id.mfile_id)[id].clone(),
-        None => db.m_source_file(source_item_id.mfile_id).syntax().owned(),
+        Some(id) => db.file_items(source_item_id.file_id)[id].clone(),
+        None => db.hir_source_file(source_item_id.file_id).syntax().owned(),
     }
 }
 
@@ -92,7 +80,7 @@ pub(crate) fn submodules(
 
     fn collect_submodules<'a>(
         db: &impl HirDatabase,
-        file_id: FileId,
+        file_id: HirFileId,
         root: impl ast::ModuleItemOwner<'a>,
     ) -> Vec<Submodule> {
         modules(root)
@@ -129,13 +117,13 @@ pub(super) fn input_module_items(
 ) -> Cancelable<Arc<InputModuleItems>> {
     let module_tree = db.module_tree(source_root_id)?;
     let source = module_id.source(&module_tree);
-    let mfile_id = source.file_id().into();
-    let file_items = db.file_items(mfile_id);
+    let file_id = source.file_id();
+    let file_items = db.file_items(file_id);
     let fill = |acc: &mut InputModuleItems, items: &mut Iterator<Item = ast::ItemOrMacro>| {
         for item in items {
             match item {
                 ast::ItemOrMacro::Item(it) => {
-                    acc.add_item(mfile_id, &file_items, it);
+                    acc.add_item(file_id, &file_items, it);
                 }
                 ast::ItemOrMacro::Macro(macro_call) => {
                     let item_id = file_items.id_of_unchecked(macro_call.syntax());
@@ -143,16 +131,16 @@ pub(super) fn input_module_items(
                         source_root_id,
                         module_id,
                         source_item_id: SourceItemId {
-                            mfile_id,
+                            file_id,
                             item_id: Some(item_id),
                         },
                     };
                     let id = loc.id(db);
-                    let mfile_id = MFileId::Macro(id);
-                    let file_items = db.file_items(mfile_id);
+                    let file_id = HirFileId::from(id);
+                    let file_items = db.file_items(file_id);
                     //FIXME: expand recursively
-                    for item in db.m_source_file(mfile_id).borrowed().items() {
-                        acc.add_item(mfile_id, &file_items, item);
+                    for item in db.hir_source_file(file_id).borrowed().items() {
+                        acc.add_item(file_id, &file_items, item);
                     }
                 }
             }

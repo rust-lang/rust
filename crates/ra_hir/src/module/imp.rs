@@ -64,7 +64,7 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.values() {
-        let source = ModuleSource::new_file(file_id);
+        let source = ModuleSource::new_file(file_id.into());
         if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
@@ -123,7 +123,7 @@ fn build_subtree(
                             visited,
                             roots,
                             Some(link),
-                            ModuleSource::new_file(file_id),
+                            ModuleSource::new_file(file_id.into()),
                         ),
                     })
                     .collect::<Cancelable<Vec<_>>>()?;
@@ -155,7 +155,7 @@ fn resolve_submodule(
     name: &Name,
 ) -> (Vec<FileId>, Option<Problem>) {
     // FIXME: handle submodules of inline modules properly
-    let file_id = source.file_id();
+    let file_id = source.file_id().original_file_id(db);
     let source_root_id = db.file_source_root(file_id);
     let path = db.file_relative_path(file_id);
     let root = RelativePathBuf::default();

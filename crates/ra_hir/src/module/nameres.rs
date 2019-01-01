@@ -25,7 +25,7 @@ use ra_syntax::{
 use ra_db::SourceRootId;
 
 use crate::{
-    Cancelable, MFileId, FileId,
+    Cancelable, HirFileId, FileId,
     DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
@@ -95,9 +95,11 @@ pub struct NamedImport {
 }
 
 impl NamedImport {
+    // FIXME: this is only here for one use-case in completion. Seems like a
+    // pretty gross special case.
     pub fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
         let source_item_id = SourceItemId {
-            mfile_id: file_id.into(),
+            file_id: file_id.into(),
             item_id: Some(self.file_item_id),
         };
         let syntax = db.file_item(source_item_id);
@@ -211,25 +213,25 @@ impl<T> PerNs<T> {
 impl InputModuleItems {
     pub(crate) fn add_item(
         &mut self,
-        mfile_id: MFileId,
+        file_id: HirFileId,
         file_items: &SourceFileItems,
         item: ast::ModuleItem,
     ) -> Option<()> {
         match item {
             ast::ModuleItem::StructDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::EnumDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::FnDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::TraitDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::TypeDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::ImplItem(_) => {
                 // impls don't define items
@@ -239,13 +241,13 @@ impl InputModuleItems {
                 // TODO
             }
             ast::ModuleItem::ConstDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::StaticDef(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
             ast::ModuleItem::Module(it) => {
-                self.items.push(ModuleItem::new(mfile_id, file_items, it)?)
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
             }
         }
         Some(())
@@ -269,7 +271,7 @@ impl InputModuleItems {
 
 impl ModuleItem {
     fn new<'a>(
-        mfile_id: MFileId,
+        file_id: HirFileId,
         file_items: &SourceFileItems,
         item: impl ast::NameOwner<'a>,
     ) -> Option<ModuleItem> {
@@ -277,7 +279,7 @@ impl ModuleItem {
         let kind = item.syntax().kind();
         let vis = Vis::Other;
         let item_id = Some(file_items.id_of_unchecked(item.syntax()));
-        let id = SourceItemId { mfile_id, item_id };
+        let id = SourceItemId { file_id, item_id };
         let res = ModuleItem {
             id,
             name,
@@ -339,7 +341,8 @@ where
             let root_id = module_id.crate_root(&self.module_tree);
             let file_id = root_id.source(&self.module_tree).file_id();
             let crate_graph = self.db.crate_graph();
-            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id) {
+            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
+            {
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db)? {

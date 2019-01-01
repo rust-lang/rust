@@ -4,7 +4,7 @@ use ra_syntax::{SyntaxNode, SourceFileNode};
 use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
-    DefLoc, DefId, Name, MFileId,
+    DefLoc, DefId, Name, HirFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
@@ -21,9 +21,9 @@ pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
     + AsRef<LocationIntener<MacroCallLoc, MacroCallId>>
 {
-    fn m_source_file(mfile_id: MFileId) -> SourceFileNode {
-        type MSourceFileQuery;
-        use fn crate::query_definitions::m_source_file;
+    fn hir_source_file(file_id: HirFileId) -> SourceFileNode {
+        type HirSourceFileQuery;
+        use fn HirFileId::source_file_query;
     }
     fn expand_macro_invocation(invoc: MacroCallId) -> Option<Arc<MacroExpansion>> {
         type ExpandMacroCallQuery;
@@ -60,7 +60,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::ty::type_for_field;
     }
 
-    fn file_items(mfile_id: MFileId) -> Arc<SourceFileItems> {
+    fn file_items(file_id: HirFileId) -> Arc<SourceFileItems> {
         type SourceFileItemsQuery;
         use fn query_definitions::file_items;
     }
