@@ -128,11 +128,6 @@ impl Stdin {
         // MemReader shouldn't error here since we just filled it
         utf8.read(buf)
     }
-
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let mut me = self;
-        (&mut me).read_to_end(buf)
-    }
 }
 
 #[unstable(reason = "not public", issue = "0", feature = "fd_read")]

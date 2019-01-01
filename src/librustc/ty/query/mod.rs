@@ -26,8 +26,8 @@ use session::config::OutputFilenames;
 use traits::{self, Vtable};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
-    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal,
-    CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
     CanonicalTypeOpNormalizeGoal, NoSolution,
 };
 use traits::query::method_autoderef::MethodAutoderefStepsResult;

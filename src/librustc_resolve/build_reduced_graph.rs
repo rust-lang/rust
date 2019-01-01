@@ -42,6 +42,7 @@ impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Module(self.0),
+            ambiguity: None,
             vis: self.1,
             span: self.2,
             expansion: self.3,
@@ -53,6 +54,7 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(self.0, false),
+            ambiguity: None,
             vis: self.1,
             span: self.2,
             expansion: self.3,
@@ -66,6 +68,7 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark, IsMacroExport) 
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(self.0, true),
+            ambiguity: None,
             vis: self.1,
             span: self.2,
             expansion: self.3,

@@ -29,11 +29,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 lint_level: _,
                 value,
             } => this.as_constant(value),
-            ExprKind::Literal { literal, user_ty } => Constant {
-                span,
-                ty,
-                user_ty,
-                literal,
+            ExprKind::Literal { literal, user_ty } => {
+                let user_ty = user_ty.map(|ty| {
+                    this.canonical_user_type_annotations.push((span, ty))
+                });
+                Constant {
+                    span,
+                    ty,
+                    user_ty,
+                    literal,
+                }
             },
             _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
         }

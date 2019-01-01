@@ -1,8 +1,8 @@
 error[E0491]: in type `&'a WithAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container-wc.rs:36:13
+  --> $DIR/regions-outlives-projection-container-wc.rs:34:12
    |
-LL |     let _x: &'a WithAssoc<TheType<'b>> = loop { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _: &'a WithAssoc<TheType<'b>> = loop { };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime 'a as defined on the function body at 28:15
   --> $DIR/regions-outlives-projection-container-wc.rs:28:15

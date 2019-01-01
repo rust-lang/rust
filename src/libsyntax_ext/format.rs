@@ -808,11 +808,56 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 }
                 ('\\', Some((next_pos, 'n'))) |
                 ('\\', Some((next_pos, 't'))) |
+                ('\\', Some((next_pos, '0'))) |
                 ('\\', Some((next_pos, '\\'))) |
                 ('\\', Some((next_pos, '\''))) |
                 ('\\', Some((next_pos, '\"'))) => {
                     skips.push(*next_pos);
                     let _ = s.next();
+                }
+                ('\\', Some((_, 'x'))) if !is_raw => {
+                    for _ in 0..3 {  // consume `\xAB` literal
+                        if let Some((pos, _)) = s.next() {
+                            skips.push(pos);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                ('\\', Some((_, 'u'))) if !is_raw => {
+                    if let Some((pos, _)) = s.next() {
+                        skips.push(pos);
+                    }
+                    if let Some((next_pos, next_c)) = s.next() {
+                        if next_c == '{' {
+                            skips.push(next_pos);
+                            let mut i = 0;  // consume up to 6 hexanumeric chars + closing `}`
+                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
+                                if c.is_digit(16) {
+                                    skips.push(next_pos);
+                                } else if c == '}' {
+                                    skips.push(next_pos);
+                                    break;
+                                } else {
+                                    break;
+                                }
+                                i += 1;
+                            }
+                        } else if next_c.is_digit(16) {
+                            skips.push(next_pos);
+                            // We suggest adding `{` and `}` when appropriate, accept it here as if
+                            // it were correct
+                            let mut i = 0;  // consume up to 6 hexanumeric chars
+                            while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
+                                if c.is_digit(16) {
+                                    skips.push(next_pos);
+                                } else {
+                                    break;
+                                }
+                                i += 1;
+                            }
+                        }
+                    }
                 }
                 _ if eat_ws => {  // `take_while(|c| c.is_whitespace())`
                     eat_ws = false;

@@ -14,7 +14,7 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{StableHashingContext, NodeIdHashingMode};
-use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use infer::outlives::free_region_map::FreeRegionMap;
 use middle::cstore::CrateStoreDyn;
 use middle::cstore::EncodedMetadata;
@@ -23,7 +23,7 @@ use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::{self, Mir, interpret, ProjectionKind};
 use mir::interpret::Allocation;
-use ty::subst::{CanonicalUserSubsts, Kind, Substs, Subst};
+use ty::subst::{Kind, Substs, Subst};
 use ty::ReprOptions;
 use traits;
 use traits::{Clause, Clauses, GoalKind, Goal, Goals};
@@ -38,8 +38,8 @@ use ty::GenericParamDefKind;
 use ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use ty::query;
 use ty::steal::Steal;
-use ty::BindingMode;
-use ty::CanonicalTy;
+use ty::subst::{UserSubsts, UnpackedKind};
+use ty::{BoundVar, BindingMode};
 use ty::CanonicalPolyFnSig;
 use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -49,7 +49,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::{TypedArena, SyncDroplessArena};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal};
 use std::any::Any;
 use std::borrow::Borrow;
@@ -342,25 +342,20 @@ pub struct TypeckTables<'tcx> {
     /// other items.
     node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
 
-    /// Stores the canonicalized types provided by the user. See also
-    /// `AscribeUserType` statement in MIR.
-    user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
+    /// This will either store the canonicalized types provided by the user
+    /// or the substitutions that the user explicitly gave (if any) attached
+    /// to `id`. These will not include any inferred values. The canonical form
+    /// is used to capture things like `_` or other unspecified values.
+    ///
+    /// For example, if the user wrote `foo.collect::<Vec<_>>()`, then the
+    /// canonical substitutions would include only `for<X> { Vec<X> }`.
+    ///
+    /// See also `AscribeUserType` statement in MIR.
+    user_provided_types: ItemLocalMap<CanonicalUserTypeAnnotation<'tcx>>,
 
     /// Stores the canonicalized types provided by the user. See also
     /// `AscribeUserType` statement in MIR.
     pub user_provided_sigs: DefIdMap<CanonicalPolyFnSig<'tcx>>,
-
-    /// Stores the substitutions that the user explicitly gave (if any)
-    /// attached to `id`. These will not include any inferred
-    /// values. The canonical form is used to capture things like `_`
-    /// or other unspecified values.
-    ///
-    /// Example:
-    ///
-    /// If the user wrote `foo.collect::<Vec<_>>()`, then the
-    /// canonical substitutions would include only `for<X> { Vec<X>
-    /// }`.
-    user_substs: ItemLocalMap<CanonicalUserSubsts<'tcx>>,
 
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
@@ -432,11 +427,10 @@ impl<'tcx> TypeckTables<'tcx> {
             local_id_root,
             type_dependent_defs: Default::default(),
             field_indices: Default::default(),
-            user_provided_tys: Default::default(),
+            user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
             node_types: Default::default(),
             node_substs: Default::default(),
-            user_substs: Default::default(),
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
@@ -491,17 +485,21 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn user_provided_tys(&self) -> LocalTableInContext<'_, CanonicalTy<'tcx>> {
+    pub fn user_provided_types(
+        &self
+    ) -> LocalTableInContext<'_, CanonicalUserTypeAnnotation<'tcx>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
-            data: &self.user_provided_tys
+            data: &self.user_provided_types
         }
     }
 
-    pub fn user_provided_tys_mut(&mut self) -> LocalTableInContextMut<'_, CanonicalTy<'tcx>> {
+    pub fn user_provided_types_mut(
+        &mut self
+    ) -> LocalTableInContextMut<'_, CanonicalUserTypeAnnotation<'tcx>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
-            data: &mut self.user_provided_tys
+            data: &mut self.user_provided_types
         }
     }
 
@@ -549,18 +547,6 @@ impl<'tcx> TypeckTables<'tcx> {
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<&'tcx Substs<'tcx>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_substs.get(&id.local_id).cloned()
-    }
-
-    pub fn user_substs_mut(&mut self) -> LocalTableInContextMut<'_, CanonicalUserSubsts<'tcx>> {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.user_substs
-        }
-    }
-
-    pub fn user_substs(&self, id: hir::HirId) -> Option<CanonicalUserSubsts<'tcx>> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.user_substs.get(&id.local_id).cloned()
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
@@ -739,11 +725,10 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             local_id_root,
             ref type_dependent_defs,
             ref field_indices,
-            ref user_provided_tys,
+            ref user_provided_types,
             ref user_provided_sigs,
             ref node_types,
             ref node_substs,
-            ref user_substs,
             ref adjustments,
             ref pat_binding_modes,
             ref pat_adjustments,
@@ -763,11 +748,10 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             type_dependent_defs.hash_stable(hcx, hasher);
             field_indices.hash_stable(hcx, hasher);
-            user_provided_tys.hash_stable(hcx, hasher);
+            user_provided_types.hash_stable(hcx, hasher);
             user_provided_sigs.hash_stable(hcx, hasher);
             node_types.hash_stable(hcx, hasher);
             node_substs.hash_stable(hcx, hasher);
-            user_substs.hash_stable(hcx, hasher);
             adjustments.hash_stable(hcx, hasher);
             pat_binding_modes.hash_stable(hcx, hasher);
             pat_adjustments.hash_stable(hcx, hasher);
@@ -802,6 +786,84 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             free_region_map.hash_stable(hcx, hasher);
             concrete_existential_types.hash_stable(hcx, hasher);
         })
+    }
+}
+
+newtype_index! {
+    pub struct UserTypeAnnotationIndex {
+        DEBUG_FORMAT = "UserTypeAnnotation({})",
+        const START_INDEX = 0,
+    }
+}
+
+/// Mapping of type annotation indices to canonical user type annotations.
+pub type CanonicalUserTypeAnnotations<'tcx> =
+    IndexVec<UserTypeAnnotationIndex, (Span, CanonicalUserTypeAnnotation<'tcx>)>;
+
+/// Canonicalized user type annotation.
+pub type CanonicalUserTypeAnnotation<'gcx> = Canonical<'gcx, UserTypeAnnotation<'gcx>>;
+
+impl CanonicalUserTypeAnnotation<'gcx> {
+    /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
+    /// i.e. each thing is mapped to a canonical variable with the same index.
+    pub fn is_identity(&self) -> bool {
+        match self.value {
+            UserTypeAnnotation::Ty(_) => false,
+            UserTypeAnnotation::TypeOf(_, user_substs) => {
+                if user_substs.user_self_ty.is_some() {
+                    return false;
+                }
+
+                user_substs.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
+                    match kind.unpack() {
+                        UnpackedKind::Type(ty) => match ty.sty {
+                            ty::Bound(debruijn, b) => {
+                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                assert_eq!(debruijn, ty::INNERMOST);
+                                cvar == b.var
+                            }
+                            _ => false,
+                        },
+
+                        UnpackedKind::Lifetime(r) => match r {
+                            ty::ReLateBound(debruijn, br) => {
+                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                assert_eq!(*debruijn, ty::INNERMOST);
+                                cvar == br.assert_bound_var()
+                            }
+                            _ => false,
+                        },
+                    }
+                })
+            },
+        }
+    }
+}
+
+/// A user-given type annotation attached to a constant.  These arise
+/// from constants that are named via paths, like `Foo::<A>::new` and
+/// so forth.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub enum UserTypeAnnotation<'tcx> {
+    Ty(Ty<'tcx>),
+
+    /// The canonical type is the result of `type_of(def_id)` with the
+    /// given substitutions applied.
+    TypeOf(DefId, UserSubsts<'tcx>),
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for UserTypeAnnotation<'tcx> {
+        (UserTypeAnnotation::Ty)(ty),
+        (UserTypeAnnotation::TypeOf)(def, substs),
+    }
+}
+
+EnumLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for UserTypeAnnotation<'a> {
+        type Lifted = UserTypeAnnotation<'tcx>;
+        (UserTypeAnnotation::Ty)(ty),
+        (UserTypeAnnotation::TypeOf)(def, substs),
     }
 }
 

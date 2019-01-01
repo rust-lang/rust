@@ -7,3 +7,7 @@ mod m2 {
 
 pub use m1::*;
 pub use m2::*;
+
+pub mod glob {
+    pub use *;
+}
