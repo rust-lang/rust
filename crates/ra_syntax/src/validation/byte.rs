@@ -88,7 +88,9 @@ fn validate_byte_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxErr
 
 fn validate_byte_code_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxError>) {
     // A ByteCodeEscape has 4 chars, example: `\xDD`
-    if text.len() < 4 {
+    if !text.is_ascii() {
+        errors.push(SyntaxError::new(MalformedByteCodeEscape, range));
+    } else if text.chars().count() < 4 {
         errors.push(SyntaxError::new(TooShortByteCodeEscape, range));
     } else {
         assert!(
