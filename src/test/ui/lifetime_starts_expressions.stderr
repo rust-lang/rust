@@ -3,6 +3,10 @@ error: expected identifier, found keyword `loop`
    |
 LL |     loop { break 'label: loop { break 'label 42; }; }
    |                          ^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     loop { break 'label: r#loop { break 'label 42; }; }
+   |                          ^^^^^^
 
 error: expected type, found keyword `loop`
   --> $DIR/lifetime_starts_expressions.rs:6:26

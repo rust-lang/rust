@@ -3,6 +3,10 @@ error: expected identifier, found keyword `true`
    |
 LL |     foo!(true); //~ ERROR expected type, found keyword
    |          ^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     foo!(r#true); //~ ERROR expected type, found keyword
+   |          ^^^^^^
 
 error: expected type, found keyword `true`
   --> $DIR/issue-44406.rs:8:10

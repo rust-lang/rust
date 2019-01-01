@@ -3,6 +3,10 @@ error: expected identifier, found keyword `dyn`
    |
 LL | type A1 = dyn::dyn; //~ERROR expected identifier, found keyword `dyn`
    |                ^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | type A1 = dyn::r#dyn; //~ERROR expected identifier, found keyword `dyn`
+   |                ^^^^^
 
 error: expected identifier, found `<`
   --> $DIR/dyn-trait-compatibility.rs:5:14
