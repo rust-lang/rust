@@ -420,4 +420,12 @@ renamed with `--resource-suffix` will load from the given path.
 
 ### `--persist-doctests`: persist doctest executables after running
 
-This feature allows the persistence of the doctest executables to the specified path.
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --test -Z unstable-options --persist-doctests target/rustdoctest
+```
+
+This flag allows you to keep doctest executables around after they're compiled or run.
+Usually, rustdoc will immediately discard a compiled doctest after it's been tested, but
+with this option, you can keep those binaries around for farther testing.
