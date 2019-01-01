@@ -49,7 +49,7 @@ LL | fn d() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
 ...
 LL |     x //~ ERROR mismatched types
-   |     ^ expected struct `std::string::String`, found integral variable
+   |     ^ expected struct `std::string::String`, found integer
    |
    = note: expected type `X<X<_, std::string::String>, std::string::String>`
               found type `X<X<_, {integer}>, {integer}>`
@@ -61,7 +61,7 @@ LL | fn e() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
 ...
 LL |     x //~ ERROR mismatched types
-   |     ^ expected struct `std::string::String`, found integral variable
+   |     ^ expected struct `std::string::String`, found integer
    |
    = note: expected type `X<X<_, std::string::String>, _>`
               found type `X<X<_, {integer}>, _>`

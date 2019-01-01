@@ -5,7 +5,7 @@ fn main() {
     if let Some(homura) = Some("madoka") { //~  ERROR missing an else clause
                                            //~| expected type `()`
                                            //~| found type `{integer}`
-                                           //~| expected (), found integral variable
+                                           //~| expected (), found integer
         765
     };
 }

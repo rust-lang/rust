@@ -15,5 +15,5 @@ fn main() {
     Foo::bar(&42); //~  ERROR mismatched types
                       //~| expected type `&Foo`
                       //~| found type `&{integer}`
-                      //~| expected struct `Foo`, found integral variable
+                      //~| expected struct `Foo`, found integer
 }

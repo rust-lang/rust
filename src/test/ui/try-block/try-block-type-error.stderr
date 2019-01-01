@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `<std::option::Option<f32> as std::ops::Tr
 LL |         42
    |         ^^
    |         |
-   |         expected f32, found integral variable
+   |         expected f32, found integer
    |         help: use a float literal: `42.0`
    |
    = note: expected type `f32`

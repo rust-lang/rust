@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |         x: 1,
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `1.0`
    |
    = note: expected type `f32`
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL |         y: 2,
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `2.0`
    |
    = note: expected type `f32`
@@ -28,7 +28,7 @@ error[E0308]: mismatched types
 LL |         x: 3,
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `3.0`
    |
    = note: expected type `f32`
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |         y: 4,
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `4.0`
    |
    = note: expected type `f32`
@@ -52,7 +52,7 @@ error[E0308]: mismatched types
 LL |         x: 5,
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `5.0`
    |
    = note: expected type `f32`
@@ -64,7 +64,7 @@ error[E0308]: mismatched types
 LL |         x: 7,
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `7.0`
    |
    = note: expected type `f32`
@@ -82,7 +82,7 @@ error[E0308]: mismatched types
 LL |         x: 9,  //~ ERROR mismatched types
    |            ^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `9.0`
    |
    = note: expected type `f32`
@@ -94,7 +94,7 @@ error[E0308]: mismatched types
 LL |         y: 10, //~ ERROR mismatched types
    |            ^^
    |            |
-   |            expected f32, found integral variable
+   |            expected f32, found integer
    |            help: use a float literal: `10.0`
    |
    = note: expected type `f32`
@@ -110,7 +110,7 @@ error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:54:9
    |
 LL |         PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
-   |         ^^^^^^^^^^^^^^^^^^^^ expected integral variable, found f32
+   |         ^^^^^^^^^^^^^^^^^^^^ expected integer, found f32
    |
    = note: expected type `Point<{integer}>`
               found type `Point<f32>`
@@ -119,7 +119,7 @@ error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:59:9
    |
 LL |         PointF { .. } => {} //~ ERROR mismatched types
-   |         ^^^^^^^^^^^^^ expected integral variable, found f32
+   |         ^^^^^^^^^^^^^ expected integer, found f32
    |
    = note: expected type `Point<{integer}>`
               found type `Point<f32>`
@@ -128,7 +128,7 @@ error[E0308]: mismatched types
   --> $DIR/structure-constructor-type-mismatch.rs:67:9
    |
 LL |         PairF::<u32> { .. } => {} //~ ERROR mismatched types
-   |         ^^^^^^^^^^^^^^^^^^^ expected integral variable, found f32
+   |         ^^^^^^^^^^^^^^^^^^^ expected integer, found f32
    |
    = note: expected type `Pair<{integer}, {integer}>`
               found type `Pair<f32, u32>`

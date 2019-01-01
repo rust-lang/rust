@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/match-range-fail.rs:17:9
    |
 LL |         'c' ..= 100 => { }
-   |         ^^^^^^^^^^^ expected integral variable, found char
+   |         ^^^^^^^^^^^ expected integer, found char
    |
    = note: expected type `{integer}`
               found type `char`
