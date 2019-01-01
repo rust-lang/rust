@@ -418,32 +418,45 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     fn next(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next_back() }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    #[inline]
+    fn count(self) -> usize { self.iter.count() }
+    #[inline]
+    fn last(mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<<I as Iterator>::Item> { self.iter.nth_back(n) }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+        Self: Sized, F: FnMut(B, <I as Iterator>::Item) -> R, R: Try<Ok=B>
     {
         self.iter.try_rfold(init, f)
     }
 
+    #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
-        where F: FnMut(Acc, Self::Item) -> Acc,
+        where F: FnMut(Acc, <I as Iterator>::Item) -> Acc,
     {
         self.iter.rfold(init, f)
     }
 
     #[inline]
-    fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
-        where P: FnMut(&Self::Item) -> bool
+    fn find<P>(&mut self, predicate: P) -> Option<<I as Iterator>::Item>
+        where P: FnMut(&<I as Iterator>::Item) -> bool
     {
         self.iter.rfind(predicate)
     }
 
     #[inline]
+    fn position<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(<I as Iterator>::Item) -> bool
+    {
+        self.iter.rposition(predicate)
+    }
+
+    #[inline]
     fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
-        P: FnMut(Self::Item) -> bool
+        P: FnMut(<I as Iterator>::Item) -> bool
     {
         self.iter.position(predicate)
     }
