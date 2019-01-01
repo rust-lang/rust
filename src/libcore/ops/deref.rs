@@ -27,7 +27,7 @@
 /// [book] as well as the reference sections on [the dereference operator]
 /// [ref-deref-op], [method resolution] and [type coercions].
 ///
-/// [book]: ../../book/second-edition/ch15-02-deref.html
+/// [book]: ../../book/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
@@ -117,7 +117,7 @@ impl<T: ?Sized> Deref for &mut T {
 /// [book] as well as the reference sections on [the dereference operator]
 /// [ref-deref-op], [method resolution] and [type coercions].
 ///
-/// [book]: ../../book/second-edition/ch15-02-deref.html
+/// [book]: ../../book/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator

@@ -10,7 +10,7 @@ LL | }
    | - ...but `x` will be dropped here, when the function `bar` returns
    |
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
 
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-52534.rs:18:26
@@ -24,7 +24,7 @@ LL | }
    | - ...but `y` will be dropped here, when the function `foobar` returns
    |
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
 
 error: aborting due to 2 previous errors
 

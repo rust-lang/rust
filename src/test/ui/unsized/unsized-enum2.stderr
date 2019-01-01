@@ -5,7 +5,7 @@ LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `W`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where W: std::marker::Sized` bound
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -16,7 +16,7 @@ LL |     VB{x: X},
    |        ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where X: std::marker::Sized` bound
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -27,7 +27,7 @@ LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Y`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where Y: std::marker::Sized` bound
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -38,7 +38,7 @@ LL |     VD{u: isize, x: Z},
    |                  ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Z`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where Z: std::marker::Sized` bound
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -49,7 +49,7 @@ LL |     VE([u8]),
    |        ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
@@ -59,7 +59,7 @@ LL |     VF{x: str},
    |        ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[f32]` cannot be known at compilation time
@@ -69,7 +69,7 @@ LL |     VG(isize, [f32]),
    |               ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[f32]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
@@ -79,7 +79,7 @@ LL |     VH{u: isize, x: [u32]},
    |                  ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u32]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
@@ -89,7 +89,7 @@ LL |     VM(Foo),
    |        ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn Foo + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn Bar + 'static)` cannot be known at compilation time
@@ -99,7 +99,7 @@ LL |     VN{x: Bar},
    |        ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn Bar + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn FooBar + 'static)` cannot be known at compilation time
@@ -109,7 +109,7 @@ LL |     VO(isize, FooBar),
    |               ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn FooBar + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn BarFoo + 'static)` cannot be known at compilation time
@@ -119,7 +119,7 @@ LL |     VP{u: isize, x: BarFoo},
    |                  ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn BarFoo + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[i8]` cannot be known at compilation time
@@ -129,7 +129,7 @@ LL |     VQ(<&'static [i8] as Deref>::Target),
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[i8]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[char]` cannot be known at compilation time
@@ -139,7 +139,7 @@ LL |     VR{x: <&'static [char] as Deref>::Target},
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[char]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[f64]` cannot be known at compilation time
@@ -149,7 +149,7 @@ LL |     VS(isize, <&'static [f64] as Deref>::Target),
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[f64]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
@@ -159,7 +159,7 @@ LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[i32]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
 
 error[E0277]: the size for values of type `(dyn PathHelper1 + 'static)` cannot be known at compilation time
@@ -169,7 +169,7 @@ LL |     VI(Path1),
    |        ^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path1`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper1 + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Path1`
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -180,7 +180,7 @@ LL |     VJ{x: Path2},
    |        ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path2`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper2 + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Path2`
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -191,7 +191,7 @@ LL |     VK(isize, Path3),
    |               ^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path3`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper3 + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Path3`
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -202,7 +202,7 @@ LL |     VL{u: isize, x: Path4},
    |                  ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path4`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper4 + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Path4`
    = note: no field of an enum variant may have a dynamically sized type
 

@@ -923,7 +923,7 @@ mod prim_usize { }
 /// For more information on how to use references, see [the book's section on "References and
 /// Borrowing"][book-refs].
 ///
-/// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
+/// [book-refs]: ../book/ch04-02-references-and-borrowing.html
 ///
 /// # Trait implementations
 ///

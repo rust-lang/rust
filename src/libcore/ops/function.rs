@@ -27,7 +27,7 @@
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [book]: ../../book/ch13-01-closures.html
 /// [`FnMut`]: trait.FnMut.html
 /// [`FnOnce`]: trait.FnOnce.html
 /// [function pointers]: ../../std/primitive.fn.html
@@ -95,7 +95,7 @@ pub trait Fn<Args> : FnMut<Args> {
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [book]: ../../book/ch13-01-closures.html
 /// [`Fn`]: trait.Fn.html
 /// [`FnOnce`]: trait.FnOnce.html
 /// [function pointers]: ../../std/primitive.fn.html
@@ -173,7 +173,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// `Fn(usize, bool) -> usize`). Those interested in the technical details of
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
-/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [book]: ../../book/ch13-01-closures.html
 /// [`Fn`]: trait.Fn.html
 /// [`FnMut`]: trait.FnMut.html
 /// [function pointers]: ../../std/primitive.fn.html
