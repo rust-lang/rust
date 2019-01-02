@@ -80,7 +80,7 @@ impl Module {
         Some(Crate::new(crate_id))
     }
 
-    /// Returns the all modulkes on the way to the root.
+    /// Returns the all modules on the way to the root.
     pub fn path_to_root(&self) -> Vec<Module> {
         generate(Some(self.clone()), move |it| it.parent()).collect::<Vec<Module>>()
     }

@@ -132,56 +132,6 @@ fn test_resolve_parent_module_for_inline() {
 }
 
 #[test]
-fn test_path_one_layer() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod foo;
-        //- /foo/mod.rs
-        mod bla;
-        //- /foo/bla.rs
-        <|> //empty
-    ",
-    );
-    let symbols = analysis.module_path(pos).unwrap().unwrap();
-    assert_eq!("foo::bla", &symbols);
-}
-
-#[test]
-fn test_path_two_layer() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod foo;
-        //- /foo/mod.rs
-        mod bla;
-        //- /foo/bla/mod.rs
-        mod more;
-        //- /foo/bla/more.rs
-        <|> //empty
-    ",
-    );
-    let symbols = analysis.module_path(pos).unwrap().unwrap();
-    assert_eq!("foo::bla::more", &symbols);
-}
-
-#[test]
-fn test_path_in_file_mod() {
-    let (analysis, pos) = analysis_and_position(
-        "
-        //- /lib.rs
-        mod foo;
-        //- /foo.rs
-        mod bar {
-            <|> //empty
-        }
-    ",
-    );
-    let symbols = analysis.module_path(pos).unwrap().unwrap();
-    assert_eq!("foo::bar", &symbols);
-}
-
-#[test]
 fn test_resolve_crate_root() {
     let mock = MockAnalysis::with_files(
         "

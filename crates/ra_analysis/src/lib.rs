@@ -382,10 +382,6 @@ impl Analysis {
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         self.db.parent_module(position)
     }
-    /// Returns `::` separated path to the current module from the crate root.
-    pub fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
-        self.db.module_path(position)
-    }
     /// Returns crates this file belongs too.
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         self.db.crate_for(file_id)
@@ -396,8 +392,7 @@ impl Analysis {
     }
     /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
-        let file = self.db.source_file(file_id);
-        Ok(runnables::runnables(self, &file, file_id))
+        runnables::runnables(&*self.db, file_id)
     }
     /// Computes syntax highlighting for the given file.
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
