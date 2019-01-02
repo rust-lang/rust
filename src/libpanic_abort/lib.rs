@@ -12,6 +12,7 @@
 #![panic_runtime]
 #![allow(unused_features)]
 
+#![feature(cfg_target_vendor)]
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(nll)]
@@ -57,7 +58,7 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
         core::intrinsics::abort();
     }
 
-    #[cfg(target_env="sgx")]
+    #[cfg(all(target_vendor="fortanix", target_env="sgx"))]
     unsafe fn abort() -> ! {
         extern "C" { pub fn panic_exit() -> !; }
         panic_exit();
