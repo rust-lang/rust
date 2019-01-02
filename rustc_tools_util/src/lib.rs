@@ -46,16 +46,17 @@ pub struct VersionInfo {
 
 impl std::fmt::Display for VersionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.commit_hash.is_some() {
+        let hash = self.commit_hash.clone().unwrap_or_default();
+        let hash_trimmed = hash.trim();
+
+        let date = self.commit_date.clone().unwrap_or_default();
+        let date_trimmed = date.trim();
+
+        if (hash_trimmed.len() + date_trimmed.len()) > 0 {
             write!(
                 f,
                 "{} {}.{}.{} ({} {})",
-                self.crate_name,
-                self.major,
-                self.minor,
-                self.patch,
-                self.commit_hash.clone().unwrap_or_default().trim(),
-                self.commit_date.clone().unwrap_or_default().trim(),
+                self.crate_name, self.major, self.minor, self.patch, hash_trimmed, date_trimmed,
             )?;
         } else {
             write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
@@ -121,7 +122,7 @@ mod test {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
         assert_eq!(vi.minor, 1);
-        assert_eq!(vi.patch, 0);
+        assert_eq!(vi.patch, 1);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
@@ -131,7 +132,7 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.1.0");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.1.1");
     }
 
     #[test]
@@ -140,7 +141,7 @@ mod test {
         let s = format!("{:?}", vi);
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 1, patch: 0 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 1, patch: 1 }"
         );
     }
 
