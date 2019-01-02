@@ -81,11 +81,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
                     tcx.intern_substs(&[main_ret_ty.into()]),
                 )
                 .unwrap();
-
-                let (start_name, start_sig) = get_function_name_and_sig(tcx, start_instance);
-                let start_func_id = m
-                    .declare_function(&start_name, Linkage::Import, &start_sig)
-                    .unwrap();
+                let start_func_id = import_function(tcx, m, start_instance);
 
                 let main_val = bcx
                     .ins()

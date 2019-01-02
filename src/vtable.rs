@@ -73,7 +73,9 @@ fn build_vtable<'a, 'tcx: 'a>(
     let tcx = fx.tcx;
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
-    let drop_in_place_fn = fx.get_function_id(
+    let drop_in_place_fn = import_function(
+        tcx,
+        fx.module,
         crate::rustc_mir::monomorphize::resolve_drop_in_place(tcx, ty),
     );
 
@@ -83,7 +85,9 @@ fn build_vtable<'a, 'tcx: 'a>(
     let methods = tcx.vtable_methods(trait_ref);
     let methods = methods.iter().cloned().map(|opt_mth| {
         opt_mth.map_or(None, |(def_id, substs)| {
-            Some(fx.get_function_id(
+            Some(import_function(
+                tcx,
+                fx.module,
                 Instance::resolve(tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
             ))
         })

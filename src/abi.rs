@@ -71,14 +71,10 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     }
 }
 
-fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
+fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    fn_ty: Ty<'tcx>,
+    sig: FnSig<'tcx>,
 ) -> Signature {
-    let sig = ty_fn_sig(tcx, fn_ty);
-    if sig.variadic {
-        unimpl!("Variadic function are not yet supported");
-    }
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
@@ -181,22 +177,30 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_ty = inst.ty(tcx);
-    let sig = clif_sig_from_fn_ty(tcx, fn_ty);
+    let fn_sig = ty_fn_sig(tcx, fn_ty);
+    if fn_sig.variadic {
+        unimpl!("Variadic functions are not yet supported");
+    }
+    let sig = clif_sig_from_fn_sig(tcx, fn_sig);
     (tcx.symbol_name(inst).as_str().to_string(), sig)
+}
+
+/// Instance must be monomorphized
+pub fn import_function<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &mut Module<impl Backend>,
+    inst: Instance<'tcx>,
+) -> FuncId {
+    let (name, sig) = get_function_name_and_sig(tcx, inst);
+    module
+        .declare_function(&name, Linkage::Import, &sig)
+        .unwrap()
 }
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     /// Instance must be monomorphized
-    pub fn get_function_id(&mut self, inst: Instance<'tcx>) -> FuncId {
-        let (name, sig) = get_function_name_and_sig(self.tcx, inst);
-        self.module
-            .declare_function(&name, Linkage::Import, &sig)
-            .unwrap()
-    }
-
-    /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = self.get_function_id(inst);
+        let func_id = import_function(self.tcx, self.module, inst);
         let func_ref = self.module
             .declare_func_in_func(func_id, &mut self.bcx.func);
 
@@ -574,11 +578,11 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
     args: Vec<CValue<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
 ) {
-    let sig = ty_fn_sig(fx.tcx, fn_ty);
+    let fn_sig = ty_fn_sig(fx.tcx, fn_ty);
 
-    let ret_layout = fx.layout_of(sig.output());
+    let ret_layout = fx.layout_of(fn_sig.output());
 
-    let output_pass_mode = get_pass_mode(fx.tcx, sig.abi, sig.output(), true);
+    let output_pass_mode = get_pass_mode(fx.tcx, fn_sig.abi, fn_sig.output(), true);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
@@ -614,7 +618,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
                 None
             };
 
-            args.get(0).map(|arg| adjust_arg_for_abi(fx, sig, *arg))
+            args.get(0).map(|arg| adjust_arg_for_abi(fx, fn_sig, *arg))
         }
         .into_iter()
     };
@@ -625,12 +629,12 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         .chain(
             args.into_iter()
                 .skip(1)
-                .map(|arg| adjust_arg_for_abi(fx, sig, arg)),
+                .map(|arg| adjust_arg_for_abi(fx, fn_sig, arg)),
         )
         .collect::<Vec<_>>();
 
-    let sig = fx.bcx.import_signature(clif_sig_from_fn_ty(fx.tcx, fn_ty));
     let call_inst = if let Some(func_ref) = func_ref {
+        let sig = fx.bcx.import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
         fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
     } else {
         let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
