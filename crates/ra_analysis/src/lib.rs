@@ -36,10 +36,11 @@ use crate::{
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
-    runnables::{Runnable, RunnableKind}
+    runnables::{Runnable, RunnableKind},
+    symbol_index::FileSymbol,
 };
 pub use ra_editor::{
-    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity
+    Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity
 };
 pub use hir::FnSignatureInfo;
 

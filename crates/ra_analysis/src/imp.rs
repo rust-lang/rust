@@ -10,7 +10,7 @@ use hir::{
     self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, FileSymbol, find_node_at_offset, LineIndex, LocalEdit, Severity};
+use ra_editor::{self, find_node_at_offset, LineIndex, LocalEdit, Severity};
 use ra_syntax::{
     algo::find_covering_node,
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
@@ -25,7 +25,7 @@ use crate::{
     completion::{CompletionItem, completions},
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
-    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase},
+    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase, FileSymbol},
 };
 
 #[derive(Debug, Default)]

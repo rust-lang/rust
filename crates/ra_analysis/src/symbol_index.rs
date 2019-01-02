@@ -4,10 +4,11 @@ use std::{
 };
 
 use fst::{self, Streamer};
-use ra_editor::{self, FileSymbol};
 use ra_syntax::{
-    SourceFileNode,
+    AstNode, SyntaxNodeRef, SourceFileNode, SmolStr, TextRange,
+    algo::visit::{visitor, Visitor},
     SyntaxKind::{self, *},
+    ast::{self, NameOwner, DocCommentsOwner},
 };
 use ra_db::{SyntaxDatabase, SourceRootId};
 use rayon::prelude::*;
@@ -65,8 +66,9 @@ impl SymbolIndex {
     ) -> SymbolIndex {
         let mut symbols = files
             .flat_map(|(file_id, file)| {
-                ra_editor::file_symbols(&file)
-                    .into_iter()
+                file.syntax()
+                    .descendants()
+                    .filter_map(to_symbol)
                     .map(move |symbol| (symbol.name.as_str().to_lowercase(), (file_id, symbol)))
                     .collect::<Vec<_>>()
             })
@@ -120,4 +122,117 @@ fn is_type(kind: SyntaxKind) -> bool {
         STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_DEF => true,
         _ => false,
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FileSymbol {
+    pub name: SmolStr,
+    pub node_range: TextRange,
+    pub kind: SyntaxKind,
+}
+
+impl FileSymbol {
+    pub fn docs(&self, file: &SourceFileNode) -> Option<String> {
+        file.syntax()
+            .descendants()
+            .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
+            .filter_map(|node: SyntaxNodeRef| {
+                fn doc_comments<'a, N: DocCommentsOwner<'a>>(node: N) -> Option<String> {
+                    let comments = node.doc_comment_text();
+                    if comments.is_empty() {
+                        None
+                    } else {
+                        Some(comments)
+                    }
+                }
+
+                visitor()
+                    .visit(doc_comments::<ast::FnDef>)
+                    .visit(doc_comments::<ast::StructDef>)
+                    .visit(doc_comments::<ast::EnumDef>)
+                    .visit(doc_comments::<ast::TraitDef>)
+                    .visit(doc_comments::<ast::Module>)
+                    .visit(doc_comments::<ast::TypeDef>)
+                    .visit(doc_comments::<ast::ConstDef>)
+                    .visit(doc_comments::<ast::StaticDef>)
+                    .accept(node)?
+            })
+            .nth(0)
+    }
+    /// Get a description of this node.
+    ///
+    /// e.g. `struct Name`, `enum Name`, `fn Name`
+    pub fn description(&self, file: &SourceFileNode) -> Option<String> {
+        // TODO: After type inference is done, add type information to improve the output
+        file.syntax()
+            .descendants()
+            .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
+            .filter_map(|node: SyntaxNodeRef| {
+                // TODO: Refactor to be have less repetition
+                visitor()
+                    .visit(|node: ast::FnDef| {
+                        let mut string = "fn ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::StructDef| {
+                        let mut string = "struct ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::EnumDef| {
+                        let mut string = "enum ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::TraitDef| {
+                        let mut string = "trait ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::Module| {
+                        let mut string = "mod ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::TypeDef| {
+                        let mut string = "type ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::ConstDef| {
+                        let mut string = "const ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .visit(|node: ast::StaticDef| {
+                        let mut string = "static ".to_string();
+                        node.name()?.syntax().text().push_to(&mut string);
+                        Some(string)
+                    })
+                    .accept(node)?
+            })
+            .nth(0)
+    }
+}
+
+fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
+    fn decl<'a, N: NameOwner<'a>>(node: N) -> Option<FileSymbol> {
+        let name = node.name()?;
+        Some(FileSymbol {
+            name: name.text(),
+            node_range: node.syntax().range(),
+            kind: node.syntax().kind(),
+        })
+    }
+    visitor()
+        .visit(decl::<ast::FnDef>)
+        .visit(decl::<ast::StructDef>)
+        .visit(decl::<ast::EnumDef>)
+        .visit(decl::<ast::TraitDef>)
+        .visit(decl::<ast::Module>)
+        .visit(decl::<ast::TypeDef>)
+        .visit(decl::<ast::ConstDef>)
+        .visit(decl::<ast::StaticDef>)
+        .accept(node)?
 }
