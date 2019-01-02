@@ -184,7 +184,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 target,
                 cleanup: _,
             } => {
-                let cond = trans_operand(fx, cond).load_value(fx);
+                let cond = trans_operand(fx, cond).load_scalar(fx);
                 // TODO HACK brz/brnz for i8/i16 is not yet implemented
                 let cond = fx.bcx.ins().uextend(types::I32, cond);
                 let target = fx.get_ebb(*target);
@@ -202,7 +202,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 values,
                 targets,
             } => {
-                let discr = trans_operand(fx, discr).load_value(fx);
+                let discr = trans_operand(fx, discr).load_scalar(fx);
                 let mut switch = ::cranelift::frontend::Switch::new();
                 for (i, value) in values.iter().enumerate() {
                     let ebb = fx.get_ebb(targets[i]);
@@ -430,7 +430,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::UnaryOp(un_op, operand) => {
                     let operand = trans_operand(fx, operand);
                     let layout = operand.layout();
-                    let val = operand.load_value(fx);
+                    let val = operand.load_scalar(fx);
                     let res = match un_op {
                         UnOp::Not => {
                             match layout.ty.sty {
@@ -492,7 +492,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         | (ty::Uint(_), ty::Char)
                         | (ty::Uint(_), ty::Int(_))
                         | (ty::Uint(_), ty::Uint(_)) => {
-                            let from = operand.load_value(fx);
+                            let from = operand.load_scalar(fx);
                             let res = crate::common::clif_intcast(
                                 fx,
                                 from,
@@ -502,7 +502,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Int(_), ty::Int(_)) | (ty::Int(_), ty::Uint(_)) => {
-                            let from = operand.load_value(fx);
+                            let from = operand.load_scalar(fx);
                             let res = crate::common::clif_intcast(
                                 fx,
                                 from,
@@ -512,7 +512,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Float(from_flt), ty::Float(to_flt)) => {
-                            let from = operand.load_value(fx);
+                            let from = operand.load_scalar(fx);
                             let res = match (from_flt, to_flt) {
                                 (FloatTy::F32, FloatTy::F64) => {
                                     fx.bcx.ins().fpromote(types::F64, from)
@@ -526,7 +526,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         }
                         (ty::Int(_), ty::Float(_)) => {
                             let from_ty = fx.clif_type(from_ty).unwrap();
-                            let from = operand.load_value(fx);
+                            let from = operand.load_scalar(fx);
                             // FIXME missing encoding for fcvt_from_sint.f32.i8
                             let from = if from_ty == types::I8 || from_ty == types::I16 {
                                 fx.bcx.ins().sextend(types::I32, from)
@@ -539,7 +539,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         }
                         (ty::Uint(_), ty::Float(_)) => {
                             let from_ty = fx.clif_type(from_ty).unwrap();
-                            let from = operand.load_value(fx);
+                            let from = operand.load_scalar(fx);
                             // FIXME missing encoding for fcvt_from_uint.f32.i8
                             let from = if from_ty == types::I8 || from_ty == types::I16 {
                                 fx.bcx.ins().uextend(types::I32, from)
@@ -552,7 +552,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         }
                         (ty::Bool, ty::Uint(_)) | (ty::Bool, ty::Int(_)) => {
                             let to_ty = fx.clif_type(to_ty).unwrap();
-                            let from = operand.load_value(fx);
+                            let from = operand.load_scalar(fx);
                             let res = if to_ty != types::I8 {
                                 fx.bcx.ins().uextend(to_ty, from)
                             } else {
@@ -695,7 +695,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
 
     let discr = value.value_field(fx, mir::Field::new(0));
     let discr_ty = discr.layout().ty;
-    let lldiscr = discr.load_value(fx);
+    let lldiscr = discr.load_scalar(fx);
     match layout.variants {
         layout::Variants::Single { .. } => bug!(),
         layout::Variants::Tagged { ref tag, .. } => {
@@ -782,8 +782,8 @@ macro_rules! binop_match {
             $var:ident ($sign:pat) $name:tt $( ( $($next:tt)* ) )? ;
         )*
     ) => {{
-        let lhs = $lhs.load_value($fx);
-        let rhs = $rhs.load_value($fx);
+        let lhs = $lhs.load_scalar($fx);
+        let rhs = $rhs.load_scalar($fx);
         match ($bin_op, $signed) {
             $(
                 (BinOp::$var, $sign) => binop_match!(@single $fx, $bug_fmt, $var, $signed, lhs, rhs, $ret_ty, $name $( ( $($next)* ) )?),
@@ -887,8 +887,8 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
         );
     }
 
-    let lhs = in_lhs.load_value(fx);
-    let rhs = in_rhs.load_value(fx);
+    let lhs = in_lhs.load_scalar(fx);
+    let rhs = in_rhs.load_scalar(fx);
     let res = match bin_op {
         BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
         BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
@@ -1060,7 +1060,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
                 ProjectionElem::Deref => base.place_deref(fx),
                 ProjectionElem::Field(field, _ty) => base.place_field(fx, field),
                 ProjectionElem::Index(local) => {
-                    let index = fx.get_local_place(local).to_cvalue(fx).load_value(fx);
+                    let index = fx.get_local_place(local).to_cvalue(fx).load_scalar(fx);
                     base.place_index(fx, index)
                 }
                 ProjectionElem::ConstantIndex {

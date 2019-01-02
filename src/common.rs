@@ -151,24 +151,18 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
+    /// Load a value with layout.abi of scalar
+    pub fn load_scalar<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
     where
         'tcx: 'a,
     {
         match self {
             CValue::ByRef(addr, layout) => {
-                let clif_ty = fx.clif_type(layout.ty).unwrap_or_else(|| {
-                    if layout.ty.is_box()
-                        && !fx
-                            .layout_of(layout.ty.builtin_deref(true).unwrap().ty)
-                            .is_unsized()
-                    {
-                        // Consider sized box to be a ptr
-                        pointer_ty(fx.tcx)
-                    } else {
-                        panic!("load_value of type {:?}", layout.ty);
-                    }
-                });
+                let scalar = match layout.abi {
+                    layout::Abi::Scalar(ref scalar) => scalar.clone(),
+                    _ => unreachable!(),
+                };
+                let clif_ty = crate::abi::scalar_to_clif_type(fx.tcx, scalar);
                 fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
@@ -355,7 +349,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
         match self {
             CPlace::Var(var, _) => {
-                let data = from.load_value(fx);
+                let data = from.load_scalar(fx);
                 fx.bcx.def_var(mir_var(var), data)
             }
             CPlace::Addr(addr, None, dst_layout) => {
@@ -454,7 +448,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn place_deref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
         if !inner_layout.is_unsized() {
-            CPlace::Addr(self.to_cvalue(fx).load_value(fx), None, inner_layout)
+            CPlace::Addr(self.to_cvalue(fx).load_scalar(fx), None, inner_layout)
         } else {
             match self.layout().abi {
                 Abi::ScalarPair(ref a, ref b) => {

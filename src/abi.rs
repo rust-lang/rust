@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::iter;
 
 use rustc::hir;
+use rustc::ty::layout::{Scalar, Primitive, Integer, FloatTy};
 use rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
@@ -20,6 +21,23 @@ impl PassMode {
             PassMode::ByVal(clif_type) => clif_type,
             PassMode::ByRef => fx.pointer_type,
         }
+    }
+}
+
+pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
+    match scalar.value {
+        Primitive::Int(int, _sign) => match int {
+            Integer::I8 => types::I8,
+            Integer::I16 => types::I16,
+            Integer::I32 => types::I32,
+            Integer::I64 => types::I64,
+            Integer::I128 => unimpl!("u/i128"),
+        }
+        Primitive::Float(flt) => match flt {
+            FloatTy::F32 => types::F32,
+            FloatTy::F64 => types::F64,
+        }
+        Primitive::Pointer => pointer_ty(tcx),
     }
 }
 
@@ -66,7 +84,7 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
 ) -> Value {
     match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
         PassMode::NoPass => unimplemented!("pass mode nopass"),
-        PassMode::ByVal(_) => arg.load_value(fx),
+        PassMode::ByVal(_) => arg.load_scalar(fx),
         PassMode::ByRef => arg.force_stack(fx),
     }
 }
@@ -251,7 +269,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             .map(|arg| {
                 (
                     self.clif_type(arg.layout().ty).unwrap(),
-                    arg.load_value(self),
+                    arg.load_scalar(self),
                 )
             })
             .unzip();
@@ -441,13 +459,16 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
             fx.local_map.insert(
                 RETURN_PLACE,
-                CPlace::Addr(null, None, fx.layout_of(fx.return_type())),
+                CPlace::Addr(null, None, ret_layout),
             );
         }
-        PassMode::ByVal(ret_ty) => {
-            fx.bcx.declare_var(mir_var(RETURN_PLACE), ret_ty);
-            fx.local_map
-                .insert(RETURN_PLACE, CPlace::Var(RETURN_PLACE, ret_layout));
+        PassMode::ByVal(_) => {
+            let is_ssa = !ssa_analyzed
+                .get(&RETURN_PLACE)
+                .unwrap()
+                .contains(crate::analyze::Flags::NOT_SSA);
+
+            local_place(fx, RETURN_PLACE, ret_layout, is_ssa);
         }
         PassMode::ByRef => {
             fx.local_map.insert(
@@ -613,7 +634,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         } else {
             func_ref = if instance.is_none() {
                 let func = trans_operand(fx, func.expect("indirect call without func Operand"));
-                Some(func.load_value(fx))
+                Some(func.load_scalar(fx))
             } else {
                 None
             };
@@ -660,7 +681,7 @@ pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
         }
         PassMode::ByVal(_) => {
             let place = fx.get_local_place(RETURN_PLACE);
-            let ret_val = place.to_cvalue(fx).load_value(fx);
+            let ret_val = place.to_cvalue(fx).load_scalar(fx);
             fx.bcx.ins().return_(&[ret_val]);
         }
     }

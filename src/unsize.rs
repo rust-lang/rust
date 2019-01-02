@@ -97,7 +97,7 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a>(
             // i.e., &'a fmt::Debug+Send => &'a fmt::Debug
             src.load_value_pair(fx)
         } else {
-            let base = src.load_value(fx);
+            let base = src.load_scalar(fx);
             unsize_thin_ptr(fx, base, src_ty, dst_ty)
         };
         dst.write_cvalue(fx, CValue::ByValPair(base, info, dst.layout()));

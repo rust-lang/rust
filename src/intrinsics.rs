@@ -14,7 +14,7 @@ macro_rules! intrinsic_arg {
         $arg
     };
     (v $fx:expr, $arg:ident) => {
-        $arg.load_value($fx)
+        $arg.load_scalar($fx)
     };
 }
 
@@ -358,7 +358,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         _ if intrinsic.starts_with("atomic_load"), (c ptr) {
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::ByRef(ptr.load_value(fx), inner_layout);
+            let val = CValue::ByRef(ptr.load_scalar(fx), inner_layout);
             ret.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
