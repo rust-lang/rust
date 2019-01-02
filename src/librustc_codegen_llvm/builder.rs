@@ -1514,11 +1514,4 @@ impl Builder<'a, 'll, 'tcx> {
             llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
         }
     }
-
-    crate fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        self.count_insn("vaarg");
-        unsafe {
-            llvm::LLVMBuildVAArg(self.llbuilder, list, ty, noname())
-        }
-    }
 }
