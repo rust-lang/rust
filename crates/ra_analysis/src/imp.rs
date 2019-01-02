@@ -9,7 +9,7 @@ use hir::{
     self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, find_node_at_offset, LineIndex, LocalEdit, Severity};
+use ra_editor::{self, find_node_at_offset, LocalEdit, Severity};
 use ra_syntax::{
     algo::find_covering_node,
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
@@ -139,15 +139,6 @@ impl fmt::Debug for AnalysisImpl {
 }
 
 impl AnalysisImpl {
-    pub fn file_text(&self, file_id: FileId) -> Arc<String> {
-        self.db.file_text(file_id)
-    }
-    pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.db.source_file(file_id)
-    }
-    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.file_lines(file_id)
-    }
     pub(crate) fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
         let descr = match source_binder::module_from_position(&*self.db, position)? {
             None => return Ok(None),
@@ -400,7 +391,7 @@ impl AnalysisImpl {
     }
 
     pub fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
-        let file = self.file_syntax(frange.file_id);
+        let file = self.db.source_file(frange.file_id);
         let offset = frange.range.start();
         let actions = vec![
             ra_editor::flip_comma(&file, offset).map(|f| f()),

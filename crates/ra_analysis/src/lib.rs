@@ -44,7 +44,7 @@ pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
     Canceled, Cancelable, FilePosition, FileRange,
-    CrateGraph, CrateId, SourceRootId, FileId
+    CrateGraph, CrateId, SourceRootId, FileId, SyntaxDatabase, FilesDatabase
 };
 
 #[derive(Default)]
@@ -298,13 +298,13 @@ pub struct Analysis {
 
 impl Analysis {
     pub fn file_text(&self, file_id: FileId) -> Arc<String> {
-        self.imp.file_text(file_id)
+        self.imp.db.file_text(file_id)
     }
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.imp.file_syntax(file_id).clone()
+        self.imp.db.source_file(file_id).clone()
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.imp.file_line_index(file_id)
+        self.imp.db.file_lines(file_id)
     }
     pub fn extend_selection(&self, frange: FileRange) -> TextRange {
         extend_selection::extend_selection(&self.imp.db, frange)
@@ -313,32 +313,32 @@ impl Analysis {
         ra_editor::matching_brace(file, offset)
     }
     pub fn syntax_tree(&self, file_id: FileId) -> String {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.imp.db.source_file(file_id);
         ra_editor::syntax_tree(&file)
     }
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
-        let file = self.imp.file_syntax(frange.file_id);
+        let file = self.imp.db.source_file(frange.file_id);
         SourceChange::from_local_edit(frange.file_id, ra_editor::join_lines(&file, frange.range))
     }
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.imp.file_syntax(position.file_id);
+        let file = self.imp.db.source_file(position.file_id);
         let edit = ra_editor::on_enter(&file, position.offset)?;
         let res = SourceChange::from_local_edit(position.file_id, edit);
         Some(res)
     }
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.imp.file_syntax(position.file_id);
+        let file = self.imp.db.source_file(position.file_id);
         Some(SourceChange::from_local_edit(
             position.file_id,
             ra_editor::on_eq_typed(&file, position.offset)?,
         ))
     }
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.imp.db.source_file(file_id);
         ra_editor::file_structure(&file)
     }
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.imp.db.source_file(file_id);
         ra_editor::folding_ranges(&file)
     }
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
@@ -373,7 +373,7 @@ impl Analysis {
         Ok(self.imp.crate_root(crate_id))
     }
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.imp.db.source_file(file_id);
         Ok(runnables::runnables(self, &file, file_id))
     }
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
