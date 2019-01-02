@@ -7,10 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:option_helpers.rs
+
 #![warn(clippy::iter_skip_next)]
 #![allow(clippy::blacklisted_name)]
 
-include!("../auxiliary/option_helpers.rs");
+extern crate option_helpers;
+
+use option_helpers::IteratorFalsePositives;
 
 /// Checks implementation of `ITER_SKIP_NEXT` lint
 fn iter_skip_next() {

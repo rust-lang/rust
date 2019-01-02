@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:option_helpers.rs
+
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
@@ -22,6 +24,9 @@
     clippy::useless_format
 )]
 
+#[macro_use]
+extern crate option_helpers;
+
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -31,7 +36,7 @@ use std::iter::FromIterator;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
 
-include!("../auxiliary/option_helpers.rs");
+use option_helpers::IteratorFalsePositives;
 
 pub struct T;
 

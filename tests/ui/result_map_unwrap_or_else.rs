@@ -7,11 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:option_helpers.rs
+
 //! Checks implementation of `RESULT_MAP_UNWRAP_OR_ELSE`
 
 #![warn(clippy::result_map_unwrap_or_else)]
 
-include!("../auxiliary/option_helpers.rs");
+#[macro_use]
+extern crate option_helpers;
 
 fn result_methods() {
     let res: Result<i32, ()> = Ok(1);
