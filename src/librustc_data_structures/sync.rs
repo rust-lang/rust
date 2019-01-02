@@ -266,6 +266,45 @@ cfg_if! {
             }
         }
 
+        #[derive(Debug, Default)]
+        pub struct SharedWorkerLocal<T>(T);
+
+        impl<T> SharedWorkerLocal<T> {
+            /// Creates a new worker local where the `initial` closure computes the
+            /// value this worker local should take for each thread in the thread pool.
+            #[inline]
+            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> SharedWorkerLocal<T> {
+                SharedWorkerLocal(f(0))
+            }
+
+            #[inline]
+            pub fn iter(&self) -> impl Iterator<Item=&T> {
+                Some(&self.0).into_iter()
+            }
+
+            /// Returns the worker-local value for each thread
+            #[inline]
+            pub fn into_inner(self) -> Vec<T> {
+                vec![self.0]
+            }
+        }
+
+        impl<T> Deref for SharedWorkerLocal<T> {
+            type Target = T;
+
+            #[inline(always)]
+            fn deref(&self) -> &T {
+                &self.0
+            }
+        }
+
+        impl<T> DerefMut for SharedWorkerLocal<T> {
+            #[inline(always)]
+            fn deref_mut(&mut self) -> &mut T {
+                &mut self.0
+            }
+        }
+
         pub type MTRef<'a, T> = &'a mut T;
 
         #[derive(Debug, Default)]
@@ -387,6 +426,54 @@ cfg_if! {
         }
 
         pub use rayon_core::WorkerLocal;
+        pub use rayon_core::Registry;
+        use rayon_core::current_thread_index;
+
+        #[derive(Debug)]
+        pub struct SharedWorkerLocal<T>(Vec<T>);
+
+        impl<T> SharedWorkerLocal<T> {
+            /// Creates a new worker local where the `initial` closure computes the
+            /// value this worker local should take for each thread in the thread pool.
+            #[inline]
+            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> SharedWorkerLocal<T> {
+                SharedWorkerLocal((0..Registry::current_num_threads()).map(|i| f(i)).collect())
+            }
+
+            #[inline]
+            pub fn iter(&self) -> impl Iterator<Item=&T> {
+                self.0.iter()
+            }
+
+            /// Returns the worker-local value for each thread
+            #[inline]
+            pub fn into_inner(self) -> Vec<T> {
+                self.0
+            }
+        }
+
+        impl<T: Default> Default for SharedWorkerLocal<T> {
+            #[inline]
+            fn default() -> Self {
+                SharedWorkerLocal::new(|_| Default::default())
+            }
+        }
+
+        impl<T> Deref for SharedWorkerLocal<T> {
+            type Target = T;
+
+            #[inline(always)]
+            fn deref(&self) -> &T {
+                &self.0[current_thread_index().unwrap()]
+            }
+        }
+
+        impl<T> DerefMut for SharedWorkerLocal<T> {
+            #[inline(always)]
+            fn deref_mut(&mut self) -> &mut T {
+                &mut self.0[current_thread_index().unwrap()]
+            }
+        }
 
         pub use rayon::iter::ParallelIterator;
         use rayon::iter::IntoParallelIterator;
