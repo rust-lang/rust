@@ -333,37 +333,6 @@ fn main() {
     }
     println!("index: {}", index);
 
-    let m: HashMap<u64, u64> = HashMap::new();
-    for (_, v) in &m {
-        let _v = v;
-    }
-
-    let m: Rc<HashMap<u64, u64>> = Rc::new(HashMap::new());
-    for (_, v) in &*m {
-        let _v = v;
-        // Here the `*` is not actually necessary, but the test tests that we don't
-        // suggest
-        // `in *m.values()` as we used to
-    }
-
-    let mut m: HashMap<u64, u64> = HashMap::new();
-    for (_, v) in &mut m {
-        let _v = v;
-    }
-
-    let m: &mut HashMap<u64, u64> = &mut HashMap::new();
-    for (_, v) in &mut *m {
-        let _v = v;
-    }
-
-    let m: HashMap<u64, u64> = HashMap::new();
-    let rm = &m;
-    for (k, _value) in rm {
-        let _k = k;
-    }
-
-    test_for_kv_map();
-
     fn f<T>(_: &T, _: &T) -> bool {
         unimplemented!()
     }
@@ -378,17 +347,6 @@ fn main() {
 
     for mid in 1..vec.len() {
         let (_, _) = vec.split_at(mid);
-    }
-}
-
-#[allow(clippy::used_underscore_binding)]
-fn test_for_kv_map() {
-    let m: HashMap<u64, u64> = HashMap::new();
-
-    // No error, _value is actually used
-    for (k, _value) in &m {
-        let _ = _value;
-        let _k = k;
     }
 }
 
