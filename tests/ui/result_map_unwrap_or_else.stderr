@@ -1,0 +1,34 @@
+error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
+  --> $DIR/result_map_unwrap_or_else.rs:21:13
+   |
+LL |       let _ = res.map(|x| x + 1)
+   |  _____________^
+LL | |
+LL | |                .unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
+   | |_____________________________________^
+   |
+   = note: `-D clippy::result-map-unwrap-or-else` implied by `-D warnings`
+   = note: replace `map(|x| x + 1).unwrap_or_else(|e| 0)` with `ok().map_or_else(|e| 0, |x| x + 1)`
+
+error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
+  --> $DIR/result_map_unwrap_or_else.rs:25:13
+   |
+LL |       let _ = res.map(|x| {
+   |  _____________^
+LL | |                         x + 1
+LL | |                     }
+LL | |               ).unwrap_or_else(|e| 0);
+   | |_____________________________________^
+
+error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
+  --> $DIR/result_map_unwrap_or_else.rs:29:13
+   |
+LL |       let _ = res.map(|x| x + 1)
+   |  _____________^
+LL | |                .unwrap_or_else(|e|
+LL | |                     0
+LL | |                 );
+   | |_________________^
+
+error: aborting due to 3 previous errors
+

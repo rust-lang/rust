@@ -31,6 +31,8 @@ use std::iter::FromIterator;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
 
+include!("../auxiliary/option_helpers.rs");
+
 pub struct T;
 
 impl T {
@@ -101,13 +103,6 @@ impl Mul<T> for T {
     fn mul(self, other: T) -> T { self } // no error, obviously
 }
 
-/// Utility macro to test linting behavior in `option_methods()`
-/// The lints included in `option_methods()` should not lint if the call to map is partially
-/// within a macro
-macro_rules! opt_map {
-    ($opt:expr, $map:expr) => {($opt).map($map)};
-}
-
 /// Checks implementation of the following lints:
 /// * `OPTION_MAP_UNWRAP_OR`
 /// * `OPTION_MAP_UNWRAP_OR_ELSE`
@@ -167,29 +162,6 @@ fn option_methods() {
                         Some(x + 1)
                        }
                 );
-}
-
-/// Checks implementation of the following lints:
-/// * `RESULT_MAP_UNWRAP_OR_ELSE`
-fn result_methods() {
-    let res: Result<i32, ()> = Ok(1);
-
-    // Check RESULT_MAP_UNWRAP_OR_ELSE
-    // single line case
-    let _ = res.map(|x| x + 1)
-
-               .unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
-    // multi line cases
-    let _ = res.map(|x| {
-                        x + 1
-                    }
-              ).unwrap_or_else(|e| 0);
-    let _ = res.map(|x| x + 1)
-               .unwrap_or_else(|e|
-                    0
-                );
-    // macro case
-    let _ = opt_map!(res, |x| x + 1).unwrap_or_else(|e| 0); // should not lint
 }
 
 /// Struct to generate false positives for things with .iter()
