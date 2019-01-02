@@ -76,7 +76,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type MemoryExtra: Default;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra>;
+    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra> + 'static;
 
     /// Memory's allocation map
     type MemoryMap:
