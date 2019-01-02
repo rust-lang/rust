@@ -1,5 +1,5 @@
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/iter_skip_next.rs:52:13
+  --> $DIR/iter_skip_next.rs:18:13
    |
 LL |     let _ = some_vec.iter().skip(42).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,19 +7,19 @@ LL |     let _ = some_vec.iter().skip(42).next();
    = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/iter_skip_next.rs:53:13
+  --> $DIR/iter_skip_next.rs:19:13
    |
 LL |     let _ = some_vec.iter().cycle().skip(42).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/iter_skip_next.rs:54:13
+  --> $DIR/iter_skip_next.rs:20:13
    |
 LL |     let _ = (1..10).skip(10).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-  --> $DIR/iter_skip_next.rs:55:14
+  --> $DIR/iter_skip_next.rs:21:14
    |
 LL |     let _ = &some_vec[..].iter().skip(3).next();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
