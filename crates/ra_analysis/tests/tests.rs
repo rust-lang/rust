@@ -25,7 +25,7 @@ fn approximate_resolve_works_in_items() {
     assert_eq_dbg(
         r#"ReferenceResolution {
             reference_range: [23; 26),
-            resolves_to: [(FileId(1), FileSymbol { name: "Foo", node_range: [0; 11), kind: STRUCT_DEF })]
+            resolves_to: [NavigationTarget { file_id: FileId(1), symbol: FileSymbol { name: "Foo", node_range: [0; 11), kind: STRUCT_DEF } }]
         }"#,
         &symbols,
     );
@@ -46,7 +46,7 @@ fn test_resolve_module() {
     assert_eq_dbg(
         r#"ReferenceResolution {
             reference_range: [4; 7),
-            resolves_to: [(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]
+            resolves_to: [NavigationTarget { file_id: FileId(2), symbol: FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE } }]
         }"#,
         &symbols,
     );
@@ -64,7 +64,7 @@ fn test_resolve_module() {
     assert_eq_dbg(
         r#"ReferenceResolution {
             reference_range: [4; 7),
-            resolves_to: [(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]
+            resolves_to: [NavigationTarget { file_id: FileId(2), symbol: FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE } }]
         }"#,
         &symbols,
     );
@@ -107,7 +107,7 @@ fn test_resolve_parent_module() {
     );
     let symbols = analysis.parent_module(pos).unwrap();
     assert_eq_dbg(
-        r#"[(FileId(1), FileSymbol { name: "foo", node_range: [4; 7), kind: MODULE })]"#,
+        r#"[NavigationTarget { file_id: FileId(1), symbol: FileSymbol { name: "foo", node_range: [4; 7), kind: MODULE } }]"#,
         &symbols,
     );
 }
@@ -126,7 +126,7 @@ fn test_resolve_parent_module_for_inline() {
     );
     let symbols = analysis.parent_module(pos).unwrap();
     assert_eq_dbg(
-        r#"[(FileId(1), FileSymbol { name: "bar", node_range: [18; 21), kind: MODULE })]"#,
+        r#"[NavigationTarget { file_id: FileId(1), symbol: FileSymbol { name: "bar", node_range: [18; 21), kind: MODULE } }]"#,
         &symbols,
     );
 }

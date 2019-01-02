@@ -10,7 +10,7 @@ use hir::{
     self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, FileSymbol, find_node_at_offset, LineIndex, LocalEdit, Severity};
+use ra_editor::{self, find_node_at_offset, LineIndex, LocalEdit, Severity};
 use ra_syntax::{
     algo::find_covering_node,
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
@@ -21,11 +21,11 @@ use ra_syntax::{
 
 use crate::{
     AnalysisChange,
-    Cancelable,
+    Cancelable, NavigationTarget,
     completion::{CompletionItem, completions},
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
-    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase},
+    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase, FileSymbol},
 };
 
 #[derive(Debug, Default)]
@@ -205,7 +205,7 @@ impl AnalysisImpl {
 
     /// This returns `Vec` because a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
-    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         let descr = match source_binder::module_from_position(&*self.db, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
@@ -216,12 +216,12 @@ impl AnalysisImpl {
         };
         let decl = decl.borrowed();
         let decl_name = decl.name().unwrap();
-        let sym = FileSymbol {
+        let symbol = FileSymbol {
             name: decl_name.text(),
             node_range: decl_name.syntax().range(),
             kind: MODULE,
         };
-        Ok(vec![(file_id, sym)])
+        Ok(vec![NavigationTarget { file_id, symbol }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
@@ -355,9 +355,9 @@ impl AnalysisImpl {
             Ok(Some((binding, descr)))
         }
     }
-    pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(file_id);
-        let result = match (symbol.description(&file), symbol.docs(&file)) {
+    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
+        let file = self.db.source_file(nav.file_id);
+        let result = match (nav.symbol.description(&file), nav.symbol.docs(&file)) {
             (Some(desc), Some(docs)) => {
                 Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
             }

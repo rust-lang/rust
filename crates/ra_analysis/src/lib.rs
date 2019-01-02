@@ -23,22 +23,22 @@ mod syntax_highlighting;
 use std::{fmt, sync::Arc};
 
 use rustc_hash::FxHashMap;
-use ra_syntax::{SourceFileNode, TextRange, TextUnit};
+use ra_syntax::{SourceFileNode, TextRange, TextUnit, SmolStr, SyntaxKind};
 use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
 use crate::{
     imp::{AnalysisHostImpl, AnalysisImpl},
-    symbol_index::SymbolIndex,
+    symbol_index::{SymbolIndex, FileSymbol},
 };
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
-    runnables::{Runnable, RunnableKind}
+    runnables::{Runnable, RunnableKind},
 };
 pub use ra_editor::{
-    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity
+    Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity
 };
 pub use hir::FnSignatureInfo;
 
@@ -242,6 +242,27 @@ impl Query {
     }
 }
 
+#[derive(Debug)]
+pub struct NavigationTarget {
+    file_id: FileId,
+    symbol: FileSymbol,
+}
+
+impl NavigationTarget {
+    pub fn name(&self) -> SmolStr {
+        self.symbol.name.clone()
+    }
+    pub fn kind(&self) -> SyntaxKind {
+        self.symbol.kind
+    }
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
+    pub fn range(&self) -> TextRange {
+        self.symbol.node_range
+    }
+}
+
 /// Result of "goto def" query.
 #[derive(Debug)]
 pub struct ReferenceResolution {
@@ -250,7 +271,7 @@ pub struct ReferenceResolution {
     /// client where the reference was.
     pub reference_range: TextRange,
     /// What this reference resolves to.
-    pub resolves_to: Vec<(FileId, FileSymbol)>,
+    pub resolves_to: Vec<NavigationTarget>,
 }
 
 impl ReferenceResolution {
@@ -262,7 +283,7 @@ impl ReferenceResolution {
     }
 
     fn add_resolution(&mut self, file_id: FileId, symbol: FileSymbol) {
-        self.resolves_to.push((file_id, symbol))
+        self.resolves_to.push(NavigationTarget { file_id, symbol })
     }
 }
 
@@ -320,8 +341,14 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         ra_editor::folding_ranges(&file)
     }
-    pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        self.imp.world_symbols(query)
+    pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
+        let res = self
+            .imp
+            .world_symbols(query)?
+            .into_iter()
+            .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
+            .collect();
+        Ok(res)
     }
     pub fn approximately_resolve_symbol(
         &self,
@@ -332,10 +359,10 @@ impl Analysis {
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
         self.imp.find_all_refs(position)
     }
-    pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
-        self.imp.doc_text_for(file_id, symbol)
+    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
+        self.imp.doc_text_for(nav)
     }
-    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         self.imp.parent_module(position)
     }
     pub fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
