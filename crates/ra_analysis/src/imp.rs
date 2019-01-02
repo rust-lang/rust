@@ -21,7 +21,7 @@ use ra_syntax::{
 
 use crate::{
     AnalysisChange,
-    Cancelable,
+    Cancelable, NavigationTarget,
     completion::{CompletionItem, completions},
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
@@ -355,9 +355,9 @@ impl AnalysisImpl {
             Ok(Some((binding, descr)))
         }
     }
-    pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(file_id);
-        let result = match (symbol.description(&file), symbol.docs(&file)) {
+    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
+        let file = self.db.source_file(nav.file_id);
+        let result = match (nav.symbol.description(&file), nav.symbol.docs(&file)) {
             (Some(desc), Some(docs)) => {
                 Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
             }

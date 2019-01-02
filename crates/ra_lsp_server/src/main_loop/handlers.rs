@@ -213,9 +213,9 @@ pub fn handle_goto_definition(
         Some(it) => it,
     };
     let mut res = Vec::new();
-    for (file_id, symbol) in rr.resolves_to {
-        let line_index = world.analysis().file_line_index(file_id);
-        let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
+    for nav in rr.resolves_to {
+        let line_index = world.analysis().file_line_index(nav.file_id());
+        let location = to_location(nav.file_id(), nav.range(), &world, &line_index)?;
         res.push(location)
     }
     Ok(Some(req::GotoDefinitionResponse::Array(res)))
@@ -517,8 +517,8 @@ pub fn handle_hover(
         Some(it) => it,
     };
     let mut result = Vec::new();
-    for (file_id, symbol) in rr.resolves_to {
-        if let Some(docs) = world.analysis().doc_text_for(file_id, symbol)? {
+    for nav in rr.resolves_to {
+        if let Some(docs) = world.analysis().doc_text_for(nav)? {
             result.push(docs);
         }
     }

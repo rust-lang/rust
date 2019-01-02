@@ -244,6 +244,21 @@ impl Query {
     }
 }
 
+#[derive(Debug)]
+pub struct NavigationTarget {
+    file_id: FileId,
+    symbol: FileSymbol,
+}
+
+impl NavigationTarget {
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
+    pub fn range(&self) -> TextRange {
+        self.symbol.node_range
+    }
+}
+
 /// Result of "goto def" query.
 #[derive(Debug)]
 pub struct ReferenceResolution {
@@ -252,7 +267,7 @@ pub struct ReferenceResolution {
     /// client where the reference was.
     pub reference_range: TextRange,
     /// What this reference resolves to.
-    pub resolves_to: Vec<(FileId, FileSymbol)>,
+    pub resolves_to: Vec<NavigationTarget>,
 }
 
 impl ReferenceResolution {
@@ -264,7 +279,7 @@ impl ReferenceResolution {
     }
 
     fn add_resolution(&mut self, file_id: FileId, symbol: FileSymbol) {
-        self.resolves_to.push((file_id, symbol))
+        self.resolves_to.push(NavigationTarget { file_id, symbol })
     }
 }
 
@@ -334,8 +349,8 @@ impl Analysis {
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
         self.imp.find_all_refs(position)
     }
-    pub fn doc_text_for(&self, file_id: FileId, symbol: FileSymbol) -> Cancelable<Option<String>> {
-        self.imp.doc_text_for(file_id, symbol)
+    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
+        self.imp.doc_text_for(nav)
     }
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         self.imp.parent_module(position)
