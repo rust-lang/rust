@@ -2,7 +2,7 @@
 /* global resourcesSuffix */
 
 // eslint doesn't understand the functions here are used elsewhere
-/*eslint no-unused-vars: "off"*/
+/* eslint no-unused-vars: "off" */
 
 var currentTheme = document.getElementById("themeStyle");
 var mainTheme = document.getElementById("mainThemeStyle");
