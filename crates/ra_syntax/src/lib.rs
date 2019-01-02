@@ -51,7 +51,7 @@ use ra_text_edit::AtomTextEdit;
 use crate::yellow::GreenNode;
 
 /// `SourceFileNode` represents a parse tree for a single Rust file.
-pub use crate::ast::SourceFileNode;
+pub use crate::ast::{SourceFile, SourceFileNode};
 
 impl SourceFileNode {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SourceFileNode {

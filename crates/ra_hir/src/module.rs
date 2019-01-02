@@ -15,6 +15,7 @@ use relative_path::RelativePathBuf;
 use crate::{
     Def, DefKind, DefLoc, DefId,
     Name, Path, PathKind, HirDatabase, SourceItemId, SourceFileItemId, Crate,
+    HirFileId,
     arena::{Arena, Id},
 };
 
@@ -48,13 +49,17 @@ impl Module {
     /// Returns `None` for the root module
     pub fn parent_link_source(&self, db: &impl HirDatabase) -> Option<(FileId, ast::ModuleNode)> {
         let link = self.module_id.parent_link(&self.tree)?;
-        let file_id = link.owner(&self.tree).source(&self.tree).file_id();
+        let file_id = link
+            .owner(&self.tree)
+            .source(&self.tree)
+            .file_id()
+            .as_original_file();
         let src = link.bind_source(&self.tree, db);
         Some((file_id, src))
     }
 
-    pub fn source(&self) -> ModuleSource {
-        self.module_id.source(&self.tree)
+    pub fn file_id(&self) -> FileId {
+        self.source().file_id().as_original_file()
     }
 
     /// Parent module. Returns `None` if this is a root module.
@@ -69,7 +74,7 @@ impl Module {
     /// Returns the crate this module is part of.
     pub fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
         let root_id = self.module_id.crate_root(&self.tree);
-        let file_id = root_id.source(&self.tree).file_id();
+        let file_id = root_id.source(&self.tree).file_id().as_original_file();
         let crate_graph = db.crate_graph();
         let crate_id = crate_graph.crate_id_for_crate_root(file_id)?;
         Some(Crate::new(crate_id))
@@ -161,6 +166,10 @@ impl Module {
 
     pub fn problems(&self, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
         self.module_id.problems(&self.tree, db)
+    }
+
+    pub(crate) fn source(&self) -> ModuleSource {
+        self.module_id.source(&self.tree)
     }
 }
 
@@ -291,18 +300,18 @@ pub struct ModuleData {
 
 impl ModuleSource {
     // precondition: item_id **must** point to module
-    fn new(file_id: FileId, item_id: Option<SourceFileItemId>) -> ModuleSource {
+    fn new(file_id: HirFileId, item_id: Option<SourceFileItemId>) -> ModuleSource {
         let source_item_id = SourceItemId { file_id, item_id };
         ModuleSource(source_item_id)
     }
 
-    pub(crate) fn new_file(file_id: FileId) -> ModuleSource {
+    pub(crate) fn new_file(file_id: HirFileId) -> ModuleSource {
         ModuleSource::new(file_id, None)
     }
 
     pub(crate) fn new_inline(
         db: &impl HirDatabase,
-        file_id: FileId,
+        file_id: HirFileId,
         m: ast::Module,
     ) -> ModuleSource {
         assert!(!m.has_semi());
@@ -311,7 +320,7 @@ impl ModuleSource {
         ModuleSource::new(file_id, Some(item_id))
     }
 
-    pub fn file_id(self) -> FileId {
+    pub(crate) fn file_id(self) -> HirFileId {
         self.0.file_id
     }
 

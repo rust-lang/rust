@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use ra_syntax::SyntaxNode;
-use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, FileId, Cancelable};
+use ra_syntax::{SyntaxNode, SourceFileNode};
+use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase, Cancelable};
 
 use crate::{
-    DefLoc, DefId, Name,
+    DefLoc, DefId, MacroCallLoc, MacroCallId, Name, HirFileId,
     SourceFileItems, SourceItemId,
     query_definitions,
     FnScopes,
+    macros::MacroExpansion,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
     ty::{InferenceResult, Ty},
@@ -18,7 +19,17 @@ salsa::query_group! {
 
 pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
+    + AsRef<LocationIntener<MacroCallLoc, MacroCallId>>
 {
+    fn hir_source_file(file_id: HirFileId) -> SourceFileNode {
+        type HirSourceFileQuery;
+        use fn HirFileId::hir_source_file;
+    }
+    fn expand_macro_invocation(invoc: MacroCallId) -> Option<Arc<MacroExpansion>> {
+        type ExpandMacroCallQuery;
+        use fn crate::macros::expand_macro_invocation;
+    }
+
     fn fn_scopes(def_id: DefId) -> Arc<FnScopes> {
         type FnScopesQuery;
         use fn query_definitions::fn_scopes;
@@ -49,7 +60,7 @@ pub trait HirDatabase: SyntaxDatabase
         use fn crate::ty::type_for_field;
     }
 
-    fn file_items(file_id: FileId) -> Arc<SourceFileItems> {
+    fn file_items(file_id: HirFileId) -> Arc<SourceFileItems> {
         type SourceFileItemsQuery;
         use fn query_definitions::file_items;
     }

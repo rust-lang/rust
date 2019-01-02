@@ -1,6 +1,6 @@
-pub use ra_db::CrateId;
+pub use ra_db::{CrateId, Cancelable};
 
-use crate::{HirDatabase, Module, Cancelable, Name, AsName};
+use crate::{HirDatabase, Module, Name, AsName, HirFileId};
 
 /// hir::Crate describes a single crate. It's the main inteface with which
 /// crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -35,6 +35,7 @@ impl Crate {
         let crate_graph = db.crate_graph();
         let file_id = crate_graph.crate_root(self.crate_id);
         let source_root_id = db.file_source_root(file_id);
+        let file_id = HirFileId::from(file_id);
         let module_tree = db.module_tree(source_root_id)?;
         // FIXME: teach module tree about crate roots instead of guessing
         let (module_id, _) = ctry!(module_tree

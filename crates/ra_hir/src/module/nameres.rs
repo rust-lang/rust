@@ -22,10 +22,10 @@ use ra_syntax::{
     SyntaxKind::{self, *},
     ast::{self, AstNode}
 };
-use ra_db::SourceRootId;
+use ra_db::{SourceRootId, Cancelable, FileId};
 
 use crate::{
-    Cancelable, FileId,
+    HirFileId,
     DefId, DefLoc, DefKind,
     SourceItemId, SourceFileItemId, SourceFileItems,
     Path, PathKind,
@@ -70,7 +70,7 @@ pub struct InputModuleItems {
 
 #[derive(Debug, PartialEq, Eq)]
 struct ModuleItem {
-    id: SourceFileItemId,
+    id: SourceItemId,
     name: Name,
     kind: SyntaxKind,
     vis: Vis,
@@ -95,9 +95,11 @@ pub struct NamedImport {
 }
 
 impl NamedImport {
+    // FIXME: this is only here for one use-case in completion. Seems like a
+    // pretty gross special case.
     pub fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
         let source_item_id = SourceItemId {
-            file_id,
+            file_id: file_id.into(),
             item_id: Some(self.file_item_id),
         };
         let syntax = db.file_item(source_item_id);
@@ -209,24 +211,28 @@ impl<T> PerNs<T> {
 }
 
 impl InputModuleItems {
-    pub(crate) fn new<'a>(
+    pub(crate) fn add_item(
+        &mut self,
+        file_id: HirFileId,
         file_items: &SourceFileItems,
-        items: impl Iterator<Item = ast::ModuleItem<'a>>,
-    ) -> InputModuleItems {
-        let mut res = InputModuleItems::default();
-        for item in items {
-            res.add_item(file_items, item);
-        }
-        res
-    }
-
-    fn add_item(&mut self, file_items: &SourceFileItems, item: ast::ModuleItem) -> Option<()> {
+        item: ast::ModuleItem,
+    ) -> Option<()> {
         match item {
-            ast::ModuleItem::StructDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::EnumDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::FnDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::TraitDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::TypeDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
+            ast::ModuleItem::StructDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
+            ast::ModuleItem::EnumDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
+            ast::ModuleItem::FnDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
+            ast::ModuleItem::TraitDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
+            ast::ModuleItem::TypeDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
             ast::ModuleItem::ImplItem(_) => {
                 // impls don't define items
             }
@@ -234,9 +240,15 @@ impl InputModuleItems {
             ast::ModuleItem::ExternCrateItem(_) => {
                 // TODO
             }
-            ast::ModuleItem::ConstDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::StaticDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
-            ast::ModuleItem::Module(it) => self.items.push(ModuleItem::new(file_items, it)?),
+            ast::ModuleItem::ConstDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
+            ast::ModuleItem::StaticDef(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
+            ast::ModuleItem::Module(it) => {
+                self.items.push(ModuleItem::new(file_id, file_items, it)?)
+            }
         }
         Some(())
     }
@@ -258,11 +270,16 @@ impl InputModuleItems {
 }
 
 impl ModuleItem {
-    fn new<'a>(file_items: &SourceFileItems, item: impl ast::NameOwner<'a>) -> Option<ModuleItem> {
+    fn new<'a>(
+        file_id: HirFileId,
+        file_items: &SourceFileItems,
+        item: impl ast::NameOwner<'a>,
+    ) -> Option<ModuleItem> {
         let name = item.name()?.as_name();
         let kind = item.syntax().kind();
         let vis = Vis::Other;
-        let id = file_items.id_of_unchecked(item.syntax());
+        let item_id = Some(file_items.id_of_unchecked(item.syntax()));
+        let id = SourceItemId { file_id, item_id };
         let res = ModuleItem {
             id,
             name,
@@ -302,7 +319,7 @@ where
 
     pub(crate) fn resolve(mut self) -> Cancelable<ItemMap> {
         for (&module_id, items) in self.input.iter() {
-            self.populate_module(module_id, items)?;
+            self.populate_module(module_id, Arc::clone(items))?;
         }
 
         for &module_id in self.input.keys() {
@@ -312,9 +329,11 @@ where
         Ok(self.result)
     }
 
-    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) -> Cancelable<()> {
-        let file_id = module_id.source(&self.module_tree).file_id();
-
+    fn populate_module(
+        &mut self,
+        module_id: ModuleId,
+        input: Arc<InputModuleItems>,
+    ) -> Cancelable<()> {
         let mut module_items = ModuleScope::default();
 
         // Populate extern crates prelude
@@ -322,7 +341,8 @@ where
             let root_id = module_id.crate_root(&self.module_tree);
             let file_id = root_id.source(&self.module_tree).file_id();
             let crate_graph = self.db.crate_graph();
-            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id) {
+            if let Some(crate_id) = crate_graph.crate_id_for_crate_root(file_id.as_original_file())
+            {
                 let krate = Crate::new(crate_id);
                 for dep in krate.dependencies(self.db) {
                     if let Some(module) = dep.krate.root_module(self.db)? {
@@ -362,10 +382,7 @@ where
                     kind: k,
                     source_root_id: self.source_root,
                     module_id,
-                    source_item_id: SourceItemId {
-                        file_id,
-                        item_id: Some(item.id),
-                    },
+                    source_item_id: item.id,
                 };
                 def_loc.id(self.db)
             });

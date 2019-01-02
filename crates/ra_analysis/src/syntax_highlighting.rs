@@ -15,13 +15,13 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Hi
         .descendants()
         .filter_map(ast::MacroCall::cast)
     {
-        if let Some(exp) = crate::macros::expand(db, file_id, macro_call) {
-            let mapped_ranges = ra_editor::highlight(exp.source_file().syntax())
+        if let Some((off, exp)) = hir::MacroDef::ast_expand(macro_call) {
+            let mapped_ranges = ra_editor::highlight(exp.syntax().borrowed())
                 .into_iter()
                 .filter_map(|r| {
                     let mapped_range = exp.map_range_back(r.range)?;
                     let res = HighlightedRange {
-                        range: mapped_range,
+                        range: mapped_range + off,
                         tag: r.tag,
                     };
                     Some(res)
@@ -44,7 +44,7 @@ mod tests {
             fn main() {
                 ctry!({ let x = 92; x});
             }
-        ",
+            ",
         );
         let highlights = analysis.highlight(file_id).unwrap();
         assert_eq_dbg(
@@ -57,6 +57,28 @@ mod tests {
                 HighlightedRange { range: [53; 54), tag: "function" },
                 HighlightedRange { range: [57; 59), tag: "literal" },
                 HighlightedRange { range: [61; 62), tag: "text" }]"#,
+            &highlights,
+        )
+    }
+
+    // FIXME: this test is not really necessary: artifact of the inital hacky
+    // macros implementation.
+    #[test]
+    fn highlight_query_group_macro() {
+        let (analysis, file_id) = single_file(
+            "
+            salsa::query_group! {
+                pub trait HirDatabase: SyntaxDatabase {}
+            }
+            ",
+        );
+        let highlights = analysis.highlight(file_id).unwrap();
+        assert_eq_dbg(
+            r#"[HighlightedRange { range: [20; 32), tag: "macro" },
+                HighlightedRange { range: [13; 18), tag: "text" },
+                HighlightedRange { range: [51; 54), tag: "keyword" },
+                HighlightedRange { range: [55; 60), tag: "keyword" },
+                HighlightedRange { range: [61; 72), tag: "function" }]"#,
             &highlights,
         )
     }

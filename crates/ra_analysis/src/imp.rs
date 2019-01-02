@@ -230,7 +230,7 @@ impl AnalysisImpl {
             Some(it) => it,
         };
         let root = descr.crate_root();
-        let file_id = root.source().file_id();
+        let file_id = root.file_id();
 
         let crate_graph = self.db.crate_graph();
         let crate_id = crate_graph.crate_id_for_crate_root(file_id);
@@ -283,7 +283,7 @@ impl AnalysisImpl {
                     if let Some(child_module) =
                         source_binder::module_from_declaration(&*self.db, position.file_id, module)?
                     {
-                        let file_id = child_module.source().file_id();
+                        let file_id = child_module.file_id();
                         let name = match child_module.name() {
                             Some(name) => name.to_string().into(),
                             None => "".into(),

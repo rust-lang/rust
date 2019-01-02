@@ -6,7 +6,7 @@ use ra_db::{LocationIntener, BaseDatabase, FilePosition, FileId, CrateGraph, Sou
 use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 
-use crate::{db, DefId, DefLoc};
+use crate::{db, DefId, DefLoc, MacroCallId, MacroCallLoc};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -95,6 +95,7 @@ impl MockDatabase {
 #[derive(Debug, Default)]
 struct IdMaps {
     defs: LocationIntener<DefLoc, DefId>,
+    macros: LocationIntener<MacroCallLoc, MacroCallId>,
 }
 
 impl salsa::Database for MockDatabase {
@@ -144,6 +145,11 @@ impl AsRef<LocationIntener<DefLoc, DefId>> for MockDatabase {
         &self.id_maps.defs
     }
 }
+impl AsRef<LocationIntener<MacroCallLoc, MacroCallId>> for MockDatabase {
+    fn as_ref(&self) -> &LocationIntener<MacroCallLoc, MacroCallId> {
+        &self.id_maps.macros
+    }
+}
 
 impl MockDatabase {
     pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<MockDatabase>> {
@@ -183,6 +189,8 @@ salsa::database_storage! {
             fn file_lines() for ra_db::FileLinesQuery;
         }
         impl db::HirDatabase {
+            fn hir_source_file() for db::HirSourceFileQuery;
+            fn expand_macro_invocation() for db::ExpandMacroCallQuery;
             fn module_tree() for db::ModuleTreeQuery;
             fn fn_scopes() for db::FnScopesQuery;
             fn file_items() for db::SourceFileItemsQuery;

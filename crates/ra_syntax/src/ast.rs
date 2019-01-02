@@ -48,8 +48,38 @@ pub trait FnDefOwner<'a>: AstNode<'a> {
     }
 }
 
+// ModuleItem
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ItemOrMacro<'a> {
+    Item(ModuleItem<'a>),
+    Macro(MacroCall<'a>),
+}
+
+impl<'a> AstNode<'a> for ItemOrMacro<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        let res = if let Some(item) = ModuleItem::cast(syntax) {
+            ItemOrMacro::Item(item)
+        } else if let Some(macro_call) = MacroCall::cast(syntax) {
+            ItemOrMacro::Macro(macro_call)
+        } else {
+            return None;
+        };
+        Some(res)
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> {
+        match self {
+            ItemOrMacro::Item(it) => it.syntax(),
+            ItemOrMacro::Macro(it) => it.syntax(),
+        }
+    }
+}
+
 pub trait ModuleItemOwner<'a>: AstNode<'a> {
     fn items(self) -> AstChildren<'a, ModuleItem<'a>> {
+        children(self)
+    }
+
+    fn items_with_macros(self) -> AstChildren<'a, ItemOrMacro<'a>> {
         children(self)
     }
 }

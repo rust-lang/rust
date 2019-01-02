@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use ra_db::Cancelable;
 use ra_syntax::ast::{self, NameOwner, StructFlavor};
 
 use crate::{
-    DefId, Cancelable, Name, AsName,
+    DefId, Name, AsName,
     db::HirDatabase,
     type_ref::TypeRef,
 };
