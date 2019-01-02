@@ -100,27 +100,6 @@ impl db::RootDatabase {
 }
 
 impl db::RootDatabase {
-    pub(crate) fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
-        let descr = match source_binder::module_from_position(self, position)? {
-            None => return Ok(None),
-            Some(it) => it,
-        };
-        let name = match descr.name() {
-            None => return Ok(None),
-            Some(it) => it.to_string(),
-        };
-
-        let modules = descr.path_to_root();
-
-        let path = modules
-            .iter()
-            .filter_map(|s| s.name())
-            .skip(1) // name is already part of the string.
-            .fold(name, |path, it| format!("{}::{}", it, path));
-
-        Ok(Some(path.to_string()))
-    }
-
     /// This returns `Vec` because a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
     pub(crate) fn parent_module(

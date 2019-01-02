@@ -1,11 +1,11 @@
+use itertools::Itertools;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner, ModuleItemOwner},
-    SourceFileNode, TextRange, SyntaxNodeRef,
-    TextUnit,
+    TextRange, SyntaxNodeRef,
 };
-use crate::{
-    Analysis, FileId, FilePosition
-};
+use ra_db::{Cancelable, SyntaxDatabase};
+
+use crate::{db::RootDatabase, FileId};
 
 #[derive(Debug)]
 pub struct Runnable {
@@ -20,53 +20,67 @@ pub enum RunnableKind {
     Bin,
 }
 
-pub fn runnables(
-    analysis: &Analysis,
-    file_node: &SourceFileNode,
-    file_id: FileId,
-) -> Vec<Runnable> {
-    file_node
+pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Cancelable<Vec<Runnable>> {
+    let source_file = db.source_file(file_id);
+    let res = source_file
         .syntax()
         .descendants()
-        .filter_map(|i| runnable(analysis, i, file_id))
-        .collect()
+        .filter_map(|i| runnable(db, file_id, i))
+        .collect();
+    Ok(res)
 }
 
-fn runnable<'a>(analysis: &Analysis, item: SyntaxNodeRef<'a>, file_id: FileId) -> Option<Runnable> {
-    if let Some(f) = ast::FnDef::cast(item) {
-        let name = f.name()?.text();
-        let kind = if name == "main" {
-            RunnableKind::Bin
-        } else if f.has_atom_attr("test") {
-            RunnableKind::Test {
-                name: name.to_string(),
-            }
-        } else {
-            return None;
-        };
-        Some(Runnable {
-            range: f.syntax().range(),
-            kind,
-        })
+fn runnable(db: &RootDatabase, file_id: FileId, item: SyntaxNodeRef) -> Option<Runnable> {
+    if let Some(fn_def) = ast::FnDef::cast(item) {
+        runnable_fn(fn_def)
     } else if let Some(m) = ast::Module::cast(item) {
-        if m.item_list()?
-            .items()
-            .map(ast::ModuleItem::syntax)
-            .filter_map(ast::FnDef::cast)
-            .any(|f| f.has_atom_attr("test"))
-        {
-            let postition = FilePosition {
-                file_id,
-                offset: m.syntax().range().start() + TextUnit::from_usize(1),
-            };
-            analysis.module_path(postition).ok()?.map(|path| Runnable {
-                range: m.syntax().range(),
-                kind: RunnableKind::TestMod { path },
-            })
-        } else {
-            None
-        }
+        runnable_mod(db, file_id, m)
     } else {
         None
     }
+}
+
+fn runnable_fn(fn_def: ast::FnDef) -> Option<Runnable> {
+    let name = fn_def.name()?.text();
+    let kind = if name == "main" {
+        RunnableKind::Bin
+    } else if fn_def.has_atom_attr("test") {
+        RunnableKind::Test {
+            name: name.to_string(),
+        }
+    } else {
+        return None;
+    };
+    Some(Runnable {
+        range: fn_def.syntax().range(),
+        kind,
+    })
+}
+
+fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Option<Runnable> {
+    let has_test_function = module
+        .item_list()?
+        .items()
+        .filter_map(|it| match it {
+            ast::ModuleItem::FnDef(it) => Some(it),
+            _ => None,
+        })
+        .any(|f| f.has_atom_attr("test"));
+    if !has_test_function {
+        return None;
+    }
+    let range = module.syntax().range();
+    let module =
+        hir::source_binder::module_from_child_node(db, file_id, module.syntax()).ok()??;
+    let path = module
+        .path_to_root()
+        .into_iter()
+        .rev()
+        .into_iter()
+        .filter_map(|it| it.name().map(Clone::clone))
+        .join("::");
+    Some(Runnable {
+        range,
+        kind: RunnableKind::TestMod { path },
+    })
 }
