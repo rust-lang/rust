@@ -27,11 +27,9 @@ use ra_syntax::{SourceFileNode, TextRange, TextUnit, SmolStr, SyntaxKind};
 use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
+use salsa::ParallelDatabase;
 
-use crate::{
-    imp::AnalysisImpl,
-    symbol_index::{SymbolIndex, FileSymbol},
-};
+use crate::symbol_index::{SymbolIndex, FileSymbol};
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
@@ -161,7 +159,7 @@ impl AnalysisHost {
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
         Analysis {
-            imp: self.db.analysis(),
+            db: self.db.snapshot(),
         }
     }
     /// Applies changes to the current state of the world. If there are
@@ -293,56 +291,56 @@ impl ReferenceResolution {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    pub(crate) imp: AnalysisImpl,
+    db: salsa::Snapshot<db::RootDatabase>,
 }
 
 impl Analysis {
     pub fn file_text(&self, file_id: FileId) -> Arc<String> {
-        self.imp.db.file_text(file_id)
+        self.db.file_text(file_id)
     }
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.imp.db.source_file(file_id).clone()
+        self.db.source_file(file_id).clone()
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.imp.db.file_lines(file_id)
+        self.db.file_lines(file_id)
     }
     pub fn extend_selection(&self, frange: FileRange) -> TextRange {
-        extend_selection::extend_selection(&self.imp.db, frange)
+        extend_selection::extend_selection(&self.db, frange)
     }
     pub fn matching_brace(&self, file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
         ra_editor::matching_brace(file, offset)
     }
     pub fn syntax_tree(&self, file_id: FileId) -> String {
-        let file = self.imp.db.source_file(file_id);
+        let file = self.db.source_file(file_id);
         ra_editor::syntax_tree(&file)
     }
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
-        let file = self.imp.db.source_file(frange.file_id);
+        let file = self.db.source_file(frange.file_id);
         SourceChange::from_local_edit(frange.file_id, ra_editor::join_lines(&file, frange.range))
     }
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.imp.db.source_file(position.file_id);
+        let file = self.db.source_file(position.file_id);
         let edit = ra_editor::on_enter(&file, position.offset)?;
         let res = SourceChange::from_local_edit(position.file_id, edit);
         Some(res)
     }
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.imp.db.source_file(position.file_id);
+        let file = self.db.source_file(position.file_id);
         Some(SourceChange::from_local_edit(
             position.file_id,
             ra_editor::on_eq_typed(&file, position.offset)?,
         ))
     }
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
-        let file = self.imp.db.source_file(file_id);
+        let file = self.db.source_file(file_id);
         ra_editor::file_structure(&file)
     }
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
-        let file = self.imp.db.source_file(file_id);
+        let file = self.db.source_file(file_id);
         ra_editor::folding_ranges(&file)
     }
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
-        let res = symbol_index::world_symbols(&*self.imp.db, query)?
+        let res = symbol_index::world_symbols(&*self.db, query)?
             .into_iter()
             .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
             .collect();
@@ -352,57 +350,58 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<ReferenceResolution>> {
-        self.imp.approximately_resolve_symbol(position)
+        self.db.approximately_resolve_symbol(position)
     }
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        self.imp.find_all_refs(position)
+        self.db.find_all_refs(position)
     }
     pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        self.imp.doc_text_for(nav)
+        self.db.doc_text_for(nav)
     }
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        self.imp.parent_module(position)
+        self.db.parent_module(position)
     }
     pub fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
-        self.imp.module_path(position)
+        self.db.module_path(position)
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        self.imp.crate_for(file_id)
+        self.db.crate_for(file_id)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
-        Ok(self.imp.crate_root(crate_id))
+        Ok(self.db.crate_root(crate_id))
     }
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
-        let file = self.imp.db.source_file(file_id);
+        let file = self.db.source_file(file_id);
         Ok(runnables::runnables(self, &file, file_id))
     }
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        syntax_highlighting::highlight(&*self.imp.db, file_id)
+        syntax_highlighting::highlight(&*self.db, file_id)
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.imp.completions(position)
+        let completions = completion::completions(&self.db, position)?;
+        Ok(completions.map(|it| it.into()))
     }
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<SourceChange>> {
-        Ok(self.imp.assists(frange))
+        Ok(self.db.assists(frange))
     }
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.imp.diagnostics(file_id)
+        self.db.diagnostics(file_id)
     }
     pub fn resolve_callable(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
-        self.imp.resolve_callable(position)
+        self.db.resolve_callable(position)
     }
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        self.imp.type_of(frange)
+        self.db.type_of(frange)
     }
     pub fn rename(
         &self,
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Vec<SourceFileEdit>> {
-        self.imp.rename(position, new_name)
+        self.db.rename(position, new_name)
     }
 }
 

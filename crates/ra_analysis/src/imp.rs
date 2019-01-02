@@ -1,9 +1,6 @@
-use std::{
-    fmt,
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use salsa::{Database, ParallelDatabase};
+use salsa::Database;
 
 use hir::{
     self, FnSignatureInfo, Problem, source_binder,
@@ -21,18 +18,12 @@ use ra_syntax::{
 use crate::{
     AnalysisChange,
     Cancelable, NavigationTarget,
-    completion::{CompletionItem, completions},
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
     symbol_index::{LibrarySymbolsQuery, FileSymbol},
 };
 
 impl db::RootDatabase {
-    pub(crate) fn analysis(&self) -> AnalysisImpl {
-        AnalysisImpl {
-            db: self.snapshot(),
-        }
-    }
     pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
         // self.gc_syntax_trees();
@@ -108,20 +99,9 @@ impl db::RootDatabase {
     }
 }
 
-pub(crate) struct AnalysisImpl {
-    pub(crate) db: salsa::Snapshot<db::RootDatabase>,
-}
-
-impl fmt::Debug for AnalysisImpl {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let db: &db::RootDatabase = &self.db;
-        fmt.debug_struct("AnalysisImpl").field("db", db).finish()
-    }
-}
-
-impl AnalysisImpl {
+impl db::RootDatabase {
     pub(crate) fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
-        let descr = match source_binder::module_from_position(&*self.db, position)? {
+        let descr = match source_binder::module_from_position(self, position)? {
             None => return Ok(None),
             Some(it) => it,
         };
@@ -143,12 +123,15 @@ impl AnalysisImpl {
 
     /// This returns `Vec` because a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
-    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        let descr = match source_binder::module_from_position(&*self.db, position)? {
+    pub(crate) fn parent_module(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Vec<NavigationTarget>> {
+        let descr = match source_binder::module_from_position(self, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let (file_id, decl) = match descr.parent_link_source(&*self.db) {
+        let (file_id, decl) = match descr.parent_link_source(self) {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -162,39 +145,33 @@ impl AnalysisImpl {
         Ok(vec![NavigationTarget { file_id, symbol }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
-    pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let descr = match source_binder::module_from_file_id(&*self.db, file_id)? {
+    pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+        let descr = match source_binder::module_from_file_id(self, file_id)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
         let root = descr.crate_root();
         let file_id = root.file_id();
 
-        let crate_graph = self.db.crate_graph();
+        let crate_graph = self.crate_graph();
         let crate_id = crate_graph.crate_id_for_crate_root(file_id);
         Ok(crate_id.into_iter().collect())
     }
-    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.db.crate_graph().crate_root(crate_id)
+    pub(crate) fn crate_root(&self, crate_id: CrateId) -> FileId {
+        self.crate_graph().crate_root(crate_id)
     }
-    pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let completions = completions(&self.db, position)?;
-        Ok(completions.map(|it| it.into()))
-    }
-    pub fn approximately_resolve_symbol(
+    pub(crate) fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<ReferenceResolution>> {
-        let file = self.db.source_file(position.file_id);
+        let file = self.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
             let mut rr = ReferenceResolution::new(name_ref.syntax().range());
-            if let Some(fn_descr) = source_binder::function_from_child_node(
-                &*self.db,
-                position.file_id,
-                name_ref.syntax(),
-            )? {
-                let scope = fn_descr.scopes(&*self.db);
+            if let Some(fn_descr) =
+                source_binder::function_from_child_node(self, position.file_id, name_ref.syntax())?
+            {
+                let scope = fn_descr.scopes(self);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
                     rr.add_resolution(
@@ -219,7 +196,7 @@ impl AnalysisImpl {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     if let Some(child_module) =
-                        source_binder::module_from_declaration(&*self.db, position.file_id, module)?
+                        source_binder::module_from_declaration(self, position.file_id, module)?
                     {
                         let file_id = child_module.file_id();
                         let name = match child_module.name() {
@@ -240,10 +217,13 @@ impl AnalysisImpl {
         Ok(None)
     }
 
-    pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        let file = self.db.source_file(position.file_id);
+    pub(crate) fn find_all_refs(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Vec<(FileId, TextRange)>> {
+        let file = self.source_file(position.file_id);
         // Find the binding associated with the offset
-        let (binding, descr) = match find_binding(&self.db, &file, position)? {
+        let (binding, descr) = match find_binding(self, &file, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -255,7 +235,7 @@ impl AnalysisImpl {
             .collect::<Vec<_>>();
         ret.extend(
             descr
-                .scopes(&*self.db)
+                .scopes(self)
                 .find_all_refs(binding)
                 .into_iter()
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
@@ -293,8 +273,8 @@ impl AnalysisImpl {
             Ok(Some((binding, descr)))
         }
     }
-    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(nav.file_id);
+    pub(crate) fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
+        let file = self.source_file(nav.file_id);
         let result = match (nav.symbol.description(&file), nav.symbol.docs(&file)) {
             (Some(desc), Some(docs)) => {
                 Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
@@ -307,8 +287,8 @@ impl AnalysisImpl {
         Ok(result)
     }
 
-    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let syntax = self.db.source_file(file_id);
+    pub(crate) fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
+        let syntax = self.source_file(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
@@ -319,9 +299,9 @@ impl AnalysisImpl {
                 fix: d.fix.map(|fix| SourceChange::from_local_edit(file_id, fix)),
             })
             .collect::<Vec<_>>();
-        if let Some(m) = source_binder::module_from_file_id(&*self.db, file_id)? {
-            for (name_node, problem) in m.problems(&*self.db) {
-                let source_root = self.db.file_source_root(file_id);
+        if let Some(m) = source_binder::module_from_file_id(self, file_id)? {
+            for (name_node, problem) in m.problems(self) {
+                let source_root = self.file_source_root(file_id);
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {
@@ -371,8 +351,8 @@ impl AnalysisImpl {
         Ok(res)
     }
 
-    pub fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
-        let file = self.db.source_file(frange.file_id);
+    pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
+        let file = self.source_file(frange.file_id);
         let offset = frange.range.start();
         let actions = vec![
             ra_editor::flip_comma(&file, offset).map(|f| f()),
@@ -389,11 +369,11 @@ impl AnalysisImpl {
             .collect()
     }
 
-    pub fn resolve_callable(
+    pub(crate) fn resolve_callable(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
-        let file = self.db.source_file(position.file_id);
+        let file = self.source_file(position.file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
@@ -404,12 +384,12 @@ impl AnalysisImpl {
         let file_symbols = self.index_resolve(name_ref)?;
         for (fn_file_id, fs) in file_symbols {
             if fs.kind == FN_DEF {
-                let fn_file = self.db.source_file(fn_file_id);
+                let fn_file = self.source_file(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
                     let descr = ctry!(source_binder::function_from_source(
-                        &*self.db, fn_file_id, fn_def
+                        self, fn_file_id, fn_def
                     )?);
-                    if let Some(descriptor) = descr.signature_info(&*self.db) {
+                    if let Some(descriptor) = descr.signature_info(self) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;
 
@@ -456,20 +436,20 @@ impl AnalysisImpl {
         Ok(None)
     }
 
-    pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(frange.file_id);
+    pub(crate) fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
+        let file = self.source_file(frange.file_id);
         let syntax = file.syntax();
         let node = find_covering_node(syntax, frange.range);
         let parent_fn = ctry!(node.ancestors().find_map(FnDef::cast));
         let function = ctry!(source_binder::function_from_source(
-            &*self.db,
+            self,
             frange.file_id,
             parent_fn
         )?);
-        let infer = function.infer(&*self.db)?;
+        let infer = function.infer(self)?;
         Ok(infer.type_of_node(node).map(|t| t.to_string()))
     }
-    pub fn rename(
+    pub(crate) fn rename(
         &self,
         position: FilePosition,
         new_name: &str,
@@ -493,7 +473,7 @@ impl AnalysisImpl {
         let mut query = Query::new(name.to_string());
         query.exact();
         query.limit(4);
-        crate::symbol_index::world_symbols(&*self.db, query)
+        crate::symbol_index::world_symbols(self, query)
     }
 }
 
