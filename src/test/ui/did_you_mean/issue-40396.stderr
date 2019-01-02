@@ -80,17 +80,13 @@ error[E0615]: attempted to take value of method `collect` on type `std::ops::Ran
   --> $DIR/issue-40396.rs:2:13
    |
 LL |     (0..13).collect<Vec<i32>>();
-   |             ^^^^^^^
-   |
-   = help: maybe a `()` to call it is missing?
+   |             ^^^^^^^ help: use parentheses to call the method: `collect()`
 
 error[E0615]: attempted to take value of method `collect` on type `std::ops::Range<{integer}>`
   --> $DIR/issue-40396.rs:18:13
    |
 LL |     (0..13).collect<Vec<i32>();
-   |             ^^^^^^^
-   |
-   = help: maybe a `()` to call it is missing?
+   |             ^^^^^^^ help: use parentheses to call the method: `collect()`
 
 error[E0308]: mismatched types
   --> $DIR/issue-40396.rs:18:29

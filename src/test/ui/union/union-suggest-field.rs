@@ -16,5 +16,6 @@ fn main() {
                           //~| SUGGESTION principal
 
     let y = u.calculate; //~ ERROR attempted to take value of method `calculate` on type `U`
-                         //~| HELP maybe a `()` to call it is missing
+                         //~| HELP use parentheses to call the method
+                         //~| SUGGESTION calculate()
 }
