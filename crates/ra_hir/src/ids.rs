@@ -45,7 +45,7 @@ impl HirFileId {
             HirFileIdRepr::Macro(_r) => panic!("macro generated file: {:?}", self),
         }
     }
-    pub(crate) fn source_file_query(db: &impl HirDatabase, file_id: HirFileId) -> SourceFileNode {
+    pub(crate) fn hir_source_file(db: &impl HirDatabase, file_id: HirFileId) -> SourceFileNode {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.source_file(file_id),
             HirFileIdRepr::Macro(m) => {

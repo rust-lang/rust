@@ -23,7 +23,7 @@ pub trait HirDatabase: SyntaxDatabase
 {
     fn hir_source_file(file_id: HirFileId) -> SourceFileNode {
         type HirSourceFileQuery;
-        use fn HirFileId::source_file_query;
+        use fn HirFileId::hir_source_file;
     }
     fn expand_macro_invocation(invoc: MacroCallId) -> Option<Arc<MacroExpansion>> {
         type ExpandMacroCallQuery;
