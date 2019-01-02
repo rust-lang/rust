@@ -205,7 +205,7 @@ impl AnalysisImpl {
 
     /// This returns `Vec` because a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
-    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         let descr = match source_binder::module_from_position(&*self.db, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
@@ -216,12 +216,12 @@ impl AnalysisImpl {
         };
         let decl = decl.borrowed();
         let decl_name = decl.name().unwrap();
-        let sym = FileSymbol {
+        let symbol = FileSymbol {
             name: decl_name.text(),
             node_range: decl_name.syntax().range(),
             kind: MODULE,
         };
-        Ok(vec![(file_id, sym)])
+        Ok(vec![NavigationTarget { file_id, symbol }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {

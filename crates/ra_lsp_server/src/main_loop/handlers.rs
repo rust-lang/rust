@@ -188,12 +188,11 @@ pub fn handle_workspace_symbol(
 
     fn exec_query(world: &ServerWorld, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
-        for (file_id, symbol) in world.analysis().symbol_search(query)? {
-            let line_index = world.analysis().file_line_index(file_id);
+        for nav in world.analysis().symbol_search(query)? {
             let info = SymbolInformation {
-                name: symbol.name.to_string(),
-                kind: symbol.kind.conv(),
-                location: to_location(file_id, symbol.node_range, world, &line_index)?,
+                name: nav.name().into(),
+                kind: nav.kind().conv(),
+                location: nav.try_conv_with(world)?,
                 container_name: None,
                 deprecated: None,
             };
@@ -212,12 +211,11 @@ pub fn handle_goto_definition(
         None => return Ok(None),
         Some(it) => it,
     };
-    let mut res = Vec::new();
-    for nav in rr.resolves_to {
-        let line_index = world.analysis().file_line_index(nav.file_id());
-        let location = to_location(nav.file_id(), nav.range(), &world, &line_index)?;
-        res.push(location)
-    }
+    let res = rr
+        .resolves_to
+        .into_iter()
+        .map(|nav| nav.try_conv_with(&world))
+        .collect::<Result<Vec<_>>>()?;
     Ok(Some(req::GotoDefinitionResponse::Array(res)))
 }
 
@@ -226,13 +224,12 @@ pub fn handle_parent_module(
     params: req::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
     let position = params.try_conv_with(&world)?;
-    let mut res = Vec::new();
-    for (file_id, symbol) in world.analysis().parent_module(position)? {
-        let line_index = world.analysis().file_line_index(file_id);
-        let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
-        res.push(location);
-    }
-    Ok(res)
+    world
+        .analysis()
+        .parent_module(position)?
+        .into_iter()
+        .map(|nav| nav.try_conv_with(&world))
+        .collect::<Result<Vec<_>>>()
 }
 
 pub fn handle_runnables(

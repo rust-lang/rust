@@ -2,7 +2,7 @@ use languageserver_types::{
     self, Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, InsertTextFormat,
 };
-use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition,FileRange,  CompletionItem, CompletionItemKind, InsertText};
+use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition,FileRange,  CompletionItem, CompletionItemKind, InsertText, NavigationTarget};
 use ra_editor::{LineCol, LineIndex, translate_offset_with_edit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
@@ -319,6 +319,15 @@ impl TryConvWith for FileSystemEdit {
             }
         };
         Ok(res)
+    }
+}
+
+impl TryConvWith for &NavigationTarget {
+    type Ctx = ServerWorld;
+    type Output = Location;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
+        let line_index = world.analysis().file_line_index(self.file_id());
+        to_location(self.file_id(), self.range(), &world, &line_index)
     }
 }
 

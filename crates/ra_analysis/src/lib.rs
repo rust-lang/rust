@@ -24,7 +24,7 @@ mod macros;
 use std::{fmt, sync::Arc};
 
 use rustc_hash::FxHashMap;
-use ra_syntax::{SourceFileNode, TextRange, TextUnit};
+use ra_syntax::{SourceFileNode, TextRange, TextUnit, SmolStr, SyntaxKind};
 use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
@@ -251,6 +251,12 @@ pub struct NavigationTarget {
 }
 
 impl NavigationTarget {
+    pub fn name(&self) -> SmolStr {
+        self.symbol.name.clone()
+    }
+    pub fn kind(&self) -> SyntaxKind {
+        self.symbol.kind
+    }
     pub fn file_id(&self) -> FileId {
         self.file_id
     }
@@ -337,8 +343,14 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         ra_editor::folding_ranges(&file)
     }
-    pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        self.imp.world_symbols(query)
+    pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
+        let res = self
+            .imp
+            .world_symbols(query)?
+            .into_iter()
+            .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
+            .collect();
+        Ok(res)
     }
     pub fn approximately_resolve_symbol(
         &self,
@@ -352,7 +364,7 @@ impl Analysis {
     pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
         self.imp.doc_text_for(nav)
     }
-    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
         self.imp.parent_module(position)
     }
     pub fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
