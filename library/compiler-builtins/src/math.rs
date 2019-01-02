@@ -66,6 +66,16 @@ no_mangle! {
     fn tanhf(n: f32) -> f32;
 }
 
+#[cfg(target_env = "sgx")]
+no_mangle! {
+    fn ceil(x: f64) -> f64;
+    fn ceilf(x: f32) -> f32;
+    fn floor(x: f64) -> f64;
+    fn floorf(x: f32) -> f32;
+    fn trunc(x: f64) -> f64;
+    fn truncf(x: f32) -> f32;
+}
+
 // only for the thumb*-none-eabi* targets
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 no_mangle! {
