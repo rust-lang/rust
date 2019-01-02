@@ -1,5 +1,5 @@
 error[E0658]: auto traits are experimental and possibly buggy (see issue #13231)
-  --> $DIR/feature-gate-optin-builtin-traits.rs:10:1
+  --> $DIR/feature-gate-optin-builtin-traits.rs:6:1
    |
 LL | auto trait AutoDummyTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,10 +7,10 @@ LL | auto trait AutoDummyTrait {}
    = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
 
 error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now (see issue #13231)
-  --> $DIR/feature-gate-optin-builtin-traits.rs:13:1
+  --> $DIR/feature-gate-optin-builtin-traits.rs:9:1
    |
-LL | impl !DummyTrait for DummyStruct {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl !AutoDummyTrait for DummyStruct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
 

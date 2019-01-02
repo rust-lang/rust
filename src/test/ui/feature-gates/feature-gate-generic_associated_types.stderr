@@ -25,7 +25,7 @@ LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
 error[E0658]: generic associated types are unstable (see issue #44265)
   --> $DIR/feature-gate-generic_associated_types.rs:14:5
    |
-LL |     type Pointer<usize> = Box<usize>;
+LL |     type Pointer<Usize> = Box<Usize>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable
@@ -33,7 +33,7 @@ LL |     type Pointer<usize> = Box<usize>;
 error[E0658]: generic associated types are unstable (see issue #44265)
   --> $DIR/feature-gate-generic_associated_types.rs:16:5
    |
-LL |     type Pointer2<u32> = Box<u32>;
+LL |     type Pointer2<U32> = Box<U32>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(generic_associated_types)] to the crate attributes to enable

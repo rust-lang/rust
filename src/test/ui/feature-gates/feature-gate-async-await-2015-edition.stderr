@@ -7,7 +7,7 @@ LL |     let _ = async {}; //~ ERROR cannot find struct, variant or union type `
 error[E0425]: cannot find value `async` in this scope
   --> $DIR/feature-gate-async-await-2015-edition.rs:9:13
    |
-LL |     let _ = async || {}; //~ ERROR cannot find value `async` in this scope
+LL |     let _ = async || { true }; //~ ERROR cannot find value `async` in this scope
    |             ^^^^^ not found in this scope
 
 error[E0658]: async fn is unstable (see issue #50547)

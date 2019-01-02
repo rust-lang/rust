@@ -9,3 +9,6 @@ use core::alloc::Layout;
 fn oom(info: Layout) -> ! {
     loop {}
 }
+
+#[panic_handler]
+fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }

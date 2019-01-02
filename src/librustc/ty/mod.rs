@@ -2839,7 +2839,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
                 && trait1_is_empty
                 && trait2_is_empty
-        } else if self.features().marker_trait_attr {
+        } else {
             let is_marker_impl = |def_id: DefId| -> bool {
                 let trait_ref = self.impl_trait_ref(def_id);
                 trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
@@ -2847,8 +2847,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.impl_polarity(def_id1) == self.impl_polarity(def_id2)
                 && is_marker_impl(def_id1)
                 && is_marker_impl(def_id2)
-        } else {
-            false
         };
 
         if is_legit {
