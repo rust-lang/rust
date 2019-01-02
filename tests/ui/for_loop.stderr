@@ -292,60 +292,8 @@ LL |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
    |
    = note: `-D clippy::unused-collect` implied by `-D warnings`
 
-error: you seem to want to iterate on a map's values
-  --> $DIR/for_loop.rs:337:19
-   |
-LL |     for (_, v) in &m {
-   |                   ^^
-   |
-   = note: `-D clippy::for-kv-map` implied by `-D warnings`
-help: use the corresponding method
-   |
-LL |     for v in m.values() {
-   |         ^    ^^^^^^^^^^
-
-error: you seem to want to iterate on a map's values
-  --> $DIR/for_loop.rs:342:19
-   |
-LL |     for (_, v) in &*m {
-   |                   ^^^
-help: use the corresponding method
-   |
-LL |     for v in (*m).values() {
-   |         ^    ^^^^^^^^^^^^^
-
-error: you seem to want to iterate on a map's values
-  --> $DIR/for_loop.rs:350:19
-   |
-LL |     for (_, v) in &mut m {
-   |                   ^^^^^^
-help: use the corresponding method
-   |
-LL |     for v in m.values_mut() {
-   |         ^    ^^^^^^^^^^^^^^
-
-error: you seem to want to iterate on a map's values
-  --> $DIR/for_loop.rs:355:19
-   |
-LL |     for (_, v) in &mut *m {
-   |                   ^^^^^^^
-help: use the corresponding method
-   |
-LL |     for v in (*m).values_mut() {
-   |         ^    ^^^^^^^^^^^^^^^^^
-
-error: you seem to want to iterate on a map's keys
-  --> $DIR/for_loop.rs:361:24
-   |
-LL |     for (k, _value) in rm {
-   |                        ^^
-help: use the corresponding method
-   |
-LL |     for k in rm.keys() {
-   |         ^    ^^^^^^^^^
-
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:414:14
+  --> $DIR/for_loop.rs:372:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
@@ -353,31 +301,31 @@ LL |     for i in 0..src.len() {
    = note: `-D clippy::manual-memcpy` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:419:14
+  --> $DIR/for_loop.rs:377:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[10..(src.len() + 10)].clone_from_slice(&src[..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:424:14
+  --> $DIR/for_loop.rs:382:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[10..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:429:14
+  --> $DIR/for_loop.rs:387:14
    |
 LL |     for i in 11..src.len() {
    |              ^^^^^^^^^^^^^ help: try replacing the loop by: `dst[11..src.len()].clone_from_slice(&src[(11 - 10)..(src.len() - 10)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:434:14
+  --> $DIR/for_loop.rs:392:14
    |
 LL |     for i in 0..dst.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst.clone_from_slice(&src[..dst.len()])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:447:14
+  --> $DIR/for_loop.rs:405:14
    |
 LL |     for i in 10..256 {
    |              ^^^^^^^
@@ -388,34 +336,34 @@ LL |     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256]) {
    |
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:459:14
+  --> $DIR/for_loop.rs:417:14
    |
 LL |     for i in 10..LOOP_OFFSET {
    |              ^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[(10 + LOOP_OFFSET)..(LOOP_OFFSET + LOOP_OFFSET)].clone_from_slice(&src[(10 - some_var)..(LOOP_OFFSET - some_var)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:472:14
+  --> $DIR/for_loop.rs:430:14
    |
 LL |     for i in 0..src_vec.len() {
    |              ^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst_vec[..src_vec.len()].clone_from_slice(&src_vec[..])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:501:14
+  --> $DIR/for_loop.rs:459:14
    |
 LL |     for i in from..from + src.len() {
    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + src.len()].clone_from_slice(&src[0..(from + src.len() - from)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:505:14
+  --> $DIR/for_loop.rs:463:14
    |
 LL |     for i in from..from + 3 {
    |              ^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + 3].clone_from_slice(&src[0..(from + 3 - from)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/for_loop.rs:512:14
+  --> $DIR/for_loop.rs:470:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
 
-error: aborting due to 51 previous errors
+error: aborting due to 46 previous errors
 
