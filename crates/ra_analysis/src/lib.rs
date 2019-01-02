@@ -222,21 +222,31 @@ impl Query {
 #[derive(Debug)]
 pub struct NavigationTarget {
     file_id: FileId,
-    symbol: FileSymbol,
+    name: SmolStr,
+    kind: SyntaxKind,
+    range: TextRange,
 }
 
 impl NavigationTarget {
-    pub fn name(&self) -> SmolStr {
-        self.symbol.name.clone()
+    fn from_symbol(file_id: FileId, symbol: FileSymbol) -> NavigationTarget {
+        NavigationTarget {
+            name: symbol.name.clone(),
+            kind: symbol.kind.clone(),
+            file_id,
+            range: symbol.node_range.clone(),
+        }
+    }
+    pub fn name(&self) -> &SmolStr {
+        &self.name
     }
     pub fn kind(&self) -> SyntaxKind {
-        self.symbol.kind
+        self.kind
     }
     pub fn file_id(&self) -> FileId {
         self.file_id
     }
     pub fn range(&self) -> TextRange {
-        self.symbol.node_range
+        self.range
     }
 }
 
@@ -260,7 +270,8 @@ impl ReferenceResolution {
     }
 
     fn add_resolution(&mut self, file_id: FileId, symbol: FileSymbol) {
-        self.resolves_to.push(NavigationTarget { file_id, symbol })
+        self.resolves_to
+            .push(NavigationTarget::from_symbol(file_id, symbol))
     }
 }
 
@@ -359,7 +370,7 @@ impl Analysis {
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
         let res = symbol_index::world_symbols(&*self.db, query)?
             .into_iter()
-            .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
+            .map(|(file_id, symbol)| NavigationTarget::from_symbol(file_id, symbol))
             .collect();
         Ok(res)
     }

@@ -8,11 +8,11 @@ use hir::{
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
 use ra_editor::{self, find_node_at_offset, LocalEdit, Severity};
 use ra_syntax::{
-    algo::find_covering_node,
+    algo::{find_covering_node, visit::{visitor, Visitor}},
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
     AstNode, SourceFileNode,
     SyntaxKind::*,
-    SyntaxNodeRef, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodeRef, TextRange, TextUnit,
 };
 
 use crate::{
@@ -116,12 +116,12 @@ impl db::RootDatabase {
         };
         let decl = decl.borrowed();
         let decl_name = decl.name().unwrap();
-        let symbol = FileSymbol {
+        Ok(vec![NavigationTarget {
+            file_id,
             name: decl_name.text(),
-            node_range: decl_name.syntax().range(),
+            range: decl_name.syntax().range(),
             kind: MODULE,
-        };
-        Ok(vec![NavigationTarget { file_id, symbol }])
+        }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
@@ -153,14 +153,12 @@ impl db::RootDatabase {
                 let scope = fn_descr.scopes(self);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
-                    rr.add_resolution(
-                        position.file_id,
-                        FileSymbol {
-                            name: entry.name().to_string().into(),
-                            node_range: entry.ptr().range(),
-                            kind: NAME,
-                        },
-                    );
+                    rr.resolves_to.push(NavigationTarget {
+                        file_id: position.file_id,
+                        name: entry.name().to_string().into(),
+                        range: entry.ptr().range(),
+                        kind: NAME,
+                    });
                     return Ok(Some(rr));
                 };
             }
@@ -182,12 +180,13 @@ impl db::RootDatabase {
                             Some(name) => name.to_string().into(),
                             None => "".into(),
                         };
-                        let symbol = FileSymbol {
+                        let symbol = NavigationTarget {
+                            file_id,
                             name,
-                            node_range: TextRange::offset_len(0.into(), 0.into()),
+                            range: TextRange::offset_len(0.into(), 0.into()),
                             kind: MODULE,
                         };
-                        rr.add_resolution(file_id, symbol);
+                        rr.resolves_to.push(symbol);
                         return Ok(Some(rr));
                     }
                 }
@@ -253,8 +252,7 @@ impl db::RootDatabase {
         }
     }
     pub(crate) fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        let file = self.source_file(nav.file_id);
-        let result = match (nav.symbol.description(&file), nav.symbol.docs(&file)) {
+        let result = match (nav.description(self), nav.docs(self)) {
             (Some(desc), Some(docs)) => {
                 Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
             }
@@ -509,5 +507,93 @@ impl<'a> FnCallNode<'a> {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
+    }
+}
+
+impl NavigationTarget {
+    fn node(&self, db: &db::RootDatabase) -> Option<SyntaxNode> {
+        let source_file = db.source_file(self.file_id);
+        let source_file = source_file.syntax();
+        let node = source_file
+            .descendants()
+            .find(|node| node.kind() == self.kind && node.range() == self.range)?
+            .owned();
+        Some(node)
+    }
+
+    fn docs(&self, db: &db::RootDatabase) -> Option<String> {
+        let node = self.node(db)?;
+        let node = node.borrowed();
+        fn doc_comments<'a, N: ast::DocCommentsOwner<'a>>(node: N) -> Option<String> {
+            let comments = node.doc_comment_text();
+            if comments.is_empty() {
+                None
+            } else {
+                Some(comments)
+            }
+        }
+
+        visitor()
+            .visit(doc_comments::<ast::FnDef>)
+            .visit(doc_comments::<ast::StructDef>)
+            .visit(doc_comments::<ast::EnumDef>)
+            .visit(doc_comments::<ast::TraitDef>)
+            .visit(doc_comments::<ast::Module>)
+            .visit(doc_comments::<ast::TypeDef>)
+            .visit(doc_comments::<ast::ConstDef>)
+            .visit(doc_comments::<ast::StaticDef>)
+            .accept(node)?
+    }
+
+    /// Get a description of this node.
+    ///
+    /// e.g. `struct Name`, `enum Name`, `fn Name`
+    fn description(&self, db: &db::RootDatabase) -> Option<String> {
+        // TODO: After type inference is done, add type information to improve the output
+        let node = self.node(db)?;
+        let node = node.borrowed();
+        // TODO: Refactor to be have less repetition
+        visitor()
+            .visit(|node: ast::FnDef| {
+                let mut string = "fn ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::StructDef| {
+                let mut string = "struct ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::EnumDef| {
+                let mut string = "enum ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::TraitDef| {
+                let mut string = "trait ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::Module| {
+                let mut string = "mod ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::TypeDef| {
+                let mut string = "type ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::ConstDef| {
+                let mut string = "const ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .visit(|node: ast::StaticDef| {
+                let mut string = "static ".to_string();
+                node.name()?.syntax().text().push_to(&mut string);
+                Some(string)
+            })
+            .accept(node)?
     }
 }
