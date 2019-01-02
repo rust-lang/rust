@@ -91,7 +91,7 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:11:19
    |
 LL |             break 123; //~ ERROR mismatched types
-   |                   ^^^ expected &str, found integral variable
+   |                   ^^^ expected &str, found integer
    |
    = note: expected type `&str`
               found type `{integer}`
@@ -118,7 +118,7 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:73:26
    |
 LL |                 break 'c 123; //~ ERROR mismatched types
-   |                          ^^^ expected (), found integral variable
+   |                          ^^^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`
@@ -136,7 +136,7 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:85:15
    |
 LL |         break 2; //~ ERROR mismatched types
-   |               ^ expected (), found integral variable
+   |               ^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`
@@ -145,7 +145,7 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:90:9
    |
 LL |         break; //~ ERROR mismatched types
-   |         ^^^^^ expected (), found integral variable
+   |         ^^^^^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`

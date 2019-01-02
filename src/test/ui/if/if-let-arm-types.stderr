@@ -2,13 +2,13 @@ error[E0308]: `if let` arms have incompatible types
   --> $DIR/if-let-arm-types.rs:2:5
    |
 LL | /     if let Some(b) = None { //~ ERROR: `if let` arms have incompatible types
-LL | |         //~^ expected (), found integral variable
+LL | |         //~^ expected (), found integer
 LL | |         //~| expected type `()`
 LL | |         //~| found type `{integer}`
 ...  |
 LL | |         1
 LL | |     };
-   | |_____^ expected (), found integral variable
+   | |_____^ expected (), found integer
    |
    = note: expected type `()`
               found type `{integer}`

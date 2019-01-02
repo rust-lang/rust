@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-multiple.rs:3:27
    |
 LL | fn main() { let a: bool = 1; let b: i32 = true; }
-   |                           ^ expected bool, found integral variable
+   |                           ^ expected bool, found integer
    |
    = note: expected type `bool`
               found type `{integer}`
