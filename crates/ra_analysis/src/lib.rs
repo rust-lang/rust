@@ -31,13 +31,12 @@ use relative_path::RelativePathBuf;
 
 use crate::{
     imp::{AnalysisHostImpl, AnalysisImpl},
-    symbol_index::SymbolIndex,
+    symbol_index::{SymbolIndex, FileSymbol},
 };
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
     runnables::{Runnable, RunnableKind},
-    symbol_index::FileSymbol,
 };
 pub use ra_editor::{
     Fold, FoldKind, HighlightedRange, LineIndex, StructureNode, Severity

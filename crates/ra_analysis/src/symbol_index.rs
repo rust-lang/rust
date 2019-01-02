@@ -125,14 +125,14 @@ fn is_type(kind: SyntaxKind) -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FileSymbol {
-    pub name: SmolStr,
-    pub node_range: TextRange,
-    pub kind: SyntaxKind,
+pub(crate) struct FileSymbol {
+    pub(crate) name: SmolStr,
+    pub(crate) node_range: TextRange,
+    pub(crate) kind: SyntaxKind,
 }
 
 impl FileSymbol {
-    pub fn docs(&self, file: &SourceFileNode) -> Option<String> {
+    pub(crate) fn docs(&self, file: &SourceFileNode) -> Option<String> {
         file.syntax()
             .descendants()
             .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
@@ -162,7 +162,7 @@ impl FileSymbol {
     /// Get a description of this node.
     ///
     /// e.g. `struct Name`, `enum Name`, `fn Name`
-    pub fn description(&self, file: &SourceFileNode) -> Option<String> {
+    pub(crate) fn description(&self, file: &SourceFileNode) -> Option<String> {
         // TODO: After type inference is done, add type information to improve the output
         file.syntax()
             .descendants()
