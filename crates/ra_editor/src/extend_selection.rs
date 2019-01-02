@@ -6,6 +6,7 @@ use ra_syntax::{
 };
 
 pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
+    let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     if range.is_empty() {
         let offset = range.start();
         let mut leaves = find_leaf_at_offset(root, offset);
@@ -15,8 +16,8 @@ pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRan
         let leaf_range = match leaves {
             LeafAtOffset::None => return None,
             LeafAtOffset::Single(l) => {
-                if l.kind() == COMMENT {
-                    extend_single_word_in_comment(l, offset).unwrap_or_else(|| l.range())
+                if string_kinds.contains(&l.kind()) {
+                    extend_single_word_in_comment_or_string(l, offset).unwrap_or_else(|| l.range())
                 } else {
                     l.range()
                 }
@@ -26,7 +27,7 @@ pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRan
         return Some(leaf_range);
     };
     let node = find_covering_node(root, range);
-    if node.kind() == COMMENT && range == node.range() {
+    if string_kinds.contains(&node.kind()) && range == node.range() {
         if let Some(range) = extend_comments(node) {
             return Some(range);
         }
@@ -38,7 +39,10 @@ pub fn extend_selection(root: SyntaxNodeRef, range: TextRange) -> Option<TextRan
     }
 }
 
-fn extend_single_word_in_comment(leaf: SyntaxNodeRef, offset: TextUnit) -> Option<TextRange> {
+fn extend_single_word_in_comment_or_string(
+    leaf: SyntaxNodeRef,
+    offset: TextUnit,
+) -> Option<TextRange> {
     let text: &str = leaf.leaf_text()?;
     let cursor_position: u32 = (offset - leaf.range().start()).into();
 
@@ -260,6 +264,18 @@ impl S {
 }
         "#,
             &["hello", "// hello world"],
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_string() {
+        do_check(
+            r#"
+fn bar(){}
+
+" fn f<|>oo() {"
+    "#,
+            &["foo", "\" fn foo() {\""],
         );
     }
 }
