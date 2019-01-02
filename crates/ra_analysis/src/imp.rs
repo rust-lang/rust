@@ -27,32 +27,25 @@ use crate::{
     symbol_index::{LibrarySymbolsQuery, FileSymbol},
 };
 
-#[derive(Debug, Default)]
-pub(crate) struct AnalysisHostImpl {
-    db: db::RootDatabase,
-}
-
-impl AnalysisHostImpl {
-    pub fn analysis(&self) -> AnalysisImpl {
+impl db::RootDatabase {
+    pub(crate) fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
-            db: self.db.snapshot(),
+            db: self.snapshot(),
         }
     }
-    pub fn apply_change(&mut self, change: AnalysisChange) {
+    pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
         // self.gc_syntax_trees();
         if !change.new_roots.is_empty() {
-            let mut local_roots = Vec::clone(&self.db.local_roots());
+            let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
-                self.db
-                    .query_mut(ra_db::SourceRootQuery)
+                self.query_mut(ra_db::SourceRootQuery)
                     .set(root_id, Default::default());
                 if is_local {
                     local_roots.push(root_id);
                 }
             }
-            self.db
-                .query_mut(ra_db::LocalRootsQuery)
+            self.query_mut(ra_db::LocalRootsQuery)
                 .set((), Arc::new(local_roots));
         }
 
@@ -60,53 +53,44 @@ impl AnalysisHostImpl {
             self.apply_root_change(root_id, root_change);
         }
         for (file_id, text) in change.files_changed {
-            self.db.query_mut(ra_db::FileTextQuery).set(file_id, text)
+            self.query_mut(ra_db::FileTextQuery).set(file_id, text)
         }
         if !change.libraries_added.is_empty() {
-            let mut libraries = Vec::clone(&self.db.library_roots());
+            let mut libraries = Vec::clone(&self.library_roots());
             for library in change.libraries_added {
                 libraries.push(library.root_id);
-                self.db
-                    .query_mut(ra_db::SourceRootQuery)
+                self.query_mut(ra_db::SourceRootQuery)
                     .set(library.root_id, Default::default());
-                self.db
-                    .query_mut(LibrarySymbolsQuery)
+                self.query_mut(LibrarySymbolsQuery)
                     .set_constant(library.root_id, Arc::new(library.symbol_index));
                 self.apply_root_change(library.root_id, library.root_change);
             }
-            self.db
-                .query_mut(ra_db::LibraryRootsQuery)
+            self.query_mut(ra_db::LibraryRootsQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
-            self.db
-                .query_mut(ra_db::CrateGraphQuery)
+            self.query_mut(ra_db::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }
 
     fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
-        let mut source_root = SourceRoot::clone(&self.db.source_root(root_id));
+        let mut source_root = SourceRoot::clone(&self.source_root(root_id));
         for add_file in root_change.added {
-            self.db
-                .query_mut(ra_db::FileTextQuery)
+            self.query_mut(ra_db::FileTextQuery)
                 .set(add_file.file_id, add_file.text);
-            self.db
-                .query_mut(ra_db::FileRelativePathQuery)
+            self.query_mut(ra_db::FileRelativePathQuery)
                 .set(add_file.file_id, add_file.path.clone());
-            self.db
-                .query_mut(ra_db::FileSourceRootQuery)
+            self.query_mut(ra_db::FileSourceRootQuery)
                 .set(add_file.file_id, root_id);
             source_root.files.insert(add_file.path, add_file.file_id);
         }
         for remove_file in root_change.removed {
-            self.db
-                .query_mut(ra_db::FileTextQuery)
+            self.query_mut(ra_db::FileTextQuery)
                 .set(remove_file.file_id, Default::default());
             source_root.files.remove(&remove_file.path);
         }
-        self.db
-            .query_mut(ra_db::SourceRootQuery)
+        self.query_mut(ra_db::SourceRootQuery)
             .set(root_id, Arc::new(source_root));
     }
 
@@ -115,14 +99,11 @@ impl AnalysisHostImpl {
     /// syntax trees. However, if we actually do that, everything is recomputed
     /// for some reason. Needs investigation.
     fn gc_syntax_trees(&mut self) {
-        self.db
-            .query(ra_db::SourceFileQuery)
+        self.query(ra_db::SourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
-        self.db
-            .query(hir::db::SourceFileItemsQuery)
+        self.query(hir::db::SourceFileItemsQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
-        self.db
-            .query(hir::db::FileItemQuery)
+        self.query(hir::db::FileItemQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
     }
 }

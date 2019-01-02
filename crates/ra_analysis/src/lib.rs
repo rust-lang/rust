@@ -29,7 +29,7 @@ use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
 use crate::{
-    imp::{AnalysisHostImpl, AnalysisImpl},
+    imp::AnalysisImpl,
     symbol_index::{SymbolIndex, FileSymbol},
 };
 
@@ -153,7 +153,7 @@ impl AnalysisChange {
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug, Default)]
 pub struct AnalysisHost {
-    imp: AnalysisHostImpl,
+    db: db::RootDatabase,
 }
 
 impl AnalysisHost {
@@ -161,13 +161,13 @@ impl AnalysisHost {
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
         Analysis {
-            imp: self.imp.analysis(),
+            imp: self.db.analysis(),
         }
     }
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
     pub fn apply_change(&mut self, change: AnalysisChange) {
-        self.imp.apply_change(change)
+        self.db.apply_change(change)
     }
 }
 
