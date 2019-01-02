@@ -671,10 +671,18 @@ impl Step for Std {
         let mut src = builder.sysroot_libdir(compiler, target).to_path_buf();
         src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
         builder.cp_filtered(&src, &dst, &|path| {
-            let name = path.file_name().and_then(|s| s.to_str());
-            name != Some(builder.config.rust_codegen_backends_dir.as_str()) &&
-                name != Some("bin")
-
+            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                if name == builder.config.rust_codegen_backends_dir.as_str() {
+                    return false
+                }
+                if name == "bin" {
+                    return false
+                }
+                if name.contains("LLVM") {
+                    return false
+                }
+            }
+            true
         });
 
         let mut cmd = rust_installer(builder);
