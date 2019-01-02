@@ -11,7 +11,7 @@
 //! to support custom watcher events (related to https://github.com/rust-analyzer/rust-analyzer/issues/131)
 //!
 //! VFS is based on a concept of roots: a set of directories on the file system
-//! whihc are watched for changes. Typically, there will be a root for each
+//! which are watched for changes. Typically, there will be a root for each
 //! Cargo package.
 mod arena;
 mod io;
