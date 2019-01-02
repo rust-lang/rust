@@ -43,46 +43,45 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
 
 fn get_pass_mode<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    abi: Abi,
     ty: Ty<'tcx>,
     is_return: bool,
 ) -> PassMode {
-    assert!(!tcx
+    let layout = tcx
         .layout_of(ParamEnv::reveal_all().and(ty))
-        .unwrap()
-        .is_unsized());
-    if let ty::Never = ty.sty {
+        .unwrap();
+    assert!(!layout.is_unsized());
+
+    if layout.size.bytes() == 0 {
         if is_return {
             PassMode::NoPass
         } else {
             PassMode::ByRef
         }
-    } else if ty.sty == tcx.mk_unit().sty {
-        if is_return {
-            PassMode::NoPass
-        } else {
-            PassMode::ByRef
-        }
-    } else if let Some(ret_ty) = crate::common::clif_type_from_ty(tcx, ty) {
-        PassMode::ByVal(ret_ty)
     } else {
-        if abi == Abi::C {
-            unimpl!(
-                "Non scalars are not yet supported for \"C\" abi ({:?}) is_return: {:?}",
-                ty,
-                is_return
-            );
+        match &layout.abi {
+            layout::Abi::Uninhabited => {
+                if is_return {
+                    PassMode::NoPass
+                } else {
+                    PassMode::ByRef
+                }
+            }
+            layout::Abi::Scalar(scalar) => PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone())),
+
+            // FIXME implement ScalarPair and Vector Abi in a cg_llvm compatible way
+            layout::Abi::ScalarPair(_, _) => PassMode::ByRef,
+            layout::Abi::Vector { .. } => PassMode::ByRef,
+
+            layout::Abi::Aggregate { .. } => PassMode::ByRef,
         }
-        PassMode::ByRef
     }
 }
 
 fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    sig: FnSig<'tcx>,
     arg: CValue<'tcx>,
 ) -> Value {
-    match get_pass_mode(fx.tcx, sig.abi, arg.layout().ty, false) {
+    match get_pass_mode(fx.tcx, arg.layout().ty, false) {
         PassMode::NoPass => unimplemented!("pass mode nopass"),
         PassMode::ByVal(_) => arg.load_scalar(fx),
         PassMode::ByRef => arg.force_stack(fx),
@@ -113,13 +112,13 @@ fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(
 
     let inputs = inputs
         .into_iter()
-        .filter_map(|ty| match get_pass_mode(tcx, sig.abi, ty, false) {
+        .filter_map(|ty| match get_pass_mode(tcx, ty, false) {
             PassMode::ByVal(clif_ty) => Some(clif_ty),
             PassMode::NoPass => unimplemented!("pass mode nopass"),
             PassMode::ByRef => Some(pointer_ty(tcx)),
         });
 
-    let (params, returns) = match get_pass_mode(tcx, sig.abi, output, true) {
+    let (params, returns) = match get_pass_mode(tcx, output, true) {
         PassMode::NoPass => (inputs.map(AbiParam::new).collect(), vec![]),
         PassMode::ByVal(ret_ty) => (
             inputs.map(AbiParam::new).collect(),
@@ -374,7 +373,7 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     ssa_flags: crate::analyze::Flags,
 ) -> CValue<'tcx> {
     let layout = fx.layout_of(arg_ty);
-    let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
+    let pass_mode = get_pass_mode(fx.tcx, arg_ty, false);
     let clif_type = pass_mode.get_param_ty(fx);
     let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
 
@@ -398,7 +397,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
     let ret_layout = fx.layout_of(fx.return_type());
-    let output_pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true);
+    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_type(), true);
     let ret_param = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByVal(_) => None,
@@ -603,7 +602,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
 
     let ret_layout = fx.layout_of(fn_sig.output());
 
-    let output_pass_mode = get_pass_mode(fx.tcx, fn_sig.abi, fn_sig.output(), true);
+    let output_pass_mode = get_pass_mode(fx.tcx, fn_sig.output(), true);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
@@ -639,7 +638,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
                 None
             };
 
-            args.get(0).map(|arg| adjust_arg_for_abi(fx, fn_sig, *arg))
+            args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg))
         }
         .into_iter()
     };
@@ -650,7 +649,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         .chain(
             args.into_iter()
                 .skip(1)
-                .map(|arg| adjust_arg_for_abi(fx, fn_sig, arg)),
+                .map(|arg| adjust_arg_for_abi(fx, arg)),
         )
         .collect::<Vec<_>>();
 
@@ -675,7 +674,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
 }
 
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
-    match get_pass_mode(fx.tcx, fx.self_sig().abi, fx.return_type(), true) {
+    match get_pass_mode(fx.tcx, fx.return_type(), true) {
         PassMode::NoPass | PassMode::ByRef => {
             fx.bcx.ins().return_(&[]);
         }
