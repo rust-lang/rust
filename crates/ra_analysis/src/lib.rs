@@ -27,11 +27,9 @@ use ra_syntax::{SourceFileNode, TextRange, TextUnit, SmolStr, SyntaxKind};
 use ra_text_edit::TextEdit;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
+use salsa::ParallelDatabase;
 
-use crate::{
-    imp::{AnalysisHostImpl, AnalysisImpl},
-    symbol_index::{SymbolIndex, FileSymbol},
-};
+use crate::symbol_index::{SymbolIndex, FileSymbol};
 
 pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertText},
@@ -44,7 +42,7 @@ pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
     Canceled, Cancelable, FilePosition, FileRange,
-    CrateGraph, CrateId, SourceRootId, FileId
+    CrateGraph, CrateId, SourceRootId, FileId, SyntaxDatabase, FilesDatabase
 };
 
 #[derive(Default)]
@@ -147,27 +145,6 @@ impl AnalysisChange {
     }
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.crate_graph = Some(graph);
-    }
-}
-
-/// `AnalysisHost` stores the current state of the world.
-#[derive(Debug, Default)]
-pub struct AnalysisHost {
-    imp: AnalysisHostImpl,
-}
-
-impl AnalysisHost {
-    /// Returns a snapshot of the current state, which you can query for
-    /// semantic information.
-    pub fn analysis(&self) -> Analysis {
-        Analysis {
-            imp: self.imp.analysis(),
-        }
-    }
-    /// Applies changes to the current state of the world. If there are
-    /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(&mut self, change: AnalysisChange) {
-        self.imp.apply_change(change)
     }
 }
 
@@ -287,124 +264,178 @@ impl ReferenceResolution {
     }
 }
 
+/// `AnalysisHost` stores the current state of the world.
+#[derive(Debug, Default)]
+pub struct AnalysisHost {
+    db: db::RootDatabase,
+}
+
+impl AnalysisHost {
+    /// Returns a snapshot of the current state, which you can query for
+    /// semantic information.
+    pub fn analysis(&self) -> Analysis {
+        Analysis {
+            db: self.db.snapshot(),
+        }
+    }
+    /// Applies changes to the current state of the world. If there are
+    /// outstanding snapshots, they will be canceled.
+    pub fn apply_change(&mut self, change: AnalysisChange) {
+        self.db.apply_change(change)
+    }
+}
+
 /// Analysis is a snapshot of a world state at a moment in time. It is the main
 /// entry point for asking semantic information about the world. When the world
 /// state is advanced using `AnalysisHost::apply_change` method, all existing
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    pub(crate) imp: AnalysisImpl,
+    db: salsa::Snapshot<db::RootDatabase>,
 }
 
 impl Analysis {
+    /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Arc<String> {
-        self.imp.file_text(file_id)
+        self.db.file_text(file_id)
     }
+    /// Gets the syntax tree of the file.
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.imp.file_syntax(file_id).clone()
+        self.db.source_file(file_id).clone()
     }
+    /// Gets the file's `LineIndex`: data structure to convert between absolute
+    /// offsets and line/column representation.
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.imp.file_line_index(file_id)
+        self.db.file_lines(file_id)
     }
+    /// Selects the next syntactic nodes encopasing the range.
     pub fn extend_selection(&self, frange: FileRange) -> TextRange {
-        extend_selection::extend_selection(&self.imp.db, frange)
+        extend_selection::extend_selection(&self.db, frange)
     }
+    /// Returns position of the mathcing brace (all types of braces are
+    /// supported).
     pub fn matching_brace(&self, file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
         ra_editor::matching_brace(file, offset)
     }
+    /// Returns a syntax tree represented as `String`, for debug purposes.
+    // FIXME: use a better name here.
     pub fn syntax_tree(&self, file_id: FileId) -> String {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.db.source_file(file_id);
         ra_editor::syntax_tree(&file)
     }
+    /// Returns an edit to remove all newlines in the range, cleaning up minor
+    /// stuff like trailing commas.
     pub fn join_lines(&self, frange: FileRange) -> SourceChange {
-        let file = self.imp.file_syntax(frange.file_id);
+        let file = self.db.source_file(frange.file_id);
         SourceChange::from_local_edit(frange.file_id, ra_editor::join_lines(&file, frange.range))
     }
+    /// Returns an edit which should be applied when opening a new line, fixing
+    /// up minor stuff like continuing the comment.
     pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.imp.file_syntax(position.file_id);
+        let file = self.db.source_file(position.file_id);
         let edit = ra_editor::on_enter(&file, position.offset)?;
-        let res = SourceChange::from_local_edit(position.file_id, edit);
-        Some(res)
+        Some(SourceChange::from_local_edit(position.file_id, edit))
     }
+    /// Returns an edit which should be applied after `=` was typed. Primaraly,
+    /// this works when adding `let =`.
+    // FIXME: use a snippet completion instead of this hack here.
     pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
-        let file = self.imp.file_syntax(position.file_id);
-        Some(SourceChange::from_local_edit(
-            position.file_id,
-            ra_editor::on_eq_typed(&file, position.offset)?,
-        ))
+        let file = self.db.source_file(position.file_id);
+        let edit = ra_editor::on_eq_typed(&file, position.offset)?;
+        Some(SourceChange::from_local_edit(position.file_id, edit))
     }
+    /// Returns a tree representation of symbols in the file. Useful to draw a
+    /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.db.source_file(file_id);
         ra_editor::file_structure(&file)
     }
+    /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.db.source_file(file_id);
         ra_editor::folding_ranges(&file)
     }
+    /// Fuzzy searches for a symbol.
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
-        let res = self
-            .imp
-            .world_symbols(query)?
+        let res = symbol_index::world_symbols(&*self.db, query)?
             .into_iter()
             .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
             .collect();
         Ok(res)
     }
+    /// Resolves reference to definition, but does not gurantee correctness.
     pub fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<ReferenceResolution>> {
-        self.imp.approximately_resolve_symbol(position)
+        self.db.approximately_resolve_symbol(position)
     }
+    /// Finds all usages of the reference at point.
     pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        self.imp.find_all_refs(position)
+        self.db.find_all_refs(position)
     }
+    /// Returns documentation string for a given target.
     pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        self.imp.doc_text_for(nav)
+        self.db.doc_text_for(nav)
     }
+    /// Returns a `mod name;` declaration whihc created the current module.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        self.imp.parent_module(position)
+        self.db.parent_module(position)
     }
+    /// Returns `::` separated path to the current module from the crate root.
     pub fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
-        self.imp.module_path(position)
+        self.db.module_path(position)
     }
+    /// Returns crates this file belongs too.
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        self.imp.crate_for(file_id)
+        self.db.crate_for(file_id)
     }
+    /// Returns the root file of the given crate.
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
-        Ok(self.imp.crate_root(crate_id))
+        Ok(self.db.crate_root(crate_id))
     }
+    /// Returns the set of possible targets to run for the current file.
     pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
-        let file = self.imp.file_syntax(file_id);
+        let file = self.db.source_file(file_id);
         Ok(runnables::runnables(self, &file, file_id))
     }
+    /// Computes syntax highlighting for the given file.
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        syntax_highlighting::highlight(&*self.imp.db, file_id)
+        syntax_highlighting::highlight(&*self.db, file_id)
     }
+    /// Computes completions at the given position.
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.imp.completions(position)
+        let completions = completion::completions(&self.db, position)?;
+        Ok(completions.map(|it| it.into()))
     }
+    /// Computes assists (aks code actons aka intentions) for the given
+    /// position.
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<SourceChange>> {
-        Ok(self.imp.assists(frange))
+        Ok(self.db.assists(frange))
     }
+    /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.imp.diagnostics(file_id)
+        self.db.diagnostics(file_id)
     }
+    /// Computes parameter information for the given call expression.
     pub fn resolve_callable(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
-        self.imp.resolve_callable(position)
+        self.db.resolve_callable(position)
     }
+    /// Computes the type of the expression at the given position.
     pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        self.imp.type_of(frange)
+        self.db.type_of(frange)
     }
+    /// Returns the edit required to rename reference at the position to the new
+    /// name.
     pub fn rename(
         &self,
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Vec<SourceFileEdit>> {
-        self.imp.rename(position, new_name)
+        self.db.rename(position, new_name)
     }
 }
 

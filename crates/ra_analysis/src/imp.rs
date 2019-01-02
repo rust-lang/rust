@@ -1,16 +1,12 @@
-use std::{
-    fmt,
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use rayon::prelude::*;
-use salsa::{Database, ParallelDatabase};
+use salsa::Database;
 
 use hir::{
     self, FnSignatureInfo, Problem, source_binder,
 };
 use ra_db::{FilesDatabase, SourceRoot, SourceRootId, SyntaxDatabase};
-use ra_editor::{self, find_node_at_offset, LineIndex, LocalEdit, Severity};
+use ra_editor::{self, find_node_at_offset, LocalEdit, Severity};
 use ra_syntax::{
     algo::find_covering_node,
     ast::{self, ArgListOwner, Expr, FnDef, NameOwner},
@@ -22,38 +18,25 @@ use ra_syntax::{
 use crate::{
     AnalysisChange,
     Cancelable, NavigationTarget,
-    completion::{CompletionItem, completions},
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
-    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase, FileSymbol},
+    symbol_index::{LibrarySymbolsQuery, FileSymbol},
 };
 
-#[derive(Debug, Default)]
-pub(crate) struct AnalysisHostImpl {
-    db: db::RootDatabase,
-}
-
-impl AnalysisHostImpl {
-    pub fn analysis(&self) -> AnalysisImpl {
-        AnalysisImpl {
-            db: self.db.snapshot(),
-        }
-    }
-    pub fn apply_change(&mut self, change: AnalysisChange) {
+impl db::RootDatabase {
+    pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
         log::info!("apply_change {:?}", change);
         // self.gc_syntax_trees();
         if !change.new_roots.is_empty() {
-            let mut local_roots = Vec::clone(&self.db.local_roots());
+            let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
-                self.db
-                    .query_mut(ra_db::SourceRootQuery)
+                self.query_mut(ra_db::SourceRootQuery)
                     .set(root_id, Default::default());
                 if is_local {
                     local_roots.push(root_id);
                 }
             }
-            self.db
-                .query_mut(ra_db::LocalRootsQuery)
+            self.query_mut(ra_db::LocalRootsQuery)
                 .set((), Arc::new(local_roots));
         }
 
@@ -61,53 +44,44 @@ impl AnalysisHostImpl {
             self.apply_root_change(root_id, root_change);
         }
         for (file_id, text) in change.files_changed {
-            self.db.query_mut(ra_db::FileTextQuery).set(file_id, text)
+            self.query_mut(ra_db::FileTextQuery).set(file_id, text)
         }
         if !change.libraries_added.is_empty() {
-            let mut libraries = Vec::clone(&self.db.library_roots());
+            let mut libraries = Vec::clone(&self.library_roots());
             for library in change.libraries_added {
                 libraries.push(library.root_id);
-                self.db
-                    .query_mut(ra_db::SourceRootQuery)
+                self.query_mut(ra_db::SourceRootQuery)
                     .set(library.root_id, Default::default());
-                self.db
-                    .query_mut(LibrarySymbolsQuery)
+                self.query_mut(LibrarySymbolsQuery)
                     .set_constant(library.root_id, Arc::new(library.symbol_index));
                 self.apply_root_change(library.root_id, library.root_change);
             }
-            self.db
-                .query_mut(ra_db::LibraryRootsQuery)
+            self.query_mut(ra_db::LibraryRootsQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
-            self.db
-                .query_mut(ra_db::CrateGraphQuery)
+            self.query_mut(ra_db::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }
 
     fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
-        let mut source_root = SourceRoot::clone(&self.db.source_root(root_id));
+        let mut source_root = SourceRoot::clone(&self.source_root(root_id));
         for add_file in root_change.added {
-            self.db
-                .query_mut(ra_db::FileTextQuery)
+            self.query_mut(ra_db::FileTextQuery)
                 .set(add_file.file_id, add_file.text);
-            self.db
-                .query_mut(ra_db::FileRelativePathQuery)
+            self.query_mut(ra_db::FileRelativePathQuery)
                 .set(add_file.file_id, add_file.path.clone());
-            self.db
-                .query_mut(ra_db::FileSourceRootQuery)
+            self.query_mut(ra_db::FileSourceRootQuery)
                 .set(add_file.file_id, root_id);
             source_root.files.insert(add_file.path, add_file.file_id);
         }
         for remove_file in root_change.removed {
-            self.db
-                .query_mut(ra_db::FileTextQuery)
+            self.query_mut(ra_db::FileTextQuery)
                 .set(remove_file.file_id, Default::default());
             source_root.files.remove(&remove_file.path);
         }
-        self.db
-            .query_mut(ra_db::SourceRootQuery)
+        self.query_mut(ra_db::SourceRootQuery)
             .set(root_id, Arc::new(source_root));
     }
 
@@ -116,74 +90,18 @@ impl AnalysisHostImpl {
     /// syntax trees. However, if we actually do that, everything is recomputed
     /// for some reason. Needs investigation.
     fn gc_syntax_trees(&mut self) {
-        self.db
-            .query(ra_db::SourceFileQuery)
+        self.query(ra_db::SourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
-        self.db
-            .query(hir::db::SourceFileItemsQuery)
+        self.query(hir::db::SourceFileItemsQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
-        self.db
-            .query(hir::db::FileItemQuery)
+        self.query(hir::db::FileItemQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
     }
 }
 
-pub(crate) struct AnalysisImpl {
-    pub(crate) db: salsa::Snapshot<db::RootDatabase>,
-}
-
-impl fmt::Debug for AnalysisImpl {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let db: &db::RootDatabase = &self.db;
-        fmt.debug_struct("AnalysisImpl").field("db", db).finish()
-    }
-}
-
-impl AnalysisImpl {
-    pub fn file_text(&self, file_id: FileId) -> Arc<String> {
-        self.db.file_text(file_id)
-    }
-    pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.db.source_file(file_id)
-    }
-    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.file_lines(file_id)
-    }
-    pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-        struct Snap(salsa::Snapshot<db::RootDatabase>);
-        impl Clone for Snap {
-            fn clone(&self) -> Snap {
-                Snap(self.0.snapshot())
-            }
-        }
-
-        let buf: Vec<Arc<SymbolIndex>> = if query.libs {
-            let snap = Snap(self.db.snapshot());
-            self.db
-                .library_roots()
-                .par_iter()
-                .map_with(snap, |db, &lib_id| db.0.library_symbols(lib_id))
-                .collect()
-        } else {
-            let mut files = Vec::new();
-            for &root in self.db.local_roots().iter() {
-                let sr = self.db.source_root(root);
-                files.extend(sr.files.values().map(|&it| it))
-            }
-
-            let snap = Snap(self.db.snapshot());
-            files
-                .par_iter()
-                .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
-                .filter_map(|it| it.ok())
-                .collect()
-        };
-        Ok(query.search(&buf))
-    }
-
+impl db::RootDatabase {
     pub(crate) fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
-        let descr = match source_binder::module_from_position(&*self.db, position)? {
+        let descr = match source_binder::module_from_position(self, position)? {
             None => return Ok(None),
             Some(it) => it,
         };
@@ -205,12 +123,15 @@ impl AnalysisImpl {
 
     /// This returns `Vec` because a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
-    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<NavigationTarget>> {
-        let descr = match source_binder::module_from_position(&*self.db, position)? {
+    pub(crate) fn parent_module(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Vec<NavigationTarget>> {
+        let descr = match source_binder::module_from_position(self, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
-        let (file_id, decl) = match descr.parent_link_source(&*self.db) {
+        let (file_id, decl) = match descr.parent_link_source(self) {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -224,39 +145,33 @@ impl AnalysisImpl {
         Ok(vec![NavigationTarget { file_id, symbol }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
-    pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let descr = match source_binder::module_from_file_id(&*self.db, file_id)? {
+    pub(crate) fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+        let descr = match source_binder::module_from_file_id(self, file_id)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
         let root = descr.crate_root();
         let file_id = root.file_id();
 
-        let crate_graph = self.db.crate_graph();
+        let crate_graph = self.crate_graph();
         let crate_id = crate_graph.crate_id_for_crate_root(file_id);
         Ok(crate_id.into_iter().collect())
     }
-    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.db.crate_graph().crate_root(crate_id)
+    pub(crate) fn crate_root(&self, crate_id: CrateId) -> FileId {
+        self.crate_graph().crate_root(crate_id)
     }
-    pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let completions = completions(&self.db, position)?;
-        Ok(completions.map(|it| it.into()))
-    }
-    pub fn approximately_resolve_symbol(
+    pub(crate) fn approximately_resolve_symbol(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<ReferenceResolution>> {
-        let file = self.db.source_file(position.file_id);
+        let file = self.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
             let mut rr = ReferenceResolution::new(name_ref.syntax().range());
-            if let Some(fn_descr) = source_binder::function_from_child_node(
-                &*self.db,
-                position.file_id,
-                name_ref.syntax(),
-            )? {
-                let scope = fn_descr.scopes(&*self.db);
+            if let Some(fn_descr) =
+                source_binder::function_from_child_node(self, position.file_id, name_ref.syntax())?
+            {
+                let scope = fn_descr.scopes(self);
                 // First try to resolve the symbol locally
                 if let Some(entry) = scope.resolve_local_name(name_ref) {
                     rr.add_resolution(
@@ -281,7 +196,7 @@ impl AnalysisImpl {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     if let Some(child_module) =
-                        source_binder::module_from_declaration(&*self.db, position.file_id, module)?
+                        source_binder::module_from_declaration(self, position.file_id, module)?
                     {
                         let file_id = child_module.file_id();
                         let name = match child_module.name() {
@@ -302,10 +217,13 @@ impl AnalysisImpl {
         Ok(None)
     }
 
-    pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
-        let file = self.db.source_file(position.file_id);
+    pub(crate) fn find_all_refs(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Vec<(FileId, TextRange)>> {
+        let file = self.source_file(position.file_id);
         // Find the binding associated with the offset
-        let (binding, descr) = match find_binding(&self.db, &file, position)? {
+        let (binding, descr) = match find_binding(self, &file, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -317,7 +235,7 @@ impl AnalysisImpl {
             .collect::<Vec<_>>();
         ret.extend(
             descr
-                .scopes(&*self.db)
+                .scopes(self)
                 .find_all_refs(binding)
                 .into_iter()
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
@@ -355,8 +273,8 @@ impl AnalysisImpl {
             Ok(Some((binding, descr)))
         }
     }
-    pub fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(nav.file_id);
+    pub(crate) fn doc_text_for(&self, nav: NavigationTarget) -> Cancelable<Option<String>> {
+        let file = self.source_file(nav.file_id);
         let result = match (nav.symbol.description(&file), nav.symbol.docs(&file)) {
             (Some(desc), Some(docs)) => {
                 Some("```rust\n".to_string() + &*desc + "\n```\n\n" + &*docs)
@@ -369,8 +287,8 @@ impl AnalysisImpl {
         Ok(result)
     }
 
-    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let syntax = self.db.source_file(file_id);
+    pub(crate) fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
+        let syntax = self.source_file(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
@@ -381,9 +299,9 @@ impl AnalysisImpl {
                 fix: d.fix.map(|fix| SourceChange::from_local_edit(file_id, fix)),
             })
             .collect::<Vec<_>>();
-        if let Some(m) = source_binder::module_from_file_id(&*self.db, file_id)? {
-            for (name_node, problem) in m.problems(&*self.db) {
-                let source_root = self.db.file_source_root(file_id);
+        if let Some(m) = source_binder::module_from_file_id(self, file_id)? {
+            for (name_node, problem) in m.problems(self) {
+                let source_root = self.file_source_root(file_id);
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {
@@ -433,8 +351,8 @@ impl AnalysisImpl {
         Ok(res)
     }
 
-    pub fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
-        let file = self.file_syntax(frange.file_id);
+    pub(crate) fn assists(&self, frange: FileRange) -> Vec<SourceChange> {
+        let file = self.source_file(frange.file_id);
         let offset = frange.range.start();
         let actions = vec![
             ra_editor::flip_comma(&file, offset).map(|f| f()),
@@ -451,11 +369,11 @@ impl AnalysisImpl {
             .collect()
     }
 
-    pub fn resolve_callable(
+    pub(crate) fn resolve_callable(
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
-        let file = self.db.source_file(position.file_id);
+        let file = self.source_file(position.file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
@@ -466,12 +384,12 @@ impl AnalysisImpl {
         let file_symbols = self.index_resolve(name_ref)?;
         for (fn_file_id, fs) in file_symbols {
             if fs.kind == FN_DEF {
-                let fn_file = self.db.source_file(fn_file_id);
+                let fn_file = self.source_file(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
                     let descr = ctry!(source_binder::function_from_source(
-                        &*self.db, fn_file_id, fn_def
+                        self, fn_file_id, fn_def
                     )?);
-                    if let Some(descriptor) = descr.signature_info(&*self.db) {
+                    if let Some(descriptor) = descr.signature_info(self) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;
 
@@ -518,20 +436,20 @@ impl AnalysisImpl {
         Ok(None)
     }
 
-    pub fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
-        let file = self.db.source_file(frange.file_id);
+    pub(crate) fn type_of(&self, frange: FileRange) -> Cancelable<Option<String>> {
+        let file = self.source_file(frange.file_id);
         let syntax = file.syntax();
         let node = find_covering_node(syntax, frange.range);
         let parent_fn = ctry!(node.ancestors().find_map(FnDef::cast));
         let function = ctry!(source_binder::function_from_source(
-            &*self.db,
+            self,
             frange.file_id,
             parent_fn
         )?);
-        let infer = function.infer(&*self.db)?;
+        let infer = function.infer(self)?;
         Ok(infer.type_of_node(node).map(|t| t.to_string()))
     }
-    pub fn rename(
+    pub(crate) fn rename(
         &self,
         position: FilePosition,
         new_name: &str,
@@ -555,7 +473,7 @@ impl AnalysisImpl {
         let mut query = Query::new(name.to_string());
         query.exact();
         query.limit(4);
-        self.world_symbols(query)
+        crate::symbol_index::world_symbols(self, query)
     }
 }
 
