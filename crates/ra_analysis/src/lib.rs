@@ -231,9 +231,9 @@ impl NavigationTarget {
     fn from_symbol(file_id: FileId, symbol: FileSymbol) -> NavigationTarget {
         NavigationTarget {
             name: symbol.name.clone(),
-            kind: symbol.kind.clone(),
+            kind: symbol.ptr.kind(),
             file_id,
-            range: symbol.node_range.clone(),
+            range: symbol.ptr.range(),
         }
     }
     pub fn name(&self) -> &SmolStr {

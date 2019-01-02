@@ -360,52 +360,52 @@ impl db::RootDatabase {
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
         for (fn_file_id, fs) in file_symbols {
-            if fs.kind == FN_DEF {
+            if fs.ptr.kind() == FN_DEF {
                 let fn_file = self.source_file(fn_file_id);
-                if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
-                    let descr = ctry!(source_binder::function_from_source(
-                        self, fn_file_id, fn_def
-                    )?);
-                    if let Some(descriptor) = descr.signature_info(self) {
-                        // If we have a calling expression let's find which argument we are on
-                        let mut current_parameter = None;
+                let fn_def = fs.ptr.resolve(&fn_file);
+                let fn_def = ast::FnDef::cast(fn_def.borrowed()).unwrap();
+                let descr = ctry!(source_binder::function_from_source(
+                    self, fn_file_id, fn_def
+                )?);
+                if let Some(descriptor) = descr.signature_info(self) {
+                    // If we have a calling expression let's find which argument we are on
+                    let mut current_parameter = None;
 
-                        let num_params = descriptor.params.len();
-                        let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
+                    let num_params = descriptor.params.len();
+                    let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
 
-                        if num_params == 1 {
-                            if !has_self {
-                                current_parameter = Some(0);
-                            }
-                        } else if num_params > 1 {
-                            // Count how many parameters into the call we are.
-                            // TODO: This is best effort for now and should be fixed at some point.
-                            // It may be better to see where we are in the arg_list and then check
-                            // where offset is in that list (or beyond).
-                            // Revisit this after we get documentation comments in.
-                            if let Some(ref arg_list) = calling_node.arg_list() {
-                                let start = arg_list.syntax().range().start();
-
-                                let range_search = TextRange::from_to(start, position.offset);
-                                let mut commas: usize = arg_list
-                                    .syntax()
-                                    .text()
-                                    .slice(range_search)
-                                    .to_string()
-                                    .matches(',')
-                                    .count();
-
-                                // If we have a method call eat the first param since it's just self.
-                                if has_self {
-                                    commas += 1;
-                                }
-
-                                current_parameter = Some(commas);
-                            }
+                    if num_params == 1 {
+                        if !has_self {
+                            current_parameter = Some(0);
                         }
+                    } else if num_params > 1 {
+                        // Count how many parameters into the call we are.
+                        // TODO: This is best effort for now and should be fixed at some point.
+                        // It may be better to see where we are in the arg_list and then check
+                        // where offset is in that list (or beyond).
+                        // Revisit this after we get documentation comments in.
+                        if let Some(ref arg_list) = calling_node.arg_list() {
+                            let start = arg_list.syntax().range().start();
 
-                        return Ok(Some((descriptor, current_parameter)));
+                            let range_search = TextRange::from_to(start, position.offset);
+                            let mut commas: usize = arg_list
+                                .syntax()
+                                .text()
+                                .slice(range_search)
+                                .to_string()
+                                .matches(',')
+                                .count();
+
+                            // If we have a method call eat the first param since it's just self.
+                            if has_self {
+                                commas += 1;
+                            }
+
+                            current_parameter = Some(commas);
+                        }
                     }
+
+                    return Ok(Some((descriptor, current_parameter)));
                 }
             }
         }

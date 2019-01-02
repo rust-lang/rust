@@ -5,12 +5,12 @@ use std::{
 
 use fst::{self, Streamer};
 use ra_syntax::{
-    SyntaxNodeRef, SourceFileNode, SmolStr, TextRange,
+    SyntaxNodeRef, SourceFileNode, SmolStr,
     algo::visit::{visitor, Visitor},
     SyntaxKind::{self, *},
     ast::{self, NameOwner},
 };
-use ra_db::{SyntaxDatabase, SourceRootId, FilesDatabase};
+use ra_db::{SyntaxDatabase, SourceRootId, FilesDatabase, LocalSyntaxPtr};
 use salsa::ParallelDatabase;
 use rayon::prelude::*;
 
@@ -140,7 +140,7 @@ impl Query {
                 let idx = indexed_value.value as usize;
 
                 let (file_id, symbol) = &file_symbols.symbols[idx];
-                if self.only_types && !is_type(symbol.kind) {
+                if self.only_types && !is_type(symbol.ptr.kind()) {
                     continue;
                 }
                 if self.exact && symbol.name != self.query {
@@ -163,9 +163,7 @@ fn is_type(kind: SyntaxKind) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct FileSymbol {
     pub(crate) name: SmolStr,
-    pub(crate) node_range: TextRange,
-    pub(crate) kind: SyntaxKind,
-    _x: (),
+    pub(crate) ptr: LocalSyntaxPtr,
 }
 
 fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
@@ -173,9 +171,7 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
         let name = node.name()?;
         Some(FileSymbol {
             name: name.text(),
-            node_range: node.syntax().range(),
-            kind: node.syntax().kind(),
-            _x: (),
+            ptr: LocalSyntaxPtr::new(node.syntax()),
         })
     }
     visitor()
