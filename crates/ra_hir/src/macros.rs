@@ -1,3 +1,12 @@
+/// Machinery for macro expansion.
+///
+/// One of the more complicated things about macros is managing the source code
+/// that is produced after expansion. See `HirFileId` and `MacroCallId` for how
+/// do we do that.
+///
+/// When file-management question is resolved, all that is left is a token tree
+/// to token tree transformation plus hygent. We don't have either of thouse
+/// yet, so all macros are string based at the moment!
 use std::sync::Arc;
 
 use ra_db::LocalSyntaxPtr;
@@ -16,6 +25,8 @@ pub enum MacroDef {
 }
 
 impl MacroDef {
+    /// Expands macro call, returning the expansion and offset to be used to
+    /// convert ranges between expansion and original source.
     pub fn ast_expand(macro_call: ast::MacroCall) -> Option<(TextUnit, MacroExpansion)> {
         let (def, input) = MacroDef::from_call(macro_call)?;
         let exp = def.expand(input)?;
@@ -109,14 +120,20 @@ pub struct MacroInput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MacroExpansion {
+    /// The result of macro expansion. Should be token tree as well.
     text: String,
+    /// Correspondence between ranges in the original source code and ranges in
+    /// the macro.
     ranges_map: Vec<(TextRange, TextRange)>,
+    /// Implementation detail: internally, a macro is expanded to the whole file,
+    /// even if it is an expression. This `ptr` selects the actual expansion from
+    /// the expanded file.
     ptr: LocalSyntaxPtr,
 }
 
 impl MacroExpansion {
-    //FIXME: does not really make sense, macro expansion is not neccessary a
-    //whole file.
+    // FIXME: does not really make sense, macro expansion is not neccessary a
+    // whole file. See `MacroExpansion::ptr` as well.
     pub(crate) fn file(&self) -> SourceFileNode {
         SourceFileNode::parse(&self.text)
     }
@@ -124,23 +141,25 @@ impl MacroExpansion {
     pub fn syntax(&self) -> SyntaxNode {
         self.ptr.resolve(&self.file())
     }
-    pub fn map_range_back(&self, tgt_range: TextRange) -> Option<TextRange> {
-        for (s_range, t_range) in self.ranges_map.iter() {
-            if tgt_range.is_subrange(&t_range) {
-                let tgt_at_zero_range = tgt_range - tgt_range.start();
-                let tgt_range_offset = tgt_range.start() - t_range.start();
-                let src_range = tgt_at_zero_range + tgt_range_offset + s_range.start();
-                return Some(src_range);
-            }
-        }
-        None
-    }
+    /// Maps range in the source code to the range in the expanded code.
     pub fn map_range_forward(&self, src_range: TextRange) -> Option<TextRange> {
         for (s_range, t_range) in self.ranges_map.iter() {
             if src_range.is_subrange(&s_range) {
                 let src_at_zero_range = src_range - src_range.start();
                 let src_range_offset = src_range.start() - s_range.start();
                 let src_range = src_at_zero_range + src_range_offset + t_range.start();
+                return Some(src_range);
+            }
+        }
+        None
+    }
+    /// Maps range in the expanded code to the range in the source code.
+    pub fn map_range_back(&self, tgt_range: TextRange) -> Option<TextRange> {
+        for (s_range, t_range) in self.ranges_map.iter() {
+            if tgt_range.is_subrange(&t_range) {
+                let tgt_at_zero_range = tgt_range - tgt_range.start();
+                let tgt_range_offset = tgt_range.start() - t_range.start();
+                let src_range = tgt_at_zero_range + tgt_range_offset + s_range.start();
                 return Some(src_range);
             }
         }

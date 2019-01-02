@@ -25,6 +25,7 @@ pub mod source_binder;
 mod ids;
 mod macros;
 mod name;
+// can't use `crate` or `r#crate` here :(
 mod krate;
 mod module;
 mod function;

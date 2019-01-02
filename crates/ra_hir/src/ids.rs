@@ -29,6 +29,8 @@ use crate::{
 pub struct HirFileId(HirFileIdRepr);
 
 impl HirFileId {
+    /// For macro-expansion files, returns the file original source file the
+    /// expansionoriginated from.
     pub(crate) fn original_file_id(self, db: &impl HirDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
@@ -45,6 +47,7 @@ impl HirFileId {
             HirFileIdRepr::Macro(_r) => panic!("macro generated file: {:?}", self),
         }
     }
+
     pub(crate) fn hir_source_file(db: &impl HirDatabase, file_id: HirFileId) -> SourceFileNode {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.source_file(file_id),
