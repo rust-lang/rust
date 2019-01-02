@@ -6,3 +6,4 @@ incremental = true
 debug = true
 
 [patch.'crates-io']
+cargo_metadata = { git = "https://github.com/matklad/cargo_metadata.git", branch = "well-typed" }

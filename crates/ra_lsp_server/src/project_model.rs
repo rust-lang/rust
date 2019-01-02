@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use failure::{format_err, bail};
 use thread_worker::{WorkerHandle, Worker};
 
@@ -109,11 +109,7 @@ impl CargoWorkspace {
         let mut packages = Vec::new();
         let mut targets = Vec::new();
 
-        let ws_members: FxHashSet<String> = meta
-            .workspace_members
-            .into_iter()
-            .map(|it| it.raw)
-            .collect();
+        let ws_members = &meta.workspace_members;
 
         for meta_pkg in meta.packages {
             let pkg = Package(packages.len());
@@ -121,7 +117,7 @@ impl CargoWorkspace {
             pkg_by_id.insert(meta_pkg.id.clone(), pkg);
             let mut pkg_data = PackageData {
                 name: meta_pkg.name.into(),
-                manifest: PathBuf::from(meta_pkg.manifest_path),
+                manifest: meta_pkg.manifest_path.clone(),
                 targets: Vec::new(),
                 is_member,
                 dependencies: Vec::new(),
@@ -131,7 +127,7 @@ impl CargoWorkspace {
                 targets.push(TargetData {
                     pkg,
                     name: meta_tgt.name.into(),
-                    root: PathBuf::from(meta_tgt.src_path),
+                    root: meta_tgt.src_path.clone(),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
                 });
                 pkg_data.targets.push(tgt);
@@ -141,10 +137,11 @@ impl CargoWorkspace {
         let resolve = meta.resolve.expect("metadata executed with deps");
         for node in resolve.nodes {
             let source = pkg_by_id[&node.id];
-            for id in node.dependencies {
-                let target = pkg_by_id[&id];
-                let name: SmolStr = packages[target.0].name.replace('-', "_").into();
-                let dep = PackageDependency { name, pkg: target };
+            for dep_node in node.deps {
+                let dep = PackageDependency {
+                    name: dep_node.name.into(),
+                    pkg: pkg_by_id[&dep_node.pkg],
+                };
                 packages[source.0].dependencies.push(dep);
             }
         }
