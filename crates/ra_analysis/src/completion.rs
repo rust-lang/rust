@@ -58,6 +58,6 @@ fn check_completion(code: &str, expected_completions: &str, kind: CompletionKind
     } else {
         single_file_with_position(code)
     };
-    let completions = completions(&analysis.imp.db, position).unwrap().unwrap();
+    let completions = completions(&analysis.db, position).unwrap().unwrap();
     completions.assert_match(expected_completions, kind);
 }

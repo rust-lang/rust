@@ -357,7 +357,7 @@ impl Analysis {
     }
     /// Fuzzy searches for a symbol.
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
-        let res = symbol_index::world_symbols(self.db, query)?
+        let res = symbol_index::world_symbols(&*self.db, query)?
             .into_iter()
             .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
             .collect();
