@@ -1452,7 +1452,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_call_dest(mir, term, &sig, destination, term_location);
 
                 self.prove_predicates(
-                    sig.inputs().iter().map(|ty| ty::Predicate::WellFormed(ty)),
+                    sig.inputs_and_output.iter().map(|ty| ty::Predicate::WellFormed(ty)),
                     term_location.to_locations(),
                     ConstraintCategory::Boring,
                 );
