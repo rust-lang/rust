@@ -41,7 +41,7 @@ pub use ra_editor::{
 pub use hir::FnSignatureInfo;
 
 pub use ra_db::{
-    Canceled, Cancelable, FilePosition, FileRange,
+    Canceled, Cancelable, FilePosition, FileRange, LocalSyntaxPtr,
     CrateGraph, CrateId, SourceRootId, FileId, SyntaxDatabase, FilesDatabase
 };
 
@@ -225,6 +225,8 @@ pub struct NavigationTarget {
     name: SmolStr,
     kind: SyntaxKind,
     range: TextRange,
+    // Should be DefId ideally
+    ptr: Option<LocalSyntaxPtr>,
 }
 
 impl NavigationTarget {
@@ -234,6 +236,7 @@ impl NavigationTarget {
             kind: symbol.ptr.kind(),
             file_id,
             range: symbol.ptr.range(),
+            ptr: Some(symbol.ptr.clone()),
         }
     }
     pub fn name(&self) -> &SmolStr {

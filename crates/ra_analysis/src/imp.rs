@@ -121,6 +121,7 @@ impl db::RootDatabase {
             name: decl_name.text(),
             range: decl_name.syntax().range(),
             kind: MODULE,
+            ptr: None,
         }])
     }
     /// Returns `Vec` for the same reason as `parent_module`
@@ -158,6 +159,7 @@ impl db::RootDatabase {
                         name: entry.name().to_string().into(),
                         range: entry.ptr().range(),
                         kind: NAME,
+                        ptr: None,
                     });
                     return Ok(Some(rr));
                 };
@@ -185,6 +187,7 @@ impl db::RootDatabase {
                             name,
                             range: TextRange::offset_len(0.into(), 0.into()),
                             kind: MODULE,
+                            ptr: None,
                         };
                         rr.resolves_to.push(symbol);
                         return Ok(Some(rr));
