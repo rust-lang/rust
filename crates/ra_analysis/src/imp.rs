@@ -3,7 +3,6 @@ use std::{
     sync::Arc,
 };
 
-use rayon::prelude::*;
 use salsa::{Database, ParallelDatabase};
 
 use hir::{
@@ -25,7 +24,7 @@ use crate::{
     completion::{CompletionItem, completions},
     CrateId, db, Diagnostic, FileId, FilePosition, FileRange, FileSystemEdit,
     Query, ReferenceResolution, RootChange, SourceChange, SourceFileEdit,
-    symbol_index::{LibrarySymbolsQuery, SymbolIndex, SymbolsDatabase, FileSymbol},
+    symbol_index::{LibrarySymbolsQuery, FileSymbol},
 };
 
 #[derive(Debug, Default)]
@@ -149,39 +148,6 @@ impl AnalysisImpl {
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.db.file_lines(file_id)
     }
-    pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-        struct Snap(salsa::Snapshot<db::RootDatabase>);
-        impl Clone for Snap {
-            fn clone(&self) -> Snap {
-                Snap(self.0.snapshot())
-            }
-        }
-
-        let buf: Vec<Arc<SymbolIndex>> = if query.libs {
-            let snap = Snap(self.db.snapshot());
-            self.db
-                .library_roots()
-                .par_iter()
-                .map_with(snap, |db, &lib_id| db.0.library_symbols(lib_id))
-                .collect()
-        } else {
-            let mut files = Vec::new();
-            for &root in self.db.local_roots().iter() {
-                let sr = self.db.source_root(root);
-                files.extend(sr.files.values().map(|&it| it))
-            }
-
-            let snap = Snap(self.db.snapshot());
-            files
-                .par_iter()
-                .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
-                .filter_map(|it| it.ok())
-                .collect()
-        };
-        Ok(query.search(&buf))
-    }
-
     pub(crate) fn module_path(&self, position: FilePosition) -> Cancelable<Option<String>> {
         let descr = match source_binder::module_from_position(&*self.db, position)? {
             None => return Ok(None),
@@ -555,7 +521,7 @@ impl AnalysisImpl {
         let mut query = Query::new(name.to_string());
         query.exact();
         query.limit(4);
-        self.world_symbols(query)
+        crate::symbol_index::world_symbols(&*self.db, query)
     }
 }
 

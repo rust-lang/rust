@@ -10,12 +10,13 @@ use ra_syntax::{
     SyntaxKind::{self, *},
     ast::{self, NameOwner, DocCommentsOwner},
 };
-use ra_db::{SyntaxDatabase, SourceRootId};
+use ra_db::{SyntaxDatabase, SourceRootId, FilesDatabase};
+use salsa::ParallelDatabase;
 use rayon::prelude::*;
 
 use crate::{
-    Cancelable,
-    FileId, Query,
+    Cancelable, FileId, Query,
+    db::RootDatabase,
 };
 
 salsa::query_group! {
@@ -34,6 +35,41 @@ fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<Sym
     db.check_canceled()?;
     let syntax = db.source_file(file_id);
     Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
+}
+
+pub(crate) fn world_symbols(
+    db: &RootDatabase,
+    query: Query,
+) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
+    struct Snap(salsa::Snapshot<RootDatabase>);
+    impl Clone for Snap {
+        fn clone(&self) -> Snap {
+            Snap(self.0.snapshot())
+        }
+    }
+
+    let buf: Vec<Arc<SymbolIndex>> = if query.libs {
+        let snap = Snap(db.snapshot());
+        db.library_roots()
+            .par_iter()
+            .map_with(snap, |db, &lib_id| db.0.library_symbols(lib_id))
+            .collect()
+    } else {
+        let mut files = Vec::new();
+        for &root in db.local_roots().iter() {
+            let sr = db.source_root(root);
+            files.extend(sr.files.values().map(|&it| it))
+        }
+
+        let snap = Snap(db.snapshot());
+        files
+            .par_iter()
+            .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
+            .filter_map(|it| it.ok())
+            .collect()
+    };
+    Ok(query.search(&buf))
 }
 
 #[derive(Default, Debug)]

@@ -342,9 +342,7 @@ impl Analysis {
         ra_editor::folding_ranges(&file)
     }
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<NavigationTarget>> {
-        let res = self
-            .imp
-            .world_symbols(query)?
+        let res = symbol_index::world_symbols(&*self.imp.db, query)?
             .into_iter()
             .map(|(file_id, symbol)| NavigationTarget { file_id, symbol })
             .collect();
