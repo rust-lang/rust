@@ -9,12 +9,14 @@ trait Foo {
                                 //~| ERROR trait fns cannot be declared const
 }
 
-impl Foo {
-    const fn baz() -> u32 { 0 } // stabilized
-}
-
 impl Foo for u32 {
     const fn foo() -> u32 { 0 } //~ ERROR trait fns cannot be declared const
+}
+
+trait Bar {}
+
+impl dyn Bar {
+    const fn baz() -> u32 { 0 } // stabilized
 }
 
 static FOO: usize = foo();

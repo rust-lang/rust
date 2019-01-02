@@ -7,3 +7,5 @@ fn naked() {}
 fn naked_2() -> isize {
     0
 }
+
+fn main() {}

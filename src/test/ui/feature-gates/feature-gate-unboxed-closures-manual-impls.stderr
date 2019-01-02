@@ -1,5 +1,5 @@
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:10:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:11:5
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:15:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:17:5
    |
 LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:20:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:5
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,13 +23,44 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:25:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:29:5
    |
 LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error: aborting due to 4 previous errors
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
+   |
+LL | impl Fn<()> for Foo {
+   |      ^^^^^^
+   |
+   = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:15:12
+   |
+LL | impl FnOnce() for Foo1 {
+   |            ^^ associated type not allowed here
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:21:6
+   |
+LL | impl FnMut<()> for Bar {
+   |      ^^^^^^^^^
+   |
+   = help: add #![feature(unboxed_closures)] to the crate attributes to enable
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:27:6
+   |
+LL | impl FnOnce<()> for Baz {
+   |      ^^^^^^^^^^
+   |
+   = help: add #![feature(unboxed_closures)] to the crate attributes to enable
+
+error: aborting due to 8 previous errors
+
+Some errors occurred: E0229, E0658.
+For more information about an error, try `rustc --explain E0229`.

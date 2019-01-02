@@ -35,10 +35,10 @@ LL | pub fn f<#[cfg(none)] 'a, #[cfg(none)] T>(_: &'a T) {}
    |                           ^^^^^^^^^^^^
 
 error: #[cfg_attr] cannot be applied on a generic parameter
-  --> $DIR/issue-51279.rs:18:13
+  --> $DIR/issue-51279.rs:18:6
    |
-LL | unsafe impl<#[cfg_attr(none, may_dangle)] T> Drop for M<T> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<#[cfg_attr(none, may_dangle)] T> Drop for M<T> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: #[cfg] cannot be applied on a generic parameter
   --> $DIR/issue-51279.rs:23:23

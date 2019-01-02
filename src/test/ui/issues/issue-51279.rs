@@ -15,7 +15,7 @@ pub struct Y<#[cfg(none)] T>(T); // shouldn't care when the entire item is strip
 
 struct M<T>(*const T);
 
-unsafe impl<#[cfg_attr(none, may_dangle)] T> Drop for M<T> {
+impl<#[cfg_attr(none, may_dangle)] T> Drop for M<T> {
     //~^ ERROR #[cfg_attr] cannot be applied on a generic parameter
     fn drop(&mut self) {}
 }
@@ -23,3 +23,5 @@ unsafe impl<#[cfg_attr(none, may_dangle)] T> Drop for M<T> {
 type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
 //~^ ERROR #[cfg] cannot be applied on a generic parameter
 //~| ERROR attribute `ignored` is currently unknown to the compiler
+
+fn main() {}

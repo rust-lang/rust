@@ -5,3 +5,4 @@ fn ok_to_fail() {
     assert!(false);
 }
 
+fn main() {}
