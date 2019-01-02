@@ -155,7 +155,7 @@ fn resolve_submodule(
     name: &Name,
 ) -> (Vec<FileId>, Option<Problem>) {
     // FIXME: handle submodules of inline modules properly
-    let file_id = source.file_id().original_file_id(db);
+    let file_id = source.file_id().original_file(db);
     let source_root_id = db.file_source_root(file_id);
     let path = db.file_relative_path(file_id);
     let root = RelativePathBuf::default();

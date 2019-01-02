@@ -31,12 +31,12 @@ pub struct HirFileId(HirFileIdRepr);
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansionoriginated from.
-    pub(crate) fn original_file_id(self, db: &impl HirDatabase) -> FileId {
+    pub(crate) fn original_file(self, db: &impl HirDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_call_id) => {
                 let loc = macro_call_id.loc(db);
-                loc.source_item_id.file_id.original_file_id(db)
+                loc.source_item_id.file_id.original_file(db)
             }
         }
     }
