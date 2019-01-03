@@ -323,6 +323,7 @@ cfg_if! {
 }
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
+pub fn assert_send<T: ?Sized + Send>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
