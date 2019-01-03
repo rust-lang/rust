@@ -4,7 +4,7 @@
 #![allow(unused_parens)]
 // compile-flags: -Z borrowck=compare
 
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 
 use std::cell::Cell;
 use std::mem::swap;
